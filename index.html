@@ -658,7 +658,7 @@ function save(){
 }
 /* ---------- Konto & Abgleich (Firebase: Anmeldung + Firestore) ----------
    Öffentliche Web-Konfiguration; der Zugriff ist über Firestore-Regeln pro Benutzer abgesichert. */
-var FB_CFG = null; // FIREBASE_CONFIG
+var FB_CFG = {apiKey:"AIzaSyB_s5aiUlwGJXDbte2-ZvvjbhdN1m5BwY0", authDomain:"reiseplan-849ef.firebaseapp.com", projectId:"reiseplan-849ef", storageBucket:"reiseplan-849ef.firebasestorage.app", messagingSenderId:"300621654307", appId:"1:300621654307:web:d62bdc04a06e981bde4496"};
 var fb = null, fbDb = null, acct = {user:null, state:"off", msg:"", at:0}, lastLocal = {}, pend = {}, delPend = {}, pushT = null, fbUnsub = null, fbFirst = false;
 function tripSig(t){ var c = {}; Object.keys(t).forEach(function(k){ if(k!=="updatedAt") c[k] = t[k]; }); return JSON.stringify(c); }
 function acctInitSigs(){ lastLocal = {}; Object.keys(S.trips).forEach(function(id){ lastLocal[id] = tripSig(S.trips[id]); }); }
