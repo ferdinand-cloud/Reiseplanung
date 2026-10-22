@@ -656,10 +656,10 @@ function save(){
   pushSoon();
   acctTrack();
 }
-/* ---------- Konto & Abgleich (Supabase) ----------
-   Öffentliche Projekt-Daten; der Zugriff ist in der Datenbank pro Benutzer abgesichert (Row Level Security). */
-var SB_URL = "", SB_KEY = "";
-var sb = null, acct = {user:null, state:"off", msg:"", at:0, busy:false}, lastLocal = {}, pend = {}, delPend = {}, pushT = null, sbChan = null;
+/* ---------- Konto & Abgleich (Firebase: Anmeldung + Firestore) ----------
+   Öffentliche Web-Konfiguration; der Zugriff ist über Firestore-Regeln pro Benutzer abgesichert. */
+var FB_CFG = null; // FIREBASE_CONFIG
+var fb = null, fbDb = null, acct = {user:null, state:"off", msg:"", at:0}, lastLocal = {}, pend = {}, delPend = {}, pushT = null, fbUnsub = null, fbFirst = false;
 function tripSig(t){ var c = {}; Object.keys(t).forEach(function(k){ if(k!=="updatedAt") c[k] = t[k]; }); return JSON.stringify(c); }
 function acctInitSigs(){ lastLocal = {}; Object.keys(S.trips).forEach(function(id){ lastLocal[id] = tripSig(S.trips[id]); }); }
 function acctTrack(){
@@ -669,21 +669,45 @@ function acctTrack(){
   Object.keys(lastLocal).forEach(function(id){ if(!S.trips[id]){ delete lastLocal[id]; delPend[id] = now; delete pend[id]; changed = true; } });
   if(changed){ lsSet(KEY, JSON.stringify(S)); lsSet("rp-pend", JSON.stringify({p:pend, d:delPend})); acctPushSoon(); }
 }
-function acctPushSoon(){ if(!acct.user) return; clearTimeout(pushT); pushT = setTimeout(acctPush, 800); }
+function acctPushSoon(){ if(!acct.user) return; clearTimeout(pushT); pushT = setTimeout(acctPush, 600); }
+function tripsCol(){ return fbDb.collection("users").doc(acct.user.uid).collection("trips"); }
 function acctPush(){
-  if(!sb || !acct.user || !navigator.onLine) return;
-  var rows = [];
-  Object.keys(pend).forEach(function(id){ var t = S.trips[id]; if(t) rows.push({user_id:acct.user.id, id:id, data:t, deleted:false, updated_at:new Date(t.updatedAt||Date.now()).toISOString()}); });
-  Object.keys(delPend).forEach(function(id){ rows.push({user_id:acct.user.id, id:id, data:{}, deleted:true, updated_at:new Date(delPend[id]).toISOString()}); });
-  if(!rows.length) return;
-  var sent = {p:Object.keys(pend), d:Object.keys(delPend)};
+  if(!fbDb || !acct.user) return;
+  var ids = Object.keys(pend), dels = Object.keys(delPend); if(!ids.length && !dels.length) return;
+  var batch = fbDb.batch(), col = tripsCol();
+  ids.forEach(function(id){ var t = S.trips[id]; if(t) batch.set(col.doc(id), {json:JSON.stringify(t), deleted:false, updatedAt:t.updatedAt||Date.now()}); });
+  dels.forEach(function(id){ batch.set(col.doc(id), {json:"", deleted:true, updatedAt:delPend[id]}); });
+  // Firestore merkt sich die Änderung selbst (auch offline) und lädt sie hoch, sobald Netz da ist
+  ids.forEach(function(id){ delete pend[id]; }); dels.forEach(function(id){ delete delPend[id]; });
+  lsSet("rp-pend", JSON.stringify({p:pend, d:delPend}));
   setAcct("sync");
-  sb.from("trips").upsert(rows, {onConflict:"user_id,id"}).then(function(r){
-    if(r.error){ setAcct("error", r.error.message); return; }
-    sent.p.forEach(function(id){ delete pend[id]; }); sent.d.forEach(function(id){ delete delPend[id]; });
-    lsSet("rp-pend", JSON.stringify({p:pend, d:delPend}));
-    acct.at = Date.now(); setAcct("ok");
-  });
+  batch.commit().then(function(){ acct.at = Date.now(); setAcct("ok"); }, function(e){ setAcct("error", e && e.message); });
+}
+function fbRows(qs){ return qs.docs.map(function(d){ var v = d.data()||{}, data = null; try { data = v.json ? JSON.parse(v.json) : null; } catch(e){} return {id:d.id, data:data, deleted:!!v.deleted || !data, updated_at:new Date(v.updatedAt||0).toISOString()}; }); }
+function acctApply(rows){
+  var lk = "rp-linked-"+acct.user.uid, first = lsGet(lk)!=="1";
+  var m = acctMerge(rows, first);
+  if(first){ Object.keys(S.trips).forEach(function(id){ if(!m.seen[id]) pend[id] = 1; }); lsSet(lk, "1"); }
+  else Object.keys(S.trips).forEach(function(id){ if(!m.seen[id]) pend[id] = 1; });
+  if(!Object.keys(S.trips).length){ var f = fresh(); Object.keys(f.trips).forEach(function(id){ S.trips[id] = f.trips[id]; }); acctInitSigs(); }
+  if(!S.trips[S.cur]) S.cur = Object.keys(S.trips)[0];
+  lsSet(KEY, JSON.stringify(S));
+  if(m.changed){ dirty(); if(!dayByKey(cur)) pickDefaultDay(); renderAll(); }
+  acct.at = Date.now(); setAcct("ok"); acctPush();
+}
+function acctPull(){
+  if(!fbDb || !acct.user) return;
+  setAcct("sync");
+  tripsCol().get({source:"server"}).then(function(qs){ acctApply(fbRows(qs)); }, function(e){ setAcct("error", navigator.onLine ? (e && e.message) : "offline"); });
+}
+function acctLive(){
+  if(fbUnsub || !fbDb || !acct.user) return;
+  var firstServer = false;
+  fbUnsub = tripsCol().onSnapshot(function(qs){
+    if(qs.metadata.hasPendingWrites) return;
+    if(qs.metadata.fromCache && !firstServer) return; // erst den echten Stand vom Server abwarten
+    firstServer = true; acctApply(fbRows(qs));
+  }, function(e){ setAcct("error", e && e.message); });
 }
 function acctMerge(rows, first){
   var changed = false, seen = {};
@@ -700,31 +724,6 @@ function acctMerge(rows, first){
   });
   return {changed:changed, seen:seen};
 }
-function acctPull(){
-  if(!sb || !acct.user) return;
-  setAcct("sync");
-  sb.from("trips").select("id,data,deleted,updated_at").then(function(r){
-    if(r.error){ setAcct("error", r.error.message); return; }
-    var lk = "rp-linked-"+acct.user.id, first = lsGet(lk)!=="1";
-    var m = acctMerge(r.data||[], first);
-    lsSet(lk, "1");
-    // Reisen, die nur auf diesem Gerät existieren, hochladen
-    Object.keys(S.trips).forEach(function(id){ if(!m.seen[id]) pend[id] = 1; });
-    if(!Object.keys(S.trips).length){ var f = fresh(); Object.keys(f.trips).forEach(function(id){ S.trips[id] = f.trips[id]; }); acctInitSigs(); }
-    if(!S.trips[S.cur]) S.cur = Object.keys(S.trips)[0];
-    lsSet(KEY, JSON.stringify(S));
-    if(m.changed){ dirty(); if(!dayByKey(cur)) pickDefaultDay(); renderAll(); }
-    acct.at = Date.now(); setAcct("ok"); acctPush(); acctLive();
-  });
-}
-function acctLive(){
-  if(sbChan || !sb || !acct.user) return;
-  sbChan = sb.channel("trips-"+acct.user.id).on("postgres_changes", {event:"*", schema:"public", table:"trips", filter:"user_id=eq."+acct.user.id}, function(pl){
-    var row = pl.new && pl.new.id ? pl.new : null; if(!row) return;
-    var m = acctMerge([row]);
-    if(m.changed){ if(!S.trips[S.cur]) S.cur = Object.keys(S.trips)[0]; lsSet(KEY, JSON.stringify(S)); dirty(); if(!dayByKey(cur)) pickDefaultDay(); renderAll(); }
-  }).subscribe();
-}
 function setAcct(st, msg){ acct.state = st; if(msg!=null) acct.msg = msg; var el = $("acctNote"); if(el) el.innerHTML = acctNote(); }
 function acctNote(){
   if(!acct.user) return acct.msg ? esc(acct.msg) : "";
@@ -732,21 +731,22 @@ function acctNote(){
     !navigator.onLine ? "Offline – Änderungen werden später hochgeladen." :
     "Synchronisiert"+(acct.at ? " um "+new Date(acct.at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "")+". Deine Reisen sind auf allen Geräten gleich.";
 }
-function sbLoad(cb){
-  if(window.supabase) return cb();
-  var sc = document.createElement("script"); sc.src = "supabase.js"; sc.onload = cb; sc.onerror = function(){ setAcct("error", "Konto-Modul konnte nicht geladen werden."); }; document.head.appendChild(sc);
+function fbLoad(cb){
+  if(window.firebase && window.firebase.firestore) return cb();
+  var sc = document.createElement("script"); sc.src = "firebase.js"; sc.onload = cb; sc.onerror = function(){ setAcct("error", "Konto-Modul konnte nicht geladen werden."); }; document.head.appendChild(sc);
 }
 function acctStart(){
-  if(!SB_URL || !SB_KEY){ acct.state = "unconf"; return; }
+  if(!FB_CFG){ acct.state = "unconf"; return; }
   try { var pp = JSON.parse(lsGet("rp-pend")||"{}"); pend = pp.p || {}; delPend = pp.d || {}; } catch(e){}
-  sbLoad(function(){
-    sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storageKey:"rp-auth"}});
-    sb.auth.onAuthStateChange(function(ev, session){
-      var u = session && session.user || null, was = acct.user && acct.user.id;
-      acct.user = u;
-      if(ev==="PASSWORD_RECOVERY"){ acct.recover = true; tab = "trip"; if(sheetState!=="full" && !desktop.matches) setSheet("full"); }
-      if(u && was!==u.id){ acctPull(); }
-      if(!u){ if(sbChan){ sb.removeChannel(sbChan); sbChan = null; } acct.state = "off"; }
+  fbLoad(function(){
+    fb = window.firebase.initializeApp(FB_CFG);
+    fbDb = window.firebase.firestore();
+    try { fbDb.enablePersistence({synchronizeTabs:true}).catch(function(){}); } catch(e){}
+    window.firebase.auth().onAuthStateChanged(function(u){
+      var was = acct.user && acct.user.uid;
+      acct.user = u ? {uid:u.uid, id:u.uid, email:u.email} : null;
+      if(u && was!==u.uid){ acctLive(); }
+      if(!u){ if(fbUnsub){ fbUnsub(); fbUnsub = null; } acct.state = "off"; }
       if(tab==="trip") renderSheet();
     });
   });
@@ -754,9 +754,7 @@ function acctStart(){
 function acctBlock(){
   if(acct.state==="unconf") return "";
   var h = "<div class=\"sec acct\"><h4>Konto</h4>";
-  if(acct.recover && acct.user){
-    h += "<p class=\"note\">Lege ein neues Passwort fest.</p><div class=\"af\"><input type=\"password\" id=\"acNew\" autocomplete=\"new-password\" placeholder=\"Neues Passwort (mind. 8 Zeichen)\"><button type=\"button\" class=\"btn s\" data-act=\"acnewpw\">Speichern</button></div>";
-  } else if(acct.user){
+  if(acct.user){
     h += "<p>Angemeldet als <b>"+esc(acct.user.email||"")+"</b></p><p class=\"note\" id=\"acctNote\" role=\"status\">"+acctNote()+"</p><div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"acsync\">Jetzt abgleichen</button><button type=\"button\" class=\"btn g s\" data-act=\"acout\">Abmelden</button></div>";
   } else {
     h += "<p class=\"note\">Melde dich an, damit deine Reisen auf iPhone, iPad und Rechner gleich sind. Ohne Anmeldung bleibt alles nur auf diesem Gerät.</p>"+
@@ -767,7 +765,13 @@ function acctBlock(){
   return h+"</div>";
 }
 function acctCreds(){ var m = ($("acMail")||{}).value||"", p = ($("acPw")||{}).value||""; return {email:m.trim(), password:p}; }
-function acctErr(e){ var m = e && e.message || String(e); if(/Invalid login/i.test(m)) return "E-Mail oder Passwort stimmt nicht."; if(/not confirmed/i.test(m)) return "Bitte bestätige zuerst deine E-Mail-Adresse über den Link in der Mail."; if(/already registered/i.test(m)) return "Für diese E-Mail gibt es schon ein Konto – melde dich an."; if(/at least|Password should/i.test(m)) return "Das Passwort ist zu kurz (mindestens 8 Zeichen)."; return m; }
+function acctErr(e){ var c = e && e.code || "", m = e && e.message || String(e);
+  if(/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c)) return "E-Mail oder Passwort stimmt nicht.";
+  if(/email-already-in-use/.test(c)) return "Für diese E-Mail gibt es schon ein Konto – melde dich an.";
+  if(/weak-password/.test(c)) return "Das Passwort ist zu schwach (mindestens 8 Zeichen).";
+  if(/invalid-email/.test(c)) return "Die E-Mail-Adresse ist ungültig.";
+  if(/network-request-failed/.test(c)) return "Keine Verbindung. Versuch es gleich noch einmal.";
+  if(/too-many-requests/.test(c)) return "Zu viele Versuche. Bitte kurz warten."; if(/Invalid login/i.test(m)) return "E-Mail oder Passwort stimmt nicht."; if(/not confirmed/i.test(m)) return "Bitte bestätige zuerst deine E-Mail-Adresse über den Link in der Mail."; if(/already registered/i.test(m)) return "Für diese E-Mail gibt es schon ein Konto – melde dich an."; if(/at least|Password should/i.test(m)) return "Das Passwort ist zu kurz (mindestens 8 Zeichen)."; return m; }
 function appURL(){ return location.origin + location.pathname.replace(/index\.html$/, ""); }
 /* Geprüfte Adressen: korrigiert gespeicherte Einträge, solange die alte Adresse noch unverändert drin steht */
 var ADDR_FIX = {"a29": {"n": "Domino Park", "from": "River St, Williamsburg", "addr": "15 River St, Brooklyn", "la": 40.716628, "lo": -73.966468}, "e02": {"n": "Old Friend Photobooth", "from": "Allen St (145 laut deiner Liste, eine Quelle nennt 45)", "addr": "145 Allen St", "la": 40.720501, "lo": -73.9901}, "m02": {"n": "Fellini Cafe", "from": "7th Ave S, neben Fellini Cucina (176 7th Ave S)", "addr": "176 7th Ave S", "la": 40.735975, "lo": -74.001676, "note": "Coffee. Direkt neben Fellini Cucina. Weitere Filiale SoHo, 120 Thompson St."}, "m08": {"n": "Pantry (Madhappy)", "from": "Im Madhappy-Store, Nolita", "addr": "207 Mulberry St (im Madhappy-Store)", "la": 40.721769, "lo": -73.996407}, "m11": {"n": "Rok", "from": "unklar", "addr": "156 7th Ave S", "la": 40.735301, "lo": -74.002071}, "m12": {"n": "Cia Vagante", "from": "unklar", "addr": "Fort Greene Park, Washington Park & DeKalb Ave, Brooklyn", "la": 40.689631, "lo": -73.97313, "note": "Wohl „Ciao Vagante“: mobiler Kaffee aus einem Vintage-Fiat-Panda, kein fester Laden. Meist Sa 10–16 Uhr am Fort Greene Park (Brooklyn)."}, "r04": {"n": "Jupiter", "from": "1 Rockefeller Plaza", "addr": "20 W 50th St (Rink Level, Rockefeller Center)", "la": 40.758833, "lo": -73.97833}, "r33": {"n": "Jack's Wife Freda (Original)", "from": "224 Mulberry St", "addr": "226 Lafayette St", "la": 40.722256, "lo": -73.997464}, "r38": {"n": "From Lucie", "from": "64 Avenue B", "addr": "263 E 10th St", "la": 40.728508, "lo": -73.983279}, "s01": {"n": "Sephora Times Square", "from": "1500 Broadway", "addr": "1535 Broadway", "la": 40.758423, "lo": -73.985599}, "s02": {"n": "Sephora SoHo", "from": "555 Broadway", "addr": "557 Broadway", "la": 40.72396, "lo": -73.998229}, "s07": {"n": "Kujten Flagship", "from": "Madison Avenue", "addr": "831 Madison Ave", "la": 40.769949, "lo": -73.966512}, "m10": {"n": "Cafe Habit", "from": "unklar", "addr": "unklar", "note": "Coffee. Online kein New Yorker Café dieses Namens gefunden – bitte Ort bestätigen."}, "s04": {"n": "Kujten (SoHo)", "from": "92 Greene St", "addr": "92 Greene St", "note": "Cashmere (Paris). Stand Mitte Oktober 2026 noch nicht eröffnet (geplant Q4 2026) – vorher prüfen. Flagship: 831 Madison Ave."}}; // geprüft am 22.10.2026
@@ -2751,15 +2755,12 @@ document.addEventListener("click", function(e){
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
     case "acsignup": var cs = acctCreds(); if(!cs.email || cs.password.length < 8){ setAcct("off", "Bitte E-Mail und ein Passwort mit mindestens 8 Zeichen eingeben."); break; }
       setAcct("off", "Konto wird erstellt …");
-      sb.auth.signUp({email:cs.email, password:cs.password, options:{emailRedirectTo:appURL()}}).then(function(r){ if(r.error) setAcct("off", acctErr(r.error)); else if(!r.data.session) setAcct("off", "Fast fertig: Bestätige deine E-Mail über den Link, den wir dir geschickt haben, und melde dich dann hier an."); });
+      window.firebase.auth().createUserWithEmailAndPassword(cs.email, cs.password).then(function(){ acct.msg = ""; toast("Konto erstellt und angemeldet", false); }, function(e){ setAcct("off", acctErr(e)); });
       break;
     case "acforgot": var cf = acctCreds(); if(!cf.email){ setAcct("off", "Bitte zuerst die E-Mail eingeben."); break; }
-      sb.auth.resetPasswordForEmail(cf.email, {redirectTo:appURL()}).then(function(r){ setAcct("off", r.error ? acctErr(r.error) : "Wir haben dir einen Link zum Zurücksetzen geschickt."); });
+      window.firebase.auth().sendPasswordResetEmail(cf.email).then(function(){ setAcct("off", "Wir haben dir einen Link zum Zurücksetzen geschickt. Danach hier mit dem neuen Passwort anmelden."); }, function(e){ setAcct("off", acctErr(e)); });
       break;
-    case "acnewpw": var np = ($("acNew")||{}).value||""; if(np.length < 8){ toast("Mindestens 8 Zeichen", false); break; }
-      sb.auth.updateUser({password:np}).then(function(r){ if(r.error) toast(acctErr(r.error), false); else { acct.recover = false; toast("Passwort geändert", false); renderSheet(); } });
-      break;
-    case "acout": sb.auth.signOut().then(function(){ acct.user = null; renderSheet(); toast("Abgemeldet. Deine Reisen bleiben auf diesem Gerät.", false); }); break;
+    case "acout": window.firebase.auth().signOut().then(function(){ acct.user = null; renderSheet(); toast("Abgemeldet. Deine Reisen bleiben auf diesem Gerät.", false); }); break;
     case "acsync": acctPull(); break;
     case "geopick": geoPick(t.getAttribute("data-path"), +t.getAttribute("data-i")); break;
     case "depopen": var dsi = t.getAttribute("data-st"); depOpen[dsi] = !depOpen[dsi]; renderCard(); break;
@@ -2889,10 +2890,11 @@ document.addEventListener("input", function(e){
 document.addEventListener("submit", function(e){
   e.preventDefault();
   var id = e.target.id;
+  if(id==="acForm" && !window.firebase){ return; }
   if(id==="acForm"){
     var cl = acctCreds(); if(!cl.email || !cl.password){ setAcct("off", "Bitte E-Mail und Passwort eingeben."); return; }
     setAcct("off", "Anmeldung …");
-    sb.auth.signInWithPassword(cl).then(function(r){ if(r.error) setAcct("off", acctErr(r.error)); else { acct.msg = ""; toast("Angemeldet", false); } });
+    window.firebase.auth().signInWithEmailAndPassword(cl.email, cl.password).then(function(){ acct.msg = ""; toast("Angemeldet", false); }, function(e){ setAcct("off", acctErr(e)); });
     return;
   }
   if(id==="tForm"){
