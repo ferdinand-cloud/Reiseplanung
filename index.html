@@ -247,6 +247,11 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .jr .saved{font-size:12px;color:var(--muted)}
 .jdone{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:14px}
 .jdone li{display:flex;gap:8px;align-items:center}
+.jdone .jn{flex:1;min-width:0}
+.jdone .jb{border:1px solid var(--line);background:transparent;border-radius:999px;padding:4px 9px;font-size:12.5px;font-weight:600;white-space:nowrap;color:var(--ink)}
+.jdone .jb.on{background:var(--chip);color:var(--muted)}
+.jdone .jb[data-act=jhl].on{color:#f4b400;background:var(--chip)}
+.jdh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
 .jday{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:4px}
 .jday button{justify-self:start}
 .jday p{margin:0;font-size:14px;white-space:pre-wrap}
@@ -1863,19 +1868,39 @@ function renderDay(){
   h += journalBlock(D);
   return h;
 }
+var jOpen = lsGet("nyc-j-open")!=="0";
+function jLine(id){ var p = P(id); return "• "+p.n+(timeOf(id)?" ("+timeOf(id)+")":"")+": "; }
+function jHas(J, id){ var p = P(id); return !!(J.text && J.text.indexOf("• "+p.n)>-1); }
 function journalBlock(D){
-  var J = (T().journal||{})[D.key] || {}, done = ord(D.key).filter(function(id){ return T().done[id]; });
-  var h = "<div class=\"sec\"><h4>Tagebuch · "+esc(D.lbl)+"</h4><div class=\"jr\">";
+  var J = (T().journal||{})[D.key] || {}, done = ord(D.key).filter(function(id){ return T().done[id] && P(id); });
+  var info = J.text || J.hl ? "Eintrag vorhanden" : done.length ? done.length+" erledigt" : "leer";
+  var h = "<div class=\"sec\"><button type=\"button\" class=\"fold\" data-act=\"jtoggle\" aria-expanded=\""+jOpen+"\"><h4>Tagebuch · "+esc(D.lbl)+"</h4><span class=\"cnt\">"+info+"</span>"+CHEV+"</button>";
+  if(!jOpen) return h+"</div>";
+  h += "<div class=\"jr\">";
   h += "<label><span>Highlight des Tages</span><input type=\"text\" id=\"jHl\" data-j=\"hl\" maxlength=\"140\" value=\""+esc(J.hl||"")+"\" placeholder=\"z. B. Sonnenuntergang auf Top of the Rock\" autocomplete=\"off\"></label>";
   h += "<label><span>Was habt ihr gemacht?</span><textarea id=\"jText\" data-j=\"text\" rows=\"5\" maxlength=\"5000\" placeholder=\"Erlebnisse, spontane Entdeckungen, Eindrücke …\">"+esc(J.text||"")+"</textarea></label>";
   if(done.length){
-    h += "<div><span class=\"sub\">Erledigt laut Plan</span><ul class=\"jdone\">"+done.map(function(id){ var p = P(id); return "<li>"+badge(p.c,"width:22px;height:22px")+esc(p.n)+(timeOf(id)?" · "+timeOf(id):"")+"</li>"; }).join("")+"</ul></div>";
+    var open = done.filter(function(id){ return !jHas(J, id); });
+    h += "<div><div class=\"jdh\"><span class=\"sub\">Erledigt laut Plan – antippen zum Übernehmen</span>"+(open.length>1?"<button type=\"button\" class=\"btn g s\" data-act=\"jall\">Alle übernehmen</button>":"")+"</div><ul class=\"jdone\">"+done.map(function(id){
+      var p = P(id), has = jHas(J, id), isHl = J.hl===p.n;
+      return "<li data-id=\""+id+"\">"+badge(p.c,"width:22px;height:22px")+"<span class=\"jn\">"+esc(p.n)+(timeOf(id)?" · "+timeOf(id):"")+"</span>"+
+        "<button type=\"button\" class=\"jb"+(has?" on":"")+"\" data-act=\"jins\""+(has?" aria-pressed=\"true\"":"")+">"+(has?"✓ im Text":"+ Text")+"</button>"+
+        "<button type=\"button\" class=\"jb"+(isHl?" on":"")+"\" data-act=\"jhl\" aria-pressed=\""+isHl+"\" aria-label=\"Als Highlight des Tages\">★</button></li>";
+    }).join("")+"</ul></div>";
   } else {
-    h += "<p class=\"note\">Hake Stopps über ihre Nummer ab, dann erscheinen sie hier automatisch.</p>";
+    h += "<p class=\"note\">Hake Stopps im Tagesplan ab, dann kannst du sie hier ins Tagebuch übernehmen.</p>";
   }
   h += "<span class=\"saved\" id=\"jSaved\">"+(J.at ? "Gespeichert "+new Date(J.at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "Wird beim Tippen gespeichert")+"</span>";
   h += "</div></div>";
   return h;
+}
+function jAppend(ids, focus){
+  var tr = T(); tr.journal = tr.journal || {}; var J = tr.journal[cur] = tr.journal[cur] || {};
+  var add = ids.filter(function(id){ return !jHas(J, id); }).map(jLine);
+  if(!add.length) return;
+  var t = J.text || ""; if(t && !/\n$/.test(t)) t += "\n";
+  J.text = (t + add.join("\n")).slice(0, 5000); J.at = Date.now(); save(); renderSheet();
+  var ta = $("jText"); if(ta && focus){ ta.focus(); var L = ta.value.length; try{ ta.setSelectionRange(L, L); }catch(e){} }
 }
 var jTimer = null;
 
@@ -2281,6 +2306,10 @@ document.addEventListener("click", function(e){
     case "go": openGo(id || sel); break;
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
+    case "jtoggle": jOpen = !jOpen; lsSet("nyc-j-open", jOpen?"1":"0"); renderSheet(); break;
+    case "jins": jAppend([id], true); break;
+    case "jall": jAppend(ord(cur).filter(function(x){ return T().done[x] && P(x); }), true); break;
+    case "jhl": var trj = T(); trj.journal = trj.journal || {}; var Jh = trj.journal[cur] = trj.journal[cur] || {}; Jh.hl = Jh.hl===P(id).n ? "" : P(id).n; Jh.at = Date.now(); save(); renderSheet(); break;
     case "hidedone": hideDone = !hideDone; lsSet("nyc-hide-done", hideDone?"1":"0"); legSel = -1; renderSheet(); scheduleOverlay(); toast(hideDone ? "Erledigte Stopps ausgeblendet" : "Erledigte Stopps eingeblendet", false); break;
     case "poiall": poiOff = {}; lsSet("nyc-poi-off", "{}"); applyPoi(); break;
     case "poinone": poiOff = {}; POIGROUPS.forEach(function(g){ poiOff[g[0]] = 1; }); lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
