@@ -283,6 +283,16 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+.gate{position:fixed;inset:0;z-index:100;background:var(--sheet);display:grid;place-items:center;padding:24px max(20px,env(safe-area-inset-left,0px)) calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto}
+.gate[hidden]{display:none}
+.gate-card{width:min(380px,100%);display:grid;gap:12px}
+.gate-card h1{margin:0;font:700 34px/1 var(--f-display)}
+.gate-card .sub{margin:0;color:var(--muted);font-size:15px}
+.gate-card .af{display:grid;gap:10px}
+.gate-card label span{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.gate-card input{width:100%;border:1px solid var(--line);border-radius:12px;background:transparent;padding:11px 12px;font:inherit;font-size:16px;color:inherit}
+.gate-card .btn{padding:11px 14px;font-size:15px}
+body.gated .sheet,body.gated .top,body.gated #rail,body.gated .ctrl{visibility:hidden}
 .acct .af{display:grid;gap:6px}
 .acct input{width:100%;border:1px solid var(--line);border-radius:10px;background:transparent;padding:9px 10px;font:inherit;font-size:16px;color:inherit}
 .acct p{margin:0 0 6px}
@@ -517,6 +527,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 
 <button type="button" class="edge" id="edgeBtn" aria-label="Planung einklappen"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg></button>
 <div class="pop" id="wishPop" hidden></div>
+<div class="gate" id="gate" hidden></div>
 <section class="sheet" id="sheet" aria-label="Planung">
   <div class="grab" id="grab">
     <div class="handle"></div>
@@ -736,7 +747,8 @@ function fbLoad(cb){
   var sc = document.createElement("script"); sc.src = "firebase.js"; sc.onload = cb; sc.onerror = function(){ setAcct("error", "Konto-Modul konnte nicht geladen werden."); }; document.head.appendChild(sc);
 }
 function acctStart(){
-  if(!FB_CFG){ acct.state = "unconf"; return; }
+  if(!FB_CFG){ acct.state = "unconf"; renderGate(); return; }
+  renderGate();
   try { var pp = JSON.parse(lsGet("rp-pend")||"{}"); pend = pp.p || {}; delPend = pp.d || {}; } catch(e){}
   fbLoad(function(){
     fb = window.firebase.initializeApp(FB_CFG);
@@ -747,22 +759,35 @@ function acctStart(){
       acct.user = u ? {uid:u.uid, id:u.uid, email:u.email} : null;
       if(u && was!==u.uid){ acctLive(); }
       if(!u){ if(fbUnsub){ fbUnsub(); fbUnsub = null; } acct.state = "off"; }
-      if(tab==="trip") renderSheet();
+      acct.ready = true; renderGate(); refreshSettings();
     });
   });
 }
+function googleBlock(){
+  return "<div class=\"sec\"><h4>Google-Bewertungen &amp; Fotos</h4><p class=\"note\" style=\"margin-bottom:6px\">"+(gKey ? "Aktiv. Bewertungen und Fotos erscheinen, wenn du einen Ort antippst. Der Schlüssel ist nur auf diesem Gerät gespeichert." : "Trage einen Google-Maps-API-Schlüssel ein (Places API (New)). Er wird nur auf diesem Gerät gespeichert, nicht im öffentlichen Code.")+"</p>"+
+         "<div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\" role=\"status\">"+esc(gMsg)+"</p>":"")+"</div>";
+}
 function acctBlock(){
-  if(acct.state==="unconf") return "";
-  var h = "<div class=\"sec acct\"><h4>Konto</h4>";
-  if(acct.user){
-    h += "<p>Angemeldet als <b>"+esc(acct.user.email||"")+"</b></p><p class=\"note\" id=\"acctNote\" role=\"status\">"+acctNote()+"</p><div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"acsync\">Jetzt abgleichen</button><button type=\"button\" class=\"btn g s\" data-act=\"acout\">Abmelden</button></div>";
-  } else {
-    h += "<p class=\"note\">Melde dich an, damit deine Reisen auf iPhone, iPad und Rechner gleich sind. Ohne Anmeldung bleibt alles nur auf diesem Gerät.</p>"+
-      "<form class=\"af\" id=\"acForm\"><input type=\"email\" id=\"acMail\" autocomplete=\"email\" inputmode=\"email\" placeholder=\"E-Mail\" required><input type=\"password\" id=\"acPw\" autocomplete=\"current-password\" placeholder=\"Passwort\">"+
-      "<div class=\"row\"><button type=\"submit\" class=\"btn s\">Anmelden</button><button type=\"button\" class=\"btn g s\" data-act=\"acsignup\">Konto erstellen</button><button type=\"button\" class=\"btn g s\" data-act=\"acforgot\">Passwort vergessen</button></div></form>"+
-      "<p class=\"note\" id=\"acctNote\" role=\"status\">"+acctNote()+"</p>";
-  }
-  return h+"</div>";
+  if(!acct.user) return "";
+  return "<div class=\"sec acct\"><h4>Konto</h4><p>Angemeldet als <b>"+esc(acct.user.email||"")+"</b></p><p class=\"note\" id=\"acctNote\" role=\"status\">"+acctNote()+"</p><div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"acsync\">Jetzt abgleichen</button><button type=\"button\" class=\"btn g s\" data-act=\"acout\">Abmelden</button></div></div>";
+}
+function openSettings(){
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Einstellungen\" data-pop=\"settings\"><div class=\"pop-head\"><h4>Einstellungen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
+  h += acctBlock()+googleBlock();
+  $("catPop").innerHTML = h+"</div>"; $("catPop").hidden = false;
+}
+function refreshSettings(){ if(!$("catPop").hidden && $("catPop").querySelector("[data-pop=settings]")) openSettings(); }
+/* Anmeldefenster vor der App */
+function renderGate(){
+  var g = $("gate"); if(!g) return;
+  if(acct.state==="unconf" || acct.user){ g.hidden = true; document.body.classList.remove("gated"); return; }
+  g.hidden = false; document.body.classList.add("gated");
+  if(!acct.ready){ g.innerHTML = "<div class=\"gate-card\"><h1>Reiseplan</h1><p class=\"note\">Lade …</p></div>"; return; }
+  if(g.querySelector("#acForm")){ var n = $("acctNote"); if(n) n.innerHTML = acctNote(); return; }
+  g.innerHTML = "<div class=\"gate-card\"><h1>Reiseplan</h1><p class=\"sub\">Melde dich an, um deine Reisen zu planen. Deine Pläne sind auf allen deinen Geräten gleich.</p>"+
+    "<form class=\"af\" id=\"acForm\"><label><span>E-Mail</span><input type=\"email\" id=\"acMail\" autocomplete=\"email\" inputmode=\"email\" required></label><label><span>Passwort</span><input type=\"password\" id=\"acPw\" autocomplete=\"current-password\" minlength=\"8\"></label>"+
+    "<button type=\"submit\" class=\"btn\">Anmelden</button><div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"acsignup\">Konto erstellen</button><button type=\"button\" class=\"btn g s\" data-act=\"acforgot\">Passwort vergessen</button></div></form>"+
+    "<p class=\"note\" id=\"acctNote\" role=\"status\">"+acctNote()+"</p></div>";
 }
 function acctCreds(){ var m = ($("acMail")||{}).value||"", p = ($("acPw")||{}).value||""; return {email:m.trim(), password:p}; }
 function acctErr(e){ var c = e && e.code || "", m = e && e.message || String(e);
@@ -2176,7 +2201,7 @@ function renderTop(){
   Object.keys(S.trips).map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).forEach(function(x){
     h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur)+"\"><span>"+esc(x.name)+"</span><small>"+esc(rangeLabel(x.start,x.end))+"</small></button>";
   });
-  h += "<hr><button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button><button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
+  h += "<hr><button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button><button type=\"button\" data-act=\"settings\">Einstellungen &amp; Konto</button><button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
   $("tripMenu").innerHTML = h;
   var d = dayByKey(cur), r = "";
   if(d) r = "<button type=\"button\" class=\"rd-day\" data-act=\"daypop\" aria-haspopup=\"dialog\" aria-label=\""+esc(d.title)+" – Tag wechseln\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span>"+d.wd+"<span class=\"cnt\">"+shortD(d.key)+"</span><span class=\"chev\">"+CHEV+"</span></button>";
@@ -2500,10 +2525,6 @@ function renderTrip(){
       jh += "</div>";
     });
     h += "<div class=\"sec\"><h4>Reisetagebuch</h4>"+(any ? jh : "<p class=\"empty\">Noch keine Einträge. Schreib im Tagesplan unter „Tagebuch“, was ihr erlebt habt.</p>")+"</div>";
-    h += acctBlock();
-    h += "<div class=\"sec\"><h4>Google-Bewertungen &amp; Fotos</h4><p class=\"note\" style=\"margin-bottom:6px\">"+(gKey ? "Aktiv. Bewertungen und Fotos erscheinen, wenn du einen Ort antippst. Der Schlüssel ist nur auf diesem Gerät gespeichert." : "Trage einen Google-Maps-API-Schlüssel ein (Places API (New)). Er wird nur auf diesem Gerät gespeichert, nicht im öffentlichen Code.")+"</p>"+
-         "<div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\" role=\"status\">"+esc(gMsg)+"</p>":"")+"</div>";
-    h += "<p class=\"note\" id=\"syncNote\" role=\"status\">"+syncText()+"</p>";
     h += "<div class=\"backup\"><button type=\"button\" class=\"btn g s\" data-act=\"export\">Plan als Datei sichern</button><label class=\"btn g s\" for=\"impFile\">Sicherung laden</label><input type=\"file\" id=\"impFile\" accept=\"application/json,.json\"></div>";
     if(Object.keys(S.trips).length>1) h += "<div class=\"row\">"+confirmBtn("delt:"+t.id, "Reise löschen", "Reise wirklich löschen?", "deltrip")+"</div>";
     h += "<div class=\"row\">"+confirmBtn("reset", "Prototyp zurücksetzen", "Wirklich alles zurücksetzen?", "reset")+"</div>";
@@ -2760,7 +2781,12 @@ document.addEventListener("click", function(e){
     case "acforgot": var cf = acctCreds(); if(!cf.email){ setAcct("off", "Bitte zuerst die E-Mail eingeben."); break; }
       window.firebase.auth().sendPasswordResetEmail(cf.email).then(function(){ setAcct("off", "Wir haben dir einen Link zum Zurücksetzen geschickt. Danach hier mit dem neuen Passwort anmelden."); }, function(e){ setAcct("off", acctErr(e)); });
       break;
-    case "acout": window.firebase.auth().signOut().then(function(){ acct.user = null; renderSheet(); toast("Abgemeldet. Deine Reisen bleiben auf diesem Gerät.", false); }); break;
+    case "acout": closeCatPop(); window.firebase.auth().signOut().then(function(){
+        // Gerät freigeben: lokale Kopie entfernen, sie liegt im Konto
+        try { Object.keys(localStorage).forEach(function(k){ if(k===KEY || /^rp-(linked|pend)/.test(k)) localStorage.removeItem(k); }); } catch(e){}
+        pend = {}; delPend = {}; S = fresh(); acctInitSigs(); pickDefaultDay(); renderAll(); acct.user = null; acct.msg = "Abgemeldet."; renderGate();
+      }); break;
+    case "settings": closeMenus(); openSettings(); break;
     case "acsync": acctPull(); break;
     case "geopick": geoPick(t.getAttribute("data-path"), +t.getAttribute("data-i")); break;
     case "depopen": var dsi = t.getAttribute("data-st"); depOpen[dsi] = !depOpen[dsi]; renderCard(); break;
@@ -2773,12 +2799,12 @@ document.addEventListener("click", function(e){
     case "poinone": poiOff = {}; POIGROUPS.forEach(function(g){ poiOff[g[0]] = 1; }); lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "gkeysave":
       var gv = ($("gKeyIn").value||"").trim(); if(!gv){ $("gKeyIn").focus(); break; }
-      gMsg = "Prüfe Schlüssel …"; renderSheet();
+      gMsg = "Prüfe Schlüssel …"; refreshSettings();
       fetch("https://places.googleapis.com/v1/places:searchText", {method:"POST", headers:{"Content-Type":"application/json","X-Goog-Api-Key":gv,"X-Goog-FieldMask":"places.id"}, body:JSON.stringify({textQuery:"Times Square New York", maxResultCount:1})})
-        .then(function(r){ if(!r.ok) throw r.status; gKey = gv; lsSet("nyc-gkey", gv); gInfo = {}; gMsg = "Schlüssel funktioniert."; renderSheet(); renderCard(); })
-        .catch(function(e){ gMsg = e===403||e===400 ? "Google lehnt den Schlüssel ab. Ist die Places API (New) aktiviert und die Website freigegeben?" : "Prüfung fehlgeschlagen (keine Verbindung?)."; renderSheet(); });
+        .then(function(r){ if(!r.ok) throw r.status; gKey = gv; lsSet("nyc-gkey", gv); gInfo = {}; gMsg = "Schlüssel funktioniert."; refreshSettings(); renderCard(); })
+        .catch(function(e){ gMsg = e===403||e===400 ? "Google lehnt den Schlüssel ab. Ist die Places API (New) aktiviert und die Website freigegeben?" : "Prüfung fehlgeschlagen (keine Verbindung?)."; refreshSettings(); });
       break;
-    case "gkeydel": gKey = ""; gInfo = {}; gMsg = "Schlüssel entfernt."; try { localStorage.removeItem("nyc-gkey"); } catch(e){} renderSheet(); renderCard(); break;
+    case "gkeydel": gKey = ""; gInfo = {}; gMsg = "Schlüssel entfernt."; try { localStorage.removeItem("nyc-gkey"); } catch(e){} refreshSettings(); renderCard(); break;
     case "gofrom": goSt.from = t.getAttribute("data-from"); renderGo(); break;
     case "goapp": goApp = t.getAttribute("data-app"); lsSet("nyc-go-app", goApp); renderGo(); break;
     case "gogo": setTimeout(closeCatPop, 300); break;
