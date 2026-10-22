@@ -1175,10 +1175,13 @@ $("layersBtn").addEventListener("click", function(){ var open = $("layers").hidd
 var me = null, watchId = null, firstFix = false, meRoute = false;
 function setLocBtn(){ var b = $("locBtn"); b.setAttribute("aria-pressed", watchId!==null); b.classList.toggle("on", !!me); }
 /* Richtung: Kompass des Geräts (Stehen) oder GPS-Kurs (Gehen) + Spur der letzten Positionen */
-var compass = null, trail = [], compOn = false;
+var compass = null, trail = [], compOn = false, compAsked = false, compDenied = false;
 function startCompass(){
-  if(compOn || !window.DeviceOrientationEvent) return;
-  var go = function(){ compOn = true; window.addEventListener("deviceorientation", function(e){
+  if(compOn || compAsked || !window.DeviceOrientationEvent) return;
+  compAsked = true;
+  var go = function(){ compOn = true;
+    if(typeof DeviceOrientationEvent.requestPermission==="function") setTimeout(function(){ if(compass==null && me) toast("Kein Kompass-Signal. Prüfe Einstellungen › Datenschutz › Ortungsdienste › Systemdienste › Kompasskalibrierung.", false); }, 4000);
+    window.addEventListener("deviceorientation", function(e){
     var h = typeof e.webkitCompassHeading==="number" ? e.webkitCompassHeading : (e.absolute && e.alpha!=null ? (360 - e.alpha) % 360 : null);
     if(h==null) return;
     var so = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
@@ -1186,13 +1189,16 @@ function startCompass(){
     if(compass==null || Math.abs(((h - compass + 540) % 360) - 180) > 2){ compass = h; if(me) scheduleOverlay(); }
   }, true); };
   if(typeof DeviceOrientationEvent.requestPermission==="function"){
-    DeviceOrientationEvent.requestPermission().then(function(r){ if(r==="granted") go(); }).catch(function(){});
+    DeviceOrientationEvent.requestPermission().then(function(r){
+      if(r==="granted") go();
+      else { compDenied = true; toast("Blickrichtung nicht erlaubt. Schließe die App ganz, öffne sie neu und tippe auf den Standort-Button – dann „Erlauben“ wählen.", false); }
+    }).catch(function(){ compAsked = false; });
   } else go();
 }
 function meHeading(){
   if(!me) return null;
-  if(me.hd!=null && !isNaN(me.hd) && me.spd!=null && me.spd > 0.7) return me.hd;
   if(compass!=null) return compass;
+  if(me.hd!=null && !isNaN(me.hd) && me.spd!=null && me.spd > 0.7) return me.hd;
   if(trail.length > 2){ var a = trail[Math.max(0, trail.length-4)], b = trail[trail.length-1]; if(dist(a, b) > 12){ var dy = (b.la-a.la)*111320, dx = (b.lo-a.lo)*111320*Math.cos(b.la*Math.PI/180); return (Math.atan2(dx, dy)*180/Math.PI + 360) % 360; } }
   return null;
 }
@@ -1217,6 +1223,7 @@ function startLocate(){
   setLocBtn();
 }
 $("locBtn").addEventListener("click", startLocate);
+document.addEventListener("click", function(){ if(watchId!==null && !compOn && !compDenied) startCompass(); }, true);
 $("lPoi").addEventListener("change", function(){ poiOn = this.checked; lsSet("nyc-l-poi", poiOn?"1":"0"); applyPoi(); if(poiOn && map && map.getZoom() < 14.5) map.easeTo({zoom:14.5, duration: reduceMotion?0:500}); });
 function drawMe(){
   if(!me) return "";
