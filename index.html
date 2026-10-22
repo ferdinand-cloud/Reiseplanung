@@ -125,7 +125,7 @@ ol.tsteps .ti .bul.bus{height:22px;font-size:11.5px}
 .handle{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 10px;position:relative}
 .handle::before{content:"";position:absolute;left:-40px;right:-40px;top:-10px;bottom:-8px}
 .tabs{display:flex;gap:4px;background:var(--chip);border-radius:12px;padding:3px}
-.tabs button{flex:1;border:0;background:none;border-radius:9px;padding:8px 4px;font-weight:600;font-size:14px;color:var(--muted);white-space:nowrap;min-width:0}
+.tabs button{flex:1;border:0;background:none;border-radius:9px;padding:8px 4px;font-weight:600;font-size:13.5px;color:var(--muted);white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis;padding-left:2px;padding-right:2px}
 .tabs button small{font-size:12px;font-weight:600;opacity:.7;margin-left:3px}
 .tabs button[aria-selected="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px var(--scrim)}
 .body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:12px max(16px,env(safe-area-inset-right,0px)) calc(28px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:14px;align-content:start}
@@ -283,6 +283,7 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+@media (max-width:440px){.tabs button small{display:none}.tabs button{font-size:13px}}
 .gate{position:fixed;inset:0;z-index:100;background:var(--sheet);display:grid;place-items:center;padding:24px max(20px,env(safe-area-inset-left,0px)) calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto}
 .gate[hidden]{display:none}
 .gate-card{width:min(380px,100%);display:grid;gap:12px}
@@ -535,6 +536,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
       <button type="button" role="tab" id="tabDay" data-tab="day">Tagesplan</button>
       <button type="button" role="tab" id="tabWish" data-tab="wish">Wunschliste</button>
       <button type="button" role="tab" id="tabTrip" data-tab="trip">Reise</button>
+      <button type="button" role="tab" id="tabAcct" data-tab="acct">Konto</button>
     </div>
   </div>
   <div class="body" id="body"></div>
@@ -682,17 +684,80 @@ function acctTrack(){
 }
 function acctPushSoon(){ if(!acct.user) return; clearTimeout(pushT); pushT = setTimeout(acctPush, 600); }
 function tripsCol(){ return fbDb.collection("users").doc(acct.user.uid).collection("trips"); }
+/* Zusammenführen: Basis = letzter gemeinsamer Stand; Änderungen beider Seiten bleiben erhalten */
+var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
+function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
+function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
+var MAPK = ["places","done","times","journal","order","legMode","legAlt"];
+function jeq(a, b){ return JSON.stringify(a===undefined?null:a) === JSON.stringify(b===undefined?null:b); }
+function mergeOrder(b, l, r, preferLocal){
+  b = b||[]; l = l||[]; r = r||[];
+  var win = (preferLocal ? l : r).slice(), oth = preferLocal ? r : l;
+  oth.forEach(function(id){ if(b.indexOf(id)<0 && win.indexOf(id)<0) win.push(id); });            // dort neu hinzugefügt
+  return win.filter(function(id){ return !(b.indexOf(id)>-1 && oth.indexOf(id)<0); });              // dort entfernt
+}
+function merge3(B, L, R){
+  var out = {}, preferLocal = (L.updatedAt||0) >= (R.updatedAt||0);
+  var keys = {}; [B, L, R].forEach(function(o){ Object.keys(o||{}).forEach(function(k){ keys[k] = 1; }); });
+  Object.keys(keys).forEach(function(k){
+    if(k==="updatedAt") return;
+    var b = B[k], l = L[k], r = R[k];
+    if(MAPK.indexOf(k) > -1){
+      var m = {}, sk = {}; [b, l, r].forEach(function(o){ Object.keys(o||{}).forEach(function(x){ sk[x] = 1; }); });
+      Object.keys(sk).forEach(function(x){
+        var bv = (b||{})[x], lv = (l||{})[x], rv = (r||{})[x], v;
+        if(jeq(lv, bv)) v = rv; else if(jeq(rv, bv)) v = lv; else if(jeq(lv, rv)) v = lv;
+        else v = k==="order" ? mergeOrder(bv, lv, rv, preferLocal) : (preferLocal ? lv : rv);
+        if(v!==undefined) m[x] = v;
+      });
+      out[k] = m;
+    } else {
+      var v2 = jeq(l, b) ? r : jeq(r, b) ? l : (preferLocal ? l : r);
+      if(v2!==undefined) out[k] = v2;
+    }
+  });
+  out.updatedAt = Math.max(L.updatedAt||0, R.updatedAt||0);
+  return normTrip(out) || L;
+}
+function rowTrip(snap){ var v = snap && snap.exists ? snap.data() : null; if(!v) return {exists:false}; var d = null; try { d = v.json ? JSON.parse(v.json) : null; } catch(e){} return {exists:true, deleted:!!v.deleted || !d, data:d, updatedAt:v.updatedAt||0}; }
+var pushing = false;
 function acctPush(){
-  if(!fbDb || !acct.user) return;
+  if(!fbDb || !acct.user || pushing || !navigator.onLine) return;
   var ids = Object.keys(pend), dels = Object.keys(delPend); if(!ids.length && !dels.length) return;
-  var batch = fbDb.batch(), col = tripsCol();
-  ids.forEach(function(id){ var t = S.trips[id]; if(t) batch.set(col.doc(id), {json:JSON.stringify(t), deleted:false, updatedAt:t.updatedAt||Date.now()}); });
-  dels.forEach(function(id){ batch.set(col.doc(id), {json:"", deleted:true, updatedAt:delPend[id]}); });
-  // Firestore merkt sich die Änderung selbst (auch offline) und lädt sie hoch, sobald Netz da ist
-  ids.forEach(function(id){ delete pend[id]; }); dels.forEach(function(id){ delete delPend[id]; });
-  lsSet("rp-pend", JSON.stringify({p:pend, d:delPend}));
-  setAcct("sync");
-  batch.commit().then(function(){ acct.at = Date.now(); setAcct("ok"); }, function(e){ setAcct("error", e && e.message); });
+  pushing = true; setAcct("sync");
+  var col = tripsCol(), changedLocal = false;
+  // je Reise eine Transaktion: Server-Stand lesen, mit eigener Änderung zusammenführen, schreiben
+  var jobs = ids.map(function(id){
+    return fbDb.runTransaction(function(tx){
+      var ref = col.doc(id);
+      return tx.get(ref).then(function(snap){
+        var L = S.trips[id]; if(!L) return null;
+        var R = rowTrip(snap), B = BASE[id], M = L;
+        if(R.exists && !R.deleted && B && tripSig(R.data)!==tripSig(B)) M = merge3(B, L, R.data);
+        else if(R.exists && !R.deleted && !B && (R.updatedAt||0) > (L.updatedAt||0)) M = merge3({}, L, R.data);
+        M.updatedAt = Math.max(Date.now(), (R.updatedAt||0)+1);
+        tx.set(ref, {json:JSON.stringify(M), deleted:false, updatedAt:M.updatedAt});
+        return M;
+      });
+    }).then(function(M){
+      if(!M) return;
+      if(tripSig(M)!==tripSig(S.trips[id]||{})){ S.trips[id] = M; changedLocal = true; }
+      else S.trips[id].updatedAt = M.updatedAt;
+      lastLocal[id] = tripSig(S.trips[id]); setBase(id, S.trips[id]); delete pend[id];
+    });
+  }).concat(dels.map(function(id){
+    return col.doc(id).set({json:"", deleted:true, updatedAt:delPend[id]}).then(function(){ delete delPend[id]; setBase(id, null); });
+  }));
+  Promise.all(jobs).then(function(){
+    pushing = false; lsSet("rp-pend", JSON.stringify({p:pend, d:delPend})); lsSet(KEY, JSON.stringify(S));
+    if(changedLocal){ dirty(); if(!dayByKey(cur)) pickDefaultDay(); renderAll(); }
+    acct.at = Date.now(); setAcct("ok");
+    if(Object.keys(pend).length || Object.keys(delPend).length) acctPushSoon();
+  }, function(e){
+    pushing = false; lsSet("rp-pend", JSON.stringify({p:pend, d:delPend}));
+    setAcct("error", navigator.onLine ? (e && e.message) : "offline");
+    setTimeout(acctPush, 15000);
+  });
 }
 function fbRows(qs){ return qs.docs.map(function(d){ var v = d.data()||{}, data = null; try { data = v.json ? JSON.parse(v.json) : null; } catch(e){} return {id:d.id, data:data, deleted:!!v.deleted || !data, updated_at:new Date(v.updatedAt||0).toISOString()}; }); }
 function acctApply(rows){
@@ -724,14 +789,19 @@ function acctMerge(rows, first){
   var changed = false, seen = {};
   rows.forEach(function(r){
     seen[r.id] = 1;
-    var loc = S.trips[r.id], ru = Date.parse(r.updated_at) || 0, lu = loc ? (loc.updatedAt||0) : (delPend[r.id]||0);
-    if(first){ lu = 0; delete pend[r.id]; } // erste Anmeldung auf diesem Gerät: Stand im Konto gilt
-    if(pend[r.id] && lu > ru) return; // eigene neuere Änderung wird gleich hochgeladen
-    if(r.deleted){ if(loc && lu <= ru){ delete S.trips[r.id]; delete lastLocal[r.id]; changed = true; } return; }
-    if(!loc || ru > lu){
-      var t = normTrip(JSON.parse(JSON.stringify(r.data))); if(!t) return;
-      t.updatedAt = ru; S.trips[r.id] = t; lastLocal[r.id] = tripSig(t); delete pend[r.id]; changed = true;
-    } else if(lu > ru){ pend[r.id] = 1; }
+    var L = S.trips[r.id], B = BASE[r.id], ru = Date.parse(r.updated_at) || 0;
+    if(r.deleted){
+      if(L && (first || !B || tripSig(L)===tripSig(B))){ delete S.trips[r.id]; delete lastLocal[r.id]; delete pend[r.id]; changed = true; }
+      setBase(r.id, null); return;
+    }
+    var R = normTrip(JSON.parse(JSON.stringify(r.data))); if(!R) return; R.updatedAt = ru;
+    var take = function(t){ S.trips[r.id] = t; lastLocal[r.id] = tripSig(t); changed = true; };
+    if(!L || first){ take(R); setBase(r.id, R); delete pend[r.id]; return; }
+    if(B && tripSig(R)===tripSig(B)){ if(tripSig(L)!==tripSig(B)) pend[r.id] = 1; return; } // nur hier geändert
+    if(tripSig(L)===tripSig(R)){ setBase(r.id, R); delete pend[r.id]; return; }
+    if(B && tripSig(L)===tripSig(B)){ take(R); setBase(r.id, R); delete pend[r.id]; return; } // nur dort geändert
+    // beide Seiten geändert: zusammenführen und das Ergebnis hochladen
+    var M = merge3(B || {}, L, R); take(M); setBase(r.id, R); pend[r.id] = 1;
   });
   return {changed:changed, seen:seen};
 }
@@ -771,12 +841,21 @@ function acctBlock(){
   if(!acct.user) return "";
   return "<div class=\"sec acct\"><h4>Konto</h4><p>Angemeldet als <b>"+esc(acct.user.email||"")+"</b></p><p class=\"note\" id=\"acctNote\" role=\"status\">"+acctNote()+"</p><div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"acsync\">Jetzt abgleichen</button><button type=\"button\" class=\"btn g s\" data-act=\"acout\">Abmelden</button></div></div>";
 }
+function renderAcct(){
+  var h = "<div class=\"dh\"><div><h2>Mein Konto</h2><p>"+(acct.user ? esc(acct.user.email||"") : "Nicht angemeldet")+"</p></div></div>";
+  h += acctBlock();
+  var n = Object.keys(S.trips).length;
+  h += "<div class=\"sec\"><h4>Meine Reisen</h4><div class=\"tripsum\">"+Object.keys(S.trips).map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).map(function(x){ return "<div><b>"+esc(x.name)+"</b> · "+esc(rangeLabel(x.start,x.end))+(x.id===S.cur?" · <span class=\"sub\">gerade geöffnet</span>":"")+"</div>"; }).join("")+"</div><p class=\"note\">"+n+(n===1?" Reise":" Reisen")+" in deinem Konto. Wechseln über den Reisenamen oben.</p></div>";
+  h += googleBlock();
+  h += "<div class=\"sec\"><h4>Sicherung</h4><div class=\"backup\"><button type=\"button\" class=\"btn g s\" data-act=\"export\">Plan als Datei sichern</button><label class=\"btn g s\" for=\"impFile\">Sicherung laden</label><input type=\"file\" id=\"impFile\" accept=\"application/json,.json\"></div></div>";
+  return h;
+}
 function openSettings(){
   var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Einstellungen\" data-pop=\"settings\"><div class=\"pop-head\"><h4>Einstellungen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
   h += acctBlock()+googleBlock();
   $("catPop").innerHTML = h+"</div>"; $("catPop").hidden = false;
 }
-function refreshSettings(){ if(!$("catPop").hidden && $("catPop").querySelector("[data-pop=settings]")) openSettings(); }
+function refreshSettings(){ if(!$("catPop").hidden && $("catPop").querySelector("[data-pop=settings]")) openSettings(); if(tab==="acct") renderSheet(); }
 /* Anmeldefenster vor der App */
 function renderGate(){
   var g = $("gate"); if(!g) return;
@@ -2201,7 +2280,7 @@ function renderTop(){
   Object.keys(S.trips).map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).forEach(function(x){
     h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur)+"\"><span>"+esc(x.name)+"</span><small>"+esc(rangeLabel(x.start,x.end))+"</small></button>";
   });
-  h += "<hr><button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button><button type=\"button\" data-act=\"settings\">Einstellungen &amp; Konto</button><button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
+  h += "<hr><button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button><button type=\"button\" data-act=\"settings\">Mein Konto</button><button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
   $("tripMenu").innerHTML = h;
   var d = dayByKey(cur), r = "";
   if(d) r = "<button type=\"button\" class=\"rd-day\" data-act=\"daypop\" aria-haspopup=\"dialog\" aria-label=\""+esc(d.title)+" – Tag wechseln\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span>"+d.wd+"<span class=\"cnt\">"+shortD(d.key)+"</span><span class=\"chev\">"+CHEV+"</span></button>";
@@ -2596,10 +2675,11 @@ function renderSheet(){
   $("tabDay").setAttribute("aria-selected", tab==="day");
   $("tabWish").setAttribute("aria-selected", tab==="wish");
   $("tabTrip").setAttribute("aria-selected", tab==="trip");
+  $("tabAcct").setAttribute("aria-selected", tab==="acct");
   $("tabWish").innerHTML = "Wunschliste<small>"+wishes().length+"</small>";
   if(sorting){ sheetPending = true; return; }
   var body = $("body"), st = body.scrollTop;
-  body.innerHTML = tab==="day" ? renderDay() : tab==="wish" ? renderWish() : renderTrip();
+  body.innerHTML = tab==="day" ? renderDay() : tab==="wish" ? renderWish() : tab==="acct" ? renderAcct() : renderTrip();
   body.scrollTop = st;
   renderWishPop();
 }
@@ -2786,7 +2866,7 @@ document.addEventListener("click", function(e){
         try { Object.keys(localStorage).forEach(function(k){ if(k===KEY || /^rp-(linked|pend)/.test(k)) localStorage.removeItem(k); }); } catch(e){}
         pend = {}; delPend = {}; S = fresh(); acctInitSigs(); pickDefaultDay(); renderAll(); acct.user = null; acct.msg = "Abgemeldet."; renderGate();
       }); break;
-    case "settings": closeMenus(); openSettings(); break;
+    case "settings": closeMenus(); tab = "acct"; if(!desktop.matches && sheetState!=="full") setSheet("mid"); renderSheet(); break;
     case "acsync": acctPull(); break;
     case "geopick": geoPick(t.getAttribute("data-path"), +t.getAttribute("data-i")); break;
     case "depopen": var dsi = t.getAttribute("data-st"); depOpen[dsi] = !depOpen[dsi]; renderCard(); break;
