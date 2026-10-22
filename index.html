@@ -1669,10 +1669,12 @@ var POIGROUPS = [
   ["kultur","Museen & Kultur","#7b3fbf",["museum","art_gallery","gallery","theatre","cinema","music","arts_centre","library"]],
   ["sight","Sehenswertes","#d93025",["attraction","monument","memorial","castle","viewpoint","place_of_worship","landmark"]],
   ["park","Parks","#1e8e3e",["park","garden","zoo","playground"]],
-  ["shop","Shopping","#1a73e8",["shop","clothing_store","grocery","books","jewelry","gift","shoes","department_store","mall","marketplace","art","music_shop","fashion","boutique","chocolate","alcohol_shop","bag","toys","perfumery","cosmetics"]]
+  ["food","Lebensmittel & Märkte","#00897b",["grocery","supermarket","marketplace","convenience","greengrocer","deli","delicatessen","butcher","cheese","seafood","health_food","organic","farm","bakery_shop"]],
+  ["shop","Shopping","#1a73e8",["shop","clothing_store","books","jewelry","gift","shoes","department_store","mall","art","music_shop","fashion","boutique","chocolate","alcohol_shop","bag","toys","perfumery","cosmetics"]]
 ];
-var POICLASS = {}; POIGROUPS.forEach(function(g){ g[3].forEach(function(c){ POICLASS[c] = g[0]; }); });
-var POISUB = {restaurant:"Restaurant",fast_food:"Imbiss",food_court:"Food Court",cafe:"Café",bakery:"Bäckerei",ice_cream:"Eisdiele",confectionery:"Süßwaren",pastry:"Konditorei",bar:"Bar",pub:"Pub",biergarten:"Biergarten",nightclub:"Club",museum:"Museum",art_gallery:"Galerie",gallery:"Galerie",theatre:"Theater",cinema:"Kino",music:"Musik",arts_centre:"Kulturzentrum",library:"Bibliothek",attraction:"Sehenswürdigkeit",monument:"Denkmal",memorial:"Gedenkort",castle:"Burg",viewpoint:"Aussichtspunkt",place_of_worship:"Kirche/Gotteshaus",park:"Park",garden:"Garten",zoo:"Zoo",playground:"Spielplatz",clothing:"Mode",clothes:"Mode",grocery:"Lebensmittel",supermarket:"Supermarkt",books:"Buchladen",jewelry:"Schmuck",gift:"Geschenke",shoes:"Schuhe",department_store:"Kaufhaus",mall:"Einkaufszentrum",marketplace:"Markt",chocolate:"Schokolade",cosmetics:"Kosmetik",perfumery:"Parfümerie"};
+var POICLASS = {}; POIGROUPS.forEach(function(g){ g[3].forEach(function(c){ POICLASS[c] = g[0]==="food" ? "shop" : g[0]; }); });
+var FOODSUB = POIGROUPS.filter(function(g){ return g[0]==="food"; })[0][3];
+var POISUB = {supermarket:"Supermarkt",convenience:"Kleiner Laden / Bodega",greengrocer:"Obst & Gemüse",deli:"Feinkost / Deli",delicatessen:"Feinkost",butcher:"Metzgerei",cheese:"Käseladen",seafood:"Fischladen",health_food:"Bioladen",organic:"Bioladen",farm:"Hofladen",marketplace:"Markt",grocery:"Lebensmittel",restaurant:"Restaurant",fast_food:"Imbiss",food_court:"Food Court",cafe:"Café",bakery:"Bäckerei",ice_cream:"Eisdiele",confectionery:"Süßwaren",pastry:"Konditorei",bar:"Bar",pub:"Pub",biergarten:"Biergarten",nightclub:"Club",museum:"Museum",art_gallery:"Galerie",gallery:"Galerie",theatre:"Theater",cinema:"Kino",music:"Musik",arts_centre:"Kulturzentrum",library:"Bibliothek",attraction:"Sehenswürdigkeit",monument:"Denkmal",memorial:"Gedenkort",castle:"Burg",viewpoint:"Aussichtspunkt",place_of_worship:"Kirche/Gotteshaus",park:"Park",garden:"Garten",zoo:"Zoo",playground:"Spielplatz",clothing:"Mode",clothes:"Mode",grocery:"Lebensmittel",supermarket:"Supermarkt",books:"Buchladen",jewelry:"Schmuck",gift:"Geschenke",shoes:"Schuhe",department_store:"Kaufhaus",mall:"Einkaufszentrum",marketplace:"Markt",chocolate:"Schokolade",cosmetics:"Kosmetik",perfumery:"Parfümerie"};
 var poiOn = lsGet("nyc-l-poi")==="1", poiOff = {}, poiSel = null;
 try { poiOff = JSON.parse(lsGet("nyc-poi-off")||'{"shop":1}') || {}; } catch(e){ poiOff = {shop:1}; }
 function poiClasses(){ var a = []; POIGROUPS.forEach(function(g){ if(!poiOff[g[0]]) a = a.concat(g[3]); }); return a; }
@@ -1683,7 +1685,10 @@ function nbGeom(){
   return polys.length ? {type:"Feature", properties:{}, geometry:{type:"MultiPolygon", coordinates:polys}} : null;
 }
 function poiFilter(grey){
-  var c = poiClasses(), f = ["all", ["has","name"], ["in", ["get","class"], ["literal", c.length ? c : ["-"]]]], g = nbGeom();
+  var c = poiClasses(), foodOn = !poiOff.food, g = nbGeom();
+  // Lebensmittel stecken teils nur in der Unterklasse (z. B. class=shop, subclass=supermarket)
+  var f = ["all", ["has","name"], ["any", ["in", ["get","class"], ["literal", c.length ? c : ["-"]]], foodOn ? ["in", ["coalesce",["get","subclass"],""], ["literal", FOODSUB]] : false]];
+  if(!foodOn) f.push(["!", ["in", ["coalesce",["get","subclass"],""], ["literal", FOODSUB]]]);
   if(g) f.push(grey ? ["!", ["within", g]] : ["within", g]);
   else if(grey) f.push(false);
   return f;
@@ -1692,8 +1697,9 @@ function addPoiLayers(){
   var srcs = map.getStyle().sources, src = null;
   Object.keys(srcs).forEach(function(k){ if(!src && srcs[k].type==="vector") src = k; });
   if(!src) return;
-  var col = ["match", ["get","class"]];
-  POIGROUPS.forEach(function(g){ col.push(g[3], g[2]); }); col.push("#808080");
+  var col0 = ["match", ["get","class"]];
+  POIGROUPS.forEach(function(g){ col0.push(g[3], g[2]); }); col0.push("#808080");
+  var col = ["case", ["in", ["coalesce",["get","subclass"],""], ["literal", FOODSUB]], "#00897b", col0];
   map.addLayer({id:"poi-dot-g", type:"circle", source:src, "source-layer":"poi", minzoom:14, filter:poiFilter(true),
     paint:{"circle-color":isDark()?"#4a5866":"#b4bcc4", "circle-radius":["interpolate",["linear"],["zoom"],14,3,17,5.5], "circle-stroke-color":isDark()?"#111a22":"#ffffff", "circle-stroke-width":1.2},
     layout:{visibility: poiOn ? "visible" : "none"}});
@@ -1724,7 +1730,7 @@ function poiAt(x, y){
   fs.forEach(function(f){
     if(!f.geometry || f.geometry.type!=="Point") return;
     var c = f.geometry.coordinates, q = map.project(c), d = Math.hypot(q.x-x, q.y-y);
-    if(d < bd){ bd = d; best = {n: f.properties["name:latin"] || f.properties.name, cls: f.properties["class"], sub: f.properties.subclass, c: POICLASS[f.properties["class"]] || "sight", la: +c[1].toFixed(6), lo: +c[0].toFixed(6)}; }
+    if(d < bd){ bd = d; best = {n: f.properties["name:latin"] || f.properties.name, cls: f.properties["class"], sub: f.properties.subclass, c: FOODSUB.indexOf(f.properties.subclass)>-1 ? "shop" : (POICLASS[f.properties["class"]] || "sight"), la: +c[1].toFixed(6), lo: +c[0].toFixed(6)}; }
   });
   return best;
 }
