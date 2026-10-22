@@ -283,6 +283,12 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+.geo{display:grid;gap:4px;margin-bottom:6px}
+.geo input{width:100%;border:1px solid var(--ink);border-radius:10px;background:transparent;padding:9px 10px;font:inherit;font-size:16px;color:inherit}
+.geores{display:grid;gap:2px}
+.geores button{display:grid;gap:1px;text-align:left;border:0;background:var(--chip);border-radius:8px;padding:7px 9px;color:var(--ink)}
+.geores button b{font-size:14.5px}
+.geores button small{font-size:12px;color:var(--muted)}
 .or{color:var(--muted);margin:0 1px;font-weight:400}
 .alts{display:grid;gap:4px;margin:6px 0 4px}
 .alts .sub{font-size:12px}
@@ -2307,6 +2313,51 @@ function setPath(obj, path, v){ var p = path.split("."), o = obj; for(var i=0;i<
 function fld(path, label, type, val, extra){
   return "<label><span>"+label+"</span><input type=\""+type+"\" data-f=\""+path+"\" value=\""+esc(val)+"\" autocomplete=\"off\""+(extra||"")+"></label>";
 }
+/* ---------- Orte suchen (Photon/OpenStreetMap, ohne Schlüssel) ---------- */
+var geoRes = {}, geoTimer = null, geoSeq = 0;
+function geoField(path, ph){
+  return "<div class=\"geo\"><input type=\"search\" data-geo=\""+path+"\" placeholder=\""+ph+"\" autocomplete=\"off\" enterkeyhint=\"search\" aria-label=\""+ph+"\"><div class=\"geores\" id=\"geo-"+path.replace(".","-")+"\"></div></div>";
+}
+function geoLabel(p){
+  var a = [];
+  if(p.osm_key!=="place" && (p.street || p.city)) a.push((p.street||"")+(p.housenumber?" "+p.housenumber:""));
+  if(p.city && p.city!==p.name) a.push(p.city);
+  if(p.state && p.state!==p.name && p.state!==p.city) a.push(p.state);
+  if(p.country && p.country!==p.name) a.push(p.country);
+  return a.filter(Boolean).join(", ");
+}
+function geoSearch(path, q){
+  var box = $("geo-"+path.replace(".","-")); if(!box) return;
+  q = q.trim(); if(q.length < 2){ box.innerHTML = ""; return; }
+  var isOrt = path.indexOf("orte")===0, my = ++geoSeq, bias = "";
+  if(!isOrt && tdraft){ var o = tdraft.orte.map(function(x){ return parseLoc(x.loc); }).filter(function(l){ return l; })[0] || (map && {la:map.getCenter().lat, lo:map.getCenter().lng}); if(o) bias = "&lat="+o.la.toFixed(4)+"&lon="+o.lo.toFixed(4); }
+  box.innerHTML = "<p class=\"note\">Suche …</p>";
+  var u = "https://photon.komoot.io/api/?q="+encodeURIComponent(q)+"&limit=6&lang=de"+(isOrt ? "&osm_tag=place" : "")+bias;
+  fetch(u).then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(function(j){
+    if(my!==geoSeq) return;
+    var res = (j.features||[]).map(function(f){ var p = f.properties||{}, c = f.geometry && f.geometry.coordinates; return c ? {n:p.name || q, sub:geoLabel(p), la:+c[1], lo:+c[0], kind:p.osm_value} : null; }).filter(Boolean);
+    geoRes[path] = res;
+    box.innerHTML = res.length ? res.map(function(r, i){ return "<button type=\"button\" data-act=\"geopick\" data-path=\""+path+"\" data-i=\""+i+"\"><b>"+esc(r.n)+"</b><small>"+esc(r.sub)+"</small></button>"; }).join("") : "<p class=\"note\">Nichts gefunden. Versuch es mit einem anderen Namen oder wähle den Ort auf der Karte.</p>";
+  }).catch(function(){
+    // Ersatz: Nominatim (ebenfalls OpenStreetMap)
+    var u2 = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=de&q="+encodeURIComponent(q)+(isOrt ? "&featuretype=settlement" : "");
+    fetch(u2).then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(function(j){
+      if(my!==geoSeq) return;
+      var res = (j||[]).map(function(x){ var parts = (x.display_name||"").split(", "); return {n:x.name || parts[0] || q, sub:parts.slice(1, 4).join(", "), la:+x.lat, lo:+x.lon}; });
+      geoRes[path] = res;
+      box.innerHTML = res.length ? res.map(function(r, i){ return "<button type=\"button\" data-act=\"geopick\" data-path=\""+path+"\" data-i=\""+i+"\"><b>"+esc(r.n)+"</b><small>"+esc(r.sub)+"</small></button>"; }).join("") : "<p class=\"note\">Nichts gefunden.</p>";
+    }).catch(function(){ if(my===geoSeq) box.innerHTML = "<p class=\"note\">Suche gerade nicht möglich (keine Verbindung?). Du kannst den Ort auch auf der Karte wählen.</p>"; });
+  });
+}
+function geoPick(path, i){
+  var r = (geoRes[path]||[])[i]; if(!r || !tdraft) return;
+  var pp = path.split("."), item = tdraft[pp[0]][+pp[1]];
+  item.n = r.n; item.loc = r.la.toFixed(6)+", "+r.lo.toFixed(6);
+  if(pp[0]==="orte" && !(tdraft.name||"").trim()) tdraft.name = r.n;
+  tdraft.err = ""; geoRes[path] = [];
+  renderSheet();
+  if(map) map.easeTo({center:[r.lo, r.la], zoom: pp[0]==="orte" ? 11 : 15, duration: reduceMotion?0:600});
+}
 function renderTrip(){
   var t = T();
   if(!tdraft){
@@ -2341,15 +2392,15 @@ function renderTrip(){
   h2 += "<div class=\"two\">"+fld("start","Anreise","date",d.start)+fld("arr","Ankunft (Uhrzeit)","time",d.arr)+"</div>";
   h2 += "<div class=\"two\">"+fld("end","Abreise","date",d.end)+fld("dep","Abflug (Uhrzeit)","time",d.dep)+"</div>";
   d.hotels.forEach(function(x,i){
-    h2 += "<fieldset class=\"grp\"><legend>Hotel "+(i+1)+"</legend>"+fld("hotels."+i+".n","Name","text",x.n," maxlength=\"80\"");
-    h2 += fld("hotels."+i+".loc","Lage (Maps-Link oder Koordinaten)","text",x.loc," placeholder=\"40.7561, -73.9930\"");
+    h2 += "<fieldset class=\"grp\"><legend>Hotel "+(i+1)+"</legend>"+geoField("hotels."+i, "Hotel oder Adresse suchen …")+fld("hotels."+i+".n","Name","text",x.n," maxlength=\"80\"");
+    h2 += fld("hotels."+i+".loc","Lage (gefunden, Maps-Link oder Koordinaten)","text",x.loc," placeholder=\"40.7561, -73.9930\"");
     h2 += "<div class=\"two\">"+fld("hotels."+i+".from","Check-in","date",x.from)+fld("hotels."+i+".to","Check-out","date",x.to)+"</div>";
     h2 += "<div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"pick\" data-target=\"hotels."+i+".loc\">Auf der Karte wählen</button><button type=\"button\" class=\"btn g s\" data-act=\"tdel\" data-path=\"hotels\" data-i=\""+i+"\">Entfernen</button></div></fieldset>";
   });
   h2 += "<div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"tadd\" data-path=\"hotels\">+ Hotel</button></div>";
   d.orte.forEach(function(x,i){
-    h2 += "<fieldset class=\"grp\"><legend>Ort "+(i+1)+" (optional)</legend>"+fld("orte."+i+".n","Name","text",x.n," maxlength=\"60\" placeholder=\"z. B. Boston\"");
-    h2 += fld("orte."+i+".loc","Lage (Maps-Link oder Koordinaten)","text",x.loc," placeholder=\"42.3601, -71.0589\"");
+    h2 += "<fieldset class=\"grp\"><legend>Ort "+(i+1)+(d.mode==="new" && i===0 ? " – Reiseziel" : " (optional)")+"</legend>"+geoField("orte."+i, "Stadt suchen, z. B. Boston …")+fld("orte."+i+".n","Name","text",x.n," maxlength=\"60\" placeholder=\"z. B. Boston\"");
+    h2 += fld("orte."+i+".loc","Lage (gefunden, Maps-Link oder Koordinaten)","text",x.loc," placeholder=\"42.3601, -71.0589\"");
     h2 += "<div class=\"two\">"+fld("orte."+i+".from","Von","date",x.from)+fld("orte."+i+".to","Bis","date",x.to)+"</div>";
     h2 += "<div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"pick\" data-target=\"orte."+i+".loc\">Auf der Karte wählen</button><button type=\"button\" class=\"btn g s\" data-act=\"tdel\" data-path=\"orte\" data-i=\""+i+"\">Entfernen</button></div></fieldset>";
   });
@@ -2366,7 +2417,7 @@ function saveTrip(){
   if((parseD(d.end)-parseD(d.start))/864e5 > 59) return "Eine Reise kann im Prototyp höchstens 60 Tage haben.";
   var hotels = [], orte = [], err = null;
   d.hotels.forEach(function(x,i){
-    if(err) return; var loc = parseLoc(x.loc);
+    if(err) return; if(!(x.n||"").trim() && !(x.loc||"").trim()) return; var loc = parseLoc(x.loc);
     if(!(x.n||"").trim()) { err = "Hotel "+(i+1)+": Bitte gib einen Namen ein."; return; }
     if(!loc){ err = "Hotel "+(i+1)+": Lage nicht erkannt. Füge einen langen Maps-Link oder Koordinaten ein oder wähle sie auf der Karte."; return; }
     hotels.push({id:x.id||uid("h"), n:x.n.trim().slice(0,80), la:loc.la, lo:loc.lo, from:parseD(x.from)?x.from:d.start, to:parseD(x.to)?x.to:d.end});
@@ -2569,7 +2620,7 @@ document.addEventListener("click", function(e){
     case "gotoday": cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
     case "trip": S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); break;
-    case "tripnew": closeMenus(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[], err:""}; tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); var fn = document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
+    case "tripnew": closeMenus(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
     case "tcancel": tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
     case "tadd": var arr = tdraft[t.getAttribute("data-path")]; arr.push({n:"", loc:"", from:tdraft.start||"", to:tdraft.end||""}); renderSheet(); break;
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); renderSheet(); break;
@@ -2580,6 +2631,7 @@ document.addEventListener("click", function(e){
     case "go": openGo(id || sel); break;
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
+    case "geopick": geoPick(t.getAttribute("data-path"), +t.getAttribute("data-i")); break;
     case "depopen": var dsi = t.getAttribute("data-st"); depOpen[dsi] = !depOpen[dsi]; renderCard(); break;
     case "jtoggle": jOpen = !jOpen; lsSet("nyc-j-open", jOpen?"1":"0"); renderSheet(); break;
     case "jins": jAppend([id], true); break;
@@ -2696,6 +2748,7 @@ document.addEventListener("input", function(e){
     return;
   }
   if(t.id==="busQ"){ busQ = t.value; renderLineMenus(); return; }
+  if(t.hasAttribute && t.hasAttribute("data-geo")){ var gp = t.getAttribute("data-geo"), gv = t.value; clearTimeout(geoTimer); geoTimer = setTimeout(function(){ geoSearch(gp, gv); }, 350); return; }
   if(t.id==="wSearch"){ wishQuery = t.value; var wr = $("wishRes"); if(wr) wr.innerHTML = wishResults(); var sb = t.parentNode.querySelector("button"); if(!!wishQuery !== !!sb){ if(sb) sb.remove(); else t.insertAdjacentHTML("afterend","<button type=\"button\" data-act=\"sclear\" aria-label=\"Suche leeren\">×</button>"); } scheduleOverlay(); return; }
   if(t.id==="wName") draft.n = t.value;
   else if(t.id==="wLoc"){ draft.loc = t.value; scheduleOverlay(); }
@@ -2736,6 +2789,9 @@ document.addEventListener("submit", function(e){
   }
 });
 
+document.addEventListener("keydown", function(e){
+  if(e.key==="Enter" && e.target && e.target.hasAttribute && e.target.hasAttribute("data-geo")){ e.preventDefault(); var gp = e.target.getAttribute("data-geo"); if((geoRes[gp]||[]).length) geoPick(gp, 0); else geoSearch(gp, e.target.value); }
+});
 document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
 desktop.addEventListener("change", function(){ syncSide(); resize(); });
 window.addEventListener("resize", resize);
