@@ -770,12 +770,9 @@ function bestInsert(k, p){
   best.extra = Math.max(0, Math.round(best.extra));
   return best;
 }
-/* heute: neuer Punkt wird das nächste Ziel (vor dem ersten offenen Stopp); sonst kleinster Umweg */
-function insertIdx(k, p){
-  if(k===todayKey()){ var o = ord(k); for(var i=0;i<o.length;i++) if(!T().done[o[i]]) return i; return o.length; }
-  return hasLoc(p) ? bestInsert(k, p).idx : ord(k).length;
-}
-function addLabel(k, p){ return k===todayKey() ? " als nächstes Ziel" : (hasLoc(p) ? " (+"+bestInsert(k, p).extra+" Min.)" : ""); }
+/* neue Punkte kommen immer ans Ende des Tagesplans */
+function insertIdx(k, p){ return ord(k).length; }
+function addLabel(k, p){ return ""; }
 function dayHasCat(k, c){ return ord(k).some(function(id){ return P(id).c===c; }); }
 function suggest(k, n){
   var D = dayByKey(k); if(!D) return [];
