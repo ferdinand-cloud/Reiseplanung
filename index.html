@@ -283,6 +283,10 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+.wi.sw{display:block;padding:0;position:relative;overflow:hidden}
+.wi.sw .swc{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center;padding:8px 0;background:var(--sheet);position:relative;z-index:1;transition:transform .2s ease;touch-action:pan-y}
+.wi.sw .swdel{position:absolute;top:0;right:0;bottom:0;width:100%;border:0;background:#d93025;color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:flex-end;padding-right:18px}
+.wi.sw.far .swdel{background:#b3261e}
 @media (max-width:440px){.tabs button small{display:none}.tabs button{font-size:13px}}
 .gate{position:fixed;inset:0;z-index:100;background:var(--sheet);display:grid;place-items:center;padding:24px max(20px,env(safe-area-inset-left,0px)) calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto}
 .gate[hidden]{display:none}
@@ -2495,12 +2499,56 @@ function fitNbs(ns){
   ns.forEach(function(n){ var i = nbByName(n); if(i<0) return; NBPTS[i].forEach(function(r){ r.forEach(function(q){ pts.push({la: LAT0 - q[1]/KM, lo: q[0]/(COS*KM) - 74}); }); }); });
   if(pts.length) fitPoints(pts, 1);
 }
+function deletePlace(id){
+  var p = P(id); if(!p) return;
+  undoSnap = snapshot();
+  var k0 = dayOf(id);
+  if(k0) T().order[k0] = ord(k0).filter(function(x){ return x!==id; });
+  delete T().places[id]; delete T().done[id]; delete T().times[id];
+  if(sel===id) sel = null;
+  save(); toast(p.n+" gelöscht", true); renderAll();
+}
+/* Wunschliste: nach links wischen zeigt „Löschen“, weit wischen löscht direkt */
+(function(){
+  var sw = null, openRow = null;
+  function closeOpen(except){ if(openRow && openRow!==except){ openRow.querySelector(".swc").style.transform = ""; openRow.classList.remove("open"); openRow = null; } }
+  document.addEventListener("touchstart", function(e){
+    var c = e.target.closest && e.target.closest(".wi.sw .swc");
+    if(!c){ if(!(e.target.closest && e.target.closest(".swdel"))) closeOpen(null); return; }
+    var li = c.parentNode; closeOpen(li);
+    var t = e.touches[0];
+    sw = {li:li, c:c, x:t.clientX, y:t.clientY, base: li.classList.contains("open") ? -88 : 0, mode:null, dx:0, w:li.offsetWidth};
+  }, {passive:true});
+  document.addEventListener("touchmove", function(e){
+    if(!sw) return;
+    var t = e.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+    if(!sw.mode){ if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return; sw.mode = Math.abs(dx) > Math.abs(dy) ? "h" : "v"; if(sw.mode==="h") sw.c.style.transition = "none"; }
+    if(sw.mode!=="h") return;
+    e.preventDefault();
+    sw.dx = Math.min(0, Math.max(-sw.w, sw.base + dx));
+    sw.c.style.transform = "translateX("+sw.dx+"px)";
+    sw.li.classList.toggle("far", sw.dx < -sw.w*0.55);
+  }, {passive:false});
+  function end(){
+    if(!sw) return; var s0 = sw; sw = null;
+    if(s0.mode!=="h") return;
+    s0.c.style.transition = "";
+    s0.li.classList.remove("far");
+    if(s0.dx < -s0.w*0.55){ s0.c.style.transform = "translateX(-100%)"; setTimeout(function(){ deletePlace(s0.li.getAttribute("data-id")); }, 180); return; }
+    if(s0.dx < -50){ s0.c.style.transform = "translateX(-88px)"; s0.li.classList.add("open"); openRow = s0.li; }
+    else { s0.c.style.transform = ""; s0.li.classList.remove("open"); if(openRow===s0.li) openRow = null; }
+    // ein Wisch soll keinen Klick auslösen
+    var block = function(ev){ ev.stopPropagation(); ev.preventDefault(); document.removeEventListener("click", block, true); };
+    document.addEventListener("click", block, true); setTimeout(function(){ document.removeEventListener("click", block, true); }, 350);
+  }
+  document.addEventListener("touchend", end); document.addEventListener("touchcancel", end);
+})();
 function wishRow(p){
   var dk = dayOf(p.id), D = dayByKey(cur), dd = dk && dayByKey(dk);
   var right = dd ? "<button type=\"button\" class=\"pill"+yel(dd)+"\" style=\"background:"+dayColor(dd)+"\" data-act=\"gotoday\" data-day=\""+dk+"\">Tag "+dd.n+"</button>"
                  : (D ? "<button type=\"button\" class=\"btn s\" data-act=\"plan\">+ "+D.wd+" "+shortD(D.key)+"</button>" : "");
   var sub = esc(CATNAME[p.c]) + (nbOf(p) && nbKeys().length!==1 ? " · "+esc(nbOf(p)) : "") + (p.addr?" · "+esc(p.addr):"") + (p.note?"<br>"+esc(p.note):"") + (hasLoc(p) ? "" : "<br><b>Ohne Ort auf der Karte</b>");
-  return "<li class=\"wi"+(dk?" planned":"")+"\" data-id=\""+p.id+"\">"+badge(p.c)+"<div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"focus\">"+hl(p.n)+"</button><div class=\"sub\">"+sub+"</div></div>"+right+"</li>";
+  return "<li class=\"wi sw"+(dk?" planned":"")+"\" data-id=\""+p.id+"\"><button type=\"button\" class=\"swdel\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"swc\">"+badge(p.c)+"<div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"focus\">"+hl(p.n)+"</button><div class=\"sub\">"+sub+"</div></div>"+right+"</div></li>";
 }
 function wishForm(){
   var lists = "<option value=\"\">Ohne Liste</option>" + T().lists.map(function(l){ return "<option value=\""+l.id+"\""+(draft.list===l.id?" selected":"")+">"+esc(l.name)+"</option>"; }).join("");
@@ -2937,6 +2985,7 @@ document.addEventListener("click", function(e){
     case "catclose": closeCatPop(); break;
     case "pick": pick = t.getAttribute("data-target"); $("pick").hidden = false; select(null); renderWishPop(); setSheet(desktop.matches ? sheetState : "min"); break;
     case "arm": arm(t.getAttribute("data-key")); break;
+    case "swdel": deletePlace(id); break;
     case "delplace":
       if(!P(sel)) return;
       undoSnap = snapshot();
