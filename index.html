@@ -2097,6 +2097,7 @@ function renderSheet(){
   $("tabWish").setAttribute("aria-selected", tab==="wish");
   $("tabTrip").setAttribute("aria-selected", tab==="trip");
   $("tabWish").innerHTML = "Wunschliste<small>"+wishes().length+"</small>";
+  if(sorting){ sheetPending = true; return; }
   var body = $("body"), st = body.scrollTop;
   body.innerHTML = tab==="day" ? renderDay() : tab==="wish" ? renderWish() : renderTrip();
   body.scrollTop = st;
@@ -2113,25 +2114,65 @@ function moveStop(from, to){
   var a = ord(cur); if(from===to || from<0 || to<0 || to>=a.length) return;
   a.splice(to, 0, a.splice(from,1)[0]); save();
 }
+/* sichtbare Reihenfolge übernehmen; ausgeblendete Stopps behalten ihren Platz */
+function applyVisibleOrder(vis){
+  var a = ord(cur), set = {}; vis.forEach(function(id){ set[id] = 1; });
+  var q = vis.slice(), out = a.map(function(id){ return set[id] ? q.shift() : id; });
+  var changed = out.some(function(id, i){ return id!==a[i]; });
+  if(changed){ T().order[cur] = out; save(); }
+  return changed;
+}
+var sorting = false, sheetPending = false;
 (function(){
   var d = null;
-  document.addEventListener("pointerdown", function(e){
-    var g = e.target.closest(".grip"); if(!g || e.button>0) return;
-    var li = g.closest("li.st"), ol = li && li.parentNode; if(!ol) return;
-    e.preventDefault();
+  function begin(g, y, pidv){
+    var li = g.closest("li.st"), ol = li && li.parentNode; if(!ol) return false;
+    var before = li.getBoundingClientRect().top;
     ol.classList.add("sorting");
     var items = Array.prototype.slice.call(ol.querySelectorAll("li.st"));
     var body = $("body");
-    d = {ol:ol, li:li, items:items, from:items.indexOf(li), to:items.indexOf(li), y0:e.clientY, s0:body.scrollTop, body:body,
-         rects:items.map(function(x){ var r = x.getBoundingClientRect(); return {top:r.top, h:r.height}; }), id:e.pointerId};
+    sorting = true;
+    d = {ids:items.map(function(x){ return x.getAttribute("data-id"); }), ol:ol, li:li, items:items, from:items.indexOf(li), to:items.indexOf(li), y0:y, s0:body.scrollTop, body:body,
+         rects:items.map(function(x){ var r = x.getBoundingClientRect(); return {top:r.top, h:r.height}; }), id:pidv};
+    // Etappen werden beim Ziehen ausgeblendet: Eintrag bleibt unter dem Finger
+    d.y0 = y - (before - li.getBoundingClientRect().top);
+    d.cy = y; layout();
     li.classList.add("drag");
-    try{ g.setPointerCapture(e.pointerId); }catch(_){}
+    return true;
+  }
+  document.addEventListener("pointerdown", function(e){
+    if(e.pointerType==="touch") return;
+    var g = e.target.closest(".grip"); if(!g || e.button>0) return;
+    e.preventDefault();
+    if(begin(g, e.clientY, e.pointerId)){ try{ g.setPointerCapture(e.pointerId); }catch(_){} }
   });
+  document.addEventListener("touchstart", function(e){
+    var g = e.target.closest && e.target.closest(".grip"); if(!g || e.touches.length!==1 || d) return;
+    e.preventDefault();
+    begin(g, e.touches[0].clientY, "t");
+  }, {passive:false});
+  document.addEventListener("touchmove", function(e){
+    if(!d || d.id!=="t") return;
+    e.preventDefault();
+    moveTo(e.touches[0].clientY);
+  }, {passive:false});
+  function tEnd(){ if(d && d.id==="t") end({pointerId:"t"}); }
+  document.addEventListener("touchend", tEnd); document.addEventListener("touchcancel", tEnd);
   document.addEventListener("pointermove", function(e){
     if(!d || e.pointerId!==d.id) return;
-    // am Rand des Blatts automatisch scrollen
-    var br = d.body.getBoundingClientRect(), edge = 50;
-    if(e.clientY < br.top+edge) d.body.scrollTop -= 8; else if(e.clientY > Math.min(br.bottom, window.innerHeight)-edge) d.body.scrollTop += 8;
+    moveTo(e.clientY);
+  });
+  var arf = 0;
+  function moveTo(cy){
+    if(!d) return;
+    d.cy = cy;
+    if(!d.timer) d.timer = setInterval(function(){ if(!d) return; var br = d.body.getBoundingClientRect(), edge = 60, lim = Math.min(br.bottom, window.innerHeight);
+      if(d.cy < br.top+edge) d.body.scrollTop -= 10; else if(d.cy > lim-edge) d.body.scrollTop += 10; else return; layout(); }, 30);
+    if(!arf) arf = requestAnimationFrame(function(){ arf = 0; layout(); });
+  }
+  function layout(){
+    if(!d || d.cy==null) return;
+    var e = {clientY:d.cy};
     var dy = e.clientY - d.y0 + (d.body.scrollTop - d.s0);
     d.li.style.transform = "translateY("+dy+"px)";
     var r = d.rects[d.from], mid = r.top + r.h/2 + dy, to = d.from;
@@ -2142,14 +2183,18 @@ function moveStop(from, to){
       x.style.transform = shift ? "translateY("+shift+"px)" : "";
     });
     d.to = to;
-  });
+  }
   function end(e){
     if(!d || (e && e.pointerId!==d.id)) return;
-    var from = d.from, to = d.to;
+    if(d.timer) clearInterval(d.timer);
+    var from = d.from, to = d.to, ids = d.ids.slice();
     d.items.forEach(function(x){ x.style.transform = ""; });
     d.ol.classList.remove("sorting"); d.li.classList.remove("drag");
-    d = null;
-    if(from!==to){ legSel = -1; moveStop(from, to); renderSheet(); scheduleOverlay(); toast("Reihenfolge geändert", false); }
+    d = null; sorting = false;
+    var moved = false;
+    if(from!==to){ ids.splice(to, 0, ids.splice(from,1)[0]); undoSnap = snapshot(); moved = applyVisibleOrder(ids); }
+    if(moved || sheetPending){ sheetPending = false; legSel = -1; renderSheet(); scheduleOverlay(); }
+    if(moved) toast("Reihenfolge geändert", true);
   }
   document.addEventListener("pointerup", end);
   document.addEventListener("pointercancel", end);
@@ -2157,9 +2202,9 @@ function moveStop(from, to){
   document.addEventListener("keydown", function(e){
     var g = e.target.closest && e.target.closest(".grip"); if(!g || (e.key!=="ArrowUp" && e.key!=="ArrowDown")) return;
     e.preventDefault();
-    var id = g.closest("li.st").getAttribute("data-id"), a = ord(cur), i = a.indexOf(id), j = e.key==="ArrowUp" ? i-1 : i+1;
+    var id = g.closest("li.st").getAttribute("data-id"), a = Array.prototype.map.call(document.querySelectorAll("ol.plan li.st"), function(x){ return x.getAttribute("data-id"); }), i = a.indexOf(id), j = e.key==="ArrowUp" ? i-1 : i+1;
     if(j<0 || j>=a.length) return;
-    moveStop(i, j); renderSheet(); scheduleOverlay();
+    a.splice(j, 0, a.splice(i,1)[0]); applyVisibleOrder(a); renderSheet(); scheduleOverlay();
     var ng = document.querySelector("li.st[data-id=\""+id+"\"] .grip"); if(ng) ng.focus();
   });
 })();
