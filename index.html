@@ -372,6 +372,11 @@ ol.plan.sorting .st.drag .grip{cursor:grabbing}
 mark{background:var(--hi-fill);color:inherit;border-radius:3px;padding:0 1px}
 .rhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
 .rhead h4{margin:0}
+.rhint{font-size:12px;color:var(--muted);margin-left:auto}
+.lm{display:inline-flex;background:var(--chip);border-radius:999px;padding:2px;flex:0 0 auto;margin-right:6px;vertical-align:middle}
+.lm button{border:0;background:none;border-radius:999px;width:30px;height:26px;display:grid;place-items:center;color:var(--muted);padding:0}
+.lm button svg{width:16px;height:16px}
+.lm button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px var(--scrim)}
 .seg{display:flex;background:var(--chip);border-radius:999px;padding:2px}
 .seg button{border:0;background:none;border-radius:999px;padding:5px 10px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
 .seg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px var(--scrim)}
@@ -949,7 +954,10 @@ function transitSteps(r, a, b){
   h += "</ol><p class=\"note\">Schätzung aus dem MTA-Fahrplan inkl. ca. 5 Min. Wartezeit pro Einstieg. <a href=\""+gmapsTransit(a,b)+"\" target=\"_blank\" rel=\"noopener\">Live-Abfahrten in Google Maps</a></p>";
   return h;
 }
-var routeMode = lsGet("nyc-route-mode")==="oepnv" ? "oepnv" : "walk";
+var routeMode = "walk"; // nicht mehr global; jede Etappe hat ihre eigene Wahl
+function legKey(a, b){ return (a.id||((+a.la).toFixed(4)+","+(+a.lo).toFixed(4)))+">"+(b.id||((+b.la).toFixed(4)+","+(+b.lo).toFixed(4))); }
+function legMode(a, b){ var m = (T().legMode||{})[legKey(a, b)]; return m || (dist(a, b) < 1100 ? "walk" : "oepnv"); }
+function setLegMode(a, b, m){ var t = T(); t.legMode = t.legMode || {}; t.legMode[legKey(a, b)] = m; save(); }
 var legOpen = {}, legSel = -1;
 function dayLegs(k){
   var D = dayByKey(k); if(!D) return [];
@@ -1085,18 +1093,18 @@ function drawOverlay(){
   // Route des Tages: Hotel → Stopps → Hotel (Fußweg oder ÖPNV)
   var HT = D && D.hotel, pts = D ? routePts(cur) : [], col = dayColor(cur);
   if(!layers.route){ /* Route ausgeblendet */ }
-  else if(pts.length && routeMode==="walk"){
-    var wl = dayLegs(cur);
-    for(var i=0;i<wl.length;i++){
-      var hotelLeg = HT && (wl[i][0]===HT || wl[i][1]===HT);
-      var d = walkPath(wl[i][0], wl[i][1]).map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
-      s += "<path d=\""+d+"\" stroke=\"var(--land)\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".9\"/>";
-      s += "<path d=\""+d+"\" stroke=\""+col+"\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(hotelLeg?" stroke-dasharray=\"2 7\"":"")+"/>";
-    }
-  } else if(pts.length){
+  else if(pts.length){
     var labels = "";
     dayLegs(cur).forEach(function(pair, li){
-      var r = transit(pair[0], pair[1], cur), op = (legSel<0 || legSel===li) ? 1 : .28;
+      var op = (legSel<0 || legSel===li) ? 1 : .28;
+      if(legMode(pair[0], pair[1])==="walk"){
+        var hotelLeg = HT && (pair[0]===HT || pair[1]===HT);
+        var dw = walkPath(pair[0], pair[1]).map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
+        s += "<path d=\""+dw+"\" stroke=\"var(--land)\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\""+(.9*op)+"\"/>";
+        s += "<path d=\""+dw+"\" stroke=\""+col+"\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(hotelLeg?" stroke-dasharray=\"2 7\"":"")+" opacity=\""+op+"\"/>";
+        return;
+      }
+      var r = transit(pair[0], pair[1], cur);
       var at = pair[0], pathPts;
       function seg(ptsLL, color, dash, w){
         var dd = ptsLL.map(function(q,j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
@@ -1325,7 +1333,7 @@ function walkPump(){
           WALKC[job.k] = {p:out, d:Math.round(rt.distance)}; walkSave(); }
         else WALKC[job.k] = {p:null};
       }).catch(function(){ WALKC[job.k] = {fail:Date.now()}; })
-        .then(function(){ walkBusy--; scheduleOverlay(); if(tab==="day" && routeMode==="walk") renderSheetSoon(); walkPump(); });
+        .then(function(){ walkBusy--; scheduleOverlay(); if(tab==="day") renderSheetSoon(); walkPump(); });
     })(job);
   }
 }
@@ -1780,6 +1788,8 @@ function placeFloating(){
 /* ---------- Reise-Kopf und Tagesleiste ---------- */
 var EYE = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><path d=\"M1.5 10s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z\"/><circle cx=\"10\" cy=\"10\" r=\"2.5\"/></svg>";
 var EYEOFF = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><path d=\"M1.5 10s3-6 8.5-6c1.6 0 3 .5 4.2 1.2M18.5 10s-3 6-8.5 6c-1.6 0-3-.5-4.2-1.2M3 17L17 3\"/></svg>";
+var LMWALK = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"13\" cy=\"4\" r=\"2\"/><path d=\"M10 21l2-6 3 3v3M8 12l2-4 4 1 2 3h3M10 8l-1 5\"/></svg>";
+var LMSUB = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"5\" y=\"3\" width=\"14\" height=\"14\" rx=\"3\"/><path d=\"M5 11h14M9 17l-2 4M15 17l2 4\"/></svg>";
 var CHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 6l4 4 4-4\"/></svg>";
 function renderTop(){
   var t = T();
@@ -1830,13 +1840,15 @@ function renderDay(){
   h += "</div>";
 
   var hn = HT ? esc(HT.n) : "";
-  h += "<div class=\"sec\"><div class=\"rhead\"><h4>Route</h4><div class=\"seg\" role=\"group\" aria-label=\"Unterwegs\"><button type=\"button\" data-act=\"rmode\" data-mode=\"walk\" aria-pressed=\""+(routeMode==="walk")+"\">Zu Fuß</button><button type=\"button\" data-act=\"rmode\" data-mode=\"oepnv\" aria-pressed=\""+(routeMode==="oepnv")+"\">U-Bahn &amp; zu Fuß</button></div><button type=\"button\" class=\"eye\" data-act=\"rtoggle\" aria-pressed=\""+layers.route+"\" title=\""+(layers.route?"Route auf der Karte ausblenden":"Route auf der Karte einblenden")+"\" aria-label=\"Route auf der Karte zeigen\">"+(layers.route?EYE:EYEOFF)+"</button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
+  h += "<div class=\"sec\"><div class=\"rhead\"><h4>Route</h4><span class=\"rhint\">Je Etappe wählbar</span><button type=\"button\" class=\"eye\" data-act=\"rtoggle\" aria-pressed=\""+layers.route+"\" title=\""+(layers.route?"Route auf der Karte ausblenden":"Route auf der Karte einblenden")+"\" aria-label=\"Route auf der Karte zeigen\">"+(layers.route?EYE:EYEOFF)+"</button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
   var legI = 0;
   var legLi = function(a, b){
-    var i = legI++;
-    if(routeMode==="walk"){ walkPath(a, b); var wd = walkDist(a, b); return "<li class=\"leg\">"+(wd ? (wd<2400 ? Math.max(1,Math.round(wd/1.33/60))+" Min. zu Fuß · "+fmtDist(wd) : "ca. "+Math.round(wd/1.33/60)+" Min. zu Fuß · "+fmtDist(wd)+" (U-Bahn lohnt sich)") : legText(dist(a,b)))+"</li>"; }
+    var i = legI++, m = legMode(a, b);
+    var sw = "<span class=\"lm\" role=\"group\" aria-label=\"Unterwegs auf dieser Etappe\"><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"walk\" aria-pressed=\""+(m==="walk")+"\" title=\"Zu Fuß\" aria-label=\"Zu Fuß\">"+LMWALK+"</button><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"oepnv\" aria-pressed=\""+(m==="oepnv")+"\" title=\"U-Bahn\" aria-label=\"U-Bahn\">"+LMSUB+"</button></span>";
+    if(m==="walk"){ walkPath(a, b); var wd = walkDist(a, b) || dist(a, b)*1.25;
+      return "<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><span class=\"tw\">Zu Fuß</span> "+Math.max(1,Math.round(wd/1.33/60))+" Min. · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button></div></li>"; }
     var r = transit(a, b, cur), open = !!legOpen[cur+"|"+i];
-    return "<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\"><button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r)+"</button>"+
+    return "<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r)+"</button>"+
       (r.walk ? "" : "<button type=\"button\" class=\"tdet\" data-act=\"legopen\" data-leg=\""+i+"\" aria-expanded=\""+open+"\">"+(open?"Weniger":"Details")+"</button>")+"</div>"+
       (open && !r.walk ? transitSteps(r, a, b) : "")+"</li>";
   };
@@ -2327,7 +2339,7 @@ document.addEventListener("click", function(e){
     case "goin":
       closeCatPop();
       if(goSt.from==="me" && me){ sel = goSt.id; meRoute = false; renderCard(); t = document.querySelector("[data-act=meroute]"); if(t) t.click(); }
-      else { var gk = dayOf(goSt.id); if(gk){ if(gk!==cur){ cur = gk; renderAll(); } var gi = -1; dayLegs(cur).forEach(function(lg, i){ if(lg[1] && lg[1].id===goSt.id) gi = i; }); if(gi>-1){ legSel = -1; var lb = document.querySelector("[data-act=legsel][data-leg=\""+gi+"\"]"); if(routeMode!=="oepnv"){ routeMode = "oepnv"; lsSet("nyc-route-mode", routeMode); renderSheet(); lb = document.querySelector("[data-act=legsel][data-leg=\""+gi+"\"]"); } if(lb) lb.click(); } } }
+      else { var gk = dayOf(goSt.id); if(gk){ if(gk!==cur){ cur = gk; renderAll(); } var gi = -1; dayLegs(cur).forEach(function(lg, i){ if(lg[1] && lg[1].id===goSt.id) gi = i; }); if(gi>-1){ legSel = -1; var lb = document.querySelector("[data-act=legsel][data-leg=\""+gi+"\"]"); var gp = dayLegs(cur)[gi]; if(gp && legMode(gp[0], gp[1])!=="oepnv"){ setLegMode(gp[0], gp[1], "oepnv"); renderSheet(); lb = document.querySelector("[data-act=legsel][data-leg=\""+gi+"\"]"); } if(lb) lb.click(); } } }
       break;
     case "sugtoggle": sugOpen = !sugOpen; lsSet("nyc-sug-open", sugOpen?"1":"0"); renderSheet(); scheduleOverlay(); break;
     case "done": if(T().done[id]) delete T().done[id]; else T().done[id] = true; save(); renderSheet(); if(sel===id) renderCard(); scheduleOverlay(); break;
@@ -2344,7 +2356,7 @@ document.addEventListener("click", function(e){
       break;
     case "export": exportPlan(); break;
     case "rtoggle": layers.route = !layers.route; lsSet("nyc-l-route", layers.route?"1":"0"); applyLayers(); renderSheet(); scheduleOverlay(); break;
-    case "rmode": routeMode = t.getAttribute("data-mode"); lsSet("nyc-route-mode", routeMode); legSel = -1; renderSheet(); scheduleOverlay(); break;
+    case "lmode": var lp = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(lp){ setLegMode(lp[0], lp[1], t.getAttribute("data-mode")); renderSheet(); scheduleOverlay(); } break;
     case "legopen": var lk = cur+"|"+t.getAttribute("data-leg"); legOpen[lk] = !legOpen[lk]; renderSheet(); break;
     case "legsel":
       var li2 = parseInt(t.getAttribute("data-leg"),10); legSel = legSel===li2 ? -1 : li2;
