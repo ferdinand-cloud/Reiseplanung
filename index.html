@@ -223,6 +223,15 @@ form.f input[type=text],form.f select{width:100%;border:1px solid var(--line);bo
 .rd-day[aria-pressed="true"]{background:var(--chip);color:var(--ink)}
 .rd-day[aria-pressed="true"] .b{border-color:var(--sheet);box-shadow:0 0 0 2px var(--ink)}
 .rd-day .cnt{font-size:10px;color:var(--muted);font-weight:500}
+.rd-day .chev{display:block;line-height:0;color:var(--muted)}.rd-day .chev svg{width:12px;height:12px}
+.rail[hidden]{display:none}
+.daylist button{gap:12px}
+.daylist .b{width:34px;height:34px;flex:0 0 34px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 18px/1 var(--f-display)}
+.daylist .b.y{color:#17212c}
+.daylist .dt{display:grid;gap:2px;min-width:0}
+.daylist .dt b{font-size:15px}
+.daylist .dt em{font-style:normal;font-size:11px;font-weight:700;background:var(--ink);color:var(--sheet);border-radius:999px;padding:2px 7px;margin-left:4px;vertical-align:1px}
+.daylist .dt small{font-size:12.5px;color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (min-width:900px){ .rail{left:410px} .top{left:400px} }
 .mapnote{position:fixed;z-index:14;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 140px);background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:12.5px;color:var(--muted);box-shadow:0 2px 8px var(--scrim)}
 fieldset.grp{border:1px solid var(--line);border-radius:12px;padding:10px;margin:0;display:grid;gap:8px}
@@ -1809,12 +1818,10 @@ function renderTop(){
   });
   h += "<hr><button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button><button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
   $("tripMenu").innerHTML = h;
-  var r = "";
-  days().forEach(function(d){
-    var n = (T().order[d.key]||[]).length;
-    r += "<button type=\"button\" class=\"rd-day\" data-act=\"day\" data-day=\""+d.key+"\" aria-pressed=\""+(cur===d.key)+"\" aria-label=\""+esc(d.title)+"\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span>"+d.wd+"<span class=\"cnt\">"+shortD(d.key)+"</span></button>";
-  });
+  var d = dayByKey(cur), r = "";
+  if(d) r = "<button type=\"button\" class=\"rd-day\" data-act=\"daypop\" aria-haspopup=\"dialog\" aria-label=\""+esc(d.title)+" – Tag wechseln\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span>"+d.wd+"<span class=\"cnt\">"+shortD(d.key)+"</span><span class=\"chev\">"+CHEV+"</span></button>";
   $("rail").innerHTML = r;
+  $("rail").hidden = !d;
 }
 $("tripBtn").addEventListener("click", function(){ var open = $("tripMenu").hidden; closeMenus(); $("tripMenu").hidden = !open; this.setAttribute("aria-expanded", open); placeFloating(); });
 
@@ -2302,6 +2309,15 @@ function openCatPop(){
   $("catPop").innerHTML = h + "</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]") || $("catPop").querySelector("[data-act=dcat]"); if(b) b.focus();
 }
+function openDayPop(){
+  var tk = todayKey(), h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Tag wählen\"><div class=\"pop-head\"><h4>Tag wählen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list daylist\">";
+  days().forEach(function(d){
+    var ids = T().order[d.key]||[], dn = ids.filter(function(x){ return T().done[x]; }).length;
+    h += "<button type=\"button\" data-act=\"daypick\" data-day=\""+d.key+"\" aria-pressed=\""+(cur===d.key)+"\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span><span class=\"dt\"><b>"+esc(d.title)+(d.key===tk?" <em>Heute</em>":"")+"</b><small>"+(ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps")+(dn?" · "+dn+" erledigt":"") : "noch leer")+(d.hint?" · "+esc(d.hint):"")+"</small></span></button>";
+  });
+  $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
+  var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
+}
 function closeCatPop(){ $("catPop").hidden = true; }
 function endPick(){ pick = null; $("pick").hidden = true; }
 
@@ -2313,6 +2329,8 @@ document.addEventListener("click", function(e){
   var act = t.getAttribute("data-act");
   var holder = t.closest("[data-id]"), id = holder ? holder.getAttribute("data-id") : null;
   switch(act){
+    case "daypop": closeMenus(); openDayPop(); break;
+    case "daypick": closeCatPop(); cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "day": cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "gotoday": cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
     case "trip": S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
@@ -2487,8 +2505,9 @@ desktop.addEventListener("change", function(){ syncSide(); resize(); });
 window.addEventListener("resize", resize);
 
 /* ---------- Start ---------- */
+var hadData = !!lsGet(KEY);
 S = load();
-var addrFixed = applyAddrFix(S); if(addrFixed){ save(); setTimeout(function(){ toast(addrFixed+(addrFixed===1?" Adresse":" Adressen")+" aktualisiert", false); }, 1200); }
+var addrFixed = applyAddrFix(S); if(addrFixed && !hadData) save(); else if(addrFixed){ save(); setTimeout(function(){ toast(addrFixed+(addrFixed===1?" Adresse":" Adressen")+" aktualisiert", false); }, 1200); }
 pickDefaultDay();
 applyLayers();
 applyLines();
