@@ -738,7 +738,9 @@ function suggest(k, n){
 }
 
 /* ---------- UI-Zustand ---------- */
-var cur = "", tab = "day", activeList = "open", catFilter = "", sel = null, pick = null;
+var cur = "", tab = "day", activeList = "open", catFilter = {}, sel = null, pick = null;
+function catOk(c){ return !Object.keys(catFilter).length || !!catFilter[c]; }
+function catAny(){ return Object.keys(catFilter).length > 0; }
 var sugOpen = lsGet("nyc-sug-open")!=="0";
 var layers = {sub: lsGet("nyc-l-sub")==="1", bus: lsGet("nyc-l-bus")==="1", wish: lsGet("nyc-l-wish")!=="0", nb: lsGet("nyc-l-nb")==="1", route: lsGet("nyc-l-route")!=="0"};
 var nbHi = {}; try { (JSON.parse(lsGet("nyc-nb-hi"))||[]).forEach(function(n){ nbHi[n] = 1; }); } catch(e){}
@@ -1043,7 +1045,7 @@ function drawOverlay(){
   if(layers.wish || tab==="wish"){
     wishes().forEach(function(w){
       if(!hasLoc(w)) return;
-      if(tab==="wish" && ((catFilter && w.c!==catFilter) || !nbMatch(w) || !qMatch(w)) && sel!==w.id) return;
+      if(tab==="wish" && (!catOk(w.c) || !nbMatch(w) || !qMatch(w)) && sel!==w.id) return;
       var q = pt(w); if(!onScreen(q,20)) return;
       var strong = (tab==="wish" && activeList!=="open" && (w.list||"none")===activeList) || sugIds[w.id];
       var r = strong ? 6 : 4.2, op = strong ? .95 : .6;
@@ -1786,7 +1788,7 @@ function listPool(){ var t = T(); return activeList==="open" ? wishes() : Object
 function renderWish(){
   var t = T();
   var pool = listPool();
-  var nbPool = pool.filter(function(p){ return !catFilter || p.c===catFilter; });
+  var nbPool = pool.filter(function(p){ return catOk(p.c); });
   var catPool = pool.filter(nbMatch);
   var cc = {}; catPool.forEach(function(p){ cc[p.c] = (cc[p.c]||0)+1; });
   var keys = nbKeys();
@@ -1805,8 +1807,8 @@ function renderWish(){
     h += "<div class=\"frow\"><label class=\"lab\" for=\"listSel\">Liste</label><select id=\"listSel\" class=\"fsel\">"+lo+"</select></div>";
   }
   // Kategorien
-  h += "<div class=\"chips small\" role=\"group\" aria-label=\"Kategorie\"><button type=\"button\" class=\"chip\" data-act=\"wcat\" data-cat=\"\" aria-pressed=\""+(!catFilter)+"\">Alle ("+catPool.length+")</button>";
-  CATS.forEach(function(c){ if(cc[c[0]] || catFilter===c[0]) h += "<button type=\"button\" class=\"chip\" data-act=\"wcat\" data-cat=\""+c[0]+"\" aria-pressed=\""+(catFilter===c[0])+"\">"+icon(c[0],"ci")+esc(c[1])+" ("+(cc[c[0]]||0)+")</button>"; });
+  h += "<div class=\"chips small\" role=\"group\" aria-label=\"Kategorie\"><button type=\"button\" class=\"chip\" data-act=\"wcat\" data-cat=\"\" aria-pressed=\""+(!catAny())+"\">Alle ("+catPool.length+")</button>";
+  CATS.forEach(function(c){ if(cc[c[0]] || catFilter[c[0]]) h += "<button type=\"button\" class=\"chip\" data-act=\"wcat\" data-cat=\""+c[0]+"\" aria-pressed=\""+!!catFilter[c[0]]+"\">"+icon(c[0],"ci")+esc(c[1])+" ("+(cc[c[0]]||0)+")</button>"; });
   h += "</div>";
 
   if(newList.open){
@@ -1834,7 +1836,7 @@ function hl(text){
 }
 function wishResults(){
   var pool = listPool(), keys = nbKeys(), q = wishQuery.trim();
-  var fc = function(p){ return (!catFilter || p.c===catFilter) && nbMatch(p) && qMatch(p); };
+  var fc = function(p){ return catOk(p.c) && nbMatch(p) && qMatch(p); };
   var byCat = function(arr){
     var out = "";
     CATS.forEach(function(c){ var ws = arr.filter(function(p){ return p.c===c[0]; }); if(ws.length) out += "<div class=\"sec\"><h4>"+icon(c[0],"ci")+esc(c[1])+" · "+ws.length+"</h4><ul class=\"wl\">"+ws.map(wishRow).join("")+"</ul></div>"; });
@@ -1848,7 +1850,7 @@ function wishResults(){
     return h + (all.length ? byCat(all) : "<p class=\"empty\">Nichts gefunden. Suche nach Name, Adresse, Viertel, Kategorie oder einem Wort aus der Notiz.</p>");
   }
   var open = pool.filter(function(p){ return !dayOf(p.id) && fc(p); });
-  h += open.length ? byCat(open) : "<p class=\"empty\">"+(catFilter||keys.length?"Keine offenen Wünsche für diesen Filter.":"Noch keine offenen Wünsche. Lege oben den ersten an.")+"</p>";
+  h += open.length ? byCat(open) : "<p class=\"empty\">"+(catAny()||keys.length?"Keine offenen Wünsche für diesen Filter.":"Noch keine offenen Wünsche. Lege oben den ersten an.")+"</p>";
   if(activeList!=="open"){
     var planned = pool.filter(function(p){ return dayOf(p.id) && fc(p); });
     if(planned.length) h += "<div class=\"sec\"><h4>Schon eingeplant · "+planned.length+"</h4><ul class=\"wl\">"+planned.map(wishRow).join("")+"</ul></div>";
@@ -1857,7 +1859,7 @@ function wishResults(){
   return h;
 }
 function openNbPop(){
-  var pool = listPool().filter(function(p){ return !catFilter || p.c===catFilter; });
+  var pool = listPool().filter(function(p){ return catOk(p.c); });
   var nc = {}; pool.forEach(function(p){ var n = nbOf(p); if(n) nc[n] = (nc[n]||0)+1; });
   var names = Object.keys(nc).sort(function(a,b){ return nc[b]-nc[a] || (a<b?-1:1); });
   nbKeys().forEach(function(n){ if(!nc[n]) names.push(n); });
@@ -2122,7 +2124,7 @@ document.addEventListener("click", function(e){
   switch(act){
     case "day": cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "gotoday": cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
-    case "trip": S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = ""; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
+    case "trip": S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); break;
     case "tripnew": closeMenus(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[], err:""}; tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); var fn = document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
     case "tcancel": tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
@@ -2178,11 +2180,11 @@ document.addEventListener("click", function(e){
       else fitDay();
       renderSheet(); scheduleOverlay(); break;
     case "sclear": wishQuery = ""; renderSheet(); scheduleOverlay(); var ws = $("wSearch"); if(ws) ws.focus(); break;
-    case "wcat": catFilter = t.getAttribute("data-cat"); renderSheet(); scheduleOverlay(); break;
+    case "wcat": var wc = t.getAttribute("data-cat"); if(!wc) catFilter = {}; else if(catFilter[wc]) delete catFilter[wc]; else catFilter[wc] = 1; renderSheet(); scheduleOverlay(); break;
     case "nbrem": delete nbHi[t.getAttribute("data-nb")]; saveNb(); applyNb(); renderCard(); scheduleOverlay(); break;
     case "nbclear": nbHi = {}; saveNb(); applyNb(); renderCard(); scheduleOverlay(); break;
     case "nbtoggle": var tn = t.getAttribute("data-nb"); if(nbHi[tn]) delete nbHi[tn]; else nbHi[tn] = 1; saveNb(); applyNb(); renderCard(); scheduleOverlay(); break;
-    case "nbshow": nbSel = {}; nbSel[t.getAttribute("data-nb")] = 1; catFilter = ""; activeList = "open"; tab = "wish"; select(null); if(!desktop.matches && (sheetState==="min" || sheetState==="peek")) setSheet("mid"); applyNb(); renderSheet(); fitNbs(nbKeys()); break;
+    case "nbshow": nbSel = {}; nbSel[t.getAttribute("data-nb")] = 1; catFilter = {}; activeList = "open"; tab = "wish"; select(null); if(!desktop.matches && (sheetState==="min" || sheetState==="peek")) setSheet("mid"); applyNb(); renderSheet(); fitNbs(nbKeys()); break;
     case "nbfit": fitNbs(nbKeys()); break;
     case "nbpop": openNbPop(); break;
     case "nbpick": var pn = t.getAttribute("data-nb"); if(nbSel[pn]) delete nbSel[pn]; else nbSel[pn] = 1; applyNb(); renderSheet(); scheduleOverlay(); openNbPop(); break;
@@ -2190,7 +2192,7 @@ document.addEventListener("click", function(e){
     case "nbdone": closeCatPop(); if(nbKeys().length) fitNbs(nbKeys()); break;
     case "newlist": newList = {open:true, name:""}; renderSheet(); var nl = $("nlName"); if(nl) nl.focus(); break;
     case "nlcancel": newList.open = false; renderSheet(); break;
-    case "newwish": draft = {open:true, n:"", c:catFilter||"essen", list:(activeList!=="open"&&activeList!=="none")?activeList:(T().lists[0]||{}).id||"", loc:"", note:"", err:""}; renderSheet(); var wn = $("wName"); if(wn) wn.focus(); break;
+    case "newwish": draft = {open:true, n:"", c:Object.keys(catFilter)[0]||"essen", list:(activeList!=="open"&&activeList!=="none")?activeList:(T().lists[0]||{}).id||"", loc:"", note:"", err:""}; renderSheet(); var wn = $("wName"); if(wn) wn.focus(); break;
     case "wcancel": draft.open = false; closeCatPop(); renderWishPop(); scheduleOverlay(); break;
     case "catpop": openCatPop(); break;
     case "dcat": draft.c = t.getAttribute("data-cat"); closeCatPop(); renderSheet(); var cb = document.querySelector("[data-act=catpop]"); if(cb) cb.focus(); break;
@@ -2260,7 +2262,7 @@ document.addEventListener("submit", function(e){
     if(err){ tdraft.err = err; renderSheet(); return; }
     var wasNew = tdraft.mode==="new"; tdraft = null; save(); dirty();
     if(wasNew || !dayByKey(cur)) pickDefaultDay();
-    tab = "day"; activeList = "open"; catFilter = ""; sel = null;
+    tab = "day"; activeList = "open"; catFilter = {}; sel = null;
     if(!desktop.matches) setSheet("mid");
     renderAll(); fitDay(); toast(wasNew ? "Reise angelegt" : "Reise gespeichert", false);
     return;
