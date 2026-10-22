@@ -266,6 +266,13 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+#poiCats{display:flex;flex-wrap:wrap;gap:4px}
+#poiCats button{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 9px 3px 4px;font-size:12px;font-weight:600}
+#poiCats button i{width:10px;height:10px;border-radius:50%;display:block}
+#poiCats button[aria-pressed="false"]{opacity:.45}
+#poiCats button[aria-pressed="false"] i{background:var(--muted)!important}
+.poisel{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.poisel select{border:1px solid var(--line);border-radius:999px;background:transparent;padding:7px 10px;font:inherit;font-size:13px;font-weight:600;color:inherit;max-width:170px}
 .acts .ck{display:inline-flex;align-items:center;gap:5px}
 .acts .ck i{width:15px;height:15px;border:1.8px solid currentColor;border-radius:4px;display:grid;place-items:center;font:700 11px/1 var(--f-body);font-style:normal}
 .acts .ck[aria-pressed="true"]{background:#1e8e3e;border-color:#1e8e3e;color:#fff}
@@ -432,6 +439,8 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
   <div class="lines" id="busLines" hidden></div>
   <label><input type="checkbox" id="lRoute" checked><span class="sw" style="background:var(--c4)"></span>Tagesroute</label>
   <label><input type="checkbox" id="lWish" checked><span class="sw" style="background:var(--wish)"></span>Wünsche</label>
+  <label><input type="checkbox" id="lPoi"><span class="sw" style="background:conic-gradient(#e8710a 0 25%,#8a5a2b 25% 50%,#7b3fbf 50% 75%,#1e8e3e 75%)"></span>Cafés, Lokale &amp; Sehenswertes</label>
+  <div class="lines" id="poiCats" hidden></div>
   <label><input type="checkbox" id="lNb"><span class="sw" style="background:repeating-linear-gradient(90deg,var(--hi) 0 4px,transparent 4px 7px)"></span>Stadtviertel</label>
   <h4 style="margin-top:4px">Viertel hervorheben</h4>
   <select id="nbAdd" aria-label="Stadtviertel hervorheben"></select>
@@ -786,8 +795,9 @@ function addLayers(){
   map.addLayer({id:"nb-hi", type:"line", source:"nb", paint:{"line-color":token("--hi")||"#6d28d9", "line-width":2.4}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);
   map.addLayer({id:"bus", type:"line", source:"bus", paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,1,16,3], "line-opacity":.6}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
   map.addLayer({id:"sub", type:"line", source:"sub", paint:{"line-color":["get","c"], "line-width":["interpolate",["linear"],["zoom"],10,1.5,16,5]}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
+  addPoiLayers();
   mapReady = true;
-  applyLayers(); applyLines(); applyNb(); onMove();
+  applyPoi(); applyLayers(); applyLines(); applyNb(); onMove();
 }
 function onMove(){
   if(!map) return;
@@ -1084,6 +1094,7 @@ function drawOverlay(){
   var dl = draft.open ? parseLoc(draft.loc) : null;
   if(dl){ var pq = pt(dl); s += "<circle cx=\""+f1(pq[0])+"\" cy=\""+f1(pq[1])+"\" r=\"7\" fill=\"var(--land)\" stroke=\"var(--ink)\" stroke-width=\"2.5\" stroke-dasharray=\"3 3\"/>"; }
   s += drawMeRoute() + drawMe();
+  if(sel==="poi" && poiSel){ var pq2 = pt(poiSel); s += "<circle cx=\""+f1(pq2[0])+"\" cy=\""+f1(pq2[1])+"\" r=\"11\" fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"2.5\"/>"; }
   ov.setAttribute("viewBox","0 0 "+W+" "+H);
   ov.innerHTML = s;
 }
@@ -1159,6 +1170,7 @@ function startLocate(){
   setLocBtn();
 }
 $("locBtn").addEventListener("click", startLocate);
+$("lPoi").addEventListener("change", function(){ poiOn = this.checked; lsSet("nyc-l-poi", poiOn?"1":"0"); applyPoi(); if(poiOn && map && map.getZoom() < 14.5) map.easeTo({zoom:14.5, duration: reduceMotion?0:500}); });
 function drawMe(){
   if(!me) return "";
   var q = pt(me), r = Math.max(8, me.acc / V.m), s = "";
@@ -1209,12 +1221,13 @@ function tap(x, y){
   if(D) ord(cur).forEach(function(id){ test(id, P(id), 20); });
   T().hotels.forEach(function(h){ test(h.id, h, 18); });
   if(!best && (layers.wish || tab==="wish")) wishes().forEach(function(w){ test(w.id, w, 16); });
+  if(!best){ var pq = poiAt(x, y); if(pq){ poiSel = pq; sel = null; select("poi"); poiSel = pq; renderCard(); scheduleOverlay(); return; } }
   if(!best && (layers.nb || nbActive().length)){ var a = toW(x, y), n = nbAt(a[0], a[1]); if(n) best = "nb:"+n; }
   select(best);
 }
 
 /* ---------- Auswahl-Karte ---------- */
-function select(id){ if(id!==sel) meRoute = false; sel = id; renderCard(); scheduleOverlay(); }
+function select(id){ if(id!==sel) meRoute = false; if(id!=="poi") poiSel = null; sel = id; renderCard(); scheduleOverlay(); }
 function drawMeRoute(){
   if(!meRoute || !me || !sel || !P(sel) || !hasLoc(P(sel))) return "";
   var p = P(sel), r = transit(me, p, todayKey()), s = "", at = me;
@@ -1248,6 +1261,86 @@ function stationLine(p){ var x = nearStation(p); return x ? "<p>Nächste U-Bahn:
 function routeUrl(p){
   var dest = p.addr ? encodeURIComponent(p.n+", "+p.addr+(/Brooklyn/.test(p.addr)?"":", New York, NY")) : hasLoc(p) ? (p.la+","+p.lo) : encodeURIComponent(p.n+", New York, NY");
   return "https://www.google.com/maps/dir/?api=1&destination="+dest+"&travelmode=transit";
+}
+/* ---------- Orte aus der Karte (OpenStreetMap) ---------- */
+var POIGROUPS = [
+  ["essen","Restaurants","#e8710a",["restaurant","fast_food","food_court"]],
+  ["cafe","Cafés & Bäcker","#8a5a2b",["cafe","bakery","ice_cream","confectionery","pastry"]],
+  ["bar","Bars & Pubs","#c2185b",["bar","beer","pub","biergarten","nightclub"]],
+  ["kultur","Museen & Kultur","#7b3fbf",["museum","art_gallery","gallery","theatre","cinema","music","arts_centre","library"]],
+  ["sight","Sehenswertes","#d93025",["attraction","monument","memorial","castle","viewpoint","place_of_worship","landmark"]],
+  ["park","Parks","#1e8e3e",["park","garden","zoo","playground"]],
+  ["shop","Shopping","#1a73e8",["shop","clothing_store","grocery","books","jewelry","gift","shoes","department_store","mall","marketplace","art","music_shop","fashion","boutique","chocolate","alcohol_shop","bag","toys","perfumery","cosmetics"]]
+];
+var POICLASS = {}; POIGROUPS.forEach(function(g){ g[3].forEach(function(c){ POICLASS[c] = g[0]; }); });
+var POISUB = {restaurant:"Restaurant",fast_food:"Imbiss",food_court:"Food Court",cafe:"Café",bakery:"Bäckerei",ice_cream:"Eisdiele",confectionery:"Süßwaren",pastry:"Konditorei",bar:"Bar",pub:"Pub",biergarten:"Biergarten",nightclub:"Club",museum:"Museum",art_gallery:"Galerie",gallery:"Galerie",theatre:"Theater",cinema:"Kino",music:"Musik",arts_centre:"Kulturzentrum",library:"Bibliothek",attraction:"Sehenswürdigkeit",monument:"Denkmal",memorial:"Gedenkort",castle:"Burg",viewpoint:"Aussichtspunkt",place_of_worship:"Kirche/Gotteshaus",park:"Park",garden:"Garten",zoo:"Zoo",playground:"Spielplatz",clothing:"Mode",clothes:"Mode",grocery:"Lebensmittel",supermarket:"Supermarkt",books:"Buchladen",jewelry:"Schmuck",gift:"Geschenke",shoes:"Schuhe",department_store:"Kaufhaus",mall:"Einkaufszentrum",marketplace:"Markt",chocolate:"Schokolade",cosmetics:"Kosmetik",perfumery:"Parfümerie"};
+var poiOn = lsGet("nyc-l-poi")==="1", poiOff = {}, poiSel = null;
+try { poiOff = JSON.parse(lsGet("nyc-poi-off")||'{"shop":1}') || {}; } catch(e){ poiOff = {shop:1}; }
+function poiClasses(){ var a = []; POIGROUPS.forEach(function(g){ if(!poiOff[g[0]]) a = a.concat(g[3]); }); return a; }
+function poiFilter(){ var c = poiClasses(); return ["all", ["has","name"], ["in", ["get","class"], ["literal", c.length ? c : ["-"]]]]; }
+function addPoiLayers(){
+  var srcs = map.getStyle().sources, src = null;
+  Object.keys(srcs).forEach(function(k){ if(!src && srcs[k].type==="vector") src = k; });
+  if(!src) return;
+  var col = ["match", ["get","class"]];
+  POIGROUPS.forEach(function(g){ col.push(g[3], g[2]); }); col.push("#808080");
+  map.addLayer({id:"poi-dot", type:"circle", source:src, "source-layer":"poi", minzoom:14, filter:poiFilter(),
+    paint:{"circle-color":col, "circle-radius":["interpolate",["linear"],["zoom"],14,3.5,17,6.5], "circle-stroke-color":isDark()?"#111a22":"#ffffff", "circle-stroke-width":1.5},
+    layout:{visibility: poiOn ? "visible" : "none"}});
+  if(map.getStyle().glyphs) try { map.addLayer({id:"poi-lbl", type:"symbol", source:src, "source-layer":"poi", minzoom:15.3, filter:poiFilter(),
+    layout:{visibility: poiOn ? "visible" : "none", "text-field":["coalesce",["get","name:latin"],["get","name"]], "text-font":["Noto Sans Regular"], "text-size":11, "text-anchor":"top", "text-offset":[0,.7], "text-max-width":8, "text-optional":true},
+    paint:{"text-color":col, "text-halo-color":isDark()?"#111a22":"#ffffff", "text-halo-width":1.4}}); } catch(e){}
+}
+function applyPoi(){
+  $("lPoi").checked = poiOn; renderPoiCats();
+  if(!mapReady || !map.getLayer("poi-dot")) return;
+  ["poi-dot","poi-lbl"].forEach(function(l){ if(!map.getLayer(l)) return; map.setLayoutProperty(l, "visibility", poiOn ? "visible" : "none"); map.setFilter(l, poiFilter()); });
+}
+function renderPoiCats(){
+  var el = $("poiCats"); el.hidden = !poiOn; if(!poiOn) return;
+  el.innerHTML = POIGROUPS.map(function(g){ return "<button type=\"button\" data-act=\"poicat\" data-cat=\""+g[0]+"\" aria-pressed=\""+!poiOff[g[0]]+"\"><i style=\"background:"+g[2]+"\"></i>"+esc(g[1])+"</button>"; }).join("");
+}
+function poiAt(x, y){
+  if(!poiOn || !mapReady || !map.getLayer("poi-dot")) return null;
+  var fs = map.queryRenderedFeatures([[x-14,y-14],[x+14,y+14]], {layers:["poi-dot","poi-lbl"].filter(function(l){ return map.getLayer(l); })}), best = null, bd = 1e9;
+  fs.forEach(function(f){
+    if(!f.geometry || f.geometry.type!=="Point") return;
+    var c = f.geometry.coordinates, q = map.project(c), d = Math.hypot(q.x-x, q.y-y);
+    if(d < bd){ bd = d; best = {n: f.properties["name:latin"] || f.properties.name, cls: f.properties["class"], sub: f.properties.subclass, c: POICLASS[f.properties["class"]] || "sight", la: +c[1].toFixed(6), lo: +c[0].toFixed(6)}; }
+  });
+  return best;
+}
+function poiExisting(q){
+  var hit = null;
+  Object.keys(T().places).forEach(function(id){ var p = P(id); if(!hit && hasLoc(p) && dist(p, q) < 80 && p.n.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,8)===q.n.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,8)) hit = id; });
+  return hit;
+}
+function poiCard(){
+  var q = poiSel, D = dayByKey(cur), sub = POISUB[q.sub] || POISUB[q.cls] || (q.sub||q.cls||"").replace(/_/g," ");
+  var c = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button><h3>"+esc(q.n)+"</h3>";
+  c += "<p><span class=\"cat\">"+icon(q.c)+esc(sub ? sub.charAt(0).toUpperCase()+sub.slice(1) : CATNAME[q.c])+"</span>"+(nbOf(q)?" · "+esc(nbOf(q)):"")+"</p>"+stationLine(q);
+  c += "<div class=\"row poisel\">";
+  if(D) c += "<button class=\"btn\" type=\"button\" data-act=\"poiadd\" data-to=\"day\">Zu "+esc(D.lbl)+" hinzufügen"+(hasLoc(q)?" (+"+bestInsert(cur, q).extra+" Min.)":"")+"</button>";
+  var lists = T().lists, al = (activeList && lists.some(function(l){ return l.id===activeList; })) ? activeList : (lists[0]||{}).id || "";
+  c += "<button class=\"btn g\" type=\"button\" data-act=\"poiadd\" data-to=\"wish\">Zur Wunschliste</button>";
+  if(lists.length > 1) c += "<select id=\"poiList\" aria-label=\"Liste\">"+lists.map(function(l){ return "<option value=\""+l.id+"\""+(l.id===al?" selected":"")+">"+esc(l.name)+"</option>"; }).join("")+"</select>";
+  c += "<a class=\"btn g\" target=\"_blank\" rel=\"noopener\" href=\"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q.n+" "+q.la+","+q.lo)+"\">Infos</a>";
+  c += "</div>";
+  return c;
+}
+function poiAdd(to){
+  var q = poiSel; if(!q) return;
+  var ex = poiExisting(q);
+  if(ex){
+    if(to==="day" && !dayOf(ex)){ plan(ex, cur); }
+    else toast(q.n+" ist schon "+(dayOf(ex) ? "am "+dayByKey(dayOf(ex)).lbl+" geplant" : "in der Wunschliste"), false);
+    poiSel = null; renderAll(); select(ex); return;
+  }
+  var ls = $("poiList"), lid = ls ? ls.value : ((activeList && T().lists.some(function(l){ return l.id===activeList; })) ? activeList : (T().lists[0]||{}).id || null);
+  var pid = uid("w"), p = {id:pid, n:q.n.slice(0,80), c:q.c, list:lid||null, note:"", addr:"", la:q.la, lo:q.lo};
+  T().places[pid] = p;
+  if(to==="day") plan(pid, cur); else { save(); toast(p.n+" steht in der Wunschliste", false); }
+  poiSel = null; renderAll(); select(pid);
 }
 var GOICO = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M21.7 2.3a1 1 0 0 0-1.1-.2l-18 8a1 1 0 0 0 .1 1.9l7.4 2 2 7.4a1 1 0 0 0 1.9.1l8-18a1 1 0 0 0-.3-1.2z\"/></svg>";
 var GOMODES = [
@@ -1308,6 +1401,7 @@ function renderGo(){
 function renderCard(){
   var el = $("card");
   if(!sel){ el.hidden = true; return; }
+  if(sel==="poi" && poiSel){ el.innerHTML = poiCard(); el.hidden = false; placeFloating(); return; }
   var x = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>";
   if(sel.indexOf("nb:")===0){
     var nn = sel.slice(3), i = nbByName(nn), all = Object.keys(T().places).map(P).filter(function(p){ return nbOf(p)===nn; });
@@ -1871,6 +1965,8 @@ document.addEventListener("click", function(e){
     case "plan": plan(id, cur); sel = id; renderAll(); break;
     case "unplan": unplan(id); renderAll(); break;
     case "go": openGo(id || sel); break;
+    case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
+    case "poiadd": poiAdd(t.getAttribute("data-to")); break;
     case "gofrom": goSt.from = t.getAttribute("data-from"); renderGo(); break;
     case "goapp": goApp = t.getAttribute("data-app"); lsSet("nyc-go-app", goApp); renderGo(); break;
     case "gogo": setTimeout(closeCatPop, 300); break;
