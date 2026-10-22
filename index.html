@@ -115,6 +115,8 @@ button{cursor:pointer}
 .card p{margin:0;color:var(--muted);font-size:14px}
 .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .bul{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;font:700 11px/1 var(--f-body);color:#fff;margin-right:2px;vertical-align:-3px}
+.bul.bus,ol.tsteps .ti .bul.bus,.lines .lb button .bul.bus{width:auto;min-width:18px;border-radius:5px;padding:0 4px;font-size:10.5px}
+ol.tsteps .ti .bul.bus{height:22px;font-size:11.5px}
 
 /* Blatt */
 .sheet{position:fixed;left:0;right:0;bottom:0;height:92%;z-index:16;background:var(--sheet);border-radius:18px 18px 0 0;box-shadow:0 -4px 22px var(--scrim);display:flex;flex-direction:column;transition:transform .28s cubic-bezier(.2,.8,.2,1);will-change:transform}
@@ -884,17 +886,55 @@ function initMap(){
 
 /* ---------- ÖPNV-Routing (U-Bahn, offline aus dem Fahrplan) ---------- */
 var WALK = 1.33/1.3;        // Gehgeschwindigkeit in m/s inkl. Umwegfaktor
-var WAIT = 300;             // mittlere Wartezeit beim Einsteigen (s)
+var WAIT = 300, WAITBUS = 420;             // mittlere Wartezeit beim Einsteigen (s)
 var NETOUT = null;
 function netInit(){
   if(NETOUT) return;
   NETOUT = NET.s.map(function(){ return []; });
   NET.e.forEach(function(e, i){ NETOUT[e[0]].push(i); });
-  NET.t.forEach(function(t){ NETOUT[t[0]].push(-1 - NET.t.indexOf(t)); });
+  NET.t.forEach(function(t, i){ NETOUT[t[0]].push(-1 - i); });
 }
+/* ---------- Busse (MTA Manhattan + Brooklyn): werden nachgeladen und ins Netz eingefügt ---------- */
+var NS0 = NET.s.length, NR0 = NET.r.length, busReady = false, busLoading = false;
+function isBus(ri){ return ri >= NR0; }
+function isBusStop(si){ return si >= NS0; }
+function loadBus(){
+  if(busReady || busLoading) return; busLoading = true;
+  fetch("bus.json").then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(mergeBus).catch(function(){ busLoading = false; setTimeout(loadBus, 30000); });
+}
+function mergeBus(B){
+  var SB = NET.s.length, RB = NET.r.length, HB = NET.h.length, n = B.net;
+  n.s.forEach(function(x){ NET.s.push(x); });
+  n.r.forEach(function(x){ NET.r.push([x[0], x[1], x[2], "bus"]); });
+  n.h.forEach(function(x){ NET.h.push(x); });
+  n.e.forEach(function(e){ NET.e.push([e[0]+SB, e[1]+SB, e[2]+RB, e[3]+HB, e[4], e[5]]); });
+  // Umstiege zu Fuß: Bus ↔ U-Bahn bis 200 m, Bus ↔ Bus bis 100 m (Rasterverfahren)
+  var cell = 200, grid = {};
+  NET.s.forEach(function(x, i){ var k = Math.floor(x[1]/cell)+"|"+Math.floor(x[2]/cell); (grid[k] = grid[k] || []).push(i); });
+  for(var i=SB;i<NET.s.length;i++){
+    var x = NET.s[i], gx = Math.floor(x[1]/cell), gy = Math.floor(x[2]/cell);
+    for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){
+      (grid[(gx+dx)+"|"+(gy+dy)]||[]).forEach(function(j){
+        if(j===i) return; var y = NET.s[j], d = Math.hypot(x[1]-y[1], x[2]-y[2]);
+        if(j < SB){ if(d < 200){ var c = Math.round(d/WALK + 60); NET.t.push([i, j, c]); NET.t.push([j, i, c]); } }
+        else if(j > i && d < 100){ var c2 = Math.round(d/WALK + 20); NET.t.push([i, j, c2]); NET.t.push([j, i, c2]); }
+      });
+    }
+  }
+  BUSSCHED = {base:SB, rbase:RB, hbase:HB, g:B.sched.p};
+  NETOUT = null; TRCACHE = {}; SCH = null; RIDEC = {}; busReady = true; busLoading = false;
+  renderSheet(); renderCard(); scheduleOverlay();
+}
+var BUSSCHED = null;
 function stLL(i){ var s = NET.s[i]; return {la: LAT0 - s[2]/KM, lo: s[1]/(COS*KM) - 74}; }
-function lineName(ri){ var n = NET.r[ri][0]; return n==="SIR" ? "SIR" : n.replace(/X$/,""); }
-function lineBul(ri){ var r = NET.r[ri]; return "<span class=\"bul\" style=\"background:"+r[1]+";color:"+r[2]+"\">"+esc(lineName(ri))+"</span>"; }
+function lineBadge(m, ri){
+  var rr = NET.r[ri], nm = lineName(ri);
+  if(!isBus(ri)) return "<circle cx=\""+f1(m[0])+"\" cy=\""+f1(m[1])+"\" r=\"10\" fill=\""+rr[1]+"\" stroke=\"var(--land)\" stroke-width=\"2\"/><text x=\""+f1(m[0])+"\" y=\""+f1(m[1]+4)+"\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\""+rr[2]+"\">"+esc(nm)+"</text>";
+  var w = 10 + nm.length*6.6;
+  return "<rect x=\""+f1(m[0]-w/2)+"\" y=\""+f1(m[1]-9)+"\" width=\""+f1(w)+"\" height=\"18\" rx=\"5\" fill=\""+rr[1]+"\" stroke=\"var(--land)\" stroke-width=\"2\"/><text x=\""+f1(m[0])+"\" y=\""+f1(m[1]+4)+"\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\""+rr[2]+"\">"+esc(nm)+"</text>";
+}
+function lineName(ri){ var n = NET.r[ri][0]; return isBus(ri) || n==="SIR" ? n : n.replace(/X$/,""); }
+function lineBul(ri){ var r = NET.r[ri]; return "<span class=\"bul"+(isBus(ri)?" bus":"")+"\" style=\"background:"+r[1]+";color:"+r[2]+"\">"+esc(lineName(ri))+"</span>"; }
 function dayMask(k){ var d = parseD(k); if(!d) return 1; var w = d.getUTCDay(); return w===0 ? 4 : w===6 ? 2 : 1; }
 var TRCACHE = {};
 function transit(a, b, k){
@@ -920,7 +960,7 @@ function transit(a, b, k){
     if(n < N){
       if(exits[n]!==undefined){ var ce = c + exits[n]/WALK; if(ce < endBest){ endBest = ce; endPrev = [n, ["walk", exits[n]]]; } }
       NETOUT[n].forEach(function(ei){
-        if(ei >= 0){ var e = NET.e[ei]; if(!(e[5] & mask)) return; relax(ride(n, e[2], e[3]), c + WAIT, n, ["board"]); }
+        if(ei >= 0){ var e = NET.e[ei]; if(!(e[5] & mask)) return; relax(ride(n, e[2], e[3]), c + (e[2] >= NR0 ? WAITBUS : WAIT), n, ["board"]); }
         else { var t = NET.t[-1-ei]; relax(t[1], c + t[2], n, ["xfer", t[2]]); }
       });
     } else {
@@ -965,6 +1005,14 @@ function schInit(){
     var days = [4,5,6].map(function(k){ var a = [], t = 0; q[k].forEach(function(d){ t += d; a.push(t*30); }); return a; });
     return {r:q[0], h:SCHED.h[q[1]], st:st, off:off, days:days};
   });
+  if(BUSSCHED){ var B2 = BUSSCHED; B2.g.forEach(function(g){
+    var st = [], x = 0; g[2].forEach(function(d){ x += d; st.push(x + B2.base); });
+    g[3].forEach(function(cl){
+      var off = [0], o = 0; cl[0].forEach(function(d){ o += d; off.push(o*30); });
+      var days = [1,2,3].map(function(k){ var a = [], t = 0; cl[k].forEach(function(d){ t += d; a.push(t*30); }); return a; });
+      P2.push({r:g[0]+B2.rbase, h:NET.h[g[1]+B2.hbase], st:st, off:off, days:days});
+    });
+  }); }
   var by = {};
   P2.forEach(function(pt, pi){ pt.st.forEach(function(si, pos){ if(pos < pt.st.length-1) (by[si] = by[si] || []).push([pi, pos]); }); });
   SCH = {p:P2, by:by}; return SCH;
@@ -1015,12 +1063,16 @@ function rideTimes(l, ctx){
 /* Kartenkarte: nächste Abfahrten an der nächsten Station, je Linie und Richtung */
 function stationDeps(sis){
   var now = nyNow(), d = [], groups = {}, order = [];
-  sis.forEach(function(si){ d = d.concat(departures(si, now.key, now.secs, 60)); });
+  var taken = {};
+  sis.forEach(function(si){ // nur die nächstgelegene Haltestelle je Linie und Richtung
+    var mine = departures(si, now.key, now.secs, 80).filter(function(x){ var k = x.r+"|"+x.h; if(taken[k] && taken[k]!==si) return false; taken[k] = si; return true; });
+    d = d.concat(mine);
+  });
   d.sort(function(a, b){ return a.t - b.t; });
   d.forEach(function(x){ var k = x.r+"|"+x.h; if(!groups[k]){ groups[k] = []; order.push(k); } if(groups[k].length < 3) groups[k].push(x.t); });
   if(!order.length) return "";
   order.sort(function(a, b){ var ra = NET.r[+a.split("|")[0]][0], rb = NET.r[+b.split("|")[0]][0]; return ra < rb ? -1 : ra > rb ? 1 : a < b ? -1 : 1; });
-  return "<div class=\"sdeps\">"+order.slice(0, 8).map(function(k){ var r = +k.split("|")[0], h = k.split("|").slice(1).join("|"), ts = groups[k];
+  return "<div class=\"sdeps\">"+order.slice(0, 10).map(function(k){ var r = +k.split("|")[0], h = k.split("|").slice(1).join("|"), ts = groups[k];
     var m = Math.max(0, Math.round((ts[0]-now.secs)/60));
     return "<div class=\"sd\">"+lineBul(r)+"<span class=\"sh\">→ "+esc(h)+"</span><span class=\"st\"><b>"+(m===0?"jetzt":m+" Min.")+"</b> · "+ts.map(hhmm).join(", ")+"</span></div>"; }).join("")+
     "<p class=\"note\">Planmäßige Zeiten (MTA-Fahrplan), keine Live-Daten.</p></div>";
@@ -1034,8 +1086,8 @@ function transitSteps(r, a, b, ctx){
       h += "<li class=\"tw\"><span class=\"ti\">Zu Fuß</span><span>"+mins(l.secs)+" Min. ("+fmtDist(l.d)+") "+(l.to==="Ziel" ? "zum Ziel" : "zur Station <b>"+esc(l.to)+"</b>")+"</span></li>";
     } else if(l.t==="ride"){
       var n = l.stops.length-1, mid = l.stops.slice(1,-1).map(function(s){ return NET.s[s][0]; });
-      h += "<li class=\"tr\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"ti\">"+lineBul(l.r)+"</span><span><b>Linie "+esc(lineName(l.r))+"</b>"+(/X$/.test(NET.r[l.r][0])?" (Express)":"")+" Richtung <b>"+esc(l.hd)+"</b><br>"+
-           "Einsteigen: <b>"+esc(NET.s[l.from][0])+"</b><br>Aussteigen: <b>"+esc(NET.s[l.to][0])+"</b> · "+n+(n===1?" Station":" Stationen")+", ca. "+mins(l.secs)+" Min."+
+      h += "<li class=\"tr\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"ti\">"+lineBul(l.r)+"</span><span><b>"+(isBus(l.r)?"Bus ":"Linie ")+esc(lineName(l.r))+"</b>"+(!isBus(l.r) && /X$/.test(NET.r[l.r][0])?" (Express)":"")+" Richtung <b>"+esc(l.hd)+"</b><br>"+
+           "Einsteigen: <b>"+esc(NET.s[l.from][0])+"</b><br>Aussteigen: <b>"+esc(NET.s[l.to][0])+"</b> · "+n+(isBus(l.r) ? (n===1?" Haltestelle":" Haltestellen") : (n===1?" Station":" Stationen"))+", ca. "+mins(l.secs)+" Min."+
            rideTimes(l, ctxL)+
            (mid.length ? "<details><summary>Zwischenstationen</summary>"+mid.map(esc).join(" · ")+"</details>" : "")+"</span></li>";
     } else if(l.t==="xfer"){
@@ -1224,7 +1276,7 @@ function drawOverlay(){
           ll.forEach(function(q, j){ if(j===0 || j===ll.length-1){ var z = pt(q); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"4.5\" fill=\"var(--land)\" stroke=\""+NET.r[l.r][1]+"\" stroke-width=\"2.5\" opacity=\""+op+"\"/>"; } });
           if(op===1){
             var m = pt(ll[Math.floor(ll.length/2)]), rr = NET.r[l.r];
-            labels += "<circle cx=\""+f1(m[0])+"\" cy=\""+f1(m[1])+"\" r=\"10\" fill=\""+rr[1]+"\" stroke=\"var(--land)\" stroke-width=\"2\"/><text x=\""+f1(m[0])+"\" y=\""+f1(m[1]+4)+"\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\""+rr[2]+"\">"+esc(lineName(l.r))+"</text>";
+            labels += lineBadge(m, l.r);
             if(legSel===li || V.m < 3){ [l.from, l.to].forEach(function(si){ var z = pt(stLL(si)); labels += "<text class=\"stn\" x=\""+f1(z[0]+8)+"\" y=\""+f1(z[1]-8)+"\">"+esc(NET.s[si][0])+"</text>"; }); }
           }
         }
@@ -1501,7 +1553,7 @@ function drawMeRoute(){
     else if(l.t==="xfer"){ var tx = stLL(l.to); seg([at, tx], "#1a73e8", "1 6", 3.5); at = tx; }
     else if(l.t==="ride"){ var ll = l.stops.map(stLL); seg(ridePath(l), NET.r[l.r][1], "", 5.5); at = ll[ll.length-1];
       var m = pt(ll[Math.floor(ll.length/2)]), rr = NET.r[l.r];
-      s += "<circle cx=\""+f1(m[0])+"\" cy=\""+f1(m[1])+"\" r=\"10\" fill=\""+rr[1]+"\" stroke=\"var(--land)\" stroke-width=\"2\"/><text x=\""+f1(m[0])+"\" y=\""+f1(m[1]+4)+"\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\""+rr[2]+"\">"+esc(lineName(l.r))+"</text>";
+      s += lineBadge(m, l.r);
       [l.from, l.to].forEach(function(si){ var z = pt(stLL(si)); s += "<text class=\"stn\" x=\""+f1(z[0]+8)+"\" y=\""+f1(z[1]-8)+"\">"+esc(NET.s[si][0])+"</text>"; });
     }
   });
@@ -1521,7 +1573,19 @@ function stationLine(p){
   var x = nearStation(p); if(!x) return "";
   var sis = []; NET.s.forEach(function(s2, i){ if(Math.hypot(s2[1]-x.st[1], s2[2]-x.st[2]) < 150) sis.push(i); });
   var si = sis.join(","), open = !!depOpen[si], bd = sis.length ? 0 : 1e9;
-  return "<p>Nächste U-Bahn: <b>"+esc(x.st[0])+"</b> "+bullets(x.st[3])+" · "+fmtDist(x.d)+" <button type=\"button\" class=\"tdet\" data-act=\"depopen\" data-st=\""+si+"\" aria-expanded=\""+open+"\">"+(open?"Abfahrten ausblenden":"Abfahrten")+"</button></p>"+(open && sis.length ? stationDeps(sis) : "");
+  return "<p>Nächste U-Bahn: <b>"+esc(x.st[0])+"</b> "+bullets(x.st[3])+" · "+fmtDist(x.d)+" <button type=\"button\" class=\"tdet\" data-act=\"depopen\" data-st=\""+si+"\" aria-expanded=\""+open+"\">"+(open?"Abfahrten ausblenden":"Abfahrten")+"</button></p>"+(open && sis.length ? stationDeps(sis) : "")+busLine(p);
+}
+function busLine(p){
+  if(!busReady || !hasLoc(p)) return "";
+  var x0 = wx(p.lo), y0 = wy(p.la), near = [];
+  for(var i=NS0;i<NET.s.length;i++){ var d = Math.hypot(NET.s[i][1]-x0, NET.s[i][2]-y0); if(d < 250) near.push([i, d]); }
+  if(!near.length) return "";
+  near.sort(function(a, b){ return a[1]-b[1]; });
+  var sis = near.slice(0, 8).map(function(q){ return q[0]; }), key = "b"+sis.join(","), open = !!depOpen[key];
+  var routes = {}; sis.forEach(function(si){ (NETOUT || (netInit(), NETOUT))[si].forEach(function(ei){ if(ei >= 0) routes[NET.e[ei][2]] = 1; }); });
+  var rl = Object.keys(routes).map(Number).sort(function(a, b){ return NET.r[a][0] < NET.r[b][0] ? -1 : 1; });
+  if(!rl.length) return "";
+  return "<p>Busse in der Nähe: "+rl.slice(0, 8).map(lineBul).join(" ")+(rl.length>8?" …":"")+" · "+fmtDist(near[0][1])+" <button type=\"button\" class=\"tdet\" data-act=\"depopen\" data-st=\""+key+"\" aria-expanded=\""+open+"\">"+(open?"Abfahrten ausblenden":"Abfahrten")+"</button></p>"+(open ? stationDeps(sis) : "");
 }
 var depOpen = {};
 function routeUrl(p){
@@ -2601,6 +2665,7 @@ window.addEventListener("resize", resize);
 
 /* ---------- Start ---------- */
 var hadData = !!lsGet(KEY);
+loadBus();
 S = load();
 var addrFixed = applyAddrFix(S); if(addrFixed && !hadData) save(); else if(addrFixed){ save(); setTimeout(function(){ toast(addrFixed+(addrFixed===1?" Adresse":" Adressen")+" aktualisiert", false); }, 1200); }
 pickDefaultDay();
