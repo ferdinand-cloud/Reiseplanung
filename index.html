@@ -603,6 +603,24 @@ function load(){
   return s;
 }
 function save(){ lsSet(KEY, JSON.stringify(S)); pushSoon(); }
+/* Geprüfte Adressen: korrigiert gespeicherte Einträge, solange die alte Adresse noch unverändert drin steht */
+var ADDR_FIX = {"a29": {"n": "Domino Park", "from": "River St, Williamsburg", "addr": "15 River St, Brooklyn", "la": 40.716628, "lo": -73.966468}, "e02": {"n": "Old Friend Photobooth", "from": "Allen St (145 laut deiner Liste, eine Quelle nennt 45)", "addr": "145 Allen St", "la": 40.720501, "lo": -73.9901}, "m02": {"n": "Fellini Cafe", "from": "7th Ave S, neben Fellini Cucina (176 7th Ave S)", "addr": "176 7th Ave S", "la": 40.735975, "lo": -74.001676, "note": "Coffee. Direkt neben Fellini Cucina. Weitere Filiale SoHo, 120 Thompson St."}, "m08": {"n": "Pantry (Madhappy)", "from": "Im Madhappy-Store, Nolita", "addr": "207 Mulberry St (im Madhappy-Store)", "la": 40.721769, "lo": -73.996407}, "m11": {"n": "Rok", "from": "unklar", "addr": "156 7th Ave S", "la": 40.735301, "lo": -74.002071}, "m12": {"n": "Cia Vagante", "from": "unklar", "addr": "Fort Greene Park, Washington Park & DeKalb Ave, Brooklyn", "la": 40.689631, "lo": -73.97313, "note": "Wohl „Ciao Vagante“: mobiler Kaffee aus einem Vintage-Fiat-Panda, kein fester Laden. Meist Sa 10–16 Uhr am Fort Greene Park (Brooklyn)."}, "r04": {"n": "Jupiter", "from": "1 Rockefeller Plaza", "addr": "20 W 50th St (Rink Level, Rockefeller Center)", "la": 40.758833, "lo": -73.97833}, "r33": {"n": "Jack's Wife Freda (Original)", "from": "224 Mulberry St", "addr": "226 Lafayette St", "la": 40.722256, "lo": -73.997464}, "r38": {"n": "From Lucie", "from": "64 Avenue B", "addr": "263 E 10th St", "la": 40.728508, "lo": -73.983279}, "s01": {"n": "Sephora Times Square", "from": "1500 Broadway", "addr": "1535 Broadway", "la": 40.758423, "lo": -73.985599}, "s02": {"n": "Sephora SoHo", "from": "555 Broadway", "addr": "557 Broadway", "la": 40.72396, "lo": -73.998229}, "s07": {"n": "Kujten Flagship", "from": "Madison Avenue", "addr": "831 Madison Ave", "la": 40.769949, "lo": -73.966512}, "m10": {"n": "Cafe Habit", "from": "unklar", "addr": "unklar", "note": "Coffee. Online kein New Yorker Café dieses Namens gefunden – bitte Ort bestätigen."}, "s04": {"n": "Kujten (SoHo)", "from": "92 Greene St", "addr": "92 Greene St", "note": "Cashmere (Paris). Stand Mitte Oktober 2026 noch nicht eröffnet (geplant Q4 2026) – vorher prüfen. Flagship: 831 Madison Ave."}}; // geprüft am 22.10.2026
+function applyAddrFix(st){
+  var n = 0;
+  Object.keys(st.trips||{}).forEach(function(tk){
+    var pl = st.trips[tk].places || {};
+    Object.keys(ADDR_FIX).forEach(function(id){
+      var f = ADDR_FIX[id], p = pl[id];
+      if(!p || p.n!==f.n || (p.addr||"")!==f.from) return;
+      var before = JSON.stringify([p.addr, p.la, p.lo, p.note]);
+      p.addr = f.addr;
+      if(typeof f.la==="number" && typeof f.lo==="number"){ p.la = f.la; p.lo = f.lo; }
+      if(f.note!=null) p.note = f.note;
+      if(JSON.stringify([p.addr, p.la, p.lo, p.note])!==before) n++;
+    });
+  });
+  return n;
+}
 
 /* ---------- Dauerhaft speichern: gemeinsamer Speicher des Claude-Kontos ----------
    Jede Reise ist ein Dokument trips/<id>. Der Browser-Speicher bleibt als schneller Zwischenstand. */
@@ -2419,6 +2437,7 @@ window.addEventListener("resize", resize);
 
 /* ---------- Start ---------- */
 S = load();
+var addrFixed = applyAddrFix(S); if(addrFixed){ save(); setTimeout(function(){ toast(addrFixed+(addrFixed===1?" Adresse":" Adressen")+" aktualisiert", false); }, 1200); }
 pickDefaultDay();
 applyLayers();
 applyLines();
