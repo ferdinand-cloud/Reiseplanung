@@ -257,7 +257,12 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .jr input,.jr textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:transparent;padding:9px 10px;font:inherit;font-size:16px;color:inherit;resize:vertical}
 .jr .saved{font-size:12px;color:var(--muted)}
 .jdone{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:14px}
-.jdone li{display:flex;gap:8px;align-items:center}
+.jdone li{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.jdone .rate{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px;padding-left:30px;margin:2px 0 6px}
+.rate button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:600;color:var(--muted)}
+.rate button[aria-pressed="true"]{background:var(--rc);border-color:var(--rc);color:#fff}
+.rbadge{display:inline-block;border-radius:999px;padding:1px 7px;font-size:11.5px;font-weight:700;color:#fff;background:var(--rc);vertical-align:1px}
+.jrated{margin:4px 0 0;padding:0 0 0 16px;font-size:14px;display:grid;gap:3px}
 .jdone .jn{flex:1;min-width:0}
 .jdone .jb{border:1px solid var(--line);background:transparent;border-radius:999px;padding:4px 9px;font-size:12.5px;font-weight:600;white-space:nowrap;color:var(--ink)}
 .jdone .jb.on{background:var(--chip);color:var(--muted)}
@@ -696,7 +701,7 @@ function tripsCol(){ return fbDb.collection("users").doc(acct.user.uid).collecti
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["places","done","times","journal","order","legMode","legAlt"];
+var MAPK = ["places","done","times","journal","order","legMode","legAlt","rating"];
 function jeq(a, b){ return JSON.stringify(a===undefined?null:a) === JSON.stringify(b===undefined?null:b); }
 function mergeOrder(b, l, r, preferLocal){
   b = b||[]; l = l||[]; r = r||[];
@@ -2147,6 +2152,7 @@ function renderCard(){
     c += "<div class=\"mecard\"><span class=\"sub\">Von deinem Standort</span><div class=\"tl\"><button type=\"button\" class=\"tsum\" data-act=\"meroute\">"+transitSummary(rr)+"</button>"+
          "<button type=\"button\" class=\"tdet\" data-act=\"meroute\" aria-expanded=\""+meRoute+"\">"+(meRoute?"Weg ausblenden":"Weg zeigen")+"</button></div>"+(meRoute && !rr.walk ? transitSteps(rr, me, p, {day: nyNow().key}) : "")+"</div>";
   }
+  if(dk && T().done[sel]) c += "<div data-id=\""+sel+"\"><span class=\"sub\">Deine Bewertung</span>"+rateRow(sel)+"</div>";
   c += "<div class=\"row\" data-id=\""+sel+"\">";
   if(!dk && D){ c += "<button class=\"btn\" type=\"button\" data-act=\"plan\">Zu "+D.lbl+" hinzufügen"+addLabel(cur, p)+"</button>"; }
   if(dk) c += "<button class=\"btn"+(T().done[sel]?"":" g")+"\" type=\"button\" data-act=\"done\">"+(T().done[sel]?"✓ Erledigt":"Abhaken")+"</button>";
@@ -2373,6 +2379,14 @@ function renderDay(){
   return h;
 }
 var jOpen = lsGet("nyc-j-open")!=="0";
+/* Bewertung besuchter Orte */
+var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#1e8e3e"],[3,"Nice","#1a73e8"],[4,"Okay","#6b7785"],[5,"Overrated","#d93025"]];
+function rateOf(id){ return ((T().rating||{})[id]) || 0; }
+function rateRow(id){
+  var v = rateOf(id);
+  return "<div class=\"rate\" role=\"group\" aria-label=\"Bewertung\">"+RATES.map(function(r){ return "<button type=\"button\" data-act=\"rate\" data-v=\""+r[0]+"\" aria-pressed=\""+(v===r[0])+"\" style=\"--rc:"+r[2]+"\">"+r[1]+"</button>"; }).join("")+"</div>";
+}
+function rateBadge(id){ var v = rateOf(id); if(!v) return ""; var r = RATES[v-1]; return " <span class=\"rbadge\" style=\"--rc:"+r[2]+"\">"+r[1]+"</span>"; }
 function jLine(id){ var p = P(id); return "• "+p.n+(timeOf(id)?" ("+timeOf(id)+")":"")+": "; }
 function jHas(J, id){ var p = P(id); return !!(J.text && J.text.indexOf("• "+p.n)>-1); }
 function journalBlock(D){
@@ -2389,7 +2403,7 @@ function journalBlock(D){
       var p = P(id), has = jHas(J, id), isHl = J.hl===p.n;
       return "<li data-id=\""+id+"\">"+badge(p.c,"width:22px;height:22px")+"<span class=\"jn\">"+esc(p.n)+(timeOf(id)?" · "+timeOf(id):"")+"</span>"+
         "<button type=\"button\" class=\"jb"+(has?" on":"")+"\" data-act=\"jins\""+(has?" aria-pressed=\"true\"":"")+">"+(has?"✓ im Text":"+ Text")+"</button>"+
-        "<button type=\"button\" class=\"jb"+(isHl?" on":"")+"\" data-act=\"jhl\" aria-pressed=\""+isHl+"\" aria-label=\"Als Highlight des Tages\">★</button></li>";
+        "<button type=\"button\" class=\"jb"+(isHl?" on":"")+"\" data-act=\"jhl\" aria-pressed=\""+isHl+"\" aria-label=\"Als Highlight des Tages\">★</button>"+rateRow(id)+"</li>";
     }).join("")+"</ul></div>";
   } else {
     h += "<p class=\"note\">Hake Stopps im Tagesplan ab, dann kannst du sie hier ins Tagebuch übernehmen.</p>";
@@ -2654,7 +2668,7 @@ function renderTrip(){
       jh += "<div class=\"jday\"><button type=\"button\" class=\"pill"+yel(d)+"\" style=\"background:"+dayColor(d)+"\" data-act=\"gotoday\" data-day=\""+d.key+"\">Tag "+d.n+" · "+esc(d.lbl)+"</button>";
       if(J.hl) jh += "<p class=\"hl\">"+esc(J.hl)+"</p>";
       if(J.text) jh += "<p>"+esc(J.text)+"</p>";
-      if(done.length) jh += "<p class=\"sub\">Erledigt: "+done.map(function(id){ return esc(P(id).n); }).join(", ")+"</p>";
+      if(done.length) jh += "<ul class=\"jrated\">"+done.map(function(id){ return "<li>"+esc(P(id).n)+rateBadge(id)+"</li>"; }).join("")+"</ul>";
       jh += "</div>";
     });
     h += "<div class=\"sec\"><h4>Reisetagebuch</h4>"+(any ? jh : "<p class=\"empty\">Noch keine Einträge. Schreib im Tagesplan unter „Tagebuch“, was ihr erlebt habt.</p>")+"</div>";
@@ -2907,6 +2921,7 @@ document.addEventListener("click", function(e){
     case "go": openGo(id || sel); break;
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
+    case "rate": var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); renderSheet(); if(sel===id) renderCard(); break;
     case "acsignup": var cs = acctCreds(); if(!cs.email || cs.password.length < 8){ setAcct("off", "Bitte E-Mail und ein Passwort mit mindestens 8 Zeichen eingeben."); break; }
       setAcct("off", "Konto wird erstellt …");
       window.firebase.auth().createUserWithEmailAndPassword(cs.email, cs.password).then(function(){ acct.msg = ""; toast("Konto erstellt und angemeldet", false); }, function(e){ setAcct("off", acctErr(e)); });
