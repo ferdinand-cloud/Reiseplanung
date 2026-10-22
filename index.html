@@ -928,7 +928,7 @@ var legOpen = {}, legSel = -1;
 function dayLegs(k){
   var D = dayByKey(k); if(!D) return [];
   var HT = D.hotel, prev = HT, any = false, out = [];
-  ord(k).forEach(function(id){ var p = P(id); if(!hasLoc(p)) return; if(hid(id)){ prev = p; return; } if(prev) out.push([prev, p]); prev = p; any = true; });
+  ord(k).forEach(function(id){ var p = P(id); if(!hasLoc(p)) return; if(hid(id)){ prev = null; return; } if(prev) out.push([prev, p]); prev = p; any = true; });
   if(HT && any && prev) out.push([prev, HT]);
   return out;
 }
@@ -1102,10 +1102,9 @@ function drawOverlay(){
   });
   // Stopps
   var n = 0, ancIds = {};
-  if(D && hideDone) dayLegs(cur).forEach(function(pr){ if(pr[0].id && T().done[pr[0].id]) ancIds[pr[0].id] = 1; });
   if(D) ord(cur).forEach(function(id){
     var p = P(id); n++;
-    if(!hasLoc(p) || (hid(id) && !ancIds[id])) return;
+    if(!hasLoc(p) || hid(id)) return;
     var q = pt(p), done = !!T().done[id];
     if(sel===id) s += "<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"18\" fill=\"none\" stroke=\""+col+"\" stroke-width=\"2.5\" opacity=\".5\"/>";
     s += "<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"12\" fill=\""+(done?"var(--muted)":col)+"\" stroke=\"var(--land)\" stroke-width=\"2.5\"/>";
@@ -1737,15 +1736,14 @@ function renderDay(){
   };
   if(HT) h += "<li class=\"ht\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">Start</span></span></li>";
   var prev = HT, n = 0;
-  var nHid = 0, shown = 0, anc = null;
+  var nHid = 0, shown = 0, brk = false;
   ids.forEach(function(id, i){
     var p = P(id); n++;
-    if(hid(id)){ nHid++; if(hasLoc(p)){ prev = p; anc = p; } return; }
+    if(hid(id)){ nHid++; if(hasLoc(p)){ prev = null; brk = true; } return; }
     shown++;
-    if(anc && hasLoc(p)){ h += "<li class=\"ht\"><span class=\"h\" style=\"background:var(--muted)\">✓</span><span><b>"+esc(anc.n)+"</b> <span class=\"sub\">zuletzt erledigt</span></span></li>"; }
-    if(hasLoc(p)) anc = null;
     if(prev && hasLoc(p)) h += legLi(prev, p);
-    else if(i>0 || HT) h += "<li class=\"leg\">Strecke unbekannt</li>";
+    else if((i>0 || HT) && !brk) h += "<li class=\"leg\">Strecke unbekannt</li>";
+    if(hasLoc(p)) brk = false;
     if(hasLoc(p)) prev = p;
     var opts = days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===cur?" selected":"")+">"+d.lbl+"</option>"; }).join("");
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\">"+
