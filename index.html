@@ -266,6 +266,12 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+.acts .ck{display:inline-flex;align-items:center;gap:5px}
+.acts .ck i{width:15px;height:15px;border:1.8px solid currentColor;border-radius:4px;display:grid;place-items:center;font:700 11px/1 var(--f-body);font-style:normal}
+.acts .ck[aria-pressed="true"]{background:#1e8e3e;border-color:#1e8e3e;color:#fff}
+.acts .ck[aria-pressed="true"] i{background:#fff;color:#1e8e3e;border-color:#fff}
+.dprog{height:4px;border-radius:2px;background:var(--line);overflow:hidden;margin:6px 0 0}
+.dprog i{display:block;height:100%;background:#1e8e3e;transition:width .25s}
 .acts .go{background:var(--ink);color:var(--sheet);border-color:var(--ink);display:inline-flex;align-items:center;gap:4px}
 .acts .go svg{width:13px;height:13px}
 .gp-from,.gp-app{display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 10px}
@@ -1330,7 +1336,8 @@ function renderCard(){
   }
   c += "<div class=\"row\" data-id=\""+sel+"\">";
   if(!dk && D){ var ins = bestInsert(cur, p); c += "<button class=\"btn\" type=\"button\" data-act=\"plan\">Zu "+D.lbl+" hinzufügen"+(hasLoc(p)?" (+"+ins.extra+" Min.)":"")+"</button>"; }
-  else if(dk===cur){ c += "<button class=\"btn g\" type=\"button\" data-act=\"unplan\">Zurück in Wunschliste</button>"; }
+  if(dk) c += "<button class=\"btn"+(T().done[sel]?"":" g")+"\" type=\"button\" data-act=\"done\">"+(T().done[sel]?"✓ Erledigt":"Abhaken")+"</button>";
+  if(dk===cur){ c += "<button class=\"btn g\" type=\"button\" data-act=\"unplan\">Zurück in Wunschliste</button>"; }
   else if(dk){ c += "<button class=\"btn g\" type=\"button\" data-act=\"gotoday\" data-day=\""+dk+"\">Tag "+dayByKey(dk).n+" öffnen</button>"; }
   c += "<button class=\"btn g\" type=\"button\" data-act=\"go\">Route starten</button>";
   c += confirmBtn("delp:"+sel, "Löschen", "Wirklich löschen?", "delplace");
@@ -1438,9 +1445,11 @@ function renderDay(){
   var ids = ord(cur), pts = routePts(cur), HT = D.hotel, km = 0;
   if(pts.length){ var all = (HT?[HT]:[]).concat(pts, HT?[HT]:[]); for(var i=0;i<all.length-1;i++) km += dist(all[i],all[i+1]); }
   var meta = ["Tag "+D.n, ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps") : "noch leer"];
+  var nDone = ids.filter(function(x){ return T().done[x]; }).length;
+  if(ids.length) meta.push(nDone+" von "+ids.length+" erledigt");
   if(pts.length) meta.push(fmtDist(km)+(HT?" ab Hotel":""));
   if(D.hint) meta.push(D.hint);
-  var h = "<div class=\"dh\"><span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><div><h2>"+esc(D.title)+"</h2><p>"+esc(meta.join(" · "))+"</p></div></div>";
+  var h = "<div class=\"dh\"><span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><div style=\"flex:1;min-width:0\"><h2>"+esc(D.title)+"</h2><p>"+esc(meta.join(" · "))+"</p>"+(ids.length?"<div class=\"dprog\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\""+ids.length+"\" aria-valuenow=\""+nDone+"\"><i style=\"width:"+Math.round(nDone/ids.length*100)+"%\"></i></div>":"")+"</div></div>";
 
   var sug = suggest(cur, 3);
   h += "<div class=\"sec\"><button type=\"button\" class=\"fold\" data-act=\"sugtoggle\" aria-expanded=\""+sugOpen+"\"><h4>"+(ids.length?"Passt zu diesem Tag":(HT?"Nah am Hotel":"Vorschläge"))+"</h4><span class=\"cnt\">"+sug.length+" Vorschläge</span>"+CHEV+"</button>";
@@ -1481,7 +1490,7 @@ function renderDay(){
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\">"+
       "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"done\" style=\"background:"+dayColor(D)+"\" aria-label=\"Erledigt umschalten\">"+(T().done[id]?"✓":n)+"</button>"+
       "<div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"focus\">"+esc(p.n)+"</button><div class=\"sub\">"+esc(CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+"</div>"+
-      "<div class=\"acts\">"+(hasLoc(p)||p.addr?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route starten</button>":"")+
+      "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(hasLoc(p)||p.addr?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route starten</button>":"")+
       "<select data-act=\"move\" aria-label=\"Tag ändern\">"+opts+"</select><button type=\"button\" data-act=\"unplan\">In Wunschliste</button></div></div>"+
       "<input type=\"time\" data-act=\"time\" value=\""+esc(timeOf(id))+"\" aria-label=\"Uhrzeit\">"+
       "<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button></li>";
@@ -1871,7 +1880,7 @@ document.addEventListener("click", function(e){
       else { var gk = dayOf(goSt.id); if(gk){ if(gk!==cur){ cur = gk; renderAll(); } var gi = -1; dayLegs(cur).forEach(function(lg, i){ if(lg[1] && lg[1].id===goSt.id) gi = i; }); if(gi>-1){ legSel = -1; var lb = document.querySelector("[data-act=legsel][data-leg=\""+gi+"\"]"); if(routeMode!=="oepnv"){ routeMode = "oepnv"; lsSet("nyc-route-mode", routeMode); renderSheet(); lb = document.querySelector("[data-act=legsel][data-leg=\""+gi+"\"]"); } if(lb) lb.click(); } } }
       break;
     case "sugtoggle": sugOpen = !sugOpen; lsSet("nyc-sug-open", sugOpen?"1":"0"); renderSheet(); scheduleOverlay(); break;
-    case "done": if(T().done[id]) delete T().done[id]; else T().done[id] = true; save(); renderSheet(); scheduleOverlay(); break;
+    case "done": if(T().done[id]) delete T().done[id]; else T().done[id] = true; save(); renderSheet(); if(sel===id) renderCard(); scheduleOverlay(); break;
     case "list": activeList = t.getAttribute("data-list"); renderSheet(); scheduleOverlay(); break;
     case "lsub": var ln = t.getAttribute("data-line"); if(offSub[ln]) delete offSub[ln]; else offSub[ln] = 1; applyLines(); break;
     case "lsuball": offSub = {}; applyLines(); break;
