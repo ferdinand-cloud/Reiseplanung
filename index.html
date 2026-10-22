@@ -959,10 +959,18 @@ function legKey(a, b){ return (a.id||((+a.la).toFixed(4)+","+(+a.lo).toFixed(4))
 function legMode(a, b){ var m = (T().legMode||{})[legKey(a, b)]; return m || (dist(a, b) < 1100 ? "walk" : "oepnv"); }
 function setLegMode(a, b, m){ var t = T(); t.legMode = t.legMode || {}; t.legMode[legKey(a, b)] = m; save(); }
 var legOpen = {}, legSel = -1;
+var meA = null;
+function meAnchor(){ if(!me) return null; if(!meA || dist(meA, me) > 40) meA = {la:+me.la.toFixed(5), lo:+me.lo.toFixed(5), id:"me", n:"Mein Standort"}; return meA; }
 function dayLegs(k){
   var D = dayByKey(k); if(!D) return [];
-  var HT = D.hotel, prev = HT, any = false, out = [];
-  ord(k).forEach(function(id){ var p = P(id); if(!hasLoc(p)) return; if(hid(id)){ prev = null; return; } if(prev) out.push([prev, p]); prev = p; any = true; });
+  var HT = D.hotel, prev = HT, any = false, out = [], live = k===todayKey() ? meAnchor() : null, usedMe = false;
+  ord(k).forEach(function(id){
+    var p = P(id); if(!hasLoc(p)) return;
+    // nächstes offenes Ziel heute: Start am aktuellen Standort
+    if(live && !usedMe && !T().done[id]){ usedMe = true; out.push([live, p]); prev = p; any = true; return; }
+    if(hid(id)){ prev = p; return; } // ausgeblendet: Start bleibt das zuletzt erreichte Ziel
+    if(prev) out.push([prev, p]); prev = p; any = true;
+  });
   if(HT && any && prev) out.push([prev, HT]);
   return out;
 }
@@ -1244,6 +1252,7 @@ function startLocate(){
     if(firstFix){ firstFix = false; centerOn(me, 15.5); }
     setLocBtn(); scheduleOverlay();
     if(sel && !$("card").hidden) renderCard();
+    var oldA = meA; meAnchor(); if(meA!==oldA && cur===todayKey()){ if(tab==="day") renderSheetSoon(); scheduleOverlay(); }
     if(goSt && !$("catPop").hidden && $("catPop").querySelector("[data-act=gofrom]")) renderGo();
   }, function(err){
     var m = err && err.code===1 ? "Standortzugriff abgelehnt. Erlaube ihn unter Einstellungen › Datenschutz › Ortungsdienste › Safari-Websites." : "Standort konnte nicht bestimmt werden.";
@@ -1841,28 +1850,29 @@ function renderDay(){
 
   var hn = HT ? esc(HT.n) : "";
   h += "<div class=\"sec\"><div class=\"rhead\"><h4>Route</h4><span class=\"rhint\">Je Etappe wählbar</span><button type=\"button\" class=\"eye\" data-act=\"rtoggle\" aria-pressed=\""+layers.route+"\" title=\""+(layers.route?"Route auf der Karte ausblenden":"Route auf der Karte einblenden")+"\" aria-label=\"Route auf der Karte zeigen\">"+(layers.route?EYE:EYEOFF)+"</button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
-  var legI = 0;
-  var legLi = function(a, b){
-    var i = legI++, m = legMode(a, b);
+  var LG = dayLegs(cur);
+  var legLi = function(a, b, i){
+    var m = legMode(a, b);
+    var pre = a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#1a73e8\">●</span><span><b>Mein Standort</b> <span class=\"sub\">Start zum nächsten Ziel</span></span></li>"
+            : (a.id && hid(a.id)) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (erledigt)</span></li>" : "";
     var sw = "<span class=\"lm\" role=\"group\" aria-label=\"Unterwegs auf dieser Etappe\"><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"walk\" aria-pressed=\""+(m==="walk")+"\" title=\"Zu Fuß\" aria-label=\"Zu Fuß\">"+LMWALK+"</button><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"oepnv\" aria-pressed=\""+(m==="oepnv")+"\" title=\"U-Bahn\" aria-label=\"U-Bahn\">"+LMSUB+"</button></span>";
     if(m==="walk"){ walkPath(a, b); var wd = walkDist(a, b) || dist(a, b)*1.25;
-      return "<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><span class=\"tw\">Zu Fuß</span> "+Math.max(1,Math.round(wd/1.33/60))+" Min. · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button></div></li>"; }
+      return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><span class=\"tw\">Zu Fuß</span> "+Math.max(1,Math.round(wd/1.33/60))+" Min. · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button></div></li>"; }
     var r = transit(a, b, cur), open = !!legOpen[cur+"|"+i];
-    return "<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r)+"</button>"+
+    return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r)+"</button>"+
       (r.walk ? "" : "<button type=\"button\" class=\"tdet\" data-act=\"legopen\" data-leg=\""+i+"\" aria-expanded=\""+open+"\">"+(open?"Weniger":"Details")+"</button>")+"</div>"+
       (open && !r.walk ? transitSteps(r, a, b) : "")+"</li>";
   };
-  if(HT) h += "<li class=\"ht\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">Start</span></span></li>";
+  if(HT && (!LG.length || LG[0][0]===HT)) h += "<li class=\"ht\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">Start</span></span></li>";
   var prev = HT, n = 0;
-  var nHid = 0, shown = 0, brk = false;
+  var nHid = 0, shown = 0;
   ids.forEach(function(id, i){
     var p = P(id); n++;
-    if(hid(id)){ nHid++; if(hasLoc(p)){ prev = null; brk = true; } return; }
+    if(hid(id)){ nHid++; return; }
     shown++;
-    if(prev && hasLoc(p)) h += legLi(prev, p);
-    else if((i>0 || HT) && !brk) h += "<li class=\"leg\">Strecke unbekannt</li>";
-    if(hasLoc(p)) brk = false;
-    if(hasLoc(p)) prev = p;
+    var li0 = -1; LG.forEach(function(pr, j){ if(pr[1]===p) li0 = j; });
+    if(li0 > -1) h += legLi(LG[li0][0], p, li0);
+    else if(!hasLoc(p) && (i>0 || HT)) h += "<li class=\"leg\">Strecke unbekannt</li>";
     var opts = days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===cur?" selected":"")+">"+d.lbl+"</option>"; }).join("");
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\">"+
       "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"done\" style=\"background:"+dayColor(D)+"\" aria-label=\"Erledigt umschalten\">"+(T().done[id]?"✓":n)+"</button>"+
@@ -1872,7 +1882,7 @@ function renderDay(){
       "<input type=\"time\" data-act=\"time\" value=\""+esc(timeOf(id))+"\" aria-label=\"Uhrzeit\">"+
       "<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button></li>";
   });
-  if(shown && HT && prev && dayLegs(cur).length) h += legLi(prev, HT);
+  var lastL = LG[LG.length-1]; if(shown && HT && lastL && lastL[1]===HT) h += legLi(lastL[0], HT, LG.length-1);
   if(nHid) h += "<li class=\"leg\"><button type=\"button\" class=\"tdet\" data-act=\"hidedone\">"+nHid+(nHid===1?" erledigter Stopp":" erledigte Stopps")+" ausgeblendet · Einblenden</button></li>";
   if(!ids.length) h += "<li class=\"leg\">Noch keine Stopps. Übernimm einen Vorschlag oder tippe auf der Karte auf einen Wunsch.</li>";
   if(HT) h += "<li class=\"ht\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">Ziel</span></span></li>";
