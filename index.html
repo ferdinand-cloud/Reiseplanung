@@ -288,6 +288,32 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+/* Konto-Fenster: mittig, Hintergrund unscharf (Glas) */
+.acctpop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:rgba(10,15,20,.18);-webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);animation:agfade .18s ease}
+.acctpop[hidden]{display:none}
+@keyframes agfade{from{opacity:0}to{opacity:1}}
+.ag-card{position:relative;width:min(400px,100%);max-height:min(86vh,720px);overflow-y:auto;border-radius:26px;padding:22px 18px 18px;background:color-mix(in srgb,var(--sheet) 78%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid color-mix(in srgb,#fff 35%,transparent);box-shadow:0 20px 60px rgba(0,0,0,.25),inset 0 1px 0 color-mix(in srgb,#fff 40%,transparent);animation:agpop .22s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes agpop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+.ag-x{position:absolute;top:12px;right:12px;width:30px;height:30px;border:0;border-radius:50%;background:var(--chip);font-size:17px;color:var(--ink)}
+.ag-head{display:flex;gap:12px;align-items:center;margin:2px 36px 14px 2px}
+.ag-av{width:48px;height:48px;flex:0 0 48px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#1a73e8,#7b3fbf);color:#fff;font:700 21px/1 var(--f-display)}
+.ag-head b{display:block;font-size:16px;word-break:break-all}
+.ag-st{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin-top:3px}
+.ag-st i{width:8px;height:8px;border-radius:50%;background:#9aa3ab;flex:0 0 8px}
+.ag-st.ok i{background:#1e8e3e}.ag-st.sync i{background:#f4b400}.ag-st.err i{background:#d93025}
+.ag-acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.ag-acts button{border:0;border-radius:14px;padding:10px;font-weight:600;font-size:14px;background:var(--chip);color:var(--ink)}
+.ag-acts .warn{color:#d93025}
+.ag-lbl{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 4px 6px}
+.ag-grp{border-radius:16px;background:color-mix(in srgb,var(--chip) 70%,transparent);overflow:hidden}
+.ag-row{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;border:0;background:none;text-align:left;padding:11px 14px;color:var(--ink);cursor:pointer}
+.ag-row + .ag-row,.ag-grp .ag-in{border-top:1px solid var(--line)}
+.ag-row span{display:grid;gap:1px;min-width:0}
+.ag-row b{font-size:15px;font-weight:600}
+.ag-row small{font-size:12.5px;color:var(--muted)}
+.ag-row em{font-style:normal;color:#1a73e8;font-weight:700}
+.ag-row em.chev{color:var(--muted);font-weight:400;font-size:18px}
+.ag-in{padding:10px 14px}
 .top{display:flex;gap:8px;align-items:center}
 .menubtn{pointer-events:auto;width:44px;height:44px;flex:0 0 44px;border-radius:50%;border:1px solid var(--line);background:var(--sheet);box-shadow:0 2px 10px var(--scrim);display:grid;place-items:center;color:var(--ink);padding:0}
 .menubtn svg{width:20px;height:20px}
@@ -544,6 +570,8 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 <button type="button" class="edge" id="edgeBtn" aria-label="Planung einklappen"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg></button>
 <div class="pop" id="wishPop" hidden></div>
 <div class="gate" id="gate" hidden></div>
+<div class="acctpop" id="acctPop" hidden></div>
+<input type="file" id="impFileG" accept="application/json,.json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
 <section class="sheet" id="sheet" aria-label="Planung">
   <div class="grab" id="grab">
     <div class="handle"></div>
@@ -818,7 +846,7 @@ function acctMerge(rows, first){
   });
   return {changed:changed, seen:seen};
 }
-function setAcct(st, msg){ acct.state = st; if(msg!=null) acct.msg = msg; var el = $("acctNote"); if(el) el.innerHTML = acctNote(); }
+function setAcct(st, msg){ acct.state = st; if(msg!=null) acct.msg = msg; if(!$("acctPop").hidden){ openSettings(); return; } var el = $("acctNote"); if(el) el.innerHTML = acctNote(); }
 function acctNote(){
   if(!acct.user) return acct.msg ? esc(acct.msg) : "";
   return acct.state==="sync" ? "Gleiche ab …" : acct.state==="error" ? "<b>Abgleich fehlgeschlagen:</b> "+esc(acct.msg||"")+" – wird erneut versucht." :
@@ -863,12 +891,31 @@ function renderAcct(){
   h += "<div class=\"sec\"><h4>Sicherung</h4><div class=\"backup\"><button type=\"button\" class=\"btn g s\" data-act=\"export\">Plan als Datei sichern</button><label class=\"btn g s\" for=\"impFile\">Sicherung laden</label><input type=\"file\" id=\"impFile\" accept=\"application/json,.json\"></div></div>";
   return h;
 }
-function openSettings(){
-  var h = "<div class=\"pop-card acctpop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mein Konto\" data-pop=\"settings\"><div class=\"pop-head\"><h4>Mein Konto</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
-  h += renderAcct().replace(/^<div class=\"dh\">[\s\S]*?<\/div><\/div>/, "");
-  $("catPop").innerHTML = h+"</div>"; $("catPop").hidden = false;
+var gOpen = false;
+function acctHTML(){
+  var u = acct.user, mail = u ? (u.email||"") : "", ini = (mail[0]||"?").toUpperCase();
+  var st = !u ? ["off","Nicht angemeldet"] : acct.state==="sync" ? ["sync","Gleiche ab …"] : acct.state==="error" ? ["err","Abgleich fehlgeschlagen – wird erneut versucht"] : !navigator.onLine ? ["off","Offline – Änderungen folgen später"] : ["ok","Synchronisiert"+(acct.at ? " um "+new Date(acct.at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "")];
+  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mein Konto\">";
+  h += "<button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
+  h += "<div class=\"ag-head\"><span class=\"ag-av\">"+esc(ini)+"</span><div><b>"+esc(mail || "Mein Konto")+"</b><span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+"</span></div></div>";
+  if(u) h += "<div class=\"ag-acts\"><button type=\"button\" data-act=\"acsync\">Jetzt abgleichen</button><button type=\"button\" class=\"warn\" data-act=\"acout\">Abmelden</button></div>";
+  // Reisen
+  h += "<div class=\"ag-lbl\">Meine Reisen</div><div class=\"ag-grp\">";
+  Object.keys(S.trips).map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).forEach(function(x){
+    h += "<button type=\"button\" class=\"ag-row\" data-act=\"trip\" data-trip=\""+x.id+"\"><span><b>"+esc(x.name)+"</b><small>"+esc(rangeLabel(x.start,x.end))+"</small></span>"+(x.id===S.cur ? "<em>✓</em>" : "<em class=\"chev\">›</em>")+"</button>";
+  });
+  h += "<button type=\"button\" class=\"ag-row\" data-act=\"tripnew\"><span><b>+ Neue Reise</b></span></button></div>";
+  // Google
+  h += "<div class=\"ag-lbl\">Bewertungen &amp; Fotos</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"gtoggle\" aria-expanded=\""+gOpen+"\"><span><b>Google-Schlüssel</b><small>"+(gKey ? "Aktiv – nur auf diesem Gerät" : "Nicht eingerichtet")+"</small></span><em class=\"chev\">"+(gOpen?"⌄":"›")+"</em></button>";
+  if(gOpen) h += "<div class=\"ag-in\"><div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\">"+esc(gMsg)+"</p>":"")+"</div>";
+  h += "</div>";
+  // Sicherung
+  h += "<div class=\"ag-lbl\">Sicherung</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"export\"><span><b>Plan als Datei sichern</b></span><em class=\"chev\">›</em></button><label class=\"ag-row\" for=\"impFileG\"><span><b>Sicherung laden</b></span><em class=\"chev\">›</em></label></div>";
+  return h+"</div>";
 }
-function refreshSettings(){ if(!$("catPop").hidden && $("catPop").querySelector("[data-pop=settings]")) openSettings(); }
+function openSettings(){ var el = $("acctPop"); el.innerHTML = acctHTML(); el.hidden = false; document.body.classList.add("glass"); }
+function closeSettings(){ $("acctPop").hidden = true; document.body.classList.remove("glass"); }
+function refreshSettings(){ if(!$("acctPop").hidden) openSettings(); }
 /* Anmeldefenster vor der App */
 function renderGate(){
   var g = $("gate"); if(!g) return;
@@ -1758,7 +1805,7 @@ function importPlan(file){
   };
   fr.readAsText(file);
 }
-document.addEventListener("change", function(e){ if(e.target.id==="impFile" && e.target.files[0]) importPlan(e.target.files[0]); });
+document.addEventListener("change", function(e){ if((e.target.id==="impFile" || e.target.id==="impFileG") && e.target.files[0]) importPlan(e.target.files[0]); });
 
 function closeMenus(){ $("mainMenu").hidden = true; $("menuBtn").setAttribute("aria-expanded","false"); $("layers").hidden = true; $("layersBtn").setAttribute("aria-expanded","false"); $("tripMenu").hidden = true; $("tripBtn").setAttribute("aria-expanded","false"); }
 
@@ -2898,6 +2945,7 @@ function endPick(){ pick = null; $("pick").hidden = true; }
 
 document.addEventListener("click", function(e){
   if(e.target.id==="catPop"){ closeCatPop(); return; }
+  if(e.target.id==="acctPop"){ closeSettings(); return; }
   var t = e.target.closest("[data-act],[data-tab]");
   if(!t) return;
   if(t.hasAttribute("data-tab") && !t.hasAttribute("data-act")){ tab = t.getAttribute("data-tab"); renderSheet(); scheduleOverlay(); if(sheetState==="peek") setSheet("mid"); return; }
@@ -2908,9 +2956,9 @@ document.addEventListener("click", function(e){
     case "daypick": closeCatPop(); cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "day": cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "gotoday": cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
-    case "trip": S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
+    case "trip": closeSettings(); S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); break;
-    case "tripnew": closeMenus(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
+    case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
     case "tcancel": tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
     case "tadd": var arr = tdraft[t.getAttribute("data-path")]; arr.push({n:"", loc:"", from:tdraft.start||"", to:tdraft.end||""}); renderSheet(); break;
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); renderSheet(); break;
@@ -2921,6 +2969,8 @@ document.addEventListener("click", function(e){
     case "go": openGo(id || sel); break;
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
+    case "acctclose": closeSettings(); break;
+    case "gtoggle": gOpen = !gOpen; openSettings(); break;
     case "rate": var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); renderSheet(); if(sel===id) renderCard(); break;
     case "acsignup": var cs = acctCreds(); if(!cs.email || cs.password.length < 8){ setAcct("off", "Bitte E-Mail und ein Passwort mit mindestens 8 Zeichen eingeben."); break; }
       setAcct("off", "Konto wird erstellt …");
@@ -2929,7 +2979,7 @@ document.addEventListener("click", function(e){
     case "acforgot": var cf = acctCreds(); if(!cf.email){ setAcct("off", "Bitte zuerst die E-Mail eingeben."); break; }
       window.firebase.auth().sendPasswordResetEmail(cf.email).then(function(){ setAcct("off", "Wir haben dir einen Link zum Zurücksetzen geschickt. Danach hier mit dem neuen Passwort anmelden."); }, function(e){ setAcct("off", acctErr(e)); });
       break;
-    case "acout": closeCatPop(); window.firebase.auth().signOut().then(function(){
+    case "acout": closeSettings(); window.firebase.auth().signOut().then(function(){
         // Gerät freigeben: lokale Kopie entfernen, sie liegt im Konto
         try { Object.keys(localStorage).forEach(function(k){ if(k===KEY || /^rp-(linked|pend)/.test(k)) localStorage.removeItem(k); }); } catch(e){}
         pend = {}; delPend = {}; S = fresh(); acctInitSigs(); pickDefaultDay(); renderAll(); acct.user = null; acct.msg = "Abgemeldet."; renderGate();
@@ -3106,7 +3156,7 @@ document.addEventListener("submit", function(e){
 document.addEventListener("keydown", function(e){
   if(e.key==="Enter" && e.target && e.target.hasAttribute && e.target.hasAttribute("data-geo")){ e.preventDefault(); var gp = e.target.getAttribute("data-geo"); if((geoRes[gp]||[]).length) geoPick(gp, 0); else geoSearch(gp, e.target.value); }
 });
-document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
+document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if(!$("acctPop").hidden) closeSettings(); else if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
 desktop.addEventListener("change", function(){ syncSide(); resize(); });
 window.addEventListener("resize", resize);
 
