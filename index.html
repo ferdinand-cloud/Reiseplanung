@@ -266,6 +266,8 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+.hdrow{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:var(--muted);margin:2px 0 6px;cursor:pointer}
+.hdrow input{width:17px;height:17px;margin:0;accent-color:var(--ink)}
 .gr{display:grid;gap:6px}
 .gr .gst{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:14px;color:var(--ink)}
 .gr .stars{color:#f4b400;letter-spacing:1px;font-size:15px}
@@ -925,8 +927,9 @@ var routeMode = lsGet("nyc-route-mode")==="oepnv" ? "oepnv" : "walk";
 var legOpen = {}, legSel = -1;
 function dayLegs(k){
   var D = dayByKey(k); if(!D) return [];
-  var pts = routePts(k), HT = D.hotel, seq = (HT?[HT]:[]).concat(pts, HT&&pts.length?[HT]:[]), out = [];
-  for(var i=0;i<seq.length-1;i++) out.push([seq[i], seq[i+1]]);
+  var HT = D.hotel, prev = HT, any = false, out = [];
+  ord(k).forEach(function(id){ var p = P(id); if(!hasLoc(p)) return; if(hid(id)){ prev = p; return; } if(prev) out.push([prev, p]); prev = p; any = true; });
+  if(HT && any && prev) out.push([prev, HT]);
   return out;
 }
 
@@ -1003,6 +1006,8 @@ function applyLayers(){
 var ovPending = false;
 function scheduleOverlay(){ if(ovPending) return; ovPending = true; requestAnimationFrame(function(){ ovPending = false; drawOverlay(); }); }
 function routePts(k){ return ord(k).map(P).filter(hasLoc); }
+var hideDone = lsGet("nyc-hide-done")==="1";
+function hid(id){ return hideDone && !!T().done[id]; }
 function onScreen(q, pad){ return q[0]>-pad && q[0]<W+pad && q[1]>-pad && q[1]<H+pad; }
 function upright(deg){ deg = ((deg%360)+540)%360-180; if(deg>90) deg-=180; if(deg<-90) deg+=180; return deg; }
 function f1(n){ return n.toFixed(1); }
@@ -1055,10 +1060,10 @@ function drawOverlay(){
   var HT = D && D.hotel, pts = D ? routePts(cur) : [], col = dayColor(cur);
   if(!layers.route){ /* Route ausgeblendet */ }
   else if(pts.length && routeMode==="walk"){
-    var all = (HT ? [HT] : []).concat(pts, HT ? [HT] : []);
-    for(var i=0;i<all.length-1;i++){
-      var hotelLeg = HT && (i===0 || i===all.length-2);
-      var d = walkPath(all[i], all[i+1]).map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
+    var wl = dayLegs(cur);
+    for(var i=0;i<wl.length;i++){
+      var hotelLeg = HT && (wl[i][0]===HT || wl[i][1]===HT);
+      var d = walkPath(wl[i][0], wl[i][1]).map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
       s += "<path d=\""+d+"\" stroke=\"var(--land)\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".9\"/>";
       s += "<path d=\""+d+"\" stroke=\""+col+"\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(hotelLeg?" stroke-dasharray=\"2 7\"":"")+"/>";
     }
@@ -1096,10 +1101,11 @@ function drawOverlay(){
     if(zoomed || sel===h.id) s += "<text class=\"sl\" x=\""+f1(q[0]+15)+"\" y=\""+f1(q[1]+4)+"\">"+esc(h.n)+"</text>";
   });
   // Stopps
-  var n = 0;
+  var n = 0, ancIds = {};
+  if(D && hideDone) dayLegs(cur).forEach(function(pr){ if(pr[0].id && T().done[pr[0].id]) ancIds[pr[0].id] = 1; });
   if(D) ord(cur).forEach(function(id){
     var p = P(id); n++;
-    if(!hasLoc(p)) return;
+    if(!hasLoc(p) || (hid(id) && !ancIds[id])) return;
     var q = pt(p), done = !!T().done[id];
     if(sel===id) s += "<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"18\" fill=\"none\" stroke=\""+col+"\" stroke-width=\"2.5\" opacity=\".5\"/>";
     s += "<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"12\" fill=\""+(done?"var(--muted)":col)+"\" stroke=\"var(--land)\" stroke-width=\"2.5\"/>";
@@ -1702,7 +1708,7 @@ function renderDay(){
   h += "</div>";
 
   var hn = HT ? esc(HT.n) : "";
-  h += "<div class=\"sec\"><div class=\"rhead\"><h4>Route</h4><div class=\"seg\" role=\"group\" aria-label=\"Unterwegs\"><button type=\"button\" data-act=\"rmode\" data-mode=\"walk\" aria-pressed=\""+(routeMode==="walk")+"\">Zu Fuß</button><button type=\"button\" data-act=\"rmode\" data-mode=\"oepnv\" aria-pressed=\""+(routeMode==="oepnv")+"\">U-Bahn &amp; zu Fuß</button></div><button type=\"button\" class=\"eye\" data-act=\"rtoggle\" aria-pressed=\""+layers.route+"\" title=\""+(layers.route?"Route auf der Karte ausblenden":"Route auf der Karte einblenden")+"\" aria-label=\"Route auf der Karte zeigen\">"+(layers.route?EYE:EYEOFF)+"</button></div><ol class=\"plan\">";
+  h += "<div class=\"sec\"><div class=\"rhead\"><h4>Route</h4><div class=\"seg\" role=\"group\" aria-label=\"Unterwegs\"><button type=\"button\" data-act=\"rmode\" data-mode=\"walk\" aria-pressed=\""+(routeMode==="walk")+"\">Zu Fuß</button><button type=\"button\" data-act=\"rmode\" data-mode=\"oepnv\" aria-pressed=\""+(routeMode==="oepnv")+"\">U-Bahn &amp; zu Fuß</button></div><button type=\"button\" class=\"eye\" data-act=\"rtoggle\" aria-pressed=\""+layers.route+"\" title=\""+(layers.route?"Route auf der Karte ausblenden":"Route auf der Karte einblenden")+"\" aria-label=\"Route auf der Karte zeigen\">"+(layers.route?EYE:EYEOFF)+"</button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
   var legI = 0;
   var legLi = function(a, b){
     var i = legI++;
@@ -1714,8 +1720,13 @@ function renderDay(){
   };
   if(HT) h += "<li class=\"ht\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">Start</span></span></li>";
   var prev = HT, n = 0;
+  var nHid = 0, shown = 0, anc = null;
   ids.forEach(function(id, i){
     var p = P(id); n++;
+    if(hid(id)){ nHid++; if(hasLoc(p)){ prev = p; anc = p; } return; }
+    shown++;
+    if(anc && hasLoc(p)){ h += "<li class=\"ht\"><span class=\"h\" style=\"background:var(--muted)\">✓</span><span><b>"+esc(anc.n)+"</b> <span class=\"sub\">zuletzt erledigt</span></span></li>"; }
+    if(hasLoc(p)) anc = null;
     if(prev && hasLoc(p)) h += legLi(prev, p);
     else if(i>0 || HT) h += "<li class=\"leg\">Strecke unbekannt</li>";
     if(hasLoc(p)) prev = p;
@@ -1728,7 +1739,8 @@ function renderDay(){
       "<input type=\"time\" data-act=\"time\" value=\""+esc(timeOf(id))+"\" aria-label=\"Uhrzeit\">"+
       "<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button></li>";
   });
-  if(ids.length && HT && prev) h += legLi(prev, HT);
+  if(shown && HT && prev && dayLegs(cur).length) h += legLi(prev, HT);
+  if(nHid) h += "<li class=\"leg\"><button type=\"button\" class=\"tdet\" data-act=\"hidedone\">"+nHid+(nHid===1?" erledigter Stopp":" erledigte Stopps")+" ausgeblendet · Einblenden</button></li>";
   if(!ids.length) h += "<li class=\"leg\">Noch keine Stopps. Übernimm einen Vorschlag oder tippe auf der Karte auf einen Wunsch.</li>";
   if(HT) h += "<li class=\"ht\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">Ziel</span></span></li>";
   h += "</ol></div>";
@@ -2108,6 +2120,7 @@ document.addEventListener("click", function(e){
     case "go": openGo(id || sel); break;
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
+    case "hidedone": hideDone = !hideDone; lsSet("nyc-hide-done", hideDone?"1":"0"); legSel = -1; renderSheet(); scheduleOverlay(); toast(hideDone ? "Erledigte Stopps ausgeblendet" : "Erledigte Stopps eingeblendet", false); break;
     case "poiall": poiOff = {}; lsSet("nyc-poi-off", "{}"); applyPoi(); break;
     case "poinone": poiOff = {}; POIGROUPS.forEach(function(g){ poiOff[g[0]] = 1; }); lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "gkeysave":
