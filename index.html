@@ -564,7 +564,7 @@ function legText(d){ return d<1800 ? Math.max(1,Math.round(tmin(d)))+" Min. zu F
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
 function $(id){ return document.getElementById(id); }
 function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
-function lsSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+function lsSet(k,v){ try { localStorage.setItem(k,v); return true; } catch(e){ return false; } }
 function uid(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 /* ---------- Datum ---------- */
@@ -636,7 +636,16 @@ function load(){
   if(!s.trips[s.cur]) s.cur = Object.keys(s.trips)[0];
   return s;
 }
-function save(){ lsSet(KEY, JSON.stringify(S)); pushSoon(); }
+var saveWarned = false;
+function save(){
+  var js = JSON.stringify(S);
+  if(!lsSet(KEY, js)){
+    // Speicher voll: zwischengespeicherte Fußwege opfern, der Plan hat Vorrang
+    try { localStorage.removeItem("nyc-walk-cache"); } catch(e){}
+    if(!lsSet(KEY, js) && !saveWarned){ saveWarned = true; toast("Speichern fehlgeschlagen: Gerätespeicher voll. Sichere den Plan unter „Reise“ als Datei.", false); }
+  }
+  pushSoon();
+}
 /* Geprüfte Adressen: korrigiert gespeicherte Einträge, solange die alte Adresse noch unverändert drin steht */
 var ADDR_FIX = {"a29": {"n": "Domino Park", "from": "River St, Williamsburg", "addr": "15 River St, Brooklyn", "la": 40.716628, "lo": -73.966468}, "e02": {"n": "Old Friend Photobooth", "from": "Allen St (145 laut deiner Liste, eine Quelle nennt 45)", "addr": "145 Allen St", "la": 40.720501, "lo": -73.9901}, "m02": {"n": "Fellini Cafe", "from": "7th Ave S, neben Fellini Cucina (176 7th Ave S)", "addr": "176 7th Ave S", "la": 40.735975, "lo": -74.001676, "note": "Coffee. Direkt neben Fellini Cucina. Weitere Filiale SoHo, 120 Thompson St."}, "m08": {"n": "Pantry (Madhappy)", "from": "Im Madhappy-Store, Nolita", "addr": "207 Mulberry St (im Madhappy-Store)", "la": 40.721769, "lo": -73.996407}, "m11": {"n": "Rok", "from": "unklar", "addr": "156 7th Ave S", "la": 40.735301, "lo": -74.002071}, "m12": {"n": "Cia Vagante", "from": "unklar", "addr": "Fort Greene Park, Washington Park & DeKalb Ave, Brooklyn", "la": 40.689631, "lo": -73.97313, "note": "Wohl „Ciao Vagante“: mobiler Kaffee aus einem Vintage-Fiat-Panda, kein fester Laden. Meist Sa 10–16 Uhr am Fort Greene Park (Brooklyn)."}, "r04": {"n": "Jupiter", "from": "1 Rockefeller Plaza", "addr": "20 W 50th St (Rink Level, Rockefeller Center)", "la": 40.758833, "lo": -73.97833}, "r33": {"n": "Jack's Wife Freda (Original)", "from": "224 Mulberry St", "addr": "226 Lafayette St", "la": 40.722256, "lo": -73.997464}, "r38": {"n": "From Lucie", "from": "64 Avenue B", "addr": "263 E 10th St", "la": 40.728508, "lo": -73.983279}, "s01": {"n": "Sephora Times Square", "from": "1500 Broadway", "addr": "1535 Broadway", "la": 40.758423, "lo": -73.985599}, "s02": {"n": "Sephora SoHo", "from": "555 Broadway", "addr": "557 Broadway", "la": 40.72396, "lo": -73.998229}, "s07": {"n": "Kujten Flagship", "from": "Madison Avenue", "addr": "831 Madison Ave", "la": 40.769949, "lo": -73.966512}, "m10": {"n": "Cafe Habit", "from": "unklar", "addr": "unklar", "note": "Coffee. Online kein New Yorker Café dieses Namens gefunden – bitte Ort bestätigen."}, "s04": {"n": "Kujten (SoHo)", "from": "92 Greene St", "addr": "92 Greene St", "note": "Cashmere (Paris). Stand Mitte Oktober 2026 noch nicht eröffnet (geplant Q4 2026) – vorher prüfen. Flagship: 831 Madison Ave."}}; // geprüft am 22.10.2026
 function applyAddrFix(st){
@@ -1533,7 +1542,12 @@ function select(id){ if(id!==sel) meRoute = false; if(id!=="poi") poiSel = null;
 var WALKC = {}, walkQ = [], walkBusy = 0;
 try { WALKC = JSON.parse(lsGet("nyc-walk-cache")||"{}") || {}; } catch(e){ WALKC = {}; }
 function wKey(a, b){ return (+a.la).toFixed(5)+","+(+a.lo).toFixed(5)+">"+(+b.la).toFixed(5)+","+(+b.lo).toFixed(5); }
-function walkSave(){ var ks = Object.keys(WALKC); if(ks.length > 400) ks.slice(0, ks.length-400).forEach(function(k){ delete WALKC[k]; }); lsSet("nyc-walk-cache", JSON.stringify(WALKC)); }
+function walkSave(){
+  // nur feste Etappen dauerhaft merken (nicht die vom eigenen Standort), höchstens ca. 300 KB
+  var keep = {}, size = 0, ks = Object.keys(WALKC).filter(function(k){ return WALKC[k] && WALKC[k].p && !WALKC[k].live; }).reverse();
+  for(var i=0;i<ks.length;i++){ var v = JSON.stringify(WALKC[ks[i]]); if(size + v.length > 300000) break; size += v.length; keep[ks[i]] = WALKC[ks[i]]; }
+  lsSet("nyc-walk-cache", JSON.stringify(keep));
+}
 function walkPump(){
   while(walkBusy < 2 && walkQ.length){
     var job = walkQ.shift(); walkBusy++;
@@ -1543,7 +1557,7 @@ function walkPump(){
         var rt = j.routes && j.routes[0];
         if(rt && rt.geometry){ var c = rt.geometry.coordinates, out = [];
           for(var i=0;i<c.length;i++) out.push([+c[i][1].toFixed(5), +c[i][0].toFixed(5)]);
-          WALKC[job.k] = {p:out, d:Math.round(rt.distance)}; walkSave(); }
+          WALKC[job.k] = {p:out, d:Math.round(rt.distance), live:!!job.live}; if(!job.live) walkSave(); }
         else WALKC[job.k] = {p:null};
       }).catch(function(){ WALKC[job.k] = {fail:Date.now()}; })
         .then(function(){ walkBusy--; scheduleOverlay(); if(tab==="day") renderSheetSoon(); walkPump(); });
@@ -1557,7 +1571,7 @@ function walkPath(a, b){
   var k = wKey(a, b), c = WALKC[k];
   if(c && c.p){ var pts = c.p.map(function(q){ return {la:q[0], lo:q[1]}; }); pts.unshift(a); pts.push(b); return pts; }
   if(c && (c.p===null || (c.fail && Date.now()-c.fail < 60000))) return [a, b];
-  if(!c || c.fail){ WALKC[k] = {pend:1}; walkQ.push({k:k, a:a, b:b}); setTimeout(walkPump, 0); }
+  if(!c || c.fail){ WALKC[k] = {pend:1}; walkQ.push({k:k, a:a, b:b, live:a.id==="me" || b.id==="me" || a===me}); setTimeout(walkPump, 0); }
   return [a, b];
 }
 function walkDist(a, b){ var c = WALKC[wKey(a, b)]; return c && c.d ? c.d : null; }
@@ -2722,6 +2736,7 @@ window.addEventListener("resize", resize);
 
 /* ---------- Start ---------- */
 var hadData = !!lsGet(KEY);
+try { var wc0 = localStorage.getItem("nyc-walk-cache"); if(wc0 && wc0.length > 300000) walkSave(); } catch(e){}
 loadBus();
 S = load();
 var addrFixed = applyAddrFix(S); if(addrFixed && !hadData) save(); else if(addrFixed){ save(); setTimeout(function(){ toast(addrFixed+(addrFixed===1?" Adresse":" Adressen")+" aktualisiert", false); }, 1200); }
