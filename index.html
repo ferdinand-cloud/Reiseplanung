@@ -944,7 +944,7 @@ function nbActive(){ var a = Object.keys(nbHi); Object.keys(nbSel).forEach(funct
 function saveNb(){ lsSet("nyc-nb-hi", JSON.stringify(Object.keys(nbHi))); }
 function applyNb(){
   var on = {}; nbActive().forEach(function(n){ on[n] = 1; });
-  if(mapReady){ var f = ["in", ["get","n"], ["literal", Object.keys(on)]]; map.setFilter("nb-fill", f); map.setFilter("nb-hi", f); }
+  if(mapReady){ var f = ["in", ["get","n"], ["literal", Object.keys(on)]]; map.setFilter("nb-fill", f); map.setFilter("nb-hi", f); if(typeof applyPoi==="function") applyPoi(); }
   var opts = "<option value=\"\">Viertel wählen …</option>";
   ["Manhattan","Brooklyn","Queens"].forEach(function(b){
     opts += "<optgroup label=\""+b+"\">"+NB.filter(function(x){ return x.b===b; }).map(function(x){ return x.n; }).sort().map(function(n){ return "<option value=\""+esc(n)+"\""+(nbHi[n]?" disabled":"")+">"+esc(n)+"</option>"; }).join("")+"</optgroup>";
@@ -1364,13 +1364,30 @@ var POISUB = {restaurant:"Restaurant",fast_food:"Imbiss",food_court:"Food Court"
 var poiOn = lsGet("nyc-l-poi")==="1", poiOff = {}, poiSel = null;
 try { poiOff = JSON.parse(lsGet("nyc-poi-off")||'{"shop":1}') || {}; } catch(e){ poiOff = {shop:1}; }
 function poiClasses(){ var a = []; POIGROUPS.forEach(function(g){ if(!poiOff[g[0]]) a = a.concat(g[3]); }); return a; }
-function poiFilter(){ var c = poiClasses(); return ["all", ["has","name"], ["in", ["get","class"], ["literal", c.length ? c : ["-"]]]]; }
+function nbGeom(){
+  var on = {}; nbActive().forEach(function(n){ on[n] = 1; });
+  var polys = [];
+  GEO.nb.features.forEach(function(f){ if(on[f.properties.n]) polys = polys.concat(f.geometry.coordinates); });
+  return polys.length ? {type:"Feature", properties:{}, geometry:{type:"MultiPolygon", coordinates:polys}} : null;
+}
+function poiFilter(grey){
+  var c = poiClasses(), f = ["all", ["has","name"], ["in", ["get","class"], ["literal", c.length ? c : ["-"]]]], g = nbGeom();
+  if(g) f.push(grey ? ["!", ["within", g]] : ["within", g]);
+  else if(grey) f.push(false);
+  return f;
+}
 function addPoiLayers(){
   var srcs = map.getStyle().sources, src = null;
   Object.keys(srcs).forEach(function(k){ if(!src && srcs[k].type==="vector") src = k; });
   if(!src) return;
   var col = ["match", ["get","class"]];
   POIGROUPS.forEach(function(g){ col.push(g[3], g[2]); }); col.push("#808080");
+  map.addLayer({id:"poi-dot-g", type:"circle", source:src, "source-layer":"poi", minzoom:14, filter:poiFilter(true),
+    paint:{"circle-color":isDark()?"#4a5866":"#b4bcc4", "circle-radius":["interpolate",["linear"],["zoom"],14,3,17,5.5], "circle-stroke-color":isDark()?"#111a22":"#ffffff", "circle-stroke-width":1.2},
+    layout:{visibility: poiOn ? "visible" : "none"}});
+  if(map.getStyle().glyphs) try { map.addLayer({id:"poi-lbl-g", type:"symbol", source:src, "source-layer":"poi", minzoom:15.8, filter:poiFilter(true),
+    layout:{visibility: poiOn ? "visible" : "none", "text-field":["coalesce",["get","name:latin"],["get","name"]], "text-font":["Noto Sans Regular"], "text-size":10.5, "text-anchor":"top", "text-offset":[0,.7], "text-max-width":8, "text-optional":true},
+    paint:{"text-color":isDark()?"#5d6b78":"#9aa3ab", "text-halo-color":isDark()?"#111a22":"#ffffff", "text-halo-width":1.2}}); } catch(e){}
   map.addLayer({id:"poi-dot", type:"circle", source:src, "source-layer":"poi", minzoom:14, filter:poiFilter(),
     paint:{"circle-color":col, "circle-radius":["interpolate",["linear"],["zoom"],14,3.5,17,6.5], "circle-stroke-color":isDark()?"#111a22":"#ffffff", "circle-stroke-width":1.5},
     layout:{visibility: poiOn ? "visible" : "none"}});
@@ -1381,7 +1398,7 @@ function addPoiLayers(){
 function applyPoi(){
   $("lPoi").checked = poiOn; renderPoiCats();
   if(!mapReady || !map.getLayer("poi-dot")) return;
-  ["poi-dot","poi-lbl"].forEach(function(l){ if(!map.getLayer(l)) return; map.setLayoutProperty(l, "visibility", poiOn ? "visible" : "none"); map.setFilter(l, poiFilter()); });
+  ["poi-dot","poi-lbl","poi-dot-g","poi-lbl-g"].forEach(function(l){ if(!map.getLayer(l)) return; map.setLayoutProperty(l, "visibility", poiOn ? "visible" : "none"); map.setFilter(l, poiFilter(/-g$/.test(l))); });
 }
 function renderPoiCats(){
   var el = $("poiCats"); el.hidden = !poiOn; if(!poiOn) return;
@@ -1391,7 +1408,7 @@ function renderPoiCats(){
 }
 function poiAt(x, y){
   if(!poiOn || !mapReady || !map.getLayer("poi-dot")) return null;
-  var fs = map.queryRenderedFeatures([[x-14,y-14],[x+14,y+14]], {layers:["poi-dot","poi-lbl"].filter(function(l){ return map.getLayer(l); })}), best = null, bd = 1e9;
+  var fs = map.queryRenderedFeatures([[x-14,y-14],[x+14,y+14]], {layers:["poi-dot","poi-lbl","poi-dot-g","poi-lbl-g"].filter(function(l){ return map.getLayer(l); })}), best = null, bd = 1e9;
   fs.forEach(function(f){
     if(!f.geometry || f.geometry.type!=="Point") return;
     var c = f.geometry.coordinates, q = map.project(c), d = Math.hypot(q.x-x, q.y-y);
