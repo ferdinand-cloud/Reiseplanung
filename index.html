@@ -1169,15 +1169,16 @@ var meA = null;
 function meAnchor(){ if(!me) return null; if(!meA || dist(meA, me) > 40) meA = {la:+me.la.toFixed(5), lo:+me.lo.toFixed(5), id:"me", n:"Mein Standort"}; return meA; }
 function dayLegs(k){
   var D = dayByKey(k); if(!D) return [];
-  var HT = D.hotel, prev = HT, any = false, out = [], live = k===todayKey() ? meAnchor() : null, usedMe = false;
+  // Route nur über offene Ziele: Start am Standort (heute) bzw. am vorherigen Ziel im Plan, zuletzt zurück zum Hotel
+  var HT = D.hotel, out = [], live = k===todayKey() ? meAnchor() : null, prevOpen = null, lastAny = HT;
   ord(k).forEach(function(id){
     var p = P(id); if(!hasLoc(p)) return;
-    // nächstes offenes Ziel heute: Start am aktuellen Standort
-    if(live && !usedMe && !T().done[id]){ usedMe = true; out.push([live, p]); prev = p; any = true; return; }
-    if(hid(id)){ prev = p; return; } // ausgeblendet: Start bleibt das zuletzt erreichte Ziel
-    if(prev) out.push([prev, p]); prev = p; any = true;
+    if(T().done[id]){ lastAny = p; return; }
+    var from = prevOpen || live || lastAny;
+    if(from) out.push([from, p]);
+    prevOpen = p; lastAny = p;
   });
-  if(HT && any && prev) out.push([prev, HT]);
+  if(HT && prevOpen) out.push([prevOpen, HT]);
   return out;
 }
 
@@ -2076,7 +2077,7 @@ function renderDay(){
   var legLi = function(a, b, i){
     var m = legMode(a, b);
     var pre = a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#1a73e8\">●</span><span><b>Mein Standort</b> <span class=\"sub\">Start zum nächsten Ziel</span></span></li>"
-            : (a.id && hid(a.id)) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (erledigt)</span></li>" : "";
+            : (a.id && T().done[a.id]) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (zuletzt erledigt)</span></li>" : "";
     var sw = "<span class=\"lm\" role=\"group\" aria-label=\"Unterwegs auf dieser Etappe\"><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"walk\" aria-pressed=\""+(m==="walk")+"\" title=\"Zu Fuß\" aria-label=\"Zu Fuß\">"+LMWALK+"</button><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"oepnv\" aria-pressed=\""+(m==="oepnv")+"\" title=\"U-Bahn\" aria-label=\"U-Bahn\">"+LMSUB+"</button></span>";
     if(m==="walk"){ walkPath(a, b); var wd = walkDist(a, b) || dist(a, b)*1.25;
       return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><span class=\"tw\">Zu Fuß</span> "+Math.max(1,Math.round(wd/1.33/60))+" Min. · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button></div></li>"; }
