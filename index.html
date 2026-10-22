@@ -2342,13 +2342,20 @@ function renderTop(){
   Object.keys(S.trips).map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).forEach(function(x){
     h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur)+"\"><span>"+esc(x.name)+"</span><small>"+esc(rangeLabel(x.start,x.end))+"</small></button>";
   });
-  h += "<hr><button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button><button type=\"button\" data-act=\"settings\">Mein Konto</button><button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
+  h += "<hr><button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button><button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
   $("tripMenu").innerHTML = h;
   var d = dayByKey(cur), r = "";
   if(d) r = "<button type=\"button\" class=\"rd-day\" data-act=\"daypop\" aria-haspopup=\"dialog\" aria-label=\""+esc(d.title)+" – Tag wechseln\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span>"+d.wd+"<span class=\"cnt\">"+shortD(d.key)+"</span><span class=\"chev\">"+CHEV+"</span></button>";
   $("rail").innerHTML = r;
   $("rail").hidden = !d;
 }
+// Menüs schließen, sobald man außerhalb tippt (auch auf Reiter oder Liste)
+document.addEventListener("pointerdown", function(e){
+  var t = e.target;
+  if(!t.closest) return;
+  if(t.closest("#mainMenu,#menuBtn,#tripMenu,#tripBtn,#layers,#layersBtn")) return;
+  if(!$("mainMenu").hidden || !$("tripMenu").hidden || !$("layers").hidden) closeMenus();
+}, true);
 $("menuBtn").addEventListener("click", function(){ var open = $("mainMenu").hidden; closeMenus(); $("mainMenu").hidden = !open; this.setAttribute("aria-expanded", open); placeFloating(); });
 $("tripBtn").addEventListener("click", function(){ var open = $("tripMenu").hidden; closeMenus(); $("tripMenu").hidden = !open; this.setAttribute("aria-expanded", open); placeFloating(); });
 
