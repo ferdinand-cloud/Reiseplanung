@@ -283,11 +283,16 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+.top{display:flex;gap:8px;align-items:center}
+.menubtn{pointer-events:auto;width:44px;height:44px;flex:0 0 44px;border-radius:50%;border:1px solid var(--line);background:var(--sheet);box-shadow:0 2px 10px var(--scrim);display:grid;place-items:center;color:var(--ink);padding:0}
+.menubtn svg{width:20px;height:20px}
+#mainMenu button{flex-direction:column;align-items:flex-start;gap:2px}
+.back{border:0;background:none;color:var(--muted);font-weight:600;font-size:14px;padding:0;justify-self:start}
+.acctpop .sec{margin-top:6px}
 .wi.sw{display:block;padding:0;position:relative;overflow:hidden}
 .wi.sw .swc{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center;padding:8px 0;background:var(--sheet);position:relative;z-index:1;transition:transform .2s ease;touch-action:pan-y}
 .wi.sw .swdel{position:absolute;top:0;right:0;bottom:0;width:100%;border:0;background:#d93025;color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:flex-end;padding-right:18px}
 .wi.sw.far .swdel{background:#b3261e}
-@media (max-width:440px){.tabs button small{display:none}.tabs button{font-size:13px}}
 .gate{position:fixed;inset:0;z-index:100;background:var(--sheet);display:grid;place-items:center;padding:24px max(20px,env(safe-area-inset-left,0px)) calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto}
 .gate[hidden]{display:none}
 .gate-card{width:min(380px,100%);display:grid;gap:12px}
@@ -495,8 +500,9 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
   <svg id="ov" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
 </div>
 
-<div class="top"><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button></div>
+<div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button></div>
 <div class="tripmenu" id="tripMenu" hidden></div>
+<div class="tripmenu" id="mainMenu" hidden><button type="button" data-act="opentrip"><span>Reise</span><small>Übersicht, bearbeiten, Tagebuch</small></button><button type="button" data-act="openacct"><span>Mein Konto</span><small>Anmeldung, Abgleich, Einstellungen</small></button></div>
 <nav class="rail" id="rail" aria-label="Reisetage"></nav>
 <div class="ctrl" id="ctrl">
   <button type="button" id="zin" aria-label="Hineinzoomen">+</button>
@@ -539,8 +545,6 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
     <div class="tabs" role="tablist">
       <button type="button" role="tab" id="tabDay" data-tab="day">Tagesplan</button>
       <button type="button" role="tab" id="tabWish" data-tab="wish">Wunschliste</button>
-      <button type="button" role="tab" id="tabTrip" data-tab="trip">Reise</button>
-      <button type="button" role="tab" id="tabAcct" data-tab="acct">Konto</button>
     </div>
   </div>
   <div class="body" id="body"></div>
@@ -855,11 +859,11 @@ function renderAcct(){
   return h;
 }
 function openSettings(){
-  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Einstellungen\" data-pop=\"settings\"><div class=\"pop-head\"><h4>Einstellungen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
-  h += acctBlock()+googleBlock();
+  var h = "<div class=\"pop-card acctpop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mein Konto\" data-pop=\"settings\"><div class=\"pop-head\"><h4>Mein Konto</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
+  h += renderAcct().replace(/^<div class=\"dh\">[\s\S]*?<\/div><\/div>/, "");
   $("catPop").innerHTML = h+"</div>"; $("catPop").hidden = false;
 }
-function refreshSettings(){ if(!$("catPop").hidden && $("catPop").querySelector("[data-pop=settings]")) openSettings(); if(tab==="acct") renderSheet(); }
+function refreshSettings(){ if(!$("catPop").hidden && $("catPop").querySelector("[data-pop=settings]")) openSettings(); }
 /* Anmeldefenster vor der App */
 function renderGate(){
   var g = $("gate"); if(!g) return;
@@ -1751,7 +1755,7 @@ function importPlan(file){
 }
 document.addEventListener("change", function(e){ if(e.target.id==="impFile" && e.target.files[0]) importPlan(e.target.files[0]); });
 
-function closeMenus(){ $("layers").hidden = true; $("layersBtn").setAttribute("aria-expanded","false"); $("tripMenu").hidden = true; $("tripBtn").setAttribute("aria-expanded","false"); }
+function closeMenus(){ $("mainMenu").hidden = true; $("menuBtn").setAttribute("aria-expanded","false"); $("layers").hidden = true; $("layersBtn").setAttribute("aria-expanded","false"); $("tripMenu").hidden = true; $("tripBtn").setAttribute("aria-expanded","false"); }
 
 function tap(x, y){
   closeMenus();
@@ -2190,6 +2194,7 @@ function placeFloating(){
   $("layers").style.top = (topB + 10 + 3*46)+"px";
   $("mapnote").style.left = "";
   $("tripMenu").style.top = (topB + 6)+"px";
+  $("mainMenu").style.top = (topB + 6)+"px"; $("mainMenu").style.left = desktop.matches ? (sideOpen ? "412px" : "34px") : "";
   $("tripMenu").style.left = desktop.matches ? (sideOpen ? "412px" : "34px") : "";
   $("pick").style.top = (topB + 10)+"px";
   $("toast").style.top = (topB + 10)+"px";
@@ -2291,6 +2296,7 @@ function renderTop(){
   $("rail").innerHTML = r;
   $("rail").hidden = !d;
 }
+$("menuBtn").addEventListener("click", function(){ var open = $("mainMenu").hidden; closeMenus(); $("mainMenu").hidden = !open; this.setAttribute("aria-expanded", open); placeFloating(); });
 $("tripBtn").addEventListener("click", function(){ var open = $("tripMenu").hidden; closeMenus(); $("tripMenu").hidden = !open; this.setAttribute("aria-expanded", open); placeFloating(); });
 
 /* ---------- Inhalt: Tagesplan ---------- */
@@ -2634,7 +2640,7 @@ function geoPick(path, i){
 function renderTrip(){
   var t = T();
   if(!tdraft){
-    var h = "<div class=\"dh\"><div><h2>"+esc(t.name)+"</h2><p>"+esc(rangeLabel(t.start,t.end))+" · "+days().length+" Tage</p></div></div>";
+    var h = "<button type=\"button\" class=\"back\" data-tab=\"day\">‹ Zurück zum Tagesplan</button><div class=\"dh\"><div><h2>"+esc(t.name)+"</h2><p>"+esc(rangeLabel(t.start,t.end))+" · "+days().length+" Tage</p></div></div>";
     h += "<div class=\"tripsum\">";
     h += "<div><b>Anreise:</b> "+esc(dayByKey(t.start) ? dayByKey(t.start).title : t.start)+(t.arr?", "+esc(t.arr):"")+"</div>";
     h += "<div><b>Abreise:</b> "+esc(dayByKey(t.end) ? dayByKey(t.end).title : t.end)+(t.dep?", "+esc(t.dep):"")+"</div>";
@@ -2722,8 +2728,7 @@ function renderWishPop(){
 function renderSheet(){
   $("tabDay").setAttribute("aria-selected", tab==="day");
   $("tabWish").setAttribute("aria-selected", tab==="wish");
-  $("tabTrip").setAttribute("aria-selected", tab==="trip");
-  $("tabAcct").setAttribute("aria-selected", tab==="acct");
+
   $("tabWish").innerHTML = "Wunschliste<small>"+wishes().length+"</small>";
   if(sorting){ sheetPending = true; return; }
   var body = $("body"), st = body.scrollTop;
@@ -2914,7 +2919,8 @@ document.addEventListener("click", function(e){
         try { Object.keys(localStorage).forEach(function(k){ if(k===KEY || /^rp-(linked|pend)/.test(k)) localStorage.removeItem(k); }); } catch(e){}
         pend = {}; delPend = {}; S = fresh(); acctInitSigs(); pickDefaultDay(); renderAll(); acct.user = null; acct.msg = "Abgemeldet."; renderGate();
       }); break;
-    case "settings": closeMenus(); tab = "acct"; if(!desktop.matches && sheetState!=="full") setSheet("mid"); renderSheet(); break;
+    case "settings": case "openacct": closeMenus(); openSettings(); break;
+    case "opentrip": closeMenus(); tab = "trip"; if(!desktop.matches && sheetState!=="full") setSheet("full"); renderSheet(); scheduleOverlay(); break;
     case "acsync": acctPull(); break;
     case "geopick": geoPick(t.getAttribute("data-path"), +t.getAttribute("data-i")); break;
     case "depopen": var dsi = t.getAttribute("data-st"); depOpen[dsi] = !depOpen[dsi]; renderCard(); break;
