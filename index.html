@@ -770,6 +770,12 @@ function bestInsert(k, p){
   best.extra = Math.max(0, Math.round(best.extra));
   return best;
 }
+/* heute: neuer Punkt wird das nächste Ziel (vor dem ersten offenen Stopp); sonst kleinster Umweg */
+function insertIdx(k, p){
+  if(k===todayKey()){ var o = ord(k); for(var i=0;i<o.length;i++) if(!T().done[o[i]]) return i; return o.length; }
+  return hasLoc(p) ? bestInsert(k, p).idx : ord(k).length;
+}
+function addLabel(k, p){ return k===todayKey() ? " als nächstes Ziel" : (hasLoc(p) ? " (+"+bestInsert(k, p).extra+" Min.)" : ""); }
 function dayHasCat(k, c){ return ord(k).some(function(id){ return P(id).c===c; }); }
 function suggest(k, n){
   var D = dayByKey(k); if(!D) return [];
@@ -1720,7 +1726,7 @@ function poiCard(){
   var c = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button><h3>"+esc(q.n)+"</h3>";
   c += "<p><span class=\"cat\">"+icon(q.c)+esc(sub ? sub.charAt(0).toUpperCase()+sub.slice(1) : CATNAME[q.c])+"</span>"+(nbOf(q)?" · "+esc(nbOf(q)):"")+"</p>"+gBlock(q)+stationLine(q);
   c += "<div class=\"row poisel\">";
-  if(D) c += "<button class=\"btn\" type=\"button\" data-act=\"poiadd\" data-to=\"day\">Zu "+esc(D.lbl)+" hinzufügen"+(hasLoc(q)?" (+"+bestInsert(cur, q).extra+" Min.)":"")+"</button>";
+  if(D) c += "<button class=\"btn\" type=\"button\" data-act=\"poiadd\" data-to=\"day\">Zu "+esc(D.lbl)+" hinzufügen"+addLabel(cur, q)+"</button>";
   var lists = T().lists, al = (activeList && lists.some(function(l){ return l.id===activeList; })) ? activeList : (lists[0]||{}).id || "";
   c += "<button class=\"btn g\" type=\"button\" data-act=\"poiadd\" data-to=\"wish\">Zur Wunschliste</button>";
   if(lists.length > 1) c += "<select id=\"poiList\" aria-label=\"Liste\">"+lists.map(function(l){ return "<option value=\""+l.id+"\""+(l.id===al?" selected":"")+">"+esc(l.name)+"</option>"; }).join("")+"</select>";
@@ -1885,7 +1891,7 @@ function renderCard(){
          "<button type=\"button\" class=\"tdet\" data-act=\"meroute\" aria-expanded=\""+meRoute+"\">"+(meRoute?"Weg ausblenden":"Weg zeigen")+"</button></div>"+(meRoute && !rr.walk ? transitSteps(rr, me, p, {day: nyNow().key}) : "")+"</div>";
   }
   c += "<div class=\"row\" data-id=\""+sel+"\">";
-  if(!dk && D){ var ins = bestInsert(cur, p); c += "<button class=\"btn\" type=\"button\" data-act=\"plan\">Zu "+D.lbl+" hinzufügen"+(hasLoc(p)?" (+"+ins.extra+" Min.)":"")+"</button>"; }
+  if(!dk && D){ c += "<button class=\"btn\" type=\"button\" data-act=\"plan\">Zu "+D.lbl+" hinzufügen"+addLabel(cur, p)+"</button>"; }
   if(dk) c += "<button class=\"btn"+(T().done[sel]?"":" g")+"\" type=\"button\" data-act=\"done\">"+(T().done[sel]?"✓ Erledigt":"Abhaken")+"</button>";
   if(dk===cur){ c += "<button class=\"btn g\" type=\"button\" data-act=\"unplan\">Zurück in Wunschliste</button>"; }
   else if(dk){ c += "<button class=\"btn g\" type=\"button\" data-act=\"gotoday\" data-day=\""+dk+"\">Tag "+dayByKey(dk).n+" öffnen</button>"; }
@@ -2502,7 +2508,7 @@ function toast(msg, undo){
 function plan(id, k){
   var p = P(id); if(!p || dayOf(id) || !dayByKey(k)) return;
   undoSnap = snapshot();
-  var idx = hasLoc(p) ? bestInsert(k, p).idx : ord(k).length;
+  var idx = insertIdx(k, p);
   ord(k).splice(idx, 0, id);
   save(); toast(p.n+" ist jetzt Stopp "+(idx+1)+" am "+dayByKey(k).lbl, true);
 }
@@ -2658,7 +2664,7 @@ document.addEventListener("change", function(e){
   if(act==="move"){
     var to = t.value; if(to===cur || !dayByKey(to)) return;
     T().order[cur] = ord(cur).filter(function(x){ return x!==id; });
-    var p = P(id), idx = hasLoc(p) ? bestInsert(to, p).idx : ord(to).length;
+    var p = P(id), idx = insertIdx(to, p);
     ord(to).splice(idx, 0, id); save(); toast(p.n+" verschoben auf "+dayByKey(to).lbl, false); renderAll();
   } else if(act==="time"){ if(t.value){ T().times[id] = t.value; save(); } }
 });
