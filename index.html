@@ -266,11 +266,26 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
-#poiCats{display:flex;flex-wrap:wrap;gap:4px}
-#poiCats button{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 9px 3px 4px;font-size:12px;font-weight:600}
-#poiCats button i{width:10px;height:10px;border-radius:50%;display:block}
-#poiCats button[aria-pressed="false"]{opacity:.45}
-#poiCats button[aria-pressed="false"] i{background:var(--muted)!important}
+.gr{display:grid;gap:6px}
+.gr .gst{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:14px;color:var(--ink)}
+.gr .stars{color:#f4b400;letter-spacing:1px;font-size:15px}
+.gr .stars s{color:var(--line);text-decoration:none}
+.gr .open{color:#1e8e3e;font-weight:600}.gr .closed{color:#d93025;font-weight:600}
+.gr .ph{display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -2px;padding:0 2px 2px}
+.gr .ph figure{margin:0;flex:0 0 auto;scroll-snap-align:start;position:relative}
+.gr .ph img{display:block;height:120px;width:auto;min-width:90px;max-width:220px;object-fit:cover;border-radius:10px;background:var(--chip)}
+.gr .ph figcaption{position:absolute;left:4px;right:4px;bottom:4px;font-size:10px;line-height:1.2;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr .ph figcaption a{color:#fff}
+.gr .gattr{font-size:11.5px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.gr .gattr a{color:inherit}
+.gr .gattr b{font-weight:700;color:var(--ink)}
+.gkey{display:flex;gap:6px;flex-wrap:wrap}
+.gkey input{flex:1;min-width:160px;border:1px solid var(--line);border-radius:10px;background:transparent;padding:8px 10px;font:inherit;font-size:14px;color:inherit}
+#poiCats .pc{display:flex;flex-wrap:wrap;gap:4px}
+#poiCats .pc button{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 9px 3px 4px;font-size:12px;font-weight:600}
+#poiCats .pc button i{width:10px;height:10px;border-radius:50%;display:block}
+#poiCats .pc button[aria-pressed="false"]{opacity:.45}
+#poiCats .pc button[aria-pressed="false"] i{background:var(--muted)!important}
 .poisel{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .poisel select{border:1px solid var(--line);border-radius:999px;background:transparent;padding:7px 10px;font:inherit;font-size:13px;font-weight:600;color:inherit;max-width:170px}
 .acts .ck{display:inline-flex;align-items:center;gap:5px}
@@ -1298,7 +1313,9 @@ function applyPoi(){
 }
 function renderPoiCats(){
   var el = $("poiCats"); el.hidden = !poiOn; if(!poiOn) return;
-  el.innerHTML = POIGROUPS.map(function(g){ return "<button type=\"button\" data-act=\"poicat\" data-cat=\""+g[0]+"\" aria-pressed=\""+!poiOff[g[0]]+"\"><i style=\"background:"+g[2]+"\"></i>"+esc(g[1])+"</button>"; }).join("");
+  var on = POIGROUPS.filter(function(g){ return !poiOff[g[0]]; }).length;
+  el.innerHTML = "<div class=\"la\"><span class=\"cnt\">"+on+" von "+POIGROUPS.length+" sichtbar</span><button type=\"button\" data-act=\"poiall\">Alle</button><button type=\"button\" data-act=\"poinone\">Keine</button></div><div class=\"pc\">"+
+    POIGROUPS.map(function(g){ return "<button type=\"button\" data-act=\"poicat\" data-cat=\""+g[0]+"\" aria-pressed=\""+!poiOff[g[0]]+"\"><i style=\"background:"+g[2]+"\"></i>"+esc(g[1])+"</button>"; }).join("")+"</div>";
 }
 function poiAt(x, y){
   if(!poiOn || !mapReady || !map.getLayer("poi-dot")) return null;
@@ -1318,7 +1335,7 @@ function poiExisting(q){
 function poiCard(){
   var q = poiSel, D = dayByKey(cur), sub = POISUB[q.sub] || POISUB[q.cls] || (q.sub||q.cls||"").replace(/_/g," ");
   var c = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button><h3>"+esc(q.n)+"</h3>";
-  c += "<p><span class=\"cat\">"+icon(q.c)+esc(sub ? sub.charAt(0).toUpperCase()+sub.slice(1) : CATNAME[q.c])+"</span>"+(nbOf(q)?" · "+esc(nbOf(q)):"")+"</p>"+stationLine(q);
+  c += "<p><span class=\"cat\">"+icon(q.c)+esc(sub ? sub.charAt(0).toUpperCase()+sub.slice(1) : CATNAME[q.c])+"</span>"+(nbOf(q)?" · "+esc(nbOf(q)):"")+"</p>"+gBlock(q)+stationLine(q);
   c += "<div class=\"row poisel\">";
   if(D) c += "<button class=\"btn\" type=\"button\" data-act=\"poiadd\" data-to=\"day\">Zu "+esc(D.lbl)+" hinzufügen"+(hasLoc(q)?" (+"+bestInsert(cur, q).extra+" Min.)":"")+"</button>";
   var lists = T().lists, al = (activeList && lists.some(function(l){ return l.id===activeList; })) ? activeList : (lists[0]||{}).id || "";
@@ -1337,10 +1354,65 @@ function poiAdd(to){
     poiSel = null; renderAll(); select(ex); return;
   }
   var ls = $("poiList"), lid = ls ? ls.value : ((activeList && T().lists.some(function(l){ return l.id===activeList; })) ? activeList : (T().lists[0]||{}).id || null);
-  var pid = uid("w"), p = {id:pid, n:q.n.slice(0,80), c:q.c, list:lid||null, note:"", addr:"", la:q.la, lo:q.lo};
+  var pid = uid("w"), p = {id:pid, n:q.n.slice(0,80), c:q.c, list:lid||null, note:"", addr:"", la:q.la, lo:q.lo}, gq = gInfo[gK(q)];
+  if(gq && gq.st==="ok"){ p.gid = gq.d.id; gInfo[gK(p)] = gq; }
   T().places[pid] = p;
   if(to==="day") plan(pid, cur); else { save(); toast(p.n+" steht in der Wunschliste", false); }
   poiSel = null; renderAll(); select(pid);
+}
+/* ---------- Google-Bewertungen & Fotos (Places API, Schlüssel nur auf diesem Gerät) ---------- */
+var gKey = lsGet("nyc-gkey") || "", gInfo = {}, gMsg = "";
+var GFIELDS = ["id","displayName","rating","userRatingCount","googleMapsUri","photos","priceLevel","currentOpeningHours.openNow","location"];
+function gK(q){ return q.gid || (q.n+"@"+(+q.la).toFixed(4)+","+(+q.lo).toFixed(4)); }
+function gLoad(q){
+  if(!gKey || !hasLoc(q) || !navigator.onLine) return;
+  var k = gK(q); if(gInfo[k]) return;
+  gInfo[k] = {st:"load"};
+  var done = function(pl){
+    if(pl && pl.location && dist({la:pl.location.latitude, lo:pl.location.longitude}, q) > 400) pl = null;
+    gInfo[k] = pl ? {st:"ok", d:pl} : {st:"none"};
+    if(pl && q.id && T().places[q.id] && !T().places[q.id].gid){ T().places[q.id].gid = pl.id; save(); }
+    if(!$("card").hidden) renderCard();
+  };
+  var fail = function(code){ gInfo[k] = {st:"err", code:code}; if(!$("card").hidden) renderCard(); };
+  var hd = {"Content-Type":"application/json", "X-Goog-Api-Key":gKey, "X-Goog-FieldMask": q.gid ? GFIELDS.join(",") : GFIELDS.map(function(f){ return "places."+f; }).join(",")};
+  var req = q.gid
+    ? fetch("https://places.googleapis.com/v1/places/"+encodeURIComponent(q.gid)+"?languageCode=de", {headers:hd})
+    : fetch("https://places.googleapis.com/v1/places:searchText", {method:"POST", headers:hd, body:JSON.stringify({textQuery:q.n, languageCode:"de", maxResultCount:1, locationBias:{circle:{center:{latitude:+q.la, longitude:+q.lo}, radius:150}}})});
+  req.then(function(r){ if(!r.ok) throw r.status; return r.json(); })
+     .then(function(j){ done(q.gid ? j : (j.places||[])[0]); })
+     .catch(function(e){ fail(typeof e==="number" ? e : 0); });
+}
+function gStars(r){ var f = Math.round(r), h = ""; for(var i=1;i<=5;i++) h += i<=f ? "★" : "<s>★</s>"; return h; }
+function gBlock(q){
+  if(!hasLoc(q)) return "";
+  if(!gKey) return "";
+  var g = gInfo[gK(q)];
+  if(!g){ gLoad(q); g = gInfo[gK(q)]; }
+  if(!g) return "";
+  if(g.st==="load") return "<p class=\"note\">Lade Google-Bewertung …</p>";
+  if(g.st==="none") return "<p class=\"note\">Bei Google nicht gefunden.</p>";
+  if(g.st==="err") return "<p class=\"note\">"+(g.code===403||g.code===400 ? "Google-Schlüssel ungültig oder Places API (New) nicht aktiviert." : g.code===429 ? "Google-Kontingent erreicht." : "Google-Bewertung gerade nicht abrufbar.")+"</p>";
+  var d = g.d, h = "<div class=\"gr\">";
+  var bits = [];
+  if(d.rating) bits.push("<span class=\"stars\" aria-hidden=\"true\">"+gStars(d.rating)+"</span><b>"+String(d.rating).replace(".",",")+"</b>"+(d.userRatingCount?" ("+d.userRatingCount.toLocaleString("de-DE")+")":""));
+  else bits.push("Noch keine Bewertungen");
+  var pr = {PRICE_LEVEL_INEXPENSIVE:"$",PRICE_LEVEL_MODERATE:"$$",PRICE_LEVEL_EXPENSIVE:"$$$",PRICE_LEVEL_VERY_EXPENSIVE:"$$$$"}[d.priceLevel];
+  if(pr) bits.push(pr);
+  if(d.currentOpeningHours && typeof d.currentOpeningHours.openNow==="boolean") bits.push(d.currentOpeningHours.openNow ? "<span class=\"open\">Jetzt geöffnet</span>" : "<span class=\"closed\">Geschlossen</span>");
+  h += "<div class=\"gst\">"+bits.join(" · ")+"</div>";
+  var phs = (d.photos||[]).slice(0,4);
+  if(phs.length){
+    h += "<div class=\"ph\">";
+    phs.forEach(function(ph){
+      var au = (ph.authorAttributions||[])[0];
+      h += "<figure><a href=\""+esc(ph.googleMapsUri || d.googleMapsUri || "#")+"\" target=\"_blank\" rel=\"noopener\"><img loading=\"lazy\" alt=\"Foto von "+esc(q.n)+"\" src=\"https://places.googleapis.com/v1/"+esc(ph.name)+"/media?maxHeightPx=360&maxWidthPx=600&key="+encodeURIComponent(gKey)+"\"></a>"+
+           (au ? "<figcaption>© <a href=\""+esc(au.uri||"#")+"\" target=\"_blank\" rel=\"noopener\">"+esc(au.displayName||"")+"</a></figcaption>" : "")+"</figure>";
+    });
+    h += "</div>";
+  }
+  h += "<div class=\"gattr\"><a href=\""+esc(d.googleMapsUri||"#")+"\" target=\"_blank\" rel=\"noopener\">Bewertungen &amp; alle Fotos ansehen</a><span>Daten: <b>Google Maps</b></span></div></div>";
+  return h;
 }
 var GOICO = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M21.7 2.3a1 1 0 0 0-1.1-.2l-18 8a1 1 0 0 0 .1 1.9l7.4 2 2 7.4a1 1 0 0 0 1.9.1l8-18a1 1 0 0 0-.3-1.2z\"/></svg>";
 var GOMODES = [
@@ -1422,6 +1494,7 @@ function renderCard(){
   var dk = dayOf(sel), D = dayByKey(cur), c = x+"<h3>"+esc(p.n)+"</h3>";
   var meta = "<span class=\"cat\">"+icon(p.c)+esc(CATNAME[p.c])+"</span>" + (nbOf(p) ? " · "+esc(nbOf(p)) : "") + (dk ? " · "+dayByKey(dk).lbl+(timeOf(sel)?" um "+timeOf(sel):"") : " · Wunsch in „"+esc(listName(p.list))+"“");
   c += "<p>"+meta+(p.addr?"<br>"+esc(p.addr):"")+(p.note?"<br>"+esc(p.note):"")+"</p>";
+  c += gBlock(p);
   if(hasLoc(p)) c += stationLine(p);
   if(me && hasLoc(p) && dist(me, p) < 40000){
     var rr = transit(me, p, todayKey());
@@ -1773,6 +1846,8 @@ function renderTrip(){
       jh += "</div>";
     });
     h += "<div class=\"sec\"><h4>Reisetagebuch</h4>"+(any ? jh : "<p class=\"empty\">Noch keine Einträge. Schreib im Tagesplan unter „Tagebuch“, was ihr erlebt habt.</p>")+"</div>";
+    h += "<div class=\"sec\"><h4>Google-Bewertungen &amp; Fotos</h4><p class=\"note\" style=\"margin-bottom:6px\">"+(gKey ? "Aktiv. Bewertungen und Fotos erscheinen, wenn du einen Ort antippst. Der Schlüssel ist nur auf diesem Gerät gespeichert." : "Trage einen Google-Maps-API-Schlüssel ein (Places API (New)). Er wird nur auf diesem Gerät gespeichert, nicht im öffentlichen Code.")+"</p>"+
+         "<div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\" role=\"status\">"+esc(gMsg)+"</p>":"")+"</div>";
     h += "<p class=\"note\" id=\"syncNote\" role=\"status\">"+syncText()+"</p>";
     h += "<div class=\"backup\"><button type=\"button\" class=\"btn g s\" data-act=\"export\">Plan als Datei sichern</button><label class=\"btn g s\" for=\"impFile\">Sicherung laden</label><input type=\"file\" id=\"impFile\" accept=\"application/json,.json\"></div>";
     if(Object.keys(S.trips).length>1) h += "<div class=\"row\">"+confirmBtn("delt:"+t.id, "Reise löschen", "Reise wirklich löschen?", "deltrip")+"</div>";
@@ -1967,6 +2042,16 @@ document.addEventListener("click", function(e){
     case "go": openGo(id || sel); break;
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
+    case "poiall": poiOff = {}; lsSet("nyc-poi-off", "{}"); applyPoi(); break;
+    case "poinone": poiOff = {}; POIGROUPS.forEach(function(g){ poiOff[g[0]] = 1; }); lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
+    case "gkeysave":
+      var gv = ($("gKeyIn").value||"").trim(); if(!gv){ $("gKeyIn").focus(); break; }
+      gMsg = "Prüfe Schlüssel …"; renderSheet();
+      fetch("https://places.googleapis.com/v1/places:searchText", {method:"POST", headers:{"Content-Type":"application/json","X-Goog-Api-Key":gv,"X-Goog-FieldMask":"places.id"}, body:JSON.stringify({textQuery:"Times Square New York", maxResultCount:1})})
+        .then(function(r){ if(!r.ok) throw r.status; gKey = gv; lsSet("nyc-gkey", gv); gInfo = {}; gMsg = "Schlüssel funktioniert."; renderSheet(); renderCard(); })
+        .catch(function(e){ gMsg = e===403||e===400 ? "Google lehnt den Schlüssel ab. Ist die Places API (New) aktiviert und die Website freigegeben?" : "Prüfung fehlgeschlagen (keine Verbindung?)."; renderSheet(); });
+      break;
+    case "gkeydel": gKey = ""; gInfo = {}; gMsg = "Schlüssel entfernt."; try { localStorage.removeItem("nyc-gkey"); } catch(e){} renderSheet(); renderCard(); break;
     case "gofrom": goSt.from = t.getAttribute("data-from"); renderGo(); break;
     case "goapp": goApp = t.getAttribute("data-app"); lsSet("nyc-go-app", goApp); renderGo(); break;
     case "gogo": setTimeout(closeCatPop, 300); break;
