@@ -303,6 +303,10 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .ag-name{display:flex !important;align-items:center;gap:6px}
 .ag-edit{border:0;background:var(--chip);width:28px;height:28px;flex:0 0 28px;border-radius:50%;display:grid;place-items:center;color:var(--ink);padding:0}
 .ag-edit svg{width:15px;height:15px}
+.ag-sync{border:0;background:none;color:var(--muted);font-size:15px;padding:0 4px;margin-left:2px;line-height:1}
+.ag-out{margin-top:16px}
+.ag-out .ag-row{justify-content:center}
+.ag-out .ag-row b{color:#d93025}
 .ag-title{margin:6px 0 4px;font:700 22px/1.1 var(--f-display)}
 .frres{padding:0 12px}
 .frres:empty{display:none}
@@ -1209,8 +1213,8 @@ function acctHTML(){
   var st = !u ? ["off","Nicht angemeldet"] : acct.state==="sync" ? ["sync","Gleiche ab …"] : acct.state==="error" ? ["err","Abgleich fehlgeschlagen – wird erneut versucht"] : !navigator.onLine ? ["off","Offline – Änderungen folgen später"] : ["ok","Synchronisiert"+(acct.at ? " um "+new Date(acct.at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "")];
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mein Konto\">";
   h += "<button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
-  h += "<div class=\"ag-head\"><span class=\"ag-av\">"+esc(PROF ? PROF.name[0].toUpperCase() : ini)+"</span><div><b class=\"ag-name\">"+(PROF ? "@"+esc(PROF.name) : esc(mail || "Mein Konto"))+(u ? "<button type=\"button\" class=\"ag-edit\" data-act=\"accview\" data-v=\"profile\" aria-label=\"Profil bearbeiten\" title=\"Profil bearbeiten\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M13.5 3.5l3 3L7 16H4v-3z\"/><path d=\"M11.5 5.5l3 3\"/></svg></button>" : "")+"</b>"+(PROF ? "<span class=\"ag-sub\">"+esc(mail)+"</span>" : "")+"<span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+"</span></div></div>";
-  if(u) h += "<div class=\"ag-acts\"><button type=\"button\" data-act=\"acsync\">Jetzt abgleichen</button><button type=\"button\" class=\"warn\" data-act=\"acout\">Abmelden</button></div>";
+  h += "<div class=\"ag-head\"><span class=\"ag-av\">"+esc(PROF ? PROF.name[0].toUpperCase() : ini)+"</span><div><b class=\"ag-name\">"+(PROF ? "@"+esc(PROF.name) : esc(mail || "Mein Konto"))+(u ? "<button type=\"button\" class=\"ag-edit\" data-act=\"accview\" data-v=\"profile\" aria-label=\"Profil bearbeiten\" title=\"Profil bearbeiten\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M13.5 3.5l3 3L7 16H4v-3z\"/><path d=\"M11.5 5.5l3 3\"/></svg></button>" : "")+"</b>"+(PROF ? "<span class=\"ag-sub\">"+esc(mail)+"</span>" : "")+"<span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+(u ? "<button type=\"button\" class=\"ag-sync\" data-act=\"acsync\" aria-label=\"Jetzt abgleichen\" title=\"Jetzt abgleichen\">↻</button>" : "")+"</span></div></div>";
+
   if(u && !PROF) h += "<p class=\"note\">Tipp: Über den Stift oben legst du einen Benutzernamen fest, damit dich Freunde finden.</p>";
   if(u) h += friendsHTML();
   if(INVITES.length){
@@ -1229,6 +1233,7 @@ function acctHTML(){
   h += "</div>";
   // Sicherung
   h += "<div class=\"ag-lbl\">Sicherung</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"export\"><span><b>Plan als Datei sichern</b></span><em class=\"chev\">›</em></button><label class=\"ag-row\" for=\"impFileG\"><span><b>Sicherung laden</b></span><em class=\"chev\">›</em></label></div>";
+  if(u) h += "<div class=\"ag-grp ag-out\"><button type=\"button\" class=\"ag-row\" data-act=\"acout\"><span><b>Abmelden</b></span></button></div>";
   return h+"</div>";
 }
 function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : acctHTML(); el.hidden = false; document.body.classList.add("glass"); }
