@@ -164,7 +164,8 @@ ol.tsteps .ti .bul.bus{height:22px;font-size:11.5px}
 .btn.warn{color:var(--err);border-color:var(--err)}
 a.btn{text-decoration:none;display:inline-block}
 ol.plan{list-style:none;margin:0;padding:0}
-.st{display:grid;grid-template-columns:34px 1fr auto 30px;gap:2px 8px;align-items:start;padding:6px 0;background:var(--sheet);border-radius:12px}
+.st{display:grid;grid-template-columns:34px 1fr auto 30px;gap:2px 8px;align-items:start;padding:10px 6px 10px 8px;margin:6px 0;background:var(--sheet);border:1px solid var(--line);border-left:4px solid var(--dc,var(--ink));border-radius:12px;box-shadow:0 1px 3px var(--scrim)}
+.st.done{border-left-color:var(--muted);background:var(--chip);box-shadow:none}
 .st.done .nm{text-decoration:line-through;opacity:.55}
 .no{width:30px;height:30px;border-radius:50%;border:0;color:#fff;font:700 16px/1 var(--f-display);display:grid;place-items:center;margin-top:1px}
 .no.y{color:#17212c}
@@ -177,9 +178,9 @@ ol.plan{list-style:none;margin:0;padding:0}
 .acts .mvday svg{width:15px;height:15px;pointer-events:none}
 .acts .mvday select{position:absolute;inset:0;opacity:0;width:100%;height:100%;padding:0;border:0;font-size:16px}
 .acts button,.acts select{border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 9px;font-size:12.5px;font-weight:600;appearance:none;-webkit-appearance:none}
-.leg{display:flex;gap:10px;align-items:center;padding:0 0 0 14px;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.leg{display:flex;gap:10px;align-items:center;padding:0 0 0 26px;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
 .leg::before{content:"";width:2px;height:22px;background:repeating-linear-gradient(var(--line) 0 4px,transparent 4px 7px);margin-right:16px;flex:0 0 auto}
-.ht{display:flex;gap:10px;align-items:center;padding:4px 0}
+.ht{display:flex;gap:10px;align-items:center;padding:4px 0 4px 12px}
 .ht .h{width:30px;height:30px;border-radius:8px;background:var(--ink);color:var(--sheet);display:grid;place-items:center;font:700 15px/1 var(--f-display)}
 .ht b{font-weight:600}
 .chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
@@ -731,8 +732,8 @@ mark{background:var(--hi-fill);color:inherit;border-radius:3px;padding:0 1px}
 .seg{display:flex;background:var(--chip);border-radius:999px;padding:2px}
 .seg button{flex:1 1 0;min-width:0;border:0;background:none;border-radius:999px;padding:5px 10px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
 .seg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px var(--scrim)}
-.leg.tleg{display:block;padding:2px 0 2px 48px;position:relative}
-.leg.tleg::before{position:absolute;left:14px;top:0;bottom:0;height:auto;margin:0}
+.leg.tleg{display:block;padding:4px 0 4px 54px;position:relative}
+.leg.tleg::before{position:absolute;left:26px;top:0;bottom:0;height:auto;margin:0}
 .tl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .tsum{border:1px solid var(--line);background:var(--sheet);border-radius:999px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums}
 .leg.sel .tsum{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
@@ -765,6 +766,13 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 .eye svg{width:17px;height:17px}
 .eye[aria-pressed="false"]{color:var(--muted);background:var(--chip)}
 .rhead .seg{margin-left:auto}
+.rtog{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--sheet);border-radius:999px;padding:5px 6px 5px 11px;font-size:13.5px;font-weight:600;color:var(--ink);flex:0 0 auto;cursor:pointer}
+.rtog > svg{width:17px;height:17px;flex:0 0 auto}
+.rtog .sw2{position:relative;width:38px;height:22px;border-radius:999px;background:var(--line);transition:background .15s;flex:0 0 auto}
+.rtog .sw2::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.rtog[aria-checked="true"] .sw2{background:var(--dc,var(--c4))}
+.rtog[aria-checked="true"] .sw2::after{transform:translateX(16px)}
+.rtog[aria-checked="false"]{color:var(--muted);background:var(--chip)}
 #gl{position:absolute;inset:0}
 #ov{pointer-events:none}
 .maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{display:none}
@@ -3251,7 +3259,7 @@ function renderDay(){
   h += "</div>";
 
   var hn = HT ? esc(HT.n) : "";
-  h += "<div class=\"sec\"><div class=\"rhead\"><h4>Route</h4><button type=\"button\" class=\"eye\" data-act=\"rtoggle\" aria-pressed=\""+layers.route+"\" title=\""+(layers.route?"Route auf der Karte ausblenden":"Route auf der Karte einblenden")+"\" aria-label=\"Route auf der Karte zeigen\">"+(layers.route?EYE:EYEOFF)+"</button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
+  h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>Route</h4><button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+layers.route+"\" aria-label=\"Route auf der Karte zeigen\">"+(layers.route?EYE:EYEOFF)+"<span>"+(layers.route?"Auf Karte an":"Auf Karte aus")+"</span><span class=\"sw2\" aria-hidden=\"true\"></span></button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
   var LG = dayLegs(cur);
   var legLi = function(a, b, i){
     var m = legMode(a, b);
@@ -3277,7 +3285,7 @@ function renderDay(){
     if(li0 > -1) h += legLi(LG[li0][0], p, li0);
     else if(!hasLoc(p) && (i>0 || HT)) h += "<li class=\"leg\">Strecke unbekannt</li>";
     var opts = days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===cur?" selected":"")+">"+d.lbl+"</option>"; }).join("");
-    h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\">"+
+    h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\">"+
       "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>"+
       "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?"✎":"")+(photosOf(id).length?" ▣ "+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(hasLoc(p)||p.addr?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
