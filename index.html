@@ -1453,6 +1453,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
   <label><input type="checkbox" id="lWish" checked><span class="sw" style="background:var(--wish)"></span>Wünsche</label>
   <label><input type="checkbox" id="lPoi"><span class="sw" style="background:conic-gradient(#e8710a 0 25%,#8a5a2b 25% 50%,#7b3fbf 50% 75%,#5E9970 75%)"></span>Cafés, Lokale &amp; Sehenswertes</label>
   <div class="lines" id="poiCats" hidden></div>
+  <label><input type="checkbox" id="lColor"><span class="sw" style="background:linear-gradient(90deg,#A9D3F2 0 50%,#C9E7C1 50%)"></span>Farbige Karte</label>
   <label><input type="checkbox" id="l3d"><span class="sw" style="background:linear-gradient(135deg,var(--muted) 0 50%,var(--line) 50%)"></span>3D-Gebäude</label>
   <label><input type="checkbox" id="lNb"><span class="sw" style="background:repeating-linear-gradient(90deg,var(--hi) 0 4px,transparent 4px 7px)"></span>Stadtviertel</label>
   <h4 style="margin-top:4px">Viertel hervorheben</h4>
@@ -2642,8 +2643,33 @@ function darkenStyle(){
     } catch(e){}
   });
 }
+/* Farbige Karte: Wasser blau, Grün für Parks/Wald/Wiesen, dezente Töne für Strand, Kliniken, Schulen … (ähnlich Apple Karten) */
+var colorOn = lsGet("rp-color")!=="0";
+function colorStyle(){
+  var dk = isDark(), C = dk
+    ? {bg:"#121a21", water:"#173349", park:"#173226", wood:"#163023", grass:"#183427", sand:"#3a3527", wet:"#173229", hosp:"#3b2629", school:"#352f22", cem:"#1c2c22", sport:"#1a3325", ind:"#1f2028", com:"#1d2025", bld:"#212c36"}
+    : {bg:"#F5F4F0", water:"#A9D3F2", park:"#C9E7C1", wood:"#B6DCAB", grass:"#D3EBC9", sand:"#F3EBCB", wet:"#C9E3D6", hosp:"#F7DADA", school:"#F2EBD4", cem:"#D5E5CF", sport:"#C3E5BD", ind:"#ECE8EF", com:"#F4EEE8", bld:"#E8E6E1"};
+  var set = function(id, k, v){ try { if(map.getLayer(id)) map.setPaintProperty(id, k, v); } catch(e){} };
+  set("background", "background-color", C.bg);
+  set("water", "fill-color", C.water); set("waterway", "line-color", C.water);
+  set("park", "fill-color", C.park); set("park", "fill-opacity", 1);
+  set("landcover_wood", "fill-color", C.wood); set("landcover_wood", "fill-opacity", 1);
+  set("building", "fill-color", C.bld);
+  set("landuse_residential", "fill-color", C.bg);
+  var src = null, st = map.getStyle(); Object.keys(st.sources).forEach(function(k){ if(!src && st.sources[k].type==="vector") src = k; });
+  if(!src || map.getLayer("c-landcover")) return;
+  var below = map.getLayer("park") ? "park" : "water";
+  map.addLayer({id:"c-landcover", type:"fill", source:src, "source-layer":"landcover", minzoom:9,
+    paint:{"fill-color":["match", ["get","class"], "grass", C.grass, "wood", C.wood, "sand", C.sand, "wetland", C.wet, "farmland", C.grass, C.grass]},
+    filter:["match", ["get","class"], ["grass","wood","sand","wetland","farmland"], true, false]}, below);
+  map.addLayer({id:"c-landuse", type:"fill", source:src, "source-layer":"landuse", minzoom:11,
+    paint:{"fill-color":["match", ["get","class"], "hospital", C.hosp, ["school","university","college","kindergarten","library"], C.school, "cemetery", C.cem,
+             ["stadium","pitch","playground","track","zoo","theme_park"], C.sport, ["industrial","garages","railway","military"], C.ind, ["commercial","retail"], C.com, C.com]},
+    filter:["match", ["get","class"], ["hospital","school","university","college","kindergarten","library","cemetery","stadium","pitch","playground","track","zoo","theme_park","industrial","garages","railway","military","commercial","retail"], true, false]}, below);
+}
 function addLayers(){
   if(isDark()) darkenStyle();
+  if(colorOn) colorStyle();
   var firstSym = (map.getStyle().layers.filter(function(l){ return l.type==="symbol"; })[0] || {}).id;
   map.addSource("nb", {type:"geojson", data:GEO.nb});
   map.addSource("bus", {type:"geojson", data:GEO.bus});
@@ -3548,6 +3574,8 @@ function startLocate(){
 }
 $("locBtn").addEventListener("click", startLocate);
 document.addEventListener("click", function(){ if(watchId!==null && !compOn && !compDenied) startCompass(); }, true);
+$("lColor").checked = colorOn;
+$("lColor").addEventListener("change", function(){ colorOn = this.checked; lsSet("rp-color", colorOn?"1":"0"); if(map){ mapReady = false; map.setStyle(STYLE_URL, {diff:false}); } });
 $("l3d").addEventListener("change", function(){ b3dOn = this.checked; lsSet("rp-3d", b3dOn?"1":"0"); apply3d(); });
 $("lPoi").addEventListener("change", function(){ poiOn = this.checked; lsSet("nyc-l-poi", poiOn?"1":"0"); applyPoi(); if(poiOn && map && map.getZoom() < 14.5) map.easeTo({zoom:14.5, duration: reduceMotion?0:500}); });
 function drawMe(){
