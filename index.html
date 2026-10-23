@@ -3585,17 +3585,19 @@ function f1(n){ return n.toFixed(1); }
 
 /* ---------- Kartenmarker ---------- */
 function catCol(c){ return CATCOL[c] || CATCOL.sight; }
-var THUMB = {}, thumbBusy = {};
+var THUMB = {}, thumbBusy = {}, thumbTry = {};
 /* kleine runde Vorschaubilder für die Karte (96 px), einmal erzeugt und zwischengespeichert */
 function thumbOf(ph){
   if(THUMB[ph]) return THUMB[ph];
   if(thumbBusy[ph]) return null; thumbBusy[ph] = 1;
+  // nicht geladen (z. B. Anmeldung noch nicht fertig, offline): später erneut versuchen statt für immer aufzugeben
+  var retry = function(){ thumbTry[ph] = (thumbTry[ph]||0) + 1; setTimeout(function(){ delete thumbBusy[ph]; scheduleOverlay(); }, Math.min(60000, 1500 * Math.pow(2, thumbTry[ph]))); };
   (PHC[ph] ? Promise.resolve(PHC[ph]) : phGet(ph)).then(function(d){
-    if(!d) return;
-    var im = new Image(); im.onload = function(){ var c = document.createElement("canvas"), z = 96, w = im.naturalWidth, h = im.naturalHeight, k = z/Math.min(w, h); c.width = z; c.height = z;
+    if(!d){ retry(); return; }
+    var im = new Image(); im.onerror = retry; im.onload = function(){ var c = document.createElement("canvas"), z = 96, w = im.naturalWidth, h = im.naturalHeight, k = z/Math.min(w, h); c.width = z; c.height = z;
       c.getContext("2d").drawImage(im, (z - w*k)/2, (z - h*k)/2, w*k, h*k); THUMB[ph] = c.toDataURL("image/jpeg", .82); scheduleOverlay(); };
     im.src = d;
-  }).catch(function(){});
+  }).catch(retry);
   return null;
 }
 function firstThumb(id){ var a = ((T().photos||{})[id]) || []; for(var i = a.length - 1; i >= 0; i--){ var t = thumbOf(a[i]); if(t) return t; } return null; }
