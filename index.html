@@ -311,6 +311,11 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+.notrip{display:grid;gap:12px;padding:6px 2px 20px}
+.notrip h2{margin:0;font:700 26px/1.1 var(--f-display)}
+.notrip p{margin:0;color:var(--muted);font-size:14.5px}
+.notrip .btn{justify-content:center;padding:12px 14px;font-size:15px}
+body.notrip .tabs,body.notrip #rail,body.notrip .rail,body.notrip #tripBtn,body.notrip #srchBtn,body.notrip [data-act=opentrip]{display:none !important}
 /* Wunschliste: aufgeräumter Kopf und kompakte Zeilen */
 .wtop{display:flex;gap:8px;align-items:center}
 .wtop .search{flex:1;min-width:0;margin:0}
@@ -981,16 +986,28 @@ function nycTrip(){
   SEED.forEach(function(r){ var p = {id:r[0], list:"l_main", c:r[2], n:r[3], addr:r[4], note:r[5]}; if(typeof r[6]==="number"){ p.la = r[6]; p.lo = r[7]; } t.places[r[0]] = p; });
   return t;
 }
+// Leere Ausgangsreise für neue Konten (ohne Wunschliste und Tagespläne)
+function starterTrip(){
+  var d0 = todayKey(), d = new Date(d0+"T12:00:00"); d.setDate(d.getDate()+6);
+  var d1 = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  var t = newTripObj({id:"t_start_"+Math.random().toString(36).slice(2,9), name:"Meine Reise", start:d0, end:d1});
+  t.starter = true; return t;
+}
+// Noch keine echte Reise (neues Konto): nur der unsichtbare Platzhalter ist da
+function noTrip(){ var ks = S && S.trips ? Object.keys(S.trips) : []; return !ks.length || ks.every(function(k){ var t = S.trips[k]; return t.starter && t.seed; }); }
+function noTripHTML(){
+  return "<div class=\"notrip\"><h2>Willkommen!</h2><p>Du hast noch keine Reise. Lege deine erste Reise an – mit Reiseziel, Zeitraum und Hotel. Danach füllst du deine Wunschliste und planst die Tage.</p>"+
+    "<button type=\"button\" class=\"btn\" data-act=\"tripnew\">Erste Reise anlegen</button>"+
+    (INVITES.length ? "<button type=\"button\" class=\"btn g\" data-act=\"opentrips\" data-v=\"req\">"+INVITES.length+(INVITES.length===1?" Einladung":" Einladungen")+" ansehen</button>" : "<p class=\"note\">Hat dich jemand zu einer Reise eingeladen? Die Einladung erscheint unter Menü → Reisen → Anfragen.</p>")+"</div>";
+}
+var wasNoTrip = false;
+function applyNoTrip(){
+  var nt = noTrip(); document.body.classList.toggle("notrip", nt);
+  if(nt && !wasNoTrip){ if(map){ try { map.jumpTo({center:[0, 25], zoom:1.2}); } catch(e){} } if(!desktop.matches && typeof setSheet==="function" && sheetState!=="mid") setTimeout(function(){ setSheet("mid"); }, 0); }
+  wasNoTrip = nt;
+}
 function fresh(){
-  var s = {trips:{}, cur:"t_nyc"}, t = (INIT && normTrip(JSON.parse(JSON.stringify(INIT)))) || nycTrip();
-  // Aus Version 3 bleiben weitere Reisen und das Tagebuch erhalten; die Wunschliste wird neu befüllt
-  try {
-    var old = JSON.parse(lsGet("nyc-karte-proto-v3"));
-    if(old && old.trips){
-      Object.keys(old.trips).forEach(function(k){ if(k!=="t_nyc") s.trips[k] = old.trips[k]; });
-      if(old.trips.t_nyc && old.trips.t_nyc.journal) t.journal = old.trips.t_nyc.journal;
-    }
-  } catch(e){}
+  var t = starterTrip(), s = {trips:{}, cur:t.id};
   t.seed = true; // unveränderter Ausgangsplan: wird nicht ins Konto hochgeladen
   s.trips[t.id] = t;
   return s;
@@ -1430,7 +1447,7 @@ function tripsPageHTML(){
     return h+"</div>";
   }
   var sh = tripsTab==="shared";
-  var list = Object.keys(S.trips).map(function(k){ return S.trips[k]; }).filter(function(x){ return isShared(x.id)===sh; }).sort(function(a,b){ return a.start<b.start?-1:1; });
+  var list = Object.keys(S.trips).map(function(k){ return S.trips[k]; }).filter(function(x){ return !(x.starter && x.seed) && isShared(x.id)===sh; }).sort(function(a,b){ return a.start<b.start?-1:1; });
   if(list.length){
     h += "<div class=\"ag-grp\">";
     list.forEach(function(x){
@@ -2618,6 +2635,7 @@ function fitPoints(pts, minM){
   } catch(e){ map.jumpTo({center:[(minLo+maxLo)/2, lat]}); }
 }
 function fitDay(){
+  if(noTrip()){ if(map) try { map.jumpTo({center:[0, 25], zoom:1.2}); } catch(e){} return; }
   var D = dayByKey(cur), pts = [];
   if(D){ if(D.hotel) pts.push(D.hotel); pts = pts.concat(routePts(cur)); }
   if(pts.length > 1 || (pts.length===1 && routePts(cur).length)) return fitPoints(pts, 1.6);
@@ -3995,6 +4013,7 @@ function saveTrip(){
   if(err) return err;
   if(d.mode==="new"){
     var t = newTripObj({name:name.slice(0,60), start:d.start, end:d.end, arr:d.arr, dep:d.dep, hotels:hotels, orte:orte});
+    Object.keys(S.trips).forEach(function(k){ if(S.trips[k].starter && S.trips[k].seed) delete S.trips[k]; });
     S.trips[t.id] = t; S.cur = t.id;
   } else {
     var t2 = T();
@@ -4028,7 +4047,7 @@ function renderSheet(){
   var body = $("body"), st = body.scrollTop, ae = document.activeElement, fk = null;
   var tp = $("tripPop"), card = tp.querySelector(".ag-card"), tst = card ? card.scrollTop : 0;
   if(ae && (body.contains(ae) || tp.contains(ae)) && ae.id && /INPUT|TEXTAREA/.test(ae.tagName)){ fk = {id:ae.id, v:ae.value, a:ae.selectionStart, b:ae.selectionEnd}; }
-  body.innerHTML = sheetTab==="wish" ? renderWish() : renderDay();
+  body.innerHTML = noTrip() ? noTripHTML() : sheetTab==="wish" ? renderWish() : renderDay();
   body.scrollTop = st;
   fillPhotos(body);
   // Reise-Ansicht als eigenes Fenster
@@ -4042,7 +4061,7 @@ function renderSheet(){
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
-function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); }
+function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); }
 function pickDefaultDay(){
   var ds = days(), tk = todayKey();
   cur = ds.length ? ((dayByKey(tk) && tk) || ds[0].key) : "";
@@ -4229,7 +4248,7 @@ document.addEventListener("click", function(e){
     case "trip": closeSettings(); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); break;
     case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
-    case "tcancel": tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
+    case "tcancel": if(noTrip()){ tdraft = null; closeTrip(); break; } tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
     case "tadd": var arr = tdraft[t.getAttribute("data-path")]; arr.push({n:"", loc:"", from:tdraft.start||"", to:tdraft.end||""}); tdraft.ok = t.getAttribute("data-path")+"."+(arr.length-1); renderSheet(); var gi = document.querySelector("#tripPop [data-geo=\""+tdraft.ok+"\"]"); if(gi) gi.focus(); break;
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); tdraft.ok = ""; renderSheet(); break;
     case "tfopen": var tk2 = t.getAttribute("data-k"); tdraft.ok = tdraft.ok===tk2 ? "" : tk2; renderSheet(); break;
