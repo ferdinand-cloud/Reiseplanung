@@ -1103,6 +1103,7 @@ function acctPushSoon(){ if(!acct.user) return; clearTimeout(pushT); pushT = set
 /* Geteilte Reisen: trips/{id} mit Mitgliedern; jedes Mitglied darf lesen und bearbeiten */
 function tripRef(id){ return fbDb.collection("trips").doc(id); }
 var META = {}, KNOWN = {}, INVITES = [], invUnsub = null;
+try { META = JSON.parse(lsGet("rp-meta")||"{}") || {}; } catch(e){ META = {}; } // letzter bekannter Stand (Mitglieder, Rollen), bis der Server antwortet
 try { KNOWN = JSON.parse(lsGet("rp-known")||"{}") || {}; } catch(e){ KNOWN = {}; }
 function saveKnown(){ lsSet("rp-known", JSON.stringify(KNOWN)); }
 function myMail(){ return ((acct.user && acct.user.email) || "").toLowerCase(); }
@@ -1213,7 +1214,7 @@ function acctPush(){
     setTimeout(acctPush, 15000);
   });
 }
-function fbRows(qs){ return qs.docs.map(function(d){ var v = d.data()||{}, data = null; try { data = v.json ? JSON.parse(v.json) : null; } catch(e){}
+function fbRows(qs){ setTimeout(function(){ lsSet("rp-meta", JSON.stringify(META)); }, 0); return qs.docs.map(function(d){ var v = d.data()||{}, data = null; try { data = v.json ? JSON.parse(v.json) : null; } catch(e){}
   META[d.id] = {owner:v.owner, members:v.members||[], memberEmails:v.memberEmails||{}, invites:v.invites||[], viewers:v.viewers||[], viewInvites:v.viewInvites||[]};
   return {id:d.id, data:data, deleted:!!v.deleted || !data, updated_at:new Date(v.updatedAt||0).toISOString()}; }); }
 var metaSig = "";
@@ -1238,6 +1239,7 @@ function acctApply(rows){
   else { var ms = JSON.stringify(META); if(ms!==metaSig){ metaSig = ms; renderSheetSoon(); } } // Mitglieder/Rollen geändert
   acct.at = Date.now(); setAcct("ok"); acctPush();
   if(Object.keys(PHERR).length && Date.now() - (window.__phR||0) > 30000){ window.__phR = Date.now(); phRetry(); }
+  refreshSettings(); // z. B. „Reisen“: privat/gemeinsam nach neuem Stand
 }
 function acctPull(){
   if(!fbDb || !acct.user) return;
@@ -1262,6 +1264,7 @@ function acctMigrate(){
     return Promise.all(jobs);
   }).then(function(){ lsSet(mk, "1"); }, function(){ lsSet(mk, "1"); });
 }
+var liveTry = 0;
 function acctLive(){
   if(fbUnsub || !fbDb || !acct.user) return;
   var firstServer = false;
@@ -1270,8 +1273,14 @@ function acctLive(){
   fbUnsub = myTrips().onSnapshot(function(qs){
     if(qs.metadata.hasPendingWrites) return;
     if(qs.metadata.fromCache && !firstServer) return; // erst den echten Stand vom Server abwarten
-    firstServer = true; acctApply(fbRows(qs));
-  }, function(e){ setAcct("error", e && e.message); });
+    firstServer = true; liveTry = 0; acctApply(fbRows(qs));
+  }, function(e){
+    // Verbindung abgelehnt (z. B. veraltetes Anmelde-Token): Token erneuern und neu verbinden
+    setAcct("error", e && e.message); fbUnsub = null;
+    var u = window.firebase && window.firebase.auth().currentUser, wait = Math.min(60000, 2000 * Math.pow(2, liveTry++));
+    var again = function(){ setTimeout(function(){ if(acct.user && !fbUnsub) acctLive(); }, wait); };
+    if(u) u.getIdToken(true).then(again, again); else again();
+  });
 }
 function acctMerge(rows, first){
   var changed = false, seen = {};
@@ -1512,7 +1521,7 @@ function invWatch(){
     INVITES = qs.docs.filter(function(d){ var v = d.data()||{}; return !v.deleted && (v.members||[]).indexOf(acct.user.uid) < 0; }).map(function(d){ var v = d.data(); var om = (v.memberEmails||{})[v.owner] || "", rg = "";
       try { var tj = JSON.parse(v.json||"{}"); if(tj.start) rg = rangeLabel(tj.start, tj.end); } catch(e){}
       return {id:d.id, name:v.name || "Reise", from:om, owner:v.owner, fromName:INVN[v.owner]||"", range:rg, viewer:(v.viewInvites||[]).indexOf(myMail()) > -1}; });
-    INVITES.forEach(function(x){ if(x.owner && !(x.owner in INVN)){ INVN[x.owner] = ""; fbDb.collection("profiles").doc(x.owner).get().then(function(d){ var pv = d.exists && d.data(); if(pv && pv.name){ INVN[x.owner] = pv.name; INVITES.forEach(function(y){ if(y.owner===x.owner) y.fromName = pv.name; }); refreshSettings(); } }, function(){}); } });
+    INVITES.forEach(function(x){ if(x.owner && !(x.owner in INVN)){ INVN[x.owner] = ""; fbDb.collection("profiles").doc(x.owner).get().then(function(d){ var pv = d.exists && d.data(); if(pv && pv.name){ INVN[x.owner] = pv.name; INVITES.forEach(function(y){ if(y.owner===x.owner) y.fromName = pv.name; }); refreshSettings(); } }, function(){ invUnsub = null; setTimeout(function(){ if(acct.user) invWatch(); }, 15000); }); } });
     invBadge();
     var SK = "rp-invseen-"+acct.user.uid, seen = {}; try { seen = JSON.parse(localStorage.getItem(SK)||"{}"); } catch(e){}
     var neu = INVITES.filter(function(x){ return !seen[x.id]; });
