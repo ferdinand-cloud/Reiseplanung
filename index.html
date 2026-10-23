@@ -1413,6 +1413,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 <symbol id="i-bar" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 4h16l-8 9zM12 13v7M7.5 20h9M7 7.5h10"/></symbol>
 <symbol id="i-kultur" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-5 9 5zM5.5 10v8M10 10v8M14 10v8M18.5 10v8M3 20.5h18"/></symbol>
 <symbol id="i-aussicht" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 21V10h3V6h3v15M9 21V3h5v18M14 21v-9h3V8h2v13M2 21h20"/></symbol>
+<symbol id="i-hotel" viewBox="0 0 20 20"><path d="M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.8" cy="9.6" r="1.6" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
 <symbol id="i-sight" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3.5 8h3.5l2-3h6l2 3h3.5v11.5h-17zM12 10.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7"/></symbol>
 <symbol id="i-park" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3l5.5 8H14l4.5 6.5h-13L10 11H6.5zM12 17.5V21"/></symbol>
 <symbol id="i-erlebnis" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 8.5A2 2 0 0 0 5 6.5h14a2 2 0 0 0 2 2V10a2 2 0 0 0 0 4v1.5a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2V14a2 2 0 0 0 0-4zM10 6.5v11"/></symbol>
@@ -1496,7 +1497,8 @@ var NB = [{"n":"Battery Park City","b":"Manhattan","r":[[-1203,2123,-192,690,31,
 var CATCOL = {essen:"#C98A4B", cafe:"#9A8269", bar:"#B9707F", kultur:"#8C78AE", aussicht:"#5E97B5", sight:"#6F74A8", park:"#62966F", shop:"#5E9AA2", erlebnis:"#5C9A90"};
 var CATS = [["essen","Restaurant"],["cafe","Café & Süßes"],["bar","Bar"],["kultur","Museum & Kunst"],["aussicht","Aussicht"],["sight","Sehenswürdigkeit"],["park","Park & Spaziergang"],["shop","Shopping & Markt"],["erlebnis","Erlebnis & Wellness"]];
 var CATNAME = {}; CATS.forEach(function(c){ CATNAME[c[0]] = c[1]; });
-function icon(c, cls){ return "<svg class=\""+(cls||"")+"\" aria-hidden=\"true\"><use href=\"#i-"+(CATNAME[c]?c:"sight")+"\"/></svg>"; }
+CATNAME.hotel = "Hotel"; CATCOL.hotel = "#7A8494";
+function icon(c, cls){ if(c==="hotel") return "<svg class=\""+(cls||"")+"\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5\"/><circle cx=\"5.8\" cy=\"9.6\" r=\"1.6\"/></svg>"; return "<svg class=\""+(cls||"")+"\" aria-hidden=\"true\"><use href=\"#i-"+(CATNAME[c]?c:"sight")+"\"/></svg>"; }
 function badge(c, style){ return "<span class=\"ico\" style=\"--cc:"+catCol(c)+";"+(style||"")+"\" title=\""+esc(CATNAME[c]||"")+"\">"+icon(c)+"</span>"; }
 var WD = ["So","Mo","Di","Mi","Do","Fr","Sa"], WDL = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
 var MON = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
@@ -2523,6 +2525,16 @@ function revisit(id, k){
   ["n","c","addr","la","lo","note","list","g","web","tel"].forEach(function(f){ if(p[f]!==undefined) c[f] = p[f]; });
   T().places[nid] = c; ord(k).push(nid);
   save(); toast(p.n+" zusätzlich am "+D.lbl+" eingeplant (Stopp "+ord(k).length+")", true);
+}
+
+/* Zwischenstopp im Hotel: eigener Stopp mit Verweis auf das Hotel des Tages (wie ein weiterer Besuch, ohne Wunschliste) */
+function hotelStop(k, after){
+  var D = dayByKey(k), H = D && D.hotel; if(!H || !hasLoc(H)) { toast("Für diesen Tag ist kein Hotel mit Adresse hinterlegt.", false); return; }
+  undoSnap = snapshot();
+  var nid = uid("v"), o = ord(k), i = after ? o.indexOf(after) : -1;
+  T().places[nid] = {id:nid, of:H.id, k:"hotel", n:H.n, c:"hotel", la:H.la, lo:H.lo, addr:H.addr || ""};
+  if(i > -1) o.splice(i+1, 0, nid); else o.push(nid);
+  save(); toast("Zwischenstopp im Hotel eingeplant"+(i > -1 ? " nach „"+P(after).n+"“" : " – zum Verschieben ziehen"), true);
 }
 
 /* ---------- Vorschläge ---------- */
@@ -4030,10 +4042,12 @@ function openCardMore(){
   var dk = dayOf(sel), I = function(d, cls){ return "<span class=\"ai"+(cls?" "+cls:"")+"\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg></span>"; };
   var row = function(act, ic, t, sub, extra){ return "<button type=\"button\" data-act=\""+act+"\""+(extra||"")+">"+ic+"<span class=\"dt\"><b>"+t+"</b>"+(sub?"<small>"+sub+"</small>":"")+"</span></button>"; };
   var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Weitere Aktionen\" data-id=\""+sel+"\"><div class=\"pop-head\"><h4>"+esc(p.n)+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list addlist\">";
-  h += row("grppick", I("<rect x=\"3\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"3\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/>"), grpName(p.g) ? "Gruppe ändern" : "Zu Gruppe hinzufügen", grpName(p.g) ? "Jetzt: "+esc(grpName(p.g)) : "");
-  if(dk) h += row("revisit", I("<path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/>"), "Nochmal besuchen …", "Zusätzlich an einem weiteren Tag einplanen", " data-pid=\""+sel+"\"");
+  var hdk = dk && dayByKey(dk), isHs = p.k==="hotel";
+  if(hdk && hdk.hotel && !isHs) h += row("hotelafter", I("<path d=\"M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5\"/><circle cx=\"5.8\" cy=\"9.6\" r=\"1.6\"/>"), "Danach ins Hotel", "Zwischenstopp im "+esc(hdk.hotel.n)+" einplanen", " data-pid=\""+sel+"\"");
+  if(!isHs) h += row("grppick", I("<rect x=\"3\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"3\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/>"), grpName(p.g) ? "Gruppe ändern" : "Zu Gruppe hinzufügen", grpName(p.g) ? "Jetzt: "+esc(grpName(p.g)) : "");
+  if(dk && !isHs) h += row("revisit", I("<path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/>"), "Nochmal besuchen …", "Zusätzlich an einem weiteren Tag einplanen", " data-pid=\""+sel+"\"");
   if(dk && dk!==cur) h += row("gotoday", I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14\"/>"), "Tag "+dayByKey(dk).n+" öffnen", esc(dayByKey(dk).lbl), " data-day=\""+dk+"\"");
-  if(dk===cur) h += row("unplan", I("<path d=\"M12 5l-5 5 5 5\"/>"), p.of ? "Diesen Besuch entfernen" : "Zurück in die Wunschliste", "Aus dem Tagesplan nehmen");
+  if(dk===cur) h += row("unplan", I("<path d=\"M12 5l-5 5 5 5\"/>"), isHs ? "Zwischenstopp entfernen" : p.of ? "Diesen Besuch entfernen" : "Zurück in die Wunschliste", "Aus dem Tagesplan nehmen");
   h += "<a href=\""+gmInfoUrl(p)+"\" target=\"_blank\" rel=\"noopener\" class=\"pl-a\">"+I("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"<span class=\"dt\"><b>In Google Maps öffnen</b><small>Öffnungszeiten, Bewertungen, Fotos</small></span></a>";
   h += row(moreDel ? "delplace" : "moredel", I("<path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/>", "warn"), moreDel ? "Wirklich löschen?" : "Löschen", moreDel ? "Tippe noch einmal zum Bestätigen" : "Punkt aus der Reise entfernen", " class=\"del\"");
   h += "</div></div>";
@@ -4252,7 +4266,7 @@ function renderDay(){
     var opts = days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===cur?" selected":"")+">"+d.lbl+"</option>"; }).join("");
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
       "<div class=\"lcol\">"+"<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>"+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button>"+"</div>"+
-      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
+      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(p.k==="hotel" ? "Zwischenstopp im Hotel" : CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(hasLoc(p)||p.addr?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/></svg><select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
       "</div></li>";
@@ -4260,6 +4274,7 @@ function renderDay(){
   var lastL = LG[LG.length-1]; if(shown && HT && lastL && lastL[1]===HT) h += legLi(lastL[0], HT, LG.length-1);
   if(nHid) h += "<li class=\"leg\"><button type=\"button\" class=\"tdet\" data-act=\"hidedone\">"+nHid+(nHid===1?" erledigter Stopp":" erledigte Stopps")+" ausgeblendet · Einblenden</button></li>";
   if(!ids.length) h += "<li class=\"leg\">Noch keine Stopps. Übernimm einen Vorschlag oder tippe auf der Karte auf einen Wunsch.</li>";
+  if(HT && ids.length && !isRO()) h += "<li class=\"leg\"><button type=\"button\" class=\"tdet\" data-act=\"hotelstop\">+ Zwischenstopp im Hotel</button></li>";
   if(HT) h += "<li class=\"ht\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">Ziel</span></span></li>";
   h += "</ol></div>";
   h += journalBlock(D);
@@ -5355,7 +5370,7 @@ function unplan(id){
   var p = P(id);
   if(p && p.of){ // weiterer Besuch: Kopie ganz entfernen
     var t = T(); delete t.places[id]; ["times","rating","notes","photos","legMode","legAlt"].forEach(function(f){ if(t[f]) delete t[f][id]; });
-    save(); toast("Weiterer Besuch von "+p.n+" entfernt", true); return;
+    save(); toast(p.k==="hotel" ? "Zwischenstopp im Hotel entfernt" : "Weiterer Besuch von "+p.n+" entfernt", true); return;
   }
   save(); toast(P(id).n+" liegt wieder in der Wunschliste", true);
 }
@@ -5401,6 +5416,8 @@ document.addEventListener("click", function(e){
     case "movepop": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel, true); break;
     case "movepick": closeCatPop(); var mvId = dayPopFor, mvTo = t.getAttribute("data-day"); dayPopFor = null; dayPopMove = false;
       if(mvTo!==dayOf(mvId) && moveToDay(mvId, mvTo)){ renderAll(); if(jp && jp.pid===mvId && !$("jPop").hidden){ jp.dk = mvTo; renderJPop(); } } break;
+    case "hotelstop": hotelStop(cur); renderAll(); break;
+    case "hotelafter": var hpid = t.getAttribute("data-pid") || id; closeCatPop(); hotelStop(dayOf(hpid), hpid); renderAll(); break;
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
     case "srchopen": closeMenus(); openSearch(); break;
