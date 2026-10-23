@@ -297,6 +297,12 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .menubtn.dot::after{content:"";position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:#d93025;border:2px solid var(--sheet)}
 .ag-row.inv{cursor:default;flex-wrap:wrap}
+.ag-acts.three{grid-template-columns:1fr 1fr 1fr}
+.ag-acts.three button{font-size:13px;padding:10px 6px}
+.ag-sub{display:block;font-size:12.5px;color:var(--muted)}
+.ag-title{margin:6px 0 4px;font:700 22px/1.1 var(--f-display)}
+.frres{padding:0 12px}
+.frres:empty{display:none}
 .ag-grp .ag-row .fn{flex:1;min-width:0;display:grid}
 .ag-grp .ag-row .fn small{color:var(--muted);font-size:12px}
 .ag-grp .ag-row > small{color:var(--muted);font-size:12.5px}
@@ -1061,7 +1067,7 @@ function setUsername(n){
       if(old && old!==low) tx.delete(fbDb.collection("usernames").doc(old));
       tx.set(fbDb.collection("profiles").doc(uid0), {name:n, nameLower:low});
     });
-  }).then(function(){ PROF = {name:n, nameLower:low}; unameEdit = false; unameMsg = ""; refreshSettings(); toast("Benutzername @"+n+" gespeichert", false); },
+  }).then(function(){ PROF = {name:n, nameLower:low}; unameEdit = false; unameMsg = ""; accView = "main"; if(document.activeElement) document.activeElement.blur(); refreshSettings(); toast("Benutzername @"+n+" gespeichert", false); },
     function(e){ unameMsg = e && e.message==="taken" ? "@"+n+" ist schon vergeben." : "Speichern fehlgeschlagen."; refreshSettings(); });
 }
 var frTimer = null;
@@ -1100,18 +1106,28 @@ function frAccept(id){
   fbDb.collection("friendReqs").doc(r.id).update({status:"accepted", toEmail:myMail(), toName:(PROF && PROF.name) || r.toName}).then(function(){ toast("Ihr seid jetzt befreundet", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); });
 }
 function frRemove(id){ fbDb.collection("friendReqs").doc(id).delete(); }
+var accView = "main";
 function friendsHTML(){
-  var h = "<div class=\"ag-lbl\">Benutzername</div><div class=\"ag-grp\">";
-  if(unameEdit || !PROF){
-    h += "<form class=\"ag-in gnew\" id=\"unForm\"><input type=\"text\" id=\"unIn\" maxlength=\"20\" value=\""+esc(PROF ? PROF.name : "")+"\" placeholder=\"z. B. ferdinand\" autocomplete=\"off\" autocapitalize=\"off\"><button type=\"submit\" class=\"btn s\">Speichern</button></form>";
-    h += "<p class=\"note ag-in\">"+esc(unameMsg || (PROF ? "" : "Mit einem Benutzernamen können andere dich finden und dir Freundschaftsanfragen schicken."))+"</p>";
-  } else h += "<button type=\"button\" class=\"ag-row\" data-act=\"unedit\"><span><b>@"+esc(PROF.name)+"</b><small>Andere finden dich unter diesem Namen</small></span><em class=\"chev\">✎</em></button>";
-  h += "</div>";
-  h += "<div class=\"ag-lbl\">Freunde"+(FR.friends.length?" · "+FR.friends.length:"")+"</div><div class=\"ag-grp\">";
+  var h = "<div class=\"ag-lbl\">Freunde"+(FR.friends.length?" · "+FR.friends.length:"")+"</div><div class=\"ag-grp\">";
   FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.fromName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.fromName)+"</b><small>möchte mit dir befreundet sein</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+r.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Ablehnen</button></span></div>"; });
   FR.friends.forEach(function(f){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+f.id+"\" aria-label=\"Freundschaft beenden\">Entfernen</button></div>"; });
   FR.out.forEach(function(r){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((r.toName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.toName)+"</b><small>Anfrage gesendet</small></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Zurückziehen</button></div>"; });
-  h += "<div class=\"ag-in\"><input type=\"search\" id=\"frQ\" class=\"frq\" placeholder=\"Nutzer suchen (Benutzername)\" autocomplete=\"off\" autocapitalize=\"off\" value=\""+esc(frSearch.q)+"\"><div id=\"frRes\">"+frResHTML()+"</div></div>";
+  h += "<button type=\"button\" class=\"ag-row\" data-act=\"accview\" data-v=\"search\"><span><b>Freunde suchen</b><small>Über den Benutzernamen finden und anfragen</small></span><em class=\"chev\">›</em></button>";
+  return h+"</div>";
+}
+function profileHTML(){
+  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Profil bearbeiten\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
+  h += "<button type=\"button\" class=\"back\" data-act=\"accview\" data-v=\"main\">‹ Mein Konto</button><h3 class=\"ag-title\">Profil bearbeiten</h3>";
+  h += "<div class=\"ag-lbl\">Benutzername</div><form class=\"gnew\" id=\"unForm\"><input type=\"text\" id=\"unIn\" maxlength=\"20\" value=\""+esc(PROF ? PROF.name : "")+"\" placeholder=\"z. B. ferdinand\" autocomplete=\"off\" autocapitalize=\"off\"><button type=\"submit\" class=\"btn s\">Speichern</button></form>";
+  h += "<p class=\"note\" id=\"unMsg\">"+esc(unameMsg || "3–20 Zeichen: Buchstaben, Zahlen, Punkt, Minus oder Unterstrich. Unter diesem Namen finden dich andere.")+"</p>";
+  h += "<div class=\"ag-lbl\">E-Mail</div><p class=\"note\">"+esc(myMail())+" – nur für dich und deine Freunde sichtbar.</p>";
+  return h+"</div>";
+}
+function searchHTML(){
+  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Freunde suchen\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
+  h += "<button type=\"button\" class=\"back\" data-act=\"accview\" data-v=\"main\">‹ Mein Konto</button><h3 class=\"ag-title\">Freunde suchen</h3>";
+  if(!PROF) h += "<p class=\"note\">Lege zuerst unter „Profil bearbeiten“ einen Benutzernamen fest, damit du Anfragen senden kannst.</p>";
+  h += "<input type=\"search\" id=\"frQ\" class=\"frq\" placeholder=\"Benutzername eingeben\" autocomplete=\"off\" autocapitalize=\"off\" value=\""+esc(frSearch.q)+"\"><div id=\"frRes\" class=\"ag-grp frres\">"+frResHTML()+"</div>";
   return h+"</div>";
 }
 
@@ -1190,8 +1206,9 @@ function acctHTML(){
   var st = !u ? ["off","Nicht angemeldet"] : acct.state==="sync" ? ["sync","Gleiche ab …"] : acct.state==="error" ? ["err","Abgleich fehlgeschlagen – wird erneut versucht"] : !navigator.onLine ? ["off","Offline – Änderungen folgen später"] : ["ok","Synchronisiert"+(acct.at ? " um "+new Date(acct.at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "")];
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mein Konto\">";
   h += "<button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
-  h += "<div class=\"ag-head\"><span class=\"ag-av\">"+esc(ini)+"</span><div><b>"+esc(mail || "Mein Konto")+"</b><span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+"</span></div></div>";
-  if(u) h += "<div class=\"ag-acts\"><button type=\"button\" data-act=\"acsync\">Jetzt abgleichen</button><button type=\"button\" class=\"warn\" data-act=\"acout\">Abmelden</button></div>";
+  h += "<div class=\"ag-head\"><span class=\"ag-av\">"+esc(PROF ? PROF.name[0].toUpperCase() : ini)+"</span><div><b>"+(PROF ? "@"+esc(PROF.name) : esc(mail || "Mein Konto"))+"</b>"+(PROF ? "<span class=\"ag-sub\">"+esc(mail)+"</span>" : "")+"<span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+"</span></div></div>";
+  if(u) h += "<div class=\"ag-acts three\"><button type=\"button\" data-act=\"accview\" data-v=\"profile\">Profil bearbeiten</button><button type=\"button\" data-act=\"acsync\">Abgleichen</button><button type=\"button\" class=\"warn\" data-act=\"acout\">Abmelden</button></div>";
+  if(u && !PROF) h += "<p class=\"note\">Tipp: Unter „Profil bearbeiten“ legst du einen Benutzernamen fest, damit dich Freunde finden.</p>";
   if(u) h += friendsHTML();
   if(INVITES.length){
     h += "<div class=\"ag-lbl\">Einladungen</div><div class=\"ag-grp\">"+INVITES.map(function(v){ return "<div class=\"ag-row inv\"><span><b>"+esc(v.name)+"</b><small>von "+esc(v.from||"jemandem")+"</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"invacc\" data-trip=\""+v.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"invdec\" data-trip=\""+v.id+"\">Ablehnen</button></span></div>"; }).join("")+"</div>";
@@ -1211,12 +1228,12 @@ function acctHTML(){
   h += "<div class=\"ag-lbl\">Sicherung</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"export\"><span><b>Plan als Datei sichern</b></span><em class=\"chev\">›</em></button><label class=\"ag-row\" for=\"impFileG\"><span><b>Sicherung laden</b></span><em class=\"chev\">›</em></label></div>";
   return h+"</div>";
 }
-function openSettings(){ var el = $("acctPop"); el.innerHTML = acctHTML(); el.hidden = false; document.body.classList.add("glass"); }
-function closeSettings(){ $("acctPop").hidden = true; document.body.classList.remove("glass"); }
+function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : acctHTML(); el.hidden = false; document.body.classList.add("glass"); }
+function closeSettings(){ accView = "main"; unameMsg = ""; $("acctPop").hidden = true; document.body.classList.remove("glass"); }
 function refreshSettings(){
   if($("acctPop").hidden) return;
   var ae = document.activeElement;
-  if(ae && (ae.id==="frQ" || ae.id==="unIn" || ae.id==="gKeyIn")){ renderFrRes(); return; }
+  if(ae && (ae.id==="frQ" || ae.id==="unIn" || ae.id==="gKeyIn")){ renderFrRes(); var um = $("unMsg"); if(um && unameMsg) um.textContent = unameMsg; return; }
   openSettings();
 }
 /* Anmeldefenster vor der App */
@@ -3413,7 +3430,7 @@ document.addEventListener("click", function(e){
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
     case "acctclose": closeSettings(); break;
-    case "unedit": unameEdit = true; unameMsg = ""; openSettings(); var ui = $("unIn"); if(ui) ui.focus(); break;
+    case "accview": accView = t.getAttribute("data-v"); unameMsg = ""; openSettings(); var fi = $(accView==="search" ? "frQ" : "unIn"); if(fi && accView!=="main") fi.focus(); break;
     case "frreq": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); break;
     case "fracc": frAccept(t.getAttribute("data-uid")); break;
     case "frdel": frRemove(t.getAttribute("data-id")); break;
