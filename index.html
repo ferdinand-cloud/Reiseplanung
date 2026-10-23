@@ -791,7 +791,7 @@ mark{background:var(--hi-fill);color:inherit;border-radius:3px;padding:0 1px}
 .rhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
 .rhead h4{margin:0}
 .rhint{font-size:12px;color:var(--muted);margin-left:auto}
-.lm{display:inline-flex;background:var(--chip);border-radius:999px;padding:2px;flex:0 0 auto;margin-right:6px;vertical-align:middle}
+.lm{display:inline-flex;background:var(--chip);border-radius:999px;padding:2px;flex:0 0 auto;margin-right:2px;vertical-align:middle}
 .lm button{border:0;background:none;border-radius:999px;width:30px;height:26px;display:grid;place-items:center;color:var(--muted);padding:0}
 .lm button svg{width:16px;height:16px}
 .lm button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px var(--scrim)}
@@ -800,7 +800,11 @@ mark{background:var(--hi-fill);color:inherit;border-radius:3px;padding:0 1px}
 .seg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px var(--scrim)}
 .leg.tleg{display:block;padding:4px 0 4px 54px;position:relative}
 .leg.tleg::before{position:absolute;left:26px;top:0;bottom:0;height:auto;margin:0}
-.tl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tl{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0}
+.tl > *{flex:0 0 auto}
+.tl > .tsum{flex:0 1 auto;min-width:0;overflow:hidden;white-space:nowrap}
+.tl > .ndep{flex:0 1 auto;min-width:0;overflow:hidden}
+.tl > .tdet2{width:26px;margin-left:auto}
 .tsum{border:1px solid var(--line);background:var(--sheet);border-radius:999px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums}
 .leg.sel .tsum{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
 .tsum .bul{margin:0}
