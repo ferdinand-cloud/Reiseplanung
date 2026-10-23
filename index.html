@@ -311,6 +311,9 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+.ndep{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ndep b{color:var(--ink);font-weight:700}
+.ndep small{color:#1e8e3e;font-weight:600;font-size:11.5px}
 body.ro [data-act="done"],body.ro [data-act="plan"],body.ro [data-act="unplan"],body.ro [data-act="swdel"],body.ro [data-act="delplace"],body.ro [data-act="revisit"],body.ro [data-act="revpick"],body.ro [data-act="grppick"],body.ro [data-act="grpset"],body.ro [data-act="grpmanage"],body.ro [data-act="grpdel"],body.ro [data-act="grpedit"],body.ro [data-act="newwish"],body.ro [data-act="newlist"],body.ro [data-act="dellist"],body.ro [data-act="lmode"],body.ro [data-act="legalt"],body.ro [data-act="rate"],body.ro [data-act="jphl"],body.ro [data-act="jhl"],body.ro [data-act="jins"],body.ro [data-act="phdel"],body.ro [data-act="tripedit"],body.ro [data-act="deltrip"],body.ro [data-act="reset"],body.ro [data-act="lpday"],body.ro [data-act="lpwish"],body.ro [data-act="lphotel"],body.ro [data-act="poiadd"],body.ro [data-act="undo"],body.ro [data-act="tadd"],body.ro [data-act="tdel"],body.ro [data-act="pick"],body.ro [data-act="arm"],body.ro [data-act="move"],body.ro [data-act="time"],body.ro [data-act="jpedit"]{display:none !important}
 body.ro .lcol .grip,body.ro .jp-add,body.ro .jp-grp:not(.on),body.ro .lm,body.ro .alts2,body.ro #lpPick{display:none !important}
 body.ro .jp-grp{pointer-events:none}
@@ -2387,6 +2390,18 @@ function transitSteps(r, a, b, ctx){
   h += "</ol><p class=\"tsnote\">Planmäßige MTA-Zeiten · <a href=\""+gmapsTransit(a,b)+"\" target=\"_blank\" rel=\"noopener\">Live in Google Maps</a></p>";
   return h;
 }
+// Nächste und übernächste Abfahrt der ersten Fahrt einer Etappe (heute ab jetzt, sonst ab eingetragener Uhrzeit)
+function legDeps(r, a){
+  if(!r || r.walk) return "";
+  var ctx = legCtx(a), now = nyNow(), w = 0, first = null;
+  r.legs.forEach(function(l){ if(first) return; if(l.t==="ride") first = l; else w += l.secs||0; });
+  if(!first) return "";
+  var base = ctx.base!=null ? ctx.base + w : (cur===now.key ? now.secs + w : null);
+  if(base==null) return "";
+  var d = departures(first.from, cur, base, 2, first.alt || [first.r], first.to);
+  if(!d.length) return "<span class=\"ndep\">keine Abfahrt mehr</span>";
+  return "<span class=\"ndep\" title=\"Abfahrt an "+esc(NET.s[first.from][0])+" (planmäßig)\">"+d.map(function(x, i){ var m = ctx.base==null ? Math.max(0, Math.round((x.t - now.secs)/60)) : null; return "<b>"+hhmm(x.t)+"</b>"+(i===0 && m!=null ? " <small>in "+m+" Min.</small>" : ""); }).join(" · ")+"</span>";
+}
 function legCtx(a){
   var now = nyNow();
   if(cur===now.key) return {day:cur};
@@ -3395,7 +3410,7 @@ function renderDay(){
     if(m==="walk"){ walkPath(a, b); var wd = walkDist(a, b) || dist(a, b)*1.25;
       return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><span class=\"tw\">Zu Fuß</span> "+Math.max(1,Math.round(wd/1.33/60))+" Min. · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+ev+"</div></li>"; }
     var alts = transitAlts(a, b, cur), r = legRoute(a, b, cur), open = !!legOpen[cur+"|"+i], ai = alts.indexOf(r);
-    return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r)+"</button>"+ev+
+    return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r)+"</button>"+legDeps(r, a)+ev+
       (r.walk ? "" : "<button type=\"button\" class=\"tdet2\" data-act=\"legopen\" data-leg=\""+i+"\" aria-expanded=\""+open+"\" aria-label=\""+(open?"Wegbeschreibung zuklappen":"Wegbeschreibung zeigen")+"\">"+CHEV+"</button>")+"</div>"+
       (open && alts.length > 1 ? "<div class=\"alts2\" role=\"group\" aria-label=\"Andere Verbindungen\">"+alts.map(function(x, j){ return "<button type=\"button\" data-act=\"legalt\" data-leg=\""+i+"\" data-alt=\""+j+"\" aria-pressed=\""+(j===ai)+"\">"+transitSummary(x)+"</button>"; }).join("")+"</div>" : "")+
       (open && !r.walk ? transitSteps(r, a, b, legCtx(a)) : "")+"</li>";
