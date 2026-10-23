@@ -1336,6 +1336,17 @@ li.st .sub{margin-top:1px}
 .jp-strip button.pv-lk i{position:absolute;right:4px;bottom:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.55);display:grid;place-items:center}
 .jp-strip button.pv-lk i .lk{margin:0;width:12px;height:12px;color:#fff}
 #pvLayer .pvi:disabled{opacity:.85}
+.pv-cap{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:48px calc(env(safe-area-inset-right,0px) + 18px) calc(env(safe-area-inset-bottom,0px) + 40px) calc(env(safe-area-inset-left,0px) + 18px);background:linear-gradient(transparent,rgba(0,0,0,.72));color:#fff;cursor:pointer}
+.pv-cap p{margin:0;color:#fff !important;font:500 15px/1.4 var(--f-body);white-space:pre-line;max-height:7em;overflow-y:auto;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.pv-cap.empty{background:none;padding-top:0;cursor:default;pointer-events:none;text-align:center}
+.pv-cap.empty button{pointer-events:auto;border:0;border-radius:999px;padding:7px 14px;background:rgba(30,30,30,.45);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font:600 13px/1.2 var(--f-body)}
+.cap-card{width:min(380px,100%);text-align:left}
+.cap-card b,.cap-card > p{text-align:center}
+.cap-list{display:grid;gap:10px;margin-top:12px;max-height:min(52vh,420px);overflow-y:auto}
+.cap-row{display:flex;gap:10px;align-items:flex-start}
+.cap-row img{width:64px;height:64px;flex:0 0 64px;border-radius:10px;object-fit:cover;background:var(--chip)}
+.cap-row textarea{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--sheet);color:var(--ink);padding:8px 10px;font:16px/1.35 var(--f-body);resize:none}
+.cap-ok{background:var(--ink) !important;color:var(--sheet) !important}
 .cfpop{position:fixed;inset:0;z-index:95;background:rgba(8,12,18,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:grid;place-items:center;padding:24px}
 .cfpop[hidden]{display:none}
 .cf-card{width:min(320px,100%);background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-bd,var(--line));border-radius:18px;padding:18px 16px 14px;box-shadow:0 12px 40px rgba(0,0,0,.3);color:var(--ink);text-align:center}
@@ -1749,7 +1760,7 @@ function renameLocal(){
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["places","done","times","journal","order","legMode","legAlt","rating","notes","photos","groups","privP","privN","privPh"];
+var MAPK = ["places","done","times","journal","order","legMode","legAlt","rating","notes","photos","groups","privP","privN","privPh","capt"];
 /* ---------- Privat: Orte, Notizen und Fotos, die Beobachter nicht bekommen ----------
    Mitreisende lesen und schreiben die vollständige Reise in trips/{id}/priv/data;
    das Reise-Dokument selbst (für Beobachter lesbar) enthält nur den öffentlichen Teil. */
@@ -1761,6 +1772,7 @@ function pubOf(M){
   var c = jclone(M);
   if(privOf(M)){
     var S0 = privSet(M), N0 = M.privN || {}, H0 = M.privPh || {};
+    if(c.capt){ var hid0 = Object.keys(H0); S0.forEach(function(pid){ hid0 = hid0.concat((M.photos||{})[pid] || []); }); hid0.forEach(function(x){ delete c.capt[x]; }); }
     S0.forEach(function(pid){
       var nm = (c.places[pid]||{}).n || "";
       delete c.places[pid];
@@ -1794,6 +1806,8 @@ function privReadd(pub, full){
     if(F.hl && pn[F.hl] && !J.hl) J.hl = F.hl;
     if(typeof F.text==="string"){ var miss = F.text.split("\n").filter(function(l){ return Object.keys(pn).some(function(n){ return l.indexOf("• "+n)===0; }) && (J.text||"").indexOf(l)<0; }); if(miss.length) J.text = (J.text ? J.text+"\n" : "")+miss.join("\n"); } });
   Object.keys(full.privN||{}).forEach(function(pid){ if(full.notes && full.notes[pid]!=null && r.places[pid] && (!r.notes || r.notes[pid]==null)){ r.notes = r.notes || {}; r.notes[pid] = full.notes[pid]; } });
+  if(full.capt){ var sp = {}; privSet(full).forEach(function(pid){ ((full.photos||{})[pid]||[]).forEach(function(x){ sp[x] = 1; }); }); Object.keys(full.privPh||{}).forEach(function(x){ sp[x] = 1; });
+    Object.keys(sp).forEach(function(x){ if(full.capt[x] && !(r.capt && r.capt[x])){ r.capt = r.capt || {}; r.capt[x] = full.capt[x]; } }); }
   Object.keys(full.photos||{}).forEach(function(pid){ var add = (full.photos[pid]||[]).filter(function(x){ return (full.privPh||{})[x]; }); if(!add.length || !r.places[pid]) return;
     r.photos = r.photos || {}; var a = r.photos[pid] = (r.photos[pid]||[]).slice(); add.forEach(function(x){ if(a.indexOf(x)<0) a.push(x); }); });
   return r;
@@ -1822,6 +1836,7 @@ function togglePriv(kind, key){
   var on = !t[k][key]; if(on) t[k][key] = 1; else delete t[k][key];
   save();
   if(kind==="p") phPrivSync(photosOf(key)); else if(kind==="ph") phPrivSync([key]);
+  if(kind!=="n") cmResync();
   toast(on ? (kind==="p" ? "Ort ist jetzt privat – Beobachter sehen ihn nicht" : kind==="n" ? "Notiz ist jetzt privat" : "Foto ist jetzt privat")
            : (kind==="p" ? "Ort ist wieder für alle sichtbar" : kind==="n" ? "Notiz ist wieder für alle sichtbar" : "Foto ist wieder für alle sichtbar"), false);
 }
@@ -2308,13 +2323,34 @@ function cmWatch(){
   if(cmUnsub){ cmUnsub(); cmUnsub = null; }
   cmTrip = S.cur; CMTS = {};
   if(!KNOWN[cmTrip]) return;
-  cmUnsub = tripRef(cmTrip).collection("comments").orderBy("at").onSnapshot(function(qs){
+  var RAW = {comments:[], pcomments:[]}, uns = [];
+  var onQs = function(col){ return function(qs){
+    RAW[col] = qs.docs.map(function(d){ var v = d.data(); return {id:d.id, pid:v.pid, text:v.text, by:v.by, email:v.email, at:v.at, col:col}; });
     CMTS = {};
-    qs.docs.forEach(function(d){ var v = d.data(); (CMTS[v.pid] = CMTS[v.pid] || []).push({id:d.id, text:v.text, by:v.by, email:v.email, at:v.at}); });
+    RAW.comments.concat(RAW.pcomments).sort(function(a, b){ return (a.at||0) - (b.at||0); }).forEach(function(c){ (CMTS[c.pid] = CMTS[c.pid] || []).push(c); });
+    cmResyncSoon();
     if(jp && jp.view && pvOpen()) phMetaRefresh();
     else if(jp && !$("jPop").hidden && !(document.activeElement && document.activeElement.id==="cmIn")) renderJPop(); else if(jp && !$("jPop").hidden) { var cl = $("cmList"); if(cl) cl.innerHTML = cmListHTML(jp.pid); }
     if(tab==="day" || tab==="trip") renderSheet();
-  }, function(){});
+  }; };
+  uns.push(tripRef(cmTrip).collection("comments").orderBy("at").onSnapshot(onQs("comments"), function(){}));
+  // private Kommentare (zu privaten Orten/Fotos) liegen getrennt und sind nur für Besitzer und Mitreisende lesbar
+  if(!isViewerOf(cmTrip)) uns.push(tripRef(cmTrip).collection("pcomments").orderBy("at").onSnapshot(onQs("pcomments"), function(){}));
+  cmUnsub = function(){ uns.forEach(function(f){ try { f(); } catch(e){} }); };
+}
+/* in welchen Bereich ein Kommentar gehört: privat, wenn der Ort oder das Foto privat ist */
+function cmCol(pid){ var m = /^(ph|lk):(.+)$/.exec(pid||""); return (m ? isPrivPh(m[2]) : isPrivP(pid)) ? "pcomments" : "comments"; }
+function cmRef(pid){ return tripRef(S.cur).collection(cmCol(pid)); }
+// nach Änderungen der Privat-Markierung Kommentare in den richtigen Bereich verschieben
+var cmRsT = null;
+function cmResyncSoon(){ clearTimeout(cmRsT); cmRsT = setTimeout(cmResync, 800); }
+function cmResync(){
+  if(!fbDb || !acct.user || cmTrip!==S.cur || isRO() || !KNOWN[S.cur]) return;
+  Object.keys(CMTS).forEach(function(pid){ (CMTS[pid]||[]).forEach(function(c){
+    var want = cmCol(c.pid); if(!c.col || c.col===want || c.moving) return; c.moving = true;
+    var from = tripRef(S.cur).collection(c.col).doc(c.id), to = tripRef(S.cur).collection(want).doc(c.id);
+    to.set({pid:c.pid, text:c.text||"", by:c.by||"", email:c.email||"", at:c.at||Date.now()}).then(function(){ return from.delete(); }).catch(function(){ c.moving = false; });
+  }); });
 }
 function cmListHTML(pid){
   var list = CMTS[pid] || [];
@@ -2358,7 +2394,7 @@ function ntSyncTrips(){
     if(ntCm[id]) return;
     var SK = "rp-ntcm-"+ntUid+"-"+id, since = +(localStorage.getItem(SK)||0);
     if(!since){ since = Date.now(); lsSet(SK, String(since)); }
-    ntCm[id] = tripRef(id).collection("comments").where("at", ">", since).onSnapshot(function(qs){
+    var ntH = function(qs){
       qs.docChanges().forEach(function(ch){
         if(ch.type!=="added") return;
         var v = ch.doc.data(); if(!v || v.by===ntUid) return;
@@ -2381,7 +2417,10 @@ function ntSyncTrips(){
                  sub:txt.length > 90 ? txt.slice(0, 88)+" …" : txt});
         });
       });
-    }, function(){ if(ntCm[id]){ delete ntCm[id]; } });
+    };
+    var u1 = tripRef(id).collection("comments").where("at", ">", since).onSnapshot(ntH, function(){ if(ntCm[id]){ delete ntCm[id]; } });
+    var u2 = isViewerOf(id) ? null : tripRef(id).collection("pcomments").where("at", ">", since).onSnapshot(ntH, function(){});
+    ntCm[id] = function(){ u1(); if(u2) u2(); };
   });
 }
 /* neue Mitreisende in meinen Reisen */
@@ -4244,6 +4283,29 @@ function openCardMore(){
   h += "</div></div>";
   $("catPop").innerHTML = h; $("catPop").hidden = false;
 }
+/* ---------- Bildunterschriften: je Foto ein Text, erscheint unten am Foto ---------- */
+function captOf(ph){ return ((T().capt||{})[ph]) || ""; }
+var CAPQ = [];
+function captPrompt(ids, edit){
+  var el = $("capPop"); if(!el){ el = document.createElement("div"); el.id = "capPop"; el.className = "cfpop"; document.body.appendChild(el); }
+  var keep = {}; el.querySelectorAll && el.querySelectorAll("textarea[data-cap]").forEach(function(x){ keep[x.getAttribute("data-cap")] = x.value; });
+  ids.forEach(function(x){ if(CAPQ.indexOf(x)<0) CAPQ.push(x); });
+  var n = CAPQ.length;
+  el.innerHTML = "<div class=\"cf-card cap-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Bildunterschrift\"><b>"+(edit ? "Bildunterschrift" : n===1 ? "Text zum Foto" : "Text zu den Fotos")+"</b>"+(edit ? "" : "<p>Optional – erscheint unten am Foto.</p>")+
+    "<div class=\"cap-list\">"+CAPQ.map(function(x){ var v = keep[x]!==undefined ? keep[x] : captOf(x);
+      return "<div class=\"cap-row\"><img data-ph=\""+x+"\" alt=\"\"><textarea data-cap=\""+x+"\" rows=\"2\" maxlength=\"500\" placeholder=\"Text zum Foto …\">"+esc(v)+"</textarea></div>"; }).join("")+"</div>"+
+    "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\">"+(edit ? "Abbrechen" : "Überspringen")+"</button><button type=\"button\" class=\"cf-ok cap-ok\">Speichern</button></div></div>";
+  el.hidden = false; fillPhotos(el);
+  var close = function(){ el.hidden = true; el.innerHTML = ""; CAPQ = []; };
+  el.onclick = function(ev){ ev.stopPropagation();
+    if(ev.target===el || ev.target.closest(".cf-no")) close();
+    else if(ev.target.closest(".cap-ok")){
+      var t = T(); t.capt = t.capt || {};
+      el.querySelectorAll("textarea[data-cap]").forEach(function(x){ var k = x.getAttribute("data-cap"), v = x.value.trim().slice(0,500); if(v) t.capt[k] = v; else delete t.capt[k]; });
+      close(); save(); if(jp && jp.view) phMetaRefresh(); else if(jp && !$("jPop").hidden) renderJPop();
+    } };
+  if(edit) setTimeout(function(){ var ta = el.querySelector("textarea"); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 50);
+}
 var CONFIRM = {
   phdel:["Foto löschen?", "Das Foto wird aus der Reise entfernt, auch für alle Mitreisenden.", "Löschen"],
   cmdel:["Kommentar löschen?", "", "Löschen"],
@@ -4591,7 +4653,9 @@ function phSocial(){ return !!(acct.user && fbDb && KNOWN[S.cur] && META[S.cur] 
 function phLikes(ph){ return (CMTS["lk:"+ph] || []).filter(function(c, i, a){ return a.findIndex(function(y){ return y.by===c.by; })===i; }); }
 function phWho(c){ var f = FR.friends.filter(function(x){ return x.uid===c.by; })[0]; return f && f.name ? "@"+f.name : (c.email||"").split("@")[0] || "Jemand"; }
 function phMetaHTML(ph){
-  var soc = phSocial(), h = "<div class=\"pv-side\">", SV = function(d, fill){ return "<svg viewBox=\"0 0 20 20\" fill=\""+(fill||"none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
+  var cap = captOf(ph), capH = cap ? "<div class=\"pv-cap\""+(isRO() ? "" : " data-act=\"capedit\" data-ph=\""+ph+"\" role=\"button\" tabindex=\"0\"")+"><p>"+esc(cap)+"</p></div>"
+           : (isRO() ? "" : "<div class=\"pv-cap empty\"><button type=\"button\" data-act=\"capedit\" data-ph=\""+ph+"\">＋ Text zum Foto</button></div>");
+  var soc = phSocial(), h = capH+"<div class=\"pv-side\">", SV = function(d, fill){ return "<svg viewBox=\"0 0 20 20\" fill=\""+(fill||"none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   var L = soc ? phLikes(ph) : [], mine = soc && L.some(function(c){ return c.by===acct.user.uid; }), C = soc ? (CMTS["ph:"+ph] || []) : [];
   if(soc){
     h += "<button type=\"button\" class=\"pvi pv-like"+(mine?" on":"")+"\" data-act=\"phlike\" data-ph=\""+ph+"\" aria-pressed=\""+mine+"\" aria-label=\""+(mine?"Gefällt mir nicht mehr":"Gefällt mir")+"\">"+SV("<path d=\"M10 17s-6.5-4-6.5-8.6A3.6 3.6 0 0 1 10 6.3a3.6 3.6 0 0 1 6.5 2.1C16.5 13 10 17 10 17z\"/>", mine ? "currentColor" : "none")+"<span>"+(L.length || "")+"</span></button>";
@@ -4738,7 +4802,7 @@ document.addEventListener("keydown", function(e){ if(e.key==="Escape" && pvOpen(
 function phStep(dir){ var tr = $("pvTrack"); if(!tr) return; var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)) + dir; if(i < 0 || i >= tr.children.length) return; tr.scrollTo({left:i*tr.clientWidth, behavior:"smooth"}); }
 function phLike(ph){
   if(!phSocial()) return;
-  var me = acct.user.uid, ref = tripRef(S.cur).collection("comments").doc("lk_"+ph+"_"+me), mine = phLikes(ph).some(function(c){ return c.by===me; });
+  var me = acct.user.uid, ref = cmRef("lk:"+ph).doc("lk_"+ph+"_"+me), mine = phLikes(ph).some(function(c){ return c.by===me; });
   var L = CMTS["lk:"+ph] = (CMTS["lk:"+ph] || []).filter(function(c){ return c.by!==me; });
   if(!mine) L.push({id:"lk_"+ph+"_"+me, by:me, email:myMail(), at:Date.now(), text:"❤"});
   phMetaRefresh();
@@ -4818,6 +4882,7 @@ function addPhotos(pid, files){
     if(bad && !ok) toast("Foto konnte nicht gelesen werden. Bitte ein anderes Foto wählen.", false);
     else if(noDev) toast((ok===1?"Foto":"Fotos")+" hinzugefügt – wird ins Konto hochgeladen (Gerätespeicher gerade nicht verfügbar).", false);
     else toast(ok===1 ? "Foto hinzugefügt" : ok+" Fotos hinzugefügt"+(bad ? ", "+bad+" nicht lesbar" : ""), false);
+    if(ids.length) captPrompt(ids);
     return ids;
   }).finally(function(){ var inp = $("phIn"); if(inp) try { inp.value = ""; } catch(e){} });
 }
@@ -5020,6 +5085,7 @@ function phSaveLib(ph){
 function delPhoto(pid, id){
   var t = T(); t.photos = t.photos || {}; t.photos[pid] = (t.photos[pid]||[]).filter(function(x){ return x!==id; });
   if(!t.photos[pid].length) delete t.photos[pid];
+  if(t.capt) delete t.capt[id];
   delete PHC[id]; idbDo("readwrite", function(st){ st.delete(id); });
   var q = phQueue(); q.up = q.up.filter(function(x){ return x!==id; }); q.del.push(id); phSaveQ(q);
   save(); phFlush();
@@ -5753,7 +5819,8 @@ document.addEventListener("click", function(e){
     case "minvdel": tripRef(S.cur).update({invites:window.firebase.firestore.FieldValue.arrayRemove(t.getAttribute("data-mail")), viewInvites:window.firebase.firestore.FieldValue.arrayRemove(t.getAttribute("data-mail"))}).then(function(){ var m = META[S.cur]; if(m) m.invites = m.invites.filter(function(x){ return x!==t.getAttribute("data-mail"); }); renderSheet(); }); break;
     case "mremove": var ru2 = t.getAttribute("data-uid"), FV2 = window.firebase.firestore.FieldValue, up2 = {members:FV2.arrayRemove(ru2), viewers:FV2.arrayRemove(ru2)}; up2["memberEmails."+ru2] = FV2.delete(); tripRef(S.cur).update(up2).then(function(){ toast("Entfernt", false); }); break;
     case "mleave": var lt = S.cur; delete S.trips[lt]; S.cur = Object.keys(S.trips)[0] || S.cur; save(); if(!Object.keys(S.trips).length){ S = fresh(); acctInitSigs(); } pickDefaultDay(); renderAll(); toast("Reise verlassen", false); break;
-    case "cmdel": tripRef(S.cur).collection("comments").doc(t.getAttribute("data-cid")).delete(); break;
+    case "cmdel": var cdid = t.getAttribute("data-cid"), ccol = "comments"; Object.keys(CMTS).forEach(function(k){ (CMTS[k]||[]).forEach(function(c){ if(c.id===cdid && c.col) ccol = c.col; }); });
+      tripRef(S.cur).collection(ccol).doc(cdid).delete(); break;
     case "grppick": grpEdit = null; openGrpPop(id); break;
     case "grpmanage": grpEdit = null; openGrpPop(null); break;
     case "grpset": setGroup(grpTarget, t.getAttribute("data-g")); closeCatPop(); renderSheet(); renderCard(); scheduleOverlay(); if(jp && !$("jPop").hidden) renderJPop(); break;
@@ -5774,6 +5841,7 @@ document.addEventListener("click", function(e){
     case "privp": togglePriv("p", rootPid(jp ? jp.pid : id)); if(jp) renderJPop(); renderSheet(); break;
     case "privn": togglePriv("n", jp.pid); renderJPop(); break;
     case "phpriv": togglePriv("ph", t.getAttribute("data-ph")); phMetaRefresh(); break;
+    case "capedit": captPrompt([t.getAttribute("data-ph")], true); break;
     case "pvcm": pvCm = !pvCm; phMetaRefresh(); if(pvCm) setTimeout(function(){ var a = $("pvCm"); if(a) a.scrollTop = a.scrollHeight; }, 0); break;
     case "phstep": phStep(+t.getAttribute("data-v")); break;
     case "phlike": phLike(t.getAttribute("data-ph")); break;
@@ -5969,13 +6037,13 @@ document.addEventListener("submit", function(e){
   if(id==="phcForm"){
     var pt = ($("phcIn").value||"").trim(); if(!pt || !jp || !jp.view) return;
     $("phcIn").value = "";
-    tripRef(S.cur).collection("comments").add({pid:"ph:"+jp.view, text:pt.slice(0,1000), by:acct.user.uid, email:myMail(), at:Date.now()}).catch(function(e2){ toast("Kommentar nicht gespeichert: "+(e2 && e2.message), false); });
+    cmRef("ph:"+jp.view).add({pid:"ph:"+jp.view, text:pt.slice(0,1000), by:acct.user.uid, email:myMail(), at:Date.now()}).catch(function(e2){ toast("Kommentar nicht gespeichert: "+(e2 && e2.message), false); });
     return;
   }
   if(id==="cmForm"){
     var ct = ($("cmIn").value||"").trim(); if(!ct || !jp) return;
     $("cmIn").value = "";
-    tripRef(S.cur).collection("comments").add({pid:jp.pid, text:ct.slice(0,1000), by:acct.user.uid, email:myMail(), at:Date.now()}).catch(function(e2){ toast("Kommentar nicht gespeichert: "+(e2 && e2.message), false); });
+    cmRef(jp.pid).add({pid:jp.pid, text:ct.slice(0,1000), by:acct.user.uid, email:myMail(), at:Date.now()}).catch(function(e2){ toast("Kommentar nicht gespeichert: "+(e2 && e2.message), false); });
     return;
   }
   if(id==="grpNew"){
