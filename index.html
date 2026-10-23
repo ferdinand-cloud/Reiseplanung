@@ -3585,7 +3585,7 @@ function f1(n){ return n.toFixed(1); }
 
 /* ---------- Kartenmarker ---------- */
 function catCol(c){ return CATCOL[c] || CATCOL.sight; }
-var THUMB = {}, thumbBusy = {}, thumbTry = {};
+var THUMB = {}, thumbBusy = {}, thumbTry = {}, PHMK = [];
 /* kleine runde Vorschaubilder für die Karte (96 px), einmal erzeugt und zwischengespeichert */
 function thumbOf(ph){
   if(THUMB[ph]) return THUMB[ph];
@@ -3743,6 +3743,22 @@ function drawOverlay(){
       if(zoomed || isSel) mkLabel(q[0] + R + 9, q[1], p.n, true, isSel ? 10 : 3);
     }
   });
+  // Fotos aller anderen Punkte (andere Tage, ausgeblendete erledigte Stopps): kleine Foto-Marker, damit Erinnerungen immer auf der Karte sind
+  PHMK = [];
+  (function(){
+    var shown = {}, ps = T().photos || {};
+    if(D) ord(cur).forEach(function(id){ if(!hid(id) && !(P(id) && P(id).k==="hotel")) shown[id] = 1; });
+    if(layers.wish || tab==="wish") wishes().forEach(function(w){ shown[w.id] = 1; });
+    Object.keys(ps).forEach(function(pid){
+      var q0p = P(pid); if(shown[pid] || !q0p || !hasLoc(q0p) || !(ps[pid]||[]).length) return;
+      var qq = pt(q0p); if(!onScreen(qq, 30)) return;
+      var th2 = firstThumb(pid); if(!th2) return;
+      var dk2 = dayOf(pid), isSel2 = sel===pid, r2 = isSel2 ? 15 : 11;
+      s += mkPhoto(qq[0], qq[1], r2, th2, dk2 ? dayColor(dk2) : "#7d8a96", isSel2 ? 1 : .95);
+      PHMK.push(pid); MK.push({x0:qq[0]-r2, y0:qq[1]-r2, x1:qq[0]+r2, y1:qq[1]+r2});
+      if(isSel2) mkLabel(qq[0] + r2 + 10, qq[1], q0p.n, true, 10);
+    });
+  })();
   s += flushLabels(MK);
   var dl = draft.open ? parseLoc(draft.loc) : null;
   if(dl){ var pq = pt(dl); s += "<circle cx=\""+f1(pq[0])+"\" cy=\""+f1(pq[1])+"\" r=\"7\" fill=\"var(--land)\" stroke=\"var(--ink)\" stroke-width=\"2.5\" stroke-dasharray=\"3 3\"/>"; }
@@ -3926,6 +3942,7 @@ function tap(x, y){
   if(D) ord(cur).forEach(function(id){ test(id, P(id), 20); });
   T().hotels.forEach(function(h){ test(h.id, h, 18); });
   if(!best && (layers.wish || tab==="wish")) wishes().forEach(function(w){ test(w.id, w, 16); });
+  if(!best) PHMK.forEach(function(pid){ test(pid, P(pid), 14); });
   if(!best){ var pq = poiAt(x, y); if(pq){ poiSel = pq; sel = null; select("poi"); poiSel = pq; renderCard(); scheduleOverlay(); return; } }
   if(!best && (layers.nb || nbActive().length)){ var a = toW(x, y), n = nbAt(a[0], a[1]); if(n) best = "nb:"+n; }
   select(best);
