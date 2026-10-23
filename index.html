@@ -299,6 +299,55 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+.wdist{display:inline-block;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;margin-right:2px}
+.wref{margin:4px 2px 2px}
+/* Reise: Übersicht & Bearbeiten */
+.tf{display:block}
+.tf-head{padding-right:44px;margin-bottom:6px}
+.tf-head h2{margin:0;font:700 26px/1.1 var(--f-display)}
+.tf-head p{margin:3px 0 0;color:var(--muted);font-size:14px}
+.tf-lbl{margin:18px 4px 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tf-grp{border-radius:16px;background:color-mix(in srgb,var(--ink) 5%,transparent);overflow:hidden}
+.tf-grp.ov{margin-top:12px}
+.tf-row{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:10px 14px;border:0;background:none;font:inherit;color:inherit;text-align:left}
+.tf-row + .tf-row,.tf-item + .tf-item,.tf-item + .tf-row,.tf-row + .tf-item{border-top:1px solid color-mix(in srgb,var(--ink) 9%,transparent)}
+.tf-row > span:first-child{flex:0 0 78px;color:var(--muted);font-size:14px}
+.tf-row > b{flex:1;min-width:0;font-weight:600;font-size:14.5px;display:flex;flex-direction:column}
+.tf-row > b small{font-weight:500;color:var(--muted);font-size:12.5px}
+.tf-row > input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:16px;color:inherit;padding:4px 0;outline:none}
+.tf-dt{flex:1;display:flex;gap:8px;justify-content:flex-end;min-width:0}
+.tf-dt input,.tf-f input,.tf-loc input{border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);border-radius:10px;background:var(--sheet);font:inherit;font-size:16px;color:inherit;padding:7px 9px;min-width:0}
+.tf-dt input[type=date]{width:170px;max-width:100%}
+.tf-dt input[type=time]{width:120px}
+.trippop .sec h4,.trippop .share h4{margin:18px 4px 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.trippop .backup{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.tf-sum{cursor:pointer}
+.tf-ic{flex:0 0 32px !important;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--ink);color:var(--sheet) !important;font-weight:800;font-size:14px !important}
+.tf-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.tf-t b{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tf-t small{color:var(--muted);font-size:12.5px}
+.tf-t i{font-style:normal}
+.tf-t i.ok{color:#2e9b5a}
+.tf-t i.miss{color:#d93025;font-weight:600}
+.tf-item.open{background:color-mix(in srgb,var(--ink) 3%,transparent)}
+.tf-body{display:grid;gap:10px;padding:2px 14px 14px}
+.tf-body .geo input{width:100%;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);border-radius:10px;background:var(--sheet);font:inherit;font-size:16px;padding:9px 11px;color:inherit}
+.tf-f{display:grid;gap:4px}
+.tf-f span{font-size:12px;font-weight:600;color:var(--muted)}
+.tf-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tf-loc summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);list-style:none}
+.tf-loc summary::-webkit-details-marker{display:none}
+.tf-loc summary::before{content:"› ";}
+.tf-loc[open] summary::before{content:"⌄ ";}
+.tf-loc summary small{font-weight:500;margin-left:4px}
+.tf-loc input{width:100%;margin-top:6px}
+.tf-acts{display:flex;justify-content:space-between;gap:10px}
+.tf-link{border:0;background:none;padding:4px 0;font:inherit;font-size:14px;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.tf-link.warn{color:#d93025;text-decoration:none}
+.tf-add{justify-content:center;font-weight:600;color:var(--ink);cursor:pointer}
+.tf .err{margin:12px 4px 0;color:#d93025;font-weight:600;font-size:14px}
+.tf-foot{position:sticky;bottom:-18px;display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin:18px -18px -18px;padding:12px 18px calc(14px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--sheet) 88%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
+.tf-foot .btn{padding:12px 14px;font-size:15px;justify-content:center}
 .lpring{position:fixed;z-index:35;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;pointer-events:none;background:conic-gradient(var(--ink) var(--lpp,0%), transparent 0);-webkit-mask:radial-gradient(circle, transparent 21px, #000 22px);mask:radial-gradient(circle, transparent 21px, #000 22px);opacity:.75;animation:lpfill 3s linear forwards}
 @property --lpp{syntax:"<percentage>";inherits:false;initial-value:0%}
 @keyframes lpfill{from{--lpp:0%}to{--lpp:100%}}
@@ -1760,7 +1809,7 @@ function lpToHotel(){
   var t = T(), e0 = tdraft.hotels.filter(function(x){ return !(x.n||"").trim() && !(x.loc||"").trim(); })[0];
   var hNew = {n:p.n || "", loc:locStr(p), from:t.start, to:t.end};
   if(e0){ e0.n = hNew.n; e0.loc = hNew.loc; e0.from = e0.from || t.start; e0.to = e0.to || t.end; } else tdraft.hotels.push(hNew);
-  var hi = e0 ? tdraft.hotels.indexOf(e0) : tdraft.hotels.length-1;
+  var hi = e0 ? tdraft.hotels.indexOf(e0) : tdraft.hotels.length-1; tdraft.ok = "hotels."+hi;
   tab = "trip"; renderSheet(); scheduleOverlay();
   var f = document.querySelector("#tripPop [data-f=\"hotels."+hi+".n\"]");
   var fs = f ? f.closest("fieldset") : null; if(fs) fs.scrollIntoView({block:"center"}); if(f){ f.focus(); }
@@ -3179,7 +3228,8 @@ function renderWish(){
   gs.forEach(function(g){ h += "<button type=\"button\" class=\"chip\" data-act=\"wgrp\" data-g=\""+g.id+"\" aria-pressed=\""+(grpSel===g.id)+"\">▦ "+esc(g.n)+" ("+(gc[g.id]||0)+")</button>"; });
   if(gs.length) h += "<button type=\"button\" class=\"chip\" data-act=\"wgrp\" data-g=\"none\" aria-pressed=\""+(grpSel==="none")+"\">Ohne Gruppe ("+(gc.none||0)+")</button>";
   h += "<button type=\"button\" class=\"chip add\" data-act=\"grpmanage\">"+(gs.length ? "Gruppen bearbeiten" : "+ Gruppe anlegen")+"</button></div>";
-  if(gs.length) h += "<div class=\"seg wview\" role=\"group\" aria-label=\"Sortierung\"><button type=\"button\" data-act=\"wview\" data-v=\"cat\" aria-pressed=\""+(wView==="cat")+"\">Nach Kategorie</button><button type=\"button\" data-act=\"wview\" data-v=\"grp\" aria-pressed=\""+(wView==="grp")+"\">Nach Gruppe</button></div>";
+  if(wView==="grp" && !gs.length) wView = "cat";
+  h += "<div class=\"seg wview\" role=\"group\" aria-label=\"Sortierung\"><button type=\"button\" data-act=\"wview\" data-v=\"cat\" aria-pressed=\""+(wView==="cat")+"\">Kategorie</button>"+(gs.length ? "<button type=\"button\" data-act=\"wview\" data-v=\"grp\" aria-pressed=\""+(wView==="grp")+"\">Gruppe</button>" : "")+"<button type=\"button\" data-act=\"wview\" data-v=\"dist\" aria-pressed=\""+(wView==="dist")+"\" aria-label=\"Nach Entfernung sortieren"+(wView==="dist" ? ", nochmal tippen kehrt die Reihenfolge um" : "")+"\">Entfernung"+(wView==="dist" ? (wDistDir==="asc" ? " ↑" : " ↓") : "")+"</button></div>";
 
   if(newList.open){
     h += "<form class=\"f\" id=\"nlForm\"><label><span>Name der neuen Liste</span><input type=\"text\" id=\"nlName\" maxlength=\"40\" value=\""+esc(newList.name)+"\" placeholder=\"z. B. Rooftop-Bars\" autocomplete=\"off\"></label>"+
@@ -3191,7 +3241,7 @@ function renderWish(){
   return h;
 }
 /* ---------- Eigene Gruppen (z. B. „Central Park“) ---------- */
-var grpSel = "", wView = lsGet("rp-wview")==="grp" ? "grp" : "cat";
+var grpSel = "", wView = /^(grp|dist)$/.test(lsGet("rp-wview")||"") ? lsGet("rp-wview") : "cat";
 function groups(){ var g = T().groups || {}; return Object.keys(g).map(function(k){ return {id:k, n:g[k].n}; }).sort(function(a, b){ return a.n.localeCompare(b.n, "de"); }); }
 function grpName(gid){ var g = (T().groups||{})[gid]; return g ? g.n : ""; }
 function grpOk(p){ if(grpSel && grpSel!=="none" && !grpName(grpSel)) grpSel = ""; return !grpSel || (grpSel==="none" ? !grpName(p.g) : p.g===grpSel); }
@@ -3234,6 +3284,13 @@ function wishResults(){
   var fc = function(p){ return catOk(p.c) && nbMatch(p) && qMatch(p) && grpOk(p); };
   var byCat = function(arr){
     var out = "";
+    if(wView==="dist"){
+      var rf = distRef();
+      if(!rf) return "<p class=\"note\">Für die Entfernung fehlt ein Bezugspunkt: Standort freigeben oder ein Hotel mit Lage eintragen.</p><ul class=\"wl\">"+arr.map(wishRow).join("")+"</ul>";
+      var withD = arr.map(function(p){ return {p:p, d: hasLoc(p) ? dist(rf.p, p) : null}; });
+      withD.sort(function(a, b){ if(a.d==null) return b.d==null ? 0 : 1; if(b.d==null) return -1; return wDistDir==="asc" ? a.d-b.d : b.d-a.d; });
+      return "<p class=\"note wref\">Luftlinie ab "+esc(rf.lbl)+" · "+(wDistDir==="asc" ? "nächste zuerst" : "weiteste zuerst")+"</p><ul class=\"wl\">"+withD.map(function(x){ return wishRow(x.p); }).join("")+"</ul>";
+    }
     if(wView==="grp"){
       groups().forEach(function(g){ var ws = arr.filter(function(p){ return p.g===g.id; }); if(ws.length) out += "<div class=\"sec\"><h4>▦ "+esc(g.n)+" · "+ws.length+"</h4><ul class=\"wl\">"+ws.map(wishRow).join("")+"</ul></div>"; });
       var rest = arr.filter(function(p){ return !grpName(p.g); });
@@ -3322,11 +3379,19 @@ function deletePlace(id){
   }
   document.addEventListener("touchend", end); document.addEventListener("touchcancel", end);
 })();
+var wDistDir = lsGet("rp-wdir")==="desc" ? "desc" : "asc";
+function distRef(){
+  if(me && hasLoc(me)) return {p:me, lbl:"deinem Standort"};
+  var D = dayByKey(cur); if(D && D.hotel && hasLoc(D.hotel)) return {p:D.hotel, lbl:D.hotel.n || "dem Hotel"};
+  var h = T().hotels.filter(hasLoc)[0]; if(h) return {p:h, lbl:h.n};
+  var o = T().orte.filter(hasLoc)[0]; return o ? {p:o, lbl:o.n} : null;
+}
 function wishRow(p){
   var dk = dayOf(p.id), D = dayByKey(cur), dd = dk && dayByKey(dk);
   var right = dd ? "<button type=\"button\" class=\"pill"+yel(dd)+"\" style=\"background:"+dayColor(dd)+"\" data-act=\"gotoday\" data-day=\""+dk+"\">Tag "+dd.n+"</button>"
                  : (D ? "<button type=\"button\" class=\"btn s\" data-act=\"plan\">+ "+D.wd+" "+shortD(D.key)+"</button>" : "");
-  var sub = "<button type=\"button\" class=\"gtag"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? esc(grpName(p.g)) : "Gruppe")+"</button> " + esc(CATNAME[p.c]) + (nbOf(p) && nbKeys().length!==1 ? " · "+esc(nbOf(p)) : "") + (p.addr?" · "+esc(p.addr):"") + (p.note?"<br>"+esc(p.note):"") + (hasLoc(p) ? "" : "<br><b>Ohne Ort auf der Karte</b>");
+  var rf = distRef(), dm = rf && hasLoc(p) ? dist(rf.p, p) : null;
+  var sub = (dm!=null ? "<span class=\"wdist\">"+fmtDist(dm)+"</span> " : "")+"<button type=\"button\" class=\"gtag"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? esc(grpName(p.g)) : "Gruppe")+"</button> " + esc(CATNAME[p.c]) + (nbOf(p) && nbKeys().length!==1 ? " · "+esc(nbOf(p)) : "") + (p.addr?" · "+esc(p.addr):"") + (p.note?"<br>"+esc(p.note):"") + (hasLoc(p) ? "" : "<br><b>Ohne Ort auf der Karte</b>");
   return "<li class=\"wi sw"+(dk?" planned":"")+"\" data-id=\""+p.id+"\"><button type=\"button\" class=\"swdel\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"swc\">"+badge(p.c)+"<div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"focus\">"+hl(p.n)+"</button><div class=\"sub\">"+sub+"</div></div>"+right+"</div></li>";
 }
 function wishForm(){
@@ -3413,13 +3478,15 @@ function geoPick(path, i){
 function renderTrip(){
   var t = T();
   if(!tdraft){
-    var h = "<div class=\"dh\"><div><h2>"+esc(t.name)+"</h2><p>"+esc(rangeLabel(t.start,t.end))+" · "+days().length+" Tage</p></div></div>";
-    h += "<div class=\"tripsum\">";
-    h += "<div><b>Anreise:</b> "+esc(dayByKey(t.start) ? dayByKey(t.start).title : t.start)+(t.arr?", "+esc(t.arr):"")+"</div>";
-    h += "<div><b>Abreise:</b> "+esc(dayByKey(t.end) ? dayByKey(t.end).title : t.end)+(t.dep?", "+esc(t.dep):"")+"</div>";
-    h += "<div><b>Hotels:</b> "+(t.hotels.length ? t.hotels.map(function(x){ return esc(x.n)+" ("+shortD(x.from)+"–"+shortD(x.to)+")"; }).join(", ") : "noch keins")+"</div>";
-    if(t.orte.length) h += "<div><b>Orte:</b> "+t.orte.map(function(x){ return esc(x.n)+(x.from?" ("+shortD(x.from)+"–"+shortD(x.to)+")":""); }).join(", ")+"</div>";
-    h += "</div><div class=\"row\"><button type=\"button\" class=\"btn\" data-act=\"tripedit\">Reise bearbeiten</button><button type=\"button\" class=\"btn g\" data-act=\"tripnew\">+ Neue Reise</button></div>";
+    var ro = acct.user && isViewerOf(S.cur);
+    var h = "<div class=\"tf-head\"><h2>"+esc(t.name)+"</h2><p>"+esc(rangeLabel(t.start,t.end))+" · "+days().length+" Tage</p></div>";
+    h += "<div class=\"tf-grp ov\">";
+    h += "<div class=\"tf-row\"><span>Anreise</span><b>"+esc(dayByKey(t.start) ? dayByKey(t.start).title : t.start)+(t.arr?" · "+esc(t.arr):"")+"</b></div>";
+    h += "<div class=\"tf-row\"><span>Abreise</span><b>"+esc(dayByKey(t.end) ? dayByKey(t.end).title : t.end)+(t.dep?" · "+esc(t.dep):"")+"</b></div>";
+    (t.hotels.length ? t.hotels : [null]).forEach(function(x, i){ h += "<div class=\"tf-row\"><span>"+(i===0?(t.hotels.length>1?"Hotels":"Hotel"):"")+"</span><b>"+(x ? esc(x.n)+"<small>"+shortD(x.from)+"–"+shortD(x.to)+"</small>" : "noch keins")+"</b></div>"; });
+    t.orte.forEach(function(x, i){ h += "<div class=\"tf-row\"><span>"+(i===0?(t.orte.length>1?"Orte":"Ort"):"")+"</span><b>"+esc(x.n)+(x.from?"<small>"+shortD(x.from)+"–"+shortD(x.to)+"</small>":"")+"</b></div>"; });
+    if(!ro) h += "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"tripedit\">Reise bearbeiten</button>";
+    h += "</div>";
     h += shareBlock();
     var jr = t.journal || {}, any = false, jh = "";
     days().forEach(function(d){
@@ -3437,26 +3504,37 @@ function renderTrip(){
     h += "<div class=\"row\">"+confirmBtn("reset", "Prototyp zurücksetzen", "Wirklich alles zurücksetzen?", "reset")+"</div>";
     return h;
   }
-  var d = tdraft, h2 = "<form class=\"f\" id=\"tForm\"><h2 style=\"margin:0;font:700 22px/1.1 var(--f-display)\">"+(d.mode==="new"?"Neue Reise":"Reise bearbeiten")+"</h2>";
-  h2 += fld("name","Name der Reise","text",d.name," maxlength=\"60\" placeholder=\"z. B. Boston & New York\"");
-  h2 += "<div class=\"two\">"+fld("start","Anreise","date",d.start)+fld("arr","Ankunft (Uhrzeit)","time",d.arr)+"</div>";
-  h2 += "<div class=\"two\">"+fld("end","Abreise","date",d.end)+fld("dep","Abflug (Uhrzeit)","time",d.dep)+"</div>";
-  d.hotels.forEach(function(x,i){
-    h2 += "<fieldset class=\"grp\"><legend>Hotel "+(i+1)+"</legend>"+geoField("hotels."+i, "Hotel oder Adresse suchen …")+fld("hotels."+i+".n","Name","text",x.n," maxlength=\"80\"");
-    h2 += fld("hotels."+i+".loc","Lage (gefunden, Maps-Link oder Koordinaten)","text",x.loc," placeholder=\"40.7561, -73.9930\"");
-    h2 += "<div class=\"two\">"+fld("hotels."+i+".from","Check-in","date",x.from)+fld("hotels."+i+".to","Check-out","date",x.to)+"</div>";
-    h2 += "<div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"pick\" data-target=\"hotels."+i+".loc\">Auf der Karte wählen</button><button type=\"button\" class=\"btn g s\" data-act=\"tdel\" data-path=\"hotels\" data-i=\""+i+"\">Entfernen</button></div></fieldset>";
-  });
-  h2 += "<div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"tadd\" data-path=\"hotels\">+ Hotel</button></div>";
-  d.orte.forEach(function(x,i){
-    h2 += "<fieldset class=\"grp\"><legend>Ort "+(i+1)+(d.mode==="new" && i===0 ? " – Reiseziel" : " (optional)")+"</legend>"+geoField("orte."+i, "Stadt suchen, z. B. Boston …")+fld("orte."+i+".n","Name","text",x.n," maxlength=\"60\" placeholder=\"z. B. Boston\"");
-    h2 += fld("orte."+i+".loc","Lage (gefunden, Maps-Link oder Koordinaten)","text",x.loc," placeholder=\"42.3601, -71.0589\"");
-    h2 += "<div class=\"two\">"+fld("orte."+i+".from","Von","date",x.from)+fld("orte."+i+".to","Bis","date",x.to)+"</div>";
-    h2 += "<div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"pick\" data-target=\"orte."+i+".loc\">Auf der Karte wählen</button><button type=\"button\" class=\"btn g s\" data-act=\"tdel\" data-path=\"orte\" data-i=\""+i+"\">Entfernen</button></div></fieldset>";
-  });
-  h2 += "<div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"tadd\" data-path=\"orte\">+ Ort</button></div>";
+  var d = tdraft;
+  if(d.ok===undefined){ d.ok = d.mode==="new" ? "orte.0" : ""; d.hotels.forEach(function(x,i){ if(!d.ok && (!(x.n||"").trim() || !(x.loc||"").trim())) d.ok = "hotels."+i; }); }
+  var h2 = "<form class=\"tf\" id=\"tForm\" novalidate><div class=\"tf-head\"><h2>"+(d.mode==="new"?"Neue Reise":"Reise bearbeiten")+"</h2></div>";
+  h2 += "<div class=\"tf-lbl\">Reise</div><div class=\"tf-grp\"><label class=\"tf-row\"><span>Name</span><input type=\"text\" data-f=\"name\" value=\""+esc(d.name)+"\" maxlength=\"60\" placeholder=\"z. B. Boston &amp; New York\" autocomplete=\"off\"></label></div>";
+  h2 += "<div class=\"tf-lbl\">Zeitraum</div><div class=\"tf-grp\">"+
+    "<label class=\"tf-row\"><span>Anreise</span><span class=\"tf-dt\"><input type=\"date\" data-f=\"start\" value=\""+esc(d.start)+"\"></span></label>"+
+    "<label class=\"tf-row\"><span>Ankunft</span><span class=\"tf-dt\"><input type=\"time\" data-f=\"arr\" value=\""+esc(d.arr)+"\"></span></label>"+
+    "<label class=\"tf-row\"><span>Abreise</span><span class=\"tf-dt\"><input type=\"date\" data-f=\"end\" value=\""+esc(d.end)+"\"></span></label>"+
+    "<label class=\"tf-row\"><span>Abflug</span><span class=\"tf-dt\"><input type=\"time\" data-f=\"dep\" value=\""+esc(d.dep)+"\"></span></label></div>";
+  function items(kind, title, addLbl, searchPh, icon){
+    var out = "<div class=\"tf-lbl\">"+title+"</div><div class=\"tf-grp\">";
+    d[kind].forEach(function(x, i){
+      var k = kind+"."+i, open = d.ok===k, has = !!parseLoc(x.loc||""), nm = (x.n||"").trim();
+      var sub = (x.from ? shortD(x.from)+"–"+shortD(x.to||x.from) : (kind==="orte" ? "ganze Reise" : "")) ;
+      out += "<div class=\"tf-item"+(open?" open":"")+"\"><button type=\"button\" class=\"tf-row tf-sum\" data-act=\"tfopen\" data-k=\""+k+"\" aria-expanded=\""+open+"\"><span class=\"tf-ic\">"+icon+"</span><span class=\"tf-t\"><b>"+esc(nm || (kind==="hotels" ? "Neues Hotel" : "Neuer Ort"))+"</b><small>"+esc(sub)+(sub?" · ":"")+(has ? "<i class=\"ok\">Lage gesetzt</i>" : "<i class=\"miss\">Lage fehlt</i>")+"</small></span><em class=\"chev\">"+(open?"⌄":"›")+"</em></button>";
+      if(open){
+        out += "<div class=\"tf-body\">"+geoField(k, searchPh)+
+          "<label class=\"tf-f\"><span>Name</span><input type=\"text\" data-f=\""+k+".n\" value=\""+esc(x.n)+"\" maxlength=\"80\" autocomplete=\"off\"></label>"+
+          "<div class=\"tf-two\"><label class=\"tf-f\"><span>"+(kind==="hotels"?"Check-in":"Von")+"</span><input type=\"date\" data-f=\""+k+".from\" value=\""+esc(x.from)+"\"></label><label class=\"tf-f\"><span>"+(kind==="hotels"?"Check-out":"Bis")+"</span><input type=\"date\" data-f=\""+k+".to\" value=\""+esc(x.to)+"\"></label></div>"+
+          "<details class=\"tf-loc\""+(has?"":" open")+"><summary>Lage "+(has?"<small>"+esc(x.loc)+"</small>":"eingeben")+"</summary><input type=\"text\" data-f=\""+k+".loc\" value=\""+esc(x.loc)+"\" placeholder=\"Maps-Link oder Koordinaten, z. B. 40.7561, -73.9930\" autocomplete=\"off\"></details>"+
+          "<div class=\"tf-acts\"><button type=\"button\" class=\"tf-link\" data-act=\"pick\" data-target=\""+k+".loc\">Auf der Karte wählen</button><button type=\"button\" class=\"tf-link warn\" data-act=\"tdel\" data-path=\""+kind+"\" data-i=\""+i+"\">Entfernen</button></div></div>";
+      }
+      out += "</div>";
+    });
+    out += "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"tadd\" data-path=\""+kind+"\">+ "+addLbl+"</button></div>";
+    return out;
+  }
+  h2 += items("hotels", "Hotels", "Hotel hinzufügen", "Hotel oder Adresse suchen …", "H");
+  h2 += items("orte", d.mode==="new" ? "Reiseziel" : "Orte", "Ort hinzufügen", "Stadt suchen, z. B. Boston …", "◎");
   if(d.err) h2 += "<p class=\"err\" role=\"alert\">"+esc(d.err)+"</p>";
-  h2 += "<div class=\"row\"><button class=\"btn\" type=\"submit\">"+(d.mode==="new"?"Reise anlegen":"Speichern")+"</button><button class=\"btn g\" type=\"button\" data-act=\"tcancel\">Abbrechen</button></div></form>";
+  h2 += "<div class=\"tf-foot\"><button class=\"btn g\" type=\"button\" data-act=\"tcancel\">Abbrechen</button><button class=\"btn\" type=\"submit\">"+(d.mode==="new"?"Reise anlegen":"Speichern")+"</button></div></form>";
   return h2;
 }
 function saveTrip(){
@@ -3515,7 +3593,7 @@ function renderSheet(){
   body.scrollTop = st;
   fillPhotos(body);
   // Reise-Ansicht als eigenes Fenster
-  if(tab==="trip"){
+  if(tab==="trip" && !pick){
     var wasOpen = !tp.hidden;
     tp.innerHTML = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Reise\"><button type=\"button\" class=\"ag-x\" data-act=\"tripclose\" aria-label=\"Schließen\">×</button>"+renderTrip()+"</div>";
     tp.hidden = false; document.body.classList.add("glass");
@@ -3697,8 +3775,9 @@ document.addEventListener("click", function(e){
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); break;
     case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
     case "tcancel": tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
-    case "tadd": var arr = tdraft[t.getAttribute("data-path")]; arr.push({n:"", loc:"", from:tdraft.start||"", to:tdraft.end||""}); renderSheet(); break;
-    case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); renderSheet(); break;
+    case "tadd": var arr = tdraft[t.getAttribute("data-path")]; arr.push({n:"", loc:"", from:tdraft.start||"", to:tdraft.end||""}); tdraft.ok = t.getAttribute("data-path")+"."+(arr.length-1); renderSheet(); var gi = document.querySelector("#tripPop [data-geo=\""+tdraft.ok+"\"]"); if(gi) gi.focus(); break;
+    case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); tdraft.ok = ""; renderSheet(); break;
+    case "tfopen": var tk2 = t.getAttribute("data-k"); tdraft.ok = tdraft.ok===tk2 ? "" : tk2; renderSheet(); break;
     case "close": select(null); break;
     case "focus": select(id); centerOn(P(id)); if(!desktop.matches && sheetState==="full") setSheet("mid"); break;
     case "plan": plan(id, cur); sel = id; renderAll(); break;
@@ -3727,7 +3806,7 @@ document.addEventListener("click", function(e){
     case "grpedit": grpEdit = grpEdit===t.getAttribute("data-g") ? null : t.getAttribute("data-g"); openGrpPop(grpTarget); var gi = $("grpRenIn"); if(gi) gi.focus(); break;
     case "grpdel": var dg = t.getAttribute("data-g"), tg = T(); undoSnap = snapshot(); delete (tg.groups||{})[dg]; Object.keys(tg.places).forEach(function(k){ if(tg.places[k].g===dg) delete tg.places[k].g; }); if(grpSel===dg) grpSel = ""; grpEdit = null; save(); openGrpPop(grpTarget); renderSheet(); toast("Gruppe gelöscht – die Orte bleiben in der Wunschliste", true); break;
     case "wgrp": grpSel = t.getAttribute("data-g"); renderSheet(); scheduleOverlay(); break;
-    case "wview": wView = t.getAttribute("data-v"); lsSet("rp-wview", wView); renderSheet(); break;
+    case "wview": var wv = t.getAttribute("data-v"); if(wv==="dist" && wView==="dist"){ wDistDir = wDistDir==="asc" ? "desc" : "asc"; lsSet("rp-wdir", wDistDir); } wView = wv; lsSet("rp-wview", wView); renderSheet(); break;
     case "jopen": openJPop(t.getAttribute("data-pid"), t.getAttribute("data-day")); break;
     case "jclose": closeJPop(); break;
     case "jphl": var tj = T(); tj.journal = tj.journal || {}; var Jp = tj.journal[jp.dk] = tj.journal[jp.dk] || {}, pn = P(jp.pid).n; Jp.hl = Jp.hl===pn ? "" : pn; Jp.at = Date.now(); save(); renderJPop(); break;
@@ -3827,7 +3906,7 @@ document.addEventListener("click", function(e){
     case "catpop": openCatPop(); break;
     case "dcat": draft.c = t.getAttribute("data-cat"); closeCatPop(); renderSheet(); var cb = document.querySelector("[data-act=catpop]"); if(cb) cb.focus(); break;
     case "catclose": closeCatPop(); break;
-    case "pick": pick = t.getAttribute("data-target"); $("pick").hidden = false; select(null); renderWishPop(); setSheet(desktop.matches ? sheetState : "min"); break;
+    case "pick": pick = t.getAttribute("data-target"); $("pick").hidden = false; select(null); renderSheet(); setSheet(desktop.matches ? sheetState : "min"); break;
     case "arm": arm(t.getAttribute("data-key")); break;
     case "swdel": deletePlace(id); break;
     case "delplace":
