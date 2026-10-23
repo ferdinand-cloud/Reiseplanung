@@ -1450,6 +1450,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
   <label><input type="checkbox" id="lWish" checked><span class="sw" style="background:var(--wish)"></span>Wünsche</label>
   <label><input type="checkbox" id="lPoi"><span class="sw" style="background:conic-gradient(#e8710a 0 25%,#8a5a2b 25% 50%,#7b3fbf 50% 75%,#5E9970 75%)"></span>Cafés, Lokale &amp; Sehenswertes</label>
   <div class="lines" id="poiCats" hidden></div>
+  <label><input type="checkbox" id="l3d"><span class="sw" style="background:linear-gradient(135deg,var(--muted) 0 50%,var(--line) 50%)"></span>3D-Gebäude</label>
   <label><input type="checkbox" id="lNb"><span class="sw" style="background:repeating-linear-gradient(90deg,var(--hi) 0 4px,transparent 4px 7px)"></span>Stadtviertel</label>
   <h4 style="margin-top:4px">Viertel hervorheben</h4>
   <select id="nbAdd" aria-label="Stadtviertel hervorheben"></select>
@@ -2640,7 +2641,7 @@ function addLayers(){
   map.addLayer({id:"sub", type:"line", source:"sub", paint:{"line-color":["get","c"], "line-width":["interpolate",["linear"],["zoom"],10,1.5,16,5]}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
   addPoiLayers(); addFerryLayers();
   mapReady = true;
-  applyPoi(); applyLayers(); applyLines(); applyNb(); onMove();
+  apply3d(true); applyPoi(); applyLayers(); applyLines(); applyNb(); onMove();
 }
 function onMove(){
   if(!map) return;
@@ -2650,9 +2651,37 @@ function onMove(){
   scheduleOverlay();
 }
 function applyView(){ onMove(); }
+/* ---------- 3D-Gebäude: Höhen aus den OpenFreeMap-Kacheln, Karte mit zwei Fingern kippbar ---------- */
+var b3dOn = lsGet("rp-3d")==="1";
+function apply3d(silent){
+  $("l3d").checked = b3dOn;
+  if(!map) return;
+  map.setMaxPitch(b3dOn ? 60 : 0);
+  if(b3dOn) map.touchPitch.enable(); else map.touchPitch.disable();
+  if(!mapReady) return;
+  var st = map.getStyle(), src = null;
+  Object.keys(st.sources).forEach(function(k){ if(!src && st.sources[k].type==="vector") src = k; });
+  // flache Gebäudeflächen ausblenden, solange die 3D-Gebäude sichtbar sind
+  st.layers.forEach(function(l){ if(l.type==="fill" && l["source-layer"]==="building") try { map.setLayoutProperty(l.id, "visibility", b3dOn ? "none" : "visible"); } catch(e){} });
+  if(map.getLayer("b3d")) map.removeLayer("b3d");
+  if(b3dOn && src){
+    var firstSym = (st.layers.filter(function(l){ return l.type==="symbol"; })[0] || {}).id;
+    var h = ["coalesce", ["get","render_height"], ["get","height"], 6], mh = ["coalesce", ["get","render_min_height"], ["get","min_height"], 0];
+    map.addLayer({id:"b3d", type:"fill-extrusion", source:src, "source-layer":"building", minzoom:13.5,
+      paint:{"fill-extrusion-color": isDark() ? "#2a3540" : "#dedcd6",
+             "fill-extrusion-height":["interpolate",["linear"],["zoom"],13.5,0,15,h],
+             "fill-extrusion-base":["interpolate",["linear"],["zoom"],13.5,0,15,mh],
+             "fill-extrusion-opacity":.88, "fill-extrusion-vertical-gradient":true}}, firstSym);
+  }
+  if(!silent){
+    if(b3dOn) map.easeTo({pitch:50, zoom:Math.max(map.getZoom(), 15.5), duration: reduceMotion?0:700});
+    else map.easeTo({pitch:0, duration: reduceMotion?0:400});
+  }
+}
 function initMap(){
   map = new maplibregl.Map({container:"gl", style:STYLE_URL, center:[NYC.lo, NYC.la], zoom:12, attributionControl:false, pitchWithRotate:false, touchPitch:false, dragRotate:true, maxPitch:0});
   map.touchZoomRotate.enableRotation();
+  if(b3dOn){ map.setMaxPitch(60); map.touchPitch.enable(); }
   map.on("style.load", addLayers);
   map.on("move", onMove);
   map.on("click", function(e){ if(Date.now()-lpAt < 900) return; tap(e.point.x, e.point.y); });
@@ -3441,7 +3470,7 @@ function resize(){ var r = mapEl.getBoundingClientRect(); W = r.width; H = r.hei
 $("zin").addEventListener("click", function(){ map.zoomIn(); });
 $("zout").addEventListener("click", function(){ map.zoomOut(); });
 $("zfit").addEventListener("click", fitDay);
-$("compass").addEventListener("click", function(){ map.easeTo({bearing:0, duration: reduceMotion?0:400}); });
+$("compass").addEventListener("click", function(){ map.easeTo({bearing:0, pitch:0, duration: reduceMotion?0:400}); });
 $("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; this.setAttribute("aria-expanded", open); placeFloating(); });
 ["lSub","lBus","lFerry","lWish","lNb","lRoute"].forEach(function(id){
   $(id).addEventListener("change", function(){
@@ -3505,6 +3534,7 @@ function startLocate(){
 }
 $("locBtn").addEventListener("click", startLocate);
 document.addEventListener("click", function(){ if(watchId!==null && !compOn && !compDenied) startCompass(); }, true);
+$("l3d").addEventListener("change", function(){ b3dOn = this.checked; lsSet("rp-3d", b3dOn?"1":"0"); apply3d(); });
 $("lPoi").addEventListener("change", function(){ poiOn = this.checked; lsSet("nyc-l-poi", poiOn?"1":"0"); applyPoi(); if(poiOn && map && map.getZoom() < 14.5) map.easeTo({zoom:14.5, duration: reduceMotion?0:500}); });
 function drawMe(){
   if(!me) return "";
