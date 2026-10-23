@@ -299,6 +299,14 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+.lpring{position:fixed;z-index:35;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;pointer-events:none;background:conic-gradient(var(--ink) var(--lpp,0%), transparent 0);-webkit-mask:radial-gradient(circle, transparent 21px, #000 22px);mask:radial-gradient(circle, transparent 21px, #000 22px);opacity:.75;animation:lpfill 3s linear forwards}
+@property --lpp{syntax:"<percentage>";inherits:false;initial-value:0%}
+@keyframes lpfill{from{--lpp:0%}to{--lpp:100%}}
+.lppin{width:26px;height:36px;pointer-events:none}
+.lppin i{display:block;width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#d93025;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.35)}
+.lpinfo{display:grid;gap:2px;padding:4px 2px 12px}
+.lpinfo small{color:var(--muted)}
+.lpacts{display:grid;gap:8px}
 .rseg{display:inline-flex;gap:2px;padding:2px;border-radius:9px;background:color-mix(in srgb,var(--ink) 8%,transparent);margin-top:4px}
 .rseg button{border:0;background:none;border-radius:7px;padding:4px 9px;font:inherit;font-size:12px;font-weight:600;color:var(--muted)}
 .rseg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
@@ -1686,9 +1694,77 @@ function initMap(){
   map.touchZoomRotate.enableRotation();
   map.on("style.load", addLayers);
   map.on("move", onMove);
-  map.on("click", function(e){ tap(e.point.x, e.point.y); });
+  map.on("click", function(e){ if(Date.now()-lpAt < 900) return; tap(e.point.x, e.point.y); });
+  lpInit();
   map.on("error", function(e){ if(!navigator.onLine) setNet(false); });
   darkMQ.addEventListener && darkMQ.addEventListener("change", function(){ mapReady = false; map.setStyle(STYLE_URL); });
+}
+
+/* ---------- Langes Drücken (3 s) auf der Karte: Punkt markieren ---------- */
+var LP_MS = 3000, lp = null, lpAt = 0, lpMark = null, lpPt = null;
+function lpInit(){
+  var el = $("map");
+  function xy(e){ var t = e.touches ? e.touches[0] : e; return t ? [t.clientX, t.clientY] : null; }
+  function start(e){
+    if(e.touches && e.touches.length > 1){ lpCancel(); return; }
+    if(e.button > 0) return;
+    var tg = e.target; if(!tg || !(tg.closest("#gl") || tg.id==="ov" || tg.closest("#ov"))) return;
+    var p = xy(e); if(!p) return; lpCancel();
+    var ring = document.createElement("div"); ring.className = "lpring"; ring.style.left = p[0]+"px"; ring.style.top = p[1]+"px"; document.body.appendChild(ring);
+    lp = {x:p[0], y:p[1], ring:ring, t:setTimeout(lpFire, LP_MS)};
+  }
+  function move(e){ if(!lp) return; if(e.touches && e.touches.length > 1){ lpCancel(); return; } var p = xy(e); if(p && Math.hypot(p[0]-lp.x, p[1]-lp.y) > 12) lpCancel(); }
+  el.addEventListener("touchstart", start, {passive:true}); el.addEventListener("touchmove", move, {passive:true});
+  el.addEventListener("touchend", lpCancel); el.addEventListener("touchcancel", lpCancel);
+  el.addEventListener("mousedown", start); el.addEventListener("mousemove", move); window.addEventListener("mouseup", lpCancel);
+  el.addEventListener("contextmenu", function(e){ if(lp || Date.now()-lpAt < 900) e.preventDefault(); });
+}
+function lpCancel(){ if(!lp) return; clearTimeout(lp.t); if(lp.ring) lp.ring.remove(); lp = null; }
+function lpFire(){
+  var x = lp.x, y = lp.y; lpCancel(); lpAt = Date.now();
+  try { navigator.vibrate && navigator.vibrate(30); } catch(e){}
+  var r = $("gl").getBoundingClientRect(), ll = map.unproject([x - r.left, y - r.top]);
+  lpShow({la:+ll.lat.toFixed(6), lo:+ll.lng.toFixed(6)});
+}
+function lpShow(pt){
+  lpPt = {la:pt.la, lo:pt.lo, n:"", addr:"", busy:true};
+  if(lpMark) lpMark.remove();
+  var me2 = document.createElement("div"); me2.className = "lppin"; me2.innerHTML = "<i></i>";
+  lpMark = new maplibregl.Marker({element:me2, anchor:"bottom"}).setLngLat([pt.lo, pt.la]).addTo(map);
+  lpRender();
+  fetch("https://photon.komoot.io/reverse?lat="+pt.la+"&lon="+pt.lo+"&lang=de&limit=1").then(function(r){ return r.json(); }).then(function(j){
+    var f = j && j.features && j.features[0], pr = f && f.properties || {};
+    if(!lpPt || lpPt.la!==pt.la) return;
+    var str = [pr.street, pr.housenumber].filter(Boolean).join(" ");
+    lpPt.n = pr.name || str || ""; lpPt.addr = [str, pr.city || pr.district].filter(Boolean).join(", "); lpPt.busy = false; lpRender();
+  }).catch(function(){ if(lpPt){ lpPt.busy = false; lpRender(); } });
+}
+function lpRender(){
+  if(!lpPt) return;
+  var el = $("catPop"), ro = acct.user && isViewerOf(S.cur);
+  var h = "<div class=\"pop-card lpcard\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Markierter Punkt\"><div class=\"pop-head\"><h4>Markierter Punkt</h4><button type=\"button\" class=\"x\" data-act=\"lpclose\" aria-label=\"Schließen\">×</button></div>";
+  h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || "Unbenannter Ort"))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
+  if(ro) h += "<p class=\"note\">Als Beobachter kannst du nichts übernehmen.</p>";
+  else h += "<div class=\"lpacts\"><button type=\"button\" class=\"btn\" data-act=\"lpwish\">Als Wunschziel übernehmen</button><button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button></div>";
+  el.innerHTML = h+"</div>"; el.hidden = false;
+}
+function lpClose(){ lpPt = null; if(lpMark){ lpMark.remove(); lpMark = null; } closeCatPop(); }
+function lpToWish(){
+  var p = lpPt; lpClose(); if(!p) return;
+  draft = {open:true, n:p.n || "", c:Object.keys(catFilter)[0]||"essen", list:(T().lists[0]||{}).id||"", loc:locStr(p), note:"", addr:p.addr || "", err:""};
+  tab = "wish"; renderSheet(); scheduleOverlay(); var wn = $("wName"); if(wn){ wn.focus(); try { wn.select(); } catch(e){} }
+}
+function lpToHotel(){
+  var p = lpPt; lpClose(); if(!p) return;
+  tdraft = tripToDraft(T(), "edit");
+  var t = T(), e0 = tdraft.hotels.filter(function(x){ return !(x.n||"").trim() && !(x.loc||"").trim(); })[0];
+  var hNew = {n:p.n || "", loc:locStr(p), from:t.start, to:t.end};
+  if(e0){ e0.n = hNew.n; e0.loc = hNew.loc; e0.from = e0.from || t.start; e0.to = e0.to || t.end; } else tdraft.hotels.push(hNew);
+  var hi = e0 ? tdraft.hotels.indexOf(e0) : tdraft.hotels.length-1;
+  tab = "trip"; renderSheet(); scheduleOverlay();
+  var f = document.querySelector("#tripPop [data-f=\"hotels."+hi+".n\"]");
+  var fs = f ? f.closest("fieldset") : null; if(fs) fs.scrollIntoView({block:"center"}); if(f){ f.focus(); }
+  toast("Hotel eingetragen – Name und Daten prüfen, dann „Speichern“", false);
 }
 
 /* ---------- ÖPNV-Routing (U-Bahn, offline aus dem Fahrplan) ---------- */
@@ -3602,7 +3678,7 @@ function closeCatPop(){ $("catPop").hidden = true; }
 function endPick(){ pick = null; $("pick").hidden = true; }
 
 document.addEventListener("click", function(e){
-  if(e.target.id==="catPop"){ closeCatPop(); return; }
+  if(e.target.id==="catPop"){ if(lpPt){ if(Date.now()-lpAt > 900) lpClose(); } else closeCatPop(); return; }
   if(e.target.id==="acctPop"){ closeSettings(); return; }
   if(e.target.id==="suPop"){ closeSignup(); return; }
   if(e.target.id==="tripPop"){ closeTrip(); return; }
@@ -3662,6 +3738,9 @@ document.addEventListener("click", function(e){
     case "rate": var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); break;
     case "acsignup": openSignup(); break;
     case "suclose": closeSignup(); break;
+    case "lpclose": lpClose(); break;
+    case "lpwish": lpToWish(); break;
+    case "lphotel": lpToHotel(); break;
     case "vcheck": acct.vmsg = "Prüfe …"; renderGate(true); verifyCheck(true); break;
     case "vresend": sendVerify().then(function(){ acct.vmsg = "Neue E-Mail ist unterwegs."; renderGate(true); }, function(e){ acct.vmsg = /too-many/.test(e && e.code || "") ? "Gerade erst gesendet – bitte ein paar Minuten warten." : acctErr(e); renderGate(true); }); break;
     case "vout": window.firebase.auth().signOut(); break;
