@@ -311,7 +311,8 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
-.ndep{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ndep{display:inline-flex;flex-direction:column;justify-content:center;font-size:12px;line-height:1.2;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ndep > span{display:block}
 .ndep b{color:var(--ink);font-weight:700}
 .ndep small{color:#1e8e3e;font-weight:600;font-size:11.5px}
 body.ro [data-act="done"],body.ro [data-act="plan"],body.ro [data-act="unplan"],body.ro [data-act="swdel"],body.ro [data-act="delplace"],body.ro [data-act="revisit"],body.ro [data-act="revpick"],body.ro [data-act="grppick"],body.ro [data-act="grpset"],body.ro [data-act="grpmanage"],body.ro [data-act="grpdel"],body.ro [data-act="grpedit"],body.ro [data-act="newwish"],body.ro [data-act="newlist"],body.ro [data-act="dellist"],body.ro [data-act="lmode"],body.ro [data-act="legalt"],body.ro [data-act="rate"],body.ro [data-act="jphl"],body.ro [data-act="jhl"],body.ro [data-act="jins"],body.ro [data-act="phdel"],body.ro [data-act="tripedit"],body.ro [data-act="deltrip"],body.ro [data-act="reset"],body.ro [data-act="lpday"],body.ro [data-act="lpwish"],body.ro [data-act="lphotel"],body.ro [data-act="poiadd"],body.ro [data-act="undo"],body.ro [data-act="tadd"],body.ro [data-act="tdel"],body.ro [data-act="pick"],body.ro [data-act="arm"],body.ro [data-act="move"],body.ro [data-act="time"],body.ro [data-act="jpedit"]{display:none !important}
@@ -2400,7 +2401,7 @@ function legDeps(r, a){
   if(base==null) return "";
   var d = departures(first.from, cur, base, 2, first.alt || [first.r], first.to);
   if(!d.length) return "<span class=\"ndep\">keine Abfahrt mehr</span>";
-  return "<span class=\"ndep\" title=\"Abfahrt an "+esc(NET.s[first.from][0])+" (planmäßig)\">"+d.map(function(x, i){ var m = ctx.base==null ? Math.max(0, Math.round((x.t - now.secs)/60)) : null; return "<b>"+hhmm(x.t)+"</b>"+(i===0 && m!=null ? " <small>in "+m+" Min.</small>" : ""); }).join(" · ")+"</span>";
+  return "<span class=\"ndep\" title=\"Abfahrt an "+esc(NET.s[first.from][0])+" (planmäßig)\">"+d.map(function(x, i){ var m = ctx.base==null ? Math.max(0, Math.round((x.t - now.secs)/60)) : null; return "<span><b>"+hhmm(x.t)+"</b>"+(i===0 && m!=null ? " <small>"+m+" Min.</small>" : "")+"</span>"; }).join("")+"</span>";
 }
 function legCtx(a){
   var now = nyNow();
@@ -2417,6 +2418,8 @@ var legOpen = {}, legSel = -1;
 var legHid = (function(){ try { return JSON.parse(lsGet("nyc-leg-hid")||"{}") || {}; } catch(e){ return {}; } })();
 function legKey(a, b){ return cur+"|"+(a.id||"h")+">"+(b.id||"h"); }
 function legHidden(a, b){ return !!legHid[legKey(a, b)]; }
+function routeAnyVisible(){ return !!layers.route && dayLegs(cur).some(function(pr){ return !legHidden(pr[0], pr[1]); }); }
+function saveLegHid(){ lsSet("nyc-leg-hid", JSON.stringify(legHid)); }
 var meA = null;
 function meAnchor(){ if(!me) return null; if(!meA || dist(meA, me) > 40) meA = {la:+me.la.toFixed(5), lo:+me.lo.toFixed(5), id:"me", n:"Mein Standort"}; return meA; }
 function dayLegs(k){
@@ -3399,7 +3402,7 @@ function renderDay(){
   h += "</div>";
 
   var hn = HT ? esc(HT.n) : "";
-  h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>Route</h4><button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+layers.route+"\" aria-label=\"Route auf der Karte zeigen\">"+(layers.route?EYE:EYEOFF)+"<span>"+(layers.route?"Auf Karte an":"Auf Karte aus")+"</span><span class=\"sw2\" aria-hidden=\"true\"></span></button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
+  h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>Route</h4><button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+routeAnyVisible()+"\" aria-label=\"Alle Etappen auf der Karte ein- oder ausblenden\">"+(routeAnyVisible()?EYE:EYEOFF)+"<span>"+(routeAnyVisible()?"Auf Karte an":"Auf Karte aus")+"</span><span class=\"sw2\" aria-hidden=\"true\"></span></button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
   var LG = dayLegs(cur);
   var legLi = function(a, b, i){
     var m = legMode(a, b);
@@ -4389,10 +4392,14 @@ document.addEventListener("click", function(e){
       if(meRoute && me && P(sel)){ var mr = transit(me, P(sel), todayKey()), fp = [me, P(sel)]; mr.legs.forEach(function(l){ if(l.t==="ride") l.stops.forEach(function(si){ fp.push(stLL(si)); }); }); fitPoints(fp, 1); }
       break;
     case "export": exportPlan(); break;
-    case "rtoggle": layers.route = !layers.route; lsSet("nyc-l-route", layers.route?"1":"0"); applyLayers(); renderSheet(); scheduleOverlay(); break;
+    case "rtoggle": // zentral: alle Etappen des Tages ein- oder ausblenden
+      var showAll = !routeAnyVisible();
+      dayLegs(cur).forEach(function(pr){ var k3 = legKey(pr[0], pr[1]); if(showAll) delete legHid[k3]; else legHid[k3] = 1; });
+      layers.route = true; lsSet("nyc-l-route", "1"); saveLegHid(); applyLayers(); renderSheet(); scheduleOverlay(); break;
     case "legalt": var la2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(la2){ var tq = T(); tq.legAlt = tq.legAlt || {}; tq.legAlt[legKey(la2[0], la2[1])] = parseInt(t.getAttribute("data-alt"),10); save(); renderSheet(); scheduleOverlay(); } break;
     case "lmode": var lp = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(lp){ setLegMode(lp[0], lp[1], t.getAttribute("data-mode")); renderSheet(); scheduleOverlay(); } break;
-    case "legvis": var lp = dayLegs(cur)[+t.getAttribute("data-leg")]; if(lp){ var hk = legKey(lp[0], lp[1]); if(legHid[hk]) delete legHid[hk]; else legHid[hk] = 1; lsSet("nyc-leg-hid", JSON.stringify(legHid)); if(!legHid[hk] && !layers.route){ layers.route = true; lsSet("nyc-l-route","1"); applyLayers(); } } renderSheet(); scheduleOverlay(); break;
+    case "legvis": var lp = dayLegs(cur)[+t.getAttribute("data-leg")]; if(lp){ var hk = legKey(lp[0], lp[1]); if(!layers.route){ dayLegs(cur).forEach(function(pr){ legHid[legKey(pr[0], pr[1])] = 1; }); layers.route = true; lsSet("nyc-l-route","1"); applyLayers(); }
+      if(legHid[hk]) delete legHid[hk]; else legHid[hk] = 1; saveLegHid(); } renderSheet(); scheduleOverlay(); break;
     case "legopen": var lk = cur+"|"+t.getAttribute("data-leg"); legOpen[lk] = !legOpen[lk]; renderSheet(); break;
     case "legsel":
       var li2 = parseInt(t.getAttribute("data-leg"),10); legSel = legSel===li2 ? -1 : li2;
