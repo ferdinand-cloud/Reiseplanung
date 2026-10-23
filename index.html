@@ -315,7 +315,7 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .ndep > span{display:block}
 .ndep b{color:var(--ink);font-weight:700}
 .ndep small{color:#1e8e3e;font-weight:600;font-size:11.5px}
-body.ro [data-act="done"],body.ro [data-act="plan"],body.ro [data-act="unplan"],body.ro [data-act="swdel"],body.ro [data-act="delplace"],body.ro [data-act="revisit"],body.ro [data-act="revpick"],body.ro [data-act="grppick"],body.ro [data-act="grpset"],body.ro [data-act="grpmanage"],body.ro [data-act="grpdel"],body.ro [data-act="grpedit"],body.ro [data-act="newwish"],body.ro [data-act="newlist"],body.ro [data-act="dellist"],body.ro [data-act="lmode"],body.ro [data-act="legalt"],body.ro [data-act="rate"],body.ro [data-act="jphl"],body.ro [data-act="jhl"],body.ro [data-act="jins"],body.ro [data-act="phdel"],body.ro [data-act="tripedit"],body.ro [data-act="deltrip"],body.ro [data-act="reset"],body.ro [data-act="lpday"],body.ro [data-act="lpwish"],body.ro [data-act="lphotel"],body.ro [data-act="poiadd"],body.ro [data-act="undo"],body.ro [data-act="tadd"],body.ro [data-act="tdel"],body.ro [data-act="pick"],body.ro [data-act="arm"],body.ro [data-act="move"],body.ro [data-act="time"],body.ro [data-act="jpedit"]{display:none !important}
+body.ro [data-act="done"],body.ro [data-act="plan"],body.ro [data-act="unplan"],body.ro [data-act="swdel"],body.ro [data-act="delplace"],body.ro [data-act="revisit"],body.ro [data-act="revpick"],body.ro [data-act="movepop"],body.ro [data-act="movepick"],body.ro [data-act="grppick"],body.ro [data-act="grpset"],body.ro [data-act="grpmanage"],body.ro [data-act="grpdel"],body.ro [data-act="grpedit"],body.ro [data-act="newwish"],body.ro [data-act="newlist"],body.ro [data-act="dellist"],body.ro [data-act="lmode"],body.ro [data-act="legalt"],body.ro [data-act="rate"],body.ro [data-act="jphl"],body.ro [data-act="jhl"],body.ro [data-act="jins"],body.ro [data-act="phdel"],body.ro [data-act="tripedit"],body.ro [data-act="deltrip"],body.ro [data-act="reset"],body.ro [data-act="lpday"],body.ro [data-act="lpwish"],body.ro [data-act="lphotel"],body.ro [data-act="poiadd"],body.ro [data-act="undo"],body.ro [data-act="tadd"],body.ro [data-act="tdel"],body.ro [data-act="pick"],body.ro [data-act="arm"],body.ro [data-act="move"],body.ro [data-act="time"],body.ro [data-act="jpedit"]{display:none !important}
 body.ro .lcol .grip,body.ro .jp-add,body.ro .jp-grp:not(.on),body.ro .lm,body.ro .alts2,body.ro #lpPick{display:none !important}
 body.ro .jp-grp{pointer-events:none}
 body.ro [data-act=sugtoggle],body.ro .sugs{display:none !important}
@@ -3222,6 +3222,7 @@ function renderCard(){
   if(dk) c += "<button class=\"btn"+(T().done[sel]?"":" g")+"\" type=\"button\" data-act=\"done\">"+(T().done[sel]?"✓ Erledigt":"Abhaken")+"</button>";
   if(dk===cur){ c += "<button class=\"btn g\" type=\"button\" data-act=\"unplan\">"+(p.of ? "Diesen Besuch entfernen" : "Zurück in Wunschliste")+"</button>"; }
   else if(dk){ c += "<button class=\"btn g\" type=\"button\" data-act=\"gotoday\" data-day=\""+dk+"\">Tag "+dayByKey(dk).n+" öffnen</button>"; }
+  if(dk) c += "<button class=\"btn g\" type=\"button\" data-act=\"movepop\" data-pid=\""+sel+"\">Auf anderen Tag …</button>";
   if(dk) c += "<button class=\"btn g\" type=\"button\" data-act=\"revisit\" data-pid=\""+sel+"\">Nochmal besuchen …</button>";
   c += "<button class=\"btn g\" type=\"button\" data-act=\"go\">Route starten</button>";
   c += "<a class=\"btn g\" target=\"_blank\" rel=\"noopener\" href=\""+gmInfoUrl(p)+"\">Infos in Google Maps</a>";
@@ -3512,6 +3513,7 @@ function renderJPop(){
     if(isRO()){ if(tm) h += "<div class=\"jp-tile set\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+"<span>"+esc(tm)+"</span></div>"; } else
     h += "<label class=\"jp-tile"+(tm?" set":"")+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+"<span>"+(tm ? esc(tm) : "Uhrzeit")+"</span><input type=\"time\" data-act=\"time\" value=\""+esc(tm)+"\" aria-label=\"Uhrzeit\"></label>";
   }
+  if(planned && !isRO()) h += "<button type=\"button\" class=\"jp-tile\" data-act=\"movepop\" data-pid=\""+jp.pid+"\">"+I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3M7.5 12.5h5M10.5 10.5l2 2-2 2\"/>")+"<span>Anderer Tag</span></button>";
   if(!planned) h += "<button type=\"button\" class=\"jp-tile\" data-act=\"revisit\" data-pid=\""+jp.pid+"\">"+I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3M10 10.5v4M8 12.5h4\"/>")+"<span>Zu Tag hinzufügen</span></button>";
   if(hasLoc(p) || p.addr) h += "<button type=\"button\" class=\"jp-tile\" data-act=\"go\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+"<span>Route</span></button>";
   h += "<a class=\"jp-tile\" target=\"_blank\" rel=\"noopener\" href=\""+gmInfoUrl(p)+"\">"+I("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"<span>Google Maps</span></a>";
@@ -4097,7 +4099,7 @@ function renderSheet(){
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
-var RO_ACTS = {"done":1,"plan":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
+var RO_ACTS = {"done":1,"plan":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
 function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 function applyRO(){ document.body.classList.toggle("ro", isRO()); }
 function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); }
@@ -4227,6 +4229,17 @@ function plan(id, k){
   ord(k).splice(idx, 0, id);
   save(); toast(p.n+" ist jetzt Stopp "+(idx+1)+" am "+dayByKey(k).lbl, true);
 }
+/* Stopp auf einen anderen Tag verschieben (an die Stelle, an die auch neue Stopps kommen) */
+function moveToDay(id, to){
+  var from = dayOf(id), p = P(id); if(!p || !from || from===to || !dayByKey(to)) return false;
+  var r = rootOf(id);
+  if(visitsOf(r).some(function(v){ return v.k===to && v.id!==id; })){ toast(p.n+" ist am "+dayByKey(to).lbl+" schon eingeplant", false); return false; }
+  undoSnap = snapshot();
+  T().order[from] = ord(from).filter(function(x){ return x!==id; });
+  var idx = insertIdx(to, p); ord(to).splice(idx, 0, id);
+  save(); toast(p.n+" verschoben auf "+dayByKey(to).lbl+" (Stopp "+(idx+1)+")", true);
+  return true;
+}
 function unplan(id){
   var k = dayOf(id); if(!k) return;
   undoSnap = snapshot();
@@ -4245,15 +4258,16 @@ function openCatPop(){
   $("catPop").innerHTML = h + "</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]") || $("catPop").querySelector("[data-act=dcat]"); if(b) b.focus();
 }
-var dayPopFor = null;
-function openDayPop(forId){
-  dayPopFor = forId || null;
+var dayPopFor = null, dayPopMove = false;
+function openDayPop(forId, mv){
+  dayPopFor = forId || null; dayPopMove = !!(mv && dayPopFor && dayOf(dayPopFor));
+  var mvFrom = dayPopMove ? dayOf(dayPopFor) : "";
   var rv = dayPopFor ? visitsOf(dayPopFor).map(function(v){ return v.k; }) : [];
-  var tk = todayKey(), h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Tag wählen\"><div class=\"pop-head\"><h4>"+(dayPopFor ? (dayOf(rootOf(dayPopFor)) ? "An welchem Tag nochmal hin?" : "Zu welchem Tag hinzufügen?") : "Tag wählen")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list daylist\">";
+  var tk = todayKey(), h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Tag wählen\"><div class=\"pop-head\"><h4>"+(dayPopMove ? "Auf welchen Tag verschieben?" : dayPopFor ? (dayOf(rootOf(dayPopFor)) ? "An welchem Tag nochmal hin?" : "Zu welchem Tag hinzufügen?") : "Tag wählen")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list daylist\">";
   days().forEach(function(d){
     var ids = T().order[d.key]||[], dn = ids.filter(function(x){ return T().done[x]; }).length;
-    var already = rv.indexOf(d.key) > -1;
-    h += "<button type=\"button\" data-act=\""+(dayPopFor?"revpick":"daypick")+"\" data-day=\""+d.key+"\" aria-pressed=\""+(dayPopFor ? already : cur===d.key)+"\""+(already?" disabled":"")+"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span><span class=\"dt\"><b>"+esc(d.title)+(d.key===tk?" <em>Heute</em>":"")+"</b><small>"+(already ? "schon eingeplant · " : "")+(ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps")+(dn?" · "+dn+" erledigt":"") : "noch leer")+(d.hint?" · "+esc(d.hint):"")+"</small></span></button>";
+    var here = dayPopMove && d.key===mvFrom, already = rv.indexOf(d.key) > -1 && !here;
+    h += "<button type=\"button\" data-act=\""+(dayPopMove?"movepick":dayPopFor?"revpick":"daypick")+"\" data-day=\""+d.key+"\" aria-pressed=\""+(dayPopMove ? here : dayPopFor ? already : cur===d.key)+"\""+(already?" disabled":"")+"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span><span class=\"dt\"><b>"+esc(d.title)+(d.key===tk?" <em>Heute</em>":"")+"</b><small>"+(here ? "aktueller Tag · " : already ? "schon eingeplant · " : "")+(ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps")+(dn?" · "+dn+" erledigt":"") : "noch leer")+(d.hint?" · "+esc(d.hint):"")+"</small></span></button>";
   });
   $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
@@ -4277,6 +4291,9 @@ document.addEventListener("click", function(e){
   switch(act){
     case "daypop": closeMenus(); openDayPop(); break;
     case "revpick": closeCatPop(); var rvId = dayPopFor; dayPopFor = null; revisit(rvId, t.getAttribute("data-day")); renderAll(); if(jp && !$("jPop").hidden){ if(jp.pid===rvId && !jp.dk) jp.dk = dayOf(rvId); renderJPop(); } break;
+    case "movepop": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel, true); break;
+    case "movepick": closeCatPop(); var mvId = dayPopFor, mvTo = t.getAttribute("data-day"); dayPopFor = null; dayPopMove = false;
+      if(mvTo!==dayOf(mvId) && moveToDay(mvId, mvTo)){ renderAll(); if(jp && jp.pid===mvId && !$("jPop").hidden){ jp.dk = mvTo; renderJPop(); } } break;
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
     case "srchopen": closeMenus(); openSearch(); break;
@@ -4470,9 +4487,8 @@ document.addEventListener("change", function(e){
   var holder = t.closest("[data-id]"), id = holder ? holder.getAttribute("data-id") : null;
   if(act==="move"){
     var to = t.value; if(to===cur || !dayByKey(to)) return;
-    T().order[cur] = ord(cur).filter(function(x){ return x!==id; });
-    var p = P(id), idx = insertIdx(to, p);
-    ord(to).splice(idx, 0, id); save(); toast(p.n+" verschoben auf "+dayByKey(to).lbl, false); renderAll();
+    if(!moveToDay(id, to)) t.value = cur;
+    renderAll();
   } else if(act==="rename"){ var nn = (t.value||"").trim().slice(0,80); if(nn && P(id) && nn!==P(id).n){ P(id).n = nn; save(); renderSheet(); renderCard(); toast("Umbenannt in „"+nn+"“", false); } else if(!nn && P(id)) t.value = P(id).n;
   } else if(act==="time"){ if(t.value) T().times[id] = t.value; else delete T().times[id]; save(); renderSheet(); if(jp && jp.pid===id && !$("jPop").hidden) renderJPop(); }
 });
