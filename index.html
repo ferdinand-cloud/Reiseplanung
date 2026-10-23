@@ -164,8 +164,7 @@ ol.tsteps .ti .bul.bus{height:22px;font-size:11.5px}
 .btn.warn{color:var(--err);border-color:var(--err)}
 a.btn{text-decoration:none;display:inline-block}
 ol.plan{list-style:none;margin:0;padding:0}
-.st{display:grid;grid-template-columns:34px 1fr auto 30px;gap:2px 8px;align-items:start;padding:10px 6px 10px 8px;margin:6px 0;background:var(--sheet);border:1px solid var(--line);border-left:4px solid var(--dc,var(--ink));border-radius:12px;box-shadow:0 1px 3px var(--scrim)}
-.st.done{border-left-color:var(--muted);background:var(--chip);box-shadow:none}
+.st{display:grid;grid-template-columns:34px 1fr auto 30px;gap:2px 8px;align-items:start;padding:6px 0;background:var(--sheet);border-radius:12px}
 .st.done .nm{text-decoration:line-through;opacity:.55}
 .no{width:30px;height:30px;border-radius:50%;border:0;color:#fff;font:700 16px/1 var(--f-display);display:grid;place-items:center;margin-top:1px}
 .no.y{color:#17212c}
@@ -178,9 +177,9 @@ ol.plan{list-style:none;margin:0;padding:0}
 .acts .mvday svg{width:15px;height:15px;pointer-events:none}
 .acts .mvday select{position:absolute;inset:0;opacity:0;width:100%;height:100%;padding:0;border:0;font-size:16px}
 .acts button,.acts select{border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 9px;font-size:12.5px;font-weight:600;appearance:none;-webkit-appearance:none}
-.leg{display:flex;gap:10px;align-items:center;padding:0 0 0 26px;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.leg{display:flex;gap:10px;align-items:center;padding:0 0 0 14px;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
 .leg::before{content:"";width:2px;height:22px;background:repeating-linear-gradient(var(--line) 0 4px,transparent 4px 7px);margin-right:16px;flex:0 0 auto}
-.ht{display:flex;gap:10px;align-items:center;padding:4px 0 4px 12px}
+.ht{display:flex;gap:10px;align-items:center;padding:4px 0}
 .ht .h{width:30px;height:30px;border-radius:8px;background:var(--ink);color:var(--sheet);display:grid;place-items:center;font:700 15px/1 var(--f-display)}
 .ht b{font-weight:600}
 .chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
@@ -732,8 +731,8 @@ mark{background:var(--hi-fill);color:inherit;border-radius:3px;padding:0 1px}
 .seg{display:flex;background:var(--chip);border-radius:999px;padding:2px}
 .seg button{flex:1 1 0;min-width:0;border:0;background:none;border-radius:999px;padding:5px 10px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
 .seg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px var(--scrim)}
-.leg.tleg{display:block;padding:4px 0 4px 54px;position:relative}
-.leg.tleg::before{position:absolute;left:26px;top:0;bottom:0;height:auto;margin:0}
+.leg.tleg{display:block;padding:2px 0 2px 48px;position:relative}
+.leg.tleg::before{position:absolute;left:14px;top:0;bottom:0;height:auto;margin:0}
 .tl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .tsum{border:1px solid var(--line);background:var(--sheet);border-radius:999px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums}
 .leg.sel .tsum{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
@@ -766,17 +765,6 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 .eye svg{width:17px;height:17px}
 .eye[aria-pressed="false"]{color:var(--muted);background:var(--chip)}
 .rhead .seg{margin-left:auto}
-.leye{width:30px;height:28px;border:1px solid var(--line);border-radius:999px;background:var(--sheet);display:grid;place-items:center;color:var(--ink);padding:0;flex:0 0 auto}
-.leye svg{width:16px;height:16px}
-.leye[aria-pressed="false"]{color:var(--muted);background:var(--chip);border-style:dashed}
-.leg.tleg:has(.leye[aria-pressed="false"]) .tsum{opacity:.55}
-.rtog{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--sheet);border-radius:999px;padding:5px 6px 5px 11px;font-size:13.5px;font-weight:600;color:var(--ink);flex:0 0 auto;cursor:pointer}
-.rtog > svg{width:17px;height:17px;flex:0 0 auto}
-.rtog .sw2{position:relative;width:38px;height:22px;border-radius:999px;background:var(--line);transition:background .15s;flex:0 0 auto}
-.rtog .sw2::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
-.rtog[aria-checked="true"] .sw2{background:var(--dc,var(--c4))}
-.rtog[aria-checked="true"] .sw2::after{transform:translateX(16px)}
-.rtog[aria-checked="false"]{color:var(--muted);background:var(--chip)}
 #gl{position:absolute;inset:0}
 #ov{pointer-events:none}
 .maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{display:none}
@@ -828,6 +816,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
   <label><input type="checkbox" id="lSub"><span class="sw" style="background:linear-gradient(90deg,#ee352e 0 25%,#00933c 25% 50%,#0062cf 50% 75%,#fccc0a 75%)"></span>U-Bahn (Subway)</label>
   <div class="lines" id="subLines" hidden></div>
   <label><input type="checkbox" id="lBus"><span class="sw" style="background:var(--bus)"></span>Buslinien</label>
+  <label><input type="checkbox" id="lFerry"><span class="sw" style="background:#0b84b5"></span>Fähren</label>
   <div class="lines" id="busLines" hidden></div>
   <label><input type="checkbox" id="lRoute" checked><span class="sw" style="background:var(--c4)"></span>Tagesroute</label>
   <label><input type="checkbox" id="lWish" checked><span class="sw" style="background:var(--wish)"></span>Wünsche</label>
@@ -1802,7 +1791,7 @@ var cur = "", tab = "day", activeList = "open", catFilter = {}, sel = null, pick
 function catOk(c){ return !Object.keys(catFilter).length || !!catFilter[c]; }
 function catAny(){ return Object.keys(catFilter).length > 0; }
 var sugOpen = lsGet("nyc-sug-open")!=="0";
-var layers = {sub: lsGet("nyc-l-sub")==="1", bus: lsGet("nyc-l-bus")==="1", wish: lsGet("nyc-l-wish")!=="0", nb: lsGet("nyc-l-nb")==="1", route: lsGet("nyc-l-route")!=="0"};
+var layers = {sub: lsGet("nyc-l-sub")==="1", bus: lsGet("nyc-l-bus")==="1", ferry: lsGet("nyc-l-ferry")!=="0", wish: lsGet("nyc-l-wish")!=="0", nb: lsGet("nyc-l-nb")==="1", route: lsGet("nyc-l-route")!=="0"};
 var nbHi = {}; try { (JSON.parse(lsGet("nyc-nb-hi"))||[]).forEach(function(n){ nbHi[n] = 1; }); } catch(e){}
 var nbSel = {}; Object.keys(nbHi).forEach(function(n){ nbSel[n] = 1; });
 // Viertel-Filter der Karte in die Wunschliste übernehmen (dort danach frei änderbar)
@@ -1876,7 +1865,7 @@ function addLayers(){
   map.addLayer({id:"nb-hi", type:"line", source:"nb", paint:{"line-color":token("--hi")||"#6d28d9", "line-width":2.4}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);
   map.addLayer({id:"bus", type:"line", source:"bus", paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,1,16,3], "line-opacity":.6}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
   map.addLayer({id:"sub", type:"line", source:"sub", paint:{"line-color":["get","c"], "line-width":["interpolate",["linear"],["zoom"],10,1.5,16,5]}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
-  addPoiLayers();
+  addPoiLayers(); addFerryLayers();
   mapReady = true;
   applyPoi(); applyLayers(); applyLines(); applyNb(); onMove();
 }
@@ -2314,10 +2303,6 @@ function legKey(a, b){ return (a.id||((+a.la).toFixed(4)+","+(+a.lo).toFixed(4))
 function legMode(a, b){ var m = (T().legMode||{})[legKey(a, b)]; return m || (dist(a, b) < 1100 ? "walk" : "oepnv"); }
 function setLegMode(a, b, m){ var t = T(); t.legMode = t.legMode || {}; t.legMode[legKey(a, b)] = m; save(); }
 var legOpen = {}, legSel = -1;
-/* Einzelne Etappen auf der Karte ein-/ausblenden (pro Tag, gemerkt auf diesem Gerät) */
-var legHid = (function(){ try { return JSON.parse(lsGet("nyc-leg-hid")||"{}") || {}; } catch(e){ return {}; } })();
-function legKey(a, b){ return cur+"|"+(a.id||"h")+">"+(b.id||"h"); }
-function legHidden(a, b){ return !!legHid[legKey(a, b)]; }
 var meA = null;
 function meAnchor(){ if(!me) return null; if(!meA || dist(meA, me) > 40) meA = {la:+me.la.toFixed(5), lo:+me.lo.toFixed(5), id:"me", n:"Mein Standort"}; return meA; }
 function dayLegs(k){
@@ -2401,8 +2386,9 @@ function applyLayers(){
     map.setLayoutProperty("sub", "visibility", layers.sub ? "visible" : "none");
     map.setLayoutProperty("bus", "visibility", layers.bus ? "visible" : "none");
     map.setLayoutProperty("nb-line", "visibility", layers.nb ? "visible" : "none");
+    ["ferry-line","ferry-term","ferry-lbl"].forEach(function(l){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", layers.ferry ? "visible" : "none"); });
   }
-  $("lSub").checked = layers.sub; $("lBus").checked = layers.bus; $("lWish").checked = layers.wish; $("lNb").checked = layers.nb; $("lRoute").checked = layers.route;
+  $("lSub").checked = layers.sub; $("lBus").checked = layers.bus; $("lFerry").checked = layers.ferry; $("lWish").checked = layers.wish; $("lNb").checked = layers.nb; $("lRoute").checked = layers.route;
   renderLineMenus();
 }
 var ovPending = false;
@@ -2464,7 +2450,6 @@ function drawOverlay(){
   else if(pts.length){
     var labels = "";
     dayLegs(cur).forEach(function(pair, li){
-      if(legHidden(pair[0], pair[1])) return;
       var op = (legSel<0 || legSel===li) ? 1 : .28;
       if(legMode(pair[0], pair[1])==="walk"){
         var hotelLeg = HT && (pair[0]===HT || pair[1]===HT);
@@ -2563,9 +2548,9 @@ $("zout").addEventListener("click", function(){ map.zoomOut(); });
 $("zfit").addEventListener("click", fitDay);
 $("compass").addEventListener("click", function(){ map.easeTo({bearing:0, duration: reduceMotion?0:400}); });
 $("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; this.setAttribute("aria-expanded", open); placeFloating(); });
-["lSub","lBus","lWish","lNb","lRoute"].forEach(function(id){
+["lSub","lBus","lFerry","lWish","lNb","lRoute"].forEach(function(id){
   $(id).addEventListener("change", function(){
-    layers = {sub:$("lSub").checked, bus:$("lBus").checked, wish:$("lWish").checked, nb:$("lNb").checked, route:$("lRoute").checked}; lsSet("nyc-l-nb", layers.nb?"1":"0"); lsSet("nyc-l-route", layers.route?"1":"0"); if(tab==="day") renderSheet();
+    layers = {sub:$("lSub").checked, bus:$("lBus").checked, ferry:$("lFerry").checked, wish:$("lWish").checked, nb:$("lNb").checked, route:$("lRoute").checked}; lsSet("nyc-l-ferry", layers.ferry?"1":"0"); lsSet("nyc-l-nb", layers.nb?"1":"0"); lsSet("nyc-l-route", layers.route?"1":"0"); if(tab==="day") renderSheet();
     lsSet("nyc-l-sub", layers.sub?"1":"0"); lsSet("nyc-l-bus", layers.bus?"1":"0"); lsSet("nyc-l-wish", layers.wish?"1":"0");
     applyLayers(); scheduleOverlay();
   });
@@ -2849,6 +2834,22 @@ function poiFilter(grey){
   if(g) f.push(grey ? ["!", ["within", g]] : ["within", g]);
   else if(grey) f.push(false);
   return f;
+}
+/* Fähren: Linien und Anleger aus den OpenStreetMap-Kacheln */
+var FERRYC = "#0b84b5";
+function addFerryLayers(){
+  var srcs = map.getStyle().sources, src = null; Object.keys(srcs).forEach(function(k){ if(!src && srcs[k].type==="vector") src = k; });
+  if(!src) return;
+  var vis = layers.ferry ? "visible" : "none";
+  try {
+    map.addLayer({id:"ferry-line", type:"line", source:src, "source-layer":"transportation", filter:["==",["get","class"],"ferry"],
+      paint:{"line-color":FERRYC, "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{visibility:vis, "line-cap":"round"}});
+    map.addLayer({id:"ferry-term", type:"circle", source:src, "source-layer":"poi", minzoom:11, filter:["any",["==",["get","class"],"ferry_terminal"],["==",["get","subclass"],"ferry_terminal"]],
+      paint:{"circle-color":FERRYC, "circle-radius":["interpolate",["linear"],["zoom"],11,3,16,6], "circle-stroke-color":"#fff", "circle-stroke-width":1.5}, layout:{visibility:vis}});
+    if(map.getStyle().glyphs) map.addLayer({id:"ferry-lbl", type:"symbol", source:src, "source-layer":"poi", minzoom:12.5, filter:["any",["==",["get","class"],"ferry_terminal"],["==",["get","subclass"],"ferry_terminal"]],
+      layout:{visibility:vis, "text-field":["concat","⛴ ",["coalesce",["get","name:latin"],["get","name"]]], "text-font":["Noto Sans Regular"], "text-size":11, "text-anchor":"top", "text-offset":[0,.8], "text-max-width":9, "text-optional":true},
+      paint:{"text-color":FERRYC, "text-halo-color":isDark()?"#111a22":"#ffffff", "text-halo-width":1.4}});
+  } catch(e){}
 }
 function addPoiLayers(){
   var srcs = map.getStyle().sources, src = null;
@@ -3268,18 +3269,17 @@ function renderDay(){
   h += "</div>";
 
   var hn = HT ? esc(HT.n) : "";
-  h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>Route</h4><button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+layers.route+"\" aria-label=\"Route auf der Karte zeigen\">"+(layers.route?EYE:EYEOFF)+"<span>"+(layers.route?"Auf Karte an":"Auf Karte aus")+"</span><span class=\"sw2\" aria-hidden=\"true\"></span></button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
+  h += "<div class=\"sec\"><div class=\"rhead\"><h4>Route</h4><button type=\"button\" class=\"eye\" data-act=\"rtoggle\" aria-pressed=\""+layers.route+"\" title=\""+(layers.route?"Route auf der Karte ausblenden":"Route auf der Karte einblenden")+"\" aria-label=\"Route auf der Karte zeigen\">"+(layers.route?EYE:EYEOFF)+"</button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
   var LG = dayLegs(cur);
   var legLi = function(a, b, i){
     var m = legMode(a, b);
     var pre = a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#1a73e8\">●</span><span><b>Mein Standort</b> <span class=\"sub\">Start zum nächsten Ziel</span></span></li>"
             : (a.id && T().done[a.id]) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (zuletzt erledigt)</span></li>" : "";
-    var lh = legHidden(a, b), ev = "<button type=\"button\" class=\"leye\" data-act=\"legvis\" data-leg=\""+i+"\" aria-pressed=\""+!lh+"\" title=\""+(lh?"Etappe auf der Karte einblenden":"Etappe auf der Karte ausblenden")+"\" aria-label=\"Etappe auf der Karte zeigen\">"+(lh?EYEOFF:EYE)+"</button>";
     var sw = "<span class=\"lm\" role=\"group\" aria-label=\"Unterwegs auf dieser Etappe\"><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"walk\" aria-pressed=\""+(m==="walk")+"\" title=\"Zu Fuß\" aria-label=\"Zu Fuß\">"+LMWALK+"</button><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"oepnv\" aria-pressed=\""+(m==="oepnv")+"\" title=\"U-Bahn\" aria-label=\"U-Bahn\">"+LMSUB+"</button></span>";
     if(m==="walk"){ walkPath(a, b); var wd = walkDist(a, b) || dist(a, b)*1.25;
-      return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><span class=\"tw\">Zu Fuß</span> "+Math.max(1,Math.round(wd/1.33/60))+" Min. · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+ev+"</div></li>"; }
+      return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><span class=\"tw\">Zu Fuß</span> "+Math.max(1,Math.round(wd/1.33/60))+" Min. · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button></div></li>"; }
     var alts = transitAlts(a, b, cur), r = legRoute(a, b, cur), open = !!legOpen[cur+"|"+i], ai = alts.indexOf(r);
-    return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r)+"</button>"+ev+
+    return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r)+"</button>"+
       (r.walk ? "" : "<button type=\"button\" class=\"tdet2\" data-act=\"legopen\" data-leg=\""+i+"\" aria-expanded=\""+open+"\" aria-label=\""+(open?"Wegbeschreibung zuklappen":"Wegbeschreibung zeigen")+"\">"+CHEV+"</button>")+"</div>"+
       (open && alts.length > 1 ? "<div class=\"alts2\" role=\"group\" aria-label=\"Andere Verbindungen\">"+alts.map(function(x, j){ return "<button type=\"button\" data-act=\"legalt\" data-leg=\""+i+"\" data-alt=\""+j+"\" aria-pressed=\""+(j===ai)+"\">"+transitSummary(x)+"</button>"; }).join("")+"</div>" : "")+
       (open && !r.walk ? transitSteps(r, a, b, legCtx(a)) : "")+"</li>";
@@ -3295,7 +3295,7 @@ function renderDay(){
     if(li0 > -1) h += legLi(LG[li0][0], p, li0);
     else if(!hasLoc(p) && (i>0 || HT)) h += "<li class=\"leg\">Strecke unbekannt</li>";
     var opts = days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===cur?" selected":"")+">"+d.lbl+"</option>"; }).join("");
-    h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\">"+
+    h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\">"+
       "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>"+
       "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?"✎":"")+(photosOf(id).length?" ▣ "+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(hasLoc(p)||p.addr?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
@@ -4193,7 +4193,6 @@ document.addEventListener("click", function(e){
     case "rtoggle": layers.route = !layers.route; lsSet("nyc-l-route", layers.route?"1":"0"); applyLayers(); renderSheet(); scheduleOverlay(); break;
     case "legalt": var la2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(la2){ var tq = T(); tq.legAlt = tq.legAlt || {}; tq.legAlt[legKey(la2[0], la2[1])] = parseInt(t.getAttribute("data-alt"),10); save(); renderSheet(); scheduleOverlay(); } break;
     case "lmode": var lp = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(lp){ setLegMode(lp[0], lp[1], t.getAttribute("data-mode")); renderSheet(); scheduleOverlay(); } break;
-    case "legvis": var lp = dayLegs(cur)[+t.getAttribute("data-leg")]; if(lp){ var hk = legKey(lp[0], lp[1]); if(legHid[hk]) delete legHid[hk]; else legHid[hk] = 1; lsSet("nyc-leg-hid", JSON.stringify(legHid)); if(!legHid[hk] && !layers.route){ layers.route = true; lsSet("nyc-l-route","1"); applyLayers(); } } renderSheet(); scheduleOverlay(); break;
     case "legopen": var lk = cur+"|"+t.getAttribute("data-leg"); legOpen[lk] = !legOpen[lk]; renderSheet(); break;
     case "legsel":
       var li2 = parseInt(t.getAttribute("data-leg"),10); legSel = legSel===li2 ? -1 : li2;
