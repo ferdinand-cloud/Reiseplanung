@@ -423,6 +423,12 @@ li.st .nm .cic svg{width:17px;height:17px}
 .srt b mark{background:none;color:inherit;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:2px}
 .srt small{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .srd{flex:0 0 auto;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.top #camBtn{margin-left:auto}
+.top .trip{max-width:calc(100% - 150px);min-width:0;overflow:hidden}
+.top .trip b{flex:0 1 auto;min-width:0}
+.top .trip span{flex:0 0 auto}
+.top .trip.nod span{display:none}
+.top #camBtn + #srchBtn{margin-left:0}
 .top #srchBtn{margin-left:auto}
 .vpills{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:130px}
 .pill.add{background:none !important;color:var(--ink);border:1px dashed color-mix(in srgb,var(--ink) 35%,transparent)}
@@ -605,6 +611,10 @@ body.kb .pop{align-items:flex-end;padding-bottom:6px}
 .pv-like.on svg{fill:currentColor}
 .pv-like span:empty{display:none}
 .pv-who{font-size:13px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-save{margin-left:auto;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:6px 11px 6px 9px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.pv-save svg{width:17px;height:17px}
+.pv-save.hot{background:#1a73e8;border-color:#1a73e8;color:#fff}
+.pv-save + .pv-del{margin-left:0}
 .pv-del{margin-left:auto;border:0;background:none;color:#d93025;font:inherit;font-size:13.5px;font-weight:600;padding:6px 2px;cursor:pointer}
 img.missing{opacity:.3;background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--ink) 8%,transparent) 0 6px,transparent 6px 12px)}
 img.loading{background:color-mix(in srgb,var(--ink) 8%,transparent)}
@@ -648,7 +658,7 @@ img.loading{background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .ag-row em{font-style:normal;color:#1a73e8;font-weight:700}
 .ag-row em.chev{color:var(--muted);font-weight:400;font-size:18px}
 .ag-in{padding:10px 14px}
-.top{display:flex;gap:8px;align-items:center}
+.top{display:flex;gap:6px;align-items:center}
 .menubtn{pointer-events:auto;width:44px;height:44px;flex:0 0 44px;border-radius:50%;border:1px solid var(--line);background:var(--sheet);box-shadow:0 2px 10px var(--scrim);display:grid;place-items:center;color:var(--ink);padding:0}
 .menubtn svg{width:20px;height:20px}
 #mainMenu button{flex-direction:column;align-items:flex-start;gap:2px}
@@ -678,6 +688,7 @@ img.loading{background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .gate-card input{width:100%;border:1px solid var(--line);border-radius:12px;background:transparent;padding:11px 12px;font:inherit;font-size:16px;color:inherit}
 .gate-card .btn{padding:11px 14px;font-size:15px}
 body.gated .sheet,body.gated .top,body.gated #rail,body.gated .ctrl{visibility:hidden}
+body.ro #camBtn,body.notrip #camBtn{display:none}
 .acct .af{display:grid;gap:6px}
 .acct input{width:100%;border:1px solid var(--line);border-radius:10px;background:transparent;padding:9px 10px;font:inherit;font-size:16px;color:inherit}
 .acct p{margin:0 0 6px}
@@ -934,7 +945,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
   <svg id="ov" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
 </div>
 
-<div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button></div>
+<div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="camBtn" data-act="camshot" aria-label="Foto aufnehmen" title="Foto aufnehmen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 6.5h3l1.5-2h5l1.5 2h3v9.5H3z"/><circle cx="10" cy="11" r="3"/></svg></button><button type="button" class="menubtn" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button></div>
 <div class="tripmenu" id="tripMenu" hidden></div>
 <div class="tripmenu" id="mainMenu" hidden><button type="button" data-act="opentrips"><span>Reisen <b class="mbadge" id="invBadge" hidden></b></span><small>Private, gemeinsame Reisen, Anfragen</small></button><button type="button" data-act="openfriends"><span>Freunde <b class="mbadge" id="frBadge" hidden></b></span><small>Anfragen, Freunde suchen</small></button><button type="button" data-act="openacct"><span>Mein Konto</span><small>Anmeldung, Abgleich, Einstellungen</small></button></div>
 <button type="button" class="menubtn bell" id="bellBtn" data-act="bell" aria-label="Mitteilungen" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.2a5 5 0 0 1 10 0c0 3.6 1.4 5 1.9 5.6H3.1C3.6 13.2 5 11.8 5 8.2z"/><path d="M8.2 16.3a1.9 1.9 0 0 0 3.6 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
@@ -945,6 +956,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
   <button type="button" id="compass" aria-label="Karte nach Norden ausrichten" title="Nach Norden ausrichten"><svg viewBox="0 0 20 20"><path d="M10 2l3.2 8H6.8z" fill="var(--c1)"/><path d="M10 18l-3.2-8h6.4z" fill="currentColor" opacity=".55"/></svg></button>
   <button type="button" id="layersBtn" aria-label="Kartenebenen" aria-expanded="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 3l7 4-7 4-7-4z"/><path d="M3 11l7 4 7-4"/></svg></button>
   <button type="button" id="sideBtn" aria-label="Planung ein- oder ausklappen" aria-expanded="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M8 3.5v13"/></svg></button>
+  <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
   <button type="button" id="locBtn" aria-label="Meinen Standort zeigen" aria-pressed="false"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M17.6 2.4 2.9 8.7c-.6.3-.5 1.1.1 1.3l5.6 1.6 1.6 5.6c.2.6 1 .7 1.3.1l6.3-14.7c.2-.5-.3-1-.8-.8z"/></svg></button>
   <button type="button" id="zfit" aria-label="Tagesroute zeigen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="6"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3"/></svg></button>
 </div>
@@ -2984,6 +2996,10 @@ function importPlan(file){
 document.addEventListener("change", function(e){ if(isRO() && (e.target.id==="phIn" || /^(move|time|rename)$/.test(e.target.getAttribute && e.target.getAttribute("data-act") || ""))){ e.stopImmediatePropagation(); renderSheet(); return; } if(e.target.id==="phIn" && jp){ addPhotos(jp.pid, e.target.files); return; } });
 document.addEventListener("change", function(e){ if((e.target.id==="impFile" || e.target.id==="impFileG") && e.target.files[0]) importPlan(e.target.files[0]); });
 
+/* Reisename geht vor: passt nicht alles in die Leiste, wird der Zeitraum ausgeblendet */
+function tripFit(){ var b = $("tripBtn"); if(!b) return; b.classList.remove("nod"); var n = b.querySelector("b"); if(n && n.scrollWidth > n.clientWidth) b.classList.add("nod"); }
+window.addEventListener("resize", function(){ tripFit(); });
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ tripFit(); });
 function closeMenus(){ $("mainMenu").hidden = true; $("menuBtn").setAttribute("aria-expanded","false"); $("layers").hidden = true; $("layersBtn").setAttribute("aria-expanded","false"); $("tripMenu").hidden = true; $("tripBtn").setAttribute("aria-expanded","false"); }
 
 function tap(x, y){
@@ -3553,7 +3569,7 @@ var LMSUB = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" st
 var CHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 6l4 4 4-4\"/></svg>";
 function renderTop(){
   var t = T();
-  $("tripBtn").innerHTML = "<b>"+esc(t.name)+"</b><span>"+esc(rangeLabel(t.start,t.end))+"</span>"+CHEV;
+  $("tripBtn").innerHTML = "<b>"+esc(t.name)+"</b><span>"+esc(rangeLabel(t.start,t.end))+"</span>"+CHEV; tripFit(); requestAnimationFrame(tripFit);
   var h = "";
   Object.keys(S.trips).map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).forEach(function(x){
     h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur)+"\"><span>"+esc(x.name)+"</span><small>"+esc(rangeLabel(x.start,x.end))+"</small></button>";
@@ -3753,15 +3769,16 @@ function phMetaHTML(ph){
     var who = mine ? (others.length ? "dir und "+(others.length===1 ? phWho(others[0]) : others.length+" anderen") : "dir") : others.length===1 ? phWho(others[0]) : others.length ? others.length+" Personen" : "";
     h += "<div class=\"pv-acts\"><button type=\"button\" class=\"pv-like"+(mine?" on":"")+"\" data-act=\"phlike\" data-ph=\""+ph+"\" aria-pressed=\""+mine+"\" aria-label=\""+(mine?"Gefällt mir nicht mehr":"Gefällt mir")+"\"><svg viewBox=\"0 0 20 20\" aria-hidden=\"true\"><path d=\"M10 17s-6.5-4-6.5-8.6A3.6 3.6 0 0 1 10 6.3a3.6 3.6 0 0 1 6.5 2.1C16.5 13 10 17 10 17z\"/></svg><span>"+(L.length || "")+"</span></button>"+
          "<span class=\"pv-who\">"+(who ? "Gefällt "+esc(who) : "")+"</span>"+
-         "<button type=\"button\" class=\"pv-del\" data-act=\"phdel\" data-ph=\""+ph+"\">Löschen</button></div>";
+         saveBtn(ph)+"<button type=\"button\" class=\"pv-del\" data-act=\"phdel\" data-ph=\""+ph+"\">Löschen</button></div>";
     var C = CMTS["ph:"+ph] || [];
     h += "<div class=\"jp-lbl\">Kommentare"+(C.length ? " · "+C.length : "")+"</div><div id=\"pvCm\" class=\"cmlist\">"+(C.length ? cmListHTML("ph:"+ph) : "<p class=\"note\">Noch keine Kommentare zu diesem Foto.</p>")+"</div>"+
          "<form class=\"gnew\" id=\"phcForm\"><input type=\"text\" id=\"phcIn\" maxlength=\"1000\" placeholder=\"Zu diesem Foto kommentieren …\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form>";
   } else {
-    h += "<div class=\"pv-acts\"><span class=\"pv-who\">"+(acct.user ? "Liken und Kommentieren geht in gemeinsamen Reisen." : "")+"</span><button type=\"button\" class=\"pv-del\" data-act=\"phdel\" data-ph=\""+ph+"\">Löschen</button></div>";
+    h += "<div class=\"pv-acts\"><span class=\"pv-who\">"+(acct.user ? "Liken und Kommentieren geht in gemeinsamen Reisen." : "")+"</span>"+saveBtn(ph)+"<button type=\"button\" class=\"pv-del\" data-act=\"phdel\" data-ph=\""+ph+"\">Löschen</button></div>";
   }
   return h;
 }
+function saveBtn(ph){ return "<button type=\"button\" class=\"pv-save"+(CAMF[ph] && !CAMF[ph].saved ? " hot" : "")+"\" data-act=\"phsave\" data-ph=\""+ph+"\" title=\"In der Fotomediathek sichern\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 3v9M6.5 8.5 10 12l3.5-3.5M4 14.5V16h12v-1.5\"/></svg><span>"+(CAMF[ph] && !CAMF[ph].saved ? "In Fotos sichern" : "Sichern")+"</span></button>"; }
 function phMetaRefresh(){
   var m = $("pvMeta"); if(!m || !jp || !jp.view) return;
   var ae = document.activeElement, typing = ae && ae.id==="phcIn", val = typing ? ae.value : "";
@@ -3858,18 +3875,75 @@ function addPhotos(pid, files){
   if(isViewerOf(S.cur)){ toast("Als Beobachter kannst du keine Fotos hinzufügen.", false); return; }
   var list = Array.prototype.slice.call(files||[]); if(!list.length) return;
   toast(list.length===1 ? "Foto wird hinzugefügt …" : list.length+" Fotos werden hinzugefügt …", false);
-  var tid = S.cur, ok = 0, bad = 0, noDev = 0;
-  list.reduce(function(pr, f){ return pr.then(function(){ return shrink(f).then(function(d){
+  var tid = S.cur, ok = 0, bad = 0, noDev = 0, ids = [];
+  return list.reduce(function(pr, f){ return pr.then(function(){ return shrink(f).then(function(d){
     var id = uid("ph"); PHC[id] = d; PHMEM[id] = {id:id, data:d, place:pid, trip:tid};
-    var add = function(){ var t = T(); t.photos = t.photos || {}; t.photos[pid] = (t.photos[pid]||[]).concat([id]); var q = phQueue(); q.up.push(id); phSaveQ(q); ok++; };
+    var add = function(){ var t = T(); t.photos = t.photos || {}; t.photos[pid] = (t.photos[pid]||[]).concat([id]); var q = phQueue(); q.up.push(id); phSaveQ(q); ok++; ids.push(id); if(list.length===1 && CAMF.pending===f){ CAMF[id] = f; CAMF.pending = null; } };
     return idbDo("readwrite", function(st){ st.put({id:id, data:d, place:pid, trip:tid}); }).then(add, function(){ noDev++; add(); });
   }, function(){ bad++; }); }); }, Promise.resolve()).then(function(){
     save(); if(jp && !$("jPop").hidden) renderJPop(); renderSheet(); phFlush();
     if(bad && !ok) toast("Foto konnte nicht gelesen werden. Bitte ein anderes Foto wählen.", false);
     else if(noDev) toast((ok===1?"Foto":"Fotos")+" hinzugefügt – wird ins Konto hochgeladen (Gerätespeicher gerade nicht verfügbar).", false);
     else toast(ok===1 ? "Foto hinzugefügt" : ok+" Fotos hinzugefügt"+(bad ? ", "+bad+" nicht lesbar" : ""), false);
+    return ids;
+  }).finally(function(){ var inp = $("phIn"); if(inp) try { inp.value = ""; } catch(e){} });
+}
+/* ---------- Kamera: Foto aufnehmen, dem Ort zuordnen, an dem man gerade ist ---------- */
+var CAMF = {pending:null}, camLoc = null, camWait = [];
+function camLocate(){
+  camLoc = me && me.acc < 100 ? {la:me.la, lo:me.lo, acc:me.acc} : null; camWait = [];
+  if(!("geolocation" in navigator)) return;
+  navigator.geolocation.getCurrentPosition(function(pos){ camLoc = {la:pos.coords.latitude, lo:pos.coords.longitude, acc:pos.coords.accuracy}; camWait.splice(0).forEach(function(f){ f(); }); },
+    function(){ camLoc = camLoc || (me ? {la:me.la, lo:me.lo, acc:me.acc} : false); camWait.splice(0).forEach(function(f){ f(); }); },
+    {enableHighAccuracy:true, timeout:15000, maximumAge:3000});
+}
+function camWhere(){ return new Promise(function(res){ if(camLoc!==null) return res(camLoc); var done = false, fin = function(){ if(!done){ done = true; res(camLoc || (me ? {la:me.la, lo:me.lo, acc:me.acc} : null)); } }; camWait.push(fin); setTimeout(fin, 10000); }); }
+function camShot(){
+  if(isViewerOf(S.cur)){ toast("Als Beobachter kannst du keine Fotos hinzufügen.", false); return; }
+  camLocate();
+  var inp = $("camIn"); try { inp.value = ""; } catch(e){}
+  inp.click();
+}
+/* nächster Punkt der Reise im Umkreis, sonst neuer Fotospot (heute im Plan als besucht) */
+function camTarget(loc){
+  var t = T(), best = null, bd = Infinity, lim = loc ? Math.max(60, Math.min(150, (loc.acc||0) + 40)) : 0;
+  if(loc) Object.keys(t.places).forEach(function(id){ var p = t.places[id]; if(!hasLoc(p) || p.of) return; var d = dist(loc, p); if(d < bd){ bd = d; best = id; } });
+  if(best && bd <= lim) return {pid:best, neu:false};
+  if(!loc && jp && P(jp.pid)) return {pid:jp.pid, neu:false};
+  var tk = todayKey(), D = dayByKey(tk), pid = uid("w"), tm = new Date().toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
+  var p = {id:pid, n:"Fotospot", c:"sight", list:(t.lists && t.lists[0] || {}).id || null, note:"Foto aufgenommen um "+tm, addr:""};
+  if(loc){ p.la = +loc.la.toFixed(6); p.lo = +loc.lo.toFixed(6); var nb = nbOf(p); if(nb) p.n = "Fotospot "+nb; }
+  t.places[pid] = p;
+  if(D){ ord(tk).push(pid); t.done[pid] = true; t.times = t.times || {}; t.times[pid] = tm; }
+  return {pid:pid, neu:true, day:D ? tk : ""};
+}
+document.addEventListener("change", function(e){
+  if(e.target.id!=="camIn" || !e.target.files || !e.target.files[0]) return;
+  var f = e.target.files[0]; CAMF.pending = f;
+  toast("Foto wird dem Ort zugeordnet …", false);
+  camWhere().then(function(loc){
+    var tg = camTarget(loc), p = P(tg.pid);
+    return addPhotos(tg.pid, [f]).then(function(ids){
+      if(!ids || !ids.length) return;
+      var dk = dayOf(tg.pid); if(dk) cur = dk;
+      tab = dk ? "day" : "wish"; renderAll(); select(tg.pid); if(hasLoc(p)) centerOn(p, 16);
+      openJPop(tg.pid, dk, ids[0]);
+      toast(!loc ? "Kein Standort – Foto bei „"+p.n+"“ abgelegt" : tg.neu ? "Neuer Fotospot"+(tg.day ? " im Plan von heute" : " in der Wunschliste") : "Foto bei „"+p.n+"“ abgelegt", false);
+    });
   });
-  var inp = $("phIn"); if(inp) try { inp.value = ""; } catch(e){}
+});
+/* Foto in die Fotomediathek: über das Teilen-Menü („Bild sichern“); Originalaufnahme, wenn vorhanden */
+function phFile(ph){
+  if(CAMF[ph]) return Promise.resolve(CAMF[ph]);
+  return phGet(ph).then(function(d){ if(!d) throw new Error("Foto nicht geladen"); return fetch(d).then(function(r){ return r.blob(); }).then(function(b){ return new File([b], "Reiseplan-"+ph+".jpg", {type:b.type || "image/jpeg"}); }); });
+}
+function phSaveLib(ph){
+  phFile(ph).then(function(file){
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      return navigator.share({files:[file]}).then(function(){ var b = document.querySelector(".pv-save"); if(b) b.classList.remove("hot"); }, function(){});
+    }
+    var a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }).catch(function(e){ toast("Sichern nicht möglich: "+(e && e.message || e), false); });
 }
 function delPhoto(pid, id){
   var t = T(); t.photos = t.photos || {}; t.photos[pid] = (t.photos[pid]||[]).filter(function(x){ return x!==id; });
@@ -4618,6 +4692,8 @@ document.addEventListener("click", function(e){
     case "phback": jp.view = null; renderJPop(); break;
     case "phstep": phStep(+t.getAttribute("data-v")); break;
     case "phlike": phLike(t.getAttribute("data-ph")); break;
+    case "phsave": var sph = t.getAttribute("data-ph"); if(CAMF[sph]) CAMF[sph].saved = true; t.classList.remove("hot"); phSaveLib(sph); break;
+    case "camshot": camShot(); break;
     case "phdel": var dph = t.getAttribute("data-ph"), rest = photosOf(jp.pid).filter(function(x){ return x!==dph; }), di = photosOf(jp.pid).indexOf(dph);
       delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
