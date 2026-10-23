@@ -1356,6 +1356,9 @@ li.st .acts .go{color:var(--muted) !important}
 .leg.tleg.lt .lm button[aria-pressed="true"]{background:var(--ink) !important;color:var(--sheet) !important}
 #ov path[stroke-width="5.5"]{opacity:.72}
 .bul{filter:saturate(.8)}
+.pv-mv{margin-left:auto}
+.pv-mv + .pv-save{margin-left:0}
+.pv-acts{flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -4291,7 +4294,40 @@ function phMetaHTML(ph){
   }
   return h;
 }
-function saveBtn(ph){ return "<button type=\"button\" class=\"pv-save"+(CAMF[ph] && !CAMF[ph].saved ? " hot" : "")+"\" data-act=\"phsave\" data-ph=\""+ph+"\" title=\"In der Fotomediathek sichern\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 3v9M6.5 8.5 10 12l3.5-3.5M4 14.5V16h12v-1.5\"/></svg><span>"+(CAMF[ph] && !CAMF[ph].saved ? "In Fotos sichern" : "Sichern")+"</span></button>"; }
+function saveBtn(ph){ return (isRO() ? "" : "<button type=\"button\" class=\"pv-save pv-mv\" data-act=\"phmovepop\" data-ph=\""+ph+"\" title=\"Einem anderen Ort zuordnen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/></svg><span>Ort</span></button>") + "<button type=\"button\" class=\"pv-save"+(CAMF[ph] && !CAMF[ph].saved ? " hot" : "")+"\" data-act=\"phsave\" data-ph=\""+ph+"\" title=\"In der Fotomediathek sichern\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 3v9M6.5 8.5 10 12l3.5-3.5M4 14.5V16h12v-1.5\"/></svg><span>"+(CAMF[ph] && !CAMF[ph].saved ? "In Fotos sichern" : "Sichern")+"</span></button>"; }
+/* Foto nachträglich einem anderen Ort zuordnen (nächste Orte zuerst) */
+var phMv = null;
+function openPhMove(ph){
+  if(!jp) return; phMv = {ph:ph, from:jp.pid};
+  var src = P(jp.pid), t = T(), list = Object.keys(t.places).map(P).filter(function(p){ return p && !p.of && p.id!==jp.pid; });
+  if(hasLoc(src)) list.sort(function(a, b){ return (hasLoc(a) ? dist(src, a) : 1e9) - (hasLoc(b) ? dist(src, b) : 1e9); });
+  else list.sort(function(a, b){ return a.n.localeCompare(b.n); });
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Foto zuordnen\"><div class=\"pop-head\"><h4>Foto zuordnen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list addlist\">";
+  list.slice(0, 12).forEach(function(p){
+    var dk = dayOf(p.id), D = dk && dayByKey(dk), d = hasLoc(src) && hasLoc(p) ? dist(src, p) : null;
+    h += "<button type=\"button\" data-act=\"phmoveto\" data-v=\""+p.id+"\"><span class=\"ai\" style=\"--cc:"+catCol(p.c)+";color:var(--cc)\">"+icon(p.c)+"</span><span class=\"dt\"><b>"+esc(p.n)+"</b><small>"+esc([d!=null ? fmtDist(d) : "", D ? D.lbl : "Wunschliste"].filter(Boolean).join(" · "))+"</small></span></button>";
+  });
+  if(!list.length) h += "<p class=\"note\">Noch keine anderen Orte in dieser Reise.</p>";
+  $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
+}
+function phMoveTo(toPid){
+  if(!phMv || !P(toPid)) return;
+  var t = T(), ph = phMv.ph, from = phMv.from, fp = P(from), tp = P(toPid);
+  undoSnap = snapshot();
+  t.photos = t.photos || {};
+  t.photos[from] = (t.photos[from]||[]).filter(function(x){ return x!==ph; }); if(!t.photos[from].length) delete t.photos[from];
+  t.photos[toPid] = (t.photos[toPid]||[]).concat([ph]);
+  // leerer automatischer Fotospot wird aufgeräumt
+  var removed = false;
+  if(fp && fp.k==="photo" && !(t.photos[from]||[]).length && !noteOf(from) && !(CMTS[from]||[]).length){
+    var k0 = dayOf(from); if(k0) t.order[k0] = ord(k0).filter(function(x){ return x!==from; });
+    delete t.places[from]; ["done","times","notes","rating"].forEach(function(f2){ if(t[f2]) delete t[f2][from]; }); removed = true;
+  }
+  save(); closeCatPop(); phMv = null;
+  var dk = dayOf(toPid); if(dk) cur = dk;
+  renderAll(); select(toPid); openJPop(toPid, dk || "", ph);
+  toast("Foto zu „"+tp.n+"“ verschoben"+(removed ? ", Fotospot entfernt" : ""), true);
+}
 function phMetaRefresh(){
   var m = $("pvMeta"); if(!m || !jp || !jp.view) return;
   var ae = document.activeElement, typing = ae && ae.id==="phcIn", val = typing ? ae.value : "";
@@ -4417,12 +4453,9 @@ function camShot(){
   var inp = $("camIn"); try { inp.value = ""; } catch(e){}
   inp.click();
 }
-/* nächster Punkt der Reise im Umkreis, sonst neuer Fotospot (heute im Plan als besucht) */
+/* eigener Fotospot am aktuellen Standort (heute im Plan als besucht) */
 function camTarget(loc){
-  var t = T(), best = null, bd = Infinity, lim = loc ? Math.max(60, Math.min(150, (loc.acc||0) + 40)) : 0;
-  if(loc) Object.keys(t.places).forEach(function(id){ var p = t.places[id]; if(!hasLoc(p) || p.of) return; var d = dist(loc, p); if(d < bd){ bd = d; best = id; } });
-  if(best && bd <= lim) return {pid:best, neu:false};
-  if(!loc && jp && P(jp.pid)) return {pid:jp.pid, neu:false};
+  var t = T(); // Foto über das Plus: immer ein eigener Fotopunkt, nie an einen bestehenden Ort gehängt
   var tk = todayKey(), D = dayByKey(tk), pid = uid("w"), tm = new Date().toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
   var p = {id:pid, k:"photo", n:"Fotospot", c:"sight", list:(t.lists && t.lists[0] || {}).id || null, note:"Foto aufgenommen um "+tm, addr:""};
   if(loc){ p.la = +loc.la.toFixed(6); p.lo = +loc.lo.toFixed(6); var nb = nbOf(p); if(nb) p.n = "Fotospot "+nb; }
@@ -4441,7 +4474,7 @@ document.addEventListener("change", function(e){
       var dk = dayOf(tg.pid); if(dk) cur = dk;
       tab = dk ? "day" : "wish"; renderAll(); select(tg.pid); if(hasLoc(p)) centerOn(p, 16);
       openJPop(tg.pid, dk, ids[0]);
-      toast(!loc ? "Kein Standort – Foto bei „"+p.n+"“ abgelegt" : tg.neu ? "Neuer Fotospot"+(tg.day ? " im Plan von heute" : " in der Wunschliste") : "Foto bei „"+p.n+"“ abgelegt", false);
+      toast("Neuer Fotospot"+(tg.day ? " im Plan von heute" : " in der Wunschliste")+(!loc ? " (ohne Standort)" : ""), false);
     });
   });
 });
@@ -5000,7 +5033,7 @@ function renderSheet(){
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
-var RO_ACTS = {"done":1,"plan":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
+var RO_ACTS = {"done":1,"plan":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
 function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 function applyRO(){ document.body.classList.toggle("ro", isRO()); }
 function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); }
@@ -5259,6 +5292,8 @@ document.addEventListener("click", function(e){
     case "phback": jp.view = null; renderJPop(); break;
     case "phstep": phStep(+t.getAttribute("data-v")); break;
     case "phlike": phLike(t.getAttribute("data-ph")); break;
+    case "phmovepop": openPhMove(t.getAttribute("data-ph")); break;
+    case "phmoveto": phMoveTo(t.getAttribute("data-v")); break;
     case "phsave": var sph = t.getAttribute("data-ph"); if(CAMF[sph]) CAMF[sph].saved = true; t.classList.remove("hot"); phSaveLib(sph); break;
     case "camshot": closeAddMenu(); closeCatPop(); camShot(); break;
     case "addclose": closeAddMenu(); break;
