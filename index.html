@@ -1287,6 +1287,7 @@ li.st .sub{margin-top:1px}
 /* Hotel und Standort auf derselben Achse */
 .ht{padding:6px 0 6px 13px;gap:12px;min-height:44px}
 .ht .h{width:30px;height:30px;border-radius:9px;font:700 14px/1 var(--f-round)}
+li.st .no.hs{background:var(--ink) !important;color:var(--sheet) !important;border-radius:9px}
 .ht.me .h{border-radius:50%;font-size:11px}
 .ht b{font-weight:600}
 li.st > .stc{background:var(--card,var(--sheet)) !important}
@@ -3442,7 +3443,7 @@ function drawOverlay(){
   // Stopps
   var n = 0, ancIds = {}, slabels = "";
   if(D) ord(cur).forEach(function(id){
-    var p = P(id); n++;
+    var p = P(id); if(p && p.k==="hotel") return; n++;
     if(!hasLoc(p) || hid(id)) return;
     var q0 = pt(p); MK.push({x0:q0[0]-15, y0:q0[1]-15, x1:q0[0]+15, y1:q0[1]+15});
     var q = q0, done = !!T().done[id], isSel = sel===id, fill = done ? "#7d8a96" : col, txt = yel(cur) && !done ? "#17212c" : "#fff", th = firstThumb(id), op = done && !isSel ? .82 : 1;
@@ -4285,7 +4286,7 @@ function renderDay(){
   var prev = HT, n = 0;
   var nHid = 0, shown = 0;
   ids.forEach(function(id, i){
-    var p = P(id); n++;
+    var p = P(id), isH = p.k==="hotel"; if(!isH) n++;
     if(hid(id)){ nHid++; return; }
     shown++;
     var li0 = -1; LG.forEach(function(pr, j){ if(pr[1]===p) li0 = j; });
@@ -4293,7 +4294,8 @@ function renderDay(){
     else if(!hasLoc(p) && (i>0 || HT)) h += "<li class=\"leg\">Strecke unbekannt</li>";
     var opts = days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===cur?" selected":"")+">"+d.lbl+"</option>"; }).join("");
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
-      "<div class=\"lcol\">"+"<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>"+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button>"+"</div>"+
+      "<div class=\"lcol\">"+(isH ? "<button type=\"button\" class=\"no hs\" data-act=\"stopopen\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":"H")+"</button>"
+            : "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>")+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button>"+"</div>"+
       "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(p.k==="hotel" ? "Zwischenstopp im Hotel" : CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(hasLoc(p)||p.addr?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/></svg><select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
@@ -4302,7 +4304,6 @@ function renderDay(){
   var lastL = LG[LG.length-1]; if(shown && HT && lastL && lastL[1]===HT) h += legLi(lastL[0], HT, LG.length-1);
   if(nHid) h += "<li class=\"leg\"><button type=\"button\" class=\"tdet\" data-act=\"hidedone\">"+nHid+(nHid===1?" erledigter Stopp":" erledigte Stopps")+" ausgeblendet · Einblenden</button></li>";
   if(!ids.length) h += "<li class=\"leg\">Noch keine Stopps. Übernimm einen Vorschlag oder tippe auf der Karte auf einen Wunsch.</li>";
-  if(HT && ids.length && !isRO()) h += "<li class=\"leg\"><button type=\"button\" class=\"tdet\" data-act=\"hotelstop\">+ Zwischenstopp im Hotel</button></li>";
   if(HT) h += "<li class=\"ht\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">Ziel</span></span></li>";
   h += "</ol></div>";
   h += journalBlock(D);
@@ -4707,7 +4708,8 @@ function openAddPop(){
   locSt = null;
   m.innerHTML = "<button type=\"button\" data-act=\"camshot\"><span class=\"ai\">"+ICAM+"</span><span>Foto aufnehmen</span></button>"+
     "<button type=\"button\" data-act=\"libpick\"><span class=\"ai\">"+ILIB+"</span><span>Foto aus Mediathek</span></button>"+
-    "<button type=\"button\" data-act=\"locset\"><span class=\"ai\">"+IPIN+"</span><span>Standort setzen</span></button>";
+    "<button type=\"button\" data-act=\"locset\"><span class=\"ai\">"+IPIN+"</span><span>Standort setzen</span></button>"+
+    (dayByKey(cur) && dayByKey(cur).hotel ? "<button type=\"button\" data-act=\"hotelstopadd\"><span class=\"ai\">"+icon("hotel")+"</span><span>Zwischenstopp im Hotel<small>"+esc(dayByKey(cur).lbl)+" · "+esc(dayByKey(cur).hotel.n)+"</small></span></button>" : "");
   m.classList.remove("wide"); m.hidden = false; $("camBtn").setAttribute("aria-expanded", "true"); placeAddMenu();
 }
 function locStart(){
@@ -5444,7 +5446,8 @@ document.addEventListener("click", function(e){
     case "movepop": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel, true); break;
     case "movepick": closeCatPop(); var mvId = dayPopFor, mvTo = t.getAttribute("data-day"); dayPopFor = null; dayPopMove = false;
       if(mvTo!==dayOf(mvId) && moveToDay(mvId, mvTo)){ renderAll(); if(jp && jp.pid===mvId && !$("jPop").hidden){ jp.dk = mvTo; renderJPop(); } } break;
-    case "hotelstop": hotelStop(cur); renderAll(); break;
+    case "hotelstopadd": closeAddMenu(); var hdone = ord(cur).filter(function(x){ return T().done[x]; }), hlast = hdone[hdone.length-1];
+      hotelStop(cur, hlast); tab = "day"; renderAll(); break;
     case "hotelafter": var hpid = t.getAttribute("data-pid") || id; closeCatPop(); hotelStop(dayOf(hpid), hpid); renderAll(); break;
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
