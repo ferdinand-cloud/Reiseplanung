@@ -1411,6 +1411,16 @@ body.ro label:has(#lRoute){display:none}
 .ratelist .mi .lk{margin:0;width:16px;height:16px}
 .ratelist .hlst{color:#C9A227;font-size:16px}
 .ratelist .rate-hl{border-bottom:.5px solid var(--sep)}
+.trbox{margin:8px 0 2px;border-radius:12px;background:var(--fill)}
+.trsum{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;padding:8px 10px;color:var(--ink);font:500 13.5px/1.3 var(--f-body);text-align:left;cursor:pointer}
+.trsum .tic{display:grid;place-items:center;width:18px;height:18px;color:var(--muted);flex:0 0 18px}
+.trsum .tic svg{width:18px;height:18px}
+.trsum .trt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.trsum .trt b{color:var(--ink);font-weight:600}
+.trsum > svg:last-child{width:14px;height:14px;flex:0 0 14px;color:var(--muted);transition:transform .15s}
+.trbox.open .trsum > svg:last-child{transform:rotate(180deg)}
+.trbody{padding:0 10px 8px}
+.trbody .tline{margin:6px 0 0}
 li.st .no.hs{background:var(--ink) !important;color:var(--sheet) !important;border-radius:9px}
 .ht.me .h{border-radius:50%;font-size:11px}
 .ht b{font-weight:600}
@@ -4013,8 +4023,17 @@ var JMNOTE = "<svg class=\"jmi\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"cu
 var JMPH = "<svg class=\"jmi\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" aria-label=\"Fotos\"><path d=\"M3 6.5h3l1.5-2h5l1.5 2h3v9.5H3z\"/><circle cx=\"10\" cy=\"11\" r=\"2.6\"/></svg>";
 var TICSUB = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"5\" y=\"2.5\" width=\"10\" height=\"12\" rx=\"3\"/><path d=\"M5 9h10M7.5 17.5l1-3M12.5 17.5l-1-3\"/><circle cx=\"8\" cy=\"11.8\" r=\".7\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"11.8\" r=\".7\" fill=\"currentColor\"/></svg>";
 var TICBUS = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"3\" width=\"12\" height=\"12\" rx=\"2.5\"/><path d=\"M4 9.5h12M6.5 17v-2M13.5 17v-2\"/><circle cx=\"7\" cy=\"12.3\" r=\".7\" fill=\"currentColor\"/><circle cx=\"13\" cy=\"12.3\" r=\".7\" fill=\"currentColor\"/></svg>";
+/* ÖPNV in der Karte eines Ortes: eingeklappt nur eine Zeile, ausgeklappt Stationen, Linien und Abfahrten */
+var trOpen = false, trFor = null;
 function stationLine(p){
-  var x = nearStation(p); if(!x) return "";
+  var key = p.id || (p.la+","+p.lo); if(trFor!==key){ trFor = key; trOpen = false; }
+  var full = stationLineFull(p); if(!full) return "";
+  var x = nearStation(p);
+  var sum = x ? esc(x.st[0])+" · "+fmtDist(x.d) : "Busse in der Nähe";
+  return "<div class=\"trbox"+(trOpen?" open":"")+"\"><button type=\"button\" class=\"trsum\" data-act=\"tropen\" aria-expanded=\""+trOpen+"\"><span class=\"tic\">"+TICSUB+"</span><span class=\"trt\"><b>ÖPNV</b> · "+sum+"</span>"+CHEV+"</button>"+(trOpen ? "<div class=\"trbody\">"+full+"</div>" : "")+"</div>";
+}
+function stationLineFull(p){
+  var x = nearStation(p); if(!x) return busLine(p);
   var sis = []; NET.s.forEach(function(s2, i){ if(Math.hypot(s2[1]-x.st[1], s2[2]-x.st[2]) < 150) sis.push(i); });
   var si = sis.join(","), open = !!depOpen[si], bd = sis.length ? 0 : 1e9;
   return "<p class=\"tline\"><span class=\"tic\" title=\"Nächste U-Bahn\" aria-label=\"Nächste U-Bahn\">"+TICSUB+"</span><b>"+esc(x.st[0])+"</b> "+bullets(x.st[3])+" · "+fmtDist(x.d)+" <button type=\"button\" class=\"tdet\" data-act=\"depopen\" data-st=\""+si+"\" aria-expanded=\""+open+"\">"+(open?"Abfahrten ausblenden":"Abfahrten")+"</button></p>"+(open && sis.length ? stationDeps(sis) : "")+busLine(p);
@@ -5996,6 +6015,7 @@ document.addEventListener("click", function(e){
     case "tripclose": closeTrip(); break;
     case "acsync": acctPull(); break;
     case "geopick": geoPick(t.getAttribute("data-path"), +t.getAttribute("data-i")); break;
+    case "tropen": trOpen = !trOpen; renderCard(); break;
     case "depopen": var dsi = t.getAttribute("data-st"); depOpen[dsi] = !depOpen[dsi]; renderCard(); break;
     case "jtoggle": jOpen = !jOpen; lsSet("nyc-j-open", jOpen?"1":"0"); renderSheet(); break;
     case "jins": jAppend([id], true); break;
