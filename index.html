@@ -766,6 +766,10 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 .eye svg{width:17px;height:17px}
 .eye[aria-pressed="false"]{color:var(--muted);background:var(--chip)}
 .rhead .seg{margin-left:auto}
+.leye{width:30px;height:28px;border:1px solid var(--line);border-radius:999px;background:var(--sheet);display:grid;place-items:center;color:var(--ink);padding:0;flex:0 0 auto}
+.leye svg{width:16px;height:16px}
+.leye[aria-pressed="false"]{color:var(--muted);background:var(--chip);border-style:dashed}
+.leg.tleg:has(.leye[aria-pressed="false"]) .tsum{opacity:.55}
 .rtog{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--sheet);border-radius:999px;padding:5px 6px 5px 11px;font-size:13.5px;font-weight:600;color:var(--ink);flex:0 0 auto;cursor:pointer}
 .rtog > svg{width:17px;height:17px;flex:0 0 auto}
 .rtog .sw2{position:relative;width:38px;height:22px;border-radius:999px;background:var(--line);transition:background .15s;flex:0 0 auto}
@@ -2310,6 +2314,10 @@ function legKey(a, b){ return (a.id||((+a.la).toFixed(4)+","+(+a.lo).toFixed(4))
 function legMode(a, b){ var m = (T().legMode||{})[legKey(a, b)]; return m || (dist(a, b) < 1100 ? "walk" : "oepnv"); }
 function setLegMode(a, b, m){ var t = T(); t.legMode = t.legMode || {}; t.legMode[legKey(a, b)] = m; save(); }
 var legOpen = {}, legSel = -1;
+/* Einzelne Etappen auf der Karte ein-/ausblenden (pro Tag, gemerkt auf diesem Gerät) */
+var legHid = (function(){ try { return JSON.parse(lsGet("nyc-leg-hid")||"{}") || {}; } catch(e){ return {}; } })();
+function legKey(a, b){ return cur+"|"+(a.id||"h")+">"+(b.id||"h"); }
+function legHidden(a, b){ return !!legHid[legKey(a, b)]; }
 var meA = null;
 function meAnchor(){ if(!me) return null; if(!meA || dist(meA, me) > 40) meA = {la:+me.la.toFixed(5), lo:+me.lo.toFixed(5), id:"me", n:"Mein Standort"}; return meA; }
 function dayLegs(k){
@@ -2456,6 +2464,7 @@ function drawOverlay(){
   else if(pts.length){
     var labels = "";
     dayLegs(cur).forEach(function(pair, li){
+      if(legHidden(pair[0], pair[1])) return;
       var op = (legSel<0 || legSel===li) ? 1 : .28;
       if(legMode(pair[0], pair[1])==="walk"){
         var hotelLeg = HT && (pair[0]===HT || pair[1]===HT);
@@ -3265,11 +3274,12 @@ function renderDay(){
     var m = legMode(a, b);
     var pre = a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#1a73e8\">●</span><span><b>Mein Standort</b> <span class=\"sub\">Start zum nächsten Ziel</span></span></li>"
             : (a.id && T().done[a.id]) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (zuletzt erledigt)</span></li>" : "";
+    var lh = legHidden(a, b), ev = "<button type=\"button\" class=\"leye\" data-act=\"legvis\" data-leg=\""+i+"\" aria-pressed=\""+!lh+"\" title=\""+(lh?"Etappe auf der Karte einblenden":"Etappe auf der Karte ausblenden")+"\" aria-label=\"Etappe auf der Karte zeigen\">"+(lh?EYEOFF:EYE)+"</button>";
     var sw = "<span class=\"lm\" role=\"group\" aria-label=\"Unterwegs auf dieser Etappe\"><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"walk\" aria-pressed=\""+(m==="walk")+"\" title=\"Zu Fuß\" aria-label=\"Zu Fuß\">"+LMWALK+"</button><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"oepnv\" aria-pressed=\""+(m==="oepnv")+"\" title=\"U-Bahn\" aria-label=\"U-Bahn\">"+LMSUB+"</button></span>";
     if(m==="walk"){ walkPath(a, b); var wd = walkDist(a, b) || dist(a, b)*1.25;
-      return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><span class=\"tw\">Zu Fuß</span> "+Math.max(1,Math.round(wd/1.33/60))+" Min. · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button></div></li>"; }
+      return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><span class=\"tw\">Zu Fuß</span> "+Math.max(1,Math.round(wd/1.33/60))+" Min. · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+ev+"</div></li>"; }
     var alts = transitAlts(a, b, cur), r = legRoute(a, b, cur), open = !!legOpen[cur+"|"+i], ai = alts.indexOf(r);
-    return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r)+"</button>"+
+    return pre+"<li class=\"leg tleg"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r)+"</button>"+ev+
       (r.walk ? "" : "<button type=\"button\" class=\"tdet2\" data-act=\"legopen\" data-leg=\""+i+"\" aria-expanded=\""+open+"\" aria-label=\""+(open?"Wegbeschreibung zuklappen":"Wegbeschreibung zeigen")+"\">"+CHEV+"</button>")+"</div>"+
       (open && alts.length > 1 ? "<div class=\"alts2\" role=\"group\" aria-label=\"Andere Verbindungen\">"+alts.map(function(x, j){ return "<button type=\"button\" data-act=\"legalt\" data-leg=\""+i+"\" data-alt=\""+j+"\" aria-pressed=\""+(j===ai)+"\">"+transitSummary(x)+"</button>"; }).join("")+"</div>" : "")+
       (open && !r.walk ? transitSteps(r, a, b, legCtx(a)) : "")+"</li>";
@@ -4183,6 +4193,7 @@ document.addEventListener("click", function(e){
     case "rtoggle": layers.route = !layers.route; lsSet("nyc-l-route", layers.route?"1":"0"); applyLayers(); renderSheet(); scheduleOverlay(); break;
     case "legalt": var la2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(la2){ var tq = T(); tq.legAlt = tq.legAlt || {}; tq.legAlt[legKey(la2[0], la2[1])] = parseInt(t.getAttribute("data-alt"),10); save(); renderSheet(); scheduleOverlay(); } break;
     case "lmode": var lp = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(lp){ setLegMode(lp[0], lp[1], t.getAttribute("data-mode")); renderSheet(); scheduleOverlay(); } break;
+    case "legvis": var lp = dayLegs(cur)[+t.getAttribute("data-leg")]; if(lp){ var hk = legKey(lp[0], lp[1]); if(legHid[hk]) delete legHid[hk]; else legHid[hk] = 1; lsSet("nyc-leg-hid", JSON.stringify(legHid)); if(!legHid[hk] && !layers.route){ layers.route = true; lsSet("nyc-l-route","1"); applyLayers(); } } renderSheet(); scheduleOverlay(); break;
     case "legopen": var lk = cur+"|"+t.getAttribute("data-leg"); legOpen[lk] = !legOpen[lk]; renderSheet(); break;
     case "legsel":
       var li2 = parseInt(t.getAttribute("data-leg"),10); legSel = legSel===li2 ? -1 : li2;
