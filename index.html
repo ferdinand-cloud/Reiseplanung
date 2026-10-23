@@ -3817,12 +3817,31 @@ function centerOn(p, z){
   map.easeTo({center:[p.lo, p.la], zoom: Math.max(map.getZoom(), z || zoomFor(3.2, p.la)), offset: visCenterOffset(), duration: reduceMotion?0:500});
 }
 // Punkt dort zeigen, wo ihn das geöffnete Fenster nicht verdeckt (über oder unter dem Fenster)
-function centerAround(p, z, card){
-  if(!hasLoc(p) || !map) return;
-  var mr = mapEl.getBoundingClientRect(), off = visCenterOffset();
-  if(card){ var r = card.getBoundingClientRect(), up = r.top - mr.top, down = mr.bottom - r.bottom;
-    if(Math.max(up, down) >= 70){ var y = up >= down ? mr.top + up/2 : r.bottom + down/2; off = [0, Math.round(y - (mr.top + mr.height/2))]; } }
-  map.easeTo({center:[p.lo, p.la], zoom: Math.max(map.getZoom(), z || 15), offset: off, duration: reduceMotion?0:500});
+function centerAround(p, z){ revealPoint(p, z, true); }
+// Punkt so zeigen, dass weder Fenster noch Karte des Ortes noch das Blatt ihn verdecken:
+// er kommt in die Mitte des größten freien Bereichs. always=false: nur bewegen, wenn er gerade verdeckt ist.
+function revealPoint(p, z, always){
+  if(!p || !hasLoc(p) || !map) return;
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    var mr = mapEl.getBoundingClientRect(), Hh = window.innerHeight, cx = mr.left + mr.width/2;
+    var obs = [], vis = function(el){ return el && !el.hidden && el.getClientRects().length; };
+    var jc = vis($("jPop")) ? $("jPop").querySelector(".ag-card") : null;
+    [vis($("card")) ? $("card") : null, jc].forEach(function(el){ if(!el) return; var r = el.getBoundingClientRect(); if(r.left < cx && r.right > cx) obs.push([r.top - 8, r.bottom + 8]); });
+    var sv = sheetVisible(); if(sv) obs.push([Hh - sv, Hh]);
+    var top = $("rail") && $("rail").getBoundingClientRect ? Math.max(0, $("rail").getBoundingClientRect().bottom) : 60; if(!(top > 0 && top < Hh/3)) top = 60;
+    obs.push([0, top + 6]);
+    // freie Bereiche berechnen
+    obs.sort(function(a, b){ return a[0] - b[0]; });
+    var free = [], y = 0; obs.forEach(function(o){ if(o[0] > y) free.push([y, o[0]]); y = Math.max(y, o[1]); }); if(y < Hh) free.push([y, Hh]);
+    if(!free.length) return;
+    var best = free.reduce(function(a, b){ return (b[1]-b[0]) > (a[1]-a[0]) ? b : a; });
+    var q = map.project([p.lo, p.la]), qy = q.y + mr.top, qx = q.x + mr.left;
+    var covered = !(qy > best[0] + 16 && qy < best[1] - 16) || qx < mr.left + 16 || qx > mr.right - 16;
+    var zz = z ? Math.max(map.getZoom(), z) : map.getZoom();
+    if(!always && !covered && zz===map.getZoom()) return;
+    var ty = (best[0] + best[1]) / 2;
+    map.easeTo({center:[p.lo, p.la], zoom:zz, offset:[0, Math.round(ty - (mr.top + mr.height/2))], duration: reduceMotion?0:500});
+  }); });
 }
 function resize(){ var r = mapEl.getBoundingClientRect(); W = r.width; H = r.height; applySheet(); if(map) map.resize(); placeFloating(); scheduleOverlay(); }
 $("zin").addEventListener("click", function(){ map.zoomIn(); });
@@ -3958,6 +3977,7 @@ function tap(x, y){
   if(!best){ var pq = poiAt(x, y); if(pq){ poiSel = pq; sel = null; select("poi"); poiSel = pq; renderCard(); scheduleOverlay(); return; } }
   if(!best && (layers.nb || nbActive().length)){ var a = toW(x, y), n = nbAt(a[0], a[1]); if(n) best = "nb:"+n; }
   select(best);
+  if(best && best.indexOf("nb:")!==0) revealPoint(P(best) || hotelById(best), 0, false);
 }
 
 /* ---------- Auswahl-Karte ---------- */
@@ -6004,10 +6024,10 @@ document.addEventListener("click", function(e){
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); tdraft.ok = ""; renderSheet(); break;
     case "tfopen": var tk2 = t.getAttribute("data-k"); tdraft.ok = tdraft.ok===tk2 ? "" : tk2; renderSheet(); break;
     case "close": select(null); break;
-    case "stopopen": select(id); openJPop(id, cur); centerAround(P(id), 15, $("jPop").querySelector(".ag-card")); break;
-    case "wopen": select(id); if(hasLoc(P(id))) centerOn(P(id)); openJPop(id); break;
+    case "stopopen": select(id); openJPop(id, cur); revealPoint(P(id), 15, true); break;
+    case "wopen": select(id); openJPop(id); revealPoint(P(id), 15, true); break;
     case "jpedit": openJPop(t.getAttribute("data-pid") || sel); break;
-    case "focus": select(id); centerOn(P(id)); if(!desktop.matches && sheetState==="full") setSheet("mid"); break;
+    case "focus": select(id); if(!desktop.matches && sheetState==="full") setSheet("mid"); revealPoint(P(id), 15, true); break;
     case "plan": plan(id, cur); sel = id; renderAll(); break;
     case "unplan": closeCatPop(); unplan(id); renderAll(); break;
     case "go": openGo(id || sel); break;
@@ -6049,7 +6069,7 @@ document.addEventListener("click", function(e){
       if(jod && jod!==cur && dayByKey(jod)){ cur = jod; renderAll(); }
       if(P(jop)) select(jop);
       openJPop(jop, jod);
-      if(P(jop) && hasLoc(P(jop))) centerAround(P(jop), 16, $("jPop").querySelector(".ag-card"));
+      if(P(jop) && hasLoc(P(jop))) revealPoint(P(jop), 16, true);
       break;
     case "jclose": closeJPop(); break;
     case "jphl": if(t.closest("#catPop")) closeCatPop();
