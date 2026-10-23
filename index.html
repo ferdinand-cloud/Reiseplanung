@@ -288,6 +288,9 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+.jday .jedit{display:block;width:100%;border:1px solid transparent;border-radius:10px;background:var(--chip);padding:8px 10px;font:inherit;font-size:16px;color:inherit;margin:6px 0 0;resize:vertical}
+.jday .jedit.hl{font-weight:700}
+.jday .jedit:focus{border-color:var(--ink);background:transparent;outline:none}
 /* Konto-Fenster: mittig, Hintergrund unscharf (Glas) */
 .acctpop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:rgba(10,15,20,.18);-webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);animation:agfade .18s ease}
 .acctpop[hidden]{display:none}
@@ -766,14 +769,15 @@ function acctPush(){
   if(!fbDb || !acct.user || pushing || !navigator.onLine) return;
   var ids = Object.keys(pend), dels = Object.keys(delPend); if(!ids.length && !dels.length) return;
   pushing = true; setAcct("sync");
-  var col = tripsCol(), changedLocal = false;
+  var col = tripsCol(), changedLocal = false, Lsnap = {};
   // je Reise eine Transaktion: Server-Stand lesen, mit eigener Änderung zusammenführen, schreiben
   var jobs = ids.map(function(id){
     return fbDb.runTransaction(function(tx){
       var ref = col.doc(id);
       return tx.get(ref).then(function(snap){
         var L = S.trips[id]; if(!L) return null;
-        var R = rowTrip(snap), B = BASE[id], M = L;
+        Lsnap[id] = JSON.parse(JSON.stringify(L));
+        var R = rowTrip(snap), B = BASE[id], M = Lsnap[id];
         if(R.exists && !R.deleted && B && tripSig(R.data)!==tripSig(B)) M = merge3(B, L, R.data);
         else if(R.exists && !R.deleted && !B && (R.updatedAt||0) > (L.updatedAt||0)) M = merge3({}, L, R.data);
         M.updatedAt = Math.max(Date.now(), (R.updatedAt||0)+1);
@@ -782,9 +786,19 @@ function acctPush(){
       });
     }).then(function(M){
       if(!M) return;
-      if(tripSig(M)!==tripSig(S.trips[id]||{})){ S.trips[id] = M; changedLocal = true; }
-      else S.trips[id].updatedAt = M.updatedAt;
-      lastLocal[id] = tripSig(S.trips[id]); setBase(id, S.trips[id]); delete pend[id];
+      var C = S.trips[id], Ls = Lsnap[id];
+      setBase(id, M);
+      if(!C){ return; }
+      if(tripSig(C)===tripSig(Ls)){
+        // während des Hochladens nichts geändert: Ergebnis übernehmen
+        if(tripSig(M)!==tripSig(C)){ S.trips[id] = M; changedLocal = true; } else C.updatedAt = M.updatedAt;
+        lastLocal[id] = tripSig(S.trips[id]); delete pend[id];
+      } else {
+        // inzwischen weiter bearbeitet (z. B. beim Tippen): neue Eingaben behalten und erneut hochladen
+        var N = merge3(Ls, C, M); N.updatedAt = Math.max(C.updatedAt||0, M.updatedAt);
+        if(tripSig(N)!==tripSig(C)){ S.trips[id] = N; changedLocal = true; }
+        lastLocal[id] = tripSig(S.trips[id]); pend[id] = 1;
+      }
     });
   }).concat(dels.map(function(id){
     return col.doc(id).set({json:"", deleted:true, updatedAt:delPend[id]}).then(function(){ delete delPend[id]; setBase(id, null); });
@@ -2720,8 +2734,8 @@ function renderTrip(){
       var J = jr[d.key] || {}, done = (t.order[d.key]||[]).filter(function(id){ return t.done[id]; });
       if(!J.hl && !J.text && !done.length) return; any = true;
       jh += "<div class=\"jday\"><button type=\"button\" class=\"pill"+yel(d)+"\" style=\"background:"+dayColor(d)+"\" data-act=\"gotoday\" data-day=\""+d.key+"\">Tag "+d.n+" · "+esc(d.lbl)+"</button>";
-      if(J.hl) jh += "<p class=\"hl\">"+esc(J.hl)+"</p>";
-      if(J.text) jh += "<p>"+esc(J.text)+"</p>";
+      jh += "<input type=\"text\" class=\"jedit hl\" id=\"jHl-"+d.key+"\" data-j=\"hl\" data-jd=\""+d.key+"\" maxlength=\"140\" value=\""+esc(J.hl||"")+"\" placeholder=\"Highlight des Tages\" aria-label=\"Highlight "+esc(d.lbl)+"\">";
+      jh += "<textarea class=\"jedit\" id=\"jText-"+d.key+"\" data-j=\"text\" data-jd=\""+d.key+"\" rows=\""+Math.min(12, Math.max(2, (J.text||"").split("\n").length + Math.floor((J.text||"").length/45)))+"\" maxlength=\"5000\" placeholder=\"Was habt ihr gemacht?\" aria-label=\"Tagebuch "+esc(d.lbl)+"\">"+esc(J.text||"")+"</textarea>";
       if(done.length) jh += "<ul class=\"jrated\">"+done.map(function(id){ return "<li>"+esc(P(id).n)+rateBadge(id)+"</li>"; }).join("")+"</ul>";
       jh += "</div>";
     });
@@ -2799,9 +2813,11 @@ function renderSheet(){
 
   $("tabWish").innerHTML = "Wunschliste<small>"+wishes().length+"</small>";
   if(sorting){ sheetPending = true; return; }
-  var body = $("body"), st = body.scrollTop;
+  var body = $("body"), st = body.scrollTop, ae = document.activeElement, fk = null;
+  if(ae && body.contains(ae) && ae.id && /INPUT|TEXTAREA/.test(ae.tagName)){ fk = {id:ae.id, v:ae.value, a:ae.selectionStart, b:ae.selectionEnd}; }
   body.innerHTML = tab==="day" ? renderDay() : tab==="wish" ? renderWish() : tab==="acct" ? renderAcct() : renderTrip();
   body.scrollTop = st;
+  if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
 function renderAll(){ dirty(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); }
@@ -3105,8 +3121,8 @@ document.addEventListener("change", function(e){
 document.addEventListener("input", function(e){
   var t = e.target;
   if(t.hasAttribute && t.hasAttribute("data-f") && tdraft){ setPath(tdraft, t.getAttribute("data-f"), t.value); return; }
-  if(t.hasAttribute && t.hasAttribute("data-j") && dayByKey(cur)){
-    var tr = T(); tr.journal = tr.journal || {}; var j = tr.journal[cur] = tr.journal[cur] || {};
+  if(t.hasAttribute && t.hasAttribute("data-j") && dayByKey(t.getAttribute("data-jd") || cur)){
+    var jk = t.getAttribute("data-jd") || cur, tr = T(); tr.journal = tr.journal || {}; var j = tr.journal[jk] = tr.journal[jk] || {};
     j[t.getAttribute("data-j")] = t.value; j.at = Date.now();
     clearTimeout(jTimer); jTimer = setTimeout(function(){ save(); var el = $("jSaved"); if(el) el.textContent = "Gespeichert "+new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}); }, 400);
     return;
