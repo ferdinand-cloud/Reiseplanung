@@ -1421,6 +1421,10 @@ body.ro label:has(#lRoute){display:none}
 .trbox.open .trsum > svg:last-child{transform:rotate(180deg)}
 .trbody{padding:0 10px 8px}
 .trbody .tline{margin:6px 0 0}
+.addmenu.jpmenu{z-index:90;min-width:230px}
+.addmenu.jpmenu .ai{font-size:15px}
+.addmenu.jpmenu .ai .lk{margin:0;width:16px;height:16px;color:currentColor}
+.addmenu.jpmenu .ai.on{background:var(--ink);color:var(--sheet)}
 li.st .no.hs{background:var(--ink) !important;color:var(--sheet) !important;border-radius:9px}
 .ht.me .h{border-radius:50%;font-size:11px}
 .ht b{font-weight:600}
@@ -4632,13 +4636,19 @@ var jOpen = lsGet("nyc-j-open")!=="0";
 /* Bewertung besuchter Orte */
 var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#5E9970"],[3,"Nice","#007AFF"],[4,"Okay","#6b7785"],[5,"Overrated","#FF3B30"]];
 function rateOf(id){ return ((T().rating||{})[id]) || 0; }
-function openJpMore(id){
+function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore]")) return; closeJpMore(); }
+function openJpMore(id, btn){
+  if($("jpMenu")){ closeJpMore(); return; }
   var p = P(id); if(!p) return; var g = grpName(p.g), pv = isPrivP(id);
-  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mehr\" data-id=\""+id+"\"><div class=\"pop-head\"><h4>"+esc(p.n)+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list ratelist\">"+
-    "<button type=\"button\" data-act=\"grppick\"><span class=\"mi\">▦</span><span>"+(g ? "Gruppe: "+esc(g) : "Zu Gruppe hinzufügen")+"</span></button>"+
-    (canPriv() ? "<button type=\"button\" data-act=\"privp\" aria-pressed=\""+pv+"\"><span class=\"mi\">"+ILOCK+"</span><span>"+(pv ? "Privat – für alle sichtbar machen" : "Als privat markieren")+"</span>"+(pv ? "<b>✓</b>" : "")+"</button>" : "")+
-    "</div><p class=\"note\" style=\"margin:8px 2px 0\">Private Orte sehen nur Mitreisende, keine Beobachter.</p></div>";
-  $("catPop").innerHTML = h; $("catPop").hidden = false;
+  var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id);
+  m.innerHTML = "<button type=\"button\" data-act=\"grppick\" role=\"menuitem\"><span class=\"ai\">▦</span><span>"+(g ? "Gruppe: "+esc(g) : "Zu Gruppe hinzufügen")+"</span></button>"+
+    (canPriv() ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : "");
+  document.body.appendChild(m);
+  var r = btn.getBoundingClientRect(), mh = m.offsetHeight, mw = m.offsetWidth;
+  var top = r.bottom + 6; if(top + mh > window.innerHeight - 10) top = Math.max(10, r.top - mh - 6);
+  m.style.top = Math.round(top)+"px"; m.style.right = Math.max(10, Math.round(window.innerWidth - r.right))+"px"; m.style.transformOrigin = (top < r.top ? "bottom" : "top")+" right";
+  setTimeout(function(){ document.addEventListener("click", jpMoreOut, true); }, 0);
 }
 function openRatePick(id){
   var v = rateOf(id), J = (T().journal||{})[jp && jp.dk] || {}, hl = !!(P(id) && J.hl===P(id).n);
@@ -4705,10 +4715,11 @@ function renderJPop(){
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   // eine Zeile: Tag · Uhrzeit · Abhaken · Bewertung · Route · Infos · Mehr (Gruppe, Privat)
   var rv0 = rateOf(jp.pid), rr = RATES.filter(function(r){ return r[0]===rv0; })[0], pv0 = canPriv() && isPrivP(jp.pid);
-  h += "<div class=\"jp-row\">"+dayChip(jp.pid, planned, true);
+  h += "<div class=\"jp-row\">";
+  if(planned) h += "<button type=\"button\" class=\"jq"+(dn?" ok":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\" aria-label=\""+(dn ? "Erledigt – wieder öffnen" : "Abhaken")+"\" title=\""+(dn ? "Erledigt" : "Abhaken")+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"</button>";
+  h += dayChip(jp.pid, planned, true);
   if(planned) h += isRO() ? (tm ? "<span class=\"jq jq-t on\">"+esc(tm)+"</span>" : "")
     : "<label class=\"jq jq-t"+(tm?" on":"")+"\" title=\"Uhrzeit\">"+(tm ? esc(tm) : I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>"))+"<input type=\"time\" data-act=\"time\" value=\""+esc(tm)+"\" aria-label=\"Uhrzeit\"></label>";
-  if(planned) h += "<button type=\"button\" class=\"jq"+(dn?" ok":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\" aria-label=\""+(dn ? "Erledigt – wieder öffnen" : "Abhaken")+"\" title=\""+(dn ? "Erledigt" : "Abhaken")+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"</button>";
   if(dn) h += "<button type=\"button\" class=\"jq jq-r"+(rr?" set":"")+(isHl?" hl":"")+"\""+(rr ? " style=\"--rc:"+rr[2]+"\"" : "")+(isRO() ? " disabled" : " data-act=\"ratepick\"")+" aria-haspopup=\"dialog\" aria-label=\"Bewertung"+(rr ? ": "+rr[1] : "")+(isHl ? ", Highlight des Tages" : "")+"\" title=\""+(rr ? rr[1] : "Bewerten")+(isHl ? " · Highlight" : "")+"\">"+
        "<svg viewBox=\"0 0 20 20\" fill=\""+(rr ? "currentColor" : "none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 3.2l2 4.2 4.6.6-3.4 3.2.9 4.5L10 13.5l-4.1 2.2.9-4.5L3.4 8l4.6-.6z\"/></svg></button>";
   if(!isRO() && (hasLoc(p) || p.addr)) h += "<button type=\"button\" class=\"jq\" data-act=\"go\" aria-label=\"Route\" title=\"Route\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+"</button>";
@@ -4933,7 +4944,7 @@ function phLike(ph){
   phMetaRefresh();
   (mine ? ref.delete() : ref.set({pid:"lk:"+ph, text:"❤", by:me, email:myMail(), at:Date.now()})).catch(function(e){ toast("Gefällt mir nicht gespeichert: "+(e && e.message), false); });
 }
-function closeJPop(){ pvHide(); jp = null; $("jPop").hidden = true; document.body.classList.remove("glass"); renderSheet(); }
+function closeJPop(){ closeJpMore(); pvHide(); jp = null; $("jPop").hidden = true; document.body.classList.remove("glass"); renderSheet(); }
 
 /* ---------- Fotos: verkleinert, lokal in IndexedDB, mit Konto in Firestore ---------- */
 var PHC = {}, phDB = null;
@@ -5986,7 +5997,7 @@ document.addEventListener("click", function(e){
     case "phdel": var dph = t.getAttribute("data-ph"), rest = photosOf(jp.pid).filter(function(x){ return x!==dph; }), di = photosOf(jp.pid).indexOf(dph);
       delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
-    case "jpmore": openJpMore(jp ? jp.pid : id); break;
+    case "jpmore": openJpMore(jp ? jp.pid : id, t); break;
     case "ratepick": openRatePick(jp ? jp.pid : id); break;
     case "rate": if(t.closest("#catPop")) closeCatPop(); var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); break;
     case "acsignup": openSignup(); break;
