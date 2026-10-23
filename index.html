@@ -288,6 +288,30 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+.jlist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.jcard{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:1px solid var(--line);background:transparent;border-radius:14px;padding:10px 12px;color:var(--ink)}
+.jc-m{display:grid;gap:3px;min-width:0;flex:1}
+.jc-m b{font-size:15px}
+.jc-m small{font-size:12.5px;color:var(--muted)}
+.jc-t{font-size:13.5px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.jc-t.empty{color:var(--muted);font-style:italic}
+.jc-ph{display:flex;gap:4px;margin-top:2px}
+.jc-ph img{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--chip)}
+.jc-ph i{font-style:normal;font-size:12px;color:var(--muted);align-self:center}
+.star{color:#f4b400}
+.jhl{margin:0 0 4px;font-size:14px}
+.jp .rate{display:flex;flex-wrap:wrap;gap:5px}
+.jp .rate button{padding:6px 10px;font-size:13px}
+.jp-hl{margin-top:8px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:7px 12px;font-weight:600;font-size:13.5px;color:var(--muted)}
+.jp-hl.on{color:#b8860b;border-color:#f4b400;background:color-mix(in srgb,#f4b400 14%,transparent)}
+.jp-t{width:100%;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--sheet) 60%,transparent);padding:10px 12px;font:inherit;font-size:16px;color:inherit;resize:vertical}
+.jp-ph{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.jp-ph button{border:0;padding:0;background:var(--chip);border-radius:12px;overflow:hidden;aspect-ratio:1}
+.jp-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.jp-add{display:grid;place-items:center;align-content:center;gap:2px;aspect-ratio:1;border:1.5px dashed var(--line);border-radius:12px;color:var(--muted);font-weight:600;font-size:13px;cursor:pointer}
+.jp-add span{font-size:24px;line-height:1}
+.jp-view img{width:100%;max-height:60vh;object-fit:contain;border-radius:14px;background:#000;margin:26px 0 10px;display:block}
+img.missing{opacity:.3}
 .jday .jedit{display:block;width:100%;border:1px solid transparent;border-radius:10px;background:var(--chip);padding:8px 10px;font:inherit;font-size:16px;color:inherit;margin:6px 0 0;resize:vertical}
 .jday .jedit.hl{font-weight:700}
 .jday .jedit:focus{border-color:var(--ink);background:transparent;outline:none}
@@ -574,6 +598,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 <div class="pop" id="wishPop" hidden></div>
 <div class="gate" id="gate" hidden></div>
 <div class="acctpop" id="acctPop" hidden></div>
+<div class="acctpop" id="jPop" hidden></div>
 <input type="file" id="impFileG" accept="application/json,.json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
 <section class="sheet" id="sheet" aria-label="Planung">
   <div class="grab" id="grab">
@@ -674,6 +699,22 @@ function fresh(){
   return s;
 }
 // Eine Reise prüfen und bereinigen (auch für Daten aus dem gemeinsamen Speicher)
+/* Tagebuch: früheren gemeinsamen Tagestext („• Ort: …“) auf die einzelnen Punkte verteilen */
+function migrateJournal(t){
+  if(!t.journal) return;
+  t.notes = t.notes && typeof t.notes==="object" ? t.notes : {};
+  Object.keys(t.journal).forEach(function(dk){
+    var J = t.journal[dk]; if(!J || !J.text) return;
+    var ids = (t.order||{})[dk] || [], rest = [], cur = null;
+    J.text.split("\n").forEach(function(line){
+      var m = line.match(/^•\s*(.+?)(?:\s*\(\d{1,2}:\d{2}\))?:\s?(.*)$/), hit = null;
+      if(m) ids.forEach(function(id){ var p = t.places[id]; if(p && p.n===m[1].trim()) hit = id; });
+      if(hit){ cur = hit; if(m[2].trim()) t.notes[hit] = (t.notes[hit] ? t.notes[hit]+"\n" : "") + m[2].trim(); }
+      else { cur = null; rest.push(line); }
+    });
+    J.text = rest.join("\n").trim();
+  });
+}
 function normTrip(t){
   if(!t || typeof t!=="object" || typeof t.id!=="string" || typeof t.name!=="string") return null;
   var obj = function(o){ return o && typeof o==="object" && !Array.isArray(o) ? o : {}; };
@@ -691,6 +732,7 @@ function normTrip(t){
   }
   var seen = {};
   Object.keys(t.order).forEach(function(dk){ t.order[dk] = (Array.isArray(t.order[dk]) ? t.order[dk] : []).filter(function(id){ if(typeof id!=="string" || !t.places[id] || seen[id]) return false; seen[id]=1; return true; }); });
+  migrateJournal(t);
   return t;
 }
 function load(){
@@ -732,7 +774,7 @@ function tripsCol(){ return fbDb.collection("users").doc(acct.user.uid).collecti
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["places","done","times","journal","order","legMode","legAlt","rating"];
+var MAPK = ["places","done","times","journal","order","legMode","legAlt","rating","notes","photos"];
 function jeq(a, b){ return JSON.stringify(a===undefined?null:a) === JSON.stringify(b===undefined?null:b); }
 function mergeOrder(b, l, r, preferLocal){
   b = b||[]; l = l||[]; r = r||[];
@@ -882,7 +924,7 @@ function acctStart(){
     window.firebase.auth().onAuthStateChanged(function(u){
       var was = acct.user && acct.user.uid;
       acct.user = u ? {uid:u.uid, id:u.uid, email:u.email} : null;
-      if(u && was!==u.uid){ acctLive(); }
+      if(u && was!==u.uid){ acctLive(); setTimeout(phFlush, 1500); }
       if(!u){ if(fbUnsub){ fbUnsub(); fbUnsub = null; } acct.state = "off"; }
       acct.ready = true; renderGate(); refreshSettings();
     });
@@ -1819,6 +1861,7 @@ function importPlan(file){
   };
   fr.readAsText(file);
 }
+document.addEventListener("change", function(e){ if(e.target.id==="phIn" && jp){ addPhotos(jp.pid, e.target.files); return; } });
 document.addEventListener("change", function(e){ if((e.target.id==="impFile" || e.target.id==="impFileG") && e.target.files[0]) importPlan(e.target.files[0]); });
 
 function closeMenus(){ $("mainMenu").hidden = true; $("menuBtn").setAttribute("aria-expanded","false"); $("layers").hidden = true; $("layersBtn").setAttribute("aria-expanded","false"); $("tripMenu").hidden = true; $("tripBtn").setAttribute("aria-expanded","false"); }
@@ -2457,28 +2500,113 @@ function rateRow(id){
 function rateBadge(id){ var v = rateOf(id); if(!v) return ""; var r = RATES[v-1]; return " <span class=\"rbadge\" style=\"--rc:"+r[2]+"\">"+r[1]+"</span>"; }
 function jLine(id){ var p = P(id); return "• "+p.n+(timeOf(id)?" ("+timeOf(id)+")":"")+": "; }
 function jHas(J, id){ var p = P(id); return !!(J.text && J.text.indexOf("• "+p.n)>-1); }
+function noteOf(id){ return ((T().notes||{})[id]) || ""; }
+function photosOf(id){ return ((T().photos||{})[id]) || []; }
+function jItem(id, dk){
+  var p = P(id), J = (T().journal||{})[dk] || {}, nt = noteOf(id), ph = photosOf(id), isHl = J.hl===p.n;
+  return "<li><button type=\"button\" class=\"jcard\" data-act=\"jopen\" data-pid=\""+id+"\" data-day=\""+dk+"\">"+badge(p.c,"width:26px;height:26px")+
+    "<span class=\"jc-m\"><b>"+esc(p.n)+(isHl?" <span class=\"star\">★</span>":"")+"</b><small>"+(timeOf(id)?timeOf(id)+" · ":"")+(rateOf(id)?"":"noch nicht bewertet")+rateBadge(id)+"</small>"+
+    (nt ? "<span class=\"jc-t\">"+esc(nt)+"</span>" : "<span class=\"jc-t empty\">Tippen, um Notizen und Fotos hinzuzufügen</span>")+
+    (ph.length ? "<span class=\"jc-ph\">"+ph.slice(0,4).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(ph.length>4?"<i>+"+(ph.length-4)+"</i>":"")+"</span>" : "")+
+    "</span></button></li>";
+}
 function journalBlock(D){
   var J = (T().journal||{})[D.key] || {}, done = ord(D.key).filter(function(id){ return T().done[id] && P(id); });
-  var info = J.text || J.hl ? "Eintrag vorhanden" : done.length ? done.length+" erledigt" : "leer";
+  var nNotes = done.filter(function(id){ return noteOf(id) || photosOf(id).length; }).length;
+  var info = done.length ? done.length+" besucht"+(nNotes?" · "+nNotes+" mit Notiz/Foto":"") : "leer";
   var h = "<div class=\"sec\"><button type=\"button\" class=\"fold\" data-act=\"jtoggle\" aria-expanded=\""+jOpen+"\"><h4>Tagebuch · "+esc(D.lbl)+"</h4><span class=\"cnt\">"+info+"</span>"+CHEV+"</button>";
   if(!jOpen) return h+"</div>";
   h += "<div class=\"jr\">";
-  h += "<label><span>Highlight des Tages</span><input type=\"text\" id=\"jHl\" data-j=\"hl\" maxlength=\"140\" value=\""+esc(J.hl||"")+"\" placeholder=\"z. B. Sonnenuntergang auf Top of the Rock\" autocomplete=\"off\"></label>";
-  h += "<label><span>Was habt ihr gemacht?</span><textarea id=\"jText\" data-j=\"text\" rows=\"5\" maxlength=\"5000\" placeholder=\"Erlebnisse, spontane Entdeckungen, Eindrücke …\">"+esc(J.text||"")+"</textarea></label>";
-  if(done.length){
-    var open = done.filter(function(id){ return !jHas(J, id); });
-    h += "<div><div class=\"jdh\"><span class=\"sub\">Erledigt laut Plan – antippen zum Übernehmen</span>"+(open.length>1?"<button type=\"button\" class=\"btn g s\" data-act=\"jall\">Alle übernehmen</button>":"")+"</div><ul class=\"jdone\">"+done.map(function(id){
-      var p = P(id), has = jHas(J, id), isHl = J.hl===p.n;
-      return "<li data-id=\""+id+"\">"+badge(p.c,"width:22px;height:22px")+"<span class=\"jn\">"+esc(p.n)+(timeOf(id)?" · "+timeOf(id):"")+"</span>"+
-        "<button type=\"button\" class=\"jb"+(has?" on":"")+"\" data-act=\"jins\""+(has?" aria-pressed=\"true\"":"")+">"+(has?"✓ im Text":"+ Text")+"</button>"+
-        "<button type=\"button\" class=\"jb"+(isHl?" on":"")+"\" data-act=\"jhl\" aria-pressed=\""+isHl+"\" aria-label=\"Als Highlight des Tages\">★</button>"+rateRow(id)+"</li>";
-    }).join("")+"</ul></div>";
-  } else {
-    h += "<p class=\"note\">Hake Stopps im Tagesplan ab, dann kannst du sie hier ins Tagebuch übernehmen.</p>";
-  }
-  h += "<span class=\"saved\" id=\"jSaved\">"+(J.at ? "Gespeichert "+new Date(J.at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "Wird beim Tippen gespeichert")+"</span>";
+  if(J.hl) h += "<p class=\"jhl\"><span class=\"star\">★</span> Highlight: <b>"+esc(J.hl)+"</b></p>";
+  h += done.length ? "<ul class=\"jlist\">"+done.map(function(id){ return jItem(id, D.key); }).join("")+"</ul>"
+                   : "<p class=\"note\">Hake Stopps im Tagesplan ab. Dann erscheinen sie hier, und du kannst zu jedem Notizen und Fotos festhalten.</p>";
+  if(J.text) h += "<label><span>Weitere Notizen zum Tag</span><textarea id=\"jText\" data-j=\"text\" rows=\"3\" maxlength=\"5000\">"+esc(J.text)+"</textarea></label>";
   h += "</div></div>";
   return h;
+}
+/* Pop-up je Punkt: Bewertung, Notiz, Fotos */
+var jp = null;
+function openJPop(pid, dk, view){
+  jp = {pid:pid, dk:dk || dayOf(pid) || cur, view:view||null};
+  renderJPop();
+}
+function renderJPop(){
+  var el = $("jPop"); if(!jp || !P(jp.pid)){ el.hidden = true; return; }
+  var p = P(jp.pid), J = (T().journal||{})[jp.dk] || {}, isHl = J.hl===p.n, ph = photosOf(jp.pid), D = dayByKey(jp.dk);
+  var h = "<div class=\"ag-card jp\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+esc(p.n)+"\" data-id=\""+jp.pid+"\"><button type=\"button\" class=\"ag-x\" data-act=\"jclose\" aria-label=\"Schließen\">×</button>";
+  if(jp.view){
+    h += "<div class=\"jp-view\"><img data-ph=\""+jp.view+"\" alt=\"Foto\"><div class=\"ag-acts\"><button type=\"button\" data-act=\"phback\">‹ Zurück</button><button type=\"button\" class=\"warn\" data-act=\"phdel\" data-ph=\""+jp.view+"\">Foto löschen</button></div></div></div>";
+    el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el); return;
+  }
+  h += "<div class=\"ag-head\">"+badge(p.c,"width:44px;height:44px")+"<div><b>"+esc(p.n)+"</b><span class=\"ag-st\">"+(D?esc(D.lbl):"")+(timeOf(jp.pid)?" · "+timeOf(jp.pid):"")+(p.addr?" · "+esc(p.addr):"")+"</span></div></div>";
+  h += "<div class=\"ag-lbl\">Bewertung</div>"+rateRow(jp.pid);
+  h += "<button type=\"button\" class=\"jp-hl"+(isHl?" on":"")+"\" data-act=\"jphl\" aria-pressed=\""+isHl+"\">★ "+(isHl?"Highlight des Tages":"Als Highlight des Tages markieren")+"</button>";
+  h += "<div class=\"ag-lbl\">Notizen</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+jp.pid+"\" rows=\"5\" maxlength=\"5000\" placeholder=\"Was hast du hier erlebt? Was war besonders?\">"+esc(noteOf(jp.pid))+"</textarea>";
+  h += "<div class=\"ag-lbl\">Fotos</div><div class=\"jp-ph\">"+ph.map(function(x){ return "<button type=\"button\" data-act=\"phview\" data-ph=\""+x+"\"><img data-ph=\""+x+"\" alt=\"Foto\"></button>"; }).join("")+
+       "<label class=\"jp-add\" for=\"phIn\"><span>＋</span>Foto</label></div><input type=\"file\" id=\"phIn\" accept=\"image/*\" multiple hidden>";
+  h += "<p class=\"note\" id=\"jpNote\">"+(acct.user ? "Notizen und Fotos werden mit deinem Konto abgeglichen." : "")+"</p></div>";
+  el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el);
+}
+function closeJPop(){ jp = null; $("jPop").hidden = true; document.body.classList.remove("glass"); renderSheet(); }
+
+/* ---------- Fotos: verkleinert, lokal in IndexedDB, mit Konto in Firestore ---------- */
+var PHC = {}, phDB = null;
+function idb(){
+  if(phDB) return phDB;
+  phDB = new Promise(function(res, rej){ var r = indexedDB.open("reiseplan", 1); r.onupgradeneeded = function(){ r.result.createObjectStore("photos", {keyPath:"id"}); }; r.onsuccess = function(){ res(r.result); }; r.onerror = function(){ rej(r.error); }; });
+  return phDB;
+}
+function idbDo(mode, fn){ return idb().then(function(db){ return new Promise(function(res, rej){ var tx = db.transaction("photos", mode), st = tx.objectStore("photos"), out = fn(st); tx.oncomplete = function(){ res(out && out.result); }; tx.onerror = function(){ rej(tx.error); }; }); }); }
+function phQueue(){ try { return JSON.parse(lsGet("rp-ph-q")||'{"up":[],"del":[]}'); } catch(e){ return {up:[], del:[]}; } }
+function phSaveQ(q){ lsSet("rp-ph-q", JSON.stringify(q)); }
+function phCol(){ return fbDb.collection("users").doc(acct.user.uid).collection("photos"); }
+function phGet(id){
+  if(PHC[id]) return Promise.resolve(PHC[id]);
+  return idbDo("readonly", function(st){ return st.get(id); }).then(function(r){
+    if(r && r.data){ PHC[id] = r.data; return r.data; }
+    if(!fbDb || !acct.user || !navigator.onLine) return null;
+    return phCol().doc(id).get().then(function(d){ var v = d.exists && d.data(); if(!v || !v.data) return null; PHC[id] = v.data; idbDo("readwrite", function(st){ st.put({id:id, data:v.data, place:v.place, trip:v.trip}); }); return v.data; });
+  }).catch(function(){ return null; });
+}
+function fillPhotos(root){ (root||document).querySelectorAll("img[data-ph]").forEach(function(im){ if(im.getAttribute("src")) return; phGet(im.getAttribute("data-ph")).then(function(d){ if(d) im.src = d; else im.classList.add("missing"); }); }); }
+function shrink(file){
+  return new Promise(function(res, rej){
+    var url = URL.createObjectURL(file), im = new Image();
+    im.onload = function(){ var m = 1280, w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, m/Math.max(w, h)), c = document.createElement("canvas");
+      c.width = Math.round(w*k); c.height = Math.round(h*k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      var d = c.toDataURL("image/jpeg", 0.8); if(d.length > 900000) d = c.toDataURL("image/jpeg", 0.6); res(d); };
+    im.onerror = function(){ URL.revokeObjectURL(url); rej(new Error("Bild konnte nicht gelesen werden")); };
+    im.src = url;
+  });
+}
+function addPhotos(pid, files){
+  var list = Array.prototype.slice.call(files||[]); if(!list.length) return;
+  var n = $("jpNote"); if(n) n.textContent = "Fotos werden hinzugefügt …";
+  var tid = S.cur;
+  list.reduce(function(pr, f){ return pr.then(function(){ return shrink(f).then(function(d){
+    var id = uid("ph"); PHC[id] = d;
+    return idbDo("readwrite", function(st){ st.put({id:id, data:d, place:pid, trip:tid}); }).then(function(){
+      var t = T(); t.photos = t.photos || {}; t.photos[pid] = (t.photos[pid]||[]).concat([id]);
+      var q = phQueue(); q.up.push(id); phSaveQ(q);
+    });
+  }, function(){}); }); }, Promise.resolve()).then(function(){ save(); renderJPop(); phFlush(); });
+}
+function delPhoto(pid, id){
+  var t = T(); t.photos = t.photos || {}; t.photos[pid] = (t.photos[pid]||[]).filter(function(x){ return x!==id; });
+  if(!t.photos[pid].length) delete t.photos[pid];
+  delete PHC[id]; idbDo("readwrite", function(st){ st.delete(id); });
+  var q = phQueue(); q.up = q.up.filter(function(x){ return x!==id; }); q.del.push(id); phSaveQ(q);
+  save(); phFlush();
+}
+var phBusy = false;
+function phFlush(){
+  if(phBusy || !fbDb || !acct.user || !navigator.onLine) return;
+  var q = phQueue(); if(!q.up.length && !q.del.length) return;
+  phBusy = true;
+  var ups = q.up.slice(), dels = q.del.slice();
+  Promise.all(ups.map(function(id){ return idbDo("readonly", function(st){ return st.get(id); }).then(function(r){ if(!r) return; return phCol().doc(id).set({data:r.data, place:r.place||"", trip:r.trip||"", at:Date.now()}); }).then(function(){ var q2 = phQueue(); q2.up = q2.up.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })
+    .concat(dels.map(function(id){ return phCol().doc(id).delete().then(function(){ var q2 = phQueue(); q2.del = q2.del.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })))
+    .then(function(){ phBusy = false; }, function(){ phBusy = false; setTimeout(phFlush, 20000); });
 }
 function jAppend(ids, focus){
   var tr = T(); tr.journal = tr.journal || {}; var J = tr.journal[cur] = tr.journal[cur] || {};
@@ -2734,9 +2862,9 @@ function renderTrip(){
       var J = jr[d.key] || {}, done = (t.order[d.key]||[]).filter(function(id){ return t.done[id]; });
       if(!J.hl && !J.text && !done.length) return; any = true;
       jh += "<div class=\"jday\"><button type=\"button\" class=\"pill"+yel(d)+"\" style=\"background:"+dayColor(d)+"\" data-act=\"gotoday\" data-day=\""+d.key+"\">Tag "+d.n+" · "+esc(d.lbl)+"</button>";
-      jh += "<input type=\"text\" class=\"jedit hl\" id=\"jHl-"+d.key+"\" data-j=\"hl\" data-jd=\""+d.key+"\" maxlength=\"140\" value=\""+esc(J.hl||"")+"\" placeholder=\"Highlight des Tages\" aria-label=\"Highlight "+esc(d.lbl)+"\">";
-      jh += "<textarea class=\"jedit\" id=\"jText-"+d.key+"\" data-j=\"text\" data-jd=\""+d.key+"\" rows=\""+Math.min(12, Math.max(2, (J.text||"").split("\n").length + Math.floor((J.text||"").length/45)))+"\" maxlength=\"5000\" placeholder=\"Was habt ihr gemacht?\" aria-label=\"Tagebuch "+esc(d.lbl)+"\">"+esc(J.text||"")+"</textarea>";
-      if(done.length) jh += "<ul class=\"jrated\">"+done.map(function(id){ return "<li>"+esc(P(id).n)+rateBadge(id)+"</li>"; }).join("")+"</ul>";
+      if(J.hl) jh += "<p class=\"jhl\"><span class=\"star\">★</span> "+esc(J.hl)+"</p>";
+      if(done.length) jh += "<ul class=\"jlist\">"+done.filter(function(id){ return P(id); }).map(function(id){ return jItem(id, d.key); }).join("")+"</ul>";
+      if(J.text) jh += "<textarea class=\"jedit\" id=\"jText-"+d.key+"\" data-j=\"text\" data-jd=\""+d.key+"\" rows=\"3\" maxlength=\"5000\" aria-label=\"Weitere Notizen "+esc(d.lbl)+"\">"+esc(J.text)+"</textarea>";
       jh += "</div>";
     });
     h += "<div class=\"sec\"><h4>Reisetagebuch</h4>"+(any ? jh : "<p class=\"empty\">Noch keine Einträge. Schreib im Tagesplan unter „Tagebuch“, was ihr erlebt habt.</p>")+"</div>";
@@ -2817,6 +2945,7 @@ function renderSheet(){
   if(ae && body.contains(ae) && ae.id && /INPUT|TEXTAREA/.test(ae.tagName)){ fk = {id:ae.id, v:ae.value, a:ae.selectionStart, b:ae.selectionEnd}; }
   body.innerHTML = tab==="day" ? renderDay() : tab==="wish" ? renderWish() : tab==="acct" ? renderAcct() : renderTrip();
   body.scrollTop = st;
+  fillPhotos(body);
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
@@ -2969,6 +3098,7 @@ function endPick(){ pick = null; $("pick").hidden = true; }
 document.addEventListener("click", function(e){
   if(e.target.id==="catPop"){ closeCatPop(); return; }
   if(e.target.id==="acctPop"){ closeSettings(); return; }
+  if(e.target.id==="jPop"){ closeJPop(); return; }
   var t = e.target.closest("[data-act],[data-tab]");
   if(!t) return;
   if(t.hasAttribute("data-tab") && !t.hasAttribute("data-act")){ tab = t.getAttribute("data-tab"); renderSheet(); scheduleOverlay(); if(sheetState==="peek") setSheet("mid"); return; }
@@ -2993,8 +3123,14 @@ document.addEventListener("click", function(e){
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
     case "acctclose": closeSettings(); break;
+    case "jopen": openJPop(t.getAttribute("data-pid"), t.getAttribute("data-day")); break;
+    case "jclose": closeJPop(); break;
+    case "jphl": var tj = T(); tj.journal = tj.journal || {}; var Jp = tj.journal[jp.dk] = tj.journal[jp.dk] || {}, pn = P(jp.pid).n; Jp.hl = Jp.hl===pn ? "" : pn; Jp.at = Date.now(); save(); renderJPop(); break;
+    case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
+    case "phback": jp.view = null; renderJPop(); break;
+    case "phdel": delPhoto(jp.pid, t.getAttribute("data-ph")); jp.view = null; renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
-    case "rate": var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); renderSheet(); if(sel===id) renderCard(); break;
+    case "rate": var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); break;
     case "acsignup": var cs = acctCreds(); if(!cs.email || cs.password.length < 8){ setAcct("off", "Bitte E-Mail und ein Passwort mit mindestens 8 Zeichen eingeben."); break; }
       setAcct("off", "Konto wird erstellt …");
       window.firebase.auth().createUserWithEmailAndPassword(cs.email, cs.password).then(function(){ acct.msg = ""; toast("Konto erstellt und angemeldet", false); }, function(e){ setAcct("off", acctErr(e)); });
@@ -3128,6 +3264,7 @@ document.addEventListener("input", function(e){
     return;
   }
   if(t.id==="busQ"){ busQ = t.value; renderLineMenus(); return; }
+  if(t.hasAttribute && t.hasAttribute("data-note")){ var np = t.getAttribute("data-note"), tn = T(); tn.notes = tn.notes || {}; if(t.value) tn.notes[np] = t.value; else delete tn.notes[np]; clearTimeout(jTimer); jTimer = setTimeout(save, 400); return; }
   if(t.hasAttribute && t.hasAttribute("data-geo")){ var gp = t.getAttribute("data-geo"), gv = t.value; clearTimeout(geoTimer); geoTimer = setTimeout(function(){ geoSearch(gp, gv); }, 350); return; }
   if(t.id==="wSearch"){ wishQuery = t.value; var wr = $("wishRes"); if(wr) wr.innerHTML = wishResults(); var sb = t.parentNode.querySelector("button"); if(!!wishQuery !== !!sb){ if(sb) sb.remove(); else t.insertAdjacentHTML("afterend","<button type=\"button\" data-act=\"sclear\" aria-label=\"Suche leeren\">×</button>"); } scheduleOverlay(); return; }
   if(t.id==="wName") draft.n = t.value;
@@ -3179,7 +3316,7 @@ document.addEventListener("submit", function(e){
 document.addEventListener("keydown", function(e){
   if(e.key==="Enter" && e.target && e.target.hasAttribute && e.target.hasAttribute("data-geo")){ e.preventDefault(); var gp = e.target.getAttribute("data-geo"); if((geoRes[gp]||[]).length) geoPick(gp, 0); else geoSearch(gp, e.target.value); }
 });
-document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if(!$("acctPop").hidden) closeSettings(); else if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
+document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if(!$("jPop").hidden) closeJPop(); else if(!$("acctPop").hidden) closeSettings(); else if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
 desktop.addEventListener("change", function(){ syncSide(); resize(); });
 window.addEventListener("resize", resize);
 
@@ -3202,7 +3339,7 @@ map.once("load", function(){ fitDay(); });
 startSync();
 acctStart();
 document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="visible" && acct.user) acctPull(); });
-window.addEventListener("online", function(){ if(acct.user) acctPull(); });
+window.addEventListener("online", function(){ if(acct.user){ acctPull(); phFlush(); } });
 setNet(navigator.onLine);
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){});
 if("serviceWorker" in navigator) window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
