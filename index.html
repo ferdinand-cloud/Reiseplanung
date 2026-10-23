@@ -297,6 +297,9 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .mn{flex:1;min-width:0;font-size:14px;word-break:break-all}
 .mn small{color:var(--muted)}
 .menubtn.dot{position:relative}
+.mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
+.mbadge[hidden]{display:none}
+.toast .tgo{font-weight:700}
 .menubtn.dot::after{content:"";position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:#d93025;border:2px solid var(--sheet)}
 .ag-row.inv{cursor:default;flex-wrap:wrap}
 .ag-acts.three{grid-template-columns:1fr 1fr 1fr}
@@ -370,6 +373,12 @@ img.missing{opacity:.3}
 /* Konto-Fenster: mittig, Hintergrund unscharf (Glas) */
 .acctpop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:rgba(10,15,20,.18);-webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);animation:agfade .18s ease}
 .acctpop[hidden]{display:none}
+#catPop{z-index:70}
+#jPop{z-index:65}
+.toast{z-index:80}
+.trippop{place-items:start center;padding-top:calc(env(safe-area-inset-top) + 14px)}
+.trippop .ag-card{width:min(560px,100%);max-height:calc(var(--vvh,100vh) - env(safe-area-inset-top) - 28px);padding-top:18px}
+.trippop .ag-card > .dh{padding-right:44px;cursor:default}
 .acctpop{inset:auto;left:0;right:0;top:var(--vvt,0px);height:var(--vvh,100%)}
 .acctpop.agtop{place-items:start center;padding-top:calc(env(safe-area-inset-top) + 14px)}
 .acctpop .ag-card{max-height:calc(var(--vvh,100vh) - 40px)}
@@ -626,7 +635,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 
 <div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button></div>
 <div class="tripmenu" id="tripMenu" hidden></div>
-<div class="tripmenu" id="mainMenu" hidden><button type="button" data-act="opentrip"><span>Reise</span><small>Übersicht, bearbeiten, Tagebuch</small></button><button type="button" data-act="openacct"><span>Mein Konto</span><small>Anmeldung, Abgleich, Einstellungen</small></button></div>
+<div class="tripmenu" id="mainMenu" hidden><button type="button" data-act="opentrip"><span>Reise</span><small>Übersicht, bearbeiten, Tagebuch</small></button><button type="button" data-act="openfriends"><span>Freunde <b class="mbadge" id="frBadge" hidden></b></span><small>Anfragen, Freunde suchen</small></button><button type="button" data-act="openacct"><span>Mein Konto</span><small>Anmeldung, Abgleich, Einstellungen</small></button></div>
 <nav class="rail" id="rail" aria-label="Reisetage"></nav>
 <div class="ctrl" id="ctrl">
   <button type="button" id="zin" aria-label="Hineinzoomen">+</button>
@@ -664,6 +673,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 <div class="pop" id="wishPop" hidden></div>
 <div class="gate" id="gate" hidden></div>
 <div class="acctpop" id="acctPop" hidden></div>
+<div class="acctpop trippop" id="tripPop" hidden></div>
 <div class="acctpop" id="jPop" hidden></div>
 <input type="file" id="impFileG" accept="application/json,.json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
 <section class="sheet" id="sheet" aria-label="Planung">
@@ -1063,17 +1073,39 @@ function frWatch(){
   if(!fbDb || !acct.user || frUnsub.length) return;
   var uid0 = acct.user.uid;
   fbDb.collection("profiles").doc(uid0).get().then(function(d){ PROF = d.exists ? d.data() : null; refreshSettings(); }, function(){});
-  var A = [], B = [];
+  var A = [], B = [], NAMES = {}, asked = {};
   var upd = function(){
+    // Namen immer aktuell aus dem Profil, nicht den beim Anfragen gespeicherten
+    A.concat(B).forEach(function(r){
+      [r.from, r.to].forEach(function(u){ if(u && u!==uid0 && !asked[u]){ asked[u] = 1; fbDb.collection("profiles").doc(u).get().then(function(d){ var v = d.exists && d.data(); if(v && v.name){ NAMES[u] = v.name; upd(); } }, function(){}); } });
+      if(NAMES[r.from]) r.fromName = NAMES[r.from];
+      if(NAMES[r.to]) r.toName = NAMES[r.to];
+    });
     FR.inc = A.filter(function(r){ return r.status==="pending"; });
     FR.out = B.filter(function(r){ return r.status==="pending"; });
     FR.friends = A.concat(B).filter(function(r){ return r.status==="accepted"; }).map(function(r){ var me1 = r.from===uid0; return {uid: me1 ? r.to : r.from, name: me1 ? r.toName : r.fromName, email: me1 ? r.toEmail : r.fromEmail, id:r.id}; });
     $("menuBtn").classList.toggle("dot", INVITES.length > 0 || FR.inc.length > 0);
+    var fb = $("frBadge"); if(fb){ fb.hidden = !FR.inc.length; fb.textContent = FR.inc.length; }
+    frNotify();
     refreshSettings(); if(tab==="trip") renderSheet();
   };
+  // Meldungen: neue Anfrage an mich / meine Anfrage wurde angenommen – je Anfrage nur einmal
+  var SK = "rp-frseen-"+uid0, seen = null; try { seen = JSON.parse(localStorage.getItem(SK)||"null"); } catch(e){}
+  var first = !seen; seen = seen || {inc:{}, acc:{}}; var gotA = false, gotB = false;
+  var frNotify = function(){
+    if(!gotA || !gotB) return;
+    var msgs = [];
+    A.forEach(function(r){ if(r.status==="pending" && !seen.inc[r.id]){ seen.inc[r.id] = 1; if(!first) msgs.push({u:r.from, f:r.fromName, t:" möchte mit dir befreundet sein"}); } });
+    B.forEach(function(r){ if(r.status==="accepted" && !seen.acc[r.id]){ seen.acc[r.id] = 1; if(!first) msgs.push({u:r.to, f:r.toName, t:" hat deine Freundschaftsanfrage angenommen"}); } });
+    A.forEach(function(r){ if(r.status==="accepted") seen.acc[r.id] = 1; });
+    if(first){ first = false; A.forEach(function(r){ if(r.status==="pending"){ msgs.push({u:r.from, f:r.fromName, t:" möchte mit dir befreundet sein"}); } }); }
+    lsSet(SK, JSON.stringify(seen));
+    msgs.forEach(function(m, i){ setTimeout(function(){ var show = function(nm){ frToast("@"+nm+m.t); };
+      if(NAMES[m.u]) show(NAMES[m.u]); else fbDb.collection("profiles").doc(m.u).get().then(function(d){ var v = d.exists && d.data(); show(v && v.name || m.f || "?"); }, function(){ show(m.f || "?"); }); }, i*5200); });
+  };
   var rows = function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); };
-  frUnsub.push(fbDb.collection("friendReqs").where("to", "==", uid0).onSnapshot(function(qs){ var n0 = A.filter(function(r){ return r.status==="pending"; }).length; A = rows(qs); upd(); var n1 = FR.inc.length; if(n1 > n0) toast("Neue Freundschaftsanfrage von @"+FR.inc[n1-1].fromName, false); }, function(){}));
-  frUnsub.push(fbDb.collection("friendReqs").where("from", "==", uid0).onSnapshot(function(qs){ B = rows(qs); upd(); }, function(){}));
+  frUnsub.push(fbDb.collection("friendReqs").where("to", "==", uid0).onSnapshot(function(qs){ var n0 = A.filter(function(r){ return r.status==="pending"; }).length; A = rows(qs); upd(); var n1 = FR.inc.length; gotA = true; upd(); }, function(){}));
+  frUnsub.push(fbDb.collection("friendReqs").where("from", "==", uid0).onSnapshot(function(qs){ B = rows(qs); gotB = true; upd(); }, function(){}));
 }
 function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; PROF = null; FR = {inc:[], out:[], friends:[]}; }
 function validName(n){ return /^[a-zA-Z0-9._-]{3,20}$/.test(n); }
@@ -1130,8 +1162,13 @@ function frAccept(id){
 }
 function frRemove(id){ fbDb.collection("friendReqs").doc(id).delete(); }
 var accView = "main";
+function friendsPageHTML(){
+  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Freunde\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Freunde</h3>";
+  if(!acct.user) return h+"<p class=\"note\">Melde dich an, um Freunde hinzuzufügen.</p></div>";
+  return h+friendsHTML()+(FR.friends.length||FR.inc.length||FR.out.length ? "" : "<p class=\"note\">Noch keine Freunde. Suche jemanden über seinen Benutzernamen – mit Freunden kannst du Reisen gemeinsam planen.</p>")+"</div>";
+}
 function friendsHTML(){
-  var h = "<div class=\"ag-lbl\">Freunde"+(FR.friends.length?" · "+FR.friends.length:"")+"</div><div class=\"ag-grp\">";
+  var h = "<div class=\"ag-lbl\">"+(FR.inc.length ? "Anfragen & Freunde" : "Deine Freunde")+(FR.friends.length?" · "+FR.friends.length:"")+"</div><div class=\"ag-grp\">";
   FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.fromName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.fromName)+"</b><small>möchte mit dir befreundet sein</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+r.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Ablehnen</button></span></div>"; });
   FR.friends.forEach(function(f){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+f.id+"\" aria-label=\"Freundschaft beenden\">Entfernen</button></div>"; });
   FR.out.forEach(function(r){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((r.toName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.toName)+"</b><small>Anfrage gesendet</small></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Zurückziehen</button></div>"; });
@@ -1148,10 +1185,10 @@ function profileHTML(){
 }
 function searchHTML(){
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Freunde suchen\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
-  h += "<button type=\"button\" class=\"back\" data-act=\"accview\" data-v=\"main\">‹ Mein Konto</button><h3 class=\"ag-title\">Freunde suchen</h3>";
+  h += "<button type=\"button\" class=\"back\" data-act=\"accview\" data-v=\"friends\">‹ Freunde</button><h3 class=\"ag-title\">Freunde suchen</h3>";
   if(!PROF){
-    h += "<p class=\"note\">Damit du Anfragen senden kannst und andere dich finden, leg zuerst deinen Benutzernamen fest.</p>";
-    h += "<form class=\"gnew\" id=\"unForm\"><input type=\"text\" id=\"unIn\" maxlength=\"20\" placeholder=\"Dein Benutzername\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"><button type=\"submit\" class=\"btn s\">Festlegen</button></form>";
+    h += "<div class=\"ag-lbl\">Schritt 1: Dein eigener Name</div><p class=\"note\">Bevor du suchen kannst, brauchst du selbst einen Benutzernamen. Unter ihm sehen dich deine Freunde – trag hier also <b>deinen</b> Namen ein, nicht den der gesuchten Person.</p>";
+    h += "<form class=\"gnew\" id=\"unForm\"><input type=\"text\" id=\"unIn\" maxlength=\"20\" placeholder=\"z. B. ferdinand\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"><button type=\"submit\" class=\"btn s\">Festlegen</button></form>";
     h += "<p class=\"note\" id=\"unMsg\">"+esc(unameMsg || "3–20 Zeichen: Buchstaben, Zahlen, Punkt, Minus oder Unterstrich.")+"</p>";
     return h+"</div>";
   }
@@ -1237,7 +1274,7 @@ function acctHTML(){
   h += "<div class=\"ag-head\"><span class=\"ag-av\">"+esc(PROF ? PROF.name[0].toUpperCase() : ini)+"</span><div><b class=\"ag-name\">"+(PROF ? "@"+esc(PROF.name) : esc(mail || "Mein Konto"))+(u ? "<button type=\"button\" class=\"ag-edit\" data-act=\"accview\" data-v=\"profile\" aria-label=\"Profil bearbeiten\" title=\"Profil bearbeiten\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M13.5 3.5l3 3L7 16H4v-3z\"/><path d=\"M11.5 5.5l3 3\"/></svg></button>" : "")+"</b>"+(PROF ? "<span class=\"ag-sub\">"+esc(mail)+"</span>" : "")+"<span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+(u ? "<button type=\"button\" class=\"ag-sync\" data-act=\"acsync\" aria-label=\"Jetzt abgleichen\" title=\"Jetzt abgleichen\">↻</button>" : "")+"</span></div></div>";
 
   if(u && !PROF) h += "<p class=\"note\">Tipp: Über den Stift oben legst du einen Benutzernamen fest, damit dich Freunde finden.</p>";
-  if(u) h += friendsHTML();
+
   if(INVITES.length){
     h += "<div class=\"ag-lbl\">Einladungen</div><div class=\"ag-grp\">"+INVITES.map(function(v){ return "<div class=\"ag-row inv\"><span><b>"+esc(v.name)+"</b><small>von "+esc(v.from||"jemandem")+"</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"invacc\" data-trip=\""+v.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"invdec\" data-trip=\""+v.id+"\">Ablehnen</button></span></div>"; }).join("")+"</div>";
   }
@@ -1257,11 +1294,11 @@ function acctHTML(){
   if(u) h += "<div class=\"ag-grp ag-out\"><button type=\"button\" class=\"ag-row\" data-act=\"acout\"><span><b>Abmelden</b></span></button></div>";
   return h+"</div>";
 }
-function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : acctHTML(); el.classList.toggle("agtop", accView!=="main"); el.hidden = false; document.body.classList.add("glass"); }
+function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : acctHTML(); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
 (function(){ var vv = window.visualViewport; if(!vv) return; var de = document.documentElement;
   function upd(){ de.style.setProperty("--vvh", vv.height+"px"); de.style.setProperty("--vvt", vv.offsetTop+"px"); }
   vv.addEventListener("resize", upd); vv.addEventListener("scroll", upd); upd(); })();
-function closeSettings(){ accView = "main"; unameMsg = ""; $("acctPop").hidden = true; document.body.classList.remove("glass"); }
+function closeSettings(){ accView = "main"; unameMsg = ""; $("acctPop").hidden = true; if($("tripPop").hidden) document.body.classList.remove("glass"); }
 function refreshSettings(){
   if($("acctPop").hidden) return;
   var ae = document.activeElement;
@@ -3208,7 +3245,7 @@ function geoPick(path, i){
 function renderTrip(){
   var t = T();
   if(!tdraft){
-    var h = "<button type=\"button\" class=\"back\" data-tab=\"day\">‹ Zurück zum Tagesplan</button><div class=\"dh\"><div><h2>"+esc(t.name)+"</h2><p>"+esc(rangeLabel(t.start,t.end))+" · "+days().length+" Tage</p></div></div>";
+    var h = "<div class=\"dh\"><div><h2>"+esc(t.name)+"</h2><p>"+esc(rangeLabel(t.start,t.end))+" · "+days().length+" Tage</p></div></div>";
     h += "<div class=\"tripsum\">";
     h += "<div><b>Anreise:</b> "+esc(dayByKey(t.start) ? dayByKey(t.start).title : t.start)+(t.arr?", "+esc(t.arr):"")+"</div>";
     h += "<div><b>Abreise:</b> "+esc(dayByKey(t.end) ? dayByKey(t.end).title : t.end)+(t.dep?", "+esc(t.dep):"")+"</div>";
@@ -3294,17 +3331,29 @@ function renderWishPop(){
   el.innerHTML = wishForm(); el.hidden = false;
   if(fid && $(fid) && el.contains($(fid))) $(fid).focus();
 }
+var sheetTab = "day";
+function closeTrip(){ if(tab!=="trip") return; tab = sheetTab; tdraft = null; renderSheet(); scheduleOverlay(); }
 function renderSheet(){
-  $("tabDay").setAttribute("aria-selected", tab==="day");
-  $("tabWish").setAttribute("aria-selected", tab==="wish");
 
   $("tabWish").innerHTML = "Wunschliste<small>"+wishes().length+"</small>";
   if(sorting){ sheetPending = true; return; }
+  if(tab==="day" || tab==="wish") sheetTab = tab;
+  $("tabDay").setAttribute("aria-selected", sheetTab==="day");
+  $("tabWish").setAttribute("aria-selected", sheetTab==="wish");
   var body = $("body"), st = body.scrollTop, ae = document.activeElement, fk = null;
-  if(ae && body.contains(ae) && ae.id && /INPUT|TEXTAREA/.test(ae.tagName)){ fk = {id:ae.id, v:ae.value, a:ae.selectionStart, b:ae.selectionEnd}; }
-  body.innerHTML = tab==="day" ? renderDay() : tab==="wish" ? renderWish() : tab==="acct" ? renderAcct() : renderTrip();
+  var tp = $("tripPop"), card = tp.querySelector(".ag-card"), tst = card ? card.scrollTop : 0;
+  if(ae && (body.contains(ae) || tp.contains(ae)) && ae.id && /INPUT|TEXTAREA/.test(ae.tagName)){ fk = {id:ae.id, v:ae.value, a:ae.selectionStart, b:ae.selectionEnd}; }
+  body.innerHTML = sheetTab==="wish" ? renderWish() : renderDay();
   body.scrollTop = st;
   fillPhotos(body);
+  // Reise-Ansicht als eigenes Fenster
+  if(tab==="trip"){
+    var wasOpen = !tp.hidden;
+    tp.innerHTML = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Reise\"><button type=\"button\" class=\"ag-x\" data-act=\"tripclose\" aria-label=\"Schließen\">×</button>"+renderTrip()+"</div>";
+    tp.hidden = false; document.body.classList.add("glass");
+    card = tp.querySelector(".ag-card"); if(wasOpen) card.scrollTop = tst;
+    fillPhotos(tp);
+  } else if(!tp.hidden){ tp.hidden = true; tp.innerHTML = ""; if($("acctPop").hidden) document.body.classList.remove("glass"); }
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
@@ -3416,6 +3465,12 @@ var sorting = false, sheetPending = false;
 
 /* ---------- Aktionen ---------- */
 function snapshot(){ return JSON.stringify(S); }
+function frToast(msg){
+  var el = $("toast");
+  el.innerHTML = "<span>"+esc(msg)+"</span><button type=\"button\" class=\"tgo\" data-act=\"openfriends\">Ansehen</button>";
+  el.hidden = false; clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.hidden = true; }, 7000);
+}
 function toast(msg, undo){
   var el = $("toast");
   el.innerHTML = "<span>"+esc(msg)+"</span>"+(undo?"<button type=\"button\" data-act=\"undo\">Rückgängig</button>":"");
@@ -3458,6 +3513,7 @@ document.addEventListener("click", function(e){
   if(e.target.id==="catPop"){ closeCatPop(); return; }
   if(e.target.id==="acctPop"){ closeSettings(); return; }
   if(e.target.id==="suPop"){ closeSignup(); return; }
+  if(e.target.id==="tripPop"){ closeTrip(); return; }
   if(e.target.id==="jPop"){ closeJPop(); return; }
   var t = e.target.closest("[data-act],[data-tab]");
   if(!t) return;
@@ -3470,8 +3526,8 @@ document.addEventListener("click", function(e){
     case "day": cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "gotoday": cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
     case "trip": closeSettings(); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
-    case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); break;
-    case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
+    case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); break;
+    case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
     case "tcancel": tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
     case "tadd": var arr = tdraft[t.getAttribute("data-path")]; arr.push({n:"", loc:"", from:tdraft.start||"", to:tdraft.end||""}); renderSheet(); break;
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); renderSheet(); break;
@@ -3519,8 +3575,10 @@ document.addEventListener("click", function(e){
         try { Object.keys(localStorage).forEach(function(k){ if(k===KEY || /^rp-(linked|pend)/.test(k)) localStorage.removeItem(k); }); } catch(e){}
         pend = {}; delPend = {}; S = fresh(); acctInitSigs(); pickDefaultDay(); renderAll(); acct.user = null; acct.msg = "Abgemeldet."; renderGate();
       }); break;
-    case "settings": case "openacct": closeMenus(); openSettings(); break;
-    case "opentrip": closeMenus(); tab = "trip"; if(!desktop.matches && sheetState!=="full") setSheet("full"); renderSheet(); scheduleOverlay(); break;
+    case "settings": case "openacct": closeMenus(); accView = "main"; openSettings(); break;
+    case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; openSettings(); break;
+    case "opentrip": closeMenus(); tab = "trip"; renderSheet(); scheduleOverlay(); break;
+    case "tripclose": closeTrip(); break;
     case "acsync": acctPull(); break;
     case "geopick": geoPick(t.getAttribute("data-path"), +t.getAttribute("data-i")); break;
     case "depopen": var dsi = t.getAttribute("data-st"); depOpen[dsi] = !depOpen[dsi]; renderCard(); break;
@@ -3731,7 +3789,7 @@ document.addEventListener("submit", function(e){
 document.addEventListener("keydown", function(e){
   if(e.key==="Enter" && e.target && e.target.hasAttribute && e.target.hasAttribute("data-geo")){ e.preventDefault(); var gp = e.target.getAttribute("data-geo"); if((geoRes[gp]||[]).length) geoPick(gp, 0); else geoSearch(gp, e.target.value); }
 });
-document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if($("suPop")) closeSignup(); else if(!$("jPop").hidden) closeJPop(); else if(!$("acctPop").hidden) closeSettings(); else if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
+document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if($("suPop")) closeSignup(); else if(tab==="trip" && $("jPop").hidden && $("acctPop").hidden && $("catPop").hidden) closeTrip(); else if(!$("jPop").hidden) closeJPop(); else if(!$("acctPop").hidden) closeSettings(); else if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
 desktop.addEventListener("change", function(){ syncSide(); resize(); });
 window.addEventListener("resize", resize);
 
