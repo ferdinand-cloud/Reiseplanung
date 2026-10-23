@@ -416,7 +416,7 @@ body.kb .pop{align-items:flex-end;padding-bottom:6px}
 .tf .err{margin:12px 4px 0;color:#d93025;font-weight:600;font-size:14px}
 .tf-foot{position:sticky;bottom:-18px;display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin:18px -18px -18px;padding:12px 18px calc(14px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--sheet) 88%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
 .tf-foot .btn{padding:12px 14px;font-size:15px;justify-content:center}
-.lpring{position:fixed;z-index:35;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;pointer-events:none;background:conic-gradient(var(--ink) var(--lpp,0%), transparent 0);-webkit-mask:radial-gradient(circle, transparent 21px, #000 22px);mask:radial-gradient(circle, transparent 21px, #000 22px);opacity:.75;animation:lpfill 3s linear forwards}
+.lpring{position:fixed;z-index:35;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;pointer-events:none;background:conic-gradient(var(--ink) var(--lpp,0%), transparent 0);-webkit-mask:radial-gradient(circle, transparent 21px, #000 22px);mask:radial-gradient(circle, transparent 21px, #000 22px);opacity:.75;animation:lpfill 1.7s linear forwards}
 @property --lpp{syntax:"<percentage>";inherits:false;initial-value:0%}
 @keyframes lpfill{from{--lpp:0%}to{--lpp:100%}}
 .lppin{width:26px;height:36px;pointer-events:none}
@@ -1977,7 +1977,7 @@ function srchGo(i){
 }
 
 /* ---------- Langes Drücken (3 s) auf der Karte: Punkt markieren ---------- */
-var LP_MS = 3000, lp = null, lpAt = 0, lpMark = null, lpPt = null;
+var LP_MS = 1700, lp = null, lpAt = 0, lpMark = null, lpPt = null;
 function lpInit(){
   var el = $("map");
   function xy(e){ var t = e.touches ? e.touches[0] : e; return t ? [t.clientX, t.clientY] : null; }
@@ -2021,7 +2021,7 @@ function lpRender(){
   var h = "<div class=\"pop-card lpcard\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Markierter Punkt\"><div class=\"pop-head\"><h4>Markierter Punkt</h4><button type=\"button\" class=\"x\" data-act=\"lpclose\" aria-label=\"Schließen\">×</button></div>";
   h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || "Unbenannter Ort"))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
   if(ro) h += "<p class=\"note\">Als Beobachter kannst du nichts übernehmen.</p>";
-  else h += "<div class=\"lpacts\"><button type=\"button\" class=\"btn\" data-act=\"lpwish\">Als Wunschziel übernehmen</button><button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button></div>";
+  else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"lpday\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button><button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button></div>";
   el.innerHTML = h+"</div>"; el.hidden = false;
 }
 function lpClose(){ lpPt = null; if(lpMark){ lpMark.remove(); lpMark = null; } closeCatPop(); }
@@ -2029,6 +2029,11 @@ function lpToWish(){
   var p = lpPt; lpClose(); if(!p) return;
   draft = {open:true, n:p.n || "", c:Object.keys(catFilter)[0]||"essen", list:(T().lists[0]||{}).id||"", loc:locStr(p), note:"", addr:p.addr || "", err:""};
   tab = "wish"; renderSheet(); scheduleOverlay(); var wn = $("wName"); if(wn){ wn.focus(); try { wn.select(); } catch(e){} }
+}
+function lpToDay(){
+  var p = lpPt, D = dayByKey(cur); lpClose(); if(!p || !D) return;
+  var pid = uid("w"), q = {id:pid, n:(p.n || p.addr || "Markierter Ort").slice(0,80), c:"sight", list:(T().lists[0]||{}).id||null, note:"", addr:(p.addr||"").slice(0,120), la:p.la, lo:p.lo};
+  T().places[pid] = q; plan(pid, cur); tab = "day"; renderAll(); select(pid);
 }
 function lpToHotel(){
   var p = lpPt; lpClose(); if(!p) return;
@@ -4149,6 +4154,7 @@ document.addEventListener("click", function(e){
     case "suclose": closeSignup(); break;
     case "lpclose": lpClose(); break;
     case "lpwish": lpToWish(); break;
+    case "lpday": lpToDay(); break;
     case "lphotel": lpToHotel(); break;
     case "vcheck": acct.vmsg = "Prüfe …"; renderGate(true); verifyCheck(true); break;
     case "vresend": sendVerify().then(function(){ acct.vmsg = "Neue E-Mail ist unterwegs."; renderGate(true); }, function(e){ acct.vmsg = /too-many/.test(e && e.code || "") ? "Gerade erst gesendet – bitte ein paar Minuten warten." : acctErr(e); renderGate(true); }); break;
