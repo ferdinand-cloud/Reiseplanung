@@ -4542,11 +4542,74 @@ function libPick(){
   var inp = $("libIn"); try { inp.value = ""; } catch(e){}
   inp.click();
 }
+function dKey(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+/* EXIF lesen: Aufnahmeort (GPS) und Aufnahmezeit. Funktioniert für JPEG und HEIC (sucht den Exif-Block im Dateianfang). */
+function photoMeta(file){
+  return file.slice(0, 512*1024).arrayBuffer().then(function(buf){
+    var u = new Uint8Array(buf), dv = new DataView(buf), T0 = -1;
+    for(var i = 0; i < u.length - 10; i++){
+      if(u[i]===0x45 && u[i+1]===0x78 && u[i+2]===0x69 && u[i+3]===0x66 && u[i+4]===0 && u[i+5]===0 &&
+         ((u[i+6]===0x49 && u[i+7]===0x49 && u[i+8]===0x2A) || (u[i+6]===0x4D && u[i+7]===0x4D && u[i+9]===0x2A))){ T0 = i+6; break; }
+    }
+    if(T0 < 0) return {};
+    var le = u[T0]===0x49, g16 = function(o){ return dv.getUint16(T0+o, le); }, g32 = function(o){ return dv.getUint32(T0+o, le); };
+    var ifd = function(off){ var r = {}, n = g16(off); for(var k = 0; k < n; k++){ var e = off+2+k*12; r[g16(e)] = {t:g16(e+2), c:g32(e+4), v:e+8}; } return r; };
+    var str = function(en){ var o = en.c > 4 ? g32(en.v) : en.v, s = ""; for(var k = 0; k < en.c; k++){ var ch = u[T0+o+k]; if(!ch) break; s += String.fromCharCode(ch); } return s; };
+    var rat = function(en, k){ var o = g32(en.v) + k*8, d = g32(o+4); return d ? g32(o)/d : 0; };
+    var out = {}, I0 = ifd(g32(4));
+    try {
+      if(I0[0x8825]){ var G = ifd(g32(I0[0x8825].v)), la, lo;
+        if(G[2] && G[4]){
+          la = rat(G[2],0) + rat(G[2],1)/60 + rat(G[2],2)/3600; lo = rat(G[4],0) + rat(G[4],1)/60 + rat(G[4],2)/3600;
+          if(G[1] && /S/i.test(str(G[1]))) la = -la; if(G[3] && /W/i.test(str(G[3]))) lo = -lo;
+          if(Math.abs(la) <= 90 && Math.abs(lo) <= 180 && (la || lo)) out.gps = {la:la, lo:lo};
+        }
+      }
+    } catch(e){}
+    try {
+      var X = I0[0x8769] ? ifd(g32(I0[0x8769].v)) : {}, dt = X[0x9003] || X[0x9004] || I0[0x0132];
+      var m = dt && /^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d)/.exec(str(dt));
+      if(m){ var d = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5]); if(!isNaN(d)) out.when = d; }
+    } catch(e){}
+    return out;
+  }).catch(function(){ return {}; });
+}
+/* Fotos aus der Mediathek: nach Aufnahmeort gruppieren (bis 75 m, gleicher Tag), je Gruppe ein Fotospot */
+function libImport(fs){
+  toast((fs.length > 1 ? "Fotos werden" : "Foto wird")+" eingeordnet …", false);
+  Promise.all(fs.map(function(f){ return photoMeta(f).then(function(m){ m.f = f; return m; }); })).then(function(ms){
+    var groups = [], noGps = [];
+    ms.forEach(function(m){
+      if(!m.gps){ noGps.push(m); return; }
+      var dk = m.when ? dKey(m.when) : "", g = groups.filter(function(x){ return x.dk===dk && dist(x.gps, m.gps) < 75; })[0];
+      if(g) g.items.push(m); else groups.push({gps:m.gps, dk:dk, items:[m]});
+    });
+    var withLoc = groups.length;
+    var go = noGps.length ? camWhere().then(function(loc){ groups.push({gps:loc || null, cur:true, items:noGps}); }) : Promise.resolve();
+    return go.then(function(){
+      var first = null;
+      return groups.reduce(function(pr, g){ return pr.then(function(){
+        var w = g.items.map(function(m){ return m.when; }).filter(Boolean).sort(function(a, b){ return a - b; })[0];
+        var tg = camTarget(g.gps, true, w);
+        return addPhotos(tg.pid, g.items.map(function(m){ return m.f; })).then(function(ids){ if(!first && ids && ids.length) first = {tg:tg, ph:ids[0]}; });
+      }); }, Promise.resolve()).then(function(){
+        if(!first) return;
+        var p = P(first.tg.pid), dk = dayOf(first.tg.pid); if(dk) cur = dk;
+        tab = dk ? "day" : "wish"; renderAll(); select(first.tg.pid); if(hasLoc(p)) centerOn(p, 16);
+        openJPop(first.tg.pid, dk, first.ph);
+        var msg = withLoc ? (withLoc===1 ? "Fotospot am Aufnahmeort angelegt" : withLoc+" Fotospots an den Aufnahmeorten angelegt") : "";
+        if(noGps.length) msg += (msg ? " · " : "")+(noGps.length===1 ? "1 Foto" : noGps.length+" Fotos")+" ohne Ortsdaten – aktueller Standort verwendet";
+        toast(msg, false);
+      });
+    });
+  });
+}
 /* eigener Fotospot am aktuellen Standort (heute im Plan als besucht) */
-function camTarget(loc, lib){
+function camTarget(loc, lib, when){
   var t = T(); // Foto über das Plus: immer ein eigener Fotopunkt, nie an einen bestehenden Ort gehängt
-  var tk = todayKey(), D = dayByKey(tk), pid = uid("w"), tm = new Date().toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
-  var p = {id:pid, k:"photo", n:"Fotospot", c:"sight", list:(t.lists && t.lists[0] || {}).id || null, note:(lib ? "Foto hinzugefügt um " : "Foto aufgenommen um ")+tm, addr:""};
+  var w = when || new Date(), tk = dKey(w), D = dayByKey(tk), pid = uid("w"), tm = w.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
+  var p = {id:pid, k:"photo", n:"Fotospot", c:"sight", list:(t.lists && t.lists[0] || {}).id || null,
+           note: when ? "Foto vom "+w.toLocaleDateString("de-DE", {day:"numeric", month:"numeric"})+", "+tm+" Uhr" : (lib ? "Foto hinzugefügt um " : "Foto aufgenommen um ")+tm, addr:""};
   if(loc){ p.la = +loc.la.toFixed(6); p.lo = +loc.lo.toFixed(6); var nb = nbOf(p); if(nb) p.n = "Fotospot "+nb; }
   t.places[pid] = p;
   if(D){ ord(tk).push(pid); t.done[pid] = true; t.times = t.times || {}; t.times[pid] = tm; }
@@ -4555,7 +4618,7 @@ function camTarget(loc, lib){
 document.addEventListener("change", function(e){
   var lib = e.target.id==="libIn";
   if((e.target.id!=="camIn" && !lib) || !e.target.files || !e.target.files[0]) return;
-  var fs = Array.prototype.slice.call(e.target.files), f = fs[0]; if(!lib) CAMF.pending = f;
+  var fs = Array.prototype.slice.call(e.target.files), f = fs[0]; if(lib){ libImport(fs); return; } CAMF.pending = f;
   toast((fs.length > 1 ? "Fotos werden" : "Foto wird")+" dem Ort zugeordnet …", false);
   camWhere().then(function(loc){
     var tg = camTarget(loc, lib), p = P(tg.pid);
