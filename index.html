@@ -297,6 +297,13 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .menubtn.dot::after{content:"";position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:#d93025;border:2px solid var(--sheet)}
 .ag-row.inv{cursor:default;flex-wrap:wrap}
+.ag-grp .ag-row .fn{flex:1;min-width:0;display:grid}
+.ag-grp .ag-row .fn small{color:var(--muted);font-size:12px}
+.ag-grp .ag-row > small{color:var(--muted);font-size:12.5px}
+.ag-grp .ag-row{cursor:default}
+.frq{width:100%;border:1px solid var(--line);border-radius:10px;background:transparent;padding:8px 10px;font:inherit;font-size:16px;color:inherit;margin-bottom:6px}
+#frRes .ag-row{padding:8px 0}
+#frRes .ag-row + .ag-row{border-top:1px solid var(--line)}
 .invb{display:flex;gap:6px}
 .cmlist{display:grid;gap:6px;margin-bottom:6px}
 .cm{background:color-mix(in srgb,var(--chip) 80%,transparent);border-radius:12px;padding:7px 10px;position:relative}
@@ -1011,8 +1018,8 @@ function acctStart(){
     window.firebase.auth().onAuthStateChanged(function(u){
       var was = acct.user && acct.user.uid;
       acct.user = u ? {uid:u.uid, id:u.uid, email:u.email} : null;
-      if(u && was!==u.uid){ acctMigrate().then(function(){ acctLive(); setTimeout(phFlush, 1500); cmWatch(); }); }
-      if(!u){ if(fbUnsub){ fbUnsub(); fbUnsub = null; } if(invUnsub){ invUnsub(); invUnsub = null; } if(cmUnsub){ cmUnsub(); cmUnsub = null; } acct.state = "off"; INVITES = []; }
+      if(u && was!==u.uid){ acctMigrate().then(function(){ acctLive(); setTimeout(phFlush, 1500); cmWatch(); frWatch(); }); }
+      if(!u){ if(fbUnsub){ fbUnsub(); fbUnsub = null; } if(invUnsub){ invUnsub(); invUnsub = null; } if(cmUnsub){ cmUnsub(); cmUnsub = null; } frStop(); acct.state = "off"; INVITES = []; }
       acct.ready = true; renderGate(); refreshSettings();
     });
   });
@@ -1021,13 +1028,100 @@ function googleBlock(){
   return "<div class=\"sec\"><h4>Google-Bewertungen &amp; Fotos</h4><p class=\"note\" style=\"margin-bottom:6px\">"+(gKey ? "Aktiv. Bewertungen und Fotos erscheinen, wenn du einen Ort antippst. Der Schlüssel ist nur auf diesem Gerät gespeichert." : "Trage einen Google-Maps-API-Schlüssel ein (Places API (New)). Er wird nur auf diesem Gerät gespeichert, nicht im öffentlichen Code.")+"</p>"+
          "<div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\" role=\"status\">"+esc(gMsg)+"</p>":"")+"</div>";
 }
+/* ---------- Benutzername & Freunde ---------- */
+var PROF = null, FR = {inc:[], out:[], friends:[]}, frUnsub = [], frSearch = {q:"", res:[], busy:false}, unameEdit = false, unameMsg = "";
+function frWatch(){
+  if(!fbDb || !acct.user || frUnsub.length) return;
+  var uid0 = acct.user.uid;
+  fbDb.collection("profiles").doc(uid0).get().then(function(d){ PROF = d.exists ? d.data() : null; refreshSettings(); }, function(){});
+  var A = [], B = [];
+  var upd = function(){
+    FR.inc = A.filter(function(r){ return r.status==="pending"; });
+    FR.out = B.filter(function(r){ return r.status==="pending"; });
+    FR.friends = A.concat(B).filter(function(r){ return r.status==="accepted"; }).map(function(r){ var me1 = r.from===uid0; return {uid: me1 ? r.to : r.from, name: me1 ? r.toName : r.fromName, email: me1 ? r.toEmail : r.fromEmail, id:r.id}; });
+    $("menuBtn").classList.toggle("dot", INVITES.length > 0 || FR.inc.length > 0);
+    refreshSettings(); if(tab==="trip") renderSheet();
+  };
+  var rows = function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); };
+  frUnsub.push(fbDb.collection("friendReqs").where("to", "==", uid0).onSnapshot(function(qs){ var n0 = A.filter(function(r){ return r.status==="pending"; }).length; A = rows(qs); upd(); var n1 = FR.inc.length; if(n1 > n0) toast("Neue Freundschaftsanfrage von @"+FR.inc[n1-1].fromName, false); }, function(){}));
+  frUnsub.push(fbDb.collection("friendReqs").where("from", "==", uid0).onSnapshot(function(qs){ B = rows(qs); upd(); }, function(){}));
+}
+function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; PROF = null; FR = {inc:[], out:[], friends:[]}; }
+function validName(n){ return /^[a-zA-Z0-9._-]{3,20}$/.test(n); }
+function setUsername(n){
+  n = (n||"").trim().replace(/^@/, "");
+  if(!validName(n)){ unameMsg = "3–20 Zeichen: Buchstaben, Zahlen, Punkt, Minus oder Unterstrich."; refreshSettings(); return; }
+  var low = n.toLowerCase(), uid0 = acct.user.uid, old = PROF && PROF.nameLower;
+  unameMsg = "Wird gespeichert …"; refreshSettings();
+  fbDb.runTransaction(function(tx){
+    var ref = fbDb.collection("usernames").doc(low);
+    return tx.get(ref).then(function(sn){
+      if(sn.exists && sn.data().uid!==uid0) throw new Error("taken");
+      if(!sn.exists) tx.set(ref, {uid:uid0});
+      if(old && old!==low) tx.delete(fbDb.collection("usernames").doc(old));
+      tx.set(fbDb.collection("profiles").doc(uid0), {name:n, nameLower:low});
+    });
+  }).then(function(){ PROF = {name:n, nameLower:low}; unameEdit = false; unameMsg = ""; refreshSettings(); toast("Benutzername @"+n+" gespeichert", false); },
+    function(e){ unameMsg = e && e.message==="taken" ? "@"+n+" ist schon vergeben." : "Speichern fehlgeschlagen."; refreshSettings(); });
+}
+var frTimer = null;
+function frDoSearch(q){
+  q = (q||"").trim().replace(/^@/, "").toLowerCase(); frSearch.q = q;
+  if(q.length < 2){ frSearch.res = []; renderFrRes(); return; }
+  frSearch.busy = true; renderFrRes();
+  fbDb.collection("profiles").where("nameLower", ">=", q).where("nameLower", "<=", q+"").orderBy("nameLower").limit(8).get().then(function(qs){
+    if(frSearch.q!==q) return;
+    frSearch.res = qs.docs.filter(function(d){ return d.id!==acct.user.uid; }).map(function(d){ return {uid:d.id, name:d.data().name}; });
+    frSearch.busy = false; renderFrRes();
+  }, function(){ frSearch.busy = false; frSearch.res = []; renderFrRes(); });
+}
+function frState(uid1){
+  if(FR.friends.some(function(f){ return f.uid===uid1; })) return "friend";
+  if(FR.out.some(function(r){ return r.to===uid1; })) return "out";
+  if(FR.inc.some(function(r){ return r.from===uid1; })) return "inc";
+  return "";
+}
+function frResHTML(){
+  if(frSearch.busy) return "<p class=\"note\">Suche …</p>";
+  if(frSearch.q.length >= 2 && !frSearch.res.length) return "<p class=\"note\">Niemand mit diesem Namen gefunden.</p>";
+  return frSearch.res.map(function(r){ var st = frState(r.uid);
+    return "<div class=\"ag-row\"><span class=\"mav\">"+esc(r.name[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.name)+"</b></span>"+
+      (st==="friend" ? "<small>Freund</small>" : st==="out" ? "<small>Angefragt</small>" : st==="inc" ? "<button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+r.uid+"\">Annehmen</button>" : "<button type=\"button\" class=\"btn s\" data-act=\"frreq\" data-uid=\""+r.uid+"\" data-name=\""+esc(r.name)+"\">Anfrage senden</button>")+"</div>"; }).join("");
+}
+function renderFrRes(){ var el = $("frRes"); if(el) el.innerHTML = frResHTML(); }
+function frRequest(uid1, name1){
+  if(!PROF){ toast("Lege zuerst einen Benutzernamen fest", false); return; }
+  var id = acct.user.uid+"_"+uid1;
+  fbDb.collection("friendReqs").doc(id).set({from:acct.user.uid, to:uid1, fromName:PROF.name, toName:name1, fromEmail:myMail(), status:"pending", at:Date.now()})
+    .then(function(){ toast("Anfrage an @"+name1+" gesendet", false); renderFrRes(); }, function(e){ toast("Anfrage fehlgeschlagen: "+(e && e.message), false); });
+}
+function frAccept(id){
+  var r = FR.inc.filter(function(x){ return x.id===id || x.from===id; })[0]; if(!r) return;
+  fbDb.collection("friendReqs").doc(r.id).update({status:"accepted", toEmail:myMail(), toName:(PROF && PROF.name) || r.toName}).then(function(){ toast("Ihr seid jetzt befreundet", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); });
+}
+function frRemove(id){ fbDb.collection("friendReqs").doc(id).delete(); }
+function friendsHTML(){
+  var h = "<div class=\"ag-lbl\">Benutzername</div><div class=\"ag-grp\">";
+  if(unameEdit || !PROF){
+    h += "<form class=\"ag-in gnew\" id=\"unForm\"><input type=\"text\" id=\"unIn\" maxlength=\"20\" value=\""+esc(PROF ? PROF.name : "")+"\" placeholder=\"z. B. ferdinand\" autocomplete=\"off\" autocapitalize=\"off\"><button type=\"submit\" class=\"btn s\">Speichern</button></form>";
+    h += "<p class=\"note ag-in\">"+esc(unameMsg || (PROF ? "" : "Mit einem Benutzernamen können andere dich finden und dir Freundschaftsanfragen schicken."))+"</p>";
+  } else h += "<button type=\"button\" class=\"ag-row\" data-act=\"unedit\"><span><b>@"+esc(PROF.name)+"</b><small>Andere finden dich unter diesem Namen</small></span><em class=\"chev\">✎</em></button>";
+  h += "</div>";
+  h += "<div class=\"ag-lbl\">Freunde"+(FR.friends.length?" · "+FR.friends.length:"")+"</div><div class=\"ag-grp\">";
+  FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.fromName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.fromName)+"</b><small>möchte mit dir befreundet sein</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+r.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Ablehnen</button></span></div>"; });
+  FR.friends.forEach(function(f){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+f.id+"\" aria-label=\"Freundschaft beenden\">Entfernen</button></div>"; });
+  FR.out.forEach(function(r){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((r.toName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.toName)+"</b><small>Anfrage gesendet</small></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Zurückziehen</button></div>"; });
+  h += "<div class=\"ag-in\"><input type=\"search\" id=\"frQ\" class=\"frq\" placeholder=\"Nutzer suchen (Benutzername)\" autocomplete=\"off\" autocapitalize=\"off\" value=\""+esc(frSearch.q)+"\"><div id=\"frRes\">"+frResHTML()+"</div></div>";
+  return h+"</div>";
+}
+
 /* ---------- Einladungen & Mitreisende ---------- */
 function invWatch(){
   if(invUnsub || !myMail()) return;
   invUnsub = fbDb.collection("trips").where("invites", "array-contains", myMail()).onSnapshot(function(qs){
     var before = INVITES.length;
     INVITES = qs.docs.filter(function(d){ var v = d.data()||{}; return !v.deleted && (v.members||[]).indexOf(acct.user.uid) < 0; }).map(function(d){ var v = d.data(); var om = (v.memberEmails||{})[v.owner] || ""; return {id:d.id, name:v.name || "Reise", from:om}; });
-    $("menuBtn").classList.toggle("dot", INVITES.length > 0);
+    $("menuBtn").classList.toggle("dot", INVITES.length > 0 || FR.inc.length > 0);
     if(INVITES.length > before) toast("Neue Einladung zu „"+INVITES[INVITES.length-1].name+"“ – öffne Menü → Mein Konto", false);
     refreshSettings();
   }, function(){});
@@ -1048,6 +1142,8 @@ function shareBlock(){
     return "<li><span class=\"mav\">"+esc((em[0]||"?").toUpperCase())+"</span><span class=\"mn\">"+esc(em)+(me0?" <small>(du)</small>":"")+(uid0===m.owner?" <small>· Besitzer</small>":"")+"</span>"+
       (own && !me0 ? "<button type=\"button\" class=\"btn g s\" data-act=\"mremove\" data-uid=\""+uid0+"\">Entfernen</button>" : "")+"</li>"; }).join("")+
     (m.invites||[]).map(function(em){ return "<li class=\"inv\"><span class=\"mav\">✉</span><span class=\"mn\">"+esc(em)+" <small>· eingeladen</small></span><button type=\"button\" class=\"btn g s\" data-act=\"minvdel\" data-mail=\""+esc(em)+"\">Zurückziehen</button></li>"; }).join("")+"</ul>";
+  var cand = FR.friends.filter(function(f){ return f.email && (m.members||[]).indexOf(f.uid)<0 && (m.invites||[]).indexOf(f.email)<0; });
+  if(cand.length) h += "<div class=\"chips small\">"+cand.map(function(f){ return "<button type=\"button\" class=\"chip\" data-act=\"invfriend\" data-mail=\""+esc(f.email)+"\" data-name=\""+esc(f.name)+"\">+ @"+esc(f.name)+"</button>"; }).join("")+"</div>";
   h += "<form class=\"gnew\" id=\"invForm\"><input type=\"email\" id=\"invMail\" inputmode=\"email\" placeholder=\"E-Mail der Person\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Einladen</button></form>";
   h += "<p class=\"note\">Eingeladene sehen die Einladung, sobald sie sich mit dieser E-Mail in der App anmelden. Danach könnt ihr gemeinsam planen, kommentieren und Fotos hochladen.</p>";
   if(!own) h += "<div class=\"row\"><button type=\"button\" class=\"btn g s warn\" data-act=\"mleave\">Reise verlassen</button></div>";
@@ -1096,6 +1192,7 @@ function acctHTML(){
   h += "<button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
   h += "<div class=\"ag-head\"><span class=\"ag-av\">"+esc(ini)+"</span><div><b>"+esc(mail || "Mein Konto")+"</b><span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+"</span></div></div>";
   if(u) h += "<div class=\"ag-acts\"><button type=\"button\" data-act=\"acsync\">Jetzt abgleichen</button><button type=\"button\" class=\"warn\" data-act=\"acout\">Abmelden</button></div>";
+  if(u) h += friendsHTML();
   if(INVITES.length){
     h += "<div class=\"ag-lbl\">Einladungen</div><div class=\"ag-grp\">"+INVITES.map(function(v){ return "<div class=\"ag-row inv\"><span><b>"+esc(v.name)+"</b><small>von "+esc(v.from||"jemandem")+"</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"invacc\" data-trip=\""+v.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"invdec\" data-trip=\""+v.id+"\">Ablehnen</button></span></div>"; }).join("")+"</div>";
   }
@@ -1116,7 +1213,12 @@ function acctHTML(){
 }
 function openSettings(){ var el = $("acctPop"); el.innerHTML = acctHTML(); el.hidden = false; document.body.classList.add("glass"); }
 function closeSettings(){ $("acctPop").hidden = true; document.body.classList.remove("glass"); }
-function refreshSettings(){ if(!$("acctPop").hidden) openSettings(); }
+function refreshSettings(){
+  if($("acctPop").hidden) return;
+  var ae = document.activeElement;
+  if(ae && (ae.id==="frQ" || ae.id==="unIn" || ae.id==="gKeyIn")){ renderFrRes(); return; }
+  openSettings();
+}
 /* Anmeldefenster vor der App */
 function renderGate(){
   var g = $("gate"); if(!g) return;
@@ -3311,6 +3413,11 @@ document.addEventListener("click", function(e){
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
     case "acctclose": closeSettings(); break;
+    case "unedit": unameEdit = true; unameMsg = ""; openSettings(); var ui = $("unIn"); if(ui) ui.focus(); break;
+    case "frreq": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); break;
+    case "fracc": frAccept(t.getAttribute("data-uid")); break;
+    case "frdel": frRemove(t.getAttribute("data-id")); break;
+    case "invfriend": var fe = t.getAttribute("data-mail"); tripRef(S.cur).update({invites:window.firebase.firestore.FieldValue.arrayUnion(fe)}).then(function(){ var m = META[S.cur]; if(m && m.invites.indexOf(fe)<0) m.invites.push(fe); toast("@"+t.getAttribute("data-name")+" eingeladen", false); renderSheet(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); }); break;
     case "invacc": invAccept(t.getAttribute("data-trip")); break;
     case "invdec": invDecline(t.getAttribute("data-trip")); break;
     case "minvdel": tripRef(S.cur).update({invites:window.firebase.firestore.FieldValue.arrayRemove(t.getAttribute("data-mail"))}).then(function(){ var m = META[S.cur]; if(m) m.invites = m.invites.filter(function(x){ return x!==t.getAttribute("data-mail"); }); renderSheet(); }); break;
@@ -3465,6 +3572,7 @@ document.addEventListener("input", function(e){
     return;
   }
   if(t.id==="busQ"){ busQ = t.value; renderLineMenus(); return; }
+  if(t.id==="frQ"){ var fq = t.value; clearTimeout(frTimer); frTimer = setTimeout(function(){ frDoSearch(fq); }, 300); return; }
   if(t.hasAttribute && t.hasAttribute("data-note")){ var np = t.getAttribute("data-note"), tn = T(); tn.notes = tn.notes || {}; if(t.value) tn.notes[np] = t.value; else delete tn.notes[np]; clearTimeout(jTimer); jTimer = setTimeout(save, 400); return; }
   if(t.hasAttribute && t.hasAttribute("data-geo")){ var gp = t.getAttribute("data-geo"), gv = t.value; clearTimeout(geoTimer); geoTimer = setTimeout(function(){ geoSearch(gp, gv); }, 350); return; }
   if(t.id==="wSearch"){ wishQuery = t.value; var wr = $("wishRes"); if(wr) wr.innerHTML = wishResults(); var sb = t.parentNode.querySelector("button"); if(!!wishQuery !== !!sb){ if(sb) sb.remove(); else t.insertAdjacentHTML("afterend","<button type=\"button\" data-act=\"sclear\" aria-label=\"Suche leeren\">×</button>"); } scheduleOverlay(); return; }
@@ -3477,6 +3585,7 @@ document.addEventListener("input", function(e){
 document.addEventListener("submit", function(e){
   e.preventDefault();
   var id = e.target.id;
+  if(id==="unForm"){ setUsername($("unIn").value); return; }
   if(id==="invForm"){
     var im = ($("invMail").value||"").trim().toLowerCase(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(im)){ toast("Bitte eine gültige E-Mail eingeben", false); return; }
     if(im===myMail()){ toast("Das bist du selbst", false); return; }
