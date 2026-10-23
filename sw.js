@@ -1,5 +1,5 @@
 // Reiseplan – Service Worker: App offline verfügbar, besuchte Kartenbereiche zwischengespeichert
-const VERSION = "reiseplan-v46";
+const VERSION = "reiseplan-v47";
 const SHELL = ["./", "./index.html", "./maplibre-gl.js", "./maplibre-gl.css", "./manifest.webmanifest", "./bus.json", "./firebase.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 const TILES = "reiseplan-tiles";

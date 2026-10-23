@@ -409,6 +409,16 @@ img.missing{opacity:.3}
 .wi.sw.far .swdel{background:#b3261e}
 .gate{position:fixed;inset:0;z-index:100;background:var(--sheet);display:grid;place-items:center;padding:24px max(20px,env(safe-area-inset-left,0px)) calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto}
 .gate[hidden]{display:none}
+.supop{position:fixed;left:0;right:0;top:var(--vvt,0px);height:var(--vvh,100%);z-index:110;display:grid;place-items:start center;padding:calc(env(safe-area-inset-top) + 40px) 20px 20px;background:rgba(10,15,20,.25);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);animation:agfade .18s ease;overflow-y:auto}
+.su-card{position:relative;width:min(380px,100%);display:grid;gap:12px;border-radius:26px;padding:22px 18px 18px;background:color-mix(in srgb,var(--sheet) 85%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid color-mix(in srgb,#fff 35%,transparent);box-shadow:0 20px 60px rgba(0,0,0,.25);animation:agpop .22s cubic-bezier(.2,.9,.3,1.2)}
+.su-card h2{margin:0;font:700 26px/1.1 var(--f-display)}
+.su-card .af{display:grid;gap:10px}
+.su-card label span{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.su-card input{width:100%;border:1px solid var(--line);border-radius:12px;background:transparent;padding:11px 12px;font:inherit;font-size:16px;color:inherit}
+.su-card input.bad{border-color:#d93025;box-shadow:0 0 0 1px #d93025}
+.su-card .btn{padding:11px 14px;font-size:15px}
+.su-err{margin:0;min-height:1em;color:#d93025;font-size:13.5px;font-weight:600}
+.su-err:empty{display:none}
 .gate-card{width:min(380px,100%);display:grid;gap:12px}
 .gate-card h1{margin:0;font:700 34px/1 var(--f-display)}
 .gate-card .sub{margin:0;color:var(--muted);font-size:15px}
@@ -1269,6 +1279,26 @@ function renderGate(){
     "<form class=\"af\" id=\"acForm\"><label><span>E-Mail</span><input type=\"email\" id=\"acMail\" autocomplete=\"email\" inputmode=\"email\" required></label><label><span>Passwort</span><input type=\"password\" id=\"acPw\" autocomplete=\"current-password\" minlength=\"8\"></label>"+
     "<button type=\"submit\" class=\"btn\">Anmelden</button><div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"acsignup\">Konto erstellen</button><button type=\"button\" class=\"btn g s\" data-act=\"acforgot\">Passwort vergessen</button></div></form>"+
     "<p class=\"note\" id=\"acctNote\" role=\"status\">"+acctNote()+"</p></div>";
+}
+function openSignup(){
+  var g = $("gate"); if(!g) return; var old = $("suPop"); if(old) old.remove();
+  var d = document.createElement("div"); d.className = "supop"; d.id = "suPop";
+  d.innerHTML = "<div class=\"su-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"suT\"><button type=\"button\" class=\"ag-x\" data-act=\"suclose\" aria-label=\"Schließen\">×</button><h2 id=\"suT\">Konto erstellen</h2>"+
+    "<form class=\"af\" id=\"suForm\" novalidate><label><span>E-Mail</span><input type=\"email\" id=\"suMail\" autocomplete=\"email\" inputmode=\"email\" required></label>"+
+    "<label><span>Passwort</span><input type=\"password\" id=\"suPw\" autocomplete=\"new-password\" minlength=\"8\" placeholder=\"mindestens 8 Zeichen\"></label>"+
+    "<label><span>Passwort bestätigen</span><input type=\"password\" id=\"suPw2\" autocomplete=\"new-password\" minlength=\"8\"></label>"+
+    "<p class=\"su-err\" id=\"suErr\" role=\"alert\"></p><button type=\"submit\" class=\"btn\">Konto erstellen</button></form></div>";
+  g.appendChild(d);
+  var m = $("acMail"); $("suMail").value = m ? m.value.trim() : "";
+  (($("suMail").value) ? $("suPw") : $("suMail")).focus();
+}
+function closeSignup(){ var d = $("suPop"); if(d) d.remove(); }
+function suErr(msg){ var e = $("suErr"); if(e) e.textContent = msg || ""; }
+function suCheck(final){
+  var p1 = $("suPw").value, p2 = $("suPw2").value, b = $("suPw2");
+  var bad = p2 && (final || p2.length >= p1.length) && p1!==p2;
+  b.classList.toggle("bad", !!bad); suErr(bad ? "Die Passwörter stimmen nicht überein." : "");
+  return !bad;
 }
 function acctCreds(){ var m = ($("acMail")||{}).value||"", p = ($("acPw")||{}).value||""; return {email:m.trim(), password:p}; }
 function acctErr(e){ var c = e && e.code || "", m = e && e.message || String(e);
@@ -3427,6 +3457,7 @@ function endPick(){ pick = null; $("pick").hidden = true; }
 document.addEventListener("click", function(e){
   if(e.target.id==="catPop"){ closeCatPop(); return; }
   if(e.target.id==="acctPop"){ closeSettings(); return; }
+  if(e.target.id==="suPop"){ closeSignup(); return; }
   if(e.target.id==="jPop"){ closeJPop(); return; }
   var t = e.target.closest("[data-act],[data-tab]");
   if(!t) return;
@@ -3478,10 +3509,8 @@ document.addEventListener("click", function(e){
     case "phdel": delPhoto(jp.pid, t.getAttribute("data-ph")); jp.view = null; renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
     case "rate": var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); break;
-    case "acsignup": var cs = acctCreds(); if(!cs.email || cs.password.length < 8){ setAcct("off", "Bitte E-Mail und ein Passwort mit mindestens 8 Zeichen eingeben."); break; }
-      setAcct("off", "Konto wird erstellt …");
-      window.firebase.auth().createUserWithEmailAndPassword(cs.email, cs.password).then(function(){ acct.msg = ""; toast("Konto erstellt und angemeldet", false); }, function(e){ setAcct("off", acctErr(e)); });
-      break;
+    case "acsignup": openSignup(); break;
+    case "suclose": closeSignup(); break;
     case "acforgot": var cf = acctCreds(); if(!cf.email){ setAcct("off", "Bitte zuerst die E-Mail eingeben."); break; }
       window.firebase.auth().sendPasswordResetEmail(cf.email).then(function(){ setAcct("off", "Wir haben dir einen Link zum Zurücksetzen geschickt. Danach hier mit dem neuen Passwort anmelden."); }, function(e){ setAcct("off", acctErr(e)); });
       break;
@@ -3611,6 +3640,7 @@ document.addEventListener("input", function(e){
     return;
   }
   if(t.id==="busQ"){ busQ = t.value; renderLineMenus(); return; }
+  if(t.id==="suPw2" || (t.id==="suPw" && $("suPw2").value)){ suCheck(false); return; }
   if(t.id==="frQ"){ var fq = t.value; clearTimeout(frTimer); frTimer = setTimeout(function(){ frDoSearch(fq); }, 300); return; }
   if(t.hasAttribute && t.hasAttribute("data-note")){ var np = t.getAttribute("data-note"), tn = T(); tn.notes = tn.notes || {}; if(t.value) tn.notes[np] = t.value; else delete tn.notes[np]; clearTimeout(jTimer); jTimer = setTimeout(save, 400); return; }
   if(t.hasAttribute && t.hasAttribute("data-geo")){ var gp = t.getAttribute("data-geo"), gv = t.value; clearTimeout(geoTimer); geoTimer = setTimeout(function(){ geoSearch(gp, gv); }, 350); return; }
@@ -3648,6 +3678,18 @@ document.addEventListener("submit", function(e){
   if(id==="grpRen"){
     var rg = e.target.getAttribute("data-g"), rn = ($("grpRenIn").value||"").trim(); if(!rn) return;
     (T().groups||{})[rg] = {n:rn.slice(0,40)}; grpEdit = null; save(); openGrpPop(grpTarget); renderSheet(); renderCard(); return;
+  }
+  if(id==="suForm"){
+    var sm = $("suMail").value.trim(), p1 = $("suPw").value, p2 = $("suPw2").value;
+    if(!sm){ suErr("Bitte gib deine E-Mail-Adresse ein."); $("suMail").focus(); return; }
+    if(p1.length < 8){ suErr("Das Passwort braucht mindestens 8 Zeichen."); $("suPw").focus(); return; }
+    if(!p2){ suErr("Bitte bestätige dein Passwort."); $("suPw2").focus(); return; }
+    if(!suCheck(true)){ $("suPw2").focus(); return; }
+    if(!window.firebase){ suErr("Konten sind gerade nicht verfügbar."); return; }
+    var sb = e.target.querySelector("[type=submit]"); sb.disabled = true; sb.textContent = "Wird erstellt …"; suErr("");
+    window.firebase.auth().createUserWithEmailAndPassword(sm, p1).then(function(){ closeSignup(); acct.msg = ""; toast("Konto erstellt und angemeldet", false); },
+      function(er){ sb.disabled = false; sb.textContent = "Konto erstellen"; suErr(acctErr(er)); });
+    return;
   }
   if(id==="acForm" && !window.firebase){ return; }
   if(id==="acForm"){
@@ -3689,7 +3731,7 @@ document.addEventListener("submit", function(e){
 document.addEventListener("keydown", function(e){
   if(e.key==="Enter" && e.target && e.target.hasAttribute && e.target.hasAttribute("data-geo")){ e.preventDefault(); var gp = e.target.getAttribute("data-geo"); if((geoRes[gp]||[]).length) geoPick(gp, 0); else geoSearch(gp, e.target.value); }
 });
-document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if(!$("jPop").hidden) closeJPop(); else if(!$("acctPop").hidden) closeSettings(); else if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
+document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if($("suPop")) closeSignup(); else if(!$("jPop").hidden) closeJPop(); else if(!$("acctPop").hidden) closeSettings(); else if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
 desktop.addEventListener("change", function(){ syncSide(); resize(); });
 window.addEventListener("resize", resize);
 
