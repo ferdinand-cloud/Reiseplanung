@@ -3484,16 +3484,32 @@ function closeJPop(){ jp = null; $("jPop").hidden = true; document.body.classLis
 
 /* ---------- Fotos: verkleinert, lokal in IndexedDB, mit Konto in Firestore ---------- */
 var PHC = {}, phDB = null;
+// Fotospeicher auf dem Gerät. iOS verliert die Verbindung gelegentlich (App-Wechsel) oder öffnet sie gar nicht:
+// dann neu verbinden, mit Zeitlimit, und notfalls ohne Gerätespeicher weiterarbeiten
+var idbDown = 0;
 function idb(){
   if(phDB) return phDB;
-  phDB = new Promise(function(res, rej){ var r = indexedDB.open("reiseplan", 1); r.onupgradeneeded = function(){ r.result.createObjectStore("photos", {keyPath:"id"}); }; r.onsuccess = function(){ res(r.result); }; r.onerror = function(){ rej(r.error); }; });
+  if(Date.now() < idbDown) return Promise.reject(new Error("Gerätespeicher gerade nicht verfügbar"));
+  phDB = new Promise(function(res, rej){
+    var done = false, to = setTimeout(function(){ if(!done){ done = true; idbDown = Date.now() + 60000; rej(new Error("Gerätespeicher antwortet nicht")); } }, 2500);
+    try {
+      var r = indexedDB.open("reiseplan", 1);
+      r.onupgradeneeded = function(){ r.result.createObjectStore("photos", {keyPath:"id"}); };
+      r.onsuccess = function(){ var db = r.result; db.onclose = function(){ phDB = null; }; db.onversionchange = function(){ try { db.close(); } catch(e){} phDB = null; };
+        if(done){ try { db.close(); } catch(e){} return; } done = true; clearTimeout(to); res(db); };
+      r.onerror = function(){ if(done) return; done = true; clearTimeout(to); rej(r.error); };
+      r.onblocked = function(){ if(done) return; done = true; clearTimeout(to); rej(new Error("Gerätespeicher blockiert")); };
+    } catch(e){ done = true; clearTimeout(to); rej(e); }
+  });
+  phDB.catch(function(){ phDB = null; });
   return phDB;
 }
-function idbDo(mode, fn){ return idb().then(function(db){ return new Promise(function(res, rej){ var tx = db.transaction("photos", mode), st = tx.objectStore("photos"), out = fn(st); tx.oncomplete = function(){ res(out && out.result); }; tx.onerror = function(){ rej(tx.error); }; }); }); }
+function idbDo1(mode, fn){ return idb().then(function(db){ return new Promise(function(res, rej){ var tx; try { tx = db.transaction("photos", mode); } catch(e){ phDB = null; rej(e); return; } var st = tx.objectStore("photos"), out = fn(st); tx.oncomplete = function(){ res(out && out.result); }; tx.onerror = function(){ rej(tx.error); }; tx.onabort = function(){ rej(tx.error || new Error("abgebrochen")); }; }); }); }
+function idbDo(mode, fn){ return idbDo1(mode, fn).catch(function(e){ phDB = null; if(Date.now() < idbDown) throw e; return idbDo1(mode, fn); }); }
 function phQueue(){ try { return JSON.parse(lsGet("rp-ph-q")||'{"up":[],"del":[]}'); } catch(e){ return {up:[], del:[]}; } }
 function phSaveQ(q){ lsSet("rp-ph-q", JSON.stringify(q)); }
 function phCol(tid){ return tripRef(tid || S.cur).collection("photos"); }
-var PHERR = {};
+var PHERR = {}, PHMEM = {};
 function phGet(id){
   if(PHC[id]) return Promise.resolve(PHC[id]);
   return idbDo("readonly", function(st){ return st.get(id); }).catch(function(){ return null; }).then(function(r){
@@ -3527,15 +3543,19 @@ function shrink(file){
 function addPhotos(pid, files){
   if(isViewerOf(S.cur)){ toast("Als Beobachter kannst du keine Fotos hinzufügen.", false); return; }
   var list = Array.prototype.slice.call(files||[]); if(!list.length) return;
-  var n = $("jpNote"); if(n) n.textContent = "Fotos werden hinzugefügt …";
-  var tid = S.cur;
+  toast(list.length===1 ? "Foto wird hinzugefügt …" : list.length+" Fotos werden hinzugefügt …", false);
+  var tid = S.cur, ok = 0, bad = 0, noDev = 0;
   list.reduce(function(pr, f){ return pr.then(function(){ return shrink(f).then(function(d){
-    var id = uid("ph"); PHC[id] = d;
-    return idbDo("readwrite", function(st){ st.put({id:id, data:d, place:pid, trip:tid}); }).then(function(){
-      var t = T(); t.photos = t.photos || {}; t.photos[pid] = (t.photos[pid]||[]).concat([id]);
-      var q = phQueue(); q.up.push(id); phSaveQ(q);
-    });
-  }, function(){}); }); }, Promise.resolve()).then(function(){ save(); renderJPop(); phFlush(); });
+    var id = uid("ph"); PHC[id] = d; PHMEM[id] = {id:id, data:d, place:pid, trip:tid};
+    var add = function(){ var t = T(); t.photos = t.photos || {}; t.photos[pid] = (t.photos[pid]||[]).concat([id]); var q = phQueue(); q.up.push(id); phSaveQ(q); ok++; };
+    return idbDo("readwrite", function(st){ st.put({id:id, data:d, place:pid, trip:tid}); }).then(add, function(){ noDev++; add(); });
+  }, function(){ bad++; }); }); }, Promise.resolve()).then(function(){
+    save(); if(jp && !$("jPop").hidden) renderJPop(); renderSheet(); phFlush();
+    if(bad && !ok) toast("Foto konnte nicht gelesen werden. Bitte ein anderes Foto wählen.", false);
+    else if(noDev) toast((ok===1?"Foto":"Fotos")+" hinzugefügt – wird ins Konto hochgeladen (Gerätespeicher gerade nicht verfügbar).", false);
+    else toast(ok===1 ? "Foto hinzugefügt" : ok+" Fotos hinzugefügt"+(bad ? ", "+bad+" nicht lesbar" : ""), false);
+  });
+  var inp = $("phIn"); if(inp) try { inp.value = ""; } catch(e){}
 }
 function delPhoto(pid, id){
   var t = T(); t.photos = t.photos || {}; t.photos[pid] = (t.photos[pid]||[]).filter(function(x){ return x!==id; });
@@ -3550,7 +3570,7 @@ function phFlush(){
   var q = phQueue(); if(!q.up.length && !q.del.length) return;
   phBusy = true;
   var ups = q.up.slice(), dels = q.del.slice();
-  Promise.all(ups.map(function(id){ return idbDo("readonly", function(st){ return st.get(id); }).then(function(r){ if(!r) return; var tid = gidFor(r.trip||S.cur); if(!KNOWN[tid]) throw new Error("Reise noch nicht im Konto"); return phCol(tid).doc(id).set({data:r.data, place:r.place||"", trip:tid, by:acct.user.uid, at:Date.now()}); }).then(function(){ var q2 = phQueue(); q2.up = q2.up.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })
+  Promise.all(ups.map(function(id){ return idbDo("readonly", function(st){ return st.get(id); }).catch(function(){ return null; }).then(function(r){ r = r || PHMEM[id]; if(!r) return; var tid = gidFor(r.trip||S.cur); if(!KNOWN[tid]) throw new Error("Reise noch nicht im Konto"); return phCol(tid).doc(id).set({data:r.data, place:r.place||"", trip:tid, by:acct.user.uid, at:Date.now()}); }).then(function(){ var q2 = phQueue(); q2.up = q2.up.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })
     .concat(dels.map(function(id){ return phCol(S.cur).doc(id).delete().then(function(){ var q2 = phQueue(); q2.del = q2.del.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })))
     .then(function(){ phBusy = false; }, function(){ phBusy = false; setTimeout(phFlush, 20000); });
 }
