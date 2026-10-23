@@ -1359,6 +1359,48 @@ li.st .acts .go{color:var(--muted) !important}
 .pv-mv{margin-left:auto}
 .pv-mv + .pv-save{margin-left:0}
 .pv-acts{flex-wrap:wrap}
+
+/* Wegbeschreibung (ÖPNV) als klare Zeitachse */
+.leg.tleg .alts2,.leg.tleg ol.rt,.leg.tleg .rt-note{flex-basis:100%}
+.leg.tleg:has(ol.rt){flex-wrap:wrap}
+.alts2{align-items:center;gap:6px;margin:10px 0 4px}
+.alts-l{font-size:12px;color:var(--muted);margin-right:2px;flex:0 0 auto}
+.alts2 button{border:0 !important;background:var(--fill) !important;color:var(--ink) !important;padding:5px 10px !important;font-size:12.5px}
+.alts2 button[aria-pressed="true"]{background:var(--ink) !important;color:var(--sheet) !important}
+.alts2 button b{margin-left:3px}
+ol.rt{list-style:none;margin:8px 0 2px;padding:12px 12px 10px 4px;border-radius:14px;background:var(--fill2);display:grid}
+ol.rt li{display:grid;grid-template-columns:44px 18px 1fr;column-gap:8px;align-items:start;position:relative}
+.rt-t{font:600 12.5px/20px var(--f-body);font-variant-numeric:tabular-nums;color:var(--ink);text-align:right}
+.rt-d{position:relative;align-self:stretch}
+.rt-x{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;min-width:0;font-size:13.5px;line-height:20px;padding-bottom:10px}
+.rt-x b{font-weight:600}
+.rt-x small{font-size:12px;color:var(--muted)}
+/* Punkte (Start, Stationen, Ziel) */
+.rt-pt .rt-d::after{content:"";position:absolute;left:4px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--card,var(--sheet));border:2.5px solid var(--lc,var(--ink));box-sizing:border-box;z-index:1}
+.rt-pt.end .rt-d::after{background:var(--ink);border-color:var(--ink)}
+.rt-pt .rt-x{padding-bottom:6px}
+/* Verbindungslinien */
+.rt-walk .rt-d::before{content:"";position:absolute;left:7px;top:-6px;bottom:-6px;width:4px;background:radial-gradient(circle,var(--muted) 1.4px,transparent 1.8px) center top/4px 7px repeat-y;opacity:.8}
+.rt-ride .rt-d::before{content:"";position:absolute;left:6px;top:-8px;bottom:-8px;width:6px;border-radius:3px;background:var(--lc)}
+.rt-walk .rt-x{color:var(--muted);font-size:13px;padding:2px 0 10px}
+.rt-ic{display:inline-grid;width:16px;height:16px;vertical-align:-3px}
+.rt-ic svg{width:16px;height:16px}
+.rt-ride .rt-x{padding:4px 0 12px;align-items:center}
+.rt-lines{display:inline-flex;gap:3px}
+.rt-lines .bul{width:22px;height:22px;font-size:12.5px;margin:0}
+.rt-lines .bul.bus{width:auto;height:20px}
+.rt-dir{font-size:13px;color:var(--ink);flex-basis:100%;margin-top:4px}
+.rt-mid{flex-basis:100%;font-size:12.5px;color:var(--muted)}
+.rt-mid summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:4px}
+.rt-mid summary::-webkit-details-marker{display:none}
+.rt-mid summary::after{content:"›";font-size:15px;transition:transform .15s}
+.rt-mid[open] summary::after{transform:rotate(90deg)}
+.rt-mid span{display:block;margin-top:4px;line-height:1.55}
+.rt-note{margin:6px 0 0;font-size:11.5px;color:var(--muted)}
+.rt-note a{color:var(--accent);text-decoration:none;font-weight:600}
+ol.rt{color:var(--ink)}
+ol.rt .rt-x b{color:var(--ink)}
+ol.rt .rt-pt .rt-x small{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -3020,26 +3062,35 @@ function stationDeps(sis){
     return "<div class=\"sd\">"+lineBul(r)+"<span class=\"sh\">→ "+esc(h)+"</span><span class=\"st\"><b>"+(m===0?"jetzt":m+" Min.")+"</b> · "+ts.map(hhmm).join(", ")+"</span></div>"; }).join("")+
     "<p class=\"note\">Planmäßige Zeiten (MTA-Fahrplan), keine Live-Daten.</p></div>";
 }
+/* Wegbeschreibung als Zeitachse wie in Apple Karten: Uhrzeit · Linie · Schritt */
 function transitSteps(r, a, b, ctx){
-  var h = "<ol class=\"ts2\">", acc = 0, WI = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"3.6\" r=\"1.6\"/><path d=\"M9.5 7.5l-2 4.5 2.5 2 1 4.5M9.5 7.5l3 1.5 1.5 3M8 12l-2.5 5.5\"/></svg>";
+  var WI = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"3.6\" r=\"1.6\"/><path d=\"M9.5 7.5l-2 4.5 2.5 2 1 4.5M9.5 7.5l3 1.5 1.5 3M8 12l-2.5 5.5\"/></svg>";
+  var now = nyNow(), day = (ctx && ctx.day) || cur, t = ctx && ctx.base!=null ? ctx.base : (day===now.key ? now.secs : null);
+  var T0 = function(x){ return x==null ? "" : hhmm(x); };
+  var nm = function(p){ return p && p.n ? p.n : (p && p.id==="me" ? "Mein Standort" : "Start"); };
+  var h = "<ol class=\"rt\">";
+  h += "<li class=\"rt-pt end\"><span class=\"rt-t\">"+T0(t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(nm(a))+"</b></span></li>";
   r.legs.forEach(function(l){
-    var ctxL = {day: ctx && ctx.day, base: ctx && ctx.base!=null ? ctx.base + acc : null, walk: acc};
-    acc += l.secs||0;
-    if(l.t==="walk"){
-      h += "<li class=\"w\"><span class=\"ic\">"+WI+"</span><span class=\"tx\">"+mins(l.secs)+" Min. zu Fuß <small>"+fmtDist(l.d)+" · "+(l.to==="Ziel" ? "zum Ziel" : "zur Station "+esc(l.to))+"</small></span></li>";
-    } else if(l.t==="xfer"){
-      h += "<li class=\"w\"><span class=\"ic\">"+WI+"</span><span class=\"tx\">Umsteigen <small>"+mins(l.secs)+" Min. bis "+esc(NET.s[l.to][0])+"</small></span></li>";
+    if(l.t==="walk" || l.t==="xfer"){
+      var lbl = l.t==="xfer" ? "Umsteigen" : "Gehen";
+      h += "<li class=\"rt-walk\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\"><span class=\"rt-ic\">"+WI+"</span>"+lbl+" · "+mins(l.secs)+" Min."+(l.d ? "<small>"+fmtDist(l.d)+"</small>" : "")+"</span></li>";
+      if(t!=null) t += l.secs||0;
     } else if(l.t==="ride"){
-      var n = l.stops.length-1, mid = l.stops.slice(1,-1).map(function(s2){ return NET.s[s2][0]; }), rs = l.alt||[l.r];
-      var nLbl = n+(isFerry(l.r) ? (n===1?" Anleger":" Anleger") : isBus(l.r) ? (n===1?" Haltestelle":" Haltestellen") : (n===1?" Station":" Stationen"));
-      h += "<li class=\"r\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"ic\">"+rs.map(lineBul).join("")+"</span><span class=\"tx\">"+
-        "<span class=\"stn2\"><b>"+esc(NET.s[l.from][0])+"</b></span>"+
-        "<small class=\"hd\">"+(isFerry(l.r)?"⛴ Fähre ":isBus(l.r)?"Bus ":"")+rs.map(function(x){ return esc(lineName(x)); }).join(" / ")+(l.r < NR0 && /X$/.test(NET.r[l.r][0])?" Express":"")+" Richtung "+esc(l.hd)+"</small>"+
-        (mid.length ? "<details class=\"mid\"><summary>"+nLbl+" · "+mins(l.secs)+" Min.</summary>"+mid.map(esc).join(" · ")+"</details>" : "<small class=\"mid\">"+nLbl+" · "+mins(l.secs)+" Min.</small>")+
-        "<span class=\"stn2\"><b>"+esc(NET.s[l.to][0])+"</b> <small>aussteigen</small></span></span></li>";
+      var rs = l.alt||[l.r], n = l.stops.length-1, mid = l.stops.slice(1,-1).map(function(s2){ return NET.s[s2][0]; });
+      var dep = null; if(t!=null){ var dd = departures(l.from, day, t, 1, rs, l.to); if(dd.length) dep = dd[0].t; }
+      var arr = dep!=null ? dep + l.secs : (t!=null ? t + l.secs : null);
+      var kind = isFerry(l.r) ? "Fähre" : isBus(l.r) ? "Bus" : "";
+      var nLbl = n+(isFerry(l.r) ? " Anleger" : isBus(l.r) ? (n===1?" Haltestelle":" Haltestellen") : (n===1?" Station":" Stationen"));
+      h += "<li class=\"rt-pt\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\">"+T0(dep!=null ? dep : t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(NET.s[l.from][0])+"</b><small>einsteigen</small></span></li>";
+      h += "<li class=\"rt-ride\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\"><span class=\"rt-lines\">"+rs.map(lineBul).join("")+"</span>"+
+           "<span class=\"rt-dir\">"+(kind ? kind+" " : "")+"Richtung "+esc(l.hd)+"</span>"+
+           (mid.length ? "<details class=\"rt-mid\"><summary>"+nLbl+" · "+mins(l.secs)+" Min.</summary><span>"+mid.map(esc).join("<br>")+"</span></details>" : "<small>"+nLbl+" · "+mins(l.secs)+" Min.</small>")+"</span></li>";
+      h += "<li class=\"rt-pt\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\">"+T0(arr)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(NET.s[l.to][0])+"</b><small>aussteigen</small></span></li>";
+      if(t!=null) t = arr;
     }
   });
-  h += "</ol><p class=\"tsnote\">Planmäßige MTA-Zeiten · <a href=\""+gmapsTransit(a,b)+"\" target=\"_blank\" rel=\"noopener\">Live in Google Maps</a></p>";
+  h += "<li class=\"rt-pt end\"><span class=\"rt-t\">"+T0(t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(nm(b))+"</b></span></li>";
+  h += "</ol><p class=\"rt-note\">Planmäßige MTA-Zeiten · <a href=\""+gmapsTransit(a,b)+"\" target=\"_blank\" rel=\"noopener\">Live in Google Maps</a></p>";
   return h;
 }
 // Nächste und übernächste Abfahrt der ersten Fahrt einer Etappe (heute ab jetzt, sonst ab eingetragener Uhrzeit)
@@ -4152,7 +4203,7 @@ function renderDay(){
     var fr = !r.walk && r.legs.filter(function(l){ return l.t==="ride"; })[0], lc = fr ? NET.r[fr.r][1] : "";
     return pre+"<li class=\"leg tleg "+(r.walk ? "lw" : "lt")+(legSel===i?" sel":"")+"\""+(lc ? " style=\"--lc:"+lc+"\"" : "")+"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r, true)+"</button>"+
       (r.walk ? legDeps(r, a) : "<button type=\"button\" class=\"ldet\" data-act=\"legopen\" data-leg=\""+i+"\" aria-expanded=\""+open+"\" aria-label=\""+(open?"Wegbeschreibung zuklappen":"Wegbeschreibung zeigen")+"\">"+legDeps(r, a)+CHEV+"</button>")+ev+"</div>"+
-      (open && alts.length > 1 ? "<div class=\"alts2\" role=\"group\" aria-label=\"Andere Verbindungen\">"+alts.map(function(x, j){ return "<button type=\"button\" data-act=\"legalt\" data-leg=\""+i+"\" data-alt=\""+j+"\" aria-pressed=\""+(j===ai)+"\">"+transitSummary(x)+"</button>"; }).join("")+"</div>" : "")+
+      (open && alts.length > 1 ? "<div class=\"alts2\" role=\"group\" aria-label=\"Andere Verbindungen\"><span class=\"alts-l\">Verbindung</span>"+alts.map(function(x, j){ return "<button type=\"button\" data-act=\"legalt\" data-leg=\""+i+"\" data-alt=\""+j+"\" aria-pressed=\""+(j===ai)+"\">"+transitSummary(x)+"</button>"; }).join("")+"</div>" : "")+
       (open && !r.walk ? transitSteps(r, a, b, legCtx(a)) : "")+"</li>";
   };
   if(HT && (!LG.length || LG[0][0]===HT)) h += "<li class=\"ht\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">Start</span></span></li>";
