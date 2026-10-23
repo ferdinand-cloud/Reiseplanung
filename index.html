@@ -1344,6 +1344,8 @@ li.st .acts .go{color:var(--muted) !important}
 .addmenu > button + button::before{content:"";position:absolute;left:52px;right:8px;top:-1px;border-top:.5px solid var(--sep)}
 .addmenu .ai{width:30px;height:30px;flex:0 0 30px;border-radius:9px;display:grid;place-items:center;background:var(--fill);color:var(--ink)}
 .addmenu .ai svg{width:18px;height:18px}
+.addmenu > button small{display:block;margin-top:2px;font:500 12.5px/1.3 var(--f-body);color:var(--muted)}
+.addmenu > button:disabled{opacity:.5}
 .am-head{display:flex;align-items:center;justify-content:space-between}
 .am-head b{font:600 16px/1.2 var(--f-body)}
 .am-head .x{width:26px;height:26px;border:0;border-radius:50%;background:var(--fill);color:var(--muted);font-size:14px;display:grid;place-items:center;padding:0}
@@ -4574,33 +4576,48 @@ function photoMeta(file){
     return out;
   }).catch(function(){ return {}; });
 }
-/* Fotos aus der Mediathek: nach Aufnahmeort gruppieren (bis 75 m, gleicher Tag), je Gruppe ein Fotospot */
+/* Fotos aus der Mediathek: nach der Auswahl fragen – aktueller Standort oder Aufnahmeort aus den Metadaten */
+var LIBP = null;
 function libImport(fs){
-  toast((fs.length > 1 ? "Fotos werden" : "Foto wird")+" eingeordnet …", false);
   Promise.all(fs.map(function(f){ return photoMeta(f).then(function(m){ m.f = f; return m; }); })).then(function(ms){
-    var groups = [], noGps = [];
-    ms.forEach(function(m){
-      if(!m.gps){ noGps.push(m); return; }
-      var dk = m.when ? dKey(m.when) : "", g = groups.filter(function(x){ return x.dk===dk && dist(x.gps, m.gps) < 75; })[0];
-      if(g) g.items.push(m); else groups.push({gps:m.gps, dk:dk, items:[m]});
-    });
-    var withLoc = groups.length;
-    var go = noGps.length ? camWhere().then(function(loc){ groups.push({gps:loc || null, cur:true, items:noGps}); }) : Promise.resolve();
-    return go.then(function(){
-      var first = null;
-      return groups.reduce(function(pr, g){ return pr.then(function(){
-        var w = g.items.map(function(m){ return m.when; }).filter(Boolean).sort(function(a, b){ return a - b; })[0];
-        var tg = camTarget(g.gps, true, w);
-        return addPhotos(tg.pid, g.items.map(function(m){ return m.f; })).then(function(ids){ if(!first && ids && ids.length) first = {tg:tg, ph:ids[0]}; });
-      }); }, Promise.resolve()).then(function(){
-        if(!first) return;
-        var p = P(first.tg.pid), dk = dayOf(first.tg.pid); if(dk) cur = dk;
-        tab = dk ? "day" : "wish"; renderAll(); select(first.tg.pid); if(hasLoc(p)) centerOn(p, 16);
-        openJPop(first.tg.pid, dk, first.ph);
-        var msg = withLoc ? (withLoc===1 ? "Fotospot am Aufnahmeort angelegt" : withLoc+" Fotospots an den Aufnahmeorten angelegt") : "";
-        if(noGps.length) msg += (msg ? " · " : "")+(noGps.length===1 ? "1 Foto" : noGps.length+" Fotos")+" ohne Ortsdaten – aktueller Standort verwendet";
-        toast(msg, false);
-      });
+    LIBP = ms; var n = ms.length, g = ms.filter(function(m){ return m.gps; }).length;
+    var m = $("addMenu");
+    m.innerHTML = "<div class=\"am-head\"><b>"+(n===1 ? "Foto einordnen" : n+" Fotos einordnen")+"</b><button type=\"button\" class=\"x\" data-act=\"libcancel\" aria-label=\"Abbrechen\">✕</button></div>"+
+      "<button type=\"button\" data-act=\"libcur\"><span class=\"ai\">"+IPIN+"</span><span>Aktueller Standort<small>"+(n===1 ? "Fotospot" : "Ein Fotospot")+" hier, im Plan von heute</small></span></button>"+
+      "<button type=\"button\" data-act=\"libexif\""+(g ? "" : " disabled")+"><span class=\"ai\">"+ILIB+"</span><span>Aufnahmeort aus Metadaten<small>"+
+        (g ? (n===1 ? "Ort und Zeit aus dem Foto" : g+" von "+n+" mit Ortsdaten"+(g<n ? ", Rest an deinen Standort" : "")) : "Keine Ortsdaten – in der Fotoauswahl unter „Optionen“ den Schalter „Ort“ einschalten")+"</small></span></button>";
+    m.classList.add("wide"); m.hidden = false; $("camBtn").setAttribute("aria-expanded", "true"); placeAddMenu();
+  });
+}
+function libApply(useExif){
+  var ms = LIBP; LIBP = null; closeAddMenu(); if(!ms || !ms.length) return;
+  toast((ms.length > 1 ? "Fotos werden" : "Foto wird")+" eingeordnet …", false);
+  var groups = [], noGps = [];
+  ms.forEach(function(m){
+    if(!useExif || !m.gps){ noGps.push(m); return; }
+    var dk = m.when ? dKey(m.when) : "", g = groups.filter(function(x){ return x.dk===dk && dist(x.gps, m.gps) < 75; })[0];
+    if(g) g.items.push(m); else groups.push({gps:m.gps, dk:dk, items:[m]});
+  });
+  var withLoc = groups.length;
+  var go = noGps.length ? camWhere().then(function(loc){ groups.push({gps:loc || null, cur:true, items:noGps}); }) : Promise.resolve();
+  go.then(function(){
+    var first = null;
+    return groups.reduce(function(pr, g){ return pr.then(function(){
+      var w = g.cur ? null : g.items.map(function(m){ return m.when; }).filter(Boolean).sort(function(a, b){ return a - b; })[0];
+      var tg = camTarget(g.gps, true, w);
+      return addPhotos(tg.pid, g.items.map(function(m){ return m.f; })).then(function(ids){ if(!first && ids && ids.length) first = {tg:tg, ph:ids[0]}; });
+    }); }, Promise.resolve()).then(function(){
+      if(!first) return;
+      var p = P(first.tg.pid), dk = dayOf(first.tg.pid); if(dk) cur = dk;
+      tab = dk ? "day" : "wish"; renderAll(); select(first.tg.pid); if(hasLoc(p)) centerOn(p, 16);
+      openJPop(first.tg.pid, dk, first.ph);
+      var msg;
+      if(!useExif) msg = "Neuer Fotospot"+(dk ? " im Plan von heute" : " in der Wunschliste");
+      else {
+        msg = withLoc ? (withLoc===1 ? "Fotospot am Aufnahmeort angelegt" : withLoc+" Fotospots an den Aufnahmeorten angelegt") : "";
+        if(noGps.length) msg += (msg ? " · " : "")+(noGps.length===1 ? "1 Foto" : noGps.length+" Fotos")+" ohne Ortsdaten am aktuellen Standort";
+      }
+      toast(msg, false);
     });
   });
 }
@@ -5452,6 +5469,9 @@ document.addEventListener("click", function(e){
     case "phsave": var sph = t.getAttribute("data-ph"); if(CAMF[sph]) CAMF[sph].saved = true; t.classList.remove("hot"); phSaveLib(sph); break;
     case "camshot": closeAddMenu(); closeCatPop(); camShot(); break;
     case "libpick": closeAddMenu(); closeCatPop(); libPick(); break;
+    case "libcur": libApply(false); break;
+    case "libexif": libApply(true); break;
+    case "libcancel": LIBP = null; closeAddMenu(); break;
     case "addclose": closeAddMenu(); break;
     case "addpop": var wasOpen = !$("addMenu").hidden; closeMenus(); if(!wasOpen) openAddPop(); break;
     case "cardmore": moreDel = false; openCardMore(); break;
