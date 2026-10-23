@@ -1358,7 +1358,7 @@ li.st .sub{margin-top:1px}
 .cf-row button{flex:1;border:0;border-radius:12px;padding:11px 10px;font:600 15px/1.2 var(--f-body);cursor:pointer}
 .cf-no{background:var(--fill);color:var(--ink)}
 .cf-ok{background:#D9534F;color:#fff}
-body.ro label:has(#lRoute){display:none}
+body.ro label:has(#lRoute),body.ro label:has(#lWish),body.ro label:has(#lSub),body.ro label:has(#lBus),body.ro label:has(#lFerry),body.ro #subLines,body.ro #busLines,body.ro #tabWish{display:none}
 /* Ort-Fenster: Datum, Gruppe, Privat in einer Zeile; Aktionen als schmale Leiste */
 .ag-card.jp .jp-chips{flex-wrap:nowrap;gap:6px;min-width:0}
 .ag-card.jp .jp-chips > *{flex:0 0 auto}
@@ -3020,7 +3020,7 @@ function srchLocal(q){
   if(!w.length) return out;
   var hit = function(txt){ var h = norm(txt); return w.every(function(x){ return h.indexOf(x) > -1; }); };
   Object.keys(T().places).map(P).forEach(function(p){
-    if(p.of || !hit([p.n, p.addr, p.note, CATNAME[p.c], nbOf(p), grpName(p.g)].join(" "))) return;
+    if(p.of || (isRO() && !visitsOf(p.id).length) || !hit([p.n, p.addr, p.note, CATNAME[p.c], nbOf(p), grpName(p.g)].join(" "))) return;
     var vs = visitsOf(p.id);
     out.push({kind:"place", id:p.id, n:p.n, c:p.c, sub:(vs.length ? vs.map(function(v){ return "Tag "+dayByKey(v.k).n; }).join(", ") : "Wunschliste")+(p.addr ? " · "+p.addr : ""), d: hasLoc(p) ? dist(C, p) : null});
     if(hasLoc(p)) seen[norm(p.n).slice(0,10)+Math.round(p.la*2000)+","+Math.round(p.lo*2000)] = 1;
@@ -3565,11 +3565,12 @@ function renderLineMenus(){
   }
 }
 function applyLayers(){
+  var ro = isRO();
   if(mapReady){
-    map.setLayoutProperty("sub", "visibility", layers.sub ? "visible" : "none");
-    map.setLayoutProperty("bus", "visibility", layers.bus ? "visible" : "none");
+    map.setLayoutProperty("sub", "visibility", layers.sub && !ro ? "visible" : "none");
+    map.setLayoutProperty("bus", "visibility", layers.bus && !ro ? "visible" : "none");
     map.setLayoutProperty("nb-line", "visibility", layers.nb ? "visible" : "none");
-    ["ferry-line","ferry-term","ferry-lbl"].forEach(function(l){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", layers.ferry ? "visible" : "none"); });
+    ["ferry-line","ferry-term","ferry-lbl"].forEach(function(l){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", layers.ferry && !ro ? "visible" : "none"); });
   }
   $("lSub").checked = layers.sub; $("lBus").checked = layers.bus; $("lFerry").checked = layers.ferry; $("lWish").checked = layers.wish; $("lNb").checked = layers.nb; $("lRoute").checked = layers.route;
   renderLineMenus();
@@ -3633,11 +3634,11 @@ function drawOverlay(){
   if(layers.nb && V.m < 30){
     NB.forEach(function(nb){ if(act.indexOf(nb.n)>-1) return; var q = toS(nb.c[0], nb.c[1]); if(onScreen(q,60)) s += "<text class=\"hood\" x=\""+f1(q[0])+"\" y=\""+f1(q[1])+"\" text-anchor=\"middle\">"+esc(nb.n)+"</text>"; });
   }
-  if(layers.bus && V.m < 4){
+  if(layers.bus && !isRO() && V.m < 4){
     BUSLAB.forEach(function(b){ if(offBus[b[0]]) return; var q = toS(b[1], b[2]); if(!onScreen(q,20)) return; var w = b[0].length*6+8;
       s += "<rect x=\""+f1(q[0]-w/2)+"\" y=\""+f1(q[1]-7)+"\" width=\""+w+"\" height=\"14\" rx=\"4\" fill=\"var(--bus)\"/><text class=\"busl\" x=\""+f1(q[0])+"\" y=\""+f1(q[1]+3.5)+"\" text-anchor=\"middle\">"+esc(b[0])+"</text>"; });
   }
-  if(layers.sub && V.m < 14){
+  if(layers.sub && !isRO() && V.m < 14){
     TRANSIT.stations.forEach(function(st){
       if(!stationOn(st)) return;
       var q = toS(st[1], st[2]); if(!onScreen(q,30)) return;
@@ -3653,7 +3654,7 @@ function drawOverlay(){
   // Wünsche (dezent)
   var sugIds = {}, wishMarks = [], wlabels = "", MK = []; cpN = 0; LBLQ = [];
   if(tab==="day" && sugOpen && D) suggest(cur,3).forEach(function(x){ sugIds[x.w.id] = 1; });
-  if(layers.wish || tab==="wish"){
+  if((layers.wish || tab==="wish") && !isRO()){
     wishes().forEach(function(w){
       if(!hasLoc(w)) return;
       if(tab==="wish" && (!catOk(w.c) || !nbMatch(w) || !qMatch(w) || !grpOk(w)) && sel!==w.id) return;
@@ -3748,9 +3749,9 @@ function drawOverlay(){
   (function(){
     var shown = {}, ps = T().photos || {};
     if(D) ord(cur).forEach(function(id){ if(!hid(id) && !(P(id) && P(id).k==="hotel")) shown[id] = 1; });
-    if(layers.wish || tab==="wish") wishes().forEach(function(w){ shown[w.id] = 1; });
+    if((layers.wish || tab==="wish") && !isRO()) wishes().forEach(function(w){ shown[w.id] = 1; });
     Object.keys(ps).forEach(function(pid){
-      var q0p = P(pid); if(shown[pid] || !q0p || !hasLoc(q0p) || !(ps[pid]||[]).length) return;
+      var q0p = P(pid); if(shown[pid] || !q0p || !hasLoc(q0p) || !(ps[pid]||[]).length || (isRO() && !dayOf(pid))) return;
       var qq = pt(q0p); if(!onScreen(qq, 30)) return;
       var th2 = firstThumb(pid); if(!th2) return;
       var dk2 = dayOf(pid), isSel2 = sel===pid, r2 = isSel2 ? 15 : 11;
@@ -3941,7 +3942,7 @@ function tap(x, y){
   function test(id, p, rad){ if(!hasLoc(p)) return; var q = pt(p), d = Math.hypot(q[0]-x, q[1]-y); if(d < Math.max(rad, bd) && (!best || d < bd)){ best = id; bd = d; } }
   if(D) ord(cur).forEach(function(id){ test(id, P(id), 20); });
   T().hotels.forEach(function(h){ test(h.id, h, 18); });
-  if(!best && (layers.wish || tab==="wish")) wishes().forEach(function(w){ test(w.id, w, 16); });
+  if(!best && (layers.wish || tab==="wish") && !isRO()) wishes().forEach(function(w){ test(w.id, w, 16); });
   if(!best) PHMK.forEach(function(pid){ test(pid, P(pid), 14); });
   if(!best){ var pq = poiAt(x, y); if(pq){ poiSel = pq; sel = null; select("poi"); poiSel = pq; renderCard(); scheduleOverlay(); return; } }
   if(!best && (layers.nb || nbActive().length)){ var a = toW(x, y), n = nbAt(a[0], a[1]); if(n) best = "nb:"+n; }
@@ -4066,6 +4067,7 @@ var TICBUS = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" s
 /* ÖPNV in der Karte eines Ortes: eingeklappt nur eine Zeile, ausgeklappt Stationen, Linien und Abfahrten */
 var trOpen = false, trFor = null;
 function stationLine(p){
+  if(isRO()) return ""; // Beobachter: keine öffentlichen Verkehrsmittel
   var key = p.id || (p.la+","+p.lo); if(trFor!==key){ trFor = key; trOpen = false; }
   var full = stationLineFull(p); if(!full) return "";
   var x = nearStation(p);
@@ -4132,7 +4134,7 @@ var FERRYC = "#0b84b5";
 function addFerryLayers(){
   var srcs = map.getStyle().sources, src = null; Object.keys(srcs).forEach(function(k){ if(!src && srcs[k].type==="vector") src = k; });
   if(!src) return;
-  var vis = layers.ferry ? "visible" : "none";
+  var vis = layers.ferry && !isRO() ? "visible" : "none";
   try {
     map.addLayer({id:"ferry-line", type:"line", source:src, "source-layer":"transportation", filter:["==",["get","class"],"ferry"],
       paint:{"line-color":FERRYC, "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{visibility:vis, "line-cap":"round"}});
@@ -4606,6 +4608,7 @@ function renderDay(){
   var h = "<div class=\"dh\" data-act=\"daypop\" role=\"button\" tabindex=\"0\" aria-label=\"Tag wechseln\"><span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><div style=\"flex:1;min-width:0\"><h2>"+esc(D.title)+"<svg class=\"dhchev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></h2><p>"+esc(meta.join(" · "))+"</p>"+(ids.length?"<div class=\"dprog\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\""+ids.length+"\" aria-valuenow=\""+nDone+"\"><i style=\"width:"+Math.round(nDone/ids.length*100)+"%\"></i></div>":"")+"</div></div>";
 
   if(isViewerOf(S.cur)) h += "<p class=\"note rolenote\">👁 Du beobachtest diese Reise – ansehen und kommentieren, aber nichts ändern.</p>";
+  if(!isRO()){ // Beobachter sehen keine Wunschliste und keine Vorschläge daraus
   var sug = suggest(cur, 3);
   h += "<div class=\"sec\"><button type=\"button\" class=\"fold\" data-act=\"sugtoggle\" aria-expanded=\""+sugOpen+"\"><h4>"+(ids.length?"Passt zu diesem Tag":(HT?"Nah am Hotel":"Vorschläge"))+"</h4><span class=\"cnt\">"+sug.length+" Vorschläge</span>"+CHEV+"</button>";
   if(sugOpen){
@@ -4619,6 +4622,7 @@ function renderDay(){
              "<button type=\"button\" class=\"btn s\" data-act=\"plan\">Hinzufügen</button></div>";
       });
       h += "</div>";
+  }
     }
   }
   h += "</div>";
@@ -5747,7 +5751,25 @@ function renderSheet(){
 }
 var RO_ACTS = {"done":1,"plan":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
 function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
-function applyRO(){ document.body.classList.toggle("ro", isRO()); }
+var roWas = null;
+function applyRO(){
+  var ro = isRO(), k = ro ? S.cur : "";
+  document.body.classList.toggle("ro", ro);
+  if(ro && tab==="wish") tab = "day";
+  if(k===roWas) return; roWas = k;
+  if(!ro){ if(mapReady) applyLayers(); return; }
+  // Beobachter: einmal je Reise 3D-Gebäude und farbige Karte an, Verkehrsmittel aus
+  var fk = "rp-vdef-"+k;
+  if(lsGet(fk)!=="1"){
+    lsSet(fk, "1");
+    var reload = !colorOn;
+    b3dOn = true; lsSet("rp-3d", "1"); colorOn = true; lsSet("rp-color", "1");
+    if(map){ if(reload && mapReady){ mapReady = false; map.setStyle(STYLE_URL, {diff:false}); } else { apply3d(true); } }
+    if(map) setTimeout(function(){ if(b3dOn && map.getPitch() < 5) map.easeTo({pitch:50, zoom:Math.max(map.getZoom(), 15), duration: reduceMotion?0:700}); }, 400);
+  }
+  if(mapReady) applyLayers();
+  var c = $("lColor"); if(c) c.checked = colorOn;
+}
 function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); }
 function pickDefaultDay(){
   var ds = days(), tk = todayKey();
