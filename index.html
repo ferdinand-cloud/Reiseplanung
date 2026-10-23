@@ -1434,6 +1434,17 @@ body.ro label:has(#lRoute),body.ro label:has(#lWish),body.ro label:has(#lSub),bo
 .addmenu.jpmenu .rp-hl{margin-bottom:4px}
 .addmenu.jpmenu > button.rp,.addmenu.jpmenu > button.rp-hl{padding:7px 10px}
 .addmenu.jpmenu .rp .ai,.addmenu.jpmenu .rp-hl .ai{width:26px;height:26px;flex:0 0 26px}
+.cchips{display:flex;align-items:center;gap:6px}
+.cph{margin-left:auto;position:relative;display:flex;align-items:center;border:0;background:none;padding:0 4px 0 0;cursor:pointer}
+.cph img{width:38px;height:38px;border-radius:9px;object-fit:cover;background:var(--fill);border:2px solid var(--sheet);box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.cph img + img{margin-left:-22px}
+.cph b{position:absolute;right:-2px;bottom:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--ink);color:var(--sheet);font:700 11px/18px var(--f-body);text-align:center}
+.ctiles .crate.set{background:color-mix(in srgb,var(--rc) 18%,transparent)}
+.ctiles .crate.set svg{color:var(--rc)}
+.ctiles .crate span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;letter-spacing:-.2px}
+.card .ctiles{display:flex}
+.card .ctiles .jp-tile{flex:1 1 0;min-width:0;padding-left:2px;padding-right:2px}
+.card .ctiles .crate{flex:1.6 1 0}
 li.st .no.hs{background:var(--ink) !important;color:var(--sheet) !important;border-radius:9px}
 .ht.me .h{border-radius:50%;font-size:11px}
 .ht b{font-weight:600}
@@ -4360,7 +4371,10 @@ function renderCard(){
   var p = P(sel); if(!p){ sel = null; el.hidden = true; return; }
   var dk = dayOf(sel), D = dayByKey(cur), cc = catCol(p.c);
   var c = x+"<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+cc+"\">"+icon(p.c)+"</span><div class=\"cht\"><h3>"+esc(p.n)+"</h3><p>"+esc([CATNAME[p.c], nbOf(p), dk ? (visitsOf(sel).length>1 ? visitsOf(sel).length+" Besuche geplant" : "") : "Wunsch in „"+listName(p.list)+"“"].filter(Boolean).join(" · "))+"</p></div></div>";
-  c += "<div class=\"cchips\">"+dayChip(sel)+(grpName(p.g) ? "<button type=\"button\" class=\"gtag on\" data-act=\"grppick\" data-id=\""+sel+"\">▦ "+esc(grpName(p.g))+"</button>" : "")+"</div>";
+  var cph = photosOf(sel);
+  c += "<div class=\"cchips\">"+dayChip(sel)+(grpName(p.g) ? "<button type=\"button\" class=\"gtag on\" data-act=\"grppick\" data-id=\""+sel+"\">▦ "+esc(grpName(p.g))+"</button>" : "")+
+       (cph.length ? "<button type=\"button\" class=\"cph\" data-act=\"cphopen\" data-ph=\""+cph[0]+"\" aria-label=\""+cph.length+(cph.length===1?" Foto":" Fotos")+" ansehen\">"+
+         cph.slice(0,3).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(cph.length>1 ? "<b>"+cph.length+"</b>" : "")+"</button>" : "")+"</div>";
   if(p.addr || p.note || noteOf(sel)) c += "<p class=\"cnote\">"+[p.addr ? esc(p.addr) : "", p.note ? esc(p.note) : "", noteOf(sel) ? "<span class=\"cmine\">"+esc(noteOf(sel).length > 140 ? noteOf(sel).slice(0,138)+" …" : noteOf(sel))+"</span>" : ""].filter(Boolean).join("<br>")+"</p>";
   c += gBlock(p);
   if(hasLoc(p)) c += stationLine(p);
@@ -4369,18 +4383,20 @@ function renderCard(){
     c += "<div class=\"mecard\"><span class=\"sub\">Von deinem Standort</span><div class=\"tl\"><button type=\"button\" class=\"tsum\" data-act=\"meroute\">"+transitSummary(rr)+"</button>"+
          "<button type=\"button\" class=\"tdet\" data-act=\"meroute\" aria-expanded=\""+meRoute+"\">"+(meRoute?"Weg ausblenden":"Weg zeigen")+"</button></div>"+(meRoute && !rr.walk ? transitSteps(rr, me, p, {day: nyNow().key}) : "")+"</div>";
   }
-  if(dk && T().done[sel]) c += "<div data-id=\""+sel+"\"><span class=\"sub\">Deine Bewertung</span>"+rateRow(sel)+"</div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   var dn = !!T().done[sel], ph = photosOf(sel).length, nc = (CMTS[sel]||[]).length;
   c += "<div class=\"jp-tiles ctiles\" data-id=\""+sel+"\">";
   if(dk) c += "<button type=\"button\" class=\"jp-tile"+(dn?" on":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"<span>"+(dn?"Erledigt":"Abhaken")+"</span></button>";
   else if(D) c += "<button type=\"button\" class=\"jp-tile pri\" data-act=\"plan\">"+I("<path d=\"M10 4.5v11M4.5 10h11\"/>")+"<span>Zu "+esc(D.wd || D.lbl.split(" ")[0])+"</span></button>";
   else c += "<button type=\"button\" class=\"jp-tile\" data-act=\"revisit\" data-pid=\""+sel+"\">"+I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/>")+"<span>Einplanen</span></button>";
+  if(dk && dn){ var crv = rateOf(sel), crr = RATES.filter(function(r){ return r[0]===crv; })[0];
+    c += "<button type=\"button\" class=\"jp-tile crate"+(crr?" set":"")+"\""+(crr ? " style=\"--rc:"+crr[2]+"\"" : "")+(isRO() ? " disabled" : " data-act=\"ratepick\"")+" aria-haspopup=\"menu\">"+
+         "<svg viewBox=\"0 0 20 20\" fill=\""+(crr ? "currentColor" : "none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 3.2l2 4.2 4.6.6-3.4 3.2.9 4.5L10 13.5l-4.1 2.2.9-4.5L3.4 8l4.6-.6z\"/></svg><span>"+(crr ? crr[1] : "Bewerten")+"</span></button>"; }
   if(!isRO() && (hasLoc(p) || p.addr)) c += "<button type=\"button\" class=\"jp-tile\" data-act=\"go\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+"<span>Route</span></button>";
   c += "<button type=\"button\" class=\"jp-tile\" data-act=\"jpedit\" data-pid=\""+sel+"\">"+I("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/>")+"<span>Details</span>"+(ph+nc ? "<i class=\"tbadge\">"+(ph+nc)+"</i>" : "")+"</button>";
   c += "<button type=\"button\" class=\"jp-tile\" data-act=\"cardmore\" aria-haspopup=\"dialog\">"+I("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>")+"<span>Mehr</span></button>";
   c += "</div>";
-  el.innerHTML = c; el.hidden = false; placeFloating();
+  el.innerHTML = c; el.hidden = false; fillPhotos(el); placeFloating();
 }
 /* weitere Aktionen zum gewählten Punkt als Pop-up-Menü */
 var moreDel = false;
@@ -4695,7 +4711,7 @@ function openJpMore(id, btn){
     (canPriv() ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : ""), "more");
 }
 function openRatePick(id, btn){
-  var v = rateOf(id), J = (T().journal||{})[jp && jp.dk] || {}, hl = !!(P(id) && J.hl===P(id).n);
+  var v = rateOf(id), dkx = jp && jp.pid===id ? jp.dk : dayOf(id), J = (T().journal||{})[dkx] || {}, hl = !!(P(id) && J.hl===P(id).n);
   var h = "<button type=\"button\" data-act=\"jphl\" role=\"menuitemcheckbox\" aria-checked=\""+hl+"\" class=\"rp-hl"+(hl?" sel":"")+"\"><span class=\"ai hlst\">★</span><span>Highlight des Tages</span>"+(hl ? "<b class=\"ck\">✓</b>" : "")+"</button>";
   RATES.forEach(function(r){ h += "<button type=\"button\" data-act=\"rate\" data-v=\""+r[0]+"\" role=\"menuitemradio\" aria-checked=\""+(v===r[0])+"\" class=\"rp"+(v===r[0]?" sel":"")+"\" style=\"--rc:"+r[2]+"\"><span class=\"ai\"><i class=\"dot\"></i></span><span>"+r[1]+"</span>"+(v===r[0] ? "<b class=\"ck\">✓</b>" : "")+"</button>"; });
   jpPopover(id, btn, h, "rate");
@@ -6036,7 +6052,10 @@ document.addEventListener("click", function(e){
       if(P(jop) && hasLoc(P(jop))) centerAround(P(jop), 16, $("jPop").querySelector(".ag-card"));
       break;
     case "jclose": closeJPop(); break;
-    case "jphl": if(t.closest("#catPop")) closeCatPop(); var tj = T(); tj.journal = tj.journal || {}; var Jp = tj.journal[jp.dk] = tj.journal[jp.dk] || {}, pn = P(jp.pid).n; Jp.hl = Jp.hl===pn ? "" : pn; Jp.at = Date.now(); save(); renderJPop(); break;
+    case "jphl": if(t.closest("#catPop")) closeCatPop();
+      var hjp = jp && !$("jPop").hidden, hpid = hjp ? jp.pid : id, hdk = hjp ? jp.dk : dayOf(hpid); if(!P(hpid) || !hdk) break;
+      var tj = T(); tj.journal = tj.journal || {}; var Jp = tj.journal[hdk] = tj.journal[hdk] || {}, pn = P(hpid).n; Jp.hl = Jp.hl===pn ? "" : pn; Jp.at = Date.now(); save();
+      if(hjp) renderJPop(); else { renderCard(); renderSheet(); } break;
     case "phretry": phRetry(); phFlush(); break;
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
     case "phback": jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
@@ -6064,7 +6083,8 @@ document.addEventListener("click", function(e){
       delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
     case "jpmore": openJpMore(jp ? jp.pid : id, t); break;
-    case "ratepick": openRatePick(jp ? jp.pid : id, t); break;
+    case "ratepick": openRatePick(t.closest("#jPop") && jp ? jp.pid : id, t); break;
+    case "cphopen": var cpp = sel; if(P(cpp)) openJPop(cpp, dayOf(cpp) || "", t.getAttribute("data-ph")); break;
     case "rate": if(t.closest("#catPop")) closeCatPop(); var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); break;
     case "acsignup": openSignup(); break;
     case "suclose": closeSignup(); break;
