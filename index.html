@@ -164,8 +164,15 @@ ol.tsteps .ti .bul.bus{height:22px;font-size:11.5px}
 .btn.warn{color:var(--err);border-color:var(--err)}
 a.btn{text-decoration:none;display:inline-block}
 ol.plan{list-style:none;margin:0;padding:0}
-.st{display:grid;grid-template-columns:34px 1fr;gap:2px 8px;align-items:start;padding:10px 6px 10px 8px;margin:6px 0;background:var(--sheet);border:1px solid var(--line);border-left:4px solid var(--dc,var(--ink));border-radius:12px;box-shadow:0 1px 3px var(--scrim)}
-.st.done{border-left-color:var(--muted);background:var(--chip);box-shadow:none}
+li.st{position:relative;margin:6px 0;border-radius:12px;overflow:hidden}
+li.st > .stc{position:relative;z-index:1;display:grid;grid-template-columns:34px 1fr;gap:2px 8px;align-items:start;padding:10px 6px 10px 8px;background:var(--sheet);border:1px solid var(--line);border-left:4px solid var(--dc,var(--ink));border-radius:12px;box-shadow:0 1px 3px var(--scrim);transition:transform .2s ease;touch-action:pan-y}
+li.st.done > .stc{border-left-color:var(--muted);background:var(--chip);box-shadow:none}
+li.st > .swl,li.st > .swr{position:absolute;top:0;bottom:0;width:100%;border:0;color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;visibility:hidden}
+li.st > .swl{left:0;background:#1a73e8;justify-content:flex-start;padding-left:18px}
+li.st > .swr{right:0;background:#d93025;justify-content:flex-end;padding-right:18px}
+li.st.swl-on > .swl,li.st.swr-on > .swr{visibility:visible}
+li.st.far > .swl{background:#1558b0}
+li.st.far > .swr{background:#b3261e}
 .st.done .nm{text-decoration:line-through;opacity:.55}
 .no{width:30px;height:30px;border-radius:50%;border:0;color:#fff;font:700 16px/1 var(--f-display);display:grid;place-items:center;margin-top:1px}
 .no.y{color:#17212c}
@@ -311,6 +318,8 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .jp-ic svg{width:22px;height:22px}
 .jp-ht{min-width:0;display:flex;flex-direction:column;gap:2px}
 .jp-ht b{font:700 20px/1.15 var(--f-display)}
+.jp-name{font:700 20px/1.2 var(--f-display);color:var(--ink);border:0;border-bottom:1.5px dashed transparent;background:none;padding:2px 0;width:100%;min-width:0;outline:none}
+.jp-name:hover,.jp-name:focus{border-bottom-color:var(--line)}
 .jp-ht small{color:var(--muted);font-size:13px}
 .jp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:8px;margin:16px 0 4px}
 .jp-tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:62px;border:0;border-radius:14px;background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);font:inherit;font-size:12.5px;font-weight:600;text-decoration:none;cursor:pointer;padding:8px 4px}
@@ -685,7 +694,7 @@ body.gated .sheet,body.gated .top,body.gated #rail,body.gated .ctrl{visibility:h
   body.side-off .attr{left:30px}
 }
 #wishPop{z-index:39}
-#catPop{z-index:41}
+#catPop{z-index:70}
 .pop-card form.f{border:0;padding:0}
 #base .nb{fill:transparent;stroke:none}
 #base.L-nb .nb{stroke:var(--nb-line);stroke-width:1.2px;stroke-dasharray:4 3}
@@ -3131,12 +3140,14 @@ function renderCard(){
   c += "<div data-id=\""+sel+"\"><button type=\"button\" class=\"gtag"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"</button></div>";
   c += "<div class=\"row\" data-id=\""+sel+"\">";
   if(!dk && D){ c += "<button class=\"btn\" type=\"button\" data-act=\"plan\">Zu "+D.lbl+" hinzufügen"+addLabel(cur, p)+"</button>"; }
+  if(!dk) c += "<button class=\"btn g\" type=\"button\" data-act=\"revisit\" data-pid=\""+sel+"\">Anderer Tag …</button>";
   if(dk) c += "<button class=\"btn"+(T().done[sel]?"":" g")+"\" type=\"button\" data-act=\"done\">"+(T().done[sel]?"✓ Erledigt":"Abhaken")+"</button>";
   if(dk===cur){ c += "<button class=\"btn g\" type=\"button\" data-act=\"unplan\">"+(p.of ? "Diesen Besuch entfernen" : "Zurück in Wunschliste")+"</button>"; }
   else if(dk){ c += "<button class=\"btn g\" type=\"button\" data-act=\"gotoday\" data-day=\""+dk+"\">Tag "+dayByKey(dk).n+" öffnen</button>"; }
   if(dk) c += "<button class=\"btn g\" type=\"button\" data-act=\"revisit\" data-pid=\""+sel+"\">Nochmal besuchen …</button>";
   c += "<button class=\"btn g\" type=\"button\" data-act=\"go\">Route starten</button>";
   c += "<a class=\"btn g\" target=\"_blank\" rel=\"noopener\" href=\""+gmInfoUrl(p)+"\">Infos in Google Maps</a>";
+  c += "<button class=\"btn g\" type=\"button\" data-act=\"jpedit\" data-pid=\""+sel+"\">Bearbeiten</button>";
   c += confirmBtn("delp:"+sel, "Löschen", "Wirklich löschen?", "delplace");
   c += "</div>";
   el.innerHTML = c; el.hidden = false; placeFloating();
@@ -3349,13 +3360,12 @@ function renderDay(){
     if(li0 > -1) h += legLi(LG[li0][0], p, li0);
     else if(!hasLoc(p) && (i>0 || HT)) h += "<li class=\"leg\">Strecke unbekannt</li>";
     var opts = days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===cur?" selected":"")+">"+d.lbl+"</option>"; }).join("");
-    h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\">"+
+    h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
       "<div class=\"lcol\">"+"<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>"+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button>"+"</div>"+
       "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?"✎":"")+(photosOf(id).length?" ▣ "+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(hasLoc(p)||p.addr?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
-      "<button type=\"button\" data-act=\"unplan\">"+(p.of ? "Entfernen" : "Wunschliste")+"</button>"+
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/></svg><select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
-      "</li>";
+      "</div></li>";
   });
   var lastL = LG[LG.length-1]; if(shown && HT && lastL && lastL[1]===HT) h += legLi(lastL[0], HT, LG.length-1);
   if(nHid) h += "<li class=\"leg\"><button type=\"button\" class=\"tdet\" data-act=\"hidedone\">"+nHid+(nHid===1?" erledigter Stopp":" erledigte Stopps")+" ausgeblendet · Einblenden</button></li>";
@@ -3403,7 +3413,7 @@ function journalBlock(D){
 /* Pop-up je Punkt: Bewertung, Notiz, Fotos */
 var jp = null;
 function openJPop(pid, dk, view){
-  jp = {pid:pid, dk:dk || dayOf(pid) || cur, view:view||null};
+  jp = {pid:pid, dk:dk || dayOf(pid) || "", view:view||null};
   renderJPop();
 }
 function renderJPop(){
@@ -3415,13 +3425,14 @@ function renderJPop(){
     el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el); return;
   }
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
-  h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\"><b>"+esc(p.n)+"</b><small>"+esc([D ? D.lbl : "", CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
+  h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\"><input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\"><small>"+esc([D ? D.lbl : "", CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   h += "<div class=\"jp-tiles\">";
   if(planned){
     h += "<button type=\"button\" class=\"jp-tile"+(dn?" on":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"<span>"+(dn?"Erledigt":"Abhaken")+"</span></button>";
     h += "<label class=\"jp-tile"+(tm?" set":"")+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+"<span>"+(tm ? esc(tm) : "Uhrzeit")+"</span><input type=\"time\" data-act=\"time\" value=\""+esc(tm)+"\" aria-label=\"Uhrzeit\"></label>";
   }
+  if(!planned) h += "<button type=\"button\" class=\"jp-tile\" data-act=\"revisit\" data-pid=\""+jp.pid+"\">"+I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3M10 10.5v4M8 12.5h4\"/>")+"<span>Zu Tag hinzufügen</span></button>";
   if(hasLoc(p) || p.addr) h += "<button type=\"button\" class=\"jp-tile\" data-act=\"go\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+"<span>Route</span></button>";
   h += "<a class=\"jp-tile\" target=\"_blank\" rel=\"noopener\" href=\""+gmInfoUrl(p)+"\">"+I("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"<span>Google Maps</span></a>";
   h += "</div>";
@@ -3688,13 +3699,13 @@ function deletePlace(id){
 /* Wunschliste: nach links wischen zeigt „Löschen“, weit wischen löscht direkt */
 (function(){
   var sw = null, openRow = null;
-  function closeOpen(except){ if(openRow && openRow!==except){ openRow.querySelector(".swc").style.transform = ""; openRow.classList.remove("open"); openRow = null; } }
+  function closeOpen(except){ if(openRow && openRow!==except){ var oc = openRow.querySelector(".swc,.stc"); if(oc) oc.style.transform = ""; openRow.classList.remove("open","swl-on","swr-on"); openRow = null; } }
   document.addEventListener("touchstart", function(e){
-    var c = e.target.closest && e.target.closest(".wi.sw .swc");
-    if(!c){ if(!(e.target.closest && e.target.closest(".swdel"))) closeOpen(null); return; }
+    var c = e.target.closest && (e.target.closest(".wi.sw .swc") || e.target.closest("li.st > .stc"));
+    if(!c || e.target.closest(".grip,select,input,textarea") || (e.target.closest("ol.plan") && e.target.closest("ol.plan").classList.contains("sorting"))){ if(!(e.target.closest && e.target.closest(".swdel,.swl,.swr"))) closeOpen(null); sw = null; return; }
     var li = c.parentNode; closeOpen(li);
-    var t = e.touches[0];
-    sw = {li:li, c:c, x:t.clientX, y:t.clientY, base: li.classList.contains("open") ? -88 : 0, mode:null, dx:0, w:li.offsetWidth};
+    var t = e.touches[0], two = li.classList.contains("st");
+    sw = {li:li, c:c, x:t.clientX, y:t.clientY, base: li.classList.contains("open") ? (li.classList.contains("swl-on") ? 88 : -88) : 0, mode:null, dx:0, w:li.offsetWidth, two:two};
   }, {passive:true});
   document.addEventListener("touchmove", function(e){
     if(!sw) return;
@@ -3702,18 +3713,22 @@ function deletePlace(id){
     if(!sw.mode){ if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return; sw.mode = Math.abs(dx) > Math.abs(dy) ? "h" : "v"; if(sw.mode==="h") sw.c.style.transition = "none"; }
     if(sw.mode!=="h") return;
     e.preventDefault();
-    sw.dx = Math.min(0, Math.max(-sw.w, sw.base + dx));
+    sw.dx = Math.min(sw.two ? sw.w : 0, Math.max(-sw.w, sw.base + dx));
     sw.c.style.transform = "translateX("+sw.dx+"px)";
-    sw.li.classList.toggle("far", sw.dx < -sw.w*0.55);
+    sw.li.classList.toggle("far", Math.abs(sw.dx) > sw.w*0.55);
+    if(sw.two){ sw.li.classList.toggle("swl-on", sw.dx > 0); sw.li.classList.toggle("swr-on", sw.dx < 0); }
   }, {passive:false});
   function end(){
     if(!sw) return; var s0 = sw; sw = null;
     if(s0.mode!=="h") return;
     s0.c.style.transition = "";
     s0.li.classList.remove("far");
-    if(s0.dx < -s0.w*0.55){ s0.c.style.transform = "translateX(-100%)"; setTimeout(function(){ deletePlace(s0.li.getAttribute("data-id")); }, 180); return; }
+    var pid0 = s0.li.getAttribute("data-id");
+    if(s0.dx < -s0.w*0.55){ s0.c.style.transform = "translateX(-100%)"; setTimeout(function(){ deletePlace(pid0); }, 180); return; }
+    if(s0.two && s0.dx > s0.w*0.55){ s0.c.style.transform = "translateX(100%)"; setTimeout(function(){ unplan(pid0); renderAll(); }, 180); return; }
     if(s0.dx < -50){ s0.c.style.transform = "translateX(-88px)"; s0.li.classList.add("open"); openRow = s0.li; }
-    else { s0.c.style.transform = ""; s0.li.classList.remove("open"); if(openRow===s0.li) openRow = null; }
+    else if(s0.two && s0.dx > 50){ s0.c.style.transform = "translateX(88px)"; s0.li.classList.add("open"); openRow = s0.li; }
+    else { s0.c.style.transform = ""; s0.li.classList.remove("open","swl-on","swr-on"); if(openRow===s0.li) openRow = null; }
     // ein Wisch soll keinen Klick auslösen
     var block = function(ev){ ev.stopPropagation(); ev.preventDefault(); document.removeEventListener("click", block, true); };
     document.addEventListener("click", block, true); setTimeout(function(){ document.removeEventListener("click", block, true); }, 350);
@@ -3735,7 +3750,7 @@ function wishRow(p){
                  : (D ? "<button type=\"button\" class=\"btn s\" data-act=\"plan\">+ "+D.wd+" "+shortD(D.key)+"</button>" : "");
   var rf = distRef(), dm = rf && hasLoc(p) ? dist(rf.p, p) : null;
   var sub = (dm!=null ? "<span class=\"wdist\">"+fmtDist(dm)+"</span> " : "")+"<button type=\"button\" class=\"gtag"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? esc(grpName(p.g)) : "Gruppe")+"</button> " + esc(CATNAME[p.c]) + (nbOf(p) && nbKeys().length!==1 ? " · "+esc(nbOf(p)) : "") + (p.addr?" · "+esc(p.addr):"") + (p.note?"<br>"+esc(p.note):"") + (hasLoc(p) ? "" : "<br><b>Ohne Ort auf der Karte</b>");
-  return "<li class=\"wi sw"+(dk?" planned":"")+"\" data-id=\""+p.id+"\"><button type=\"button\" class=\"swdel\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"swc\">"+badge(p.c)+"<div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"focus\">"+hl(p.n)+"</button><div class=\"sub\">"+sub+"</div></div>"+right+"</div></li>";
+  return "<li class=\"wi sw"+(dk?" planned":"")+"\" data-id=\""+p.id+"\"><button type=\"button\" class=\"swdel\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"swc\">"+badge(p.c)+"<div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"wopen\">"+hl(p.n)+"</button><div class=\"sub\">"+sub+"</div></div>"+right+"</div></li>";
 }
 function wishForm(){
   var lists = "<option value=\"\">Ohne Liste</option>" + T().lists.map(function(l){ return "<option value=\""+l.id+"\""+(draft.list===l.id?" selected":"")+">"+esc(l.name)+"</option>"; }).join("");
@@ -4100,7 +4115,7 @@ var dayPopFor = null;
 function openDayPop(forId){
   dayPopFor = forId || null;
   var rv = dayPopFor ? visitsOf(dayPopFor).map(function(v){ return v.k; }) : [];
-  var tk = todayKey(), h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Tag wählen\"><div class=\"pop-head\"><h4>"+(dayPopFor ? "An welchem Tag nochmal hin?" : "Tag wählen")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list daylist\">";
+  var tk = todayKey(), h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Tag wählen\"><div class=\"pop-head\"><h4>"+(dayPopFor ? (dayOf(rootOf(dayPopFor)) ? "An welchem Tag nochmal hin?" : "Zu welchem Tag hinzufügen?") : "Tag wählen")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list daylist\">";
   days().forEach(function(d){
     var ids = T().order[d.key]||[], dn = ids.filter(function(x){ return T().done[x]; }).length;
     var already = rv.indexOf(d.key) > -1;
@@ -4126,7 +4141,7 @@ document.addEventListener("click", function(e){
   var holder = t.closest("[data-id]"), id = holder ? holder.getAttribute("data-id") : null;
   switch(act){
     case "daypop": closeMenus(); openDayPop(); break;
-    case "revpick": closeCatPop(); var rvId = dayPopFor; dayPopFor = null; revisit(rvId, t.getAttribute("data-day")); renderAll(); break;
+    case "revpick": closeCatPop(); var rvId = dayPopFor; dayPopFor = null; revisit(rvId, t.getAttribute("data-day")); renderAll(); if(jp && !$("jPop").hidden){ if(jp.pid===rvId && !jp.dk) jp.dk = dayOf(rvId); renderJPop(); } break;
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
     case "srchopen": closeMenus(); openSearch(); break;
@@ -4144,6 +4159,8 @@ document.addEventListener("click", function(e){
     case "tfopen": var tk2 = t.getAttribute("data-k"); tdraft.ok = tdraft.ok===tk2 ? "" : tk2; renderSheet(); break;
     case "close": select(null); break;
     case "stopopen": select(id); centerOn(P(id)); openJPop(id, cur); break;
+    case "wopen": select(id); if(hasLoc(P(id))) centerOn(P(id)); openJPop(id); break;
+    case "jpedit": openJPop(t.getAttribute("data-pid") || sel); break;
     case "focus": select(id); centerOn(P(id)); if(!desktop.matches && sheetState==="full") setSheet("mid"); break;
     case "plan": plan(id, cur); sel = id; renderAll(); break;
     case "unplan": unplan(id); renderAll(); break;
@@ -4313,6 +4330,7 @@ document.addEventListener("change", function(e){
     T().order[cur] = ord(cur).filter(function(x){ return x!==id; });
     var p = P(id), idx = insertIdx(to, p);
     ord(to).splice(idx, 0, id); save(); toast(p.n+" verschoben auf "+dayByKey(to).lbl, false); renderAll();
+  } else if(act==="rename"){ var nn = (t.value||"").trim().slice(0,80); if(nn && P(id) && nn!==P(id).n){ P(id).n = nn; save(); renderSheet(); renderCard(); toast("Umbenannt in „"+nn+"“", false); } else if(!nn && P(id)) t.value = P(id).n;
   } else if(act==="time"){ if(t.value) T().times[id] = t.value; else delete T().times[id]; save(); renderSheet(); if(jp && jp.pid===id && !$("jPop").hidden) renderJPop(); }
 });
 document.addEventListener("input", function(e){
