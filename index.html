@@ -288,6 +288,19 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
 @media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
+.gtag{border:1px dashed var(--line);background:transparent;border-radius:999px;padding:1px 8px;font-size:11.5px;font-weight:600;color:var(--muted);margin-right:2px}
+.gtag.on{border-style:solid;border-color:#7b3fbf;color:#7b3fbf;background:color-mix(in srgb,#7b3fbf 10%,transparent)}
+#card .gtag{font-size:13px;padding:4px 10px}
+.grpchips .chip.add{border-style:dashed}
+.wview{align-self:start;justify-self:start}
+.glist .grow{display:flex;align-items:center;gap:6px}
+.glist .grow > button:first-child,.glist .grow .gname{flex:1}
+.glist button small,.glist .gname small{margin-left:auto;color:var(--muted);font-weight:500}
+.glist .gname{padding:8px 6px;font-weight:600;font-size:15px}
+.gedbtn{border:0;background:var(--chip);border-radius:50%;width:32px;height:32px;flex:0 0 32px;font-size:15px;color:var(--ink)}
+.gedit,.gnew{display:flex;gap:6px;margin-top:8px}
+.gedit input,.gnew input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:transparent;padding:8px 10px;font:inherit;font-size:16px;color:inherit}
+.btn.warn{color:#d93025}
 .jlist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .jcard{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:1px solid var(--line);background:transparent;border-radius:14px;padding:10px 12px;color:var(--ink)}
 .jc-m{display:grid;gap:3px;min-width:0;flex:1}
@@ -774,7 +787,7 @@ function tripsCol(){ return fbDb.collection("users").doc(acct.user.uid).collecti
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["places","done","times","journal","order","legMode","legAlt","rating","notes","photos"];
+var MAPK = ["places","done","times","journal","order","legMode","legAlt","rating","notes","photos","groups"];
 function jeq(a, b){ return JSON.stringify(a===undefined?null:a) === JSON.stringify(b===undefined?null:b); }
 function mergeOrder(b, l, r, preferLocal){
   b = b||[]; l = l||[]; r = r||[];
@@ -1645,7 +1658,7 @@ function drawOverlay(){
   if(layers.wish || tab==="wish"){
     wishes().forEach(function(w){
       if(!hasLoc(w)) return;
-      if(tab==="wish" && (!catOk(w.c) || !nbMatch(w) || !qMatch(w)) && sel!==w.id) return;
+      if(tab==="wish" && (!catOk(w.c) || !nbMatch(w) || !qMatch(w) || !grpOk(w)) && sel!==w.id) return;
       var q = pt(w); if(!onScreen(q,20)) return;
       var strong = (tab==="wish" && activeList!=="open" && (w.list||"none")===activeList) || sugIds[w.id];
       var r = strong ? 6 : 4.2, op = strong ? .95 : .6;
@@ -2257,6 +2270,7 @@ function renderCard(){
          "<button type=\"button\" class=\"tdet\" data-act=\"meroute\" aria-expanded=\""+meRoute+"\">"+(meRoute?"Weg ausblenden":"Weg zeigen")+"</button></div>"+(meRoute && !rr.walk ? transitSteps(rr, me, p, {day: nyNow().key}) : "")+"</div>";
   }
   if(dk && T().done[sel]) c += "<div data-id=\""+sel+"\"><span class=\"sub\">Deine Bewertung</span>"+rateRow(sel)+"</div>";
+  c += "<div data-id=\""+sel+"\"><button type=\"button\" class=\"gtag"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"</button></div>";
   c += "<div class=\"row\" data-id=\""+sel+"\">";
   if(!dk && D){ c += "<button class=\"btn\" type=\"button\" data-act=\"plan\">Zu "+D.lbl+" hinzufügen"+addLabel(cur, p)+"</button>"; }
   if(dk) c += "<button class=\"btn"+(T().done[sel]?"":" g")+"\" type=\"button\" data-act=\"done\">"+(T().done[sel]?"✓ Erledigt":"Abhaken")+"</button>";
@@ -2648,20 +2662,52 @@ function renderWish(){
   h += "<div class=\"chips small\" role=\"group\" aria-label=\"Kategorie\"><button type=\"button\" class=\"chip\" data-act=\"wcat\" data-cat=\"\" aria-pressed=\""+(!catAny())+"\">Alle ("+catPool.length+")</button>";
   CATS.forEach(function(c){ if(cc[c[0]] || catFilter[c[0]]) h += "<button type=\"button\" class=\"chip\" data-act=\"wcat\" data-cat=\""+c[0]+"\" aria-pressed=\""+!!catFilter[c[0]]+"\">"+icon(c[0],"ci")+esc(c[1])+" ("+(cc[c[0]]||0)+")</button>"; });
   h += "</div>";
+  // Gruppen
+  var gs = groups(), gc = {}; pool.filter(function(p){ return catOk(p.c) && nbMatch(p); }).forEach(function(p){ var k = grpName(p.g) ? p.g : "none"; gc[k] = (gc[k]||0)+1; });
+  h += "<div class=\"chips small grpchips\" role=\"group\" aria-label=\"Gruppe\"><button type=\"button\" class=\"chip\" data-act=\"wgrp\" data-g=\"\" aria-pressed=\""+(!grpSel)+"\">Alle Gruppen</button>";
+  gs.forEach(function(g){ h += "<button type=\"button\" class=\"chip\" data-act=\"wgrp\" data-g=\""+g.id+"\" aria-pressed=\""+(grpSel===g.id)+"\">▦ "+esc(g.n)+" ("+(gc[g.id]||0)+")</button>"; });
+  if(gs.length) h += "<button type=\"button\" class=\"chip\" data-act=\"wgrp\" data-g=\"none\" aria-pressed=\""+(grpSel==="none")+"\">Ohne Gruppe ("+(gc.none||0)+")</button>";
+  h += "<button type=\"button\" class=\"chip add\" data-act=\"grpmanage\">"+(gs.length ? "Gruppen bearbeiten" : "+ Gruppe anlegen")+"</button></div>";
+  if(gs.length) h += "<div class=\"seg wview\" role=\"group\" aria-label=\"Sortierung\"><button type=\"button\" data-act=\"wview\" data-v=\"cat\" aria-pressed=\""+(wView==="cat")+"\">Nach Kategorie</button><button type=\"button\" data-act=\"wview\" data-v=\"grp\" aria-pressed=\""+(wView==="grp")+"\">Nach Gruppe</button></div>";
 
   if(newList.open){
     h += "<form class=\"f\" id=\"nlForm\"><label><span>Name der neuen Liste</span><input type=\"text\" id=\"nlName\" maxlength=\"40\" value=\""+esc(newList.name)+"\" placeholder=\"z. B. Rooftop-Bars\" autocomplete=\"off\"></label>"+
          "<div class=\"row\"><button class=\"btn\" type=\"submit\">Liste anlegen</button><button class=\"btn g\" type=\"button\" data-act=\"nlcancel\">Abbrechen</button></div></form>";
   }
-  h += "<div class=\"row\"><button type=\"button\" class=\"btn\" data-act=\"newwish\">+ Wunsch hinzufügen</button><button type=\"button\" class=\"btn g s\" data-act=\"newlist\">+ Eigene Liste</button></div>";
+  h += "<div class=\"row\"><button type=\"button\" class=\"btn\" data-act=\"newwish\">+ Wunsch hinzufügen</button></div>";
 
   h += "<div id=\"wishRes\">"+wishResults()+"</div>";
   return h;
 }
+/* ---------- Eigene Gruppen (z. B. „Central Park“) ---------- */
+var grpSel = "", wView = lsGet("rp-wview")==="grp" ? "grp" : "cat";
+function groups(){ var g = T().groups || {}; return Object.keys(g).map(function(k){ return {id:k, n:g[k].n}; }).sort(function(a, b){ return a.n.localeCompare(b.n, "de"); }); }
+function grpName(gid){ var g = (T().groups||{})[gid]; return g ? g.n : ""; }
+function grpOk(p){ return !grpSel || (grpSel==="none" ? !grpName(p.g) : p.g===grpSel); }
+var grpTarget = null, grpEdit = null;
+function openGrpPop(pid){
+  grpTarget = pid || null;
+  var p = pid && P(pid), cur0 = p ? (grpName(p.g) ? p.g : "") : null, gs = groups();
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppe\"><div class=\"pop-head\"><h4>"+(p ? "Gruppe für "+esc(p.n) : "Gruppen verwalten")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list glist\">";
+  if(p) h += "<button type=\"button\" data-act=\"grpset\" data-g=\"\" aria-pressed=\""+(!cur0)+"\"><span>Keine Gruppe</span></button>";
+  gs.forEach(function(g){
+    var cnt = Object.keys(T().places).filter(function(k){ return T().places[k].g===g.id; }).length;
+    if(grpEdit===g.id){
+      h += "<form class=\"gedit\" id=\"grpRen\" data-g=\""+g.id+"\"><input type=\"text\" id=\"grpRenIn\" value=\""+esc(g.n)+"\" maxlength=\"40\"><button type=\"submit\" class=\"btn s\">OK</button><button type=\"button\" class=\"btn g s warn\" data-act=\"grpdel\" data-g=\""+g.id+"\">Löschen</button></form>";
+    } else {
+      h += "<div class=\"grow\">"+(p ? "<button type=\"button\" data-act=\"grpset\" data-g=\""+g.id+"\" aria-pressed=\""+(cur0===g.id)+"\"><span>"+esc(g.n)+"</span><small>"+cnt+"</small></button>" : "<span class=\"gname\">"+esc(g.n)+" <small>"+cnt+"</small></span>")+
+           "<button type=\"button\" class=\"gedbtn\" data-act=\"grpedit\" data-g=\""+g.id+"\" aria-label=\"Gruppe umbenennen oder löschen\">✎</button></div>";
+    }
+  });
+  if(!gs.length) h += "<p class=\"note\">Noch keine Gruppen. Lege unten die erste an, z. B. „Central Park“.</p>";
+  h += "</div><form class=\"gnew\" id=\"grpNew\"><input type=\"text\" id=\"grpNewIn\" maxlength=\"40\" placeholder=\"Neue Gruppe, z. B. Central Park\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">"+(p ? "Anlegen &amp; zuordnen" : "Anlegen")+"</button></form></div>";
+  $("catPop").innerHTML = h; $("catPop").hidden = false;
+}
+function setGroup(pid, gid){ var p = T().places[pid]; if(!p) return; if(gid) p.g = gid; else delete p.g; save(); }
 function norm(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[’']/g,"'"); }
 function qMatch(p){
   if(!wishQuery.trim()) return true;
-  var hay = norm([p.n, p.addr, p.note, CATNAME[p.c], nbOf(p), listName(p.list)].join(" "));
+  var hay = norm([p.n, p.addr, p.note, CATNAME[p.c], nbOf(p), listName(p.list), grpName(p.g)].join(" "));
   return norm(wishQuery).split(/\s+/).filter(Boolean).every(function(w){ return hay.indexOf(w) > -1; });
 }
 function hl(text){
@@ -2674,9 +2720,15 @@ function hl(text){
 }
 function wishResults(){
   var pool = listPool(), keys = nbKeys(), q = wishQuery.trim();
-  var fc = function(p){ return catOk(p.c) && nbMatch(p) && qMatch(p); };
+  var fc = function(p){ return catOk(p.c) && nbMatch(p) && qMatch(p) && grpOk(p); };
   var byCat = function(arr){
     var out = "";
+    if(wView==="grp"){
+      groups().forEach(function(g){ var ws = arr.filter(function(p){ return p.g===g.id; }); if(ws.length) out += "<div class=\"sec\"><h4>▦ "+esc(g.n)+" · "+ws.length+"</h4><ul class=\"wl\">"+ws.map(wishRow).join("")+"</ul></div>"; });
+      var rest = arr.filter(function(p){ return !grpName(p.g); });
+      if(rest.length) out += "<div class=\"sec\"><h4>Ohne Gruppe · "+rest.length+"</h4><ul class=\"wl\">"+rest.map(wishRow).join("")+"</ul></div>";
+      return out;
+    }
     CATS.forEach(function(c){ var ws = arr.filter(function(p){ return p.c===c[0]; }); if(ws.length) out += "<div class=\"sec\"><h4>"+icon(c[0],"ci")+esc(c[1])+" · "+ws.length+"</h4><ul class=\"wl\">"+ws.map(wishRow).join("")+"</ul></div>"; });
     return out;
   };
@@ -2763,7 +2815,7 @@ function wishRow(p){
   var dk = dayOf(p.id), D = dayByKey(cur), dd = dk && dayByKey(dk);
   var right = dd ? "<button type=\"button\" class=\"pill"+yel(dd)+"\" style=\"background:"+dayColor(dd)+"\" data-act=\"gotoday\" data-day=\""+dk+"\">Tag "+dd.n+"</button>"
                  : (D ? "<button type=\"button\" class=\"btn s\" data-act=\"plan\">+ "+D.wd+" "+shortD(D.key)+"</button>" : "");
-  var sub = esc(CATNAME[p.c]) + (nbOf(p) && nbKeys().length!==1 ? " · "+esc(nbOf(p)) : "") + (p.addr?" · "+esc(p.addr):"") + (p.note?"<br>"+esc(p.note):"") + (hasLoc(p) ? "" : "<br><b>Ohne Ort auf der Karte</b>");
+  var sub = "<button type=\"button\" class=\"gtag"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? esc(grpName(p.g)) : "Gruppe")+"</button> " + esc(CATNAME[p.c]) + (nbOf(p) && nbKeys().length!==1 ? " · "+esc(nbOf(p)) : "") + (p.addr?" · "+esc(p.addr):"") + (p.note?"<br>"+esc(p.note):"") + (hasLoc(p) ? "" : "<br><b>Ohne Ort auf der Karte</b>");
   return "<li class=\"wi sw"+(dk?" planned":"")+"\" data-id=\""+p.id+"\"><button type=\"button\" class=\"swdel\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"swc\">"+badge(p.c)+"<div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"focus\">"+hl(p.n)+"</button><div class=\"sub\">"+sub+"</div></div>"+right+"</div></li>";
 }
 function wishForm(){
@@ -3123,6 +3175,13 @@ document.addEventListener("click", function(e){
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
     case "acctclose": closeSettings(); break;
+    case "grppick": grpEdit = null; openGrpPop(id); break;
+    case "grpmanage": grpEdit = null; openGrpPop(null); break;
+    case "grpset": setGroup(grpTarget, t.getAttribute("data-g")); closeCatPop(); renderSheet(); renderCard(); scheduleOverlay(); break;
+    case "grpedit": grpEdit = grpEdit===t.getAttribute("data-g") ? null : t.getAttribute("data-g"); openGrpPop(grpTarget); var gi = $("grpRenIn"); if(gi) gi.focus(); break;
+    case "grpdel": var dg = t.getAttribute("data-g"), tg = T(); undoSnap = snapshot(); delete (tg.groups||{})[dg]; Object.keys(tg.places).forEach(function(k){ if(tg.places[k].g===dg) delete tg.places[k].g; }); if(grpSel===dg) grpSel = ""; grpEdit = null; save(); openGrpPop(grpTarget); renderSheet(); toast("Gruppe gelöscht – die Orte bleiben in der Wunschliste", true); break;
+    case "wgrp": grpSel = t.getAttribute("data-g"); renderSheet(); scheduleOverlay(); break;
+    case "wview": wView = t.getAttribute("data-v"); lsSet("rp-wview", wView); renderSheet(); break;
     case "jopen": openJPop(t.getAttribute("data-pid"), t.getAttribute("data-day")); break;
     case "jclose": closeJPop(); break;
     case "jphl": var tj = T(); tj.journal = tj.journal || {}; var Jp = tj.journal[jp.dk] = tj.journal[jp.dk] || {}, pn = P(jp.pid).n; Jp.hl = Jp.hl===pn ? "" : pn; Jp.at = Date.now(); save(); renderJPop(); break;
@@ -3276,6 +3335,18 @@ document.addEventListener("input", function(e){
 document.addEventListener("submit", function(e){
   e.preventDefault();
   var id = e.target.id;
+  if(id==="grpNew"){
+    var gn = ($("grpNewIn").value||"").trim(); if(!gn){ $("grpNewIn").focus(); return; }
+    var tg2 = T(); tg2.groups = tg2.groups || {};
+    var ex = groups().filter(function(g){ return g.n.toLowerCase()===gn.toLowerCase(); })[0], gid = ex ? ex.id : uid("g");
+    if(!ex) tg2.groups[gid] = {n:gn.slice(0,40)};
+    if(grpTarget){ setGroup(grpTarget, gid); closeCatPop(); toast(P(grpTarget).n+" ist jetzt in „"+gn+"“", false); } else { save(); openGrpPop(null); }
+    renderSheet(); renderCard(); return;
+  }
+  if(id==="grpRen"){
+    var rg = e.target.getAttribute("data-g"), rn = ($("grpRenIn").value||"").trim(); if(!rn) return;
+    (T().groups||{})[rg] = {n:rn.slice(0,40)}; grpEdit = null; save(); openGrpPop(grpTarget); renderSheet(); renderCard(); return;
+  }
   if(id==="acForm" && !window.firebase){ return; }
   if(id==="acForm"){
     var cl = acctCreds(); if(!cl.email || !cl.password){ setAcct("off", "Bitte E-Mail und Passwort eingeben."); return; }
