@@ -1690,7 +1690,9 @@ function catAny(){ return Object.keys(catFilter).length > 0; }
 var sugOpen = lsGet("nyc-sug-open")!=="0";
 var layers = {sub: lsGet("nyc-l-sub")==="1", bus: lsGet("nyc-l-bus")==="1", wish: lsGet("nyc-l-wish")!=="0", nb: lsGet("nyc-l-nb")==="1", route: lsGet("nyc-l-route")!=="0"};
 var nbHi = {}; try { (JSON.parse(lsGet("nyc-nb-hi"))||[]).forEach(function(n){ nbHi[n] = 1; }); } catch(e){}
-var nbSel = {};
+var nbSel = {}; Object.keys(nbHi).forEach(function(n){ nbSel[n] = 1; });
+// Viertel-Filter der Karte in die Wunschliste übernehmen (dort danach frei änderbar)
+function nbFromMap(){ nbSel = {}; Object.keys(nbHi).forEach(function(n){ nbSel[n] = 1; }); if(typeof renderSheet==="function" && $("body")) renderSheet(); }
 var wishQuery = "";
 var draft = {open:false, n:"", c:"essen", list:"", loc:"", note:"", err:""};
 var tdraft = null; // Reise-Formular
@@ -3939,9 +3941,9 @@ document.addEventListener("click", function(e){
       renderSheet(); scheduleOverlay(); break;
     case "sclear": wishQuery = ""; renderSheet(); scheduleOverlay(); var ws = $("wSearch"); if(ws) ws.focus(); break;
     case "wcat": var wc = t.getAttribute("data-cat"); if(!wc) catFilter = {}; else if(catFilter[wc]) delete catFilter[wc]; else catFilter[wc] = 1; renderSheet(); scheduleOverlay(); break;
-    case "nbrem": delete nbHi[t.getAttribute("data-nb")]; saveNb(); applyNb(); renderCard(); scheduleOverlay(); break;
-    case "nbclear": nbHi = {}; saveNb(); applyNb(); renderCard(); scheduleOverlay(); break;
-    case "nbtoggle": var tn = t.getAttribute("data-nb"); if(nbHi[tn]) delete nbHi[tn]; else nbHi[tn] = 1; saveNb(); applyNb(); renderCard(); scheduleOverlay(); break;
+    case "nbrem": delete nbHi[t.getAttribute("data-nb")]; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
+    case "nbclear": nbHi = {}; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
+    case "nbtoggle": var tn = t.getAttribute("data-nb"); if(nbHi[tn]) delete nbHi[tn]; else nbHi[tn] = 1; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
     case "nbshow": nbSel = {}; nbSel[t.getAttribute("data-nb")] = 1; catFilter = {}; activeList = "open"; tab = "wish"; select(null); if(!desktop.matches && (sheetState==="min" || sheetState==="peek")) setSheet("mid"); applyNb(); renderSheet(); fitNbs(nbKeys()); break;
     case "nbfit": fitNbs(nbKeys()); break;
     case "nbpop": openNbPop(); break;
@@ -3984,7 +3986,7 @@ $("edgeBtn").addEventListener("click", toggleSide);
 document.addEventListener("change", function(e){
   var t = e.target, act = t.getAttribute && t.getAttribute("data-act");
   if(t.id==="listSel"){ activeList = t.value; renderSheet(); scheduleOverlay(); return; }
-  if(t.id==="nbAdd"){ if(t.value){ nbHi[t.value] = 1; saveNb(); applyNb(); scheduleOverlay(); fitNb(t.value); } return; }
+  if(t.id==="nbAdd"){ if(t.value){ nbHi[t.value] = 1; saveNb(); nbFromMap(); applyNb(); scheduleOverlay(); fitNb(t.value); } return; }
   if(t.id==="wList"){ draft.list = t.value; return; }
   if(t.hasAttribute && t.hasAttribute("data-f") && tdraft){ setPath(tdraft, t.getAttribute("data-f"), t.value); return; }
   if(!act) return;
