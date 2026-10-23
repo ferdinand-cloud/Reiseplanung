@@ -278,8 +278,8 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .catbtn .ico{width:30px;height:30px}
 .catbtn span:not(.ico){flex:1}
 .catbtn svg:last-child{width:16px;height:16px;color:var(--muted)}
-.pop{position:fixed;inset:0;z-index:40;background:rgba(10,15,20,.4);display:flex;align-items:flex-end;justify-content:center}
-.pop-card{background:var(--sheet);border-radius:18px 18px 0 0;width:min(440px,100%);max-height:80vh;overflow-y:auto;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 24px var(--scrim)}
+.pop{position:fixed;left:0;right:0;top:var(--vvt,0px);height:var(--vvh,100%);z-index:40;background:rgba(10,15,20,.4);display:flex;align-items:flex-end;justify-content:center}
+.pop-card{background:var(--sheet);border-radius:18px 18px 0 0;width:min(440px,100%);max-height:min(80vh,calc(var(--vvh,100vh) - 24px));overflow-y:auto;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 24px var(--scrim)}
 .pop-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .pop-head h4{margin:0;font:700 20px/1.1 var(--f-display)}
 .pop-head .x{width:32px;height:32px;border:0;background:var(--chip);border-radius:50%;font-size:17px}
@@ -299,6 +299,13 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+/* Tastatur offen: Planungsblatt füllt den sichtbaren Bereich, damit das Feld nicht verdeckt wird */
+body.kb-sheet .sheet{top:var(--vvt,0px) !important;bottom:auto !important;height:var(--vvh,100%) !important;transform:none !important;border-radius:0;transition:none}
+body.kb-sheet .sheet{padding-top:env(safe-area-inset-top,0px)}
+body.kb-sheet .top,body.kb-sheet #rail,body.kb-sheet .rail,body.kb-sheet .ctrl,body.kb-sheet .menubtn,body.kb-sheet .tripmenu{visibility:hidden}
+body.kb .gate{top:var(--vvt,0px);bottom:auto;height:var(--vvh,100%);place-items:start center}
+body.kb .pop-card{border-radius:18px}
+body.kb .pop{align-items:flex-end;padding-bottom:6px}
 .wdist{display:inline-block;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;margin-right:2px}
 .wref{margin:4px 2px 2px}
 /* Reise: Übersicht & Bearbeiten */
@@ -1433,9 +1440,31 @@ function acctHTML(){
   return h+"</div>";
 }
 function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : acctHTML(); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
-(function(){ var vv = window.visualViewport; if(!vv) return; var de = document.documentElement;
-  function upd(){ de.style.setProperty("--vvh", vv.height+"px"); de.style.setProperty("--vvt", vv.offsetTop+"px"); }
-  vv.addEventListener("resize", upd); vv.addEventListener("scroll", upd); upd(); })();
+/* Tastatur: alles am sichtbaren Bereich ausrichten und das aktive Feld im Blick halten */
+function isTypeField(el){ if(!el || !el.tagName) return false; var tg = el.tagName; if(tg==="TEXTAREA" || tg==="SELECT") return true; if(tg!=="INPUT") return false; return !/^(checkbox|radio|button|submit|range|file|color|hidden)$/.test(el.type); }
+function scrollParent(el){ for(var n = el.parentElement; n && n!==document.body; n = n.parentElement){ var oy = getComputedStyle(n).overflowY; if((oy==="auto" || oy==="scroll") && n.scrollHeight > n.clientHeight) return n; } return null; }
+function ensureVis(el){
+  if(!el || !document.contains(el)) return;
+  var vv = window.visualViewport, vt = vv ? vv.offsetTop : 0, vb = vv ? vv.offsetTop + vv.height : window.innerHeight;
+  var c = scrollParent(el); if(!c) return;
+  var cr = c.getBoundingClientRect(), top = Math.max(cr.top, vt) + 12, bot = Math.min(cr.bottom, vb) - 12, er = el.getBoundingClientRect();
+  if(er.top >= top && er.bottom <= bot) return;
+  var want = (er.top + Math.min(er.height, 140)/2) - (top + Math.min(bot-top, 400)/2);
+  c.scrollTop += want;
+}
+(function(){ var vv = window.visualViewport, de = document.documentElement, body = document.body;
+  function upd(){
+    if(vv){ de.style.setProperty("--vvh", vv.height+"px"); de.style.setProperty("--vvt", vv.offsetTop+"px"); }
+    var ae = document.activeElement, kbh = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+    var kb = kbh > 120 && isTypeField(ae);
+    body.classList.toggle("kb", kb);
+    body.classList.toggle("kb-sheet", kb && !!(ae && ae.closest && ae.closest(".sheet")));
+    if(kb) setTimeout(function(){ ensureVis(document.activeElement); }, 60);
+  }
+  if(vv){ vv.addEventListener("resize", upd); vv.addEventListener("scroll", upd); }
+  document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
+  document.addEventListener("focusout", function(){ setTimeout(upd, 80); });
+  upd(); })();
 function closeSettings(){ accView = "main"; unameMsg = ""; $("acctPop").hidden = true; if($("tripPop").hidden) document.body.classList.remove("glass"); }
 function refreshSettings(){
   if($("acctPop").hidden) return;
