@@ -326,7 +326,7 @@ body.ro .jp-t[readonly]{background:transparent}
 .notrip h2{margin:0;font:700 26px/1.1 var(--f-display)}
 .notrip p{margin:0;color:var(--muted);font-size:14.5px}
 .notrip .btn{justify-content:center;padding:12px 14px;font-size:15px}
-body.notrip .tabs,body.notrip #rail,body.notrip .rail,body.notrip #tripBtn,body.notrip #srchBtn,body.notrip [data-act=opentrip]{display:none !important}
+body.gated #bellBtn,body.kb-sheet #bellBtn,body.notrip .tabs,body.notrip #rail,body.notrip .rail,body.notrip #tripBtn,body.notrip #srchBtn,body.notrip [data-act=opentrip]{display:none !important}
 /* Wunschliste: aufgeräumter Kopf und kompakte Zeilen */
 .wtop{display:flex;gap:8px;align-items:center}
 .wtop .search{flex:1;min-width:0;margin:0}
@@ -502,6 +502,23 @@ body.kb .pop{align-items:flex-end;padding-bottom:6px}
 .tseg button[aria-selected="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .ag-row .curtag,.curtag{font-style:normal;font-size:11px;font-weight:700;color:#fff !important;background:#2e9b5a;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
 .toast .tgo{font-weight:700}
+.toast .tmsg{cursor:pointer}
+.bell{position:fixed;z-index:16;width:44px;height:44px}
+.bell svg{width:20px;height:20px}
+.bell-n{position:absolute;top:-3px;right:-3px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#d93025;color:#fff;font:700 11px/19px var(--f-body);text-align:center;border:2px solid var(--sheet);box-sizing:content-box}
+.bell-n[hidden]{display:none}
+.nt-list .ag-row.nt{align-items:flex-start;justify-content:flex-start;gap:12px;padding:12px 14px}
+.nt-list .ag-row.nt + .ag-row.nt{border-top:1px solid var(--line)}
+.nt-ic{width:32px;height:32px;flex:0 0 32px;border-radius:50%;display:grid;place-items:center;background:var(--chip);color:var(--ink)}
+.nt-ic svg{width:18px;height:18px}
+.nt.new .nt-ic{background:#1a73e8;color:#fff}
+.nt-t{display:grid;gap:3px;min-width:0;flex:1}
+.nt-t b{font-size:14.5px;font-weight:600;line-height:1.3}
+.nt:not(.new) .nt-t b{font-weight:500}
+.nt-t q{display:block;font-size:13.5px;color:var(--ink);opacity:.8;quotes:"„" "“";overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nt-t small{font-size:12px;color:var(--muted)}
+.nt-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#1a73e8;margin-top:6px}
+.nt-foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:12px}
 .menubtn.dot::after{content:"";position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:#d93025;border:2px solid var(--sheet)}
 .ag-row.inv{cursor:default;flex-wrap:wrap}
 .ag-acts.three{grid-template-columns:1fr 1fr 1fr}
@@ -899,6 +916,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 <div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button></div>
 <div class="tripmenu" id="tripMenu" hidden></div>
 <div class="tripmenu" id="mainMenu" hidden><button type="button" data-act="opentrips"><span>Reisen <b class="mbadge" id="invBadge" hidden></b></span><small>Private, gemeinsame Reisen, Anfragen</small></button><button type="button" data-act="openfriends"><span>Freunde <b class="mbadge" id="frBadge" hidden></b></span><small>Anfragen, Freunde suchen</small></button><button type="button" data-act="openacct"><span>Mein Konto</span><small>Anmeldung, Abgleich, Einstellungen</small></button></div>
+<button type="button" class="menubtn bell" id="bellBtn" data-act="bell" aria-label="Mitteilungen" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.2a5 5 0 0 1 10 0c0 3.6 1.4 5 1.9 5.6H3.1C3.6 13.2 5 11.8 5 8.2z"/><path d="M8.2 16.3a1.9 1.9 0 0 0 3.6 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
 <nav class="rail" id="rail" aria-label="Reisetage"></nav>
 <div class="ctrl" id="ctrl">
   <button type="button" id="zin" aria-label="Hineinzoomen">+</button>
@@ -1244,7 +1262,7 @@ function acctPush(){
     setTimeout(acctPush, 15000);
   });
 }
-function fbRows(qs){ setTimeout(function(){ lsSet("rp-meta", JSON.stringify(META)); }, 0); return qs.docs.map(function(d){ var v = d.data()||{}, data = null; try { data = v.json ? JSON.parse(v.json) : null; } catch(e){}
+function fbRows(qs){ setTimeout(function(){ lsSet("rp-meta", JSON.stringify(META)); if(ntUid){ ntMembers(); ntSyncTrips(); } }, 0); return qs.docs.map(function(d){ var v = d.data()||{}, data = null; try { data = v.json ? JSON.parse(v.json) : null; } catch(e){}
   META[d.id] = {owner:v.owner, members:v.members||[], memberEmails:v.memberEmails||{}, invites:v.invites||[], viewers:v.viewers||[], viewInvites:v.viewInvites||[]};
   return {id:d.id, data:data, deleted:!!v.deleted || !data, updated_at:new Date(v.updatedAt||0).toISOString()}; }); }
 var metaSig = "";
@@ -1378,8 +1396,8 @@ function authApply(u){
     (function(){
       var was = acct.user && acct.user.uid;
       acct.user = u ? {uid:u.uid, id:u.uid, email:u.email} : null;
-      if(u && was!==u.uid){ acctMigrate().then(function(){ acctLive(); setTimeout(phFlush, 1500); cmWatch(); frWatch(); }); }
-      if(!u){ if(fbUnsub){ fbUnsub(); fbUnsub = null; } if(invUnsub){ invUnsub(); invUnsub = null; } if(cmUnsub){ cmUnsub(); cmUnsub = null; } frStop(); acct.state = "off"; INVITES = []; invBadge(); }
+      if(u && was!==u.uid){ acctMigrate().then(function(){ acctLive(); setTimeout(phFlush, 1500); cmWatch(); frWatch(); ntStart(); }); }
+      if(!u){ if(fbUnsub){ fbUnsub(); fbUnsub = null; } if(invUnsub){ invUnsub(); invUnsub = null; } if(cmUnsub){ cmUnsub(); cmUnsub = null; } frStop(); ntStop(); acct.state = "off"; INVITES = []; invBadge(); }
       acct.ready = true; renderGate(); refreshSettings();
     })();
 }
@@ -1416,12 +1434,12 @@ function frWatch(){
   var frNotify = function(){
     if(!gotA || !gotB) return;
     var msgs = [];
-    A.forEach(function(r){ if(r.status==="pending" && !seen.inc[r.id]){ seen.inc[r.id] = 1; if(!first) msgs.push({u:r.from, f:r.fromName, t:" möchte mit dir befreundet sein"}); } });
-    B.forEach(function(r){ if(r.status==="accepted" && !seen.acc[r.id]){ seen.acc[r.id] = 1; if(!first) msgs.push({u:r.to, f:r.toName, t:" hat deine Freundschaftsanfrage angenommen"}); } });
+    A.forEach(function(r){ if(r.status==="pending" && !seen.inc[r.id]){ seen.inc[r.id] = 1; if(!first) msgs.push({k:"inc:"+r.id, at:r.at, u:r.from, f:r.fromName, t:" möchte mit dir befreundet sein"}); } });
+    B.forEach(function(r){ if(r.status==="accepted" && !seen.acc[r.id]){ seen.acc[r.id] = 1; if(!first) msgs.push({k:"acc:"+r.id, u:r.to, f:r.toName, t:" hat deine Freundschaftsanfrage angenommen"}); } });
     A.forEach(function(r){ if(r.status==="accepted") seen.acc[r.id] = 1; });
-    if(first){ first = false; A.forEach(function(r){ if(r.status==="pending"){ msgs.push({u:r.from, f:r.fromName, t:" möchte mit dir befreundet sein"}); } }); }
+    if(first){ first = false; A.forEach(function(r){ if(r.status==="pending"){ msgs.push({k:"inc:"+r.id, at:r.at, u:r.from, f:r.fromName, t:" möchte mit dir befreundet sein"}); } }); }
     lsSet(SK, JSON.stringify(seen));
-    msgs.forEach(function(m, i){ setTimeout(function(){ var show = function(nm){ frToast("@"+nm+m.t); };
+    msgs.forEach(function(m, i){ setTimeout(function(){ var show = function(nm){ ntAdd({id:"fr:"+m.k, type:"friend", text:"@"+nm+m.t, at:m.at}); };
       if(NAMES[m.u]) show(NAMES[m.u]); else fbDb.collection("profiles").doc(m.u).get().then(function(d){ var v = d.exists && d.data(); show(v && v.name || m.f || "?"); }, function(){ show(m.f || "?"); }); }, i*5200); });
   };
   var rows = function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); };
@@ -1556,7 +1574,7 @@ function invWatch(){
     var SK = "rp-invseen-"+acct.user.uid, seen = {}; try { seen = JSON.parse(localStorage.getItem(SK)||"{}"); } catch(e){}
     var neu = INVITES.filter(function(x){ return !seen[x.id]; });
     neu.forEach(function(x){ seen[x.id] = 1; }); lsSet(SK, JSON.stringify(seen));
-    neu.forEach(function(x, i){ setTimeout(function(){ var nm = INVN[x.owner]; frToast((nm ? "@"+nm : (x.from||"Jemand"))+" lädt dich zur Reise „"+x.name+"“ ein"+(x.viewer?" (als Beobachter)":""), "opentrips", "req"); }, 800 + i*5200); });
+    neu.forEach(function(x, i){ setTimeout(function(){ var nm = INVN[x.owner]; ntAdd({id:"inv:"+x.id, type:"invite", trip:x.id, text:(nm ? "@"+nm : (x.from||"Jemand"))+" lädt dich zur Reise „"+x.name+"“ ein"+(x.viewer?" (als Beobachter)":"")}); }, 800 + i*5200); });
     refreshSettings();
   }, function(){});
 }
@@ -1621,6 +1639,116 @@ function cmListHTML(pid){
   return list.map(function(c){ var mine = acct.user && c.by===acct.user.uid;
     return "<div class=\"cm"+(mine?" mine":"")+"\"><b>"+esc((c.email||"").split("@")[0])+"</b> <small>"+(c.at?new Date(c.at).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"")+"</small>"+(mine?"<button type=\"button\" class=\"cmdel\" data-act=\"cmdel\" data-cid=\""+c.id+"\" aria-label=\"Kommentar löschen\">×</button>":"")+"<p>"+esc(c.text)+"</p></div>"; }).join("");
 }
+/* ---------- Mitteilungen: Kommentare, Freundschaften, Einladungen, Beitritte ---------- */
+var NT = {items:[]}, ntUid = null, ntCm = {}, ntNames = {};
+function ntKey(){ return "rp-notif-"+ntUid; }
+function ntLoad(){ NT = {items:[]}; try { var v = JSON.parse(localStorage.getItem(ntKey())||"null"); if(v && v.items) NT = v; } catch(e){} }
+function ntSave(){ if(ntUid){ NT.items = NT.items.slice(0, 100); lsSet(ntKey(), JSON.stringify(NT)); } }
+function ntUnread(){ return NT.items.filter(function(x){ return !x.read; }).length; }
+function ntBadge(){
+  var b = $("bellBtn"); if(!b) return;
+  var h0 = b.hidden; b.hidden = !acct.user; if(h0!==b.hidden) setTimeout(placeFloating, 0); var n = ntUnread(), e = $("bellN");
+  e.hidden = !n; e.textContent = n > 9 ? "9+" : n;
+  b.setAttribute("aria-label", "Mitteilungen"+(n ? ", "+n+" neu" : ""));
+}
+/* eine Mitteilung je Ereignis (id), neueste zuerst; optional sofort als antippbare Meldung */
+function ntAdd(it, pop){
+  if(!ntUid || NT.items.some(function(x){ return x.id===it.id; })) return;
+  it.at = it.at || Date.now(); it.read = false;
+  NT.items.push(it); NT.items.sort(function(a, b){ return b.at - a.at; });
+  ntSave(); ntBadge(); if(accView==="notifs" && !$("acctPop").hidden) openSettings();
+  if(pop !== false) setTimeout(function(){ frToast(it.text, "ntgo", it.id); }, 300);
+}
+function ntName(uid0, fb, cb){
+  if(ntNames[uid0]) return cb(ntNames[uid0]);
+  var f = FR.friends.filter(function(x){ return x.uid===uid0; })[0]; if(f && f.name){ ntNames[uid0] = "@"+f.name; return cb(ntNames[uid0]); }
+  fbDb.collection("profiles").doc(uid0).get().then(function(d){ var v = d.exists && d.data(); ntNames[uid0] = v && v.name ? "@"+v.name : (fb || "Jemand"); cb(ntNames[uid0]); }, function(){ cb(fb || "Jemand"); });
+}
+function tripName(id){ var t = S.trips[id]; return t ? t.name : "Reise"; }
+/* Kommentare aller gemeinsamen Reisen beobachten – nur neue, von anderen */
+function ntSyncTrips(){
+  if(!ntUid || !fbDb) return;
+  var want = {};
+  Object.keys(META).forEach(function(id){ var m = META[id]; if(m && ((m.members||[]).length > 1 || (m.viewers||[]).length) && (m.members||[]).indexOf(ntUid) > -1) want[id] = 1; });
+  Object.keys(ntCm).forEach(function(id){ if(!want[id]){ ntCm[id](); delete ntCm[id]; } });
+  Object.keys(want).forEach(function(id){
+    if(ntCm[id]) return;
+    var SK = "rp-ntcm-"+ntUid+"-"+id, since = +(localStorage.getItem(SK)||0);
+    if(!since){ since = Date.now(); lsSet(SK, String(since)); }
+    ntCm[id] = tripRef(id).collection("comments").where("at", ">", since).onSnapshot(function(qs){
+      qs.docChanges().forEach(function(ch){
+        if(ch.type!=="added") return;
+        var v = ch.doc.data(); if(!v || v.by===ntUid) return;
+        var p = (S.trips[id] && S.trips[id].places || {})[v.pid];
+        ntName(v.by, (v.email||"").split("@")[0], function(nm){
+          var txt = (v.text||"").replace(/\s+/g, " ").trim();
+          ntAdd({id:"cm:"+ch.doc.id, type:"comment", trip:id, pid:v.pid, at:v.at || Date.now(),
+                 text:nm+" hat "+(p ? "„"+p.n+"“" : "einen Punkt")+" in „"+tripName(id)+"“ kommentiert",
+                 sub:txt.length > 90 ? txt.slice(0, 88)+" …" : txt});
+        });
+      });
+    }, function(){ if(ntCm[id]){ delete ntCm[id]; } });
+  });
+}
+/* neue Mitreisende in meinen Reisen */
+function ntMembers(){
+  if(!ntUid) return;
+  var SK = "rp-ntmem-"+ntUid, known = null; try { known = JSON.parse(localStorage.getItem(SK)||"null"); } catch(e){}
+  var first = !known; known = known || {};
+  Object.keys(META).forEach(function(id){
+    var m = META[id], ms = (m && m.members) || [], k0 = known[id];
+    if(k0 && m && m.owner===ntUid) ms.forEach(function(u){ if(u!==ntUid && k0.indexOf(u) < 0){
+      var vw = (m.viewers||[]).indexOf(u) > -1;
+      ntName(u, ((m.memberEmails||{})[u]||"").split("@")[0], function(nm){ ntAdd({id:"mem:"+id+":"+u, type:"join", trip:id, text:nm+" ist „"+tripName(id)+"“ beigetreten"+(vw ? " (als Beobachter)" : "")}); });
+    } });
+    known[id] = ms.slice();
+  });
+  lsSet(SK, JSON.stringify(known));
+}
+function ntStart(){ if(!acct.user) return; if(ntUid!==acct.user.uid){ ntStop(); ntUid = acct.user.uid; ntLoad(); } ntBadge(); ntSyncTrips(); }
+function ntStop(){ Object.keys(ntCm).forEach(function(id){ ntCm[id](); }); ntCm = {}; ntUid = null; NT = {items:[]}; ntBadge(); }
+function ntAgo(t){
+  var d = Math.round((Date.now() - t)/60000);
+  if(d < 1) return "gerade eben"; if(d < 60) return "vor "+d+" Min.";
+  if(d < 1440) return "vor "+Math.round(d/60)+" Std.";
+  return new Date(t).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"})+" "+new Date(t).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
+}
+var NTIC = {comment:"<path d=\"M4 4.5h12a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H9l-4 3v-3H4A1.5 1.5 0 0 1 2.5 13V6A1.5 1.5 0 0 1 4 4.5z\"/>",
+  friend:"<circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.5 16.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M15 6v5M12.5 8.5h5\"/>",
+  invite:"<path d=\"M2.5 6l7.5 5 7.5-5\"/><rect x=\"2.5\" y=\"4.5\" width=\"15\" height=\"11\" rx=\"2\"/>",
+  join:"<circle cx=\"7\" cy=\"7\" r=\"2.6\"/><circle cx=\"13.5\" cy=\"7.5\" r=\"2.2\"/><path d=\"M2 16c.5-2.6 2.4-4 5-4s4.5 1.4 5 4M12.5 12c2.3 0 4 1.1 4.5 3.5\"/>"};
+function notifsHTML(){
+  var h = "<div class=\"ag-card nt-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mitteilungen\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Mitteilungen</h3>";
+  if(!NT.items.length) return h+"<p class=\"note\">Noch keine Mitteilungen. Hier erscheinen Kommentare in gemeinsamen Reisen, Freundschaftsanfragen, Einladungen und neue Mitreisende.</p></div>";
+  h += "<div class=\"ag-grp nt-list\">";
+  NT.items.forEach(function(x){
+    h += "<button type=\"button\" class=\"ag-row nt"+(x.read ? "" : " new")+"\" data-act=\"ntgo\" data-v=\""+esc(x.id)+"\"><span class=\"nt-ic\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+(NTIC[x.type]||NTIC.comment)+"</svg></span>"+
+         "<span class=\"nt-t\"><b>"+esc(x.text)+"</b>"+(x.sub ? "<q>"+esc(x.sub)+"</q>" : "")+"<small>"+ntAgo(x.at)+"</small></span>"+(x.read ? "" : "<i class=\"nt-dot\" aria-label=\"neu\"></i>")+"</button>";
+  });
+  h += "</div><div class=\"nt-foot\">"+(ntUnread() ? "<button type=\"button\" class=\"btn g s\" data-act=\"ntread\">Alle als gelesen markieren</button>" : "")+"<button type=\"button\" class=\"btn g s\" data-act=\"ntclear\">Alle entfernen</button></div></div>";
+  return h;
+}
+function ntOpen(id){
+  var it = NT.items.filter(function(x){ return x.id===id; })[0];
+  $("toast").hidden = true;
+  if(!it){ accView = "notifs"; openSettings(); return; }
+  it.read = true; ntSave(); ntBadge();
+  if(it.type==="friend"){ closeMenus(); accView = "friends"; unameMsg = ""; openSettings(); return; }
+  if(it.type==="invite"){ closeMenus(); accView = "trips"; tripsTab = "req"; openSettings(); return; }
+  closeSettings(); closeMenus();
+  if(it.trip && S.trips[it.trip] && S.cur!==it.trip){
+    grpSel = ""; S.cur = it.trip; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay();
+  }
+  if(it.trip && !S.trips[it.trip]){ toast("Diese Reise ist nicht mehr verfügbar", false); renderAll(); return; }
+  if(it.type==="comment" && P(it.pid)){
+    var dk = dayOf(it.pid); if(dk) cur = dk;
+    tab = dk ? "day" : "wish"; renderAll(); cmWatch(); select(it.pid); if(hasLoc(P(it.pid))) centerOn(P(it.pid)); openJPop(it.pid, dk || "");
+    setTimeout(function(){ var c = $("cmList"); if(c) c.scrollIntoView({block:"center"}); }, 350);
+    return;
+  }
+  if(it.type==="join"){ tab = "trip"; }
+  renderAll(); fitDay();
+}
 function acctBlock(){
   if(!acct.user) return "";
   return "<div class=\"sec acct\"><h4>Konto</h4><p>Angemeldet als <b>"+esc(acct.user.email||"")+"</b></p><p class=\"note\" id=\"acctNote\" role=\"status\">"+acctNote()+"</p><div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"acsync\">Jetzt abgleichen</button><button type=\"button\" class=\"btn g s\" data-act=\"acout\">Abmelden</button></div></div>";
@@ -1653,7 +1781,7 @@ function acctHTML(){
   if(u) h += "<div class=\"ag-grp ag-out\"><button type=\"button\" class=\"ag-row\" data-act=\"acout\"><span><b>Abmelden</b></span></button></div>";
   return h+"</div>";
 }
-function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : acctHTML(); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
+function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
 /* Tastatur: alles am sichtbaren Bereich ausrichten und das aktive Feld im Blick halten */
 function isTypeField(el){ if(!el || !el.tagName) return false; var tg = el.tagName; if(tg==="TEXTAREA" || tg==="SELECT") return true; if(tg!=="INPUT") return false; return !/^(checkbox|radio|button|submit|range|file|color|hidden)$/.test(el.type); }
 function scrollParent(el){ for(var n = el.parentElement; n && n!==document.body; n = n.parentElement){ var oy = getComputedStyle(n).overflowY; if((oy==="auto" || oy==="scroll") && n.scrollHeight > n.clientHeight) return n; } return null; }
@@ -3305,8 +3433,10 @@ function placeFloating(){
   $("toast").style.top = (topB + 10)+"px";
   $("offline").style.top = (topB + 10)+"px";
   $("mapnote").style.bottom = (sv + 34)+"px";
-  $("rail").style.top = (topB + 10)+"px";
-  $("rail").style.maxHeight = Math.max(80, window.innerHeight - topB - 10 - sv - 40)+"px";
+  var bell = $("bellBtn"), railTop = topB + 10;
+  if(bell && bell.offsetWidth && getComputedStyle(bell).visibility!=="hidden"){ var mb = $("menuBtn").getBoundingClientRect(); bell.style.top = (topB + 8)+"px"; bell.style.left = mb.left+"px"; railTop = topB + 8 + 44 + 8; }
+  $("rail").style.top = railTop+"px";
+  $("rail").style.maxHeight = Math.max(80, window.innerHeight - railTop - sv - 40)+"px";
   $("attr").style.bottom = (sv + 8)+"px";
   $("attr").style.left = "";
 }
@@ -4250,7 +4380,8 @@ var sorting = false, sheetPending = false;
 function snapshot(){ return JSON.stringify(S); }
 function frToast(msg, act, v){
   var el = $("toast");
-  el.innerHTML = "<span>"+esc(msg)+"</span><button type=\"button\" class=\"tgo\" data-act=\""+(act||"openfriends")+"\""+(v?" data-v=\""+v+"\"":"")+">Ansehen</button>";
+  var da = " data-act=\""+(act||"openfriends")+"\""+(v?" data-v=\""+esc(v)+"\"":"");
+  el.innerHTML = "<span class=\"tmsg\""+da+">"+esc(msg)+"</span><button type=\"button\" class=\"tgo\""+da+">Ansehen</button>";
   el.hidden = false; clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ el.hidden = true; }, 7000);
 }
@@ -4358,6 +4489,10 @@ document.addEventListener("click", function(e){
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
     case "acctclose": closeSettings(); break;
+    case "bell": closeMenus(); $("toast").hidden = true; accView = "notifs"; openSettings(); break;
+    case "ntgo": ntOpen(t.getAttribute("data-v")); break;
+    case "ntread": NT.items.forEach(function(x){ x.read = true; }); ntSave(); ntBadge(); openSettings(); break;
+    case "ntclear": NT.items = []; ntSave(); ntBadge(); openSettings(); break;
     case "accview": accView = t.getAttribute("data-v"); unameMsg = ""; openSettings(); var fi = $(accView==="search" ? "frQ" : "unIn"); if(fi && accView!=="main") fi.focus(); break;
     case "frreq": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); break;
     case "fracc": frAccept(t.getAttribute("data-uid")); break;
