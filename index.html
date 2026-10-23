@@ -315,7 +315,7 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .ndep > span{display:block}
 .ndep b{color:var(--ink);font-weight:700}
 .ndep small{color:#1e8e3e;font-weight:600;font-size:11.5px}
-body.ro [data-act="done"],body.ro [data-act="plan"],body.ro [data-act="unplan"],body.ro [data-act="swdel"],body.ro [data-act="delplace"],body.ro [data-act="revisit"],body.ro [data-act="revpick"],body.ro [data-act="movepop"],body.ro [data-act="movepick"],body.ro [data-act="grppick"],body.ro [data-act="grpset"],body.ro [data-act="grpmanage"],body.ro [data-act="grpdel"],body.ro [data-act="grpedit"],body.ro [data-act="newwish"],body.ro [data-act="newlist"],body.ro [data-act="dellist"],body.ro [data-act="lmode"],body.ro [data-act="legalt"],body.ro [data-act="rate"],body.ro [data-act="jphl"],body.ro [data-act="jhl"],body.ro [data-act="jins"],body.ro [data-act="phdel"],body.ro [data-act="tripedit"],body.ro [data-act="deltrip"],body.ro [data-act="reset"],body.ro [data-act="lpday"],body.ro [data-act="lpwish"],body.ro [data-act="lphotel"],body.ro [data-act="poiadd"],body.ro [data-act="undo"],body.ro [data-act="tadd"],body.ro [data-act="tdel"],body.ro [data-act="pick"],body.ro [data-act="arm"],body.ro [data-act="move"],body.ro [data-act="time"],body.ro [data-act="jpedit"]{display:none !important}
+body.ro [data-act="done"],body.ro [data-act="plan"],body.ro [data-act="unplan"],body.ro [data-act="swdel"],body.ro [data-act="delplace"],body.ro [data-act="revisit"],body.ro [data-act="revpick"],body.ro [data-act="movepop"],body.ro [data-act="movepick"],body.ro [data-act="grppick"],body.ro [data-act="grpset"],body.ro [data-act="grpmanage"],body.ro [data-act="grpdel"],body.ro [data-act="grpedit"],body.ro [data-act="newwish"],body.ro [data-act="newlist"],body.ro [data-act="dellist"],body.ro [data-act="lmode"],body.ro [data-act="legalt"],body.ro [data-act="rate"],body.ro [data-act="jphl"],body.ro [data-act="jhl"],body.ro [data-act="jins"],body.ro [data-act="phdel"],body.ro .pv-del,body.ro [data-act="tripedit"],body.ro [data-act="deltrip"],body.ro [data-act="reset"],body.ro [data-act="lpday"],body.ro [data-act="lpwish"],body.ro [data-act="lphotel"],body.ro [data-act="poiadd"],body.ro [data-act="undo"],body.ro [data-act="tadd"],body.ro [data-act="tdel"],body.ro [data-act="pick"],body.ro [data-act="arm"],body.ro [data-act="move"],body.ro [data-act="time"],body.ro [data-act="jpedit"]{display:none !important}
 body.ro .lcol .grip,body.ro .jp-add,body.ro .jp-grp:not(.on),body.ro .lm,body.ro .alts2,body.ro #lpPick{display:none !important}
 body.ro .jp-grp{pointer-events:none}
 body.ro .jp-day.none{display:none}
@@ -584,7 +584,28 @@ body.kb .pop{align-items:flex-end;padding-bottom:6px}
 .jp-ph img{width:100%;height:100%;object-fit:cover;display:block}
 .jp-add{display:grid;place-items:center;align-content:center;gap:2px;aspect-ratio:1;border:1.5px dashed var(--line);border-radius:12px;color:var(--muted);font-weight:600;font-size:13px;cursor:pointer}
 .jp-add span{font-size:24px;line-height:1}
-.jp-view img{width:100%;max-height:60vh;object-fit:contain;border-radius:14px;background:#000;margin:26px 0 10px;display:block}
+.jp-view img{width:100%;height:100%;object-fit:contain;display:block;-webkit-user-select:none;user-select:none}
+.pv-top{display:flex;align-items:center;gap:10px;padding-right:44px;min-height:32px}
+.pv-back{border:0;background:none;color:var(--ink);font:inherit;font-weight:600;font-size:15px;padding:4px 0;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.pv-n{margin-left:auto;font-size:13px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.pv-wrap{position:relative;margin:10px -18px 0}
+.pv-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;background:#000}
+.pv-track::-webkit-scrollbar{display:none}
+.pv-slide{flex:0 0 100%;height:min(56vh,460px);scroll-snap-align:center;scroll-snap-stop:always}
+.pv-arr{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font:600 22px/1 var(--f-body);display:grid;place-items:center;padding:0 0 2px;cursor:pointer}
+.pv-arr.l{left:10px}.pv-arr.r{right:10px}
+@media (hover:none){.pv-arr{display:none}}
+.pv-dots{display:flex;justify-content:center;gap:6px;margin:10px 0 2px}
+.pv-dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.pv-dots i.on{background:var(--ink)}
+.pv-acts{display:flex;align-items:center;gap:10px;margin:10px 0 2px;min-height:40px}
+.pv-like{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:6px 12px 6px 10px;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+.pv-like svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
+.pv-like.on{color:#e0245e;border-color:color-mix(in srgb,#e0245e 45%,transparent);background:color-mix(in srgb,#e0245e 12%,transparent)}
+.pv-like.on svg{fill:currentColor}
+.pv-like span:empty{display:none}
+.pv-who{font-size:13px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-del{margin-left:auto;border:0;background:none;color:#d93025;font:inherit;font-size:13.5px;font-weight:600;padding:6px 2px;cursor:pointer}
 img.missing{opacity:.3;background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--ink) 8%,transparent) 0 6px,transparent 6px 12px)}
 img.loading{background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .pherr{color:#d93025}
@@ -1629,7 +1650,8 @@ function cmWatch(){
   cmUnsub = tripRef(cmTrip).collection("comments").orderBy("at").onSnapshot(function(qs){
     CMTS = {};
     qs.docs.forEach(function(d){ var v = d.data(); (CMTS[v.pid] = CMTS[v.pid] || []).push({id:d.id, text:v.text, by:v.by, email:v.email, at:v.at}); });
-    if(jp && !$("jPop").hidden && !(document.activeElement && document.activeElement.id==="cmIn")) renderJPop(); else if(jp && !$("jPop").hidden) { var cl = $("cmList"); if(cl) cl.innerHTML = cmListHTML(jp.pid); }
+    if(jp && jp.view && !$("jPop").hidden) phMetaRefresh();
+    else if(jp && !$("jPop").hidden && !(document.activeElement && document.activeElement.id==="cmIn")) renderJPop(); else if(jp && !$("jPop").hidden) { var cl = $("cmList"); if(cl) cl.innerHTML = cmListHTML(jp.pid); }
     if(tab==="day" || tab==="trip") renderSheet();
   }, function(){});
 }
@@ -1679,7 +1701,18 @@ function ntSyncTrips(){
       qs.docChanges().forEach(function(ch){
         if(ch.type!=="added") return;
         var v = ch.doc.data(); if(!v || v.by===ntUid) return;
-        var p = (S.trips[id] && S.trips[id].places || {})[v.pid];
+        var tr0 = S.trips[id] || {}, kind = /^ph:/.test(v.pid||"") ? "phc" : /^lk:/.test(v.pid||"") ? "like" : "", phid = kind ? v.pid.slice(3) : "", ppid = v.pid;
+        if(kind){ ppid = ""; Object.keys(tr0.photos||{}).forEach(function(k){ if((tr0.photos[k]||[]).indexOf(phid) > -1) ppid = k; }); }
+        var p = (tr0.places || {})[ppid];
+        if(kind){
+          ntName(v.by, (v.email||"").split("@")[0], function(nm){
+            var txt = (v.text||"").replace(/\s+/g, " ").trim();
+            ntAdd({id:(kind==="like" ? "lk:" : "cm:")+ch.doc.id+(kind==="like" ? ":"+(v.at||0) : ""), type:kind==="like" ? "like" : "comment", trip:id, pid:ppid, ph:phid, at:v.at || Date.now(),
+                   text:nm+(kind==="like" ? " gefällt ein Foto" : " hat ein Foto kommentiert")+(p ? " von „"+p.n+"“" : "")+" in „"+tripName(id)+"“",
+                   sub:kind==="like" ? "" : (txt.length > 90 ? txt.slice(0, 88)+" …" : txt)});
+          });
+          return;
+        }
         ntName(v.by, (v.email||"").split("@")[0], function(nm){
           var txt = (v.text||"").replace(/\s+/g, " ").trim();
           ntAdd({id:"cm:"+ch.doc.id, type:"comment", trip:id, pid:v.pid, at:v.at || Date.now(),
@@ -1716,6 +1749,7 @@ function ntAgo(t){
 var NTIC = {comment:"<path d=\"M4 4.5h12a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H9l-4 3v-3H4A1.5 1.5 0 0 1 2.5 13V6A1.5 1.5 0 0 1 4 4.5z\"/>",
   friend:"<circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.5 16.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M15 6v5M12.5 8.5h5\"/>",
   invite:"<path d=\"M2.5 6l7.5 5 7.5-5\"/><rect x=\"2.5\" y=\"4.5\" width=\"15\" height=\"11\" rx=\"2\"/>",
+  like:"<path d=\"M10 17s-6.5-4-6.5-8.6A3.6 3.6 0 0 1 10 6.3a3.6 3.6 0 0 1 6.5 2.1C16.5 13 10 17 10 17z\"/>",
   join:"<circle cx=\"7\" cy=\"7\" r=\"2.6\"/><circle cx=\"13.5\" cy=\"7.5\" r=\"2.2\"/><path d=\"M2 16c.5-2.6 2.4-4 5-4s4.5 1.4 5 4M12.5 12c2.3 0 4 1.1 4.5 3.5\"/>"};
 function notifsHTML(){
   var h = "<div class=\"ag-card nt-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mitteilungen\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Mitteilungen</h3>";
@@ -1740,10 +1774,10 @@ function ntOpen(id){
     grpSel = ""; S.cur = it.trip; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay();
   }
   if(it.trip && !S.trips[it.trip]){ toast("Diese Reise ist nicht mehr verfügbar", false); renderAll(); return; }
-  if(it.type==="comment" && P(it.pid)){
+  if((it.type==="comment" || it.type==="like") && P(it.pid)){
     var dk = dayOf(it.pid); if(dk) cur = dk;
-    tab = dk ? "day" : "wish"; renderAll(); cmWatch(); select(it.pid); if(hasLoc(P(it.pid))) centerOn(P(it.pid)); openJPop(it.pid, dk || "");
-    setTimeout(function(){ var c = $("cmList"); if(c) c.scrollIntoView({block:"center"}); }, 350);
+    tab = dk ? "day" : "wish"; renderAll(); cmWatch(); select(it.pid); if(hasLoc(P(it.pid))) centerOn(P(it.pid)); openJPop(it.pid, dk || "", it.ph && photosOf(it.pid).indexOf(it.ph) > -1 ? it.ph : null);
+    setTimeout(function(){ var c = $(it.ph ? "pvCm" : "cmList"); if(c) c.scrollIntoView({block:"center"}); }, 350);
     return;
   }
   if(it.type==="join"){ tab = "trip"; }
@@ -3661,8 +3695,14 @@ function renderJPop(){
   var p = P(jp.pid), J = (T().journal||{})[jp.dk] || {}, isHl = J.hl===p.n, ph = photosOf(jp.pid), D = dayByKey(jp.dk);
   var h = "<div class=\"ag-card jp\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+esc(p.n)+"\" data-id=\""+jp.pid+"\"><button type=\"button\" class=\"ag-x\" data-act=\"jclose\" aria-label=\"Schließen\">×</button>";
   if(jp.view){
-    h += "<div class=\"jp-view\"><img data-ph=\""+jp.view+"\" alt=\"Foto\"><div class=\"ag-acts\"><button type=\"button\" data-act=\"phback\">‹ Zurück</button><button type=\"button\" class=\"warn\" data-act=\"phdel\" data-ph=\""+jp.view+"\">Foto löschen</button></div></div></div>";
-    el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el); return;
+    if(ph.indexOf(jp.view) < 0) ph = [jp.view];
+    var vi = ph.indexOf(jp.view);
+    h += "<div class=\"jp-view\"><div class=\"pv-top\"><button type=\"button\" class=\"pv-back\" data-act=\"phback\">‹ "+esc(p.n)+"</button><span class=\"pv-n\" id=\"pvN\">"+(ph.length > 1 ? (vi+1)+" / "+ph.length : "")+"</span></div>"+
+         "<div class=\"pv-wrap\"><div class=\"pv-track\" id=\"pvTrack\">"+ph.map(function(x){ return "<div class=\"pv-slide\" data-v=\""+x+"\"><img data-ph=\""+x+"\" alt=\"Foto\" draggable=\"false\"></div>"; }).join("")+"</div>"+
+         (ph.length > 1 ? "<button type=\"button\" class=\"pv-arr l\" data-act=\"phstep\" data-v=\"-1\" aria-label=\"Vorheriges Foto\">‹</button><button type=\"button\" class=\"pv-arr r\" data-act=\"phstep\" data-v=\"1\" aria-label=\"Nächstes Foto\">›</button>" : "")+"</div>"+
+         (ph.length > 1 ? "<div class=\"pv-dots\" id=\"pvDots\">"+ph.map(function(x, i){ return "<i"+(i===vi?" class=\"on\"":"")+"></i>"; }).join("")+"</div>" : "")+
+         "<div id=\"pvMeta\">"+phMetaHTML(jp.view)+"</div></div></div>";
+    el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el); pvInit(vi); return;
   }
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
   h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
@@ -3701,6 +3741,58 @@ function dayChip(pid){
   var inner = "<span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><span>"+esc(D.lbl)+(timeOf(pid) ? " · "+esc(timeOf(pid)) : "")+"</span>";
   if(isRO()) return "<span class=\"jp-day\">"+inner+"</span>";
   return "<button type=\"button\" class=\"jp-day\" data-act=\"movepop\" data-pid=\""+pid+"\" aria-haspopup=\"dialog\" aria-label=\"Tag "+D.n+", "+esc(D.lbl)+" – anderem Tag zuordnen\">"+inner+cal+"</button>";
+}
+/* ---------- Foto-Ansicht: wischen, liken, kommentieren (Kommentare mit pid "ph:<Foto>", Likes "lk:<Foto>") ---------- */
+function phSocial(){ return !!(acct.user && fbDb && KNOWN[S.cur] && META[S.cur] && ((META[S.cur].members||[]).length > 1 || (META[S.cur].viewers||[]).length)); }
+function phLikes(ph){ return (CMTS["lk:"+ph] || []).filter(function(c, i, a){ return a.findIndex(function(y){ return y.by===c.by; })===i; }); }
+function phWho(c){ var f = FR.friends.filter(function(x){ return x.uid===c.by; })[0]; return f && f.name ? "@"+f.name : (c.email||"").split("@")[0] || "Jemand"; }
+function phMetaHTML(ph){
+  var h = "";
+  if(phSocial()){
+    var L = phLikes(ph), mine = L.some(function(c){ return c.by===acct.user.uid; }), others = L.filter(function(c){ return c.by!==acct.user.uid; });
+    var who = mine ? (others.length ? "dir und "+(others.length===1 ? phWho(others[0]) : others.length+" anderen") : "dir") : others.length===1 ? phWho(others[0]) : others.length ? others.length+" Personen" : "";
+    h += "<div class=\"pv-acts\"><button type=\"button\" class=\"pv-like"+(mine?" on":"")+"\" data-act=\"phlike\" data-ph=\""+ph+"\" aria-pressed=\""+mine+"\" aria-label=\""+(mine?"Gefällt mir nicht mehr":"Gefällt mir")+"\"><svg viewBox=\"0 0 20 20\" aria-hidden=\"true\"><path d=\"M10 17s-6.5-4-6.5-8.6A3.6 3.6 0 0 1 10 6.3a3.6 3.6 0 0 1 6.5 2.1C16.5 13 10 17 10 17z\"/></svg><span>"+(L.length || "")+"</span></button>"+
+         "<span class=\"pv-who\">"+(who ? "Gefällt "+esc(who) : "")+"</span>"+
+         "<button type=\"button\" class=\"pv-del\" data-act=\"phdel\" data-ph=\""+ph+"\">Löschen</button></div>";
+    var C = CMTS["ph:"+ph] || [];
+    h += "<div class=\"jp-lbl\">Kommentare"+(C.length ? " · "+C.length : "")+"</div><div id=\"pvCm\" class=\"cmlist\">"+(C.length ? cmListHTML("ph:"+ph) : "<p class=\"note\">Noch keine Kommentare zu diesem Foto.</p>")+"</div>"+
+         "<form class=\"gnew\" id=\"phcForm\"><input type=\"text\" id=\"phcIn\" maxlength=\"1000\" placeholder=\"Zu diesem Foto kommentieren …\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form>";
+  } else {
+    h += "<div class=\"pv-acts\"><span class=\"pv-who\">"+(acct.user ? "Liken und Kommentieren geht in gemeinsamen Reisen." : "")+"</span><button type=\"button\" class=\"pv-del\" data-act=\"phdel\" data-ph=\""+ph+"\">Löschen</button></div>";
+  }
+  return h;
+}
+function phMetaRefresh(){
+  var m = $("pvMeta"); if(!m || !jp || !jp.view) return;
+  var ae = document.activeElement, typing = ae && ae.id==="phcIn", val = typing ? ae.value : "";
+  if(typing){ var a = $("pvCm"); if(a){ var tmp = document.createElement("div"); tmp.innerHTML = phMetaHTML(jp.view); var nc = tmp.querySelector("#pvCm"), na = tmp.querySelector(".pv-acts"); if(nc) a.innerHTML = nc.innerHTML; var oa = m.querySelector(".pv-acts"); if(oa && na) oa.innerHTML = na.innerHTML; } return; }
+  m.innerHTML = phMetaHTML(jp.view);
+}
+function pvInit(vi){
+  var tr = $("pvTrack"); if(!tr) return;
+  tr.scrollLeft = vi * tr.clientWidth;
+  var tmr = 0;
+  tr.addEventListener("scroll", function(){
+    clearTimeout(tmr);
+    tmr = setTimeout(function(){
+      var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)), sl = tr.children[i]; if(!sl || !jp) return;
+      var v = sl.getAttribute("data-v"); if(v===jp.view) return;
+      jp.view = v; var n = tr.children.length;
+      var pn = $("pvN"); if(pn) pn.textContent = (i+1)+" / "+n;
+      var d = $("pvDots"); if(d) Array.prototype.forEach.call(d.children, function(x, j){ x.classList.toggle("on", j===i); });
+      if(document.activeElement && document.activeElement.id==="phcIn") document.activeElement.blur();
+      phMetaRefresh();
+    }, 90);
+  }, {passive:true});
+}
+function phStep(dir){ var tr = $("pvTrack"); if(!tr) return; var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)) + dir; if(i < 0 || i >= tr.children.length) return; tr.scrollTo({left:i*tr.clientWidth, behavior:"smooth"}); }
+function phLike(ph){
+  if(!phSocial()) return;
+  var me = acct.user.uid, ref = tripRef(S.cur).collection("comments").doc("lk_"+ph+"_"+me), mine = phLikes(ph).some(function(c){ return c.by===me; });
+  var L = CMTS["lk:"+ph] = (CMTS["lk:"+ph] || []).filter(function(c){ return c.by!==me; });
+  if(!mine) L.push({id:"lk_"+ph+"_"+me, by:me, email:myMail(), at:Date.now(), text:"❤"});
+  phMetaRefresh();
+  (mine ? ref.delete() : ref.set({pid:"lk:"+ph, text:"❤", by:me, email:myMail(), at:Date.now()})).catch(function(e){ toast("Gefällt mir nicht gespeichert: "+(e && e.message), false); });
 }
 function closeJPop(){ jp = null; $("jPop").hidden = true; document.body.classList.remove("glass"); renderSheet(); }
 
@@ -4524,7 +4616,10 @@ document.addEventListener("click", function(e){
     case "phretry": phRetry(); phFlush(); break;
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
     case "phback": jp.view = null; renderJPop(); break;
-    case "phdel": delPhoto(jp.pid, t.getAttribute("data-ph")); jp.view = null; renderJPop(); break;
+    case "phstep": phStep(+t.getAttribute("data-v")); break;
+    case "phlike": phLike(t.getAttribute("data-ph")); break;
+    case "phdel": var dph = t.getAttribute("data-ph"), rest = photosOf(jp.pid).filter(function(x){ return x!==dph; }), di = photosOf(jp.pid).indexOf(dph);
+      delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
     case "rate": var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); break;
     case "acsignup": openSignup(); break;
@@ -4696,6 +4791,12 @@ document.addEventListener("submit", function(e){
     var im = ($("invMail").value||"").trim().toLowerCase(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(im)){ toast("Bitte eine gültige E-Mail eingeben", false); return; }
     if(im===myMail()){ toast("Das bist du selbst", false); return; }
     tripRef(S.cur).update(invUpd(im)).then(function(){ invLocal(im); toast("Einladung an "+im+" gesendet", false); renderSheet(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); });
+    return;
+  }
+  if(id==="phcForm"){
+    var pt = ($("phcIn").value||"").trim(); if(!pt || !jp || !jp.view) return;
+    $("phcIn").value = "";
+    tripRef(S.cur).collection("comments").add({pid:"ph:"+jp.view, text:pt.slice(0,1000), by:acct.user.uid, email:myMail(), at:Date.now()}).catch(function(e2){ toast("Kommentar nicht gespeichert: "+(e2 && e2.message), false); });
     return;
   }
   if(id==="cmForm"){
