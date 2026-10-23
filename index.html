@@ -1390,6 +1390,27 @@ body.ro label:has(#lRoute){display:none}
 .ratelist button i{width:12px;height:12px;border-radius:50%;background:var(--rc);flex:0 0 12px}
 .ratelist button b{margin-left:auto;color:var(--rc)}
 .ratelist .rate-clear span{color:var(--muted)}
+/* eine Aktionszeile im Ort-Fenster */
+.ag-card.jp .jp-row{display:flex;align-items:center;gap:4px;margin:12px 0 2px;min-width:0}
+.ag-card.jp .jp-row .jp-day{flex:0 0 auto;min-width:0;height:32px;padding:0 8px 0 5px;gap:5px;border-radius:10px;white-space:nowrap;margin:0}
+.ag-card.jp .jp-row .jp-day > svg{display:none}
+.ag-card.jp .jp-row .jp-day .b{width:21px;height:21px;flex:0 0 21px}
+.jq{position:relative;flex:0 0 32px;height:32px;min-width:32px;display:grid;place-items:center;border:0;border-radius:10px;padding:0;background:var(--fill);color:var(--ink);font:600 13px/1 var(--f-body);text-decoration:none;cursor:pointer}
+.jq svg{width:17px;height:17px}
+.jq.ok{background:var(--ok);color:#fff}
+.jq-t{flex:0 0 auto;padding:0 7px;font-variant-numeric:tabular-nums}
+.jq-t:not(.on){width:32px;padding:0}
+.jq-t input{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:0;font-size:16px}
+.jq-r.set{color:var(--rc);background:color-mix(in srgb,var(--rc) 18%,transparent)}
+.jq-r.hl{box-shadow:inset 0 0 0 2px #C9A227}
+.jq.pv{background:var(--ink);color:var(--sheet)}
+.jq.pv .lk{margin:0;width:16px;height:16px;color:var(--sheet)}
+.jq.grp::after{content:"";position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.ag-card.jp .jp-row > .jq:last-child{margin-left:auto}
+.ratelist .mi{width:20px;display:grid;place-items:center;color:var(--muted)}
+.ratelist .mi .lk{margin:0;width:16px;height:16px}
+.ratelist .hlst{color:#C9A227;font-size:16px}
+.ratelist .rate-hl{border-bottom:.5px solid var(--sep)}
 li.st .no.hs{background:var(--ink) !important;color:var(--sheet) !important;border-radius:9px}
 .ht.me .h{border-radius:50%;font-size:11px}
 .ht b{font-weight:600}
@@ -4592,8 +4613,18 @@ var jOpen = lsGet("nyc-j-open")!=="0";
 /* Bewertung besuchter Orte */
 var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#5E9970"],[3,"Nice","#007AFF"],[4,"Okay","#6b7785"],[5,"Overrated","#FF3B30"]];
 function rateOf(id){ return ((T().rating||{})[id]) || 0; }
+function openJpMore(id){
+  var p = P(id); if(!p) return; var g = grpName(p.g), pv = isPrivP(id);
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mehr\" data-id=\""+id+"\"><div class=\"pop-head\"><h4>"+esc(p.n)+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list ratelist\">"+
+    "<button type=\"button\" data-act=\"grppick\"><span class=\"mi\">▦</span><span>"+(g ? "Gruppe: "+esc(g) : "Zu Gruppe hinzufügen")+"</span></button>"+
+    (canPriv() ? "<button type=\"button\" data-act=\"privp\" aria-pressed=\""+pv+"\"><span class=\"mi\">"+ILOCK+"</span><span>"+(pv ? "Privat – für alle sichtbar machen" : "Als privat markieren")+"</span>"+(pv ? "<b>✓</b>" : "")+"</button>" : "")+
+    "</div><p class=\"note\" style=\"margin:8px 2px 0\">Private Orte sehen nur Mitreisende, keine Beobachter.</p></div>";
+  $("catPop").innerHTML = h; $("catPop").hidden = false;
+}
 function openRatePick(id){
-  var v = rateOf(id), h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Bewertung\" data-id=\""+id+"\"><div class=\"pop-head\"><h4>Wie war's?</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list ratelist\">";
+  var v = rateOf(id), J = (T().journal||{})[jp && jp.dk] || {}, hl = !!(P(id) && J.hl===P(id).n);
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Bewertung\" data-id=\""+id+"\"><div class=\"pop-head\"><h4>Wie war's?</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list ratelist\">"+
+    "<button type=\"button\" data-act=\"jphl\" aria-pressed=\""+hl+"\" class=\"rate-hl\"><span class=\"mi hlst\">★</span><span>Highlight des Tages</span>"+(hl ? "<b>✓</b>" : "")+"</button>";
   RATES.forEach(function(r){ h += "<button type=\"button\" data-act=\"rate\" data-v=\""+r[0]+"\" aria-pressed=\""+(v===r[0])+"\" style=\"--rc:"+r[2]+"\"><i></i><span>"+r[1]+"</span>"+(v===r[0] ? "<b>✓</b>" : "")+"</button>"; });
   if(v) h += "<button type=\"button\" data-act=\"rate\" data-v=\""+v+"\" class=\"rate-clear\"><span>Bewertung entfernen</span></button>";
   $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
@@ -4653,18 +4684,18 @@ function renderJPop(){
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
   h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
-  var timeChip = !planned ? "" : isRO() ? (tm ? "<span class=\"jp-grp jp-time on\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+"<span>"+esc(tm)+"</span></span>" : "")
-    : "<label class=\"jp-grp jp-time"+(tm?" on":"")+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+(tm ? "<span>"+esc(tm)+"</span>" : "")+"<input type=\"time\" data-act=\"time\" value=\""+esc(tm)+"\" aria-label=\"Uhrzeit\"></label>";
-  h += "<div class=\"jp-chips\">"+dayChip(jp.pid, planned)+timeChip+
-       "<button type=\"button\" class=\"jp-grp jp-g"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\" aria-label=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"\" title=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"\">▦"+(grpName(p.g) ? " "+esc(grpName(p.g)) : "")+"</button>"+
-       (canPriv() ? "<button type=\"button\" class=\"jp-grp jp-priv"+(isPrivP(jp.pid)?" on":"")+"\" data-act=\"privp\" aria-pressed=\""+isPrivP(jp.pid)+"\" aria-label=\""+(isPrivP(jp.pid) ? "Privat – wieder für alle sichtbar machen" : "Als privat markieren")+"\" title=\"Private Orte sehen nur Mitreisende, keine Beobachter\">"+ILOCK+"</button>" : "")+"</div>";
-  h += "<div class=\"jp-tiles\">";
-  if(planned) h += "<button type=\"button\" class=\"jp-tile ic"+(dn?" on":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\" aria-label=\""+(dn ? "Erledigt – wieder öffnen" : "Abhaken")+"\" title=\""+(dn ? "Erledigt" : "Abhaken")+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"</button>";
-  if(dn) h += "<button type=\"button\" class=\"jp-tile ic jp-hl"+(isHl?" hl":"")+"\" data-act=\"jphl\" aria-pressed=\""+isHl+"\" aria-label=\""+(isHl ? "Highlight des Tages – entfernen" : "Als Highlight des Tages markieren")+"\" title=\"Highlight des Tages\">★</button>";
-  if(dn){ var rv0 = rateOf(jp.pid), rr = RATES.filter(function(r){ return r[0]===rv0; })[0];
-    h += "<button type=\"button\" class=\"jp-tile jp-rate"+(rr?" set":"")+"\""+(rr ? " style=\"--rc:"+rr[2]+"\"" : "")+(isRO() ? " disabled" : " data-act=\"ratepick\"")+" aria-haspopup=\"dialog\">"+I("<path d=\"M10 3.2l2 4.2 4.6.6-3.4 3.2.9 4.5L10 13.5l-4.1 2.2.9-4.5L3.4 8l4.6-.6z\"/>")+"<span>"+(rr ? rr[1] : "Bewerten")+"</span></button>"; }
-  if(!isRO() && (hasLoc(p) || p.addr)) h += "<button type=\"button\" class=\"jp-tile"+(dn?" ic":"")+"\" data-act=\"go\" aria-label=\"Route\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+(dn ? "" : "<span>Route</span>")+"</button>";
-  h += "<a class=\"jp-tile ic\" target=\"_blank\" rel=\"noopener\" aria-label=\"Infos in Google Maps\" title=\"Infos in Google Maps\" href=\""+gmInfoUrl(p)+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 9.2v4.6\"/><circle cx=\"10\" cy=\"6.4\" r=\".6\" fill=\"currentColor\"/>")+"</a>";
+  // eine Zeile: Tag · Uhrzeit · Abhaken · Bewertung · Route · Infos · Mehr (Gruppe, Privat)
+  var rv0 = rateOf(jp.pid), rr = RATES.filter(function(r){ return r[0]===rv0; })[0], pv0 = canPriv() && isPrivP(jp.pid);
+  h += "<div class=\"jp-row\">"+dayChip(jp.pid, planned, true);
+  if(planned) h += isRO() ? (tm ? "<span class=\"jq jq-t on\">"+esc(tm)+"</span>" : "")
+    : "<label class=\"jq jq-t"+(tm?" on":"")+"\" title=\"Uhrzeit\">"+(tm ? esc(tm) : I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>"))+"<input type=\"time\" data-act=\"time\" value=\""+esc(tm)+"\" aria-label=\"Uhrzeit\"></label>";
+  if(planned) h += "<button type=\"button\" class=\"jq"+(dn?" ok":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\" aria-label=\""+(dn ? "Erledigt – wieder öffnen" : "Abhaken")+"\" title=\""+(dn ? "Erledigt" : "Abhaken")+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"</button>";
+  if(dn) h += "<button type=\"button\" class=\"jq jq-r"+(rr?" set":"")+(isHl?" hl":"")+"\""+(rr ? " style=\"--rc:"+rr[2]+"\"" : "")+(isRO() ? " disabled" : " data-act=\"ratepick\"")+" aria-haspopup=\"dialog\" aria-label=\"Bewertung"+(rr ? ": "+rr[1] : "")+(isHl ? ", Highlight des Tages" : "")+"\" title=\""+(rr ? rr[1] : "Bewerten")+(isHl ? " · Highlight" : "")+"\">"+
+       "<svg viewBox=\"0 0 20 20\" fill=\""+(rr ? "currentColor" : "none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 3.2l2 4.2 4.6.6-3.4 3.2.9 4.5L10 13.5l-4.1 2.2.9-4.5L3.4 8l4.6-.6z\"/></svg></button>";
+  if(!isRO() && (hasLoc(p) || p.addr)) h += "<button type=\"button\" class=\"jq\" data-act=\"go\" aria-label=\"Route\" title=\"Route\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+"</button>";
+  h += "<a class=\"jq\" target=\"_blank\" rel=\"noopener\" aria-label=\"Infos in Google Maps\" title=\"Infos in Google Maps\" href=\""+gmInfoUrl(p)+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 9.2v4.6\"/><circle cx=\"10\" cy=\"6.4\" r=\".6\" fill=\"currentColor\"/>")+"</a>";
+  if(!isRO()) h += "<button type=\"button\" class=\"jq"+(pv0?" pv":"")+(grpName(p.g)?" grp":"")+"\" data-act=\"jpmore\" aria-haspopup=\"dialog\" aria-label=\"Mehr: Gruppe"+(canPriv() ? ", Privat" : "")+"\" title=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Gruppe")+(pv0 ? " · privat" : "")+"\">"+
+       (pv0 ? ILOCK : I("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>"))+"</button>";
   h += "</div>";
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : "<button type=\"button\" class=\"jp-pv"+(isPrivN(jp.pid)?" on":"")+"\" data-act=\"privn\" aria-pressed=\""+isPrivN(jp.pid)+"\">"+ILOCK+(isPrivN(jp.pid) ? "privat" : "öffentlich")+"</button>") : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+jp.pid+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
   var qn = (function(){ var q = phQueue(); return ph.filter(function(x){ return q.up.indexOf(x) > -1; }).length; })();
@@ -4680,11 +4711,11 @@ function renderJPop(){
   el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el);
 }
 /* Tag-Chip: zeigt den zugeordneten Tag; Antippen ordnet den Punkt einem anderen Tag zu */
-function dayChip(pid, noTime){
+function dayChip(pid, noTime, short){
   var k = dayOf(pid), D = k && dayByKey(k);
   var cal = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 6l4 4 4-4\"/></svg>";
   if(!D) return isRO() ? "" : "<button type=\"button\" class=\"jp-day none\" data-act=\"revisit\" data-pid=\""+pid+"\" aria-haspopup=\"dialog\">Keinem Tag zugeordnet"+cal+"</button>";
-  var inner = "<span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><span>"+esc(D.lbl)+(timeOf(pid) && !noTime ? " · "+esc(timeOf(pid)) : "")+"</span>";
+  var inner = "<span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><span>"+esc(short ? (D.lbl.split(" ")[1] || D.lbl) : D.lbl)+(timeOf(pid) && !noTime ? " · "+esc(timeOf(pid)) : "")+"</span>";
   if(isRO()) return "<span class=\"jp-day\">"+inner+"</span>";
   return "<button type=\"button\" class=\"jp-day\" data-act=\"movepop\" data-pid=\""+pid+"\" aria-haspopup=\"dialog\" aria-label=\"Tag "+D.n+", "+esc(D.lbl)+" – anderem Tag zuordnen\">"+inner+cal+"</button>";
 }
@@ -5909,11 +5940,11 @@ document.addEventListener("click", function(e){
     case "wview": var wv = t.getAttribute("data-v"); if(wv==="dist" && wView==="dist"){ wDistDir = wDistDir==="asc" ? "desc" : "asc"; lsSet("rp-wdir", wDistDir); } wView = wv; lsSet("rp-wview", wView); renderSheet(); break;
     case "jopen": openJPop(t.getAttribute("data-pid"), t.getAttribute("data-day")); break;
     case "jclose": closeJPop(); break;
-    case "jphl": var tj = T(); tj.journal = tj.journal || {}; var Jp = tj.journal[jp.dk] = tj.journal[jp.dk] || {}, pn = P(jp.pid).n; Jp.hl = Jp.hl===pn ? "" : pn; Jp.at = Date.now(); save(); renderJPop(); break;
+    case "jphl": if(t.closest("#catPop")) closeCatPop(); var tj = T(); tj.journal = tj.journal || {}; var Jp = tj.journal[jp.dk] = tj.journal[jp.dk] || {}, pn = P(jp.pid).n; Jp.hl = Jp.hl===pn ? "" : pn; Jp.at = Date.now(); save(); renderJPop(); break;
     case "phretry": phRetry(); phFlush(); break;
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
     case "phback": jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
-    case "privp": togglePriv("p", rootPid(jp ? jp.pid : id)); if(jp) renderJPop(); renderSheet(); break;
+    case "privp": if(t.closest("#catPop")) closeCatPop(); togglePriv("p", rootPid(jp ? jp.pid : id)); if(jp) renderJPop(); renderSheet(); break;
     case "privn": togglePriv("n", jp.pid); renderJPop(); break;
     case "phpriv": togglePriv("ph", t.getAttribute("data-ph")); phMetaRefresh(); break;
     case "capedit": captPrompt([t.getAttribute("data-ph")], true); break;
@@ -5936,6 +5967,7 @@ document.addEventListener("click", function(e){
     case "phdel": var dph = t.getAttribute("data-ph"), rest = photosOf(jp.pid).filter(function(x){ return x!==dph; }), di = photosOf(jp.pid).indexOf(dph);
       delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
+    case "jpmore": openJpMore(jp ? jp.pid : id); break;
     case "ratepick": openRatePick(jp ? jp.pid : id); break;
     case "rate": if(t.closest("#catPop")) closeCatPop(); var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); break;
     case "acsignup": openSignup(); break;
