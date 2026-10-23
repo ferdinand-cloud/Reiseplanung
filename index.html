@@ -3788,6 +3788,14 @@ function centerOn(p, z){
   if(!hasLoc(p) || !map) return;
   map.easeTo({center:[p.lo, p.la], zoom: Math.max(map.getZoom(), z || zoomFor(3.2, p.la)), offset: visCenterOffset(), duration: reduceMotion?0:500});
 }
+// Punkt dort zeigen, wo ihn das geöffnete Fenster nicht verdeckt (über oder unter dem Fenster)
+function centerAround(p, z, card){
+  if(!hasLoc(p) || !map) return;
+  var mr = mapEl.getBoundingClientRect(), off = visCenterOffset();
+  if(card){ var r = card.getBoundingClientRect(), up = r.top - mr.top, down = mr.bottom - r.bottom;
+    if(Math.max(up, down) >= 70){ var y = up >= down ? mr.top + up/2 : r.bottom + down/2; off = [0, Math.round(y - (mr.top + mr.height/2))]; } }
+  map.easeTo({center:[p.lo, p.la], zoom: Math.max(map.getZoom(), z || 15), offset: off, duration: reduceMotion?0:500});
+}
 function resize(){ var r = mapEl.getBoundingClientRect(); W = r.width; H = r.height; applySheet(); if(map) map.resize(); placeFloating(); scheduleOverlay(); }
 $("zin").addEventListener("click", function(){ map.zoomIn(); });
 $("zout").addEventListener("click", function(){ map.zoomOut(); });
@@ -5941,7 +5949,7 @@ document.addEventListener("click", function(e){
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); tdraft.ok = ""; renderSheet(); break;
     case "tfopen": var tk2 = t.getAttribute("data-k"); tdraft.ok = tdraft.ok===tk2 ? "" : tk2; renderSheet(); break;
     case "close": select(null); break;
-    case "stopopen": select(id); centerOn(P(id)); openJPop(id, cur); break;
+    case "stopopen": select(id); openJPop(id, cur); centerAround(P(id), 15, $("jPop").querySelector(".ag-card")); break;
     case "wopen": select(id); if(hasLoc(P(id))) centerOn(P(id)); openJPop(id); break;
     case "jpedit": openJPop(t.getAttribute("data-pid") || sel); break;
     case "focus": select(id); centerOn(P(id)); if(!desktop.matches && sheetState==="full") setSheet("mid"); break;
@@ -5981,7 +5989,13 @@ document.addEventListener("click", function(e){
     case "wsort": var sv = t.getAttribute("data-v").split(":"); wView = sv[0]; if(sv[1]){ wDistDir = sv[1]; lsSet("rp-wdir", wDistDir); } lsSet("rp-wview", wView); closeCatPop(); renderSheet(); break;
     case "wreset": catFilter = {}; grpSel = ""; activeList = "open"; wishQuery = ""; nbSel = {}; applyNb(); renderSheet(); scheduleOverlay(); break;
     case "wview": var wv = t.getAttribute("data-v"); if(wv==="dist" && wView==="dist"){ wDistDir = wDistDir==="asc" ? "desc" : "asc"; lsSet("rp-wdir", wDistDir); } wView = wv; lsSet("rp-wview", wView); renderSheet(); break;
-    case "jopen": openJPop(t.getAttribute("data-pid"), t.getAttribute("data-day")); break;
+    case "jopen": var jop = t.getAttribute("data-pid"), jod = t.getAttribute("data-day");
+      // Karte zum Punkt bewegen (bei einem anderen Tag auch dessen Tagesroute zeigen)
+      if(jod && jod!==cur && dayByKey(jod)){ cur = jod; renderAll(); }
+      if(P(jop)) select(jop);
+      openJPop(jop, jod);
+      if(P(jop) && hasLoc(P(jop))) centerAround(P(jop), 16, $("jPop").querySelector(".ag-card"));
+      break;
     case "jclose": closeJPop(); break;
     case "jphl": if(t.closest("#catPop")) closeCatPop(); var tj = T(); tj.journal = tj.journal || {}; var Jp = tj.journal[jp.dk] = tj.journal[jp.dk] || {}, pn = P(jp.pid).n; Jp.hl = Jp.hl===pn ? "" : pn; Jp.at = Date.now(); save(); renderJPop(); break;
     case "phretry": phRetry(); phFlush(); break;
