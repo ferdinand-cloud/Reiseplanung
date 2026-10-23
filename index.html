@@ -2818,7 +2818,7 @@ function renderWish(){
 var grpSel = "", wView = lsGet("rp-wview")==="grp" ? "grp" : "cat";
 function groups(){ var g = T().groups || {}; return Object.keys(g).map(function(k){ return {id:k, n:g[k].n}; }).sort(function(a, b){ return a.n.localeCompare(b.n, "de"); }); }
 function grpName(gid){ var g = (T().groups||{})[gid]; return g ? g.n : ""; }
-function grpOk(p){ return !grpSel || (grpSel==="none" ? !grpName(p.g) : p.g===grpSel); }
+function grpOk(p){ if(grpSel && grpSel!=="none" && !grpName(grpSel)) grpSel = ""; return !grpSel || (grpSel==="none" ? !grpName(p.g) : p.g===grpSel); }
 var grpTarget = null, grpEdit = null;
 function openGrpPop(pid){
   grpTarget = pid || null;
@@ -3297,7 +3297,7 @@ document.addEventListener("click", function(e){
     case "daypick": closeCatPop(); cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "day": cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "gotoday": cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
-    case "trip": closeSettings(); S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
+    case "trip": closeSettings(); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); break;
     case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; if(sheetState!=="full") setSheet(desktop.matches?"mid":"full"); renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
     case "tcancel": tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
