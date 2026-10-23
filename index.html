@@ -303,6 +303,17 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+.jp-plan{display:flex;align-items:flex-end;gap:10px;margin-top:12px}
+.jp-time{display:grid;gap:3px;flex:1}
+.jp-time span{font-size:12px;font-weight:600;color:var(--muted)}
+.jp-time input{border:1px solid var(--line);border-radius:10px;background:transparent;color:inherit;font:inherit;font-size:16px;padding:7px 10px;min-height:40px}
+.jp-done{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:9px 14px;font-weight:600;font-size:14px}
+.jp-done i{width:16px;height:16px;border:1.8px solid currentColor;border-radius:4px;display:grid;place-items:center;font:700 11px/1 var(--f-body);font-style:normal}
+.jp-done.on{background:#1e8e3e;border-color:#1e8e3e;color:#fff}
+.jp-done.on i{background:#fff;color:#1e8e3e;border-color:#fff}
+.jp-links{display:flex;gap:16px;margin-top:10px}
+.stime{color:var(--ink);font-variant-numeric:tabular-nums}
+.jmark{color:var(--ink);opacity:.7}
 #tabWish small.filt{color:#7c5cff}
 #tabWish small.filt i{font-style:normal;opacity:.6;font-weight:500}
 .srlbl{margin:14px 2px 4px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -3239,11 +3250,10 @@ function renderDay(){
     var opts = days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===cur?" selected":"")+">"+d.lbl+"</option>"; }).join("");
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\">"+
       "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"done\" style=\"background:"+dayColor(D)+"\" aria-label=\"Erledigt umschalten\">"+(T().done[id]?"✓":n)+"</button>"+
-      "<div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"focus\">"+esc(p.n)+"</button><div class=\"sub\">"+esc(CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+"</div>"+
+      "<div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\">"+esc(p.n)+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?"✎":"")+(photosOf(id).length?" ▣ "+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(hasLoc(p)||p.addr?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
       "<button type=\"button\" data-act=\"unplan\">"+(p.of ? "Entfernen" : "Wunschliste")+"</button>"+
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/></svg><select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
-      "<input type=\"time\" data-act=\"time\" value=\""+esc(timeOf(id))+"\" aria-label=\"Uhrzeit\">"+
       "<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button></li>";
   });
   var lastL = LG[LG.length-1]; if(shown && HT && lastL && lastL[1]===HT) h += legLi(lastL[0], HT, LG.length-1);
@@ -3304,6 +3314,12 @@ function renderJPop(){
     el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el); return;
   }
   h += "<div class=\"ag-head\">"+badge(p.c,"width:44px;height:44px")+"<div><b>"+esc(p.n)+"</b><span class=\"ag-st\">"+(D?esc(D.lbl):"")+(timeOf(jp.pid)?" · "+timeOf(jp.pid):"")+(p.addr?" · "+esc(p.addr):"")+"</span></div></div>";
+  if(dayOf(jp.pid)){
+    var dn = !!T().done[jp.pid];
+    h += "<div class=\"jp-plan\"><label class=\"jp-time\"><span>Uhrzeit</span><input type=\"time\" data-act=\"time\" value=\""+esc(timeOf(jp.pid))+"\"></label>"+
+      "<button type=\"button\" class=\"jp-done"+(dn?" on":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\"><i>"+(dn?"✓":"")+"</i>"+(dn?"Erledigt":"Abhaken")+"</button></div>"+
+      "<div class=\"jp-links\">"+(hasLoc(p)||p.addr ? "<button type=\"button\" class=\"tf-link\" data-act=\"go\">Route starten</button>" : "")+"<a class=\"tf-link\" target=\"_blank\" rel=\"noopener\" href=\""+gmInfoUrl(p)+"\">Infos in Google Maps</a></div>";
+  }
   h += "<div class=\"ag-lbl\">Bewertung</div>"+rateRow(jp.pid);
   h += "<button type=\"button\" class=\"jp-hl"+(isHl?" on":"")+"\" data-act=\"jphl\" aria-pressed=\""+isHl+"\">★ "+(isHl?"Highlight des Tages":"Als Highlight des Tages markieren")+"</button>";
   h += "<div class=\"ag-lbl\">Notizen</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+jp.pid+"\" rows=\"5\" maxlength=\"5000\" placeholder=\"Was hast du hier erlebt? Was war besonders?\">"+esc(noteOf(jp.pid))+"</textarea>";
@@ -4019,6 +4035,7 @@ document.addEventListener("click", function(e){
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); tdraft.ok = ""; renderSheet(); break;
     case "tfopen": var tk2 = t.getAttribute("data-k"); tdraft.ok = tdraft.ok===tk2 ? "" : tk2; renderSheet(); break;
     case "close": select(null); break;
+    case "stopopen": select(id); centerOn(P(id)); openJPop(id, cur); break;
     case "focus": select(id); centerOn(P(id)); if(!desktop.matches && sheetState==="full") setSheet("mid"); break;
     case "plan": plan(id, cur); sel = id; renderAll(); break;
     case "unplan": unplan(id); renderAll(); break;
@@ -4106,7 +4123,7 @@ document.addEventListener("click", function(e){
       else { var gk = dayOf(goSt.id); if(gk){ if(gk!==cur){ cur = gk; renderAll(); } var gi = -1; dayLegs(cur).forEach(function(lg, i){ if(lg[1] && lg[1].id===goSt.id) gi = i; }); if(gi>-1){ legSel = -1; var lb = document.querySelector("[data-act=legsel][data-leg=\""+gi+"\"]"); var gp = dayLegs(cur)[gi]; if(gp && legMode(gp[0], gp[1])!=="oepnv"){ setLegMode(gp[0], gp[1], "oepnv"); renderSheet(); lb = document.querySelector("[data-act=legsel][data-leg=\""+gi+"\"]"); } if(lb) lb.click(); } } }
       break;
     case "sugtoggle": sugOpen = !sugOpen; lsSet("nyc-sug-open", sugOpen?"1":"0"); renderSheet(); scheduleOverlay(); break;
-    case "done": if(T().done[id]) delete T().done[id]; else T().done[id] = true; save(); renderSheet(); if(sel===id) renderCard(); scheduleOverlay(); break;
+    case "done": if(T().done[id]) delete T().done[id]; else T().done[id] = true; save(); renderSheet(); if(sel===id) renderCard(); scheduleOverlay(); if(jp && jp.pid===id && !$("jPop").hidden) renderJPop(); break;
     case "list": activeList = t.getAttribute("data-list"); renderSheet(); scheduleOverlay(); break;
     case "lsub": var ln = t.getAttribute("data-line"); if(offSub[ln]) delete offSub[ln]; else offSub[ln] = 1; applyLines(); break;
     case "lsuball": offSub = {}; applyLines(); break;
@@ -4186,7 +4203,7 @@ document.addEventListener("change", function(e){
     T().order[cur] = ord(cur).filter(function(x){ return x!==id; });
     var p = P(id), idx = insertIdx(to, p);
     ord(to).splice(idx, 0, id); save(); toast(p.n+" verschoben auf "+dayByKey(to).lbl, false); renderAll();
-  } else if(act==="time"){ if(t.value){ T().times[id] = t.value; save(); } }
+  } else if(act==="time"){ if(t.value) T().times[id] = t.value; else delete T().times[id]; save(); renderSheet(); }
 });
 document.addEventListener("input", function(e){
   var t = e.target;
