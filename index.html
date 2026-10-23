@@ -1370,8 +1370,14 @@ body.ro label:has(#lRoute){display:none}
 .ag-card.jp .jp-tile svg{width:14px;height:14px;flex:0 0 14px}
 .ag-card.jp .jp-tile span{overflow:hidden;text-overflow:ellipsis}
 .ag-card.jp .jp-chips .jp-priv,.ag-card.jp .jp-chips .jp-hl{padding:5px 9px;display:inline-flex;align-items:center;gap:4px}
-.ag-card.jp .jp-chips .jp-hl{font-size:14px;line-height:1}
-.ag-card.jp .jp-chips .jp-hl.on{border-style:solid;border-color:#C9A227;background:#C9A227;color:#fff}
+.ag-card.jp .jp-tile.jp-hl{font-size:15px;line-height:1;margin:0;border:0;border-radius:10px;padding:0;color:var(--ink);font-weight:600;background:var(--fill)}
+.ag-card.jp .jp-tile.jp-hl.hl{background:#C9A227 !important;color:#fff !important;border:0 !important;box-shadow:none !important}
+.ag-card.jp .jp-time{position:relative;display:inline-flex;align-items:center;gap:5px;padding:5px 9px}
+.ag-card.jp .jp-time svg{width:14px;height:14px}
+.ag-card.jp .jp-time input{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:0;font-size:16px}
+.ag-card.jp .jp-time.on{border-style:solid;color:var(--ink) !important}
+.ag-card.jp .jp-time span{border:0 !important;padding:0;color:inherit !important;background:none !important;font:inherit}
+.ag-card.jp .jp-chips .jp-g{padding:5px 10px}
 .ag-card.jp .jp-tile.ic{flex:0 0 36px;padding:0}
 .ag-card.jp label.jp-tile.set{flex:0 0 auto;padding:0 8px}
 .ag-card.jp .jp-rate{flex:1 1 auto;min-width:0}
@@ -4647,19 +4653,18 @@ function renderJPop(){
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
   h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
-  h += "<div class=\"jp-chips\">"+dayChip(jp.pid, planned)+"<button type=\"button\" class=\"jp-grp"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\" title=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"\">▦ "+(grpName(p.g) ? esc(grpName(p.g)) : "Gruppe")+"</button>"+
-       (canPriv() ? "<button type=\"button\" class=\"jp-grp jp-priv"+(isPrivP(jp.pid)?" on":"")+"\" data-act=\"privp\" aria-pressed=\""+isPrivP(jp.pid)+"\" aria-label=\""+(isPrivP(jp.pid) ? "Privat – wieder für alle sichtbar machen" : "Als privat markieren")+"\" title=\"Private Orte sehen nur Mitreisende, keine Beobachter\">"+ILOCK+(isPrivP(jp.pid) ? "<span>Privat</span>" : "")+"</button>" : "")+
-       (dn ? "<button type=\"button\" class=\"jp-grp jp-hl"+(isHl?" on":"")+"\" data-act=\"jphl\" aria-pressed=\""+isHl+"\" aria-label=\""+(isHl ? "Highlight des Tages – entfernen" : "Als Highlight des Tages markieren")+"\" title=\"Highlight des Tages\">★</button>" : "")+"</div>";
+  var timeChip = !planned ? "" : isRO() ? (tm ? "<span class=\"jp-grp jp-time on\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+"<span>"+esc(tm)+"</span></span>" : "")
+    : "<label class=\"jp-grp jp-time"+(tm?" on":"")+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+(tm ? "<span>"+esc(tm)+"</span>" : "")+"<input type=\"time\" data-act=\"time\" value=\""+esc(tm)+"\" aria-label=\"Uhrzeit\"></label>";
+  h += "<div class=\"jp-chips\">"+dayChip(jp.pid, planned)+timeChip+
+       "<button type=\"button\" class=\"jp-grp jp-g"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\" aria-label=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"\" title=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"\">▦"+(grpName(p.g) ? " "+esc(grpName(p.g)) : "")+"</button>"+
+       (canPriv() ? "<button type=\"button\" class=\"jp-grp jp-priv"+(isPrivP(jp.pid)?" on":"")+"\" data-act=\"privp\" aria-pressed=\""+isPrivP(jp.pid)+"\" aria-label=\""+(isPrivP(jp.pid) ? "Privat – wieder für alle sichtbar machen" : "Als privat markieren")+"\" title=\"Private Orte sehen nur Mitreisende, keine Beobachter\">"+ILOCK+"</button>" : "")+"</div>";
   h += "<div class=\"jp-tiles\">";
-  if(planned){
-    h += "<button type=\"button\" class=\"jp-tile"+(dn?" on ic":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\" aria-label=\""+(dn ? "Erledigt – wieder öffnen" : "Abhaken")+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+(dn ? "" : "<span>Abhaken</span>")+"</button>";
-    if(isRO()){ if(tm) h += "<div class=\"jp-tile set\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+"<span>"+esc(tm)+"</span></div>"; } else
-    h += "<label class=\"jp-tile"+(tm?" set":"")+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+(tm ? "<span>"+esc(tm)+"</span>" : "")+"<input type=\"time\" data-act=\"time\" value=\""+esc(tm)+"\" aria-label=\"Uhrzeit\"></label>";
-  }
+  if(planned) h += "<button type=\"button\" class=\"jp-tile ic"+(dn?" on":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\" aria-label=\""+(dn ? "Erledigt – wieder öffnen" : "Abhaken")+"\" title=\""+(dn ? "Erledigt" : "Abhaken")+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"</button>";
+  if(dn) h += "<button type=\"button\" class=\"jp-tile ic jp-hl"+(isHl?" hl":"")+"\" data-act=\"jphl\" aria-pressed=\""+isHl+"\" aria-label=\""+(isHl ? "Highlight des Tages – entfernen" : "Als Highlight des Tages markieren")+"\" title=\"Highlight des Tages\">★</button>";
   if(dn){ var rv0 = rateOf(jp.pid), rr = RATES.filter(function(r){ return r[0]===rv0; })[0];
     h += "<button type=\"button\" class=\"jp-tile jp-rate"+(rr?" set":"")+"\""+(rr ? " style=\"--rc:"+rr[2]+"\"" : "")+(isRO() ? " disabled" : " data-act=\"ratepick\"")+" aria-haspopup=\"dialog\">"+I("<path d=\"M10 3.2l2 4.2 4.6.6-3.4 3.2.9 4.5L10 13.5l-4.1 2.2.9-4.5L3.4 8l4.6-.6z\"/>")+"<span>"+(rr ? rr[1] : "Bewerten")+"</span></button>"; }
   if(!isRO() && (hasLoc(p) || p.addr)) h += "<button type=\"button\" class=\"jp-tile"+(dn?" ic":"")+"\" data-act=\"go\" aria-label=\"Route\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+(dn ? "" : "<span>Route</span>")+"</button>";
-  h += "<a class=\"jp-tile"+(dn?" ic":"")+"\" target=\"_blank\" rel=\"noopener\" aria-label=\"Google Maps\" href=\""+gmInfoUrl(p)+"\">"+I("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+(dn ? "" : "<span>Maps</span>")+"</a>";
+  h += "<a class=\"jp-tile ic\" target=\"_blank\" rel=\"noopener\" aria-label=\"Infos in Google Maps\" title=\"Infos in Google Maps\" href=\""+gmInfoUrl(p)+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 9.2v4.6\"/><circle cx=\"10\" cy=\"6.4\" r=\".6\" fill=\"currentColor\"/>")+"</a>";
   h += "</div>";
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : "<button type=\"button\" class=\"jp-pv"+(isPrivN(jp.pid)?" on":"")+"\" data-act=\"privn\" aria-pressed=\""+isPrivN(jp.pid)+"\">"+ILOCK+(isPrivN(jp.pid) ? "privat" : "öffentlich")+"</button>") : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+jp.pid+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
   var qn = (function(){ var q = phQueue(); return ph.filter(function(x){ return q.up.indexOf(x) > -1; }).length; })();
