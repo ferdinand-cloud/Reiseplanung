@@ -1428,6 +1428,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 <button type="button" class="menubtn bell" id="bellBtn" data-act="bell" aria-label="Mitteilungen" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.2a5 5 0 0 1 10 0c0 3.6 1.4 5 1.9 5.6H3.1C3.6 13.2 5 11.8 5 8.2z"/><path d="M8.2 16.3a1.9 1.9 0 0 0 3.6 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
 <nav class="rail" id="rail" aria-label="Reisetage"></nav>
 <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
+<input type="file" id="libIn" accept="image/*" multiple hidden>
 <div class="ctrl" id="ctrl">
   <div class="cg cg-zoom"><button type="button" id="zin" aria-label="Hineinzoomen">+</button><button type="button" id="zout" aria-label="Herauszoomen">−</button></div>
   <div class="cg">
@@ -4504,23 +4505,31 @@ function camShot(){
   var inp = $("camIn"); try { inp.value = ""; } catch(e){}
   inp.click();
 }
+/* Foto(s) aus der Fotomediathek: ebenfalls als Fotospot am aktuellen Standort */
+function libPick(){
+  if(isViewerOf(S.cur)){ toast("Als Beobachter kannst du keine Fotos hinzufügen.", false); return; }
+  camLocate();
+  var inp = $("libIn"); try { inp.value = ""; } catch(e){}
+  inp.click();
+}
 /* eigener Fotospot am aktuellen Standort (heute im Plan als besucht) */
-function camTarget(loc){
+function camTarget(loc, lib){
   var t = T(); // Foto über das Plus: immer ein eigener Fotopunkt, nie an einen bestehenden Ort gehängt
   var tk = todayKey(), D = dayByKey(tk), pid = uid("w"), tm = new Date().toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
-  var p = {id:pid, k:"photo", n:"Fotospot", c:"sight", list:(t.lists && t.lists[0] || {}).id || null, note:"Foto aufgenommen um "+tm, addr:""};
+  var p = {id:pid, k:"photo", n:"Fotospot", c:"sight", list:(t.lists && t.lists[0] || {}).id || null, note:(lib ? "Foto hinzugefügt um " : "Foto aufgenommen um ")+tm, addr:""};
   if(loc){ p.la = +loc.la.toFixed(6); p.lo = +loc.lo.toFixed(6); var nb = nbOf(p); if(nb) p.n = "Fotospot "+nb; }
   t.places[pid] = p;
   if(D){ ord(tk).push(pid); t.done[pid] = true; t.times = t.times || {}; t.times[pid] = tm; }
   return {pid:pid, neu:true, day:D ? tk : ""};
 }
 document.addEventListener("change", function(e){
-  if(e.target.id!=="camIn" || !e.target.files || !e.target.files[0]) return;
-  var f = e.target.files[0]; CAMF.pending = f;
-  toast("Foto wird dem Ort zugeordnet …", false);
+  var lib = e.target.id==="libIn";
+  if((e.target.id!=="camIn" && !lib) || !e.target.files || !e.target.files[0]) return;
+  var fs = Array.prototype.slice.call(e.target.files), f = fs[0]; if(!lib) CAMF.pending = f;
+  toast((fs.length > 1 ? "Fotos werden" : "Foto wird")+" dem Ort zugeordnet …", false);
   camWhere().then(function(loc){
-    var tg = camTarget(loc), p = P(tg.pid);
-    return addPhotos(tg.pid, [f]).then(function(ids){
+    var tg = camTarget(loc, lib), p = P(tg.pid);
+    return addPhotos(tg.pid, lib ? fs : [f]).then(function(ids){
       if(!ids || !ids.length) return;
       var dk = dayOf(tg.pid); if(dk) cur = dk;
       tab = dk ? "day" : "wish"; renderAll(); select(tg.pid); if(hasLoc(p)) centerOn(p, 16);
@@ -4529,9 +4538,10 @@ document.addEventListener("change", function(e){
     });
   });
 });
-/* ---------- Plus: Foto aufnehmen oder Standort setzen ---------- */
+/* ---------- Plus: Foto aufnehmen, aus Mediathek oder Standort setzen ---------- */
 var locSt = null;
 var ICAM = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 6.5h3l1.5-2h5l1.5 2h3v9.5H3z\"/><circle cx=\"10\" cy=\"11\" r=\"3\"/></svg>";
+var ILIB = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"14\" height=\"12\" rx=\"2\"/><circle cx=\"7.5\" cy=\"8.5\" r=\"1.4\"/><path d=\"M3.5 14l4-4 3 3 2-2 4 4\"/></svg>";
 var IPIN = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/></svg>";
 function closeAddMenu(){ var m = $("addMenu"); if(m && !m.hidden){ m.hidden = true; locSt = null; } var b = $("camBtn"); if(b) b.setAttribute("aria-expanded", "false"); }
 function placeAddMenu(){
@@ -4543,6 +4553,7 @@ function openAddPop(){
   var m = $("addMenu"); if(!m.hidden){ closeAddMenu(); return; }
   locSt = null;
   m.innerHTML = "<button type=\"button\" data-act=\"camshot\"><span class=\"ai\">"+ICAM+"</span><span>Foto aufnehmen</span></button>"+
+    "<button type=\"button\" data-act=\"libpick\"><span class=\"ai\">"+ILIB+"</span><span>Foto aus Mediathek</span></button>"+
     "<button type=\"button\" data-act=\"locset\"><span class=\"ai\">"+IPIN+"</span><span>Standort setzen</span></button>";
   m.classList.remove("wide"); m.hidden = false; $("camBtn").setAttribute("aria-expanded", "true"); placeAddMenu();
 }
@@ -5347,6 +5358,7 @@ document.addEventListener("click", function(e){
     case "phmoveto": phMoveTo(t.getAttribute("data-v")); break;
     case "phsave": var sph = t.getAttribute("data-ph"); if(CAMF[sph]) CAMF[sph].saved = true; t.classList.remove("hot"); phSaveLib(sph); break;
     case "camshot": closeAddMenu(); closeCatPop(); camShot(); break;
+    case "libpick": closeAddMenu(); closeCatPop(); libPick(); break;
     case "addclose": closeAddMenu(); break;
     case "addpop": var wasOpen = !$("addMenu").hidden; closeMenus(); if(!wasOpen) openAddPop(); break;
     case "cardmore": moreDel = false; openCardMore(); break;
