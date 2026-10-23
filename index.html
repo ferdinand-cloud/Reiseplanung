@@ -1425,6 +1425,15 @@ body.ro label:has(#lRoute){display:none}
 .addmenu.jpmenu .ai{font-size:15px}
 .addmenu.jpmenu .ai .lk{margin:0;width:16px;height:16px;color:currentColor}
 .addmenu.jpmenu .ai.on{background:var(--ink);color:var(--sheet)}
+.addmenu.jpmenu > button > span:nth-child(2){flex:1}
+.addmenu.jpmenu .ck{margin-left:10px;color:var(--ink);font-weight:700}
+.addmenu.jpmenu .dot{width:12px;height:12px;border-radius:50%;background:var(--rc)}
+.addmenu.jpmenu .hlst{color:#C9A227;font-size:16px}
+.addmenu.jpmenu > button.sel{background:var(--fill)}
+.addmenu.jpmenu .rp-hl + .rp::before{display:none}
+.addmenu.jpmenu .rp-hl{margin-bottom:4px}
+.addmenu.jpmenu > button.rp,.addmenu.jpmenu > button.rp-hl{padding:7px 10px}
+.addmenu.jpmenu .rp .ai,.addmenu.jpmenu .rp-hl .ai{width:26px;height:26px;flex:0 0 26px}
 li.st .no.hs{background:var(--ink) !important;color:var(--sheet) !important;border-radius:9px}
 .ht.me .h{border-radius:50%;font-size:11px}
 .ht b{font-weight:600}
@@ -4637,26 +4646,28 @@ var jOpen = lsGet("nyc-j-open")!=="0";
 var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#5E9970"],[3,"Nice","#007AFF"],[4,"Okay","#6b7785"],[5,"Overrated","#FF3B30"]];
 function rateOf(id){ return ((T().rating||{})[id]) || 0; }
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore]")) return; closeJpMore(); }
-function openJpMore(id, btn){
-  if($("jpMenu")){ closeJpMore(); return; }
-  var p = P(id); if(!p) return; var g = grpName(p.g), pv = isPrivP(id);
-  var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id);
-  m.innerHTML = "<button type=\"button\" data-act=\"grppick\" role=\"menuitem\"><span class=\"ai\">▦</span><span>"+(g ? "Gruppe: "+esc(g) : "Zu Gruppe hinzufügen")+"</span></button>"+
-    (canPriv() ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : "");
-  document.body.appendChild(m);
-  var r = btn.getBoundingClientRect(), mh = m.offsetHeight, mw = m.offsetWidth;
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=ratepick]")) return; closeJpMore(); }
+function jpPopover(id, btn, html, kind){
+  var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
+  var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
+  m.innerHTML = html; document.body.appendChild(m);
+  var r = btn.getBoundingClientRect(), mh = m.offsetHeight, mw = m.offsetWidth, W = window.innerWidth;
   var top = r.bottom + 6; if(top + mh > window.innerHeight - 10) top = Math.max(10, r.top - mh - 6);
-  m.style.top = Math.round(top)+"px"; m.style.right = Math.max(10, Math.round(window.innerWidth - r.right))+"px"; m.style.transformOrigin = (top < r.top ? "bottom" : "top")+" right";
+  var left = kind==="more" ? r.right - mw : r.left + r.width/2 - mw/2; left = Math.max(10, Math.min(W - mw - 10, left));
+  m.style.top = Math.round(top)+"px"; m.style.left = Math.round(left)+"px"; m.style.right = "auto";
+  m.style.transformOrigin = (top < r.top ? "bottom " : "top ")+Math.round(r.left + r.width/2 - left)+"px";
   setTimeout(function(){ document.addEventListener("click", jpMoreOut, true); }, 0);
 }
-function openRatePick(id){
+function openJpMore(id, btn){
+  var p = P(id); if(!p) return; var g = grpName(p.g), pv = isPrivP(id);
+  jpPopover(id, btn, "<button type=\"button\" data-act=\"grppick\" role=\"menuitem\"><span class=\"ai\">▦</span><span>"+(g ? "Gruppe: "+esc(g) : "Zu Gruppe hinzufügen")+"</span></button>"+
+    (canPriv() ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : ""), "more");
+}
+function openRatePick(id, btn){
   var v = rateOf(id), J = (T().journal||{})[jp && jp.dk] || {}, hl = !!(P(id) && J.hl===P(id).n);
-  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Bewertung\" data-id=\""+id+"\"><div class=\"pop-head\"><h4>Wie war's?</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list ratelist\">"+
-    "<button type=\"button\" data-act=\"jphl\" aria-pressed=\""+hl+"\" class=\"rate-hl\"><span class=\"mi hlst\">★</span><span>Highlight des Tages</span>"+(hl ? "<b>✓</b>" : "")+"</button>";
-  RATES.forEach(function(r){ h += "<button type=\"button\" data-act=\"rate\" data-v=\""+r[0]+"\" aria-pressed=\""+(v===r[0])+"\" style=\"--rc:"+r[2]+"\"><i></i><span>"+r[1]+"</span>"+(v===r[0] ? "<b>✓</b>" : "")+"</button>"; });
-  if(v) h += "<button type=\"button\" data-act=\"rate\" data-v=\""+v+"\" class=\"rate-clear\"><span>Bewertung entfernen</span></button>";
-  $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
+  var h = "<button type=\"button\" data-act=\"jphl\" role=\"menuitemcheckbox\" aria-checked=\""+hl+"\" class=\"rp-hl"+(hl?" sel":"")+"\"><span class=\"ai hlst\">★</span><span>Highlight des Tages</span>"+(hl ? "<b class=\"ck\">✓</b>" : "")+"</button>";
+  RATES.forEach(function(r){ h += "<button type=\"button\" data-act=\"rate\" data-v=\""+r[0]+"\" role=\"menuitemradio\" aria-checked=\""+(v===r[0])+"\" class=\"rp"+(v===r[0]?" sel":"")+"\" style=\"--rc:"+r[2]+"\"><span class=\"ai\"><i class=\"dot\"></i></span><span>"+r[1]+"</span>"+(v===r[0] ? "<b class=\"ck\">✓</b>" : "")+"</button>"; });
+  jpPopover(id, btn, h, "rate");
 }
 function rateRow(id){
   var v = rateOf(id);
@@ -5998,7 +6009,7 @@ document.addEventListener("click", function(e){
       delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
     case "jpmore": openJpMore(jp ? jp.pid : id, t); break;
-    case "ratepick": openRatePick(jp ? jp.pid : id); break;
+    case "ratepick": openRatePick(jp ? jp.pid : id, t); break;
     case "rate": if(t.closest("#catPop")) closeCatPop(); var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); break;
     case "acsignup": openSignup(); break;
     case "suclose": closeSignup(); break;
