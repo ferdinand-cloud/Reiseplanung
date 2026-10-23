@@ -4276,9 +4276,10 @@ document.addEventListener("change", function(e){
     T().order[cur] = ord(cur).filter(function(x){ return x!==id; });
     var p = P(id), idx = insertIdx(to, p);
     ord(to).splice(idx, 0, id); save(); toast(p.n+" verschoben auf "+dayByKey(to).lbl, false); renderAll();
-  } else if(act==="time"){ if(t.value) T().times[id] = t.value; else delete T().times[id]; save(); renderSheet(); }
+  } else if(act==="time"){ if(t.value) T().times[id] = t.value; else delete T().times[id]; save(); renderSheet(); if(jp && jp.pid===id && !$("jPop").hidden) renderJPop(); }
 });
 document.addEventListener("input", function(e){
+  if(e.target && e.target.getAttribute && e.target.getAttribute("data-act")==="time" && e.target.closest("#jPop")){ var tsp = e.target.parentNode.querySelector("span"); if(tsp) tsp.textContent = e.target.value || "Uhrzeit"; e.target.parentNode.classList.toggle("set", !!e.target.value); }
   var t = e.target;
   if(t.hasAttribute && t.hasAttribute("data-f") && tdraft){ setPath(tdraft, t.getAttribute("data-f"), t.value); return; }
   if(t.hasAttribute && t.hasAttribute("data-j") && dayByKey(t.getAttribute("data-jd") || cur)){
