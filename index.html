@@ -1287,9 +1287,9 @@ li.st .sub{margin-top:1px}
 /* Hotel und Standort auf derselben Achse */
 .ht{padding:6px 0 6px 13px;gap:12px;min-height:44px}
 .ht .h{width:30px;height:30px;border-radius:9px;font:700 14px/1 var(--f-round)}
-.hsadd{display:flex;align-items:center;gap:10px;width:100%;margin:10px 0 2px;padding:10px 12px;border:0;border-radius:12px;background:var(--fill);color:var(--ink);font:600 15px/1.2 var(--f-body);text-align:left}
-.hsadd svg{width:20px;height:20px;flex:0 0 20px;padding:5px;box-sizing:content-box;border-radius:8px;background:var(--ink);color:var(--sheet)}
-.hsadd small{margin-left:auto;color:var(--muted);font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
+.hsbtn{display:inline-flex;align-items:center;gap:6px;margin-left:auto;border:0;border-radius:999px;padding:5px 11px 5px 6px;background:var(--fill);color:var(--ink);font:600 13px/1.2 var(--f-body);flex:0 0 auto;cursor:pointer}
+.hsbtn svg{width:14px;height:14px;padding:3px;border-radius:6px;background:var(--ink);color:var(--sheet)}
+.rhead .hsbtn + .rtog{margin-left:6px}
 li.st .no.hs{background:var(--ink) !important;color:var(--sheet) !important;border-radius:9px}
 .ht.me .h{border-radius:50%;font-size:11px}
 .ht b{font-weight:600}
@@ -4249,7 +4249,6 @@ function renderDay(){
   if(D.hint) meta.push(D.hint);
   var h = "<div class=\"dh\" data-act=\"daypop\" role=\"button\" tabindex=\"0\" aria-label=\"Tag wechseln\"><span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><div style=\"flex:1;min-width:0\"><h2>"+esc(D.title)+"<svg class=\"dhchev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></h2><p>"+esc(meta.join(" · "))+"</p>"+(ids.length?"<div class=\"dprog\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\""+ids.length+"\" aria-valuenow=\""+nDone+"\"><i style=\"width:"+Math.round(nDone/ids.length*100)+"%\"></i></div>":"")+"</div></div>";
 
-  if(D.hotel && !isRO()) h += "<button type=\"button\" class=\"hsadd\" data-act=\"hotelstopadd\">"+icon("hotel")+"<span>Zwischenstopp im Hotel</span><small>"+esc(D.hotel.n)+"</small></button>";
   if(isViewerOf(S.cur)) h += "<p class=\"note rolenote\">👁 Du beobachtest diese Reise – ansehen und kommentieren, aber nichts ändern.</p>";
   var sug = suggest(cur, 3);
   h += "<div class=\"sec\"><button type=\"button\" class=\"fold\" data-act=\"sugtoggle\" aria-expanded=\""+sugOpen+"\"><h4>"+(ids.length?"Passt zu diesem Tag":(HT?"Nah am Hotel":"Vorschläge"))+"</h4><span class=\"cnt\">"+sug.length+" Vorschläge</span>"+CHEV+"</button>";
@@ -4269,7 +4268,7 @@ function renderDay(){
   h += "</div>";
 
   var hn = HT ? esc(HT.n) : "";
-  h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>Route</h4><button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+routeAnyVisible()+"\" aria-label=\"Alle Etappen auf der Karte ein- oder ausblenden\">"+(routeAnyVisible()?EYE:EYEOFF)+"<span>Karte</span><span class=\"sw2\" aria-hidden=\"true\"></span></button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
+  h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>Route</h4>"+(HT && !isRO() ? "<button type=\"button\" class=\"hsbtn\" data-act=\"hotelstopadd\" title=\"Zwischenstopp im "+hn+"\">"+icon("hotel")+"Zwischenstopp</button>" : "")+"<button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+routeAnyVisible()+"\" aria-label=\"Alle Etappen auf der Karte ein- oder ausblenden\">"+(routeAnyVisible()?EYE:EYEOFF)+"<span>Karte</span><span class=\"sw2\" aria-hidden=\"true\"></span></button></div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
   var LG = dayLegs(cur);
   var legLi = function(a, b, i){
     var m = legMode(a, b);
