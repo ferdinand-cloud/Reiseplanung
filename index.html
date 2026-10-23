@@ -299,6 +299,8 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+#tabWish small.filt{color:#7c5cff}
+#tabWish small.filt i{font-style:normal;opacity:.6;font-weight:500}
 .srlbl{margin:14px 2px 4px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .srlist{list-style:none;margin:0;padding:0}
 .srlist li + li{border-top:1px solid var(--line)}
@@ -3746,9 +3748,14 @@ function renderWishPop(){
 }
 var sheetTab = "day";
 function closeTrip(){ if(tab!=="trip") return; tab = sheetTab; tdraft = null; renderSheet(); scheduleOverlay(); }
+function wishTab(){
+  var wAll = wishes().length, wPool = listPool().filter(function(p){ return !dayOf(p.id) && catOk(p.c) && nbMatch(p) && grpOk(p) && qMatch(p); }).length;
+  var wFilt = wPool!==wAll || activeList!=="open";
+  $("tabWish").innerHTML = "Wunschliste<small"+(wFilt?" class=\"filt\" title=\""+wPool+" von "+wAll+" (gefiltert)\"":"")+">"+wPool+(wFilt?"<i> / "+wAll+"</i>":"")+"</small>";
+}
 function renderSheet(){
 
-  $("tabWish").innerHTML = "Wunschliste<small>"+wishes().length+"</small>";
+  wishTab();
   if(sorting){ sheetPending = true; return; }
   if(tab==="day" || tab==="wish") sheetTab = tab;
   $("tabDay").setAttribute("aria-selected", sheetTab==="day");
@@ -4146,7 +4153,7 @@ document.addEventListener("input", function(e){
   if(t.id==="frQ"){ var fq = t.value; clearTimeout(frTimer); frTimer = setTimeout(function(){ frDoSearch(fq); }, 300); return; }
   if(t.hasAttribute && t.hasAttribute("data-note")){ var np = t.getAttribute("data-note"), tn = T(); tn.notes = tn.notes || {}; if(t.value) tn.notes[np] = t.value; else delete tn.notes[np]; clearTimeout(jTimer); jTimer = setTimeout(save, 400); return; }
   if(t.hasAttribute && t.hasAttribute("data-geo")){ var gp = t.getAttribute("data-geo"), gv = t.value; clearTimeout(geoTimer); geoTimer = setTimeout(function(){ geoSearch(gp, gv); }, 350); return; }
-  if(t.id==="wSearch"){ wishQuery = t.value; var wr = $("wishRes"); if(wr) wr.innerHTML = wishResults(); var sb = t.parentNode.querySelector("button"); if(!!wishQuery !== !!sb){ if(sb) sb.remove(); else t.insertAdjacentHTML("afterend","<button type=\"button\" data-act=\"sclear\" aria-label=\"Suche leeren\">×</button>"); } scheduleOverlay(); return; }
+  if(t.id==="wSearch"){ wishQuery = t.value; var wr = $("wishRes"); if(wr) wr.innerHTML = wishResults(); wishTab(); var sb = t.parentNode.querySelector("button"); if(!!wishQuery !== !!sb){ if(sb) sb.remove(); else t.insertAdjacentHTML("afterend","<button type=\"button\" data-act=\"sclear\" aria-label=\"Suche leeren\">×</button>"); } scheduleOverlay(); return; }
   if(t.id==="wName") draft.n = t.value;
   else if(t.id==="wLoc"){ draft.loc = t.value; scheduleOverlay(); }
   else if(t.id==="wNote") draft.note = t.value;
