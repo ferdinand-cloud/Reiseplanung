@@ -611,6 +611,23 @@ body.kb .pop{align-items:flex-end;padding-bottom:6px}
 .pv-like.on svg{fill:currentColor}
 .pv-like span:empty{display:none}
 .pv-who{font-size:13px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.addlist button{gap:14px;padding:10px 6px}
+.addlist .ai{width:40px;height:40px;flex:0 0 40px;border-radius:12px;display:grid;place-items:center;background:var(--chip);color:var(--ink)}
+.addlist .ai svg{width:22px;height:22px}
+.addlist .dt{display:grid;gap:2px;min-width:0}
+.addlist .dt b{font-size:15.5px}
+.addlist .dt small{font-size:12.5px;color:var(--muted);font-weight:500}
+.loc-st{display:flex;align-items:center;gap:8px;margin:2px 0 10px;font-size:13.5px;color:var(--muted)}
+.loc-st svg{width:18px;height:18px}
+.loc-st.ok{color:#1e8e3e;font-weight:600}
+.loc-st .spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--ink);animation:locspin .8s linear infinite}
+@keyframes locspin{to{transform:rotate(360deg)}}
+.loc-err{margin:2px 0 10px}
+.locform{display:grid;gap:10px}
+.locform label span{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.locform input,.locform textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;background:var(--chip);color:var(--ink);font:inherit;font-size:16px;padding:10px 12px;resize:vertical}
+.locform .btn{justify-content:center;padding:12px 14px;font-size:15px}
+.locform .btn[disabled]{opacity:.45}
 .pv-save{margin-left:auto;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:6px 11px 6px 9px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap}
 .pv-save svg{width:17px;height:17px}
 .pv-save.hot{background:#1a73e8;border-color:#1a73e8;color:#fff}
@@ -945,7 +962,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
   <svg id="ov" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
 </div>
 
-<div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="camBtn" data-act="camshot" aria-label="Foto aufnehmen" title="Foto aufnehmen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 6.5h3l1.5-2h5l1.5 2h3v9.5H3z"/><circle cx="10" cy="11" r="3"/></svg></button><button type="button" class="menubtn" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button></div>
+<div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="camBtn" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort" title="Hinzufügen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg></button><button type="button" class="menubtn" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button></div>
 <div class="tripmenu" id="tripMenu" hidden></div>
 <div class="tripmenu" id="mainMenu" hidden><button type="button" data-act="opentrips"><span>Reisen <b class="mbadge" id="invBadge" hidden></b></span><small>Private, gemeinsame Reisen, Anfragen</small></button><button type="button" data-act="openfriends"><span>Freunde <b class="mbadge" id="frBadge" hidden></b></span><small>Anfragen, Freunde suchen</small></button><button type="button" data-act="openacct"><span>Mein Konto</span><small>Anmeldung, Abgleich, Einstellungen</small></button></div>
 <button type="button" class="menubtn bell" id="bellBtn" data-act="bell" aria-label="Mitteilungen" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.2a5 5 0 0 1 10 0c0 3.6 1.4 5 1.9 5.6H3.1C3.6 13.2 5 11.8 5 8.2z"/><path d="M8.2 16.3a1.9 1.9 0 0 0 3.6 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
@@ -3932,6 +3949,55 @@ document.addEventListener("change", function(e){
     });
   });
 });
+/* ---------- Plus: Foto aufnehmen oder Standort setzen ---------- */
+var locSt = null;
+var ICAM = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 6.5h3l1.5-2h5l1.5 2h3v9.5H3z\"/><circle cx=\"10\" cy=\"11\" r=\"3\"/></svg>";
+var IPIN = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/></svg>";
+function openAddPop(){
+  if(isViewerOf(S.cur)){ toast("Als Beobachter kannst du nichts hinzufügen.", false); return; }
+  locSt = null;
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Hinzufügen\"><div class=\"pop-head\"><h4>Hinzufügen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list addlist\">"+
+    "<button type=\"button\" data-act=\"camshot\"><span class=\"ai\">"+ICAM+"</span><span class=\"dt\"><b>Foto aufnehmen</b><small>Wird dem Ort zugeordnet, an dem du gerade bist</small></span></button>"+
+    "<button type=\"button\" data-act=\"locset\"><span class=\"ai\">"+IPIN+"</span><span class=\"dt\"><b>Standort setzen</b><small>Punkt hier anlegen, benennen und kommentieren</small></span></button></div></div>";
+  $("catPop").innerHTML = h; $("catPop").hidden = false;
+}
+function locStart(){
+  var tk = todayKey(), D = dayByKey(tk);
+  locSt = {loc:null, err:"", name:"", note:""};
+  renderLocPop();
+  camLocate();
+  camWhere().then(function(loc){
+    if(!locSt) return;
+    if(!loc){ locSt.err = "Standort nicht verfügbar. Erlaube den Zugriff unter Einstellungen › Datenschutz › Ortungsdienste."; }
+    else { locSt.loc = loc; var nb = nbOf({la:loc.la, lo:loc.lo}); locSt.def = nb ? "Standort "+nb : "Mein Standort"; }
+    var ni = $("locName"), nt = $("locNote"); if(ni) locSt.name = ni.value; if(nt) locSt.note = nt.value;
+    renderLocPop(true);
+  });
+}
+function renderLocPop(keep){
+  if(!locSt) return;
+  var D = dayByKey(todayKey()), L = locSt.loc;
+  var st = locSt.err ? "<p class=\"note loc-err\">"+esc(locSt.err)+"</p>" : L ? "<p class=\"loc-st ok\">"+IPIN+"<span>Standort gefunden"+(L.acc ? " · ±"+Math.round(L.acc)+" m" : "")+(nbOf({la:L.la, lo:L.lo}) ? " · "+esc(nbOf({la:L.la, lo:L.lo})) : "")+"</span></p>" : "<p class=\"loc-st\"><i class=\"spin\"></i><span>Standort wird bestimmt …</span></p>";
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Standort setzen\"><div class=\"pop-head\"><h4>Standort setzen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+st+
+    "<form id=\"locForm\" class=\"locform\"><label><span>Name</span><input type=\"text\" id=\"locName\" maxlength=\"80\" autocomplete=\"off\" placeholder=\""+esc(locSt.def || "Mein Standort")+"\" value=\""+esc(locSt.name||"")+"\"></label>"+
+    "<label><span>Kommentar</span><textarea id=\"locNote\" rows=\"3\" maxlength=\"5000\" placeholder=\"Was ist hier? Woran willst du dich erinnern?\">"+esc(locSt.note||"")+"</textarea></label>"+
+    "<button type=\"submit\" class=\"btn\""+(L ? "" : " disabled")+">"+(D ? "Zu "+esc(D.lbl)+" hinzufügen" : "In Wunschliste speichern")+"</button></form></div>";
+  var ae = document.activeElement, fid = ae && (ae.id==="locName" || ae.id==="locNote") ? ae.id : null, pos = fid ? ae.selectionStart : 0;
+  $("catPop").innerHTML = h; $("catPop").hidden = false;
+  if(fid){ var e2 = $(fid); e2.focus(); try { e2.setSelectionRange(pos, pos); } catch(e){} }
+}
+function locSave(){
+  if(!locSt || !locSt.loc) return;
+  var L = locSt.loc, t = T(), tk = todayKey(), D = dayByKey(tk), pid = uid("w");
+  var nm = (($("locName")||{}).value||"").trim().slice(0,80) || locSt.def || "Mein Standort", note = (($("locNote")||{}).value||"").trim();
+  undoSnap = snapshot();
+  t.places[pid] = {id:pid, n:nm, c:"sight", list:(t.lists && t.lists[0] || {}).id || null, note:"", addr:"", la:+L.la.toFixed(6), lo:+L.lo.toFixed(6)};
+  if(note){ t.notes = t.notes || {}; t.notes[pid] = note.slice(0,5000); }
+  if(D){ ord(tk).push(pid); t.times = t.times || {}; t.times[pid] = new Date().toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}); }
+  save(); locSt = null; closeCatPop();
+  if(D) cur = tk; tab = D ? "day" : "wish"; renderAll(); select(pid); centerOn(P(pid), 16); openJPop(pid, D ? tk : "");
+  toast("„"+nm+"“ "+(D ? "im Plan von "+D.lbl : "in der Wunschliste"), true);
+}
 /* Foto in die Fotomediathek: über das Teilen-Menü („Bild sichern“); Originalaufnahme, wenn vorhanden */
 function phFile(ph){
   if(CAMF[ph]) return Promise.resolve(CAMF[ph]);
@@ -4607,7 +4673,7 @@ function openDayPop(forId, mv){
   $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
 }
-function closeCatPop(){ $("catPop").hidden = true; }
+function closeCatPop(){ $("catPop").hidden = true; locSt = null; }
 function endPick(){ pick = null; $("pick").hidden = true; }
 
 document.addEventListener("click", function(e){
@@ -4693,7 +4759,9 @@ document.addEventListener("click", function(e){
     case "phstep": phStep(+t.getAttribute("data-v")); break;
     case "phlike": phLike(t.getAttribute("data-ph")); break;
     case "phsave": var sph = t.getAttribute("data-ph"); if(CAMF[sph]) CAMF[sph].saved = true; t.classList.remove("hot"); phSaveLib(sph); break;
-    case "camshot": camShot(); break;
+    case "camshot": closeCatPop(); camShot(); break;
+    case "addpop": closeMenus(); openAddPop(); break;
+    case "locset": locStart(); break;
     case "phdel": var dph = t.getAttribute("data-ph"), rest = photosOf(jp.pid).filter(function(x){ return x!==dph; }), di = photosOf(jp.pid).indexOf(dph);
       delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
@@ -4869,6 +4937,7 @@ document.addEventListener("submit", function(e){
     tripRef(S.cur).update(invUpd(im)).then(function(){ invLocal(im); toast("Einladung an "+im+" gesendet", false); renderSheet(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); });
     return;
   }
+  if(id==="locForm"){ locSave(); return; }
   if(id==="phcForm"){
     var pt = ($("phcIn").value||"").trim(); if(!pt || !jp || !jp.view) return;
     $("phcIn").value = "";
