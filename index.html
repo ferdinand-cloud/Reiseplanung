@@ -599,7 +599,40 @@ body.kb .pop{align-items:flex-end;padding-bottom:6px}
 .pv-wrap{position:relative;margin:10px -18px 0}
 .pv-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;background:#000}
 .pv-track::-webkit-scrollbar{display:none}
-.pv-slide{flex:0 0 100%;height:min(56vh,460px);scroll-snap-align:center;scroll-snap-stop:always}
+.pv-slide{flex:0 0 100%;height:min(56vh,460px);scroll-snap-align:center;scroll-snap-stop:always;overflow:hidden;touch-action:pan-x}
+.pv-slide img{transform-origin:50% 50%;will-change:transform}
+#pvLayer{position:fixed;inset:0;z-index:68;background:#000}
+#pvLayer[hidden]{display:none}
+.pv-wrap.full{position:absolute;inset:0;margin:0;background:#000}
+.pv-wrap.full .pv-track{height:100%}
+.pv-wrap.full .pv-slide{height:100vh;height:100dvh}
+.pv-wrap.full .pv-slide img{width:100%;height:100%;object-fit:contain;display:block;-webkit-user-select:none;user-select:none}
+.pv-wrap.full .pv-arr{display:grid;z-index:2}
+@media (hover:none){.pv-wrap.full .pv-arr{display:none}}
+.pv-head{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-right,0px) + 12px) 24px calc(env(safe-area-inset-left,0px) + 16px);background:linear-gradient(rgba(0,0,0,.55),transparent);pointer-events:none;z-index:2}
+.pv-ttl{flex:1;min-width:0;color:#fff;font:600 15px/1.2 var(--f-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv-fs{pointer-events:auto;width:40px;height:40px;flex:0 0 40px;border-radius:50%;border:0;background:rgba(255,255,255,.18);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:#fff;display:grid;place-items:center;padding:0;cursor:pointer}
+.pv-fs svg{width:18px;height:18px}
+.pv-fsn{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);text-align:center;color:rgba(255,255,255,.8);font:600 13px/1 var(--f-body);font-variant-numeric:tabular-nums;pointer-events:none;z-index:2}
+.pv-side{position:absolute;left:calc(env(safe-area-inset-left,0px) + 12px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:12px;z-index:3}
+#pvLayer .pvi{position:relative;width:44px;height:44px;margin:0;border:0;border-radius:50%;padding:0;display:grid;place-items:center;background:rgba(30,30,30,.45);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+#pvLayer .pvi svg{width:21px;height:21px}
+#pvLayer .pvi span{position:absolute;right:-4px;bottom:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#fff;color:#111;font:700 11px/18px var(--f-body);text-align:center}
+#pvLayer .pvi span:empty{display:none}
+#pvLayer .pvi.on{background:rgba(255,255,255,.9);color:#111}
+#pvLayer .pv-like.on{background:rgba(255,255,255,.9);color:#e0245e}
+#pvLayer .pvi.warn{color:#ff8a80}
+#pvLayer .pv-save.hot{background:#fff;color:#111}
+.pv-panel{position:absolute;left:0;right:0;bottom:0;z-index:4;max-height:62%;display:flex;flex-direction:column;gap:8px;padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px));border-radius:18px 18px 0 0;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);color:var(--ink);box-shadow:0 -6px 24px rgba(0,0,0,.35)}
+.pv-ph{display:flex;align-items:center;justify-content:space-between}
+.pv-ph b{font:600 16px/1.2 var(--f-body)}
+.pv-ph .x{width:30px;height:30px;border:0;border-radius:50%;background:var(--fill);color:var(--muted);display:grid;place-items:center;padding:0}
+.pv-ph .x svg{width:14px;height:14px}
+.pv-panel .pv-who{margin:0;font-size:13px;color:var(--muted)}
+.pv-panel .cmlist{overflow-y:auto;min-height:0;flex:1}
+.pv-panel .gnew{margin:0}
+.pv-track.zoomed{overflow-x:hidden;touch-action:none}
+.pv-track.zoomed .pv-slide{touch-action:none}
 .pv-arr{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font:600 22px/1 var(--f-body);display:grid;place-items:center;padding:0 0 2px;cursor:pointer}
 .pv-arr.l{left:10px}.pv-arr.r{right:10px}
 @media (hover:none){.pv-arr{display:none}}
@@ -2152,7 +2185,7 @@ function cmWatch(){
   cmUnsub = tripRef(cmTrip).collection("comments").orderBy("at").onSnapshot(function(qs){
     CMTS = {};
     qs.docs.forEach(function(d){ var v = d.data(); (CMTS[v.pid] = CMTS[v.pid] || []).push({id:d.id, text:v.text, by:v.by, email:v.email, at:v.at}); });
-    if(jp && jp.view && !$("jPop").hidden) phMetaRefresh();
+    if(jp && jp.view && pvOpen()) phMetaRefresh();
     else if(jp && !$("jPop").hidden && !(document.activeElement && document.activeElement.id==="cmIn")) renderJPop(); else if(jp && !$("jPop").hidden) { var cl = $("cmList"); if(cl) cl.innerHTML = cmListHTML(jp.pid); }
     if(tab==="day" || tab==="trip") renderSheet();
   }, function(){});
@@ -4359,14 +4392,15 @@ function renderJPop(){
   var h = "<div class=\"ag-card jp\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+esc(p.n)+"\" data-id=\""+jp.pid+"\"><button type=\"button\" class=\"ag-x\" data-act=\"jclose\" aria-label=\"Schließen\">×</button>";
   if(jp.view){
     if(ph.indexOf(jp.view) < 0) ph = [jp.view];
-    var vi = ph.indexOf(jp.view);
-    h += "<div class=\"jp-view\"><div class=\"pv-top\"><button type=\"button\" class=\"pv-back\" data-act=\"phback\">‹ "+esc(p.n)+"</button><span class=\"pv-n\" id=\"pvN\">"+(ph.length > 1 ? (vi+1)+" / "+ph.length : "")+"</span></div>"+
-         "<div class=\"pv-wrap\"><div class=\"pv-track\" id=\"pvTrack\">"+ph.map(function(x){ return "<div class=\"pv-slide\" data-v=\""+x+"\"><img data-ph=\""+x+"\" alt=\"Foto\" draggable=\"false\"></div>"; }).join("")+"</div>"+
-         (ph.length > 1 ? "<button type=\"button\" class=\"pv-arr l\" data-act=\"phstep\" data-v=\"-1\" aria-label=\"Vorheriges Foto\">‹</button><button type=\"button\" class=\"pv-arr r\" data-act=\"phstep\" data-v=\"1\" aria-label=\"Nächstes Foto\">›</button>" : "")+"</div>"+
-         (ph.length > 1 ? "<div class=\"pv-dots\" id=\"pvDots\">"+ph.map(function(x, i){ return "<i"+(i===vi?" class=\"on\"":"")+"></i>"; }).join("")+"</div>" : "")+
-         "<div id=\"pvMeta\">"+phMetaHTML(jp.view)+"</div></div></div>";
-    el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el); pvInit(vi); return;
+    var vi = ph.indexOf(jp.view), Lr = pvLayer();
+    Lr.innerHTML = "<div class=\"pv-wrap full\" id=\"pvWrap\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Foto\"><div class=\"pv-track\" id=\"pvTrack\">"+ph.map(function(x){ return "<div class=\"pv-slide\" data-v=\""+x+"\"><img data-ph=\""+x+"\" alt=\"Foto\" draggable=\"false\"></div>"; }).join("")+"</div>"+
+      (ph.length > 1 ? "<button type=\"button\" class=\"pv-arr l\" data-act=\"phstep\" data-v=\"-1\" aria-label=\"Vorheriges Foto\">‹</button><button type=\"button\" class=\"pv-arr r\" data-act=\"phstep\" data-v=\"1\" aria-label=\"Nächstes Foto\">›</button>" : "")+
+      "<div class=\"pv-head\"><span class=\"pv-ttl\">"+esc(p.n)+"</span><button type=\"button\" class=\"pv-fs\" data-act=\"phback\" aria-label=\"Vollbild schließen\">"+PVX+"</button></div>"+
+      "<span class=\"pv-fsn\" id=\"pvFsN\">"+(ph.length > 1 ? (vi+1)+" / "+ph.length : "")+"</span>"+
+      "<div id=\"pvMeta\">"+phMetaHTML(jp.view)+"</div></div>";
+    Lr.hidden = false; document.body.classList.add("pvfull"); fillPhotos(Lr); pvInit(vi); return;
   }
+  pvHide();
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
   h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
@@ -4410,18 +4444,23 @@ function phSocial(){ return !!(acct.user && fbDb && KNOWN[S.cur] && META[S.cur] 
 function phLikes(ph){ return (CMTS["lk:"+ph] || []).filter(function(c, i, a){ return a.findIndex(function(y){ return y.by===c.by; })===i; }); }
 function phWho(c){ var f = FR.friends.filter(function(x){ return x.uid===c.by; })[0]; return f && f.name ? "@"+f.name : (c.email||"").split("@")[0] || "Jemand"; }
 function phMetaHTML(ph){
-  var h = "";
-  if(phSocial()){
-    var L = phLikes(ph), mine = L.some(function(c){ return c.by===acct.user.uid; }), others = L.filter(function(c){ return c.by!==acct.user.uid; });
+  var soc = phSocial(), h = "<div class=\"pv-side\">", SV = function(d, fill){ return "<svg viewBox=\"0 0 20 20\" fill=\""+(fill||"none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
+  var L = soc ? phLikes(ph) : [], mine = soc && L.some(function(c){ return c.by===acct.user.uid; }), C = soc ? (CMTS["ph:"+ph] || []) : [];
+  if(soc){
+    h += "<button type=\"button\" class=\"pvi pv-like"+(mine?" on":"")+"\" data-act=\"phlike\" data-ph=\""+ph+"\" aria-pressed=\""+mine+"\" aria-label=\""+(mine?"Gefällt mir nicht mehr":"Gefällt mir")+"\">"+SV("<path d=\"M10 17s-6.5-4-6.5-8.6A3.6 3.6 0 0 1 10 6.3a3.6 3.6 0 0 1 6.5 2.1C16.5 13 10 17 10 17z\"/>", mine ? "currentColor" : "none")+"<span>"+(L.length || "")+"</span></button>";
+    h += "<button type=\"button\" class=\"pvi"+(pvCm?" on":"")+"\" data-act=\"pvcm\" aria-expanded=\""+pvCm+"\" aria-label=\"Kommentare\">"+SV("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/>")+"<span>"+(C.length || "")+"</span></button>";
+  }
+  if(!isRO()) h += "<button type=\"button\" class=\"pvi\" data-act=\"phmovepop\" data-ph=\""+ph+"\" aria-label=\"Einem anderen Ort zuordnen\">"+SV("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"</button>";
+  h += "<button type=\"button\" class=\"pvi pv-save"+(CAMF[ph] && !CAMF[ph].saved ? " hot" : "")+"\" data-act=\"phsave\" data-ph=\""+ph+"\" aria-label=\"In Fotos sichern\">"+SV("<path d=\"M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4 15.5h12\"/>")+"</button>";
+  if(!isRO()) h += "<button type=\"button\" class=\"pvi warn\" data-act=\"phdel\" data-ph=\""+ph+"\" aria-label=\"Foto löschen\">"+SV("<path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/>")+"</button>";
+  h += "</div>";
+  if(soc && pvCm){
+    var others = L.filter(function(c){ return c.by!==acct.user.uid; });
     var who = mine ? (others.length ? "dir und "+(others.length===1 ? phWho(others[0]) : others.length+" anderen") : "dir") : others.length===1 ? phWho(others[0]) : others.length ? others.length+" Personen" : "";
-    h += "<div class=\"pv-acts\"><button type=\"button\" class=\"pv-like"+(mine?" on":"")+"\" data-act=\"phlike\" data-ph=\""+ph+"\" aria-pressed=\""+mine+"\" aria-label=\""+(mine?"Gefällt mir nicht mehr":"Gefällt mir")+"\"><svg viewBox=\"0 0 20 20\" aria-hidden=\"true\"><path d=\"M10 17s-6.5-4-6.5-8.6A3.6 3.6 0 0 1 10 6.3a3.6 3.6 0 0 1 6.5 2.1C16.5 13 10 17 10 17z\"/></svg><span>"+(L.length || "")+"</span></button>"+
-         "<span class=\"pv-who\">"+(who ? "Gefällt "+esc(who) : "")+"</span>"+
-         saveBtn(ph)+"<button type=\"button\" class=\"pv-del\" data-act=\"phdel\" data-ph=\""+ph+"\">Löschen</button></div>";
-    var C = CMTS["ph:"+ph] || [];
-    h += "<div class=\"jp-lbl\">Kommentare"+(C.length ? " · "+C.length : "")+"</div><div id=\"pvCm\" class=\"cmlist\">"+(C.length ? cmListHTML("ph:"+ph) : "<p class=\"note\">Noch keine Kommentare zu diesem Foto.</p>")+"</div>"+
-         "<form class=\"gnew\" id=\"phcForm\"><input type=\"text\" id=\"phcIn\" maxlength=\"1000\" placeholder=\"Zu diesem Foto kommentieren …\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form>";
-  } else {
-    h += "<div class=\"pv-acts\"><span class=\"pv-who\">"+(acct.user ? "Liken und Kommentieren geht in gemeinsamen Reisen." : "")+"</span>"+saveBtn(ph)+"<button type=\"button\" class=\"pv-del\" data-act=\"phdel\" data-ph=\""+ph+"\">Löschen</button></div>";
+    h += "<div class=\"pv-panel\"><div class=\"pv-ph\"><b>Kommentare"+(C.length ? " · "+C.length : "")+"</b><button type=\"button\" class=\"x\" data-act=\"pvcm\" aria-label=\"Kommentare schließen\">"+PVX+"</button></div>"+
+         (who ? "<p class=\"pv-who\">Gefällt "+esc(who)+"</p>" : "")+
+         "<div id=\"pvCm\" class=\"cmlist\">"+(C.length ? cmListHTML("ph:"+ph) : "<p class=\"note\">Noch keine Kommentare zu diesem Foto.</p>")+"</div>"+
+         "<form class=\"gnew\" id=\"phcForm\"><input type=\"text\" id=\"phcIn\" maxlength=\"1000\" placeholder=\"Kommentieren …\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form></div>";
   }
   return h;
 }
@@ -4467,7 +4506,7 @@ function phMetaRefresh(){
 }
 function pvInit(vi){
   var tr = $("pvTrack"); if(!tr) return;
-  tr.scrollLeft = vi * tr.clientWidth;
+  tr.scrollLeft = vi * tr.clientWidth; requestAnimationFrame(function(){ tr.scrollLeft = vi * tr.clientWidth; });
   var tmr = 0;
   tr.addEventListener("scroll", function(){
     clearTimeout(tmr);
@@ -4475,13 +4514,78 @@ function pvInit(vi){
       var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)), sl = tr.children[i]; if(!sl || !jp) return;
       var v = sl.getAttribute("data-v"); if(v===jp.view) return;
       jp.view = v; var n = tr.children.length;
-      var pn = $("pvN"); if(pn) pn.textContent = (i+1)+" / "+n;
+      var pf = $("pvFsN"); if(pf && n > 1) pf.textContent = (i+1)+" / "+n;
       var d = $("pvDots"); if(d) Array.prototype.forEach.call(d.children, function(x, j){ x.classList.toggle("on", j===i); });
       if(document.activeElement && document.activeElement.id==="phcIn") document.activeElement.blur();
       phMetaRefresh();
     }, 90);
   }, {passive:true});
 }
+/* Foto-Ansicht: mit zwei Fingern nur das Foto zoomen (nicht die Seite), verschieben, Doppeltippen zum Zoomen/Zurücksetzen */
+(function(){
+  var Z = null, lastTap = 0;
+  function slideOf(t){ return t && t.closest ? t.closest(".pv-slide") : null; }
+  function apply(z, anim){ z.img.style.transition = anim ? "transform .2s ease" : "none"; z.img.style.transform = z.s > 1.001 ? "translate("+z.tx+"px,"+z.ty+"px) scale("+z.s+")" : ""; z.track.classList.toggle("zoomed", z.s > 1.001); }
+  function clamp(z){ var mx = z.w*(z.s-1)/2, my = z.h*(z.s-1)/2; z.tx = Math.max(-mx, Math.min(mx, z.tx)); z.ty = Math.max(-my, Math.min(my, z.ty)); }
+  function rel(z, x, y){ return [x - (z.r.left + z.w/2), y - (z.r.top + z.h/2)]; }
+  function ctx(sl){
+    var img = sl.querySelector("img"); if(!img) return null;
+    if(Z && Z.img===img) return Z;
+    if(Z) reset(false);
+    var r = sl.getBoundingClientRect(); return {sl:sl, img:img, track:sl.parentNode, r:r, w:r.width, h:r.height, s:1, tx:0, ty:0};
+  }
+  function reset(anim){ if(!Z) return; Z.s = 1; Z.tx = 0; Z.ty = 0; apply(Z, anim); Z = null; }
+  document.addEventListener("touchstart", function(e){
+    var sl = slideOf(e.target); if(!sl) return;
+    var z = ctx(sl); if(!z) return; z.r = sl.getBoundingClientRect();
+    if(e.touches.length===2){
+      e.preventDefault(); Z = z;
+      var a = e.touches[0], b = e.touches[1];
+      z.p = {d:Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY) || 1, c:rel(z, (a.clientX+b.clientX)/2, (a.clientY+b.clientY)/2), s:z.s, tx:z.tx, ty:z.ty}; z.pan = null;
+    } else if(e.touches.length===1){
+      var t = e.touches[0], now = Date.now();
+      if(now - lastTap < 280){ // Doppeltippen
+        e.preventDefault(); lastTap = 0;
+        if(z.s > 1.001){ Z = z; reset(true); }
+        else { Z = z; var c = rel(z, t.clientX, t.clientY); z.s = 2.5; z.tx = -c[0]*1.5; z.ty = -c[1]*1.5; clamp(z); apply(z, true); }
+        return;
+      }
+      lastTap = now;
+      if(z.s > 1.001){ Z = z; z.pan = {x:t.clientX, y:t.clientY, tx:z.tx, ty:z.ty}; z.p = null; }
+    }
+  }, {passive:false});
+  document.addEventListener("touchmove", function(e){
+    if(!Z || !slideOf(e.target)) return;
+    var z = Z;
+    if(z.p && e.touches.length===2){
+      e.preventDefault();
+      var a = e.touches[0], b = e.touches[1], d = Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY), c = rel(z, (a.clientX+b.clientX)/2, (a.clientY+b.clientY)/2);
+      var s2 = Math.max(1, Math.min(5, z.p.s * d / z.p.d)), k = s2 / z.p.s;
+      z.s = s2; z.tx = c[0] - (z.p.c[0] - z.p.tx)*k; z.ty = c[1] - (z.p.c[1] - z.p.ty)*k; clamp(z); apply(z, false);
+    } else if(z.pan && e.touches.length===1 && z.s > 1.001){
+      e.preventDefault();
+      var t = e.touches[0]; z.tx = z.pan.tx + t.clientX - z.pan.x; z.ty = z.pan.ty + t.clientY - z.pan.y; clamp(z); apply(z, false);
+    }
+  }, {passive:false});
+  function end(e){
+    if(!Z) return;
+    if(e.touches && e.touches.length===1 && Z.p){ var t = e.touches[0]; Z.p = null; Z.pan = {x:t.clientX, y:t.clientY, tx:Z.tx, ty:Z.ty}; }
+    if(!e.touches || !e.touches.length){ Z.p = null; Z.pan = null; if(Z.s < 1.05) reset(true); }
+  }
+  document.addEventListener("touchend", end); document.addEventListener("touchcancel", end);
+  // Safari: Seitenzoom per Geste über dem Foto unterbinden
+  ["gesturestart","gesturechange"].forEach(function(n){ document.addEventListener(n, function(e){ if(slideOf(e.target)) e.preventDefault(); }, {passive:false}); });
+  // beim Wechsel des Fotos oder Schließen den Zoom zurücksetzen
+  document.addEventListener("scroll", function(e){ if(Z && e.target===Z.track && Z.s <= 1.001) Z = null; }, true);
+  window.pvZoomReset = function(){ reset(false); };
+})();
+/* Foto-Ansicht immer im Vollbild: eigene Ebene über allem; ✕ oder Escape führt zurück */
+var pvCm = false;
+var PVX = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M5 5l10 10M15 5L5 15\"/></svg>";
+function pvLayer(){ var L = $("pvLayer"); if(!L){ L = document.createElement("div"); L.id = "pvLayer"; L.hidden = true; document.body.appendChild(L); } return L; }
+function pvHide(){ var L = $("pvLayer"); if(window.pvZoomReset) window.pvZoomReset(); document.body.classList.remove("pvfull"); pvCm = false; if(L && !L.hidden){ L.hidden = true; L.innerHTML = ""; } }
+function pvOpen(){ var L = $("pvLayer"); return !!(L && !L.hidden); }
+document.addEventListener("keydown", function(e){ if(e.key==="Escape" && pvOpen() && jp){ e.stopPropagation(); if(pvCm){ pvCm = false; phMetaRefresh(); return; } jp.view = null; renderJPop(); } }, true);
 function phStep(dir){ var tr = $("pvTrack"); if(!tr) return; var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)) + dir; if(i < 0 || i >= tr.children.length) return; tr.scrollTo({left:i*tr.clientWidth, behavior:"smooth"}); }
 function phLike(ph){
   if(!phSocial()) return;
@@ -4491,7 +4595,7 @@ function phLike(ph){
   phMetaRefresh();
   (mine ? ref.delete() : ref.set({pid:"lk:"+ph, text:"❤", by:me, email:myMail(), at:Date.now()})).catch(function(e){ toast("Gefällt mir nicht gespeichert: "+(e && e.message), false); });
 }
-function closeJPop(){ jp = null; $("jPop").hidden = true; document.body.classList.remove("glass"); renderSheet(); }
+function closeJPop(){ pvHide(); jp = null; $("jPop").hidden = true; document.body.classList.remove("glass"); renderSheet(); }
 
 /* ---------- Fotos: verkleinert, lokal in IndexedDB, mit Konto in Firestore ---------- */
 var PHC = {}, phDB = null;
@@ -5511,7 +5615,8 @@ document.addEventListener("click", function(e){
     case "jphl": var tj = T(); tj.journal = tj.journal || {}; var Jp = tj.journal[jp.dk] = tj.journal[jp.dk] || {}, pn = P(jp.pid).n; Jp.hl = Jp.hl===pn ? "" : pn; Jp.at = Date.now(); save(); renderJPop(); break;
     case "phretry": phRetry(); phFlush(); break;
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
-    case "phback": jp.view = null; renderJPop(); break;
+    case "phback": jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
+    case "pvcm": pvCm = !pvCm; phMetaRefresh(); if(pvCm) setTimeout(function(){ var a = $("pvCm"); if(a) a.scrollTop = a.scrollHeight; }, 0); break;
     case "phstep": phStep(+t.getAttribute("data-v")); break;
     case "phlike": phLike(t.getAttribute("data-ph")); break;
     case "phmovepop": openPhMove(t.getAttribute("data-ph")); break;
