@@ -299,6 +299,11 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+.srch .ag-row .b{flex:0 0 auto}
+.srch em.sd{font-style:normal;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums;margin-left:auto}
+.top #srchBtn{margin-left:auto}
+.vpills{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:130px}
+.pill.add{background:none !important;color:var(--ink);border:1px dashed color-mix(in srgb,var(--ink) 35%,transparent)}
 /* Tastatur offen: Planungsblatt füllt den sichtbaren Bereich, damit das Feld nicht verdeckt wird */
 body.kb-sheet .sheet{top:var(--vvt,0px) !important;bottom:auto !important;height:var(--vvh,100%) !important;transform:none !important;border-radius:0;transition:none}
 body.kb-sheet .sheet{padding-top:env(safe-area-inset-top,0px)}
@@ -710,7 +715,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
   <svg id="ov" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
 </div>
 
-<div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button></div>
+<div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button></div>
 <div class="tripmenu" id="tripMenu" hidden></div>
 <div class="tripmenu" id="mainMenu" hidden><button type="button" data-act="opentrips"><span>Reisen <b class="mbadge" id="invBadge" hidden></b></span><small>Private, gemeinsame Reisen, Anfragen</small></button><button type="button" data-act="openfriends"><span>Freunde <b class="mbadge" id="frBadge" hidden></b></span><small>Anfragen, Freunde suchen</small></button><button type="button" data-act="openacct"><span>Mein Konto</span><small>Anmeldung, Abgleich, Einstellungen</small></button></div>
 <nav class="rail" id="rail" aria-label="Reisetage"></nav>
@@ -751,6 +756,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 <div class="gate" id="gate" hidden></div>
 <div class="acctpop" id="acctPop" hidden></div>
 <div class="acctpop trippop" id="tripPop" hidden></div>
+<div class="acctpop trippop" id="srchPop" hidden></div>
 <div class="acctpop" id="jPop" hidden></div>
 <input type="file" id="impFileG" accept="application/json,.json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
 <section class="sheet" id="sheet" aria-label="Planung">
@@ -1644,7 +1650,20 @@ function dayOf(id){ var ds = days(); for(var i=0;i<ds.length;i++){ if((T().order
 function listName(id){ var ls = T().lists; for(var i=0;i<ls.length;i++){ if(ls[i].id===id) return ls[i].name; } return "Ohne Liste"; }
 function timeOf(id){ return T().times[id] || ""; }
 function P(id){ return T().places[id]; }
-function wishes(){ var t = T(); return Object.keys(t.places).filter(function(id){ return !dayOf(id); }).map(function(id){ return t.places[id]; }); }
+function wishes(){ var t = T(); return Object.keys(t.places).filter(function(id){ return !t.places[id].of && !dayOf(id); }).map(function(id){ return t.places[id]; }); }
+/* Mehrfach besuchen: weitere Besuche sind Kopien mit Verweis „of“ auf den Ursprungsort */
+function rootOf(id){ var p = P(id); return p && p.of && P(p.of) ? p.of : id; }
+function visitsOf(id){ var r = rootOf(id), t = T(), out = []; days().forEach(function(d){ (t.order[d.key]||[]).forEach(function(x){ if(x===r || (t.places[x] && t.places[x].of===r)) out.push({id:x, k:d.key}); }); }); return out; }
+function revisit(id, k){
+  var r = rootOf(id), p = P(r), D = dayByKey(k); if(!p || !D) return;
+  if(visitsOf(r).some(function(v){ return v.k===k; })){ toast(p.n+" ist am "+D.lbl+" schon eingeplant", false); return; }
+  if(!dayOf(r)){ plan(r, k); return; }
+  undoSnap = snapshot();
+  var nid = uid("v"), c = {id:nid, of:r};
+  ["n","c","addr","la","lo","note","list","g","web","tel"].forEach(function(f){ if(p[f]!==undefined) c[f] = p[f]; });
+  T().places[nid] = c; ord(k).push(nid);
+  save(); toast(p.n+" zusätzlich am "+D.lbl+" eingeplant (Stopp "+ord(k).length+")", true);
+}
 
 /* ---------- Vorschläge ---------- */
 function bestInsert(k, p){
@@ -1783,6 +1802,81 @@ function initMap(){
   lpInit();
   map.on("error", function(e){ if(!navigator.onLine) setNet(false); });
   darkMQ.addEventListener && darkMQ.addEventListener("change", function(){ mapReady = false; map.setStyle(STYLE_URL); });
+}
+
+/* ---------- Allgemeine Suche: Plan, Wunschliste, Punkte auf der Karte, weitere Orte ---------- */
+var srch = {q:"", res:[], web:[], busy:false}, srchT = null;
+function openSearch(){ var el = $("srchPop"); el.hidden = false; document.body.classList.add("glass"); renderSearch(true); }
+function closeSearch(){ var el = $("srchPop"); el.hidden = true; el.innerHTML = ""; if($("acctPop").hidden && $("tripPop").hidden) document.body.classList.remove("glass"); }
+function srchCenter(){ if(map){ var c = map.getCenter(); return {la:c.lat, lo:c.lng}; } var h = T().hotels.filter(hasLoc)[0]; return h || {la:40.758, lo:-73.985}; }
+function srchLocal(q){
+  var w = norm(q).split(/\s+/).filter(Boolean), out = [], C = srchCenter(), seen = {};
+  if(!w.length) return out;
+  var hit = function(txt){ var h = norm(txt); return w.every(function(x){ return h.indexOf(x) > -1; }); };
+  Object.keys(T().places).map(P).forEach(function(p){
+    if(p.of || !hit([p.n, p.addr, p.note, CATNAME[p.c], nbOf(p), grpName(p.g)].join(" "))) return;
+    var vs = visitsOf(p.id);
+    out.push({kind:"place", id:p.id, n:p.n, c:p.c, sub:(vs.length ? vs.map(function(v){ return "Tag "+dayByKey(v.k).n; }).join(", ") : "Wunschliste")+(p.addr ? " · "+p.addr : ""), d: hasLoc(p) ? dist(C, p) : null});
+    if(hasLoc(p)) seen[norm(p.n).slice(0,10)+Math.round(p.la*2000)+","+Math.round(p.lo*2000)] = 1;
+  });
+  // Punkte aus den geladenen Kartenkacheln (auch ohne eingeschaltete Ebene)
+  try {
+    var srcs = map && map.getStyle() ? map.getStyle().sources : {}, src = null; Object.keys(srcs).forEach(function(k){ if(!src && srcs[k].type==="vector") src = k; });
+    if(src){
+      var feats = map.querySourceFeatures(src, {sourceLayer:"poi"}), pois = [];
+      feats.forEach(function(f){
+        var pr = f.properties || {}, nm = pr["name:latin"] || pr.name; if(!nm || !f.geometry || f.geometry.type!=="Point") return;
+        if(!hit(nm+" "+(POISUB[pr.subclass]||pr.subclass||"")+" "+(pr["class"]||""))) return;
+        var co = f.geometry.coordinates, la = +co[1].toFixed(6), lo = +co[0].toFixed(6), key = norm(nm).slice(0,10)+Math.round(la*2000)+","+Math.round(lo*2000);
+        if(seen[key]) return; seen[key] = 1;
+        var cls = pr["class"], sub = pr.subclass;
+        pois.push({kind:"poi", n:nm, cls:cls, subc:sub, c: FOODSUB.indexOf(sub)>-1 ? "shop" : (POICLASS[cls] || "sight"), la:la, lo:lo, sub:(POISUB[sub] || POISUB[cls] || (sub||cls||"").replace(/_/g," ")), d: dist(C, {la:la, lo:lo})});
+      });
+      pois.sort(function(a, b){ return a.d - b.d; });
+      out = out.concat(pois.slice(0, 25));
+    }
+  } catch(e){}
+  return out;
+}
+function srchWeb(q){
+  clearTimeout(srchT); if(q.trim().length < 3){ srch.web = []; return; }
+  srchT = setTimeout(function(){
+    var C = srchCenter(), qq = q;
+    fetch("https://photon.komoot.io/api/?q="+encodeURIComponent(q)+"&limit=8&lang=de&lat="+C.la.toFixed(4)+"&lon="+C.lo.toFixed(4)).then(function(r){ return r.json(); }).then(function(j){
+      if(srch.q!==qq) return;
+      var seen = {}; srch.res.forEach(function(r){ seen[norm(r.n)] = 1; });
+      srch.web = (j.features||[]).map(function(f){ var pr = f.properties||{}, co = f.geometry && f.geometry.coordinates; if(!co) return null;
+        var str = [pr.street, pr.housenumber].filter(Boolean).join(" "), nm = pr.name || str; if(!nm || seen[norm(nm)]) return null; seen[norm(nm)] = 1;
+        return {kind:"web", n:nm, la:+co[1].toFixed(6), lo:+co[0].toFixed(6), addr:[str, pr.city || pr.district].filter(Boolean).join(", "), sub:[pr.osm_value ? (POISUB[pr.osm_value] || pr.osm_value.replace(/_/g," ")) : "", [str, pr.city].filter(Boolean).join(", ")].filter(Boolean).join(" · "), c: POICLASS[pr.osm_value] || (pr.osm_key==="amenity" && /restaurant|cafe|bar|fast_food|pub/.test(pr.osm_value) ? "essen" : "sight"), cls:pr.osm_value, d: dist(C, {la:+co[1], lo:+co[0]})};
+      }).filter(Boolean);
+      renderSearch(false);
+    }).catch(function(){});
+  }, 350);
+}
+function renderSearch(focus){
+  var el = $("srchPop"), q = srch.q;
+  var head = "<div class=\"ag-card srch\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Suchen\"><button type=\"button\" class=\"ag-x\" data-act=\"srchclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Suchen</h3>"+
+    "<input type=\"search\" id=\"srchIn\" class=\"frq\" placeholder=\"Ort, Café, Adresse, Notiz …\" autocomplete=\"off\" autocapitalize=\"off\" enterkeyhint=\"search\" value=\""+esc(q)+"\"><div id=\"srchRes\"></div></div>";
+  if(!el.querySelector("#srchIn")) el.innerHTML = head;
+  var all = srch.res.concat(srch.web), h = "";
+  if(!q.trim()) h = "<p class=\"note\">Durchsucht deinen Plan, die Wunschliste, alle Punkte im aktuellen Kartenausschnitt und weitere Orte in der Umgebung.</p>";
+  else {
+    var grp = function(kind, title){ var xs = all.map(function(r, i){ return {r:r, i:i}; }).filter(function(x){ return x.r.kind===kind; }); if(!xs.length) return "";
+      return "<div class=\"ag-lbl\">"+title+"</div><div class=\"ag-grp\">"+xs.map(function(x){ var r = x.r; return "<button type=\"button\" class=\"ag-row\" data-act=\"srchgo\" data-i=\""+x.i+"\">"+badge(r.c || "sight")+"<span><b>"+esc(r.n)+"</b><small>"+esc(r.sub||"")+"</small></span>"+(r.d!=null ? "<em class=\"sd\">"+fmtDist(r.d)+"</em>" : "")+"</button>"; }).join("")+"</div>"; };
+    h = grp("place", "Dein Plan & Wunschliste") + grp("poi", "Auf der Karte") + grp("web", "Weitere Orte");
+    if(!h) h = "<p class=\"note\">"+(q.trim().length < 3 ? "Weiter tippen …" : "Suche läuft …")+"</p>";
+  }
+  $("srchRes").innerHTML = h;
+  if(focus){ var i = $("srchIn"); if(i){ i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch(e){} } }
+}
+function srchGo(i){
+  var r = srch.res.concat(srch.web)[i]; if(!r) return;
+  closeSearch(); if(document.activeElement) document.activeElement.blur();
+  if(r.kind==="place"){ var vs = visitsOf(r.id); if(vs.length && vs.every(function(v){ return v.k!==cur; })){ cur = vs[0].k; } tab = vs.length ? "day" : "wish"; renderAll(); select(r.id); var p = P(r.id); if(hasLoc(p) && map) map.easeTo({center:[p.lo, p.la], zoom:Math.max(map.getZoom(), 15), duration:reduceMotion?0:600}); return; }
+  poiSel = {n:r.n, cls:r.cls || "", sub:r.subc || r.cls || "", c:r.c || "sight", la:r.la, lo:r.lo, addr:r.addr || ""};
+  sel = null; select("poi"); poiSel = poiSel || null;
+  if(map) map.easeTo({center:[r.lo, r.la], zoom:Math.max(map.getZoom(), 16), duration:reduceMotion?0:600});
+  renderCard(); scheduleOverlay();
 }
 
 /* ---------- Langes Drücken (3 s) auf der Karte: Punkt markieren ---------- */
@@ -2708,12 +2802,14 @@ function poiAdd(to){
   var q = poiSel; if(!q) return;
   var ex = poiExisting(q);
   if(ex){
+    ex = rootOf(ex);
     if(to==="day" && !dayOf(ex)){ plan(ex, cur); }
+    else if(to==="day" && !visitsOf(ex).some(function(v){ return v.k===cur; })){ revisit(ex, cur); }
     else toast(q.n+" ist schon "+(dayOf(ex) ? "am "+dayByKey(dayOf(ex)).lbl+" geplant" : "in der Wunschliste"), false);
     poiSel = null; renderAll(); select(ex); return;
   }
   var ls = $("poiList"), lid = ls ? ls.value : ((activeList && T().lists.some(function(l){ return l.id===activeList; })) ? activeList : (T().lists[0]||{}).id || null);
-  var pid = uid("w"), p = {id:pid, n:q.n.slice(0,80), c:q.c, list:lid||null, note:"", addr:"", la:q.la, lo:q.lo}, gq = gInfo[gK(q)];
+  var pid = uid("w"), p = {id:pid, n:q.n.slice(0,80), c:q.c, list:lid||null, note:"", addr:(q.addr||"").slice(0,120), la:q.la, lo:q.lo}, gq = gInfo[gK(q)];
   if(gq && gq.st==="ok"){ p.gid = gq.d.id; gInfo[gK(p)] = gq; }
   T().places[pid] = p;
   if(to==="day") plan(pid, cur); else { save(); toast(p.n+" steht in der Wunschliste", false); }
@@ -2835,7 +2931,7 @@ function renderCard(){
   if(sel==="poi" && poiSel){ el.innerHTML = poiCard(); el.hidden = false; placeFloating(); return; }
   var x = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>";
   if(sel.indexOf("nb:")===0){
-    var nn = sel.slice(3), i = nbByName(nn), all = Object.keys(T().places).map(P).filter(function(p){ return nbOf(p)===nn; });
+    var nn = sel.slice(3), i = nbByName(nn), all = Object.keys(T().places).map(P).filter(function(p){ return !p.of && nbOf(p)===nn; });
     var open = all.filter(function(p){ return !dayOf(p.id); }).length;
     var cc = {}; all.forEach(function(p){ cc[p.c] = (cc[p.c]||0)+1; });
     var c0 = x+"<h3>"+esc(nn)+"</h3><p>"+esc(NB[i].b)+" · "+all.length+(all.length===1?" Ort":" Orte")+" aus der Wunschliste, davon "+open+" offen</p>";
@@ -2851,7 +2947,7 @@ function renderCard(){
   }
   var p = P(sel); if(!p){ sel = null; el.hidden = true; return; }
   var dk = dayOf(sel), D = dayByKey(cur), c = x+"<h3>"+esc(p.n)+"</h3>";
-  var meta = "<span class=\"cat\">"+icon(p.c)+esc(CATNAME[p.c])+"</span>" + (nbOf(p) ? " · "+esc(nbOf(p)) : "") + (dk ? " · "+dayByKey(dk).lbl+(timeOf(sel)?" um "+timeOf(sel):"") : " · Wunsch in „"+esc(listName(p.list))+"“");
+  var meta = "<span class=\"cat\">"+icon(p.c)+esc(CATNAME[p.c])+"</span>" + (nbOf(p) ? " · "+esc(nbOf(p)) : "") + (dk ? " · "+dayByKey(dk).lbl+(timeOf(sel)?" um "+timeOf(sel):"")+(visitsOf(sel).length>1 ? " · "+visitsOf(sel).length+" Besuche geplant" : "") : " · Wunsch in „"+esc(listName(p.list))+"“");
   c += "<p>"+meta+(p.addr?"<br>"+esc(p.addr):"")+(p.note?"<br>"+esc(p.note):"")+"</p>";
   c += gBlock(p);
   if(hasLoc(p)) c += stationLine(p);
@@ -2865,8 +2961,9 @@ function renderCard(){
   c += "<div class=\"row\" data-id=\""+sel+"\">";
   if(!dk && D){ c += "<button class=\"btn\" type=\"button\" data-act=\"plan\">Zu "+D.lbl+" hinzufügen"+addLabel(cur, p)+"</button>"; }
   if(dk) c += "<button class=\"btn"+(T().done[sel]?"":" g")+"\" type=\"button\" data-act=\"done\">"+(T().done[sel]?"✓ Erledigt":"Abhaken")+"</button>";
-  if(dk===cur){ c += "<button class=\"btn g\" type=\"button\" data-act=\"unplan\">Zurück in Wunschliste</button>"; }
+  if(dk===cur){ c += "<button class=\"btn g\" type=\"button\" data-act=\"unplan\">"+(p.of ? "Diesen Besuch entfernen" : "Zurück in Wunschliste")+"</button>"; }
   else if(dk){ c += "<button class=\"btn g\" type=\"button\" data-act=\"gotoday\" data-day=\""+dk+"\">Tag "+dayByKey(dk).n+" öffnen</button>"; }
+  if(dk) c += "<button class=\"btn g\" type=\"button\" data-act=\"revisit\" data-pid=\""+sel+"\">Nochmal besuchen …</button>";
   c += "<button class=\"btn g\" type=\"button\" data-act=\"go\">Route starten</button>";
   c += confirmBtn("delp:"+sel, "Löschen", "Wirklich löschen?", "delplace");
   c += "</div>";
@@ -3246,7 +3343,7 @@ var jTimer = null;
 function openCount(lid){ return wishes().filter(function(w){ return (w.list||"none")===lid; }).length; }
 function nbKeys(){ return Object.keys(nbSel); }
 function nbMatch(p){ var k = nbKeys(); return !k.length || !!nbSel[nbOf(p)]; }
-function listPool(){ var t = T(); return activeList==="open" ? wishes() : Object.keys(t.places).map(P).filter(function(p){ return (p.list||"none")===activeList; }); }
+function listPool(){ var t = T(); return activeList==="open" ? wishes() : Object.keys(t.places).map(P).filter(function(p){ return !p.of && (p.list||"none")===activeList; }); }
 function renderWish(){
   var t = T();
   var pool = listPool();
@@ -3302,7 +3399,7 @@ function openGrpPop(pid){
   var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppe\"><div class=\"pop-head\"><h4>"+(p ? "Gruppe für "+esc(p.n) : "Gruppen verwalten")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list glist\">";
   if(p) h += "<button type=\"button\" data-act=\"grpset\" data-g=\"\" aria-pressed=\""+(!cur0)+"\"><span>Keine Gruppe</span></button>";
   gs.forEach(function(g){
-    var cnt = Object.keys(T().places).filter(function(k){ return T().places[k].g===g.id; }).length;
+    var cnt = Object.keys(T().places).filter(function(k){ return !T().places[k].of && T().places[k].g===g.id; }).length;
     if(grpEdit===g.id){
       h += "<form class=\"gedit\" id=\"grpRen\" data-g=\""+g.id+"\"><input type=\"text\" id=\"grpRenIn\" value=\""+esc(g.n)+"\" maxlength=\"40\"><button type=\"submit\" class=\"btn s\">OK</button><button type=\"button\" class=\"btn g s warn\" data-act=\"grpdel\" data-g=\""+g.id+"\">Löschen</button></form>";
     } else {
@@ -3353,14 +3450,22 @@ function wishResults(){
   var h = "";
   if(q){
     // Bei einer Suche auch schon eingeplante Orte finden
-    var all = Object.keys(T().places).map(P).filter(function(p){ return (activeList==="open" || (p.list||"none")===activeList) && fc(p); });
+    var all = Object.keys(T().places).map(P).filter(function(p){ return !p.of && (activeList==="open" || (p.list||"none")===activeList) && fc(p); });
     h += "<p class=\"note\">"+all.length+(all.length===1?" Treffer":" Treffer")+" für „"+esc(q)+"“</p>";
     return h + (all.length ? byCat(all) : "<p class=\"empty\">Nichts gefunden. Suche nach Name, Adresse, Viertel, Kategorie oder einem Wort aus der Notiz.</p>");
   }
   var open = pool.filter(function(p){ return !dayOf(p.id) && fc(p); });
   h += open.length ? byCat(open) : "<p class=\"empty\">"+(catAny()||keys.length?"Keine offenen Wünsche für diesen Filter.":"Noch keine offenen Wünsche. Lege oben den ersten an.")+"</p>";
+  if(activeList==="open"){
+    var pl = Object.keys(T().places).map(P).filter(function(p){ return !p.of && dayOf(p.id) && fc(p); });
+    if(pl.length){
+      h += "<div class=\"sec\"><button type=\"button\" class=\"fold\" data-act=\"wplanned\" aria-expanded=\""+wPlannedOpen+"\"><h4>Schon eingeplant · "+pl.length+"</h4><span class=\"cnt\">nochmal besuchen</span>"+CHEV+"</button>";
+      if(wPlannedOpen) h += "<ul class=\"wl\">"+pl.map(wishRow).join("")+"</ul>";
+      h += "</div>";
+    }
+  }
   if(activeList!=="open"){
-    var planned = pool.filter(function(p){ return dayOf(p.id) && fc(p); });
+    var planned = pool.filter(function(p){ return !p.of && dayOf(p.id) && fc(p); });
     if(planned.length) h += "<div class=\"sec\"><h4>Schon eingeplant · "+planned.length+"</h4><ul class=\"wl\">"+planned.map(wishRow).join("")+"</ul></div>";
     if(activeList!=="none") h += "<div class=\"row\">"+confirmBtn("dell:"+activeList, "Liste löschen", "Liste wirklich löschen? Wünsche bleiben erhalten.", "dellist")+"</div>";
   }
@@ -3429,6 +3534,7 @@ function deletePlace(id){
   }
   document.addEventListener("touchend", end); document.addEventListener("touchcancel", end);
 })();
+var wPlannedOpen = false;
 var wDistDir = lsGet("rp-wdir")==="desc" ? "desc" : "asc";
 function distRef(){
   if(me && hasLoc(me)) return {p:me, lbl:"deinem Standort"};
@@ -3438,7 +3544,8 @@ function distRef(){
 }
 function wishRow(p){
   var dk = dayOf(p.id), D = dayByKey(cur), dd = dk && dayByKey(dk);
-  var right = dd ? "<button type=\"button\" class=\"pill"+yel(dd)+"\" style=\"background:"+dayColor(dd)+"\" data-act=\"gotoday\" data-day=\""+dk+"\">Tag "+dd.n+"</button>"
+  var vs = dk ? visitsOf(p.id) : [];
+  var right = dd ? "<span class=\"vpills\">"+vs.map(function(v){ var d2 = dayByKey(v.k); return "<button type=\"button\" class=\"pill"+yel(d2)+"\" style=\"background:"+dayColor(d2)+"\" data-act=\"gotoday\" data-day=\""+v.k+"\">Tag "+d2.n+"</button>"; }).join("")+"<button type=\"button\" class=\"pill add\" data-act=\"revisit\" data-pid=\""+p.id+"\" aria-label=\"An einem weiteren Tag einplanen\">+ Tag</button></span>"
                  : (D ? "<button type=\"button\" class=\"btn s\" data-act=\"plan\">+ "+D.wd+" "+shortD(D.key)+"</button>" : "");
   var rf = distRef(), dm = rf && hasLoc(p) ? dist(rf.p, p) : null;
   var sub = (dm!=null ? "<span class=\"wdist\">"+fmtDist(dm)+"</span> " : "")+"<button type=\"button\" class=\"gtag"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? esc(grpName(p.g)) : "Gruppe")+"</button> " + esc(CATNAME[p.c]) + (nbOf(p) && nbKeys().length!==1 ? " · "+esc(nbOf(p)) : "") + (p.addr?" · "+esc(p.addr):"") + (p.note?"<br>"+esc(p.note):"") + (hasLoc(p) ? "" : "<br><b>Ohne Ort auf der Karte</b>");
@@ -3785,6 +3892,11 @@ function unplan(id){
   undoSnap = snapshot();
   T().order[k] = ord(k).filter(function(x){ return x!==id; });
   delete T().done[id];
+  var p = P(id);
+  if(p && p.of){ // weiterer Besuch: Kopie ganz entfernen
+    var t = T(); delete t.places[id]; ["times","rating","notes","photos","legMode","legAlt"].forEach(function(f){ if(t[f]) delete t[f][id]; });
+    save(); toast("Weiterer Besuch von "+p.n+" entfernt", true); return;
+  }
   save(); toast(P(id).n+" liegt wieder in der Wunschliste", true);
 }
 function openCatPop(){
@@ -3793,11 +3905,15 @@ function openCatPop(){
   $("catPop").innerHTML = h + "</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]") || $("catPop").querySelector("[data-act=dcat]"); if(b) b.focus();
 }
-function openDayPop(){
-  var tk = todayKey(), h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Tag wählen\"><div class=\"pop-head\"><h4>Tag wählen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list daylist\">";
+var dayPopFor = null;
+function openDayPop(forId){
+  dayPopFor = forId || null;
+  var rv = dayPopFor ? visitsOf(dayPopFor).map(function(v){ return v.k; }) : [];
+  var tk = todayKey(), h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Tag wählen\"><div class=\"pop-head\"><h4>"+(dayPopFor ? "An welchem Tag nochmal hin?" : "Tag wählen")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list daylist\">";
   days().forEach(function(d){
     var ids = T().order[d.key]||[], dn = ids.filter(function(x){ return T().done[x]; }).length;
-    h += "<button type=\"button\" data-act=\"daypick\" data-day=\""+d.key+"\" aria-pressed=\""+(cur===d.key)+"\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span><span class=\"dt\"><b>"+esc(d.title)+(d.key===tk?" <em>Heute</em>":"")+"</b><small>"+(ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps")+(dn?" · "+dn+" erledigt":"") : "noch leer")+(d.hint?" · "+esc(d.hint):"")+"</small></span></button>";
+    var already = rv.indexOf(d.key) > -1;
+    h += "<button type=\"button\" data-act=\""+(dayPopFor?"revpick":"daypick")+"\" data-day=\""+d.key+"\" aria-pressed=\""+(dayPopFor ? already : cur===d.key)+"\""+(already?" disabled":"")+"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span><span class=\"dt\"><b>"+esc(d.title)+(d.key===tk?" <em>Heute</em>":"")+"</b><small>"+(already ? "schon eingeplant · " : "")+(ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps")+(dn?" · "+dn+" erledigt":"") : "noch leer")+(d.hint?" · "+esc(d.hint):"")+"</small></span></button>";
   });
   $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
@@ -3810,6 +3926,7 @@ document.addEventListener("click", function(e){
   if(e.target.id==="acctPop"){ closeSettings(); return; }
   if(e.target.id==="suPop"){ closeSignup(); return; }
   if(e.target.id==="tripPop"){ closeTrip(); return; }
+  if(e.target.id==="srchPop"){ closeSearch(); return; }
   if(e.target.id==="jPop"){ closeJPop(); return; }
   var t = e.target.closest("[data-act],[data-tab]");
   if(!t) return;
@@ -3818,6 +3935,12 @@ document.addEventListener("click", function(e){
   var holder = t.closest("[data-id]"), id = holder ? holder.getAttribute("data-id") : null;
   switch(act){
     case "daypop": closeMenus(); openDayPop(); break;
+    case "revpick": closeCatPop(); var rvId = dayPopFor; dayPopFor = null; revisit(rvId, t.getAttribute("data-day")); renderAll(); break;
+    case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
+    case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
+    case "srchopen": closeMenus(); openSearch(); break;
+    case "srchclose": closeSearch(); break;
+    case "srchgo": srchGo(+t.getAttribute("data-i")); break;
     case "daypick": closeCatPop(); cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "day": cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "gotoday": cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
@@ -4009,6 +4132,7 @@ document.addEventListener("input", function(e){
   }
   if(t.id==="busQ"){ busQ = t.value; renderLineMenus(); return; }
   if(t.id==="suPw2" || (t.id==="suPw" && $("suPw2").value)){ suCheck(false); return; }
+  if(t.id==="srchIn"){ srch.q = t.value; srch.res = srchLocal(t.value); srch.web = []; renderSearch(false); srchWeb(t.value); return; }
   if(t.id==="frQ"){ var fq = t.value; clearTimeout(frTimer); frTimer = setTimeout(function(){ frDoSearch(fq); }, 300); return; }
   if(t.hasAttribute && t.hasAttribute("data-note")){ var np = t.getAttribute("data-note"), tn = T(); tn.notes = tn.notes || {}; if(t.value) tn.notes[np] = t.value; else delete tn.notes[np]; clearTimeout(jTimer); jTimer = setTimeout(save, 400); return; }
   if(t.hasAttribute && t.hasAttribute("data-geo")){ var gp = t.getAttribute("data-geo"), gv = t.value; clearTimeout(geoTimer); geoTimer = setTimeout(function(){ geoSearch(gp, gv); }, 350); return; }
@@ -4099,7 +4223,7 @@ document.addEventListener("submit", function(e){
 document.addEventListener("keydown", function(e){
   if(e.key==="Enter" && e.target && e.target.hasAttribute && e.target.hasAttribute("data-geo")){ e.preventDefault(); var gp = e.target.getAttribute("data-geo"); if((geoRes[gp]||[]).length) geoPick(gp, 0); else geoSearch(gp, e.target.value); }
 });
-document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if($("suPop")) closeSignup(); else if(tab==="trip" && $("jPop").hidden && $("acctPop").hidden && $("catPop").hidden) closeTrip(); else if(!$("jPop").hidden) closeJPop(); else if(!$("acctPop").hidden) closeSettings(); else if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
+document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if($("suPop")) closeSignup(); else if(!$("srchPop").hidden) closeSearch(); else if(tab==="trip" && $("jPop").hidden && $("acctPop").hidden && $("catPop").hidden) closeTrip(); else if(!$("jPop").hidden) closeJPop(); else if(!$("acctPop").hidden) closeSettings(); else if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
 desktop.addEventListener("change", function(){ syncSide(); resize(); });
 window.addEventListener("resize", resize);
 
