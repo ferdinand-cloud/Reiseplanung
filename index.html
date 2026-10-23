@@ -311,6 +311,12 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+body.ro [data-act="done"],body.ro [data-act="plan"],body.ro [data-act="unplan"],body.ro [data-act="swdel"],body.ro [data-act="delplace"],body.ro [data-act="revisit"],body.ro [data-act="revpick"],body.ro [data-act="grppick"],body.ro [data-act="grpset"],body.ro [data-act="grpmanage"],body.ro [data-act="grpdel"],body.ro [data-act="grpedit"],body.ro [data-act="newwish"],body.ro [data-act="newlist"],body.ro [data-act="dellist"],body.ro [data-act="lmode"],body.ro [data-act="legalt"],body.ro [data-act="rate"],body.ro [data-act="jphl"],body.ro [data-act="jhl"],body.ro [data-act="jins"],body.ro [data-act="phdel"],body.ro [data-act="tripedit"],body.ro [data-act="deltrip"],body.ro [data-act="reset"],body.ro [data-act="lpday"],body.ro [data-act="lpwish"],body.ro [data-act="lphotel"],body.ro [data-act="poiadd"],body.ro [data-act="undo"],body.ro [data-act="tadd"],body.ro [data-act="tdel"],body.ro [data-act="pick"],body.ro [data-act="arm"],body.ro [data-act="move"],body.ro [data-act="time"],body.ro [data-act="jpedit"]{display:none !important}
+body.ro .lcol .grip,body.ro .jp-add,body.ro .jp-grp:not(.on),body.ro .lm,body.ro .alts2,body.ro #lpPick{display:none !important}
+body.ro .jp-grp{pointer-events:none}
+body.ro [data-act=sugtoggle],body.ro .sugs{display:none !important}
+body.ro .jp-t[readonly]{background:transparent}
+
 .notrip{display:grid;gap:12px;padding:6px 2px 20px}
 .notrip h2{margin:0;font:700 26px/1.1 var(--f-display)}
 .notrip p{margin:0;color:var(--muted);font-size:14.5px}
@@ -2754,7 +2760,7 @@ function importPlan(file){
   };
   fr.readAsText(file);
 }
-document.addEventListener("change", function(e){ if(e.target.id==="phIn" && jp){ addPhotos(jp.pid, e.target.files); return; } });
+document.addEventListener("change", function(e){ if(isRO() && (e.target.id==="phIn" || /^(move|time|rename)$/.test(e.target.getAttribute && e.target.getAttribute("data-act") || ""))){ e.stopImmediatePropagation(); renderSheet(); return; } if(e.target.id==="phIn" && jp){ addPhotos(jp.pid, e.target.files); return; } });
 document.addEventListener("change", function(e){ if((e.target.id==="impFile" || e.target.id==="impFileG") && e.target.files[0]) importPlan(e.target.files[0]); });
 
 function closeMenus(){ $("mainMenu").hidden = true; $("menuBtn").setAttribute("aria-expanded","false"); $("layers").hidden = true; $("layersBtn").setAttribute("aria-expanded","false"); $("tripMenu").hidden = true; $("tripBtn").setAttribute("aria-expanded","false"); }
@@ -3470,12 +3476,13 @@ function renderJPop(){
     el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el); return;
   }
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
-  h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\"><input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\"><small>"+esc([D ? D.lbl : "", CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
+  h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+esc([D ? D.lbl : "", CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   h += "<button type=\"button\" class=\"jp-grp"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"</button>";
   h += "<div class=\"jp-tiles\">";
   if(planned){
     h += "<button type=\"button\" class=\"jp-tile"+(dn?" on":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"<span>"+(dn?"Erledigt":"Abhaken")+"</span></button>";
+    if(isRO()){ if(tm) h += "<div class=\"jp-tile set\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+"<span>"+esc(tm)+"</span></div>"; } else
     h += "<label class=\"jp-tile"+(tm?" set":"")+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+"<span>"+(tm ? esc(tm) : "Uhrzeit")+"</span><input type=\"time\" data-act=\"time\" value=\""+esc(tm)+"\" aria-label=\"Uhrzeit\"></label>";
   }
   if(!planned) h += "<button type=\"button\" class=\"jp-tile\" data-act=\"revisit\" data-pid=\""+jp.pid+"\">"+I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3M10 10.5v4M8 12.5h4\"/>")+"<span>Zu Tag hinzufügen</span></button>";
@@ -3485,7 +3492,7 @@ function renderJPop(){
   if(dn){
     h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Wie war's?<button type=\"button\" class=\"jp-star"+(isHl?" on":"")+"\" data-act=\"jphl\" aria-pressed=\""+isHl+"\" title=\"Highlight des Tages\">★ "+(isHl?"Highlight des Tages":"Highlight")+"</button></div>"+rateRow(jp.pid)+"</div>";
   }
-  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+jp.pid+"\" rows=\"3\" maxlength=\"5000\" placeholder=\""+(dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
+  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+jp.pid+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
   var qn = (function(){ var q = phQueue(); return ph.filter(function(x){ return q.up.indexOf(x) > -1; }).length; })();
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Fotos"+(ph.length ? " · "+ph.length : "")+(qn ? "<small> · "+qn+" noch nicht hochgeladen</small>" : "")+"</div><div class=\"jp-strip\">"+
        "<label class=\"jp-add\" for=\"phIn\"><span>＋</span></label>"+
@@ -3795,6 +3802,7 @@ function deletePlace(id){
   var sw = null, openRow = null;
   function closeOpen(except){ if(openRow && openRow!==except){ var oc = openRow.querySelector(".swc,.stc"); if(oc) oc.style.transform = ""; openRow.classList.remove("open","swl-on","swr-on"); openRow = null; } }
   document.addEventListener("touchstart", function(e){
+    if(isRO()){ sw = null; return; }
     var c = e.target.closest && (e.target.closest(".wi.sw .swc") || e.target.closest("li.st > .stc"));
     if(!c || e.target.closest(".grip,select,input,textarea") || (e.target.closest("ol.plan") && e.target.closest("ol.plan").classList.contains("sorting"))){ if(!(e.target.closest && e.target.closest(".swdel,.swl,.swr"))) closeOpen(null); sw = null; return; }
     var li = c.parentNode; closeOpen(li);
@@ -4047,6 +4055,7 @@ function renderSheet(){
   var body = $("body"), st = body.scrollTop, ae = document.activeElement, fk = null;
   var tp = $("tripPop"), card = tp.querySelector(".ag-card"), tst = card ? card.scrollTop : 0;
   if(ae && (body.contains(ae) || tp.contains(ae)) && ae.id && /INPUT|TEXTAREA/.test(ae.tagName)){ fk = {id:ae.id, v:ae.value, a:ae.selectionStart, b:ae.selectionEnd}; }
+  applyRO();
   body.innerHTML = noTrip() ? noTripHTML() : sheetTab==="wish" ? renderWish() : renderDay();
   body.scrollTop = st;
   fillPhotos(body);
@@ -4061,7 +4070,10 @@ function renderSheet(){
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
-function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); }
+var RO_ACTS = {"done":1,"plan":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
+function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
+function applyRO(){ document.body.classList.toggle("ro", isRO()); }
+function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); }
 function pickDefaultDay(){
   var ds = days(), tk = todayKey();
   cur = ds.length ? ((dayByKey(tk) && tk) || ds[0].key) : "";
@@ -4233,6 +4245,7 @@ document.addEventListener("click", function(e){
   if(!t) return;
   if(t.hasAttribute("data-tab") && !t.hasAttribute("data-act")){ tab = t.getAttribute("data-tab"); renderSheet(); scheduleOverlay(); if(sheetState==="peek") setSheet("mid"); return; }
   var act = t.getAttribute("data-act");
+  if(RO_ACTS[act] && isRO()){ e.preventDefault(); toast("Als Beobachter kannst du nur ansehen.", false); return; }
   var holder = t.closest("[data-id]"), id = holder ? holder.getAttribute("data-id") : null;
   switch(act){
     case "daypop": closeMenus(); openDayPop(); break;
