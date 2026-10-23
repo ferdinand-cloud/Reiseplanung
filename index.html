@@ -2697,9 +2697,17 @@ function ridePath(l){
   if(best){ out.unshift(straight[0]); out.push(straight[straight.length-1]); }
   RIDEC[k] = out; return out;
 }
+// Weg vom Standort: ist es die nächste Etappe des Tages, die dort gewählte Verbindung verwenden
+function meRouteFor(p){
+  var pr = dayLegs(cur).filter(function(x){ return x[1]===p && x[0] && x[0].id==="me"; })[0];
+  return pr ? legRoute(pr[0], p, cur) : transit(me, p, todayKey());
+}
 function drawMeRoute(){
   if(!meRoute || !me || !sel || !P(sel) || !hasLoc(P(sel))) return "";
-  var p = P(sel), r = transit(me, p, todayKey()), s = "", at = me;
+  var p = P(sel);
+  // Etappe ist schon Teil des Tagesplans: dort mit der gewählten Verbindung gezeichnet – keine zweite Route
+  if(layers.route && dayLegs(cur).some(function(pr){ return pr[1]===p && (pr[0]===me || pr[0].id==="me"); })) return "";
+  var r = meRouteFor(p), s = "", at = me;
   function seg(ll, color, dash, w){
     var dd = ll.map(function(q,j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
     s += "<path d=\""+dd+"\" stroke=\"var(--land)\" stroke-width=\""+(w+3.5)+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/>";
@@ -2994,7 +3002,7 @@ function renderCard(){
   c += gBlock(p);
   if(hasLoc(p)) c += stationLine(p);
   if(me && hasLoc(p) && dist(me, p) < 40000){
-    var rr = transit(me, p, todayKey());
+    var rr = meRouteFor(p);
     c += "<div class=\"mecard\"><span class=\"sub\">Von deinem Standort</span><div class=\"tl\"><button type=\"button\" class=\"tsum\" data-act=\"meroute\">"+transitSummary(rr)+"</button>"+
          "<button type=\"button\" class=\"tdet\" data-act=\"meroute\" aria-expanded=\""+meRoute+"\">"+(meRoute?"Weg ausblenden":"Weg zeigen")+"</button></div>"+(meRoute && !rr.walk ? transitSteps(rr, me, p, {day: nyNow().key}) : "")+"</div>";
   }
