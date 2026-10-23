@@ -1054,15 +1054,37 @@ function acctStart(){
     fb = window.firebase.initializeApp(FB_CFG);
     fbDb = window.firebase.firestore();
     try { fbDb.enablePersistence({synchronizeTabs:true}).catch(function(){}); } catch(e){}
-    window.firebase.auth().onAuthStateChanged(function(u){
+    window.firebase.auth().onAuthStateChanged(authApply);
+  });
+}
+// E-Mail muss bestätigt sein, bevor das Konto genutzt wird
+function sendVerify(u){
+  u = u || window.firebase.auth().currentUser; if(!u) return Promise.reject(new Error("no user"));
+  return u.sendEmailVerification({url: appURL()}).catch(function(e){ if(/continue-uri|unauthorized/.test(e && e.code || "")) return u.sendEmailVerification(); throw e; });
+}
+var verifyTimer = null;
+function verifyCheck(manual){
+  var u = window.firebase && window.firebase.auth().currentUser; if(!u || !acct.verify) return;
+  u.reload().then(function(){ var u2 = window.firebase.auth().currentUser;
+    if(u2 && u2.emailVerified){ toast("E-Mail bestätigt – willkommen!", false); authApply(u2); }
+    else if(manual){ acct.vmsg = "Noch nicht bestätigt. Tippe zuerst auf den Link in der E-Mail."; renderGate(true); } }, function(e){ if(manual){ acct.vmsg = acctErr(e); renderGate(true); } });
+}
+function authApply(u){
+    if(u && !u.emailVerified){
+      acct.verify = {email:u.email}; acct.ready = true; renderGate(true);
+      clearInterval(verifyTimer); verifyTimer = setInterval(function(){ if(document.visibilityState==="visible") verifyCheck(false); }, 5000);
+      return;
+    }
+    clearInterval(verifyTimer); acct.verify = null; acct.vmsg = "";
+    (function(){
       var was = acct.user && acct.user.uid;
       acct.user = u ? {uid:u.uid, id:u.uid, email:u.email} : null;
       if(u && was!==u.uid){ acctMigrate().then(function(){ acctLive(); setTimeout(phFlush, 1500); cmWatch(); frWatch(); }); }
       if(!u){ if(fbUnsub){ fbUnsub(); fbUnsub = null; } if(invUnsub){ invUnsub(); invUnsub = null; } if(cmUnsub){ cmUnsub(); cmUnsub = null; } frStop(); acct.state = "off"; INVITES = []; }
       acct.ready = true; renderGate(); refreshSettings();
-    });
-  });
+    })();
 }
+document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="visible" && acct.verify) verifyCheck(false); });
 function googleBlock(){
   return "<div class=\"sec\"><h4>Google-Bewertungen &amp; Fotos</h4><p class=\"note\" style=\"margin-bottom:6px\">"+(gKey ? "Aktiv. Bewertungen und Fotos erscheinen, wenn du einen Ort antippst. Der Schlüssel ist nur auf diesem Gerät gespeichert." : "Trage einen Google-Maps-API-Schlüssel ein (Places API (New)). Er wird nur auf diesem Gerät gespeichert, nicht im öffentlichen Code.")+"</p>"+
          "<div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\" role=\"status\">"+esc(gMsg)+"</p>":"")+"</div>";
@@ -1306,12 +1328,21 @@ function refreshSettings(){
   openSettings();
 }
 /* Anmeldefenster vor der App */
-function renderGate(){
+function renderGate(force){
   var g = $("gate"); if(!g) return;
+  if(acct.verify){
+    g.hidden = false; document.body.classList.add("gated");
+    g.innerHTML = "<div class=\"gate-card\"><h1>E-Mail bestätigen</h1><p class=\"sub\">Wir haben dir einen Bestätigungslink an <b>"+esc(acct.verify.email)+"</b> geschickt. Tippe auf den Link in der E-Mail – danach geht es hier automatisch weiter.</p>"+
+      "<p class=\"note\">Keine E-Mail da? Schau auch im Spam-Ordner nach.</p>"+
+      "<button type=\"button\" class=\"btn\" data-act=\"vcheck\">Ich habe bestätigt</button>"+
+      "<div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"vresend\">E-Mail erneut senden</button><button type=\"button\" class=\"btn g s\" data-act=\"vout\">Abmelden</button></div>"+
+      "<p class=\"note\" id=\"acctNote\" role=\"status\">"+esc(acct.vmsg||"")+"</p></div>";
+    return;
+  }
   if(acct.state==="unconf" || acct.user){ g.hidden = true; document.body.classList.remove("gated"); return; }
   g.hidden = false; document.body.classList.add("gated");
   if(!acct.ready){ g.innerHTML = "<div class=\"gate-card\"><h1>Reiseplan</h1><p class=\"note\">Lade …</p></div>"; return; }
-  if(g.querySelector("#acForm")){ var n = $("acctNote"); if(n) n.innerHTML = acctNote(); return; }
+  if(g.querySelector("#acForm") && !force){ var n = $("acctNote"); if(n) n.innerHTML = acctNote(); return; }
   g.innerHTML = "<div class=\"gate-card\"><h1>Reiseplan</h1><p class=\"sub\">Melde dich an, um deine Reisen zu planen. Deine Pläne sind auf allen deinen Geräten gleich.</p>"+
     "<form class=\"af\" id=\"acForm\"><label><span>E-Mail</span><input type=\"email\" id=\"acMail\" autocomplete=\"email\" inputmode=\"email\" required></label><label><span>Passwort</span><input type=\"password\" id=\"acPw\" autocomplete=\"current-password\" minlength=\"8\"></label>"+
     "<button type=\"submit\" class=\"btn\">Anmelden</button><div class=\"row\"><button type=\"button\" class=\"btn g s\" data-act=\"acsignup\">Konto erstellen</button><button type=\"button\" class=\"btn g s\" data-act=\"acforgot\">Passwort vergessen</button></div></form>"+
@@ -3567,6 +3598,9 @@ document.addEventListener("click", function(e){
     case "rate": var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); break;
     case "acsignup": openSignup(); break;
     case "suclose": closeSignup(); break;
+    case "vcheck": acct.vmsg = "Prüfe …"; renderGate(true); verifyCheck(true); break;
+    case "vresend": sendVerify().then(function(){ acct.vmsg = "Neue E-Mail ist unterwegs."; renderGate(true); }, function(e){ acct.vmsg = /too-many/.test(e && e.code || "") ? "Gerade erst gesendet – bitte ein paar Minuten warten." : acctErr(e); renderGate(true); }); break;
+    case "vout": window.firebase.auth().signOut(); break;
     case "acforgot": var cf = acctCreds(); if(!cf.email){ setAcct("off", "Bitte zuerst die E-Mail eingeben."); break; }
       window.firebase.auth().sendPasswordResetEmail(cf.email).then(function(){ setAcct("off", "Wir haben dir einen Link zum Zurücksetzen geschickt. Danach hier mit dem neuen Passwort anmelden."); }, function(e){ setAcct("off", acctErr(e)); });
       break;
@@ -3745,7 +3779,7 @@ document.addEventListener("submit", function(e){
     if(!suCheck(true)){ $("suPw2").focus(); return; }
     if(!window.firebase){ suErr("Konten sind gerade nicht verfügbar."); return; }
     var sb = e.target.querySelector("[type=submit]"); sb.disabled = true; sb.textContent = "Wird erstellt …"; suErr("");
-    window.firebase.auth().createUserWithEmailAndPassword(sm, p1).then(function(){ closeSignup(); acct.msg = ""; toast("Konto erstellt und angemeldet", false); },
+    window.firebase.auth().createUserWithEmailAndPassword(sm, p1).then(function(cr){ closeSignup(); acct.msg = ""; return sendVerify(cr && cr.user).then(function(){ acct.vmsg = ""; }, function(er2){ acct.vmsg = "Bestätigungs-E-Mail konnte nicht gesendet werden: "+acctErr(er2); }).then(function(){ renderGate(true); }); },
       function(er){ sb.disabled = false; sb.textContent = "Konto erstellen"; suErr(acctErr(er)); });
     return;
   }
