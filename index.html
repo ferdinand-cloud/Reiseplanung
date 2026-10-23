@@ -1323,6 +1323,28 @@ li.st .sub{margin-top:1px}
 .hsbtn{display:inline-flex;align-items:center;gap:6px;margin-left:auto;border:0;border-radius:999px;padding:5px 11px 5px 6px;background:var(--fill);color:var(--ink);font:600 13px/1.2 var(--f-body);flex:0 0 auto;cursor:pointer}
 .hsbtn svg{width:14px;height:14px;padding:3px;border-radius:6px;background:var(--ink);color:var(--sheet)}
 .rhead .hsbtn + .rtog{margin-left:6px}
+.lk{width:13px;height:13px;margin-left:5px;vertical-align:-1px;color:var(--muted);flex:0 0 auto}
+.jp-priv{display:inline-flex;align-items:center;gap:5px}
+.jp-priv .lk{margin:0;width:13px;height:13px}
+.jp-priv.on{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
+.jp-priv.on .lk{color:var(--sheet)}
+.jp-pv{display:inline-flex;align-items:center;gap:4px;margin-left:8px;border:0;border-radius:999px;padding:3px 9px;background:var(--fill);color:var(--muted);font:600 12px/1.2 var(--f-body);vertical-align:1px}
+.jp-pv .lk{margin:0;width:12px;height:12px}
+.jp-pv.on{background:var(--ink);color:var(--sheet)}
+.jp-pv.on .lk{color:var(--sheet)}
+.jp-strip button.pv-lk{position:relative}
+.jp-strip button.pv-lk i{position:absolute;right:4px;bottom:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.55);display:grid;place-items:center}
+.jp-strip button.pv-lk i .lk{margin:0;width:12px;height:12px;color:#fff}
+#pvLayer .pvi:disabled{opacity:.85}
+.cfpop{position:fixed;inset:0;z-index:95;background:rgba(8,12,18,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:grid;place-items:center;padding:24px}
+.cfpop[hidden]{display:none}
+.cf-card{width:min(320px,100%);background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-bd,var(--line));border-radius:18px;padding:18px 16px 14px;box-shadow:0 12px 40px rgba(0,0,0,.3);color:var(--ink);text-align:center}
+.cf-card b{display:block;font:600 17px/1.3 var(--f-body)}
+.cf-card p{margin:6px 0 0;font-size:14px;line-height:1.4;color:var(--muted)}
+.cf-row{display:flex;gap:8px;margin-top:16px}
+.cf-row button{flex:1;border:0;border-radius:12px;padding:11px 10px;font:600 15px/1.2 var(--f-body);cursor:pointer}
+.cf-no{background:var(--fill);color:var(--ink)}
+.cf-ok{background:#D9534F;color:#fff}
 li.st .no.hs{background:var(--ink) !important;color:var(--sheet) !important;border-radius:9px}
 .ht.me .h{border-radius:50%;font-size:11px}
 .ht b{font-weight:600}
@@ -1727,7 +1749,105 @@ function renameLocal(){
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["places","done","times","journal","order","legMode","legAlt","rating","notes","photos","groups"];
+var MAPK = ["places","done","times","journal","order","legMode","legAlt","rating","notes","photos","groups","privP","privN","privPh"];
+/* ---------- Privat: Orte, Notizen und Fotos, die Beobachter nicht bekommen ----------
+   Mitreisende lesen und schreiben die vollständige Reise in trips/{id}/priv/data;
+   das Reise-Dokument selbst (für Beobachter lesbar) enthält nur den öffentlichen Teil. */
+function jclone(o){ return o===undefined ? undefined : JSON.parse(JSON.stringify(o)); }
+function privOf(t){ return !!(t && ["privP","privN","privPh"].some(function(k){ return t[k] && Object.keys(t[k]).length; })); }
+function privSet(t){ var P0 = t.privP || {}, out = Object.keys(P0).filter(function(id){ return t.places && t.places[id]; });
+  Object.keys(t.places||{}).forEach(function(id){ var q = t.places[id]; if(q && q.of && P0[q.of] && out.indexOf(id)<0) out.push(id); }); return out; }
+function pubOf(M){
+  var c = jclone(M);
+  if(privOf(M)){
+    var S0 = privSet(M), N0 = M.privN || {}, H0 = M.privPh || {};
+    S0.forEach(function(pid){
+      var nm = (c.places[pid]||{}).n || "";
+      delete c.places[pid];
+      ["done","times","rating","notes","photos"].forEach(function(k){ if(c[k]) delete c[k][pid]; });
+      Object.keys(c.order||{}).forEach(function(dk){ c.order[dk] = c.order[dk].filter(function(x){ return x!==pid; }); });
+      ["legMode","legAlt"].forEach(function(k){ Object.keys(c[k]||{}).forEach(function(lk){ if(lk.indexOf(pid)>-1) delete c[k][lk]; }); });
+      if(nm) Object.keys(c.journal||{}).forEach(function(dk){ var J = c.journal[dk]; if(!J) return; if(J.hl===nm) delete J.hl;
+        if(typeof J.text==="string") J.text = J.text.split("\n").filter(function(l){ return l.indexOf("• "+nm)!==0; }).join("\n"); });
+    });
+    Object.keys(N0).forEach(function(pid){ if(c.notes) delete c.notes[pid]; });
+    Object.keys(c.photos||{}).forEach(function(pid){ c.photos[pid] = (c.photos[pid]||[]).filter(function(x){ return !H0[x]; }); if(!c.photos[pid].length) delete c.photos[pid]; });
+  }
+  delete c.privP; delete c.privN; delete c.privPh;
+  return c;
+}
+// private Teile aus „full“ in einen öffentlichen Stand zurückholen (falls jemand nur den öffentlichen Teil geschrieben hat)
+function privReadd(pub, full){
+  var r = jclone(pub);
+  if(!full || !privOf(full)) return r;
+  ["privP","privN","privPh"].forEach(function(k){ if(full[k]) r[k] = Object.assign({}, full[k], r[k]||{}); });
+  r.places = r.places || {}; r.order = r.order || {};
+  privSet(full).forEach(function(pid){
+    if(!full.places[pid] || r.places[pid]) return;
+    r.places[pid] = jclone(full.places[pid]);
+    ["done","times","rating","notes","photos"].forEach(function(k){ if(full[k] && full[k][pid]!==undefined){ r[k] = r[k] || {}; r[k][pid] = jclone(full[k][pid]); } });
+    Object.keys(full.order||{}).forEach(function(dk){ var fo = full.order[dk], i = fo.indexOf(pid); if(i<0) return; var ro = r.order[dk] = r.order[dk] || []; if(ro.indexOf(pid)>-1) return;
+      var j = i-1; while(j>=0 && ro.indexOf(fo[j])<0) j--; ro.splice(j<0 ? 0 : ro.indexOf(fo[j])+1, 0, pid); });
+  });
+  var pn = {}; privSet(full).forEach(function(pid){ if(full.places[pid]) pn[full.places[pid].n] = 1; });
+  Object.keys(full.journal||{}).forEach(function(dk){ var F = full.journal[dk]; if(!F) return; r.journal = r.journal || {}; var J = r.journal[dk] = r.journal[dk] || {};
+    if(F.hl && pn[F.hl] && !J.hl) J.hl = F.hl;
+    if(typeof F.text==="string"){ var miss = F.text.split("\n").filter(function(l){ return Object.keys(pn).some(function(n){ return l.indexOf("• "+n)===0; }) && (J.text||"").indexOf(l)<0; }); if(miss.length) J.text = (J.text ? J.text+"\n" : "")+miss.join("\n"); } });
+  Object.keys(full.privN||{}).forEach(function(pid){ if(full.notes && full.notes[pid]!=null && r.places[pid] && (!r.notes || r.notes[pid]==null)){ r.notes = r.notes || {}; r.notes[pid] = full.notes[pid]; } });
+  Object.keys(full.photos||{}).forEach(function(pid){ var add = (full.photos[pid]||[]).filter(function(x){ return (full.privPh||{})[x]; }); if(!add.length || !r.places[pid]) return;
+    r.photos = r.photos || {}; var a = r.photos[pid] = (r.photos[pid]||[]).slice(); add.forEach(function(x){ if(a.indexOf(x)<0) a.push(x); }); });
+  return r;
+}
+// Stand für Mitreisende: privater Komplettstand, wenn er zum öffentlichen passt, sonst öffentlich + private Teile
+function pvCombine(pub, pubUpd, pv, local){
+  if(!pub) return pub;
+  if(pv && pv.exists && pv.data){ return (pv.updatedAt||0) >= (pubUpd||0) ? jclone(pv.data) : privReadd(pub, pv.data); }
+  if(local && privOf(local)) return privReadd(pub, local);
+  return pub;
+}
+var ILOCK = "<svg class=\"lk\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4.5\" y=\"9\" width=\"11\" height=\"8\" rx=\"2\"/><path d=\"M7 9V6.5a3 3 0 0 1 6 0V9\"/></svg>";
+function rootPid(pid){ var q = T().places[pid]; return q && q.of && T().places[q.of] ? q.of : pid; }
+function isPrivP(pid){ var t = T(); return !!(t.privP && (t.privP[pid] || t.privP[rootPid(pid)])); }
+function isPrivN(pid){ return isPrivP(pid) || !!((T().privN||{})[pid]); }
+function phPlace(ph){ var ps = T().photos || {}, r = ""; Object.keys(ps).forEach(function(k){ if((ps[k]||[]).indexOf(ph)>-1) r = k; }); return r; }
+function isPrivPh(ph, pid){ return !!((T().privPh||{})[ph]) || isPrivP(pid || phPlace(ph)); }
+function canPriv(){ return !!acct.user && !isRO(); }
+// Sichtbarkeit bereits hochgeladener Fotos im Konto nachziehen
+function phPrivSync(ids){
+  if(!fbDb || !acct.user) return; var q = phQueue(), tid = gidFor(S.cur); if(!KNOWN[tid]) return;
+  ids.forEach(function(ph){ if(q.up.indexOf(ph)>-1) return; phCol(tid).doc(ph).set({priv:isPrivPh(ph)}, {merge:true}).catch(function(){}); });
+}
+function togglePriv(kind, key){
+  var t = T(), k = kind==="p" ? "privP" : kind==="n" ? "privN" : "privPh"; t[k] = t[k] || {};
+  var on = !t[k][key]; if(on) t[k][key] = 1; else delete t[k][key];
+  save();
+  if(kind==="p") phPrivSync(photosOf(key)); else if(kind==="ph") phPrivSync([key]);
+  toast(on ? (kind==="p" ? "Ort ist jetzt privat – Beobachter sehen ihn nicht" : kind==="n" ? "Notiz ist jetzt privat" : "Foto ist jetzt privat")
+           : (kind==="p" ? "Ort ist wieder für alle sichtbar" : kind==="n" ? "Notiz ist wieder für alle sichtbar" : "Foto ist wieder für alle sichtbar"), false);
+}
+function privRef(id){ return tripRef(id).collection("priv").doc("data"); }
+var PVD = {}, pvUnsub = {}, pvWait = {}, pvLastQs = null, pvSeq = 0;
+function pvRow(snap){ var v = snap && snap.exists ? snap.data() : null, d = null; try { d = v && v.json ? JSON.parse(v.json) : null; } catch(e){} return {exists:!!(v && d), data:d, updatedAt:(v && v.updatedAt)||0, ready:true}; }
+function pvWatch(id){
+  if(pvWait[id]) return pvWait[id];
+  pvWait[id] = new Promise(function(res){
+    var first = true, done = function(){ if(first){ first = false; res(); } else if(pvLastQs) pvApply(pvLastQs); };
+    setTimeout(function(){ if(first){ PVD[id] = PVD[id] || {exists:false, ready:true, err:true}; first = false; res(); } }, 8000);
+    try {
+      pvUnsub[id] = privRef(id).onSnapshot(function(sn){ if(sn.metadata && sn.metadata.hasPendingWrites) return; PVD[id] = pvRow(sn); done(); },
+        function(){ PVD[id] = {exists:false, ready:true, err:true}; if(first){ first = false; res(); } });
+    } catch(e){ PVD[id] = {exists:false, ready:true, err:true}; first = false; res(); }
+  });
+  return pvWait[id];
+}
+function pvStopAll(){ Object.keys(pvUnsub).forEach(function(k){ try { pvUnsub[k](); } catch(e){} }); pvUnsub = {}; pvWait = {}; PVD = {}; pvLastQs = null; }
+// vor dem Übernehmen eines Server-Stands die privaten Teile aller Reisen abwarten, in denen ich mitplane
+function pvGate(qs){
+  var me = acct.user && acct.user.uid;
+  var ids = qs.docs.filter(function(d){ var v = d.data()||{}; return me && (v.members||[]).indexOf(me)>-1 && (v.viewers||[]).indexOf(me)<0 && !v.deleted; }).map(function(d){ return d.id; });
+  return Promise.all(ids.map(pvWatch));
+}
+function pvApply(qs){ pvLastQs = qs; var seq = ++pvSeq; pvGate(qs).then(function(){ if(seq===pvSeq) acctApply(fbRows(qs)); }); }
 function jeq(a, b){ return JSON.stringify(a===undefined?null:a) === JSON.stringify(b===undefined?null:b); }
 function mergeOrder(b, l, r, preferLocal){
   b = b||[]; l = l||[]; r = r||[];
@@ -1768,23 +1888,27 @@ function acctPush(){
   var changedLocal = false, Lsnap = {};
   // je Reise eine Transaktion: Server-Stand lesen, mit eigener Änderung zusammenführen, schreiben
   var jobs = ids.map(function(id){
+    var usePv = !!S.trips[id] && (privOf(S.trips[id]) || privOf(BASE[id]) || !!(PVD[id] && PVD[id].exists));
     return fbDb.runTransaction(function(tx){
       var ref = tripRef(id);
-      return tx.get(ref).then(function(snap){
+      return (usePv ? tx.get(privRef(id)) : Promise.resolve(null)).then(function(psnap){ return tx.get(ref).then(function(snap){
         var L = S.trips[id]; if(!L) return null;
         Lsnap[id] = JSON.parse(JSON.stringify(L));
         var R = rowTrip(snap), B = BASE[id], M = Lsnap[id], isNew = !R.exists;
+        if(usePv && R.exists && !R.deleted && R.data) R.data = pvCombine(R.data, R.updatedAt, psnap ? pvRow(psnap) : null, L);
         if(R.exists && !R.deleted && B && tripSig(R.data)!==tripSig(B)) M = merge3(B, L, R.data);
         else if(R.exists && !R.deleted && !B && (R.updatedAt||0) > (L.updatedAt||0)) M = merge3({}, L, R.data);
         M.updatedAt = Math.max(Date.now(), (R.updatedAt||0)+1);
-        var doc = {json:JSON.stringify(M), deleted:false, updatedAt:M.updatedAt, name:M.name||""};
+        var doc = {json:JSON.stringify(pubOf(M)), deleted:false, updatedAt:M.updatedAt, name:M.name||""};
         if(isNew){ doc.owner = acct.user.uid; doc.members = [acct.user.uid]; doc.memberEmails = {}; doc.memberEmails[acct.user.uid] = myMail(); doc.invites = []; }
         tx.set(ref, doc, {merge:true});
+        if(usePv){ tx.set(privRef(id), {json:JSON.stringify(M), updatedAt:M.updatedAt}); }
         if(isNew){ META[id] = {owner:acct.user.uid, members:[acct.user.uid], memberEmails:doc.memberEmails, invites:[], viewers:[], viewInvites:[]}; }
         return M;
-      });
+      }); });
     }).then(function(M){
       if(!M) return;
+      if(usePv) PVD[id] = {exists:true, data:jclone(M), updatedAt:M.updatedAt, ready:true};
       KNOWN[id] = 1; saveKnown();
       var C = S.trips[id], Ls = Lsnap[id];
       setBase(id, M);
@@ -1805,6 +1929,7 @@ function acctPush(){
     // Besitzer löscht die Reise für alle; Mitreisende verlassen sie nur
     var job = (!m || m.owner===acct.user.uid) ? tripRef(id).set({json:"", deleted:true, updatedAt:delPend[id]}, {merge:true})
             : tripRef(id).update((function(){ var u = {members:FV.arrayRemove(acct.user.uid), viewers:FV.arrayRemove(acct.user.uid)}; u["memberEmails."+acct.user.uid] = FV.delete(); return u; })());
+    if(!m || m.owner===acct.user.uid) privRef(id).delete().catch(function(){});
     return job.then(function(){ delete delPend[id]; delete KNOWN[id]; saveKnown(); setBase(id, null); });
   }));
   Promise.all(jobs).then(function(){
@@ -1820,6 +1945,7 @@ function acctPush(){
 }
 function fbRows(qs){ setTimeout(function(){ lsSet("rp-meta", JSON.stringify(META)); if(ntUid){ ntMembers(); ntSyncTrips(); } }, 0); return qs.docs.map(function(d){ var v = d.data()||{}, data = null; try { data = v.json ? JSON.parse(v.json) : null; } catch(e){}
   META[d.id] = {owner:v.owner, members:v.members||[], memberEmails:v.memberEmails||{}, invites:v.invites||[], viewers:v.viewers||[], viewInvites:v.viewInvites||[]};
+  if(data && !v.deleted && !isViewerOf(d.id)) data = pvCombine(data, v.updatedAt||0, PVD[d.id], S.trips[d.id]);
   return {id:d.id, data:data, deleted:!!v.deleted || !data, updated_at:new Date(v.updatedAt||0).toISOString()}; }); }
 var metaSig = "";
 function acctApply(rows){
@@ -1848,7 +1974,7 @@ function acctApply(rows){
 function acctPull(){
   if(!fbDb || !acct.user) return;
   setAcct("sync");
-  myTrips().get({source:"server"}).then(function(qs){ acctApply(fbRows(qs)); }, function(e){ setAcct("error", navigator.onLine ? (e && e.message) : "offline"); });
+  myTrips().get({source:"server"}).then(function(qs){ var seq = ++pvSeq; return pvGate(qs).then(function(){ if(seq===pvSeq) acctApply(fbRows(qs)); }); }, function(e){ setAcct("error", navigator.onLine ? (e && e.message) : "offline"); });
 }
 function myTrips(){ return fbDb.collection("trips").where("members", "array-contains", acct.user.uid); }
 /* einmalig: Reisen aus dem früheren Speicherort (users/{uid}/trips) übernehmen */
@@ -1877,7 +2003,7 @@ function acctLive(){
   fbUnsub = myTrips().onSnapshot(function(qs){
     if(qs.metadata.hasPendingWrites) return;
     if(qs.metadata.fromCache && !firstServer) return; // erst den echten Stand vom Server abwarten
-    firstServer = true; liveTry = 0; acctApply(fbRows(qs));
+    firstServer = true; liveTry = 0; pvApply(qs);
   }, function(e){
     // Verbindung abgelehnt (z. B. veraltetes Anmelde-Token): Token erneuern und neu verbinden
     setAcct("error", e && e.message); fbUnsub = null;
@@ -1953,7 +2079,7 @@ function authApply(u){
       var was = acct.user && acct.user.uid;
       acct.user = u ? {uid:u.uid, id:u.uid, email:u.email} : null;
       if(u && was!==u.uid){ acctMigrate().then(function(){ acctLive(); setTimeout(phFlush, 1500); cmWatch(); frWatch(); ntStart(); }); }
-      if(!u){ if(fbUnsub){ fbUnsub(); fbUnsub = null; } if(invUnsub){ invUnsub(); invUnsub = null; } if(cmUnsub){ cmUnsub(); cmUnsub = null; } frStop(); ntStop(); acct.state = "off"; INVITES = []; invBadge(); }
+      if(!u){ pvStopAll(); if(fbUnsub){ fbUnsub(); fbUnsub = null; } if(invUnsub){ invUnsub(); invUnsub = null; } if(cmUnsub){ cmUnsub(); cmUnsub = null; } frStop(); ntStop(); acct.state = "off"; INVITES = []; invBadge(); }
       acct.ready = true; renderGate(); refreshSettings();
     })();
 }
@@ -4118,6 +4244,26 @@ function openCardMore(){
   h += "</div></div>";
   $("catPop").innerHTML = h; $("catPop").hidden = false;
 }
+var CONFIRM = {
+  phdel:["Foto löschen?", "Das Foto wird aus der Reise entfernt, auch für alle Mitreisenden.", "Löschen"],
+  cmdel:["Kommentar löschen?", "", "Löschen"],
+  mremove:["Mitglied entfernen?", "Die Person verliert den Zugriff auf diese Reise.", "Entfernen"],
+  mleave:["Reise verlassen?", "Die Reise verschwindet von deinen Geräten. Wieder hinein kommst du nur mit einer neuen Einladung.", "Verlassen"],
+  minvdel:["Einladung zurückziehen?", "", "Zurückziehen"],
+  frdel:["Freund entfernen?", "", "Entfernen"],
+  gkeydel:["Google-Schlüssel entfernen?", "", "Entfernen"]
+};
+function askConfirm(title, text, ok, fn){
+  var el = $("cfPop"); if(!el){ el = document.createElement("div"); el.id = "cfPop"; el.className = "cfpop"; document.body.appendChild(el); }
+  el.innerHTML = "<div class=\"cf-card\" role=\"alertdialog\" aria-modal=\"true\" aria-labelledby=\"cfT\"><b id=\"cfT\">"+esc(title)+"</b>"+(text ? "<p>"+esc(text)+"</p>" : "")+
+    "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\">Abbrechen</button><button type=\"button\" class=\"cf-ok\">"+esc(ok)+"</button></div></div>";
+  el.hidden = false;
+  var close = function(){ el.hidden = true; el.innerHTML = ""; document.removeEventListener("keydown", key, true); };
+  var key = function(ev){ if(ev.key==="Escape"){ ev.stopPropagation(); close(); } };
+  document.addEventListener("keydown", key, true);
+  el.onclick = function(ev){ ev.stopPropagation(); if(ev.target===el || ev.target.closest(".cf-no")) close(); else if(ev.target.closest(".cf-ok")){ close(); fn(); } };
+  setTimeout(function(){ var b = el.querySelector(".cf-no"); if(b) b.focus(); }, 0);
+}
 function confirmBtn(key, label, sure, act){
   var armed = confirmKey===key;
   return "<button class=\"btn g s"+(armed?" warn":"")+"\" type=\"button\" data-act=\""+(armed?act:"arm")+"\" data-key=\""+key+"\">"+(armed?sure:label)+"</button>";
@@ -4332,7 +4478,7 @@ function renderDay(){
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
       "<div class=\"lcol\">"+(isH ? "<button type=\"button\" class=\"no hs\" data-act=\"stopopen\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":"H")+"</button>"
             : "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>")+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button>"+"</div>"+
-      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(p.k==="hotel" ? "Zwischenstopp im Hotel" : CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
+      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? ILOCK : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(p.k==="hotel" ? "Zwischenstopp im Hotel" : CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(hasLoc(p)||p.addr?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/></svg><select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
       "</div></li>";
@@ -4404,7 +4550,8 @@ function renderJPop(){
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
   h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
-  h += "<div class=\"jp-chips\">"+dayChip(jp.pid)+"<button type=\"button\" class=\"jp-grp"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"</button></div>";
+  h += "<div class=\"jp-chips\">"+dayChip(jp.pid)+"<button type=\"button\" class=\"jp-grp"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"</button>"+
+       (canPriv() ? "<button type=\"button\" class=\"jp-grp jp-priv"+(isPrivP(jp.pid)?" on":"")+"\" data-act=\"privp\" aria-pressed=\""+isPrivP(jp.pid)+"\" title=\"Private Orte sehen nur Mitreisende, keine Beobachter\">"+ILOCK+(isPrivP(jp.pid) ? "Privat" : "Als privat markieren")+"</button>" : "")+"</div>";
   h += "<div class=\"jp-tiles\">";
   if(planned){
     h += "<button type=\"button\" class=\"jp-tile"+(dn?" on":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"<span>"+(dn?"Erledigt":"Abhaken")+"</span></button>";
@@ -4417,11 +4564,11 @@ function renderJPop(){
   if(dn){
     h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Wie war's?<button type=\"button\" class=\"jp-star"+(isHl?" on":"")+"\" data-act=\"jphl\" aria-pressed=\""+isHl+"\" title=\"Highlight des Tages\">★ "+(isHl?"Highlight des Tages":"Highlight")+"</button></div>"+rateRow(jp.pid)+"</div>";
   }
-  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+jp.pid+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
+  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : "<button type=\"button\" class=\"jp-pv"+(isPrivN(jp.pid)?" on":"")+"\" data-act=\"privn\" aria-pressed=\""+isPrivN(jp.pid)+"\">"+ILOCK+(isPrivN(jp.pid) ? "privat" : "öffentlich")+"</button>") : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+jp.pid+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
   var qn = (function(){ var q = phQueue(); return ph.filter(function(x){ return q.up.indexOf(x) > -1; }).length; })();
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Fotos"+(ph.length ? " · "+ph.length : "")+(qn ? "<small> · "+qn+" noch nicht hochgeladen</small>" : "")+"</div><div class=\"jp-strip\">"+
        "<label class=\"jp-add\" for=\"phIn\"><span>＋</span></label>"+
-       ph.map(function(x){ return "<button type=\"button\" data-act=\"phview\" data-ph=\""+x+"\"><img data-ph=\""+x+"\" alt=\"Foto\"></button>"; }).join("")+
+       ph.map(function(x){ return "<button type=\"button\" data-act=\"phview\" data-ph=\""+x+"\""+(canPriv() && isPrivPh(x, jp.pid) ? " class=\"pv-lk\"" : "")+"><img data-ph=\""+x+"\" alt=\"Foto\">"+(canPriv() && isPrivPh(x, jp.pid) ? "<i>"+ILOCK+"</i>" : "")+"</button>"; }).join("")+
        "</div><input type=\"file\" id=\"phIn\" accept=\"image/*\" multiple hidden>"+
        "<p class=\"note pherr\" id=\"jpPhErr\" hidden><span></span> <button type=\"button\" class=\"tf-link\" data-act=\"phretry\">Erneut laden</button></p></div>";
   if(acct.user && KNOWN[S.cur] && shared){
@@ -4451,6 +4598,8 @@ function phMetaHTML(ph){
     h += "<button type=\"button\" class=\"pvi"+(pvCm?" on":"")+"\" data-act=\"pvcm\" aria-expanded=\""+pvCm+"\" aria-label=\"Kommentare\">"+SV("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/>")+"<span>"+(C.length || "")+"</span></button>";
   }
   if(!isRO()) h += "<button type=\"button\" class=\"pvi\" data-act=\"phmovepop\" data-ph=\""+ph+"\" aria-label=\"Einem anderen Ort zuordnen\">"+SV("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"</button>";
+  if(canPriv() && jp){ var pvP = isPrivP(jp.pid), pvOn = isPrivPh(ph, jp.pid);
+    h += "<button type=\"button\" class=\"pvi"+(pvOn?" on":"")+"\" data-act=\"phpriv\" data-ph=\""+ph+"\""+(pvP?" disabled":"")+" aria-pressed=\""+pvOn+"\" aria-label=\""+(pvP ? "Privat (ganzer Ort)" : pvOn ? "Privat – für Beobachter sichtbar machen" : "Als privat markieren")+"\">"+SV("<rect x=\"4.5\" y=\"9\" width=\"11\" height=\"8\" rx=\"2\"/><path d=\""+(pvOn ? "M7 9V6.5a3 3 0 0 1 6 0V9" : "M7 9V6.5a3 3 0 0 1 5.8-1")+"\"/>")+"</button>"; }
   h += "<button type=\"button\" class=\"pvi pv-save"+(CAMF[ph] && !CAMF[ph].saved ? " hot" : "")+"\" data-act=\"phsave\" data-ph=\""+ph+"\" aria-label=\"In Fotos sichern\">"+SV("<path d=\"M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4 15.5h12\"/>")+"</button>";
   if(!isRO()) h += "<button type=\"button\" class=\"pvi warn\" data-act=\"phdel\" data-ph=\""+ph+"\" aria-label=\"Foto löschen\">"+SV("<path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/>")+"</button>";
   h += "</div>";
@@ -4881,7 +5030,7 @@ function phFlush(){
   var q = phQueue(); if(!q.up.length && !q.del.length) return;
   phBusy = true;
   var ups = q.up.slice(), dels = q.del.slice();
-  Promise.all(ups.map(function(id){ return idbDo("readonly", function(st){ return st.get(id); }).catch(function(){ return null; }).then(function(r){ r = r || PHMEM[id]; if(!r) return; var tid = gidFor(r.trip||S.cur); if(!KNOWN[tid]) throw new Error("Reise noch nicht im Konto"); return phCol(tid).doc(id).set({data:r.data, place:r.place||"", trip:tid, by:acct.user.uid, at:Date.now()}); }).then(function(){ var q2 = phQueue(); q2.up = q2.up.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })
+  Promise.all(ups.map(function(id){ return idbDo("readonly", function(st){ return st.get(id); }).catch(function(){ return null; }).then(function(r){ r = r || PHMEM[id]; if(!r) return; var tid = gidFor(r.trip||S.cur); if(!KNOWN[tid]) throw new Error("Reise noch nicht im Konto"); return phCol(tid).doc(id).set({data:r.data, place:r.place||"", trip:tid, by:acct.user.uid, at:Date.now(), priv:isPrivPh(id, r.place)}); }).then(function(){ var q2 = phQueue(); q2.up = q2.up.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })
     .concat(dels.map(function(id){ return phCol(S.cur).doc(id).delete().then(function(){ var q2 = phQueue(); q2.del = q2.del.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })))
     .then(function(){ phBusy = false; }, function(){ phBusy = false; setTimeout(phFlush, 20000); });
 }
@@ -5545,6 +5694,12 @@ document.addEventListener("click", function(e){
   if(t.hasAttribute("data-tab") && !t.hasAttribute("data-act")){ tab = t.getAttribute("data-tab"); renderSheet(); scheduleOverlay(); if(sheetState==="peek") setSheet("mid"); return; }
   var act = t.getAttribute("data-act");
   if(RO_ACTS[act] && isRO()){ e.preventDefault(); toast("Als Beobachter kannst du nur ansehen.", false); return; }
+  // Löschen u. Ä. erst nach Bestätigung (Wischen hat stattdessen „Rückgängig“)
+  var cf = CONFIRM[act];
+  if(cf && !(act==="frdel" && !t.hasAttribute("aria-label"))){
+    if(t.getAttribute("data-ok")!=="1"){ e.preventDefault(); askConfirm(cf[0], cf[1], cf[2], function(){ t.setAttribute("data-ok", "1"); t.click(); }); return; }
+    t.removeAttribute("data-ok");
+  }
   var holder = t.closest("[data-id]"), id = holder ? holder.getAttribute("data-id") : null;
   switch(act){
     case "daypop": closeMenus(); openDayPop(); break;
@@ -5616,6 +5771,9 @@ document.addEventListener("click", function(e){
     case "phretry": phRetry(); phFlush(); break;
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
     case "phback": jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
+    case "privp": togglePriv("p", rootPid(jp ? jp.pid : id)); if(jp) renderJPop(); renderSheet(); break;
+    case "privn": togglePriv("n", jp.pid); renderJPop(); break;
+    case "phpriv": togglePriv("ph", t.getAttribute("data-ph")); phMetaRefresh(); break;
     case "pvcm": pvCm = !pvCm; phMetaRefresh(); if(pvCm) setTimeout(function(){ var a = $("pvCm"); if(a) a.scrollTop = a.scrollHeight; }, 0); break;
     case "phstep": phStep(+t.getAttribute("data-v")); break;
     case "phlike": phLike(t.getAttribute("data-ph")); break;
