@@ -311,6 +311,33 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+/* Wunschliste: aufgeräumter Kopf und kompakte Zeilen */
+.wtop{display:flex;gap:8px;align-items:center}
+.wtop .search{flex:1;min-width:0;margin:0}
+.wadd{flex:0 0 44px;width:44px;height:44px;border-radius:50%;border:0;background:var(--ink);color:var(--sheet);font-size:26px;line-height:1;font-weight:400;display:grid;place-items:center;padding:0 0 3px}
+.fchips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:10px -2px 0;padding:0 2px 2px}
+.fchips::-webkit-scrollbar{display:none}
+.fchip{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:6px 10px 6px 12px;font:inherit;font-size:13px;font-weight:600;white-space:nowrap}
+.fchip svg{width:12px;height:12px;opacity:.6}
+.fchip.on{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
+.fchip.sort{margin-left:auto;color:var(--muted)}
+.fstat{display:flex;align-items:center;gap:14px;margin:8px 2px 0;font-size:13px;color:var(--muted)}
+.fstat b{color:var(--ink)}
+.fstat span{margin-right:auto}
+.wfl .ci{width:16px;height:16px;vertical-align:-3px}
+.wi.sw .swc{grid-template-columns:34px 1fr auto;gap:10px;padding:9px 0;cursor:pointer}
+.wic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink)}
+.wic svg{width:18px;height:18px}
+.wi .m{min-width:0}
+.wi .nm{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px}
+.wmeta,.wnote{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.wmeta .wdist{color:var(--ink);font-weight:700}
+.wnote{opacity:.85}
+.wplan{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0;line-height:1}
+.wplan b{font-size:18px;font-weight:600}
+.wplan small{font-size:10.5px;font-weight:700;color:var(--muted)}
+.jp-grp{margin-top:10px;border:1px dashed var(--line);background:transparent;border-radius:999px;padding:5px 12px;font:inherit;font-size:12.5px;font-weight:600;color:var(--muted)}
+.jp-grp.on{border-style:solid;color:var(--ink)}
 .bul.ferry::before{content:"⛴";margin-right:2px;font-size:.85em}
 /* Punkt-Pop-up */
 .jp-head{display:flex;align-items:center;gap:12px;padding-right:40px}
@@ -3427,6 +3454,7 @@ function renderJPop(){
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
   h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\"><input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\"><small>"+esc([D ? D.lbl : "", CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
+  h += "<button type=\"button\" class=\"jp-grp"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"</button>";
   h += "<div class=\"jp-tiles\">";
   if(planned){
     h += "<button type=\"button\" class=\"jp-tile"+(dn?" on":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"<span>"+(dn?"Erledigt":"Abhaken")+"</span></button>";
@@ -3551,38 +3579,66 @@ function renderWish(){
   var nbLabel = !keys.length ? "Alle Viertel" : keys.length===1 ? keys[0] : keys[0]+" + "+(keys.length-1);
   var multi = t.lists.length > 1 || openCount("none") > 0;
 
-  // Filterzeile: Viertel (Mehrfachauswahl) und – nur bei mehreren Listen – Liste
-  var h = "<div class=\"search\" role=\"search\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"wSearch\" value=\""+esc(wishQuery)+"\" placeholder=\"Wunschliste durchsuchen …\" aria-label=\"Wunschliste durchsuchen\" autocomplete=\"off\" enterkeyhint=\"search\">"+(wishQuery?"<button type=\"button\" data-act=\"sclear\" aria-label=\"Suche leeren\">×</button>":"")+"</div>";
-  h += "<div class=\"frow\"><button type=\"button\" class=\"nbbtn"+(keys.length?" on":"")+"\" data-act=\"nbpop\" aria-haspopup=\"dialog\"><span class=\"lab\">Viertel</span><b>"+esc(nbLabel)+"</b>"+CHEV+"</button>";
-  if(keys.length) h += "<button type=\"button\" class=\"btn g s\" data-act=\"nbfit\">Auf Karte</button>";
-  h += "</div>";
-  if(multi){
-    var lo = "<option value=\"open\""+(activeList==="open"?" selected":"")+">Alle offenen Wünsche ("+wishes().length+")</option>";
-    t.lists.forEach(function(l){ lo += "<option value=\""+l.id+"\""+(activeList===l.id?" selected":"")+">"+esc(l.name)+" ("+openCount(l.id)+" offen)</option>"; });
-    if(openCount("none") || activeList==="none") lo += "<option value=\"none\""+(activeList==="none"?" selected":"")+">Ohne Liste ("+openCount("none")+")</option>";
-    h += "<div class=\"frow\"><label class=\"lab\" for=\"listSel\">Liste</label><select id=\"listSel\" class=\"fsel\">"+lo+"</select></div>";
-  }
-  // Kategorien
-  h += "<div class=\"chips small\" role=\"group\" aria-label=\"Kategorie\"><button type=\"button\" class=\"chip\" data-act=\"wcat\" data-cat=\"\" aria-pressed=\""+(!catAny())+"\">Alle ("+catPool.length+")</button>";
-  CATS.forEach(function(c){ if(cc[c[0]] || catFilter[c[0]]) h += "<button type=\"button\" class=\"chip\" data-act=\"wcat\" data-cat=\""+c[0]+"\" aria-pressed=\""+!!catFilter[c[0]]+"\">"+icon(c[0],"ci")+esc(c[1])+" ("+(cc[c[0]]||0)+")</button>"; });
-  h += "</div>";
-  // Gruppen
-  var gs = groups(), gc = {}; pool.filter(function(p){ return catOk(p.c) && nbMatch(p); }).forEach(function(p){ var k = grpName(p.g) ? p.g : "none"; gc[k] = (gc[k]||0)+1; });
-  h += "<div class=\"chips small grpchips\" role=\"group\" aria-label=\"Gruppe\"><button type=\"button\" class=\"chip\" data-act=\"wgrp\" data-g=\"\" aria-pressed=\""+(!grpSel)+"\">Alle Gruppen</button>";
-  gs.forEach(function(g){ h += "<button type=\"button\" class=\"chip\" data-act=\"wgrp\" data-g=\""+g.id+"\" aria-pressed=\""+(grpSel===g.id)+"\">▦ "+esc(g.n)+" ("+(gc[g.id]||0)+")</button>"; });
-  if(gs.length) h += "<button type=\"button\" class=\"chip\" data-act=\"wgrp\" data-g=\"none\" aria-pressed=\""+(grpSel==="none")+"\">Ohne Gruppe ("+(gc.none||0)+")</button>";
-  h += "<button type=\"button\" class=\"chip add\" data-act=\"grpmanage\">"+(gs.length ? "Gruppen bearbeiten" : "+ Gruppe anlegen")+"</button></div>";
+  // Kopf: Suche + Hinzufügen, darunter eine Zeile Filter-Chips; Details jeweils im Auswahlfenster
+  var gs = groups();
   if(wView==="grp" && !gs.length) wView = "cat";
-  h += "<div class=\"seg wview\" role=\"group\" aria-label=\"Sortierung\"><button type=\"button\" data-act=\"wview\" data-v=\"cat\" aria-pressed=\""+(wView==="cat")+"\">Kategorie</button>"+(gs.length ? "<button type=\"button\" data-act=\"wview\" data-v=\"grp\" aria-pressed=\""+(wView==="grp")+"\">Gruppe</button>" : "")+"<button type=\"button\" data-act=\"wview\" data-v=\"dist\" aria-pressed=\""+(wView==="dist")+"\" aria-label=\"Nach Entfernung sortieren"+(wView==="dist" ? ", nochmal tippen kehrt die Reihenfolge um" : "")+"\">Entfernung"+(wView==="dist" ? (wDistDir==="asc" ? " ↑" : " ↓") : "")+"</button></div>";
+  var h = "<div class=\"wtop\"><div class=\"search\" role=\"search\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"wSearch\" value=\""+esc(wishQuery)+"\" placeholder=\"Wunschliste durchsuchen …\" aria-label=\"Wunschliste durchsuchen\" autocomplete=\"off\" enterkeyhint=\"search\">"+(wishQuery?"<button type=\"button\" data-act=\"sclear\" aria-label=\"Suche leeren\">×</button>":"")+"</div>"+
+    "<button type=\"button\" class=\"wadd\" data-act=\"newwish\" aria-label=\"Wunsch hinzufügen\" title=\"Wunsch hinzufügen\">+</button></div>";
+  var ck = Object.keys(catFilter);
+  var catLbl = !ck.length ? "Kategorie" : ck.length===1 ? CATNAME[ck[0]] : ck.length+" Kategorien";
+  var grpLbl = !grpSel ? "Gruppe" : grpSel==="none" ? "Ohne Gruppe" : (grpName(grpSel) || "Gruppe");
+  var sortLbl = wView==="grp" ? "Gruppe" : wView==="dist" ? (wDistDir==="asc" ? "Nächste zuerst" : "Weiteste zuerst") : "Kategorie";
+  var chip = function(k, lbl, on){ return "<button type=\"button\" class=\"fchip"+(on?" on":"")+"\" data-act=\"wfilt\" data-k=\""+k+"\" aria-haspopup=\"dialog\">"+esc(lbl)+CHEV+"</button>"; };
+  h += "<div class=\"fchips\" role=\"group\" aria-label=\"Filter\">"+
+    chip("nb", !keys.length ? "Viertel" : keys.length===1 ? keys[0] : keys.length+" Viertel", keys.length>0)+
+    chip("cat", catLbl, ck.length>0)+
+    (gs.length ? chip("grp", grpLbl, !!grpSel) : "")+
+    (multi ? chip("list", activeList==="open" ? "Liste" : activeList==="none" ? "Ohne Liste" : listName(activeList), activeList!=="open") : "")+
+    "<button type=\"button\" class=\"fchip sort\" data-act=\"wfilt\" data-k=\"sort\" aria-haspopup=\"dialog\"><span aria-hidden=\"true\">⇅</span> "+esc(sortLbl)+CHEV+"</button></div>";
+  var anyF = keys.length || ck.length || grpSel || activeList!=="open" || wishQuery.trim();
+  if(anyF){
+    var wAll = wishes().length, wShown = listPool().filter(function(p){ return !dayOf(p.id) && catOk(p.c) && nbMatch(p) && grpOk(p) && qMatch(p); }).length;
+    h += "<div class=\"fstat\"><span><b>"+wShown+"</b> von "+wAll+" Wünschen</span><button type=\"button\" class=\"tf-link\" data-act=\"wreset\">Filter zurücksetzen</button>"+(keys.length ? "<button type=\"button\" class=\"tf-link\" data-act=\"nbfit\">Auf Karte</button>" : "")+"</div>";
+  }
 
   if(newList.open){
     h += "<form class=\"f\" id=\"nlForm\"><label><span>Name der neuen Liste</span><input type=\"text\" id=\"nlName\" maxlength=\"40\" value=\""+esc(newList.name)+"\" placeholder=\"z. B. Rooftop-Bars\" autocomplete=\"off\"></label>"+
          "<div class=\"row\"><button class=\"btn\" type=\"submit\">Liste anlegen</button><button class=\"btn g\" type=\"button\" data-act=\"nlcancel\">Abbrechen</button></div></form>";
   }
-  h += "<div class=\"row\"><button type=\"button\" class=\"btn\" data-act=\"newwish\">+ Wunsch hinzufügen</button></div>";
-
   h += "<div id=\"wishRes\">"+wishResults()+"</div>";
   return h;
+}
+/* Filter der Wunschliste als Auswahlfenster */
+var wfiltK = "";
+function openWFilt(k){
+  wfiltK = k; if(k==="nb"){ openNbPop(); return; }
+  var pool = listPool().filter(function(p){ return !dayOf(p.id); }), titles = {cat:"Kategorie", grp:"Gruppe", list:"Liste", sort:"Sortieren nach"};
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+titles[k]+"\"><div class=\"pop-head\"><h4>"+titles[k]+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list wfl\">";
+  var row = function(act, attr, on, lbl, cnt, ic){ return "<button type=\"button\" data-act=\""+act+"\" "+attr+" aria-pressed=\""+on+"\">"+(ic||"<span class=\"box\"></span>")+"<span>"+lbl+"</span>"+(cnt!=null ? "<small>"+cnt+"</small>" : "")+"</button>"; };
+  if(k==="cat"){
+    var base = pool.filter(function(p){ return nbMatch(p) && grpOk(p) && qMatch(p); }), cc = {}; base.forEach(function(p){ cc[p.c] = (cc[p.c]||0)+1; });
+    h += row("wcat", "data-cat=\"\"", !catAny(), "Alle Kategorien", base.length);
+    CATS.forEach(function(c){ if(cc[c[0]] || catFilter[c[0]]) h += row("wcat", "data-cat=\""+c[0]+"\"", !!catFilter[c[0]], icon(c[0],"ci")+" "+esc(c[1]), cc[c[0]]||0); });
+    h += "</div><p class=\"note\" style=\"margin:8px 2px 0\">Mehrere möglich.</p><div class=\"row\" style=\"margin-top:8px\"><button type=\"button\" class=\"btn\" data-act=\"catclose\">Fertig</button></div></div>";
+  } else if(k==="grp"){
+    var base2 = pool.filter(function(p){ return catOk(p.c) && nbMatch(p) && qMatch(p); }), gc = {}; base2.forEach(function(p){ var g = grpName(p.g) ? p.g : "none"; gc[g] = (gc[g]||0)+1; });
+    h += row("wgrp", "data-g=\"\"", !grpSel, "Alle Gruppen", base2.length);
+    groups().forEach(function(g){ h += row("wgrp", "data-g=\""+g.id+"\"", grpSel===g.id, "▦ "+esc(g.n), gc[g.id]||0); });
+    h += row("wgrp", "data-g=\"none\"", grpSel==="none", "Ohne Gruppe", gc.none||0);
+    h += "</div><div class=\"row\" style=\"margin-top:8px\"><button type=\"button\" class=\"btn g\" data-act=\"grpmanage\">Gruppen bearbeiten</button></div></div>";
+  } else if(k==="list"){
+    h += row("wlist", "data-l=\"open\"", activeList==="open", "Alle offenen Wünsche", wishes().length);
+    T().lists.forEach(function(l){ h += row("wlist", "data-l=\""+l.id+"\"", activeList===l.id, esc(l.name), openCount(l.id)); });
+    if(openCount("none") || activeList==="none") h += row("wlist", "data-l=\"none\"", activeList==="none", "Ohne Liste", openCount("none"));
+    h += "</div></div>";
+  } else {
+    h += row("wsort", "data-v=\"cat\"", wView==="cat", "Kategorie");
+    if(groups().length) h += row("wsort", "data-v=\"grp\"", wView==="grp", "Gruppe");
+    h += row("wsort", "data-v=\"dist:asc\"", wView==="dist" && wDistDir==="asc", "Entfernung – nächste zuerst");
+    h += row("wsort", "data-v=\"dist:desc\"", wView==="dist" && wDistDir==="desc", "Entfernung – weiteste zuerst");
+    var rf = distRef(); h += "</div>"+(rf ? "<p class=\"note\" style=\"margin:8px 2px 0\">Entfernung ab "+esc(rf.lbl)+" (Luftlinie).</p>" : "")+"</div>";
+  }
+  $("catPop").innerHTML = h; $("catPop").hidden = false;
 }
 /* ---------- Eigene Gruppen (z. B. „Central Park“) ---------- */
 var grpSel = "", wView = /^(grp|dist)$/.test(lsGet("rp-wview")||"") ? lsGet("rp-wview") : "cat";
@@ -3747,10 +3803,10 @@ function wishRow(p){
   var dk = dayOf(p.id), D = dayByKey(cur), dd = dk && dayByKey(dk);
   var vs = dk ? visitsOf(p.id) : [];
   var right = dd ? "<span class=\"vpills\">"+vs.map(function(v){ var d2 = dayByKey(v.k); return "<button type=\"button\" class=\"pill"+yel(d2)+"\" style=\"background:"+dayColor(d2)+"\" data-act=\"gotoday\" data-day=\""+v.k+"\">Tag "+d2.n+"</button>"; }).join("")+"<button type=\"button\" class=\"pill add\" data-act=\"revisit\" data-pid=\""+p.id+"\" aria-label=\"An einem weiteren Tag einplanen\">+ Tag</button></span>"
-                 : (D ? "<button type=\"button\" class=\"btn s\" data-act=\"plan\">+ "+D.wd+" "+shortD(D.key)+"</button>" : "");
+                 : (D ? "<button type=\"button\" class=\"wplan\" data-act=\"plan\" aria-label=\"Zu "+esc(D.lbl)+" hinzufügen\" title=\"Zu "+esc(D.lbl)+" hinzufügen\"><b>+</b><small>"+D.wd+"</small></button>" : "");
   var rf = distRef(), dm = rf && hasLoc(p) ? dist(rf.p, p) : null;
-  var sub = (dm!=null ? "<span class=\"wdist\">"+fmtDist(dm)+"</span> " : "")+"<button type=\"button\" class=\"gtag"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? esc(grpName(p.g)) : "Gruppe")+"</button> " + esc(CATNAME[p.c]) + (nbOf(p) && nbKeys().length!==1 ? " · "+esc(nbOf(p)) : "") + (p.addr?" · "+esc(p.addr):"") + (p.note?"<br>"+esc(p.note):"") + (hasLoc(p) ? "" : "<br><b>Ohne Ort auf der Karte</b>");
-  return "<li class=\"wi sw"+(dk?" planned":"")+"\" data-id=\""+p.id+"\"><button type=\"button\" class=\"swdel\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"swc\">"+badge(p.c)+"<div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"wopen\">"+hl(p.n)+"</button><div class=\"sub\">"+sub+"</div></div>"+right+"</div></li>";
+  var meta = [dm!=null ? "<b class=\"wdist\">"+fmtDist(dm)+"</b>" : "", nbOf(p) && nbKeys().length!==1 ? esc(nbOf(p)) : "", p.addr ? esc(p.addr) : "", grpName(p.g) ? "▦ "+esc(grpName(p.g)) : "", hasLoc(p) ? "" : "<b>ohne Ort</b>"].filter(Boolean).join(" · ");
+  return "<li class=\"wi sw"+(dk?" planned":"")+"\" data-id=\""+p.id+"\"><button type=\"button\" class=\"swdel\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"swc\" data-act=\"wopen\"><span class=\"wic\">"+icon(p.c)+"</span><div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"wopen\">"+hl(p.n)+"</button>"+(meta ? "<div class=\"wmeta\">"+meta+"</div>" : "")+(p.note ? "<div class=\"wnote\">"+esc(p.note)+"</div>" : "")+"</div>"+right+"</div></li>";
 }
 function wishForm(){
   var lists = "<option value=\"\">Ohne Liste</option>" + T().lists.map(function(l){ return "<option value=\""+l.id+"\""+(draft.list===l.id?" selected":"")+">"+esc(l.name)+"</option>"; }).join("");
@@ -4184,10 +4240,14 @@ document.addEventListener("click", function(e){
     case "cmdel": tripRef(S.cur).collection("comments").doc(t.getAttribute("data-cid")).delete(); break;
     case "grppick": grpEdit = null; openGrpPop(id); break;
     case "grpmanage": grpEdit = null; openGrpPop(null); break;
-    case "grpset": setGroup(grpTarget, t.getAttribute("data-g")); closeCatPop(); renderSheet(); renderCard(); scheduleOverlay(); break;
+    case "grpset": setGroup(grpTarget, t.getAttribute("data-g")); closeCatPop(); renderSheet(); renderCard(); scheduleOverlay(); if(jp && !$("jPop").hidden) renderJPop(); break;
     case "grpedit": grpEdit = grpEdit===t.getAttribute("data-g") ? null : t.getAttribute("data-g"); openGrpPop(grpTarget); var gi = $("grpRenIn"); if(gi) gi.focus(); break;
     case "grpdel": var dg = t.getAttribute("data-g"), tg = T(); undoSnap = snapshot(); delete (tg.groups||{})[dg]; Object.keys(tg.places).forEach(function(k){ if(tg.places[k].g===dg) delete tg.places[k].g; }); if(grpSel===dg) grpSel = ""; grpEdit = null; save(); openGrpPop(grpTarget); renderSheet(); toast("Gruppe gelöscht – die Orte bleiben in der Wunschliste", true); break;
-    case "wgrp": grpSel = t.getAttribute("data-g"); renderSheet(); scheduleOverlay(); break;
+    case "wgrp": grpSel = t.getAttribute("data-g"); renderSheet(); scheduleOverlay(); if(wfiltK==="grp" && !$("catPop").hidden) closeCatPop(); break;
+    case "wfilt": openWFilt(t.getAttribute("data-k")); break;
+    case "wlist": activeList = t.getAttribute("data-l"); closeCatPop(); renderSheet(); scheduleOverlay(); break;
+    case "wsort": var sv = t.getAttribute("data-v").split(":"); wView = sv[0]; if(sv[1]){ wDistDir = sv[1]; lsSet("rp-wdir", wDistDir); } lsSet("rp-wview", wView); closeCatPop(); renderSheet(); break;
+    case "wreset": catFilter = {}; grpSel = ""; activeList = "open"; wishQuery = ""; nbSel = {}; applyNb(); renderSheet(); scheduleOverlay(); break;
     case "wview": var wv = t.getAttribute("data-v"); if(wv==="dist" && wView==="dist"){ wDistDir = wDistDir==="asc" ? "desc" : "asc"; lsSet("rp-wdir", wDistDir); } wView = wv; lsSet("rp-wview", wView); renderSheet(); break;
     case "jopen": openJPop(t.getAttribute("data-pid"), t.getAttribute("data-day")); break;
     case "jclose": closeJPop(); break;
@@ -4274,7 +4334,7 @@ document.addEventListener("click", function(e){
       else fitDay();
       renderSheet(); scheduleOverlay(); break;
     case "sclear": wishQuery = ""; renderSheet(); scheduleOverlay(); var ws = $("wSearch"); if(ws) ws.focus(); break;
-    case "wcat": var wc = t.getAttribute("data-cat"); if(!wc) catFilter = {}; else if(catFilter[wc]) delete catFilter[wc]; else catFilter[wc] = 1; renderSheet(); scheduleOverlay(); break;
+    case "wcat": var wc = t.getAttribute("data-cat"); if(!wc) catFilter = {}; else if(catFilter[wc]) delete catFilter[wc]; else catFilter[wc] = 1; renderSheet(); scheduleOverlay(); if(wfiltK==="cat" && !$("catPop").hidden) openWFilt("cat"); break;
     case "nbrem": delete nbHi[t.getAttribute("data-nb")]; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
     case "nbclear": nbHi = {}; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
     case "nbtoggle": var tn = t.getAttribute("data-nb"); if(nbHi[tn]) delete nbHi[tn]; else nbHi[tn] = 1; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
