@@ -139,7 +139,9 @@ ol.tsteps .ti .bul.bus{height:22px;font-size:11.5px}
 }
 
 /* Inhalte */
-.dh{display:flex;gap:12px;align-items:center}
+.dh{display:flex;gap:12px;align-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent;border-radius:14px}
+.dh:active{opacity:.7}
+.dhchev{width:20px;height:20px;margin-left:6px;vertical-align:-2px;color:var(--muted)}
 .dh .b{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 26px/1 var(--f-display);flex:0 0 auto}
 .dh .b.y{color:#17212c}
 .dh h2{margin:0;font:700 25px/1.05 var(--f-display);text-wrap:balance}
@@ -368,6 +370,10 @@ img.missing{opacity:.3}
 /* Konto-Fenster: mittig, Hintergrund unscharf (Glas) */
 .acctpop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:rgba(10,15,20,.18);-webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);animation:agfade .18s ease}
 .acctpop[hidden]{display:none}
+.acctpop{inset:auto;left:0;right:0;top:var(--vvt,0px);height:var(--vvh,100%)}
+.acctpop.agtop{place-items:start center;padding-top:calc(env(safe-area-inset-top) + 14px)}
+.acctpop .ag-card{max-height:calc(var(--vvh,100vh) - 40px)}
+.acctpop.agtop .ag-card{max-height:calc(var(--vvh,100vh) - env(safe-area-inset-top) - 28px)}
 @keyframes agfade{from{opacity:0}to{opacity:1}}
 .ag-card{position:relative;width:min(400px,100%);max-height:min(86vh,720px);overflow-y:auto;border-radius:26px;padding:22px 18px 18px;background:color-mix(in srgb,var(--sheet) 78%,transparent);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid color-mix(in srgb,#fff 35%,transparent);box-shadow:0 20px 60px rgba(0,0,0,.25),inset 0 1px 0 color-mix(in srgb,#fff 40%,transparent);animation:agpop .22s cubic-bezier(.2,.9,.3,1.2)}
 @keyframes agpop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
@@ -1074,7 +1080,7 @@ function setUsername(n){
       if(old && old!==low) tx.delete(fbDb.collection("usernames").doc(old));
       tx.set(fbDb.collection("profiles").doc(uid0), {name:n, nameLower:low});
     });
-  }).then(function(){ PROF = {name:n, nameLower:low}; unameEdit = false; unameMsg = ""; accView = "main"; if(document.activeElement) document.activeElement.blur(); refreshSettings(); toast("Benutzername @"+n+" gespeichert", false); },
+  }).then(function(){ PROF = {name:n, nameLower:low}; unameEdit = false; unameMsg = ""; if(accView!=="search") accView = "main"; if(document.activeElement) document.activeElement.blur(); refreshSettings(); toast("Benutzername @"+n+" gespeichert", false); },
     function(e){ unameMsg = e && e.message==="taken" ? "@"+n+" ist schon vergeben." : "Speichern fehlgeschlagen."; refreshSettings(); });
 }
 var frTimer = null;
@@ -1133,7 +1139,12 @@ function profileHTML(){
 function searchHTML(){
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Freunde suchen\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
   h += "<button type=\"button\" class=\"back\" data-act=\"accview\" data-v=\"main\">‹ Mein Konto</button><h3 class=\"ag-title\">Freunde suchen</h3>";
-  if(!PROF) h += "<p class=\"note\">Lege zuerst über den Stift bei deinem Namen einen Benutzernamen fest, damit du Anfragen senden kannst.</p>";
+  if(!PROF){
+    h += "<p class=\"note\">Damit du Anfragen senden kannst und andere dich finden, leg zuerst deinen Benutzernamen fest.</p>";
+    h += "<form class=\"gnew\" id=\"unForm\"><input type=\"text\" id=\"unIn\" maxlength=\"20\" placeholder=\"Dein Benutzername\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"><button type=\"submit\" class=\"btn s\">Festlegen</button></form>";
+    h += "<p class=\"note\" id=\"unMsg\">"+esc(unameMsg || "3–20 Zeichen: Buchstaben, Zahlen, Punkt, Minus oder Unterstrich.")+"</p>";
+    return h+"</div>";
+  }
   h += "<input type=\"search\" id=\"frQ\" class=\"frq\" placeholder=\"Benutzername eingeben\" autocomplete=\"off\" autocapitalize=\"off\" value=\""+esc(frSearch.q)+"\"><div id=\"frRes\" class=\"ag-grp frres\">"+frResHTML()+"</div>";
   return h+"</div>";
 }
@@ -1236,7 +1247,10 @@ function acctHTML(){
   if(u) h += "<div class=\"ag-grp ag-out\"><button type=\"button\" class=\"ag-row\" data-act=\"acout\"><span><b>Abmelden</b></span></button></div>";
   return h+"</div>";
 }
-function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : acctHTML(); el.hidden = false; document.body.classList.add("glass"); }
+function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : acctHTML(); el.classList.toggle("agtop", accView!=="main"); el.hidden = false; document.body.classList.add("glass"); }
+(function(){ var vv = window.visualViewport; if(!vv) return; var de = document.documentElement;
+  function upd(){ de.style.setProperty("--vvh", vv.height+"px"); de.style.setProperty("--vvt", vv.offsetTop+"px"); }
+  vv.addEventListener("resize", upd); vv.addEventListener("scroll", upd); upd(); })();
 function closeSettings(){ accView = "main"; unameMsg = ""; $("acctPop").hidden = true; document.body.classList.remove("glass"); }
 function refreshSettings(){
   if($("acctPop").hidden) return;
@@ -2700,7 +2714,7 @@ function renderDay(){
   if(ids.length) meta.push(nDone+" von "+ids.length+" erledigt");
   if(pts.length) meta.push(fmtDist(km)+(HT?" ab Hotel":""));
   if(D.hint) meta.push(D.hint);
-  var h = "<div class=\"dh\"><span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><div style=\"flex:1;min-width:0\"><h2>"+esc(D.title)+"</h2><p>"+esc(meta.join(" · "))+"</p>"+(ids.length?"<div class=\"dprog\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\""+ids.length+"\" aria-valuenow=\""+nDone+"\"><i style=\"width:"+Math.round(nDone/ids.length*100)+"%\"></i></div>":"")+"</div></div>";
+  var h = "<div class=\"dh\" data-act=\"daypop\" role=\"button\" tabindex=\"0\" aria-label=\"Tag wechseln\"><span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><div style=\"flex:1;min-width:0\"><h2>"+esc(D.title)+"<svg class=\"dhchev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></h2><p>"+esc(meta.join(" · "))+"</p>"+(ids.length?"<div class=\"dprog\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\""+ids.length+"\" aria-valuenow=\""+nDone+"\"><i style=\"width:"+Math.round(nDone/ids.length*100)+"%\"></i></div>":"")+"</div></div>";
 
   var sug = suggest(cur, 3);
   h += "<div class=\"sec\"><button type=\"button\" class=\"fold\" data-act=\"sugtoggle\" aria-expanded=\""+sugOpen+"\"><h4>"+(ids.length?"Passt zu diesem Tag":(HT?"Nah am Hotel":"Vorschläge"))+"</h4><span class=\"cnt\">"+sug.length+" Vorschläge</span>"+CHEV+"</button>";
