@@ -318,6 +318,7 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 body.ro [data-act="done"],body.ro [data-act="plan"],body.ro [data-act="unplan"],body.ro [data-act="swdel"],body.ro [data-act="delplace"],body.ro [data-act="revisit"],body.ro [data-act="revpick"],body.ro [data-act="movepop"],body.ro [data-act="movepick"],body.ro [data-act="grppick"],body.ro [data-act="grpset"],body.ro [data-act="grpmanage"],body.ro [data-act="grpdel"],body.ro [data-act="grpedit"],body.ro [data-act="newwish"],body.ro [data-act="newlist"],body.ro [data-act="dellist"],body.ro [data-act="lmode"],body.ro [data-act="legalt"],body.ro [data-act="rate"],body.ro [data-act="jphl"],body.ro [data-act="jhl"],body.ro [data-act="jins"],body.ro [data-act="phdel"],body.ro [data-act="tripedit"],body.ro [data-act="deltrip"],body.ro [data-act="reset"],body.ro [data-act="lpday"],body.ro [data-act="lpwish"],body.ro [data-act="lphotel"],body.ro [data-act="poiadd"],body.ro [data-act="undo"],body.ro [data-act="tadd"],body.ro [data-act="tdel"],body.ro [data-act="pick"],body.ro [data-act="arm"],body.ro [data-act="move"],body.ro [data-act="time"],body.ro [data-act="jpedit"]{display:none !important}
 body.ro .lcol .grip,body.ro .jp-add,body.ro .jp-grp:not(.on),body.ro .lm,body.ro .alts2,body.ro #lpPick{display:none !important}
 body.ro .jp-grp{pointer-events:none}
+body.ro .jp-day.none{display:none}
 body.ro [data-act=sugtoggle],body.ro .sugs{display:none !important}
 body.ro .jp-t[readonly]{background:transparent}
 
@@ -363,7 +364,16 @@ body.notrip .tabs,body.notrip #rail,body.notrip .rail,body.notrip #tripBtn,body.
 .jp-name{font:700 20px/1.2 var(--f-display);color:var(--ink);border:0;border-bottom:1.5px dashed transparent;background:none;padding:2px 0;width:100%;min-width:0;outline:none}
 .jp-name:hover,.jp-name:focus{border-bottom-color:var(--line)}
 .jp-ht small{color:var(--muted);font-size:13px}
-.jp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:8px;margin:16px 0 4px}
+.jp-tiles{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;margin:16px 0 4px}
+.jp-chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+.jp-chips .jp-grp{margin-top:0}
+.jp-day{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:999px;padding:4px 10px 4px 4px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;max-width:100%}
+.jp-day .b{width:22px;height:22px;flex:0 0 22px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 12.5px/1 var(--f-display)}
+.jp-day .b.y{color:#17212c}
+.jp-day.none{border-style:dashed;background:transparent;padding-left:10px}
+.jp-day svg{width:14px;height:14px;flex:0 0 14px;color:var(--muted)}
+span.jp-day{cursor:default}
+.card .jp-day{margin:2px 0 6px}
 .jp-tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:62px;border:0;border-radius:14px;background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);font:inherit;font-size:12.5px;font-weight:600;text-decoration:none;cursor:pointer;padding:8px 4px}
 .jp-tile svg{width:22px;height:22px}
 .jp-tile.on{background:#1e8e3e;color:#fff}
@@ -3205,7 +3215,8 @@ function renderCard(){
   }
   var p = P(sel); if(!p){ sel = null; el.hidden = true; return; }
   var dk = dayOf(sel), D = dayByKey(cur), c = x+"<h3>"+esc(p.n)+"</h3>";
-  var meta = "<span class=\"cat\">"+icon(p.c)+esc(CATNAME[p.c])+"</span>" + (nbOf(p) ? " · "+esc(nbOf(p)) : "") + (dk ? " · "+dayByKey(dk).lbl+(timeOf(sel)?" um "+timeOf(sel):"")+(visitsOf(sel).length>1 ? " · "+visitsOf(sel).length+" Besuche geplant" : "") : " · Wunsch in „"+esc(listName(p.list))+"“");
+  var meta = "<span class=\"cat\">"+icon(p.c)+esc(CATNAME[p.c])+"</span>" + (nbOf(p) ? " · "+esc(nbOf(p)) : "") + (dk ? (visitsOf(sel).length>1 ? " · "+visitsOf(sel).length+" Besuche geplant" : "") : " · Wunsch in „"+esc(listName(p.list))+"“");
+  c += "<div>"+dayChip(sel)+"</div>";
   c += "<p>"+meta+(p.addr?"<br>"+esc(p.addr):"")+(p.note?"<br>"+esc(p.note):"")+"</p>";
   c += gBlock(p);
   if(hasLoc(p)) c += stationLine(p);
@@ -3218,11 +3229,9 @@ function renderCard(){
   c += "<div data-id=\""+sel+"\"><button type=\"button\" class=\"gtag"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"</button></div>";
   c += "<div class=\"row\" data-id=\""+sel+"\">";
   if(!dk && D){ c += "<button class=\"btn\" type=\"button\" data-act=\"plan\">Zu "+D.lbl+" hinzufügen"+addLabel(cur, p)+"</button>"; }
-  if(!dk) c += "<button class=\"btn g\" type=\"button\" data-act=\"revisit\" data-pid=\""+sel+"\">Anderer Tag …</button>";
   if(dk) c += "<button class=\"btn"+(T().done[sel]?"":" g")+"\" type=\"button\" data-act=\"done\">"+(T().done[sel]?"✓ Erledigt":"Abhaken")+"</button>";
   if(dk===cur){ c += "<button class=\"btn g\" type=\"button\" data-act=\"unplan\">"+(p.of ? "Diesen Besuch entfernen" : "Zurück in Wunschliste")+"</button>"; }
   else if(dk){ c += "<button class=\"btn g\" type=\"button\" data-act=\"gotoday\" data-day=\""+dk+"\">Tag "+dayByKey(dk).n+" öffnen</button>"; }
-  if(dk) c += "<button class=\"btn g\" type=\"button\" data-act=\"movepop\" data-pid=\""+sel+"\">Auf anderen Tag …</button>";
   if(dk) c += "<button class=\"btn g\" type=\"button\" data-act=\"revisit\" data-pid=\""+sel+"\">Nochmal besuchen …</button>";
   c += "<button class=\"btn g\" type=\"button\" data-act=\"go\">Route starten</button>";
   c += "<a class=\"btn g\" target=\"_blank\" rel=\"noopener\" href=\""+gmInfoUrl(p)+"\">Infos in Google Maps</a>";
@@ -3504,17 +3513,15 @@ function renderJPop(){
     el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el); return;
   }
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
-  h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+esc([D ? D.lbl : "", CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
+  h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
-  h += "<button type=\"button\" class=\"jp-grp"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"</button>";
+  h += "<div class=\"jp-chips\">"+dayChip(jp.pid)+"<button type=\"button\" class=\"jp-grp"+(grpName(p.g)?" on":"")+"\" data-act=\"grppick\">▦ "+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Zu Gruppe hinzufügen")+"</button></div>";
   h += "<div class=\"jp-tiles\">";
   if(planned){
     h += "<button type=\"button\" class=\"jp-tile"+(dn?" on":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"<span>"+(dn?"Erledigt":"Abhaken")+"</span></button>";
     if(isRO()){ if(tm) h += "<div class=\"jp-tile set\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+"<span>"+esc(tm)+"</span></div>"; } else
     h += "<label class=\"jp-tile"+(tm?" set":"")+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/>")+"<span>"+(tm ? esc(tm) : "Uhrzeit")+"</span><input type=\"time\" data-act=\"time\" value=\""+esc(tm)+"\" aria-label=\"Uhrzeit\"></label>";
   }
-  if(planned && !isRO()) h += "<button type=\"button\" class=\"jp-tile\" data-act=\"movepop\" data-pid=\""+jp.pid+"\">"+I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3M7.5 12.5h5M10.5 10.5l2 2-2 2\"/>")+"<span>Anderer Tag</span></button>";
-  if(!planned) h += "<button type=\"button\" class=\"jp-tile\" data-act=\"revisit\" data-pid=\""+jp.pid+"\">"+I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3M10 10.5v4M8 12.5h4\"/>")+"<span>Zu Tag hinzufügen</span></button>";
   if(hasLoc(p) || p.addr) h += "<button type=\"button\" class=\"jp-tile\" data-act=\"go\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+"<span>Route</span></button>";
   h += "<a class=\"jp-tile\" target=\"_blank\" rel=\"noopener\" href=\""+gmInfoUrl(p)+"\">"+I("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"<span>Google Maps</span></a>";
   h += "</div>";
@@ -3533,6 +3540,15 @@ function renderJPop(){
   }
   h += "<p class=\"note\" id=\"jpNote\" hidden></p></div>";
   el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el);
+}
+/* Tag-Chip: zeigt den zugeordneten Tag; Antippen ordnet den Punkt einem anderen Tag zu */
+function dayChip(pid){
+  var k = dayOf(pid), D = k && dayByKey(k);
+  var cal = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 6l4 4 4-4\"/></svg>";
+  if(!D) return isRO() ? "" : "<button type=\"button\" class=\"jp-day none\" data-act=\"revisit\" data-pid=\""+pid+"\" aria-haspopup=\"dialog\">Keinem Tag zugeordnet"+cal+"</button>";
+  var inner = "<span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><span>"+esc(D.lbl)+(timeOf(pid) ? " · "+esc(timeOf(pid)) : "")+"</span>";
+  if(isRO()) return "<span class=\"jp-day\">"+inner+"</span>";
+  return "<button type=\"button\" class=\"jp-day\" data-act=\"movepop\" data-pid=\""+pid+"\" aria-haspopup=\"dialog\" aria-label=\"Tag "+D.n+", "+esc(D.lbl)+" – anderem Tag zuordnen\">"+inner+cal+"</button>";
 }
 function closeJPop(){ jp = null; $("jPop").hidden = true; document.body.classList.remove("glass"); renderSheet(); }
 
