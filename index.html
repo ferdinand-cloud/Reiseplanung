@@ -164,7 +164,7 @@ ol.tsteps .ti .bul.bus{height:22px;font-size:11.5px}
 .btn.warn{color:var(--err);border-color:var(--err)}
 a.btn{text-decoration:none;display:inline-block}
 ol.plan{list-style:none;margin:0;padding:0}
-.st{display:grid;grid-template-columns:34px 1fr auto 30px;gap:2px 8px;align-items:start;padding:10px 6px 10px 8px;margin:6px 0;background:var(--sheet);border:1px solid var(--line);border-left:4px solid var(--dc,var(--ink));border-radius:12px;box-shadow:0 1px 3px var(--scrim)}
+.st{display:grid;grid-template-columns:34px 1fr;gap:2px 8px;align-items:start;padding:10px 6px 10px 8px;margin:6px 0;background:var(--sheet);border:1px solid var(--line);border-left:4px solid var(--dc,var(--ink));border-radius:12px;box-shadow:0 1px 3px var(--scrim)}
 .st.done{border-left-color:var(--muted);background:var(--chip);box-shadow:none}
 .st.done .nm{text-decoration:line-through;opacity:.55}
 .no{width:30px;height:30px;border-radius:50%;border:0;color:#fff;font:700 16px/1 var(--f-display);display:grid;place-items:center;margin-top:1px}
@@ -342,6 +342,10 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .jp-links{display:flex;gap:16px;margin-top:10px}
 .stime{color:var(--ink);font-variant-numeric:tabular-nums}
 li.st .m[data-act]{cursor:pointer}
+li.st .lcol{display:flex;flex-direction:column;align-items:center;gap:4px}
+li.st .lcol .grip{width:30px;height:30px}
+li.st .acts{gap:4px}
+li.st .acts button{padding:5px 8px}
 li.st .nm .cic{display:inline-grid;place-items:center;width:20px;height:20px;margin-right:6px;vertical-align:-3px;color:var(--muted)}
 li.st .nm .cic svg{width:17px;height:17px}
 .jmark{color:var(--ink);opacity:.7}
@@ -3346,12 +3350,12 @@ function renderDay(){
     else if(!hasLoc(p) && (i>0 || HT)) h += "<li class=\"leg\">Strecke unbekannt</li>";
     var opts = days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===cur?" selected":"")+">"+d.lbl+"</option>"; }).join("");
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\">"+
-      "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>"+
+      "<div class=\"lcol\">"+"<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>"+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button>"+"</div>"+
       "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?"✎":"")+(photosOf(id).length?" ▣ "+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(hasLoc(p)||p.addr?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
       "<button type=\"button\" data-act=\"unplan\">"+(p.of ? "Entfernen" : "Wunschliste")+"</button>"+
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/></svg><select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
-      "<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button></li>";
+      "</li>";
   });
   var lastL = LG[LG.length-1]; if(shown && HT && lastL && lastL[1]===HT) h += legLi(lastL[0], HT, LG.length-1);
   if(nHid) h += "<li class=\"leg\"><button type=\"button\" class=\"tdet\" data-act=\"hidedone\">"+nHid+(nHid===1?" erledigter Stopp":" erledigte Stopps")+" ausgeblendet · Einblenden</button></li>";
