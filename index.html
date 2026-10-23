@@ -441,7 +441,9 @@ body.kb .pop{align-items:flex-end;padding-bottom:6px}
 .jp-add{display:grid;place-items:center;align-content:center;gap:2px;aspect-ratio:1;border:1.5px dashed var(--line);border-radius:12px;color:var(--muted);font-weight:600;font-size:13px;cursor:pointer}
 .jp-add span{font-size:24px;line-height:1}
 .jp-view img{width:100%;max-height:60vh;object-fit:contain;border-radius:14px;background:#000;margin:26px 0 10px;display:block}
-img.missing{opacity:.3}
+img.missing{opacity:.3;background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--ink) 8%,transparent) 0 6px,transparent 6px 12px)}
+img.loading{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.pherr{color:#d93025}
 .jday .jedit{display:block;width:100%;border:1px solid transparent;border-radius:10px;background:var(--chip);padding:8px 10px;font:inherit;font-size:16px;color:inherit;margin:6px 0 0;resize:vertical}
 .jday .jedit.hl{font-weight:700}
 .jday .jedit:focus{border-color:var(--ink);background:transparent;outline:none}
@@ -1065,6 +1067,7 @@ function acctApply(rows){
   if(m.changed){ dirty(); if(!dayByKey(cur)) pickDefaultDay(); renderAll(); }
   else { var ms = JSON.stringify(META); if(ms!==metaSig){ metaSig = ms; renderSheetSoon(); } } // Mitglieder/Rollen geändert
   acct.at = Date.now(); setAcct("ok"); acctPush();
+  if(Object.keys(PHERR).length && Date.now() - (window.__phR||0) > 30000){ window.__phR = Date.now(); phRetry(); }
 }
 function acctPull(){
   if(!fbDb || !acct.user) return;
@@ -1151,7 +1154,7 @@ var verifyTimer = null;
 function verifyCheck(manual){
   var u = window.firebase && window.firebase.auth().currentUser; if(!u || !acct.verify) return;
   u.reload().then(function(){ var u2 = window.firebase.auth().currentUser;
-    if(u2 && u2.emailVerified){ toast("E-Mail bestätigt – willkommen!", false); authApply(u2); }
+    if(u2 && u2.emailVerified){ toast("E-Mail bestätigt – willkommen!", false); u2.getIdToken(true).then(function(){ authApply(u2); }, function(){ authApply(u2); }); }
     else if(manual){ acct.vmsg = "Noch nicht bestätigt. Tippe zuerst auf den Link in der E-Mail."; renderGate(true); } }, function(e){ if(manual){ acct.vmsg = acctErr(e); renderGate(true); } });
 }
 function authApply(u){
@@ -1161,6 +1164,8 @@ function authApply(u){
       return;
     }
     clearInterval(verifyTimer); acct.verify = null; acct.vmsg = "";
+    // Anmelde-Token kann noch „unbestätigt“ enthalten: dann erneuern, sonst blockieren die Regeln den Zugriff
+    if(u && u.getIdTokenResult){ u.getIdTokenResult().then(function(r){ if(r && r.claims && r.claims.email_verified===false) return u.getIdToken(true).then(function(){ acctPull(); phRetry(); phFlush(); }); }).catch(function(){}); }
     (function(){
       var was = acct.user && acct.user.uid;
       acct.user = u ? {uid:u.uid, id:u.uid, email:u.email} : null;
@@ -3142,7 +3147,9 @@ function renderJPop(){
   h += "<button type=\"button\" class=\"jp-hl"+(isHl?" on":"")+"\" data-act=\"jphl\" aria-pressed=\""+isHl+"\">★ "+(isHl?"Highlight des Tages":"Als Highlight des Tages markieren")+"</button>";
   h += "<div class=\"ag-lbl\">Notizen</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+jp.pid+"\" rows=\"5\" maxlength=\"5000\" placeholder=\"Was hast du hier erlebt? Was war besonders?\">"+esc(noteOf(jp.pid))+"</textarea>";
   h += "<div class=\"ag-lbl\">Fotos</div><div class=\"jp-ph\">"+ph.map(function(x){ return "<button type=\"button\" data-act=\"phview\" data-ph=\""+x+"\"><img data-ph=\""+x+"\" alt=\"Foto\"></button>"; }).join("")+
-       "<label class=\"jp-add\" for=\"phIn\"><span>＋</span>Foto</label></div><input type=\"file\" id=\"phIn\" accept=\"image/*\" multiple hidden>";
+       "<label class=\"jp-add\" for=\"phIn\"><span>＋</span>Foto</label></div><input type=\"file\" id=\"phIn\" accept=\"image/*\" multiple hidden>"+
+       "<p class=\"note pherr\" id=\"jpPhErr\" hidden><span></span> <button type=\"button\" class=\"tf-link\" data-act=\"phretry\">Erneut laden</button></p>"+
+       (function(){ var q = phQueue(), w = ph.filter(function(x){ return q.up.indexOf(x) > -1; }).length; return w ? "<p class=\"note\">"+w+(w===1?" Foto wartet":" Fotos warten")+" auf das Hochladen – erst dann sehen es deine anderen Geräte und Mitreisenden.</p>" : ""; })();
   if(acct.user && KNOWN[S.cur]){
     h += "<div class=\"ag-lbl\">Kommentare</div><div id=\"cmList\" class=\"cmlist\">"+cmListHTML(jp.pid)+"</div><form class=\"gnew\" id=\"cmForm\"><input type=\"text\" id=\"cmIn\" maxlength=\"1000\" placeholder=\"Kommentar schreiben …\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form>";
   }
@@ -3162,15 +3169,27 @@ function idbDo(mode, fn){ return idb().then(function(db){ return new Promise(fun
 function phQueue(){ try { return JSON.parse(lsGet("rp-ph-q")||'{"up":[],"del":[]}'); } catch(e){ return {up:[], del:[]}; } }
 function phSaveQ(q){ lsSet("rp-ph-q", JSON.stringify(q)); }
 function phCol(tid){ return tripRef(tid || S.cur).collection("photos"); }
+var PHERR = {};
 function phGet(id){
   if(PHC[id]) return Promise.resolve(PHC[id]);
-  return idbDo("readonly", function(st){ return st.get(id); }).then(function(r){
-    if(r && r.data){ PHC[id] = r.data; return r.data; }
-    if(!fbDb || !acct.user || !navigator.onLine) return null;
-    return phCol(S.cur).doc(id).get().then(function(d){ var v = d.exists && d.data(); if(!v || !v.data) return null; PHC[id] = v.data; idbDo("readwrite", function(st){ st.put({id:id, data:v.data, place:v.place, trip:v.trip}); }); return v.data; });
-  }).catch(function(){ return null; });
+  return idbDo("readonly", function(st){ return st.get(id); }).catch(function(){ return null; }).then(function(r){
+    if(r && r.data){ PHC[id] = r.data; delete PHERR[id]; return r.data; }
+    if(!fbDb || !acct.user){ PHERR[id] = "Nicht angemeldet."; return null; }
+    if(!navigator.onLine){ PHERR[id] = "Offline – das Foto wird geladen, sobald du wieder Internet hast."; return null; }
+    // in der aktuellen Reise suchen, sonst in den anderen Reisen des Kontos
+    var tids = [S.cur].concat(Object.keys(S.trips).filter(function(k){ return k!==S.cur && KNOWN[k]; }));
+    var denied = false;
+    var tryAt = function(i){
+      if(i >= tids.length){ PHERR[id] = denied ? "Kein Zugriff auf das Foto (Anmeldung/Regeln prüfen)." : "Das Foto ist nicht im Konto – es liegt nur auf dem Gerät, auf dem es aufgenommen wurde, und wurde noch nicht hochgeladen."; return null; }
+      return phCol(tids[i]).doc(id).get().then(function(d){ var v = d.exists && d.data(); if(!v || !v.data) return tryAt(i+1);
+        PHC[id] = v.data; delete PHERR[id]; idbDo("readwrite", function(st){ st.put({id:id, data:v.data, place:v.place, trip:v.trip}); }).catch(function(){}); return v.data; },
+        function(e){ if(/permission/i.test((e && (e.code||e.message))||"")) denied = true; return tryAt(i+1); });
+    };
+    return tryAt(0);
+  }).catch(function(e){ PHERR[id] = "Fehler: "+(e && e.message || e); return null; });
 }
-function fillPhotos(root){ (root||document).querySelectorAll("img[data-ph]").forEach(function(im){ if(im.getAttribute("src")) return; phGet(im.getAttribute("data-ph")).then(function(d){ if(d) im.src = d; else im.classList.add("missing"); }); }); }
+function fillPhotos(root){ (root||document).querySelectorAll("img[data-ph]").forEach(function(im){ if(im.getAttribute("src")) return; var id = im.getAttribute("data-ph"); im.classList.add("loading"); phGet(id).then(function(d){ im.classList.remove("loading"); if(d){ im.src = d; im.classList.remove("missing"); } else { im.classList.add("missing"); im.title = PHERR[id] || ""; var jn = $("jpPhErr"); if(jn && root && root.id==="jPop"){ jn.hidden = false; jn.querySelector("span").textContent = PHERR[id] || "Foto konnte nicht geladen werden."; } } }); }); }
+function phRetry(){ Object.keys(PHERR).forEach(function(k){ delete PHERR[k]; }); document.querySelectorAll("img.missing[data-ph]").forEach(function(im){ im.classList.remove("missing"); im.removeAttribute("src"); }); fillPhotos(document); }
 function shrink(file){
   return new Promise(function(res, rej){
     var url = URL.createObjectURL(file), im = new Image();
@@ -3839,6 +3858,7 @@ document.addEventListener("click", function(e){
     case "jopen": openJPop(t.getAttribute("data-pid"), t.getAttribute("data-day")); break;
     case "jclose": closeJPop(); break;
     case "jphl": var tj = T(); tj.journal = tj.journal || {}; var Jp = tj.journal[jp.dk] = tj.journal[jp.dk] || {}, pn = P(jp.pid).n; Jp.hl = Jp.hl===pn ? "" : pn; Jp.at = Date.now(); save(); renderJPop(); break;
+    case "phretry": phRetry(); phFlush(); break;
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
     case "phback": jp.view = null; renderJPop(); break;
     case "phdel": delPhoto(jp.pid, t.getAttribute("data-ph")); jp.view = null; renderJPop(); break;
