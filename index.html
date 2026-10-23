@@ -299,6 +299,13 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+.rseg{display:inline-flex;gap:2px;padding:2px;border-radius:9px;background:color-mix(in srgb,var(--ink) 8%,transparent);margin-top:4px}
+.rseg button{border:0;background:none;border-radius:7px;padding:4px 9px;font:inherit;font-size:12px;font-weight:600;color:var(--muted)}
+.rseg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.share .mn{display:flex;flex-direction:column;align-items:flex-start}
+.share .role{color:var(--muted);font-size:12px}
+.share .invlbl{margin-top:12px}
+.rolenote{background:color-mix(in srgb,var(--ink) 6%,transparent);border-radius:10px;padding:8px 10px}
 .tseg{display:flex;gap:3px;padding:3px;margin:4px 0 12px;border-radius:12px;background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .tseg button{flex:1 1 0;min-width:0;border:0;background:none;border-radius:9px;padding:8px 6px;font:inherit;font-size:13.5px;font-weight:600;color:var(--muted)}
 .tseg button[aria-selected="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
@@ -826,7 +833,14 @@ function load(){
   return s;
 }
 var saveWarned = false;
+function isViewerOf(id){ var m = META[id]; return !!(acct.user && m && (m.viewers||[]).indexOf(acct.user.uid) > -1); }
 function save(){
+  // Beobachter dürfen nichts ändern: eigene Änderung an der Reise zurücknehmen
+  if(acct.user && isViewerOf(S.cur) && BASE[S.cur] && tripSig(S.trips[S.cur]||{})!==tripSig(BASE[S.cur])){
+    S.trips[S.cur] = JSON.parse(JSON.stringify(BASE[S.cur])); lastLocal[S.cur] = tripSig(S.trips[S.cur]); delete pend[S.cur];
+    toast("Du bist Beobachter dieser Reise und kannst nur ansehen und kommentieren.", false);
+    setTimeout(function(){ dirty(); renderAll(); }, 0);
+  }
   var js = JSON.stringify(S);
   if(!lsSet(KEY, js)){
     // Speicher voll: zwischengespeicherte Fußwege opfern, der Plan hat Vorrang
@@ -907,6 +921,7 @@ function rowTrip(snap){ var v = snap && snap.exists ? snap.data() : null; if(!v)
 var pushing = false;
 function acctPush(){
   if(!fbDb || !acct.user || pushing || !navigator.onLine) return;
+  Object.keys(pend).forEach(function(id){ if(isViewerOf(id)) delete pend[id]; });
   var ids = Object.keys(pend), dels = Object.keys(delPend); if(!ids.length && !dels.length) return;
   pushing = true; setAcct("sync");
   var changedLocal = false, Lsnap = {};
@@ -924,7 +939,7 @@ function acctPush(){
         var doc = {json:JSON.stringify(M), deleted:false, updatedAt:M.updatedAt, name:M.name||""};
         if(isNew){ doc.owner = acct.user.uid; doc.members = [acct.user.uid]; doc.memberEmails = {}; doc.memberEmails[acct.user.uid] = myMail(); doc.invites = []; }
         tx.set(ref, doc, {merge:true});
-        if(isNew){ META[id] = {owner:acct.user.uid, members:[acct.user.uid], memberEmails:doc.memberEmails, invites:[]}; }
+        if(isNew){ META[id] = {owner:acct.user.uid, members:[acct.user.uid], memberEmails:doc.memberEmails, invites:[], viewers:[], viewInvites:[]}; }
         return M;
       });
     }).then(function(M){
@@ -948,7 +963,7 @@ function acctPush(){
     var m = META[id], FV = window.firebase.firestore.FieldValue;
     // Besitzer löscht die Reise für alle; Mitreisende verlassen sie nur
     var job = (!m || m.owner===acct.user.uid) ? tripRef(id).set({json:"", deleted:true, updatedAt:delPend[id]}, {merge:true})
-            : tripRef(id).update((function(){ var u = {members:FV.arrayRemove(acct.user.uid)}; u["memberEmails."+acct.user.uid] = FV.delete(); return u; })());
+            : tripRef(id).update((function(){ var u = {members:FV.arrayRemove(acct.user.uid), viewers:FV.arrayRemove(acct.user.uid)}; u["memberEmails."+acct.user.uid] = FV.delete(); return u; })());
     return job.then(function(){ delete delPend[id]; delete KNOWN[id]; saveKnown(); setBase(id, null); });
   }));
   Promise.all(jobs).then(function(){
@@ -963,8 +978,9 @@ function acctPush(){
   });
 }
 function fbRows(qs){ return qs.docs.map(function(d){ var v = d.data()||{}, data = null; try { data = v.json ? JSON.parse(v.json) : null; } catch(e){}
-  META[d.id] = {owner:v.owner, members:v.members||[], memberEmails:v.memberEmails||{}, invites:v.invites||[]};
+  META[d.id] = {owner:v.owner, members:v.members||[], memberEmails:v.memberEmails||{}, invites:v.invites||[], viewers:v.viewers||[], viewInvites:v.viewInvites||[]};
   return {id:d.id, data:data, deleted:!!v.deleted || !data, updated_at:new Date(v.updatedAt||0).toISOString()}; }); }
+var metaSig = "";
 function acctApply(rows){
   var lk = "rp-linked-"+acct.user.uid, first = lsGet(lk)!=="1";
   var m = acctMerge(rows, first);
@@ -983,6 +999,7 @@ function acctApply(rows){
   if(!S.trips[S.cur]) S.cur = Object.keys(S.trips)[0];
   lsSet(KEY, JSON.stringify(S));
   if(m.changed){ dirty(); if(!dayByKey(cur)) pickDefaultDay(); renderAll(); }
+  else { var ms = JSON.stringify(META); if(ms!==metaSig){ metaSig = ms; renderSheetSoon(); } } // Mitglieder/Rollen geändert
   acct.at = Date.now(); setAcct("ok"); acctPush();
 }
 function acctPull(){
@@ -1189,7 +1206,7 @@ function frAccept(id){
 function frRemove(id){ fbDb.collection("friendReqs").doc(id).delete(); }
 var accView = "main";
 var tripsTab = "priv";
-function isShared(id){ var mm = META[id]; return !!(mm && (mm.members||[]).length > 1); }
+function isShared(id){ var mm = META[id]; return !!(mm && ((mm.members||[]).length > 1 || (mm.invites||[]).length > 0)); }
 function tripsPageHTML(){
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Reisen\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Reisen</h3>";
   var segs = [["priv","Privat"],["shared","Gemeinsam"],["req","Anfragen"+(INVITES.length?" ("+INVITES.length+")":"")]];
@@ -1197,7 +1214,7 @@ function tripsPageHTML(){
   if(tripsTab==="req"){
     if(!acct.user) return h+"<p class=\"note\">Melde dich an, um Einladungen zu erhalten.</p></div>";
     if(!INVITES.length) return h+"<p class=\"note\">Keine offenen Einladungen. Wenn dich jemand zu einer Reise einlädt, erscheint sie hier.</p></div>";
-    h += "<div class=\"ag-grp\">"+INVITES.map(function(v){ return "<div class=\"ag-row inv\"><span><b>"+esc(v.name)+"</b><small>"+(v.range?esc(v.range)+" · ":"")+"Einladung von "+esc(v.fromName ? "@"+v.fromName : (v.from||"jemandem"))+"</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"invacc\" data-trip=\""+v.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"invdec\" data-trip=\""+v.id+"\">Ablehnen</button></span></div>"; }).join("")+"</div>";
+    h += "<div class=\"ag-grp\">"+INVITES.map(function(v){ return "<div class=\"ag-row inv\"><span><b>"+esc(v.name)+"</b><small>"+(v.range?esc(v.range)+" · ":"")+"Einladung von "+esc(v.fromName ? "@"+v.fromName : (v.from||"jemandem"))+" · als "+(v.viewer?"Beobachter":"Mitreisende/r")+"</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"invacc\" data-trip=\""+v.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"invdec\" data-trip=\""+v.id+"\">Ablehnen</button></span></div>"; }).join("")+"</div>";
     return h+"</div>";
   }
   var sh = tripsTab==="shared";
@@ -1206,7 +1223,7 @@ function tripsPageHTML(){
     h += "<div class=\"ag-grp\">";
     list.forEach(function(x){
       var mm = META[x.id], nm2 = mm ? (mm.members||[]).length : 1, curT = x.id===S.cur;
-      h += "<button type=\"button\" class=\"ag-row\" data-act=\""+(curT?"tripdetails":"trip")+"\" data-trip=\""+x.id+"\"><span><b>"+esc(x.name)+(curT?" <em class=\"curtag\">Aktiv</em>":"")+"</b><small>"+esc(rangeLabel(x.start,x.end))+(nm2>1?" · mit "+(nm2-1)+(nm2===2?" Person":" Personen"):"")+(curT?" · Details ansehen":"")+"</small></span><em class=\"chev\">›</em></button>";
+      h += "<button type=\"button\" class=\"ag-row\" data-act=\""+(curT?"tripdetails":"trip")+"\" data-trip=\""+x.id+"\"><span><b>"+esc(x.name)+(curT?" <em class=\"curtag\">Aktiv</em>":"")+"</b><small>"+esc(rangeLabel(x.start,x.end))+(nm2>1?" · mit "+(nm2-1)+(nm2===2?" Person":" Personen"):"")+(isViewerOf(x.id) ? " · du beobachtest" : "")+(mm && (mm.invites||[]).length ? " · "+mm.invites.length+(mm.invites.length===1?" Einladung offen":" Einladungen offen"):"")+(curT?" · Details ansehen":"")+"</small></span><em class=\"chev\">›</em></button>";
     });
     h += "</div>";
   } else h += "<p class=\"note\">"+(sh ? "Noch keine gemeinsamen Reisen. Öffne eine Reise und lade unter „Mitreisende“ Freunde ein." : "Keine privaten Reisen.")+"</p>";
@@ -1255,36 +1272,52 @@ function invWatch(){
   invUnsub = fbDb.collection("trips").where("invites", "array-contains", myMail()).onSnapshot(function(qs){
     INVITES = qs.docs.filter(function(d){ var v = d.data()||{}; return !v.deleted && (v.members||[]).indexOf(acct.user.uid) < 0; }).map(function(d){ var v = d.data(); var om = (v.memberEmails||{})[v.owner] || "", rg = "";
       try { var tj = JSON.parse(v.json||"{}"); if(tj.start) rg = rangeLabel(tj.start, tj.end); } catch(e){}
-      return {id:d.id, name:v.name || "Reise", from:om, owner:v.owner, fromName:INVN[v.owner]||"", range:rg}; });
+      return {id:d.id, name:v.name || "Reise", from:om, owner:v.owner, fromName:INVN[v.owner]||"", range:rg, viewer:(v.viewInvites||[]).indexOf(myMail()) > -1}; });
     INVITES.forEach(function(x){ if(x.owner && !(x.owner in INVN)){ INVN[x.owner] = ""; fbDb.collection("profiles").doc(x.owner).get().then(function(d){ var pv = d.exists && d.data(); if(pv && pv.name){ INVN[x.owner] = pv.name; INVITES.forEach(function(y){ if(y.owner===x.owner) y.fromName = pv.name; }); refreshSettings(); } }, function(){}); } });
     invBadge();
     var SK = "rp-invseen-"+acct.user.uid, seen = {}; try { seen = JSON.parse(localStorage.getItem(SK)||"{}"); } catch(e){}
     var neu = INVITES.filter(function(x){ return !seen[x.id]; });
     neu.forEach(function(x){ seen[x.id] = 1; }); lsSet(SK, JSON.stringify(seen));
-    neu.forEach(function(x, i){ setTimeout(function(){ var nm = INVN[x.owner]; frToast((nm ? "@"+nm : (x.from||"Jemand"))+" lädt dich zur Reise „"+x.name+"“ ein", "opentrips", "req"); }, 800 + i*5200); });
+    neu.forEach(function(x, i){ setTimeout(function(){ var nm = INVN[x.owner]; frToast((nm ? "@"+nm : (x.from||"Jemand"))+" lädt dich zur Reise „"+x.name+"“ ein"+(x.viewer?" (als Beobachter)":""), "opentrips", "req"); }, 800 + i*5200); });
     refreshSettings();
   }, function(){});
 }
 function invAccept(id){
   var FV = window.firebase.firestore.FieldValue, u = {members:FV.arrayUnion(acct.user.uid), invites:FV.arrayRemove(myMail())};
+  var iv = INVITES.filter(function(x){ return x.id===id; })[0];
+  if(iv && iv.viewer){ u.viewers = FV.arrayUnion(acct.user.uid); u.viewInvites = FV.arrayRemove(myMail()); }
   u["memberEmails."+acct.user.uid] = myMail();
   tripRef(id).update(u).then(function(){ toast("Einladung angenommen", false); S.cur = id; lsSet(KEY, JSON.stringify(S)); acctPull(); closeSettings(); }, function(e){ toast("Annehmen fehlgeschlagen: "+(e && e.message), false); });
 }
-function invDecline(id){ tripRef(id).update({invites:window.firebase.firestore.FieldValue.arrayRemove(myMail())}).then(function(){ toast("Einladung abgelehnt", false); }, function(){}); }
+function invDecline(id){ var FV = window.firebase.firestore.FieldValue, iv = INVITES.filter(function(x){ return x.id===id; })[0], u = {invites:FV.arrayRemove(myMail())}; if(iv && iv.viewer) u.viewInvites = FV.arrayRemove(myMail()); tripRef(id).update(u).then(function(){ toast("Einladung abgelehnt", false); }, function(){}); }
+var invRole = "member";
+function invLocal(mail){ var m = META[S.cur]; if(!m) return; if(m.invites.indexOf(mail)<0) m.invites.push(mail); m.viewInvites = (m.viewInvites||[]).filter(function(x){ return x!==mail; }); if(invRole==="viewer") m.viewInvites.push(mail); }
+function invUpd(mail){ var FV = window.firebase.firestore.FieldValue, u = {invites:FV.arrayUnion(mail)}; u.viewInvites = invRole==="viewer" ? FV.arrayUnion(mail) : FV.arrayRemove(mail); return u; }
+function roleSeg(cur, act, extra){ return "<span class=\"rseg\">"+[["member","Mitreisende"],["viewer","Beobachter"]].map(function(r){ return "<button type=\"button\" data-act=\""+act+"\" data-v=\""+r[0]+"\""+(extra||"")+" aria-pressed=\""+(cur===r[0])+"\">"+r[1]+"</button>"; }).join("")+"</span>"; }
 function shareBlock(){
   var id = S.cur, m = META[id];
-  var h = "<div class=\"sec share\"><h4>Mitreisende</h4>";
+  var h = "<div class=\"sec share\"><h4>Mitreisende &amp; Beobachter</h4>";
   if(!acct.user){ return h+"<p class=\"note\">Melde dich an, um Reisen zu teilen.</p></div>"; }
   if(!m){ return h+"<p class=\"note\">Die Reise wird gerade ins Konto übertragen. Gleich kannst du andere einladen.</p></div>"; }
-  var own = m.owner===acct.user.uid;
-  h += "<ul class=\"mlist\">"+(m.members||[]).map(function(uid0){ var em = (m.memberEmails||{})[uid0] || "Unbekannt", me0 = uid0===acct.user.uid;
-    return "<li><span class=\"mav\">"+esc((em[0]||"?").toUpperCase())+"</span><span class=\"mn\">"+esc(em)+(me0?" <small>(du)</small>":"")+(uid0===m.owner?" <small>· Besitzer</small>":"")+"</span>"+
+  var own = m.owner===acct.user.uid, viewer = isViewerOf(id), vw = m.viewers||[], vi = m.viewInvites||[];
+  var nameOf = function(uid0){ var f = FR.friends.filter(function(x){ return x.uid===uid0; })[0]; if(f && f.name) return "@"+f.name; if(INVN[uid0]) return "@"+INVN[uid0];
+    if(uid0 && !(uid0 in INVN) && fbDb){ INVN[uid0] = ""; fbDb.collection("profiles").doc(uid0).get().then(function(d){ var pv = d.exists && d.data(); if(pv && pv.name){ INVN[uid0] = pv.name; if(tab==="trip") renderSheet(); } }, function(){}); }
+    return (m.memberEmails||{})[uid0] || "Unbekannt"; };
+  if(viewer) h += "<p class=\"note rolenote\">Du bist <b>Beobachter</b>: Du siehst Plan, Tagebuch und Fotos und kannst kommentieren, aber nichts ändern.</p>";
+  h += "<ul class=\"mlist\">"+(m.members||[]).map(function(uid0){ var nm = nameOf(uid0), me0 = uid0===acct.user.uid, isO = uid0===m.owner, isV = vw.indexOf(uid0) > -1;
+    return "<li><span class=\"mav\">"+esc((nm.replace("@","")[0]||"?").toUpperCase())+"</span><span class=\"mn\">"+esc(nm)+(me0?" <small>(du)</small>":"")+"<small class=\"role\">"+(isO?"Besitzer":isV?"Beobachter":"Mitreisende/r")+"</small>"+
+      (own && !me0 ? roleSeg(isV?"viewer":"member", "mrole", " data-uid=\""+uid0+"\"") : "")+"</span>"+
       (own && !me0 ? "<button type=\"button\" class=\"btn g s\" data-act=\"mremove\" data-uid=\""+uid0+"\">Entfernen</button>" : "")+"</li>"; }).join("")+
-    (m.invites||[]).map(function(em){ return "<li class=\"inv\"><span class=\"mav\">✉</span><span class=\"mn\">"+esc(em)+" <small>· eingeladen</small></span><button type=\"button\" class=\"btn g s\" data-act=\"minvdel\" data-mail=\""+esc(em)+"\">Zurückziehen</button></li>"; }).join("")+"</ul>";
-  var cand = FR.friends.filter(function(f){ return f.email && (m.members||[]).indexOf(f.uid)<0 && (m.invites||[]).indexOf(f.email)<0; });
-  if(cand.length) h += "<div class=\"chips small\">"+cand.map(function(f){ return "<button type=\"button\" class=\"chip\" data-act=\"invfriend\" data-mail=\""+esc(f.email)+"\" data-name=\""+esc(f.name)+"\">+ @"+esc(f.name)+"</button>"; }).join("")+"</div>";
-  h += "<form class=\"gnew\" id=\"invForm\"><input type=\"email\" id=\"invMail\" inputmode=\"email\" placeholder=\"E-Mail der Person\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Einladen</button></form>";
-  h += "<p class=\"note\">Es wird keine E-Mail verschickt: Die Einladung erscheint in der App unter Menü → Reisen → Anfragen (bei E-Mail-Eingabe, sobald sich die Person mit dieser Adresse anmeldet). Danach plant ihr gemeinsam, kommentiert und ladet Fotos hoch.</p>";
+    (m.invites||[]).map(function(em){ var f = FR.friends.filter(function(x){ return x.email===em; })[0];
+      return "<li class=\"inv\"><span class=\"mav\">✉</span><span class=\"mn\">"+esc(f ? "@"+f.name : em)+"<small class=\"role\">eingeladen als "+(vi.indexOf(em)>-1?"Beobachter":"Mitreisende/r")+"</small></span>"+(viewer?"":"<button type=\"button\" class=\"btn g s\" data-act=\"minvdel\" data-mail=\""+esc(em)+"\">Zurückziehen</button>")+"</li>"; }).join("")+"</ul>";
+  if(!viewer){
+    h += "<div class=\"ag-lbl invlbl\">Einladen als</div>"+roleSeg(invRole, "invrole")+
+      "<p class=\"note\">"+(invRole==="viewer" ? "Beobachter sehen alles und können kommentieren, aber nichts ändern." : "Mitreisende planen mit: Stopps, Wunschliste, Tagebuch, Fotos und Kommentare.")+"</p>";
+    var cand = FR.friends.filter(function(f){ return f.email && (m.members||[]).indexOf(f.uid)<0 && (m.invites||[]).indexOf(f.email)<0; });
+    if(cand.length) h += "<div class=\"chips small\">"+cand.map(function(f){ return "<button type=\"button\" class=\"chip\" data-act=\"invfriend\" data-mail=\""+esc(f.email)+"\" data-name=\""+esc(f.name)+"\">+ @"+esc(f.name)+"</button>"; }).join("")+"</div>";
+    h += "<form class=\"gnew\" id=\"invForm\"><input type=\"email\" id=\"invMail\" inputmode=\"email\" placeholder=\"oder E-Mail der Person\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Einladen</button></form>";
+    h += "<p class=\"note\">Es wird keine E-Mail verschickt: Die Einladung erscheint in der App unter Menü → Reisen → Anfragen.</p>";
+  }
   if(!own) h += "<div class=\"row\"><button type=\"button\" class=\"btn g s warn\" data-act=\"mleave\">Reise verlassen</button></div>";
   return h+"</div>";
 }
@@ -2840,6 +2873,7 @@ function renderDay(){
   if(D.hint) meta.push(D.hint);
   var h = "<div class=\"dh\" data-act=\"daypop\" role=\"button\" tabindex=\"0\" aria-label=\"Tag wechseln\"><span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><div style=\"flex:1;min-width:0\"><h2>"+esc(D.title)+"<svg class=\"dhchev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></h2><p>"+esc(meta.join(" · "))+"</p>"+(ids.length?"<div class=\"dprog\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\""+ids.length+"\" aria-valuenow=\""+nDone+"\"><i style=\"width:"+Math.round(nDone/ids.length*100)+"%\"></i></div>":"")+"</div></div>";
 
+  if(isViewerOf(S.cur)) h += "<p class=\"note rolenote\">👁 Du beobachtest diese Reise – ansehen und kommentieren, aber nichts ändern.</p>";
   var sug = suggest(cur, 3);
   h += "<div class=\"sec\"><button type=\"button\" class=\"fold\" data-act=\"sugtoggle\" aria-expanded=\""+sugOpen+"\"><h4>"+(ids.length?"Passt zu diesem Tag":(HT?"Nah am Hotel":"Vorschläge"))+"</h4><span class=\"cnt\">"+sug.length+" Vorschläge</span>"+CHEV+"</button>";
   if(sugOpen){
@@ -2994,6 +3028,7 @@ function shrink(file){
   });
 }
 function addPhotos(pid, files){
+  if(isViewerOf(S.cur)){ toast("Als Beobachter kannst du keine Fotos hinzufügen.", false); return; }
   var list = Array.prototype.slice.call(files||[]); if(!list.length) return;
   var n = $("jpNote"); if(n) n.textContent = "Fotos werden hinzugefügt …";
   var tid = S.cur;
@@ -3600,11 +3635,14 @@ document.addEventListener("click", function(e){
     case "frreq": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); break;
     case "fracc": frAccept(t.getAttribute("data-uid")); break;
     case "frdel": frRemove(t.getAttribute("data-id")); break;
-    case "invfriend": var fe = t.getAttribute("data-mail"); tripRef(S.cur).update({invites:window.firebase.firestore.FieldValue.arrayUnion(fe)}).then(function(){ var m = META[S.cur]; if(m && m.invites.indexOf(fe)<0) m.invites.push(fe); toast("@"+t.getAttribute("data-name")+" eingeladen", false); renderSheet(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); }); break;
+    case "invfriend": var fe = t.getAttribute("data-mail"); tripRef(S.cur).update(invUpd(fe)).then(function(){ invLocal(fe); toast("@"+t.getAttribute("data-name")+" eingeladen", false); renderSheet(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); }); break;
+    case "invrole": invRole = t.getAttribute("data-v"); renderSheet(); break;
+    case "mrole": var mu = t.getAttribute("data-uid"), mv = t.getAttribute("data-v")==="viewer", FV3 = window.firebase.firestore.FieldValue;
+      tripRef(S.cur).update({viewers: mv ? FV3.arrayUnion(mu) : FV3.arrayRemove(mu)}).then(function(){ var m3 = META[S.cur]; if(m3){ m3.viewers = (m3.viewers||[]).filter(function(x){ return x!==mu; }); if(mv) m3.viewers.push(mu); } toast(mv ? "Jetzt Beobachter" : "Jetzt Mitreisende/r", false); renderSheet(); }, function(e3){ toast("Ändern fehlgeschlagen: "+(e3 && e3.message), false); }); break;
     case "invacc": invAccept(t.getAttribute("data-trip")); break;
     case "invdec": invDecline(t.getAttribute("data-trip")); break;
-    case "minvdel": tripRef(S.cur).update({invites:window.firebase.firestore.FieldValue.arrayRemove(t.getAttribute("data-mail"))}).then(function(){ var m = META[S.cur]; if(m) m.invites = m.invites.filter(function(x){ return x!==t.getAttribute("data-mail"); }); renderSheet(); }); break;
-    case "mremove": var ru2 = t.getAttribute("data-uid"), FV2 = window.firebase.firestore.FieldValue, up2 = {members:FV2.arrayRemove(ru2)}; up2["memberEmails."+ru2] = FV2.delete(); tripRef(S.cur).update(up2).then(function(){ toast("Entfernt", false); }); break;
+    case "minvdel": tripRef(S.cur).update({invites:window.firebase.firestore.FieldValue.arrayRemove(t.getAttribute("data-mail")), viewInvites:window.firebase.firestore.FieldValue.arrayRemove(t.getAttribute("data-mail"))}).then(function(){ var m = META[S.cur]; if(m) m.invites = m.invites.filter(function(x){ return x!==t.getAttribute("data-mail"); }); renderSheet(); }); break;
+    case "mremove": var ru2 = t.getAttribute("data-uid"), FV2 = window.firebase.firestore.FieldValue, up2 = {members:FV2.arrayRemove(ru2), viewers:FV2.arrayRemove(ru2)}; up2["memberEmails."+ru2] = FV2.delete(); tripRef(S.cur).update(up2).then(function(){ toast("Entfernt", false); }); break;
     case "mleave": var lt = S.cur; delete S.trips[lt]; S.cur = Object.keys(S.trips)[0] || S.cur; save(); if(!Object.keys(S.trips).length){ S = fresh(); acctInitSigs(); } pickDefaultDay(); renderAll(); toast("Reise verlassen", false); break;
     case "cmdel": tripRef(S.cur).collection("comments").doc(t.getAttribute("data-cid")).delete(); break;
     case "grppick": grpEdit = null; openGrpPop(id); break;
@@ -3779,7 +3817,7 @@ document.addEventListener("submit", function(e){
   if(id==="invForm"){
     var im = ($("invMail").value||"").trim().toLowerCase(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(im)){ toast("Bitte eine gültige E-Mail eingeben", false); return; }
     if(im===myMail()){ toast("Das bist du selbst", false); return; }
-    tripRef(S.cur).update({invites:window.firebase.firestore.FieldValue.arrayUnion(im)}).then(function(){ var m = META[S.cur]; if(m && m.invites.indexOf(im)<0) m.invites.push(im); toast("Einladung an "+im+" gesendet", false); renderSheet(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); });
+    tripRef(S.cur).update(invUpd(im)).then(function(){ invLocal(im); toast("Einladung an "+im+" gesendet", false); renderSheet(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); });
     return;
   }
   if(id==="cmForm"){
