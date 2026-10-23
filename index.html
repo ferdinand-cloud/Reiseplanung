@@ -2240,7 +2240,6 @@ function transitSteps(r, a, b, ctx){
       h += "<li class=\"r\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"ic\">"+rs.map(lineBul).join("")+"</span><span class=\"tx\">"+
         "<span class=\"stn2\"><b>"+esc(NET.s[l.from][0])+"</b></span>"+
         "<small class=\"hd\">"+(isBus(l.r)?"Bus ":"")+rs.map(function(x){ return esc(lineName(x)); }).join(" / ")+(!isBus(l.r) && /X$/.test(NET.r[l.r][0])?" Express":"")+" Richtung "+esc(l.hd)+"</small>"+
-        rideTimes(l, ctxL)+
         (mid.length ? "<details class=\"mid\"><summary>"+nLbl+" · "+mins(l.secs)+" Min.</summary>"+mid.map(esc).join(" · ")+"</details>" : "<small class=\"mid\">"+nLbl+" · "+mins(l.secs)+" Min.</small>")+
         "<span class=\"stn2\"><b>"+esc(NET.s[l.to][0])+"</b> <small>aussteigen</small></span></span></li>";
     }
