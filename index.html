@@ -304,6 +304,7 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .menubtn.dot{position:relative}
 .mbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#d93025;color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .mbadge[hidden]{display:none}
+.bul.ferry::before{content:"⛴";margin-right:2px;font-size:.85em}
 /* Punkt-Pop-up */
 .jp-head{display:flex;align-items:center;gap:12px;padding-right:40px}
 .jp-ic{flex:0 0 44px;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--ink) 8%,transparent)}
@@ -2060,7 +2061,10 @@ function netInit(){
 }
 /* ---------- Busse (MTA Manhattan + Brooklyn): werden nachgeladen und ins Netz eingefügt ---------- */
 var NS0 = NET.s.length, NR0 = NET.r.length, busReady = false, busLoading = false;
-function isBus(ri){ return ri >= NR0; }
+function isBus(ri){ return ri >= NR0 && NET.r[ri][3]!=="ferry"; }
+function isFerry(ri){ return ri >= NR0 && NET.r[ri][3]==="ferry"; }
+var WAITFERRY = 900;
+function waitOf(ri){ return ri < NR0 ? WAIT : isFerry(ri) ? WAITFERRY : WAITBUS; }
 function isBusStop(si){ return si >= NS0; }
 function loadBus(){
   if(busReady || busLoading) return; busLoading = true;
@@ -2069,7 +2073,7 @@ function loadBus(){
 function mergeBus(B){
   var SB = NET.s.length, RB = NET.r.length, HB = NET.h.length, n = B.net;
   n.s.forEach(function(x){ NET.s.push(x); });
-  n.r.forEach(function(x){ NET.r.push([x[0], x[1], x[2], "bus"]); });
+  n.r.forEach(function(x){ NET.r.push([x[0], x[1], x[2], x[3] || "bus"]); });
   n.h.forEach(function(x){ NET.h.push(x); });
   n.e.forEach(function(e){ NET.e.push([e[0]+SB, e[1]+SB, e[2]+RB, e[3]+HB, e[4], e[5]]); });
   // Umstiege zu Fuß: Bus ↔ U-Bahn bis 200 m, Bus ↔ Bus bis 100 m (Rasterverfahren)
@@ -2085,6 +2089,12 @@ function mergeBus(B){
       });
     }
   }
+  // Fähranleger liegen oft weiter weg: Fußwege bis 700 m zu U-Bahn und Bus
+  var ferryStops = {}; NET.e.forEach(function(e){ if(e[2] >= RB && n.r[e[2]-RB] && n.r[e[2]-RB][3]==="ferry"){ ferryStops[e[0]] = 1; ferryStops[e[1]] = 1; } });
+  Object.keys(ferryStops).forEach(function(k){ var i = +k, x = NET.s[i];
+    for(var j=0;j<NET.s.length;j++){ if(j===i || ferryStops[j]) continue; var y = NET.s[j], d = Math.hypot(x[1]-y[1], x[2]-y[2]);
+      if(d >= 100 && d < 700 && sameLand(stLand(i), stLand(j))){ var c3 = Math.round(d/WALK + 60); NET.t.push([i, j, c3]); NET.t.push([j, i, c3]); } }
+  });
   BUSSCHED = {base:SB, rbase:RB, hbase:HB, g:B.sched.p};
   NETOUT = null; TRCACHE = {}; ALTCACHE = {}; SCH = null; RIDEC = {}; busReady = true; busLoading = false;
   renderSheet(); renderCard(); scheduleOverlay();
@@ -2093,18 +2103,18 @@ var BUSSCHED = null;
 function stLL(i){ var s = NET.s[i]; return {la: LAT0 - s[2]/KM, lo: s[1]/(COS*KM) - 74}; }
 function lineBadge(m, ri){
   var rr = NET.r[ri], nm = lineName(ri);
-  if(!isBus(ri)) return "<circle cx=\""+f1(m[0])+"\" cy=\""+f1(m[1])+"\" r=\"10\" fill=\""+rr[1]+"\" stroke=\"var(--land)\" stroke-width=\"2\"/><text x=\""+f1(m[0])+"\" y=\""+f1(m[1]+4)+"\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\""+rr[2]+"\">"+esc(nm)+"</text>";
+  if(ri < NR0) return "<circle cx=\""+f1(m[0])+"\" cy=\""+f1(m[1])+"\" r=\"10\" fill=\""+rr[1]+"\" stroke=\"var(--land)\" stroke-width=\"2\"/><text x=\""+f1(m[0])+"\" y=\""+f1(m[1]+4)+"\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\""+rr[2]+"\">"+esc(nm)+"</text>";
   var w = 10 + nm.length*6.6;
   return "<rect x=\""+f1(m[0]-w/2)+"\" y=\""+f1(m[1]-9)+"\" width=\""+f1(w)+"\" height=\"18\" rx=\"5\" fill=\""+rr[1]+"\" stroke=\"var(--land)\" stroke-width=\"2\"/><text x=\""+f1(m[0])+"\" y=\""+f1(m[1]+4)+"\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\""+rr[2]+"\">"+esc(nm)+"</text>";
 }
-function lineName(ri){ var n = NET.r[ri][0]; return isBus(ri) || n==="SIR" ? n : n.replace(/X$/,""); }
-function lineBul(ri){ var r = NET.r[ri]; return "<span class=\"bul"+(isBus(ri)?" bus":"")+"\" style=\"background:"+r[1]+";color:"+r[2]+"\">"+esc(lineName(ri))+"</span>"; }
+function lineName(ri){ var n = NET.r[ri][0]; return ri >= NR0 || n==="SIR" ? n : n.replace(/X$/,""); }
+function lineBul(ri){ var r = NET.r[ri]; return "<span class=\"bul"+(isFerry(ri)?" bus ferry":isBus(ri)?" bus":"")+"\" style=\"background:"+r[1]+";color:"+r[2]+"\">"+esc(lineName(ri))+"</span>"; }
 function dayMask(k){ var d = parseD(k); if(!d) return 1; var w = d.getUTCDay(); return w===0 ? 4 : w===6 ? 2 : 1; }
 var TRCACHE = {};
 function transit(a, b, k){ return transitCore(a, b, k, null); }
 function transitCore(a, b, k, opt){
-  var ban = opt && opt.ban || {}, xp = opt && opt.xp || 0;
-  var mask = dayMask(k), key = [a.la,a.lo,b.la,b.lo,mask, Object.keys(ban).join("."), xp].join(",");
+  var ban = opt && opt.ban || {}, xp = opt && opt.xp || 0, pf = !!(opt && opt.pf);
+  var mask = dayMask(k), key = [a.la,a.lo,b.la,b.lo,mask, Object.keys(ban).join("."), xp, pf?1:0].join(",");
   if(TRCACHE[key]) return TRCACHE[key];
   netInit();
   var direct = dist(a,b), walkT = direct/WALK;
@@ -2118,15 +2128,16 @@ function transitCore(a, b, k, opt){
   function pop(){ var top = heap[0], last = heap.pop(); if(heap.length){ heap[0] = last; var i = 0; for(;;){ var l = 2*i+1, r2 = l+1, m = i; if(l<heap.length && heap[l][0]<heap[m][0]) m = l; if(r2<heap.length && heap[r2][0]<heap[m][0]) m = r2; if(m===i) break; var t3 = heap[m]; heap[m] = heap[i]; heap[i] = t3; i = m; } } return top; }
   function relax(n, c, from, how){ if(best[n]===undefined || c < best[n]){ best[n] = c; prev[n] = [from, how]; push(n, c); } }
   var START = -1, END = -2, endBest = Infinity, endPrev = null;
-  NET.s.forEach(function(s, i){ var d = dist(a, stLL(i)); if(d < 1300) relax(i, d/WALK, START, ["walk", d]); });
-  var exits = {}; NET.s.forEach(function(s, i){ var d = dist(stLL(i), b); if(d < 1300) exits[i] = d; });
+  var aL = landOf(a), bL = landOf(b);
+  NET.s.forEach(function(s, i){ var d = dist(a, stLL(i)); if(d < 1300 && (d < 250 || sameLand(aL, stLand(i)))) relax(i, d/WALK, START, ["walk", d]); });
+  var exits = {}; NET.s.forEach(function(s, i){ var d = dist(stLL(i), b); if(d < 1300 && (d < 250 || sameLand(bL, stLand(i)))) exits[i] = d; });
   while(heap.length){
     var it = pop(), c = it[0], n = it[1];
     if(c > best[n] || c >= endBest) continue;
     if(n < N){
       if(exits[n]!==undefined){ var ce = c + exits[n]/WALK; if(ce < endBest){ endBest = ce; endPrev = [n, ["walk", exits[n]]]; } }
       NETOUT[n].forEach(function(ei){
-        if(ei >= 0){ var e = NET.e[ei]; if(!(e[5] & mask)) return; relax(ride(n, e[2], e[3]), c + (e[2] >= NR0 ? WAITBUS : WAIT) + (ban[e[2]] ? 1800 : 0) + xp, n, ["board"]); }
+        if(ei >= 0){ var e = NET.e[ei]; if(!(e[5] & mask)) return; relax(ride(n, e[2], e[3]), c + (pf ? (isFerry(e[2]) ? 240 : waitOf(e[2]) + 900) : waitOf(e[2])) + (ban[e[2]] ? 1800 : 0) + xp, n, ["board"]); }
         else { var t = NET.t[-1-ei]; relax(t[1], c + t[2], n, ["xfer", t[2]]); }
       });
     } else {
@@ -2152,7 +2163,7 @@ function transitCore(a, b, k, opt){
   });
   // tatsächliche Dauer ohne Strafzuschläge; parallele Linien je Fahrt ergänzen
   var real = 0;
-  legs.forEach(function(l){ if(l.t==="ride"){ real += l.secs + 60 + (l.r >= NR0 ? WAITBUS : WAIT); l.alt = parallelLines(l, mask); } else real += l.secs; });
+  legs.forEach(function(l){ if(l.t==="ride"){ real += l.secs + 60 + waitOf(l.r); l.alt = parallelLines(l, mask); } else real += l.secs; });
   res = {walk:false, secs:real, d:direct, legs:legs};
   if(real > walkT - 120) res = {walk:true, secs:walkT, d:direct, legs:[{t:"walk", secs:walkT, d:direct, to:"Ziel"}]};
   TRCACHE[key] = res; return res;
@@ -2161,7 +2172,7 @@ function transitCore(a, b, k, opt){
 function parallelLines(l, mask){
   var S2 = schInit(), cnt = {}, dt = mask===4 ? 2 : mask===2 ? 1 : 0;
   (S2.by[l.from]||[]).forEach(function(e){
-    var pt = S2.p[e[0]]; if(isBus(pt.r)!==isBus(l.r)) return;
+    var pt = S2.p[e[0]]; if(isBus(pt.r)!==isBus(l.r) || isFerry(pt.r)!==isFerry(l.r)) return;
     if(pt.st.indexOf(l.to, e[1]+1) < 0) return;
     // nur Linien, die hier tagsüber (7–22 Uhr) regelmäßig so fahren
     var o = pt.off[e[1]], n = 0; pt.days[dt].forEach(function(t0){ var t = t0+o; if(t >= 25200 && t <= 79200) n++; });
@@ -2180,18 +2191,22 @@ function transitAlts(a, b, k){
   if(best.walk) return (ALTCACHE[key] = [best]);
   var used = {}; best.legs.forEach(function(l){ if(l.t==="ride") (l.alt||[l.r]).forEach(function(r){ used[r] = 1; }); });
   var cands = [best, transitCore(a, b, k, {ban:used}), transitCore(a, b, k, {xp:600})];
+  var fr = busReady ? transitCore(a, b, k, {pf:true}) : null, hasF = function(r){ return r && !r.walk && r.legs.some(function(l){ return l.t==="ride" && isFerry(l.r); }); };
+  if(hasF(fr) && !cands.some(hasF)) cands.push(fr);
   var sigs = {}, out = [];
   cands.forEach(function(r){
     if(!r || r.walk && r!==best) return;
     var sig = r.legs.filter(function(l){ return l.t==="ride"; }).map(function(l){ return (l.alt||[l.r]).slice().sort().join("/")+"@"+l.from+">"+l.to; }).join("|");
-    if(sigs[sig] || r.secs > best.secs + 900) return;
+    if(sigs[sig] || r.secs > best.secs + (hasF(r) ? 2400 : 900)) return;
     // unsinnig: umsteigen, obwohl eine Linie beide Fahrten abdeckt
     var rides = r.legs.filter(function(l){ return l.t==="ride"; });
     for(var q=1;q<rides.length;q++){ var A1 = rides[q-1].alt||[rides[q-1].r], B1 = rides[q].alt||[rides[q].r]; if(A1.some(function(x){ return B1.some(function(y){ return lineName(x)===lineName(y); }); })) return; }
     sigs[sig] = 1; out.push(r);
   });
   out.sort(function(x, y){ return x.secs - y.secs; });
-  return (ALTCACHE[key] = out.slice(0, 3));
+  var top = out.slice(0, 3), fo = out.filter(hasF)[0];
+  if(fo && top.indexOf(fo) < 0) top = out.slice(0, 2).concat([fo]); // Fähre als Option behalten
+  return (ALTCACHE[key] = top);
 }
 function legRoute(a, b, k){
   var alts = transitAlts(a, b, k), i = ((T().legAlt||{})[legKey(a, b)]) || 0;
@@ -2298,10 +2313,10 @@ function transitSteps(r, a, b, ctx){
       h += "<li class=\"w\"><span class=\"ic\">"+WI+"</span><span class=\"tx\">Umsteigen <small>"+mins(l.secs)+" Min. bis "+esc(NET.s[l.to][0])+"</small></span></li>";
     } else if(l.t==="ride"){
       var n = l.stops.length-1, mid = l.stops.slice(1,-1).map(function(s2){ return NET.s[s2][0]; }), rs = l.alt||[l.r];
-      var nLbl = n+(isBus(l.r) ? (n===1?" Haltestelle":" Haltestellen") : (n===1?" Station":" Stationen"));
+      var nLbl = n+(isFerry(l.r) ? (n===1?" Anleger":" Anleger") : isBus(l.r) ? (n===1?" Haltestelle":" Haltestellen") : (n===1?" Station":" Stationen"));
       h += "<li class=\"r\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"ic\">"+rs.map(lineBul).join("")+"</span><span class=\"tx\">"+
         "<span class=\"stn2\"><b>"+esc(NET.s[l.from][0])+"</b></span>"+
-        "<small class=\"hd\">"+(isBus(l.r)?"Bus ":"")+rs.map(function(x){ return esc(lineName(x)); }).join(" / ")+(!isBus(l.r) && /X$/.test(NET.r[l.r][0])?" Express":"")+" Richtung "+esc(l.hd)+"</small>"+
+        "<small class=\"hd\">"+(isFerry(l.r)?"⛴ Fähre ":isBus(l.r)?"Bus ":"")+rs.map(function(x){ return esc(lineName(x)); }).join(" / ")+(l.r < NR0 && /X$/.test(NET.r[l.r][0])?" Express":"")+" Richtung "+esc(l.hd)+"</small>"+
         (mid.length ? "<details class=\"mid\"><summary>"+nLbl+" · "+mins(l.secs)+" Min.</summary>"+mid.map(esc).join(" · ")+"</details>" : "<small class=\"mid\">"+nLbl+" · "+mins(l.secs)+" Min.</small>")+
         "<span class=\"stn2\"><b>"+esc(NET.s[l.to][0])+"</b> <small>aussteigen</small></span></span></li>";
     }
@@ -2345,7 +2360,19 @@ function dayLegs(k){
 var NBPTS = NB.map(function(nb){ return nb.r.map(function(a){ var x=a[0], y=a[1], pts=[[x,y]]; for(var i=2;i<a.length;i+=2){ x+=a[i]; y+=a[i+1]; pts.push([x,y]); } return pts; }); });
 function inRing(x, y, pts){ var c = false; for(var i=0, j=pts.length-1; i<pts.length; j=i++){ var a=pts[i], b=pts[j]; if(((a[1]>y)!==(b[1]>y)) && (x < (b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])) c = !c; } return c; }
 function nbAt(x, y){ for(var i=0;i<NB.length;i++){ if(NBPTS[i].some(function(r){ return inRing(x, y, r); })) return NB[i].n; } return ""; }
-var NBCACHE = {};
+var NBCACHE = {}, NBB = {}; NB.forEach(function(x){ NBB[x.n] = x.b; });
+// Landmasse für Fußwege: kein Laufen übers Wasser (Manhattan ↔ Brooklyn/Queens)
+function landB(b){ return b==="Manhattan" ? "M" : (b==="Brooklyn" || b==="Queens") ? "L" : ""; }
+function landOf(p){
+  var n = nbOf(p); if(n) return landB(NBB[n]);
+  // Anleger/Ufer liegen oft knapp außerhalb der Viertel: Umgebung abtasten
+  var cnt = {M:0, L:0}, dl = 0.0018;
+  [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]].forEach(function(o){ var q = {la:+(p.la+o[0]*dl).toFixed(5), lo:+(p.lo+o[1]*dl*1.3).toFixed(5)}, l = landB(NBB[nbOf(q)]); if(l) cnt[l]++; });
+  return cnt.M > cnt.L ? "M" : cnt.L > cnt.M ? "L" : "";
+}
+var STLAND = {};
+function stLand(i){ if(!(i in STLAND)) STLAND[i] = landOf(stLL(i)); return STLAND[i]; }
+function sameLand(la, lb){ return !la || !lb || la===lb; }
 function nbOf(p){ if(!hasLoc(p)) return ""; var k = p.la+","+p.lo; if(!(k in NBCACHE)) NBCACHE[k] = nbAt(wx(p.lo), wy(p.la)); return NBCACHE[k]; }
 function nbByName(n){ for(var i=0;i<NB.length;i++) if(NB[i].n===n) return i; return -1; }
 function nbActive(){ var a = Object.keys(nbHi); Object.keys(nbSel).forEach(function(n){ if(!nbHi[n]) a.push(n); }); return a; }
