@@ -328,7 +328,7 @@ body.ro .jp-t[readonly]{background:transparent}
 .notrip h2{margin:0;font:700 22.5px/1.1 var(--f-display)}
 .notrip p{margin:0;color:var(--muted);font-size:14.5px}
 .notrip .btn{justify-content:center;padding:12px 14px;font-size:15px}
-body.gated #bellBtn,body.kb-sheet #bellBtn,body.notrip .tabs,body.notrip #rail,body.notrip .rail,body.notrip #tripBtn,body.notrip #srchBtn,body.notrip [data-act=opentrip]{display:none !important}
+body.gated .tabbar,body.kb-sheet .tabbar,body.notrip .tabs,body.notrip #rail,body.notrip .rail,body.notrip #tripBtn,body.notrip #srchBtn,body.notrip [data-act=opentrip]{display:none !important}
 /* Wunschliste: aufgeräumter Kopf und kompakte Zeilen */
 .wtop{display:flex;gap:8px;align-items:center}
 .wtop .search{flex:1;min-width:0;margin:0}
@@ -1095,9 +1095,9 @@ li.st > .stc::before{display:none}
 .sug .ico{width:36px;height:36px;border:0;border-radius:11px;background:color-mix(in srgb,var(--cc) 14%,transparent)}
 .sug .btn{padding:8px 14px}
 .gtag{border-color:var(--hair)}
-body.sheetfull .rail,body.sheetfull .ctrl,body.sheetfull .attr,body.sheetfull #bellBtn,body.sheetfull .card{opacity:0;pointer-events:none}
-.rail,.ctrl,.attr,#bellBtn{transition:opacity .2s ease}
-@media (min-width:900px){ body.sheetfull .rail,body.sheetfull .ctrl,body.sheetfull .attr,body.sheetfull #bellBtn,body.sheetfull .card{opacity:1;pointer-events:auto} }
+body.sheetfull .rail,body.sheetfull .ctrl,body.sheetfull .attr,body.sheetfull .card{opacity:0;pointer-events:none}
+.rail,.ctrl,.attr{transition:opacity .2s ease}
+@media (min-width:900px){ body.sheetfull .rail,body.sheetfull .ctrl,body.sheetfull .attr,body.sheetfull .card{opacity:1;pointer-events:auto} }
 
 /* ================= Apple-Stil (iOS): Systemschrift, Systemfarben, Materialien ================= */
 :root{
@@ -1445,6 +1445,58 @@ body.ro label:has(#lRoute),body.ro label:has(#lWish),body.ro label:has(#lSub),bo
 .card .ctiles{display:flex}
 .card .ctiles .jp-tile{flex:1 1 0;min-width:0;padding-left:2px;padding-right:2px}
 .card .ctiles .crate{flex:1.6 1 0}
+/* Leiste oben im Stil einer App-Tableiste */
+.top{display:flex;flex-direction:column;align-items:center;gap:8px;z-index:22}
+.tabbar{pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:4px;width:min(440px,100%);padding:5px;border-radius:999px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:.5px solid var(--glass-bd,var(--line));box-shadow:var(--sh2,0 6px 20px rgba(0,0,0,.18))}
+.tabbar .tb{position:relative;flex:1 1 0;height:44px;min-width:0;border:0;border-radius:999px;background:none !important;box-shadow:none !important;color:var(--ink) !important;display:grid;place-items:center;padding:0;margin:0 !important;cursor:pointer;transition:background .15s}
+.tabbar .tb.on{background:color-mix(in srgb,var(--ink) 12%,transparent) !important}
+.tabbar .tb svg{width:24px;height:24px}
+.tabbar .tb[hidden]{display:grid !important;visibility:hidden}
+#tabbar #camBtn{border:0 !important;background:none !important;box-shadow:none !important;color:var(--ink) !important;margin:0 !important}
+#tabbar #camBtn[aria-expanded="true"]{background:color-mix(in srgb,var(--ink) 12%,transparent) !important}
+.tabbar .bell-n{position:absolute;top:4px;left:calc(50% + 4px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#E5484D;color:#fff;font:700 11px/18px var(--f-body);text-align:center}
+.tabbar .bell-n[hidden]{display:none}
+.tbav{display:grid;place-items:center}
+.tbav .tbimg{width:28px;height:28px;border-radius:50%;object-fit:cover;display:block;box-shadow:0 0 0 1.5px var(--ink)}
+.tbav .tbimg.init{background:var(--accent);color:#fff;font:700 13px/28px var(--f-body);text-align:center}
+.tb.on .tbav .tbimg{box-shadow:0 0 0 2px var(--ink)}
+#tbProf.dot::after{content:"";position:absolute;top:8px;left:calc(50% + 9px);width:9px;height:9px;border-radius:50%;background:#E5484D;border:2px solid var(--sheet)}
+.top .trip{align-self:center;max-width:calc(100% - 24px)}
+body.profopen .top .trip{display:none}
+@media (min-width:900px){ .tabbar{width:min(440px,calc(100% - 24px))} }
+/* Profilseite */
+.profview{position:fixed;inset:0;z-index:21;background:var(--sheet);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top,0px) + 76px) 16px calc(env(safe-area-inset-bottom,0px) + 24px)}
+.profview[hidden]{display:none}
+.pf{max-width:560px;margin:0 auto}
+.pf-head{display:flex;align-items:center;gap:16px;margin:8px 0 16px}
+.pf-avb{position:relative;border:0;background:none;padding:0;cursor:pointer;flex:0 0 auto}
+.pf-av{width:84px;height:84px;border-radius:50%;object-fit:cover;display:block}
+.pf-av.init{display:grid;place-items:center;background:var(--accent);color:#fff;font:700 34px/1 var(--f-body)}
+.pf-avb i{position:absolute;right:0;bottom:0;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font:700 16px/26px var(--f-body);font-style:normal;text-align:center;border:2px solid var(--sheet)}
+.pf-id{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pf-id b{font:700 20px/1.2 var(--f-body);overflow:hidden;text-overflow:ellipsis}
+.pf-id small{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis}
+.pf-edit{align-self:flex-start;margin-top:6px;border:0;border-radius:9px;padding:6px 12px;background:var(--fill);color:var(--ink);font:600 13px/1.2 var(--f-body);cursor:pointer}
+.pf-stats{display:flex;justify-content:space-around;margin:4px 0 16px;padding:10px 0;border-top:.5px solid var(--sep,var(--line));border-bottom:.5px solid var(--sep,var(--line))}
+.pf-stats button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink);cursor:pointer;padding:4px 10px}
+.pf-stats b{font:700 18px/1.1 var(--f-body)}
+.pf-stats span{font-size:12.5px;color:var(--muted)}
+.pf-seg{display:flex;gap:2px;padding:2px;border-radius:10px;background:var(--fill);margin-bottom:14px}
+.pf-seg button{flex:1;border:0;background:none;border-radius:8px;padding:7px 8px;font:600 13.5px/1.2 var(--f-body);color:var(--muted);cursor:pointer}
+.pf-seg button[aria-selected="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.pf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pf-trip{border:0;background:none;padding:0;text-align:left;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:6px;min-width:0}
+.pf-cov{aspect-ratio:1/1;width:100%;border-radius:14px;overflow:hidden;background:var(--fill);display:grid;place-items:center}
+.pf-cov img{width:100%;height:100%;object-fit:cover;display:block}
+.pf-cov i{font:700 32px/1 var(--f-body);font-style:normal;color:var(--muted)}
+.pf-trip.cur .pf-cov{box-shadow:0 0 0 3px var(--accent)}
+.pf-tt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.pf-tt b{font:600 14.5px/1.25 var(--f-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-tt small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-empty{grid-column:1/-1}
+.pf-inv{display:block;width:100%;margin-top:12px;border:0;border-radius:12px;padding:12px 14px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--ink);font:600 14px/1.3 var(--f-body);text-align:left;cursor:pointer}
+.pf-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.pf-acts .btn{flex:1 1 auto}
 li.st .no.hs{background:var(--ink) !important;color:var(--sheet) !important;border-radius:9px}
 .ht.me .h{border-radius:50%;font-size:11px}
 .ht b{font-weight:600}
@@ -1583,11 +1635,21 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
   <svg id="ov" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
 </div>
 
-<div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13"/></svg></button><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="camBtn" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort" title="Hinzufügen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg></button><button type="button" class="menubtn" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button></div>
+<div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü" hidden></button>
+<nav class="tabbar" id="tabbar" aria-label="Navigation">
+<button type="button" class="tb on" id="tbMap" data-act="navmap" aria-label="Karte" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4z"/><path d="M9 4v14M15 6v14"/></svg></button>
+<button type="button" class="tb" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg></button>
+<button type="button" class="tb" id="camBtn" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M12 8v8M8 12h8"/></svg></button>
+<button type="button" class="tb" id="bellBtn" data-act="bell" aria-label="Mitteilungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.8a6 6 0 0 1 12 0c0 4.3 1.7 6 2.3 6.7H3.7C4.3 15.8 6 14.1 6 9.8z"/><path d="M9.8 19.6a2.3 2.3 0 0 0 4.4 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
+<button type="button" class="tb" id="tbProf" data-act="navprof" aria-label="Profil"><span class="tbav" id="tbAv"></span></button>
+</nav>
+<button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button></div>
+<div class="profview" id="profView" hidden></div>
+<input type="file" id="avIn" accept="image/*" hidden>
 <div class="tripmenu" id="tripMenu" hidden></div>
 <div class="addmenu" id="addMenu" role="dialog" aria-label="Hinzufügen" hidden></div>
 <div class="tripmenu" id="mainMenu" hidden><button type="button" data-act="opentrips"><span>Reisen <b class="mbadge" id="invBadge" hidden></b></span><small>Private, gemeinsame Reisen, Anfragen</small></button><button type="button" data-act="openfriends"><span>Freunde <b class="mbadge" id="frBadge" hidden></b></span><small>Anfragen, Freunde suchen</small></button><button type="button" data-act="openacct"><span>Mein Konto</span><small>Anmeldung, Abgleich, Einstellungen</small></button></div>
-<button type="button" class="menubtn bell" id="bellBtn" data-act="bell" aria-label="Mitteilungen" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8.2a5 5 0 0 1 10 0c0 3.6 1.4 5 1.9 5.6H3.1C3.6 13.2 5 11.8 5 8.2z"/><path d="M8.2 16.3a1.9 1.9 0 0 0 3.6 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
+
 <nav class="rail" id="rail" aria-label="Reisetage"></nav>
 <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
 <input type="file" id="libIn" accept="image/*" multiple hidden>
@@ -2197,7 +2259,7 @@ var PROF = null, FR = {inc:[], out:[], friends:[]}, frUnsub = [], frSearch = {q:
 function frWatch(){
   if(!fbDb || !acct.user || frUnsub.length) return;
   var uid0 = acct.user.uid;
-  fbDb.collection("profiles").doc(uid0).get().then(function(d){ PROF = d.exists ? d.data() : null; refreshSettings(); }, function(){});
+  fbDb.collection("profiles").doc(uid0).get().then(function(d){ PROF = d.exists ? d.data() : null; refreshSettings(); navAv(); if(profOpen) renderProfile(); }, function(){});
   var A = [], B = [], NAMES = {}, asked = {};
   var upd = function(){
     // Namen immer aktuell aus dem Profil, nicht den beim Anfragen gespeicherten
@@ -2209,7 +2271,7 @@ function frWatch(){
     FR.inc = A.filter(function(r){ return r.status==="pending"; });
     FR.out = B.filter(function(r){ return r.status==="pending"; });
     FR.friends = A.concat(B).filter(function(r){ return r.status==="accepted"; }).map(function(r){ var me1 = r.from===uid0; return {uid: me1 ? r.to : r.from, name: me1 ? r.toName : r.fromName, email: me1 ? r.toEmail : r.fromEmail, id:r.id}; });
-    $("menuBtn").classList.toggle("dot", INVITES.length > 0 || FR.inc.length > 0);
+    setNavDot(INVITES.length > 0 || FR.inc.length > 0);
     var fb = $("frBadge"); if(fb){ fb.hidden = !FR.inc.length; fb.textContent = FR.inc.length; }
     frNotify();
     refreshSettings(); if(tab==="trip") renderSheet();
@@ -2232,7 +2294,7 @@ function frWatch(){
   frUnsub.push(fbDb.collection("friendReqs").where("to", "==", uid0).onSnapshot(function(qs){ var n0 = A.filter(function(r){ return r.status==="pending"; }).length; A = rows(qs); upd(); var n1 = FR.inc.length; gotA = true; upd(); }, function(){}));
   frUnsub.push(fbDb.collection("friendReqs").where("from", "==", uid0).onSnapshot(function(qs){ B = rows(qs); gotB = true; upd(); }, function(){}));
 }
-function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; PROF = null; FR = {inc:[], out:[], friends:[]}; }
+function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; PROF = null; FR = {inc:[], out:[], friends:[]}; navAv(); }
 function validName(n){ return /^[a-zA-Z0-9._-]{3,20}$/.test(n); }
 function setUsername(n){
   n = (n||"").trim().replace(/^@/, "");
@@ -2247,7 +2309,7 @@ function setUsername(n){
       if(old && old!==low) tx.delete(fbDb.collection("usernames").doc(old));
       tx.set(fbDb.collection("profiles").doc(uid0), {name:n, nameLower:low});
     });
-  }).then(function(){ PROF = {name:n, nameLower:low}; unameEdit = false; unameMsg = ""; if(accView!=="search") accView = "main"; if(document.activeElement) document.activeElement.blur(); refreshSettings(); toast("Benutzername @"+n+" gespeichert", false); },
+  }).then(function(){ PROF = Object.assign({}, PROF||{}, {name:n, nameLower:low}); navAv(); if(profOpen) renderProfile(); unameEdit = false; unameMsg = ""; if(accView!=="search") accView = "main"; if(document.activeElement) document.activeElement.blur(); refreshSettings(); toast("Benutzername @"+n+" gespeichert", false); },
     function(e){ unameMsg = e && e.message==="taken" ? "@"+n+" ist schon vergeben." : "Speichern fehlgeschlagen."; refreshSettings(); });
 }
 var frTimer = null;
@@ -2348,7 +2410,7 @@ function searchHTML(){
 
 /* ---------- Einladungen & Mitreisende ---------- */
 var INVN = {};
-function invBadge(){ var b = $("invBadge"); if(b){ b.hidden = !INVITES.length; b.textContent = INVITES.length; } $("menuBtn").classList.toggle("dot", INVITES.length > 0 || FR.inc.length > 0); }
+function invBadge(){ var b = $("invBadge"); if(b){ b.hidden = !INVITES.length; b.textContent = INVITES.length; } setNavDot(INVITES.length > 0 || FR.inc.length > 0); }
 function invWatch(){
   if(invUnsub || !myMail()) return;
   invUnsub = fbDb.collection("trips").where("invites", "array-contains", myMail()).onSnapshot(function(qs){
@@ -2604,6 +2666,66 @@ function acctHTML(){
   if(u) h += "<div class=\"ag-grp ag-out\"><button type=\"button\" class=\"ag-row\" data-act=\"acout\"><span><b>Abmelden</b></span></button></div>";
   return h+"</div>";
 }
+/* ---------- Leiste oben & Profilseite ---------- */
+var profOpen = false, profTab = "mine";
+function setNavDot(on){ var a = $("menuBtn"); if(a) a.classList.toggle("dot", !!on); var b = $("tbProf"); if(b) b.classList.toggle("dot", !!on); }
+function navActive(){ var pm = profOpen; $("tbMap").classList.toggle("on", !pm); $("tbProf").classList.toggle("on", pm);
+  if(pm){ $("tbProf").setAttribute("aria-current", "page"); $("tbMap").removeAttribute("aria-current"); } else { $("tbMap").setAttribute("aria-current", "page"); $("tbProf").removeAttribute("aria-current"); } }
+function avHTML(cls){ var ph = PROF && PROF.photo, nm = (PROF && PROF.name) || myMail() || "?";
+  return ph ? "<img class=\""+cls+"\" src=\""+ph+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
+function navAv(){ var e = $("tbAv"); if(!e) return; e.innerHTML = acct.user ? avHTML("tbimg") : "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/><path d=\"M6.2 18.4a7 7 0 0 1 11.6 0\"/></svg>"; }
+function openProfile(){ closeMenus(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
+function closeProfile(){ if(!profOpen) return; profOpen = false; $("profView").hidden = true; document.body.classList.remove("profopen"); navActive(); }
+function tripCover(id){ var t = S.trips[id], ps = (t && t.photos) || {}, ks = Object.keys(ps); for(var i = 0; i < ks.length; i++){ var a = ps[ks[i]] || []; if(a.length) return a[a.length-1]; } return null; }
+function renderProfile(){
+  var el = $("profView"); if(!el) return;
+  var h = "<div class=\"pf\">";
+  if(!acct.user){
+    h += "<div class=\"pf-head\">"+avHTML("pf-av")+"<div class=\"pf-id\"><b>Nicht angemeldet</b><small>Melde dich an, um ein Profil zu haben und Reisen zu teilen.</small></div></div>";
+    h += "<button type=\"button\" class=\"btn\" data-act=\"openacct\">Anmelden</button></div>";
+    el.innerHTML = h; return;
+  }
+  var ids = Object.keys(S.trips), mine = ids.filter(function(id){ return !isViewerOf(id); }), obs = ids.filter(function(id){ return isViewerOf(id); });
+  h += "<div class=\"pf-head\"><button type=\"button\" class=\"pf-avb\" data-act=\"avpick\" aria-label=\"Profilbild ändern\">"+avHTML("pf-av")+"<i>＋</i></button>"+
+       "<div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b><small>"+esc(myMail())+"</small>"+
+       "<button type=\"button\" class=\"pf-edit\" data-act=\"accview\" data-v=\"profile\">Profil bearbeiten</button></div></div>";
+  h += "<div class=\"pf-stats\"><button type=\"button\" data-act=\"pftab\" data-v=\"mine\"><b>"+mine.length+"</b><span>Reisen</span></button>"+
+       "<button type=\"button\" data-act=\"pftab\" data-v=\"obs\"><b>"+obs.length+"</b><span>Beobachtet</span></button>"+
+       "<button type=\"button\" data-act=\"openfriends\"><b>"+FR.friends.length+"</b><span>Freunde</span></button></div>";
+  h += "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"mine\" aria-selected=\""+(profTab==="mine")+"\">Meine Reisen</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"obs\" aria-selected=\""+(profTab==="obs")+"\">Beobachtet</button></div>";
+  var list = profTab==="obs" ? obs : mine;
+  list.sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); });
+  h += "<div class=\"pf-grid\">";
+  if(!list.length) h += "<p class=\"note pf-empty\">"+(profTab==="obs" ? "Du beobachtest noch keine Reise. Wenn dich jemand als Beobachter einlädt, erscheint sie hier." : "Noch keine eigene Reise.")+"</p>";
+  list.forEach(function(id){
+    var t = S.trips[id], m = META[id], cov = tripCover(id), n = m ? (m.members||[]).length : 1, own = m && acct.user && m.owner===acct.user.uid;
+    var role = isViewerOf(id) ? "Beobachter" : own || !m ? (n > 1 ? "mit "+(n-1)+(n===2?" Person":" Personen") : "Privat") : "Mitreisende/r";
+    h += "<button type=\"button\" class=\"pf-trip"+(id===S.cur?" cur":"")+"\" data-act=\"pfopen\" data-trip=\""+esc(id)+"\">"+
+         "<span class=\"pf-cov\">"+(cov ? "<img data-ph=\""+cov+"\" alt=\"\">" : "<i>"+esc(((t.name||"?")[0]||"?").toUpperCase())+"</i>")+"</span>"+
+         "<span class=\"pf-tt\"><b>"+esc(t.name||"Reise")+"</b><small>"+esc([t.start && t.end ? shortD(t.start)+"–"+shortD(t.end) : "", role].filter(Boolean).join(" · "))+"</small></span></button>";
+  });
+  h += "</div>";
+  if(INVITES.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"opentrips\" data-v=\"req\">✉ "+INVITES.length+(INVITES.length===1 ? " Einladung zu einer Reise" : " Einladungen zu Reisen")+" ›</button>";
+  if(FR.inc.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"openfriends\">👋 "+FR.inc.length+(FR.inc.length===1 ? " Freundschaftsanfrage" : " Freundschaftsanfragen")+" ›</button>";
+  h += "<div class=\"pf-acts\">"+(profTab==="mine" ? "<button type=\"button\" class=\"btn g\" data-act=\"pfnew\">＋ Neue Reise</button>" : "")+
+       "<button type=\"button\" class=\"btn g\" data-act=\"openacct\">Konto &amp; Einstellungen</button></div>";
+  h += "</div>";
+  el.innerHTML = h; fillPhotos(el);
+}
+// Profilbild: quadratisch zugeschnitten, klein, im eigenen Profil gespeichert
+function setAvatar(file){
+  if(!acct.user || !fbDb) return;
+  if(!PROF || !PROF.name){ toast("Lege zuerst einen Benutzernamen fest (Profil bearbeiten).", false); return; }
+  var url = URL.createObjectURL(file), im = new Image();
+  im.onload = function(){ var z = 240, w = im.naturalWidth, hh = im.naturalHeight, k = z / Math.min(w, hh), c = document.createElement("canvas"); c.width = z; c.height = z;
+    c.getContext("2d").drawImage(im, (z - w*k)/2, (z - hh*k)/2, w*k, hh*k); URL.revokeObjectURL(url);
+    var d = c.toDataURL("image/jpeg", .82);
+    fbDb.collection("profiles").doc(acct.user.uid).set({photo:d}, {merge:true}).then(function(){ PROF = Object.assign({}, PROF, {photo:d}); navAv(); renderProfile(); toast("Profilbild gespeichert", false); },
+      function(e){ toast("Profilbild nicht gespeichert: "+(e && e.message), false); }); };
+  im.onerror = function(){ URL.revokeObjectURL(url); toast("Bild konnte nicht gelesen werden.", false); };
+  im.src = url;
+}
+document.addEventListener("change", function(e){ if(e.target.id==="avIn" && e.target.files && e.target.files[0]){ setAvatar(e.target.files[0]); e.target.value = ""; } });
 function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
 /* Tastatur: alles am sichtbaren Bereich ausrichten und das aktive Feld im Blick halten */
 function isTypeField(el){ if(!el || !el.tagName) return false; var tg = el.tagName; if(tg==="TEXTAREA" || tg==="SELECT") return true; if(tg!=="INPUT") return false; return !/^(checkbox|radio|button|submit|range|file|color|hidden)$/.test(el.type); }
@@ -4523,7 +4645,7 @@ function placeFloating(){
   $("offline").style.top = (topB + 10)+"px";
   $("mapnote").style.bottom = (sv + 34)+"px";
   var bell = $("bellBtn"), railTop = topB + 10;
-  if(bell && bell.offsetWidth && getComputedStyle(bell).visibility!=="hidden"){ var mb = $("menuBtn").getBoundingClientRect(); bell.style.top = (topB + 8)+"px"; bell.style.left = mb.left+"px"; railTop = topB + 8 + 44 + 8; }
+  // Mitteilungen sitzen jetzt in der Leiste oben
   $("rail").style.top = railTop+"px";
   $("rail").style.maxHeight = Math.max(80, window.innerHeight - railTop - sv - 40)+"px";
   $("attr").style.bottom = (sv + 8)+"px";
@@ -5806,7 +5928,7 @@ function applyRO(){
   if(mapReady) applyLayers();
   var c = $("lColor"); if(c) c.checked = colorOn;
 }
-function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); }
+function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); navAv(); if(profOpen) renderProfile(); }
 function pickDefaultDay(){
   var ds = days(), tk = todayKey();
   cur = ds.length ? ((dayByKey(tk) && tk) || ds[0].key) : "";
@@ -6011,6 +6133,12 @@ document.addEventListener("click", function(e){
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
     case "srchopen": closeMenus(); openSearch(); break;
+    case "navmap": closeProfile(); closeMenus(); break;
+    case "navprof": if(profOpen) closeProfile(); else openProfile(); break;
+    case "pftab": profTab = t.getAttribute("data-v"); renderProfile(); break;
+    case "pfopen": closeProfile(); var pft = t.getAttribute("data-trip"); if(S.trips[pft]){ closeSettings(); grpSel = ""; S.cur = pft; save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
+    case "pfnew": closeProfile(); var tnb = document.createElement("button"); tnb.setAttribute("data-act", "tripnew"); tnb.hidden = true; document.body.appendChild(tnb); tnb.click(); tnb.remove(); break;
+    case "avpick": var avi = $("avIn"); if(avi) avi.click(); break;
     case "srchclose": closeSearch(); break;
     case "srchgo": srchGo(+t.getAttribute("data-i")); break;
     case "daypick": closeCatPop(); cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
