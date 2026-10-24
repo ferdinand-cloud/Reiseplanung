@@ -1965,6 +1965,7 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .vm2-off{opacity:.4}
 .vm2-leg{height:10px;margin:-2px 0 -2px 27px;border-left:2px dotted color-mix(in srgb,var(--ink) 25%,transparent)}
 .vm2-leg.hi{border-left:3px solid #FF9F0A}
+.am-diag{margin:6px 12px 4px;font-size:11px;color:var(--muted);line-height:1.35}
 </style>
 </head>
 <body>
@@ -6464,14 +6465,33 @@ function heifExifRange(buf){
   });
   return exifId > -1 && loc[exifId] ? loc[exifId] : null;
 }
+/* alle Exif-Blöcke im Puffer prüfen (manche Dateien haben mehrere) */
+function exifAll(buf){ var u = new Uint8Array(buf), best = null;
+  for(var i = 0; i < u.length - 10; i++){
+    if(u[i]===0x45 && u[i+1]===0x78 && u[i+2]===0x69 && u[i+3]===0x66 && u[i+4]===0 && u[i+5]===0){
+      var r = null; try { r = exifFromBuf(buf.slice(i)); } catch(e){}
+      if(r){ if(r.gps) return r; if(!best) best = r; } } }
+  return best; }
+/* XMP (Text) als Rückfall: exif:GPSLatitude="40,43.34N" */
+function xmpGps(buf){ var u = new Uint8Array(buf), s = "", CH = 65536;
+  for(var i = 0; i < u.length; i += CH) s += String.fromCharCode.apply(null, u.subarray(i, Math.min(u.length, i+CH)));
+  var a = /GPSLatitude[="'>\s]+([\d.]+),([\d.]+)([NS])/.exec(s), b = /GPSLongitude[="'>\s]+([\d.]+),([\d.]+)([EW])/.exec(s);
+  if(!a || !b) return null; var la = +a[1] + a[2]/60, lo = +b[1] + b[2]/60; if(a[3]==="S") la = -la; if(b[3]==="W") lo = -lo;
+  return isFinite(la) && isFinite(lo) ? {la:la, lo:lo} : null; }
 function photoMeta(file){
-  var head = Math.min(file.size, 1024*1024);
+  var head = Math.min(file.size, 1024*1024), diag = {type:file.type || "?", size:file.size, exif:false, gps:false, heif:false};
+  var fin = function(r){ r = r || {}; diag.exif = diag.exif || !!r.when || !!r.gps; diag.gps = !!r.gps; r.diag = diag; return r; };
   return file.slice(0, head).arrayBuffer().then(function(buf){
-    var r = exifFromBuf(buf); if(r) return r;
-    var rg = null; try { rg = heifExifRange(buf); } catch(e){}
-    var pr = rg && rg[1] > 0 && rg[0] < file.size ? file.slice(rg[0], rg[0] + Math.min(rg[1], 512*1024)).arrayBuffer() : file.slice(Math.max(0, file.size - 2*1024*1024)).arrayBuffer();
-    return pr.then(function(b2){ return exifFromBuf(b2) || (rg ? file.slice(Math.max(0, file.size - 2*1024*1024)).arrayBuffer().then(function(b3){ return exifFromBuf(b3) || {}; }) : {}); });
-  }).catch(function(){ return {}; });
+    var r = exifFromBuf(buf); if(r){ diag.exif = true; if(r.gps) return fin(r); }
+    var rg = null; try { rg = heifExifRange(buf); } catch(e){} diag.heif = !!rg;
+    var pr = rg && rg[1] > 0 && rg[0] < file.size ? file.slice(rg[0], rg[0] + Math.min(rg[1], 512*1024)).arrayBuffer().then(exifFromBuf) : Promise.resolve(null);
+    return pr.then(function(r2){ if(r2){ diag.exif = true; if(r2.gps) return fin(r2); }
+      // ganze Datei durchsuchen (bis 40 MB): alle Exif-Blöcke und XMP
+      if(file.size > 40*1024*1024) return fin(r2 || r);
+      return file.arrayBuffer().then(function(all){ var r3 = exifAll(all); if(r3){ diag.exif = true; if(r3.gps) return fin(r3); }
+        var x = xmpGps(all), base = r3 || r2 || r || {}; if(x){ base.gps = x; diag.xmp = true; } return fin(base); });
+    });
+  }).catch(function(e){ diag.err = String(e && e.message || e); return fin({}); });
 }
 /* Fotos aus der Mediathek: nach der Auswahl fragen – aktueller Standort oder Aufnahmeort aus den Metadaten */
 var LIBP = null;
@@ -6482,7 +6502,8 @@ function libImport(fs){
     m.innerHTML = "<div class=\"am-head\"><b>"+(n===1 ? "Foto einordnen" : n+" Fotos einordnen")+"</b><button type=\"button\" class=\"x\" data-act=\"libcancel\" aria-label=\"Abbrechen\">✕</button></div>"+
       "<button type=\"button\" data-act=\"libcur\"><span class=\"ai\">"+IPIN+"</span><span>Aktueller Standort<small>"+(n===1 ? "Fotospot" : "Ein Fotospot")+" hier, im Plan von heute</small></span></button>"+
       "<button type=\"button\" data-act=\"libexif\""+(g ? "" : " disabled")+"><span class=\"ai\">"+ILIB+"</span><span>Aufnahmeort aus Metadaten<small>"+
-        (g ? (n===1 ? "Ort und Zeit aus dem Foto" : g+" von "+n+" mit Ortsdaten"+(g<n ? ", Rest an deinen Standort" : "")) : "Keine Ortsdaten – in der Fotoauswahl unter „Optionen“ den Schalter „Ort“ einschalten")+"</small></span></button>";
+        (g ? (n===1 ? "Ort und Zeit aus dem Foto" : g+" von "+n+" mit Ortsdaten"+(g<n ? ", Rest an deinen Standort" : "")) : "Keine Ortsdaten – in der Fotoauswahl unter „Optionen“ den Schalter „Ort“ einschalten")+"</small></span></button>"+
+      (g < n ? "<p class=\"am-diag\">Technik: "+ms.filter(function(x){ return !x.gps; }).slice(0, 3).map(function(x){ var d = x.diag || {}; return esc((d.type||"?")+", "+Math.round((d.size||0)/1024)+" KB, Exif "+(d.exif ? "ja" : "nein")+(d.heif ? ", HEIF" : "")+(d.err ? ", Fehler: "+d.err : "")); }).join(" · ")+"</p>" : "");
     m.classList.add("wide"); m.hidden = false; $("camBtn").setAttribute("aria-expanded", "true"); placeAddMenu();
   });
 }
