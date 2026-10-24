@@ -5239,7 +5239,7 @@ function renderTop(){
   Object.keys(S.trips).map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).forEach(function(x){
     h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur)+"\"><span>"+esc(x.name)+"</span><small>"+esc(rangeLabel(x.start,x.end))+"</small></button>";
   });
-  h += "<hr>"+(acct.user && !isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Mitreisende &amp; Beobachter</span><small>einladen, Rollen</small></button>" : "")+
+  h += "<hr>"+
        (acct.user && isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Reise-Details</span><small>Mitglieder</small></button>" : "<button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button>")+"<button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
   $("tripMenu").innerHTML = h;
   var d = dayByKey(cur), r = "";
@@ -6345,6 +6345,7 @@ function renderTrip(){
   h2 += items("orte", d.mode==="new" ? "Reiseziel" : "Orte", "Ort hinzufügen", "Stadt suchen, z. B. Boston …", "◎");
   if(d.err) h2 += "<p class=\"err\" role=\"alert\">"+esc(d.err)+"</p>";
   h2 += "<div class=\"tf-foot\"><button class=\"btn g\" type=\"button\" data-act=\"tcancel\">Abbrechen</button><button class=\"btn\" type=\"submit\">"+(d.mode==="new"?"Reise anlegen":"Speichern")+"</button></div></form>";
+  if(d.mode==="edit") h2 += shareBlock();
   return h2;
 }
 function saveTrip(){
@@ -6809,7 +6810,7 @@ document.addEventListener("click", function(e){
     case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; openSettings(); break;
     case "opentrip": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeSettings();
       var otr = t.getAttribute("data-trip"); if(otr && S.trips[otr] && otr!==S.cur){ grpSel = ""; S.cur = otr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); }
-      tab = "trip"; tdraft = null; renderSheet(); scheduleOverlay();
+      tab = "trip"; tdraft = isViewerOf(S.cur) ? null : tripToDraft(T(), "edit"); renderSheet(); scheduleOverlay();
       setTimeout(function(){ var sh = document.querySelector("#tripPop .share"); if(sh) sh.scrollIntoView({block:"start", behavior: reduceMotion ? "auto" : "smooth"}); }, 250); break;
     case "tripclose": closeTrip(); break;
     case "acsync": acctPull(); break;
