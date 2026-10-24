@@ -2233,7 +2233,7 @@ function starterTrip(){
   t.starter = true; return t;
 }
 // Noch keine echte Reise (neues Konto): nur der unsichtbare Platzhalter ist da
-function noTrip(){ var ks = S && S.trips ? Object.keys(S.trips) : []; return !ks.length || ks.every(function(k){ var t = S.trips[k]; return t.starter && t.seed; }); }
+function noTrip(){ var ks = S && S.trips ? Object.keys(S.trips).filter(function(k){ return !S.trips[k].arch; }) : []; return !ks.length || ks.every(function(k){ var t = S.trips[k]; return t.starter && t.seed; }); }
 function noTripHTML(){
   return "<div class=\"notrip\"><h2>Willkommen!</h2><p>Du hast noch keine Reise. Lege deine erste Reise an – mit Reiseziel, Zeitraum und Hotel. Danach füllst du deine Wunschliste und planst die Tage.</p>"+
     "<button type=\"button\" class=\"btn\" data-act=\"tripnew\">Erste Reise anlegen</button>"+
@@ -2805,7 +2805,7 @@ var tripsTab = "priv";
 function isShared(id){ var mm = META[id]; return !!(mm && ((mm.members||[]).length > 1 || (mm.invites||[]).length > 0)); }
 function tripsPageHTML(){
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Reisen\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Reisen</h3>";
-  var segs = [["priv","Privat"],["shared","Gemeinsam"],["req","Anfragen"+(INVITES.length?" ("+INVITES.length+")":"")]];
+  var segs = [["priv","Privat"],["shared","Gemeinsam"],["req","Anfragen"+(INVITES.length?" ("+INVITES.length+")":"")],["arch","Archiv"]];
   h += "<div class=\"tseg\" role=\"tablist\">"+segs.map(function(x){ return "<button type=\"button\" role=\"tab\" data-act=\"tripstab\" data-v=\""+x[0]+"\" aria-selected=\""+(tripsTab===x[0])+"\">"+x[1]+"</button>"; }).join("")+"</div>";
   if(tripsTab==="req"){
     if(!acct.user) return h+"<p class=\"note\">Melde dich an, um Einladungen zu erhalten.</p></div>";
@@ -2813,8 +2813,16 @@ function tripsPageHTML(){
     h += "<div class=\"ag-grp\">"+INVITES.map(function(v){ return "<div class=\"ag-row inv\"><span><b>"+esc(v.name)+"</b><small>"+(v.range?esc(v.range)+" · ":"")+"Einladung von "+esc(v.fromName ? "@"+v.fromName : (v.from||"jemandem"))+" · als "+(v.viewer?"Beobachter":"Mitreisende/r")+"</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"invacc\" data-trip=\""+v.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"invdec\" data-trip=\""+v.id+"\">Ablehnen</button></span></div>"; }).join("")+"</div>";
     return h+"</div>";
   }
+  if(tripsTab==="arch"){
+    var al = archIds();
+    if(!al.length) return h+"<p class=\"note\">Keine gelöschten Reisen. Gelöschte Reisen landen hier und können wiederhergestellt werden.</p></div>";
+    h += "<div class=\"ag-grp\">"+al.map(function(id){ var x = S.trips[id], own = canDelTrip(id);
+      return "<div class=\"ag-row inv\"><span><b>"+esc(x.name)+"</b><small>"+esc(rangeLabel(x.start,x.end))+" · gelöscht am "+new Date(x.arch).toLocaleDateString("de-DE")+"</small></span><span class=\"invb\">"+
+        (own ? "<button type=\"button\" class=\"btn s\" data-act=\"triprestore\" data-trip=\""+id+"\">Wiederherstellen</button><button type=\"button\" class=\"btn g s warn\" data-act=\"trippurge\" data-trip=\""+id+"\">Endgültig löschen</button>" : "")+"</span></div>"; }).join("")+"</div>";
+    return h+"<p class=\"note\">Wiederhergestellte Reisen erscheinen wieder in deiner Reiseliste – bei gemeinsamen Reisen auch für alle Mitreisenden.</p></div>";
+  }
   var sh = tripsTab==="shared";
-  var list = Object.keys(S.trips).map(function(k){ return S.trips[k]; }).filter(function(x){ return !(x.starter && x.seed) && isShared(x.id)===sh; }).sort(function(a,b){ return a.start<b.start?-1:1; });
+  var list = liveIds().map(function(k){ return S.trips[k]; }).filter(function(x){ return !(x.starter && x.seed) && isShared(x.id)===sh; }).sort(function(a,b){ return a.start<b.start?-1:1; });
   if(list.length){
     h += "<div class=\"ag-grp\">";
     list.forEach(function(x){
@@ -3235,7 +3243,7 @@ function renderGs(full){
   var res = "";
   if(!q){ res = "<p class=\"note nt-empty\">Suche nach Personen, deinen Reisen, Orten aus allen Reisen und Empfehlungen deiner Freunde.</p>"; }
   else {
-    var ppl = gsPeople.slice(0, 8), trips = Object.keys(S.trips).filter(function(id){ return hit(S.trips[id].name); });
+    var ppl = gsPeople.slice(0, 8), trips = liveIds().filter(function(id){ return hit(S.trips[id].name); });
     var places = []; Object.keys(S.trips).forEach(function(id){ var t = S.trips[id]; Object.keys(t.places||{}).forEach(function(pid){ var p = t.places[pid]; if(p && !p.of && p.k!=="hotel" && hit([p.n, p.addr, p.note, CATNAME[p.c]].join(" "))) places.push({tid:id, p:p, done:!!(t.done||{})[pid]}); }); });
     var recs = DC.items.filter(function(r){ return hit([r.n, r.addr, r.note, r.fname, r.trip, CATNAME[r.c]].join(" ")); });
     var sec = function(title, n, body){ return n ? "<div class=\"nt-sec\">"+title+" · "+n+"</div><div class=\"ag-grp ls-list\">"+body+"</div>" : ""; };
@@ -3733,7 +3741,7 @@ function lsGoMap(pid){
 }
 function renderLs(){
   var el = $("lsView"); if(!el) return;
-  var t = T(), ds = days(), ids = Object.keys(S.trips).filter(function(id){ return !isViewerOf(id); }); // nur eigene Reisen, keine beobachteten
+  var t = T(), ds = days(), ids = liveIds().filter(function(id){ return !isViewerOf(id); }); // nur eigene Reisen, keine beobachteten
   var h = "<div class=\"pf ls-page\"><div class=\"ls-head\">";
   if(!ids.length){ el.innerHTML = h+"</div><p class=\"note nt-empty\">Die Liste gibt es für deine eigenen Reisen. Du hast noch keine.</p></div>"; return; }
   if(isViewerOf(S.cur)){
@@ -3848,8 +3856,8 @@ function acctBlock(){
 function renderAcct(){
   var h = "<div class=\"dh\"><div><h2>Mein Konto</h2><p>"+(acct.user ? esc(acct.user.email||"") : "Nicht angemeldet")+"</p></div></div>";
   h += acctBlock();
-  var n = Object.keys(S.trips).length;
-  h += "<div class=\"sec\"><h4>Meine Reisen</h4><div class=\"tripsum\">"+Object.keys(S.trips).map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).map(function(x){ return "<div><b>"+esc(x.name)+"</b> · "+esc(rangeLabel(x.start,x.end))+(x.id===S.cur?" · <span class=\"sub\">gerade geöffnet</span>":"")+"</div>"; }).join("")+"</div><p class=\"note\">"+n+(n===1?" Reise":" Reisen")+" in deinem Konto. Wechseln über den Reisenamen oben.</p></div>";
+  var n = liveIds().length;
+  h += "<div class=\"sec\"><h4>Meine Reisen</h4><div class=\"tripsum\">"+liveIds().map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).map(function(x){ return "<div><b>"+esc(x.name)+"</b> · "+esc(rangeLabel(x.start,x.end))+(x.id===S.cur?" · <span class=\"sub\">gerade geöffnet</span>":"")+"</div>"; }).join("")+"</div><p class=\"note\">"+n+(n===1?" Reise":" Reisen")+" in deinem Konto. Wechseln über den Reisenamen oben.</p></div>";
   h += googleBlock();
   h += "<div class=\"sec\"><h4>Sicherung</h4><div class=\"backup\"><button type=\"button\" class=\"btn g s\" data-act=\"export\">Plan als Datei sichern</button><label class=\"btn g s\" for=\"impFile\">Sicherung laden</label><input type=\"file\" id=\"impFile\" accept=\"application/json,.json\"></div></div>";
   return h;
@@ -3922,7 +3930,7 @@ function renderProfile(){
     h += "<button type=\"button\" class=\"btn\" data-act=\"openacct\">Anmelden</button></div>";
     el.innerHTML = h; return;
   }
-  var ids = Object.keys(S.trips), mine = ids.filter(function(id){ return !isViewerOf(id); }), obs = ids.filter(function(id){ return isViewerOf(id); });
+  var ids = liveIds(), mine = ids.filter(function(id){ return !isViewerOf(id); }), obs = ids.filter(function(id){ return isViewerOf(id); });
   h += "<button type=\"button\" class=\"pf-gear\" data-act=\"openacct\" aria-label=\"Konto &amp; Einstellungen\" title=\"Konto &amp; Einstellungen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg></button>";
   h += "<div class=\"pf-head\">"+avHTML("pf-av")+
        "<div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b><small>"+esc(myMail())+"</small></div></div>";
@@ -4130,6 +4138,16 @@ function startSync(){
 }
 
 function T(){ return S.trips[S.cur]; }
+/* Archiv: gelöschte Reisen bleiben mit Zeitstempel „arch“ erhalten und lassen sich wiederherstellen */
+function liveIds(){ return Object.keys(S.trips).filter(function(k){ return !S.trips[k].arch; }); }
+function archIds(){ return Object.keys(S.trips).filter(function(k){ return !!S.trips[k].arch; }).sort(function(a,b){ return S.trips[b].arch - S.trips[a].arch; }); }
+function canDelTrip(id){ if(acct.user && isViewerOf(id)) return false; var m = META[id]; return !acct.user || !m || !m.owner || m.owner===acct.user.uid; }
+function ensureLive(){
+  if(S.trips[S.cur] && !S.trips[S.cur].arch) return false;
+  var l = liveIds().sort(function(a,b){ return S.trips[a].start < S.trips[b].start ? -1 : 1; });
+  if(l.length) S.cur = l[0]; else { var f = fresh(); Object.keys(f.trips).forEach(function(id){ S.trips[id] = f.trips[id]; }); S.cur = f.cur; }
+  return true;
+}
 
 /* ---------- Tage der Reise ---------- */
 var DAYCACHE = null;
@@ -6018,6 +6036,8 @@ var CONFIRM = {
   phdel:["Foto löschen?", "Das Foto wird aus der Reise entfernt, auch für alle Mitreisenden.", "Löschen"],
   cmdel:["Kommentar löschen?", "", "Löschen"],
   mremove:["Mitglied entfernen?", "Die Person verliert den Zugriff auf diese Reise.", "Entfernen"],
+  deltrip:["Reise löschen?", "Die Reise kommt ins Archiv (Menü → Reisen → Archiv) und kann dort wiederhergestellt werden. Bei gemeinsamen Reisen verschwindet sie auch für alle Mitreisenden.", "Löschen"],
+  trippurge:["Endgültig löschen?", "Die Reise wird mit allen Orten, Notizen und Fotos dauerhaft entfernt – auch für alle Mitreisenden. Das kann nicht rückgängig gemacht werden.", "Endgültig löschen"],
   mleave:["Reise verlassen?", "Die Reise verschwindet von deinen Geräten. Wieder hinein kommst du nur mit einer neuen Einladung.", "Verlassen"],
   minvdel:["Einladung zurückziehen?", "", "Zurückziehen"],
   frdel:["Freund entfernen?", "", "Entfernen"],
@@ -6172,7 +6192,7 @@ function renderTop(){
   var t = T();
   $("tripBtn").innerHTML = "<b>"+esc(t.name)+"</b><span>"+esc(rangeLabel(t.start,t.end))+"</span>"+CHEV; tripFit(); requestAnimationFrame(tripFit);
   var h = "";
-  Object.keys(S.trips).map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).forEach(function(x){
+  liveIds().map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).forEach(function(x){
     h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur)+"\"><span>"+esc(x.name)+"</span><small>"+esc(rangeLabel(x.start,x.end))+"</small></button>";
   });
   h += "<hr>"+
@@ -7295,7 +7315,7 @@ function renderTrip(){
     });
     h += "<div class=\"sec\"><h4>Reisetagebuch</h4>"+(any ? jh : "<p class=\"empty\">Noch keine Einträge. Schreib im Tagesplan unter „Tagebuch“, was ihr erlebt habt.</p>")+"</div>";
     h += "<div class=\"backup\"><button type=\"button\" class=\"btn g s\" data-act=\"export\">Plan als Datei sichern</button><label class=\"btn g s\" for=\"impFile\">Sicherung laden</label><input type=\"file\" id=\"impFile\" accept=\"application/json,.json\"></div>";
-    if(Object.keys(S.trips).length>1) h += "<div class=\"row\">"+confirmBtn("delt:"+t.id, "Reise löschen", "Reise wirklich löschen?", "deltrip")+"</div>";
+    if(canDelTrip(S.cur)) h += "<div class=\"row\"><button type=\"button\" class=\"btn g s warn\" data-act=\"deltrip\">Reise löschen</button></div>";
     h += "<div class=\"row\">"+confirmBtn("reset", "Prototyp zurücksetzen", "Wirklich alles zurücksetzen?", "reset")+"</div>";
     return h;
   }
@@ -7436,7 +7456,7 @@ function doneOrderFix(){
     if(n.join("|")!==o.join("|")){ t.order[k] = n; ch = true; } });
   t.doneOrd = 1; save(); if(ch) dirty();
 }
-function renderAll(){ doneOrderFix(); if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); navAv(); if(profOpen) renderProfile(); if(lsPage) renderLs(); if(dcPage) renderDc(); }
+function renderAll(){ if(ensureLive()){ save(); pickDefaultDay(); } doneOrderFix(); if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); navAv(); if(profOpen) renderProfile(); if(lsPage) renderLs(); if(dcPage) renderDc(); }
 function pickDefaultDay(){
   var ds = days(), tk = todayKey();
   cur = ds.length ? ((dayByKey(tk) && tk) || ds[0].key) : "";
@@ -8029,8 +8049,16 @@ document.addEventListener("click", function(e){
       T().lists = T().lists.filter(function(l){ return l.id!==lid; });
       confirmKey = null; activeList = "open"; save(); toast("Liste gelöscht, Wünsche liegen jetzt unter „Ohne Liste“", true); renderAll(); break;
     case "deltrip":
-      undoSnap = snapshot(); var tn = T().name; delete S.trips[S.cur]; S.cur = Object.keys(S.trips)[0];
-      confirmKey = null; sel = null; save(); dirty(); pickDefaultDay(); toast("Reise „"+tn+"“ gelöscht", true); renderAll(); fitDay(); break;
+      if(!canDelTrip(S.cur)) break;
+      undoSnap = snapshot(); var tn = T().name; T().arch = Date.now(); ensureLive();
+      confirmKey = null; sel = null; tdraft = null; tab = "day"; save(); dirty(); pickDefaultDay(); toast("Reise „"+tn+"“ ins Archiv verschoben", true); renderAll(); fitDay(); break;
+    case "triprestore":
+      var rid = t.getAttribute("data-trip"), rt = S.trips[rid]; if(!rt || !canDelTrip(rid)) break;
+      delete rt.arch; S.cur = rid; sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb();
+      save(); dirty(); pickDefaultDay(); toast("Reise „"+rt.name+"“ wiederhergestellt", false); renderAll(); fitDay(); if(accView==="trips") openSettings(); break;
+    case "trippurge":
+      var pid0 = t.getAttribute("data-trip"), pt = S.trips[pid0]; if(!pt || !pt.arch || !canDelTrip(pid0)) break;
+      delete S.trips[pid0]; save(); dirty(); toast("Reise „"+pt.name+"“ endgültig gelöscht", false); renderAll(); if(accView==="trips") openSettings(); break;
     case "reset": S = fresh(); confirmKey = null; sel = null; tdraft = null; save(); dirty(); pickDefaultDay(); renderAll(); fitDay(); toast("Prototyp zurückgesetzt", false); break;
     case "undo": if(undoSnap){ S = JSON.parse(undoSnap); undoSnap = null; save(); $("toast").hidden = true; dirty(); if(!dayByKey(cur)) pickDefaultDay(); renderAll(); } break;
   }
