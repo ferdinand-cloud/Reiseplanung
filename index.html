@@ -1980,6 +1980,16 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .srcats button svg{width:14px;height:14px;color:var(--cc,var(--ink))}
 .srcats button[aria-selected="true"]{background:var(--ink);color:var(--sheet)}
 .srcats button[aria-selected="true"] svg{color:var(--sheet)}
+
+.plan-card{width:min(340px,100%);text-align:center}
+.plan-card > p{margin:4px 0 14px}
+.plan-opt{display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:14px;padding:12px;margin-top:8px;background:var(--fill);color:var(--ink);text-align:left;cursor:pointer}
+.plan-opt .ai{width:36px;height:36px;flex:0 0 36px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.plan-opt .ai svg{width:20px;height:20px}
+.plan-opt > span:last-child{display:flex;flex-direction:column;gap:2px}
+.plan-opt b{font:600 15.5px/1.2 var(--f-body)}
+.plan-opt small{font-size:12.5px;color:var(--muted)}
+.plan-card .cf-row .cf-no{flex:1}
 </style>
 </head>
 <body>
@@ -4394,7 +4404,7 @@ function openViaMove2(li, vi, first){
     h += "<button type=\"button\" data-act=\"vm2pick\" data-i=\""+i+"\" class=\""+(on ? "vm2-on" : "")+(off ? " vm2-off" : "")+(near ? " vm2-near" : "")+"\""+(off ? " aria-disabled=\"true\"" : "")+">"+badge+"<span class=\"dt\"><b>"+esc(n.n || "Hotel")+"</b>"+(curr ? "<small>aktuell zugeordnet</small>" : on ? "<small>erster Punkt</small>" : near ? "<small>antippen zum Zuordnen</small>" : "")+"</span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>";
     if(i < nodes.length - 1) h += "<div class=\"vm2-leg"+((f==null && i===li) || (f!=null && (i===f || i===f-1)) ? " hi" : "")+"\"></div>";
   });
-  h += "</div></div>"; $("catPop").innerHTML = h; $("catPop").hidden = false;
+  h += "</div></div>"; catKeep(h);
 }
 function vm2Pick(i){
   if(!VM2) return; var LG = dayLegs(cur), f = VM2.first;
@@ -6072,7 +6082,7 @@ var jOpen = lsGet("nyc-j-open")!=="0";
 var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#5E9970"],[3,"Nice","#007AFF"],[4,"Okay","#6b7785"],[5,"Overrated","#FF3B30"]];
 function rateOf(id){ return ((T().rating||{})[id]) || 0; }
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=ratepick],[data-act=dcplan],[data-act=chplan],[data-act=phsend],[data-act=planpick]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=ratepick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -7351,11 +7361,15 @@ function planPick(btn){
   var D = dayByKey(cur); if(!D) return;
   var isLp = btn.getAttribute("data-lp")==="1";
   PLANCTX = {poi:btn.getAttribute("data-poi")==="1", lp:isLp && lpPt ? JSON.parse(JSON.stringify(lpPt)) : null, pid:btn.getAttribute("data-pid") || sel, name:btn.getAttribute("data-poi")==="1" ? (poiSel && poiSel.n) : isLp ? ((lpPt && (lpPt.n || lpPt.addr)) || "Markierter Ort") : (P(btn.getAttribute("data-pid") || sel) || {}).n};
-  var n = ord(cur).length;
-  jpPopover("plan", btn, "<div class=\"dc-dh\">Zu "+esc(D.lbl)+" hinzufügen</div>"+
-    "<button type=\"button\" data-act=\"planend\" role=\"menuitem\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 5h9M4 9h9M4 13h5M15 11v6M12 14h6\"/></svg></span><span>Ans Ende"+(n ? " (Stopp "+(n+1)+")" : "")+"</span></button>"+
-    (n ? "<button type=\"button\" data-act=\"planins\" role=\"menuitem\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 4h12M4 16h12M10 7v6M7 10h6\"/></svg></span><span>Dazwischen einschieben …</span></button>" : ""), "planpick");
+  var n = ord(cur).filter(function(id){ return !T().done[id]; }).length, N = ord(cur).length;
+  var el = $("planPop"); if(!el){ el = document.createElement("div"); el.id = "planPop"; el.className = "cfpop"; document.body.appendChild(el); el.addEventListener("click", function(e){ if(e.target===el){ el.hidden = true; PLANCTX = null; } }); }
+  el.innerHTML = "<div class=\"cf-card plan-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Einplanen\"><b>„"+esc(PLANCTX.name || "Ort")+"“</b><p>Zu "+esc(D.lbl)+" hinzufügen – wohin im Tagesplan?</p>"+
+    "<button type=\"button\" class=\"plan-opt\" data-act=\"planend\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 5h9M4 9h9M4 13h5M15 11v6M12 14h6\"/></svg></span><span><b>Ans Ende</b><small>als Stopp "+(N+1)+"</small></span></button>"+
+    (n ? "<button type=\"button\" class=\"plan-opt\" data-act=\"planins\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 4h12M4 16h12M10 7v6M7 10h6\"/></svg></span><span><b>Dazwischen einschieben …</b><small>zwischen zwei offene Punkte des Tages</small></span></button>" : "")+
+    "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\" data-act=\"plancancel\">Abbrechen</button></div></div>";
+  el.hidden = false;
 }
+function planPopClose(){ var el = $("planPop"); if(el) el.hidden = true; }
 function planDo(at){
   var c = PLANCTX; PLANCTX = null; if(!c) return;
   if(c.poi){ poiAdd("day", at); return; }
@@ -7367,7 +7381,7 @@ function planDo(at){
 function planNodes(){
   var D = dayByKey(cur), H = D && D.hotel, o = ord(cur), nodes = [];
   nodes.push(H ? {n:H.n, h:true} : {n:"Tagesbeginn", h:true, pseudo:true});
-  o.forEach(function(id, i){ var p = P(id); nodes.push({n:p ? p.n : "?", id:id, no:i+1, done:!!T().done[id], hs:p && p.k==="hotel"}); });
+  o.forEach(function(id, i){ if(T().done[id]) return; var p = P(id); nodes.push({n:p ? p.n : "?", id:id, oi:i, no:i+1, hs:p && p.k==="hotel"}); });
   nodes.push(H ? {n:H.n, h:true} : {n:"Tagesende", h:true, pseudo:true});
   return nodes;
 }
@@ -7382,13 +7396,16 @@ function openPlanIns(first){
     h += "<button type=\"button\" data-act=\"planinspick\" data-i=\""+i+"\" class=\""+(on ? "vm2-on" : "")+(off ? " vm2-off" : "")+(near ? " vm2-near" : "")+"\">"+badge+"<span class=\"dt\"><b>"+esc(n.n)+"</b>"+(on ? "<small>erster Punkt</small>" : near ? "<small>antippen zum Einschieben</small>" : i===0 && !n.pseudo ? "<small>Start</small>" : i===nodes.length-1 && !n.pseudo ? "<small>Ende</small>" : "")+"</span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>";
     if(i < nodes.length - 1) h += "<div class=\"vm2-leg"+(f!=null && (i===f || i===f-1) ? " hi" : "")+"\"></div>";
   });
-  h += "</div></div>"; $("catPop").innerHTML = h; $("catPop").hidden = false;
+  h += "</div></div>"; catKeep(h);
 }
+function catKeep(h){ var cp = $("catPop"), sv = []; if(!cp.hidden) cp.querySelectorAll("*").forEach(function(x){ if(x.scrollTop) sv.push([x.className, x.scrollTop]); }); var s0 = cp.scrollTop;
+  cp.innerHTML = h; cp.hidden = false; cp.scrollTop = s0; sv.forEach(function(v){ var x = v[0] ? cp.getElementsByClassName(String(v[0]).split(" ")[0])[0] : null; if(x) x.scrollTop = v[1]; }); }
 function planInsPick(i){
   var c = PLANCTX; if(!c) return; var f = c.first;
   if(f==null || f===i){ openPlanIns(f===i ? null : i); return; }
   if(Math.abs(f - i)!==1){ openPlanIns(i); return; }
-  var at = Math.min(f, i); closeCatPop(); planDo(at);
+  var nodes = planNodes(), a = nodes[Math.min(f, i)], b = nodes[Math.max(f, i)];
+  var at = b.oi!=null ? b.oi : a.oi!=null ? a.oi + 1 : ord(cur).length; closeCatPop(); planDo(at);
 }
 /* Stopp auf einen anderen Tag verschieben (an die Stelle, an die auch neue Stopps kommen) */
 function moveToDay(id, to){
@@ -7578,8 +7595,9 @@ document.addEventListener("click", function(e){
     case "focus": select(id); if(!desktop.matches && sheetState==="full") setSheet("mid"); revealPoint(P(id), 15, true); break;
     case "plan": plan(id, cur); sel = id; renderAll(); break;
     case "planpick": planPick(t); break;
-    case "planend": closeJpMore(); planDo(null); break;
-    case "planins": closeJpMore(); if(PLANCTX && PLANCTX.lp && lpPt) lpClose(); setTimeout(function(){ openPlanIns(null); }, 30); break;
+    case "planend": planPopClose(); planDo(null); break;
+    case "planins": planPopClose(); if(PLANCTX && PLANCTX.lp && lpPt) lpClose(); setTimeout(function(){ openPlanIns(null); }, 30); break;
+    case "plancancel": planPopClose(); PLANCTX = null; break;
     case "planinspick": planInsPick(parseInt(t.getAttribute("data-i"), 10)); break;
     case "unplan": closeCatPop(); unplan(id); renderAll(); break;
     case "go": openGo(id || sel); break;
