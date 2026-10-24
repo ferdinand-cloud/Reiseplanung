@@ -1464,6 +1464,10 @@ body.ro label:has(#lRoute),body.ro label:has(#lWish),body.ro label:has(#lSub),bo
 .addmenu.jpmenu .dot{width:12px;height:12px;border-radius:50%;background:var(--rc)}
 .addmenu.jpmenu .hlst{color:#C9A227;font-size:16px}
 .addmenu.jpmenu > button.sel{background:var(--fill)}
+.addmenu.jpmenu .cm-t{display:flex;flex-direction:column;gap:1px;min-width:0}
+.addmenu.jpmenu .cm-t small{font-size:12px;font-weight:500;color:var(--muted);line-height:1.25}
+.addmenu.jpmenu[data-kind="cardmore"]{max-width:min(320px,calc(100vw - 20px))}
+.addmenu.jpmenu > button.del b{color:#FF453A}
 .addmenu.jpmenu .rp-hl + .rp::before{display:none}
 .addmenu.jpmenu .rp-hl{margin-bottom:4px}
 .addmenu.jpmenu > button.rp,.addmenu.jpmenu > button.rp-hl{padding:7px 10px}
@@ -6168,11 +6172,11 @@ function renderCard(){
 }
 /* weitere Aktionen zum gewählten Punkt als Pop-up-Menü */
 var moreDel = false;
-function openCardMore(){
+function openCardMore(btn){
   var p = P(sel); if(!p) return;
   var dk = dayOf(sel), I = function(d, cls){ return "<span class=\"ai"+(cls?" "+cls:"")+"\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg></span>"; };
-  var row = function(act, ic, t, sub, extra){ return "<button type=\"button\" data-act=\""+act+"\""+(extra||"")+">"+ic+"<span class=\"dt\"><b>"+t+"</b>"+(sub?"<small>"+sub+"</small>":"")+"</span></button>"; };
-  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Weitere Aktionen\" data-id=\""+sel+"\"><div class=\"pop-head\"><h4>"+esc(p.n)+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list addlist\">";
+  var row = function(act, ic, t, sub, extra){ return "<button type=\"button\" role=\"menuitem\" data-act=\""+act+"\""+(extra||"")+">"+ic+"<span class=\"cm-t\"><b>"+t+"</b>"+(sub?"<small>"+sub+"</small>":"")+"</span></button>"; };
+  var h = "";
   var hdk = dk && dayByKey(dk), isHs = p.k==="hotel";
   if(hdk && hdk.hotel && !isHs) h += row("hotelafter", I("<path d=\"M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5\"/><circle cx=\"5.8\" cy=\"9.6\" r=\"1.6\"/>"), "Danach ins Hotel", "Zwischenstopp im "+esc(hdk.hotel.n)+" einplanen", " data-pid=\""+sel+"\"");
   if(!isHs) h += row("grppick", I("<rect x=\"3\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"3\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/>"), grpName(p.g) ? "Gruppe ändern" : "Zu Gruppe hinzufügen", grpName(p.g) ? "Jetzt: "+esc(grpName(p.g)) : "");
@@ -6180,10 +6184,9 @@ function openCardMore(){
   if(dk && dk!==cur) h += row("gotoday", I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14\"/>"), "Tag "+dayByKey(dk).n+" öffnen", esc(dayByKey(dk).lbl), " data-day=\""+dk+"\"");
   if(dk && !isRO() && p.k!=="hotel" && hasLoc(p)) h += row("tovia", "<span class=\"ai\">"+VIAICO+"</span>", "Nur als Wegpunkt", "Aus dem Tagesplan nehmen, Gehroute führt hier vorbei", " data-pid=\""+sel+"\"");
   if(dk===cur) h += row("unplan", I("<path d=\"M12 5l-5 5 5 5\"/>"), isHs ? "Zwischenstopp entfernen" : p.of ? "Diesen Besuch entfernen" : "Zurück in die Wunschliste", "Aus dem Tagesplan nehmen");
-  h += "<a href=\""+gmInfoUrl(p)+"\" target=\"_blank\" rel=\"noopener\" class=\"pl-a\">"+I("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"<span class=\"dt\"><b>In Google Maps öffnen</b><small>Öffnungszeiten, Bewertungen, Fotos</small></span></a>";
-  h += row(moreDel ? "delplace" : "moredel", I("<path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/>", "warn"), moreDel ? "Wirklich löschen?" : "Löschen", moreDel ? "Tippe noch einmal zum Bestätigen" : "Punkt aus der Reise entfernen", " class=\"del\"");
-  h += "</div></div>";
-  $("catPop").innerHTML = h; $("catPop").hidden = false;
+  h += row("gmopen", I("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>"), "In Google Maps öffnen", "Öffnungszeiten, Bewertungen, Fotos");
+  h += row("moredel", I("<path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/>", "warn"), "Löschen", "Punkt aus der Reise entfernen", " class=\"del\"");
+  jpPopover(sel, btn || document.querySelector("#card [data-act=cardmore]"), h, "cardmore");
 }
 /* ---------- Bildunterschriften: je Foto ein Text, erscheint unten am Foto ---------- */
 function captOf(ph){ return ((T().capt||{})[ph]) || ""; }
@@ -6510,7 +6513,7 @@ function isOver(id){ return !!((T().overrated||{})[id]); }
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ return ((T().rating||{})[id]) || 0; }
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=ratepick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=ratepick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -8125,8 +8128,9 @@ document.addEventListener("click", function(e){
     case "libcancel": LIBP = null; closeAddMenu(); break;
     case "addclose": closeAddMenu(); break;
     case "addpop": var wasOpen = !$("addMenu").hidden; closeMenus(); if(!wasOpen) openAddPop(); break;
-    case "cardmore": moreDel = false; openCardMore(); break;
-    case "moredel": moreDel = true; openCardMore(); break;
+    case "cardmore": moreDel = false; openCardMore(t); break;
+    case "gmopen": if(P(sel)) window.open(gmInfoUrl(P(sel)), "_blank", "noopener"); break;
+    case "moredel": var mdId = sel; askConfirm("Ort löschen?", "„"+((P(mdId)||{}).n||"Ort")+"“ wird aus der Reise entfernt.", "Löschen", function(){ if(sel!==mdId) select(mdId); var tb = document.createElement("button"); tb.type = "button"; tb.setAttribute("data-act", "delplace"); tb.hidden = true; document.body.appendChild(tb); tb.click(); tb.remove(); }); break;
     case "locset": locStart(); break;
     case "phdel": var dph = t.getAttribute("data-ph"), rest = photosOf(jp.pid).filter(function(x){ return x!==dph; }), di = photosOf(jp.pid).indexOf(dph);
       delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; if(lsPage) renderLs(); if(!jp.view && jp.ret==="list"){ closeJPop(); break; } renderJPop(); break;
