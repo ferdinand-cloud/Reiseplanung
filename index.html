@@ -1375,6 +1375,9 @@ li.st .sub{margin-top:1px}
 .cap-row textarea{max-width:100%}
 .cap-row textarea{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--sheet);color:var(--ink);padding:8px 10px;font:16px/1.35 var(--f-body);resize:none}
 .cap-ok{background:var(--ink) !important;color:var(--sheet) !important}
+.vm-n{font:700 13px/1 var(--f-body);color:var(--muted)}
+.vm-on{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.vm-on .ck{margin-left:auto;color:var(--accent)}
 .cap-cancel{display:block;margin:12px auto 0;border:0;background:none;color:#FF453A;font:600 14.5px/1.2 var(--f-body);padding:6px 10px;cursor:pointer}
 .cfpop{position:fixed;inset:0;z-index:95;background:rgba(8,12,18,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:grid;place-items:center;padding:24px}
 .cfpop[hidden]{display:none}
@@ -4103,7 +4106,7 @@ function viaAt(q, k){
   var li = bestLegFor(q, k); if(li < 0){ toast("Kein passender Weg an diesem Tag gefunden.", false); return false; }
   var lp = dayLegs(k || cur)[li];
   addVia(lp[0], lp[1], q); layers.route = true;
-  toast("Wegpunkt zwischen „"+(lp[0].n || "Hotel")+"“ und „"+(lp[1].n || "Hotel")+"“ gesetzt", false);
+  toast("Wegpunkt zwischen „"+(lp[0].n || "Hotel")+"“ und „"+(lp[1].n || "Hotel")+"“ gesetzt · antippen zum Ändern", false);
   return true;
 }
 function openViaPop(li, vi){
@@ -4112,8 +4115,17 @@ function openViaPop(li, vi){
     "<p class=\"note\" style=\"margin:0 2px 10px\">Lenkt den Fußweg von „"+esc(lp[0].n || "Hotel")+"“ nach „"+esc(lp[1].n || "Hotel")+"“"+(legMode(lp[0], lp[1])==="walk" ? "" : " (Weg zur bzw. von der Station)")+".</p><div class=\"pop-list addlist\">"+
     "<button type=\"button\" data-act=\"viadel\" data-leg=\""+li+"\" data-vi=\""+vi+"\" class=\"del\"><span class=\"ai warn\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/></svg></span><span class=\"dt\"><b>Wegpunkt löschen</b></span></button>"+
     (n > 1 ? "<button type=\"button\" data-act=\"viaclear\" data-leg=\""+li+"\"><span class=\"ai\">"+VIAICO+"</span><span class=\"dt\"><b>Alle "+n+" Wegpunkte dieser Etappe löschen</b></span></button>" : "")+
+    "<button type=\"button\" data-act=\"viamovepick\" data-leg=\""+li+"\" data-vi=\""+vi+"\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 7h11l-3-3M16 13H5l3 3\"/></svg></span><span class=\"dt\"><b>Andere Strecke zuordnen …</b><small>Zwischen welchen zwei Punkten er liegen soll</small></span></button>"+
     "<button type=\"button\" data-act=\"viaedit\" data-leg=\""+li+"\"><span class=\"ai\">"+VIAICO+"</span><span class=\"dt\"><b>Wegpunkte bearbeiten</b><small>weitere setzen oder entfernen</small></span></button></div></div>";
   $("catPop").innerHTML = h; $("catPop").hidden = false;
+}
+function openViaMove(li, vi){
+  var LG = dayLegs(cur), lp = LG[li]; if(!lp) return;
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Strecke wählen\"><div class=\"pop-head\"><h4>Strecke wählen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<p class=\"note\" style=\"margin:0 2px 10px\">Zwischen welchen beiden Punkten soll der Wegpunkt den Fußweg lenken?</p><div class=\"pop-list addlist\">";
+  LG.forEach(function(pr, j){ if(!hasLoc(pr[0]) || !hasLoc(pr[1]) || pr[0].id==="me") return; var on = j===li;
+    h += "<button type=\"button\" data-act=\"viamove\" data-leg=\""+li+"\" data-vi=\""+vi+"\" data-to=\""+j+"\""+(on ? " aria-current=\"true\" class=\"vm-on\"" : "")+"><span class=\"ai vm-n\">"+(j+1)+"</span><span class=\"dt\"><b>"+esc(pr[0].n || "Hotel")+" → "+esc(pr[1].n || "Hotel")+"</b><small>"+(on ? "aktuell" : legMode(pr[0], pr[1])==="walk" ? "zu Fuß" : "Fußweg zur bzw. von der Station")+"</small></span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>"; });
+  h += "</div></div>"; $("catPop").innerHTML = h; $("catPop").hidden = false;
 }
 function lpToVia(){
   var p = lpPt; lpClose(); if(!p || !dayByKey(cur)) return;
@@ -7328,6 +7340,10 @@ document.addEventListener("click", function(e){
     case "catclose": closeCatPop(); break;
     case "viaedit": closeCatPop(); startViaPick(parseInt(t.getAttribute("data-leg"), 10)); break;
     case "viaclear": closeCatPop(); var vlp = dayLegs(cur)[parseInt(t.getAttribute("data-leg"), 10)]; if(vlp){ setLegVia(vlp[0], vlp[1], []); renderSheet(); scheduleOverlay(); toast("Wegpunkte entfernt", false); } break;
+    case "viamovepick": openViaMove(parseInt(t.getAttribute("data-leg"), 10), parseInt(t.getAttribute("data-vi"), 10)); break;
+    case "viamove": closeCatPop(); var mLG = dayLegs(cur), mfi = parseInt(t.getAttribute("data-leg"), 10), mto = parseInt(t.getAttribute("data-to"), 10), mf = mLG[mfi], mt = mLG[mto];
+      if(mf && mt && mfi!==mto){ var mv = legVia(mf[0], mf[1]).slice(), mq = mv.splice(parseInt(t.getAttribute("data-vi"), 10), 1)[0];
+        if(mq){ setLegVia(mf[0], mf[1], mv); addVia(mt[0], mt[1], {la:mq[0], lo:mq[1]}); layers.route = true; renderSheet(); scheduleOverlay(); toast("Wegpunkt liegt jetzt zwischen „"+(mt[0].n || "Hotel")+"“ und „"+(mt[1].n || "Hotel")+"“", false); } } break;
     case "viadel": closeCatPop(); var dlp = dayLegs(cur)[parseInt(t.getAttribute("data-leg"), 10)]; if(dlp){ var dv = legVia(dlp[0], dlp[1]).slice(); dv.splice(parseInt(t.getAttribute("data-vi"), 10), 1); setLegVia(dlp[0], dlp[1], dv); renderSheet(); scheduleOverlay(); toast("Wegpunkt gelöscht", false); } break;
     case "pick": pick = t.getAttribute("data-target"); $("pick").hidden = false; select(null); renderSheet(); setSheet(desktop.matches ? sheetState : "min"); break;
     case "arm": arm(t.getAttribute("data-key")); break;
