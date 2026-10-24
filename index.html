@@ -1967,10 +1967,11 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .vm2-leg.hi{border-left:3px solid #FF9F0A}
 .am-diag{margin:6px 12px 4px;font-size:11px;color:var(--muted);line-height:1.35}
 
-#chPtr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 84px);z-index:30;width:32px;height:32px;border-radius:50%;background:var(--sheet);box-shadow:0 2px 10px rgba(0,0,0,.25);opacity:0;transform:translate(-50%,0);pointer-events:none;display:grid;place-items:center;transition:opacity .15s}
-#chPtr span{width:16px;height:16px;border-radius:50%;border:2.4px solid color-mix(in srgb,var(--ink) 25%,transparent);border-top-color:var(--accent)}
-#chPtr.ready span{border-color:var(--accent);border-top-color:transparent}
-#chPtr.spin span{animation:ptrspin .7s linear infinite;border-color:color-mix(in srgb,var(--ink) 25%,transparent);border-top-color:var(--accent)}
+#chPtr{position:fixed;left:50%;top:0;z-index:30;width:28px;height:28px;opacity:0;transform:translateX(-50%);pointer-events:none;color:var(--muted)}
+#chPtr svg{width:28px;height:28px;display:block;fill:currentColor}
+#chPtr rect{opacity:0;transition:opacity .08s}
+#chPtr.spin svg{animation:ptrspin .8s steps(8) infinite}
+#chPtr.spin rect{opacity:calc(.25 + .75 * (var(--k) + 1) / 8)}
 @keyframes ptrspin{to{transform:rotate(360deg)}}
 </style>
 </head>
@@ -3308,13 +3309,33 @@ function chRefresh(){
   });
 }
 (function(){
-  var el = $("chView"); if(!el) return; var ind = document.createElement("div"); ind.id = "chPtr"; ind.innerHTML = "<span></span>"; document.body.appendChild(ind);
-  var y0 = null, d = 0, busy = false, sc = function(){ var m = chOpen ? $("chMsgs") : el; return m ? m.scrollTop : 0; };
-  var setI = function(dd, spin){ ind.style.opacity = dd > 4 || spin ? 1 : 0; ind.style.transform = "translate(-50%,"+Math.min(70, dd*.6)+"px) rotate("+(spin ? 0 : dd*4)+"deg)"; ind.classList.toggle("spin", !!spin); ind.classList.toggle("ready", dd > 70); };
-  el.addEventListener("touchstart", function(e){ if(busy || !chPage || e.touches.length!==1 || $("chPick") && !$("chPick").hidden) return; if(e.target.closest && e.target.closest(".ch-comp,textarea,input")) return; y0 = sc() <= 0 ? e.touches[0].clientY : null; d = 0; }, {passive:true});
-  el.addEventListener("touchmove", function(e){ if(y0==null) return; d = e.touches[0].clientY - y0; if(d < 0 || sc() > 0){ y0 = null; setI(0); return; } setI(d); }, {passive:true});
-  el.addEventListener("touchend", function(){ if(y0==null) return; y0 = null;
-    if(d > 70){ busy = true; setI(70, true); if(navigator.vibrate) navigator.vibrate(8); chRefresh().then(function(){ busy = false; setI(0); }); } else setI(0); d = 0; });
+  var el = $("chView"); if(!el) return;
+  var ind = document.createElement("div"); ind.id = "chPtr";
+  var sp = ""; for(var k = 0; k < 8; k++) sp += "<rect x=\"11\" y=\"2\" width=\"2.4\" height=\"6.4\" rx=\"1.2\" transform=\"rotate("+(k*45)+" 12.2 12)\" style=\"--k:"+k+"\"/>";
+  ind.innerHTML = "<svg viewBox=\"0 0 24.4 24\" aria-hidden=\"true\">"+sp+"</svg>"; document.body.appendChild(ind);
+  var y0 = null, d = 0, busy = false, tgt = null, top0 = 0, TH = 64, HOLD = 54;
+  var box = function(){ return chOpen ? $("chMsgs") : el.querySelector(".pf") ; };
+  var sc = function(){ var m = chOpen ? $("chMsgs") : el; return m ? m.scrollTop : 0; };
+  var shift = function(dd){ return dd <= 0 ? 0 : Math.min(150, dd < TH ? dd*.62 : TH*.62 + (dd - TH)*.28); };
+  var paint = function(off, prog, spin){
+    if(tgt){ tgt.style.transform = off ? "translate3d(0,"+off.toFixed(1)+"px,0)" : ""; }
+    ind.style.top = (top0 + Math.max(0, off/2) - 14).toFixed(1)+"px";
+    ind.style.opacity = spin ? 1 : Math.min(1, prog*1.4);
+    var n = spin ? 8 : Math.max(0, Math.min(8, Math.ceil(prog*8)));
+    ind.querySelectorAll("rect").forEach(function(r, i){ r.style.opacity = spin ? "" : (i < n ? (0.25 + 0.75*(i+1)/8) : 0); });
+    ind.classList.toggle("spin", !!spin); ind.style.transform = "translateX(-50%) scale("+(spin ? 1 : (0.6 + 0.4*Math.min(1, prog)))+")";
+  };
+  var settle = function(off, done){ if(tgt){ tgt.style.transition = "transform .38s cubic-bezier(.2,.9,.25,1)"; } paint(off, off ? 1 : 0, !!off && busy); setTimeout(function(){ if(tgt) tgt.style.transition = ""; if(done) done(); }, 400); };
+  el.addEventListener("touchstart", function(e){ if(busy || !chPage || e.touches.length!==1 || ($("chPick") && !$("chPick").hidden)) return; if(e.target.closest && e.target.closest(".ch-comp,textarea,input,.ch-pick")) return;
+    if(sc() > 0){ y0 = null; return; } y0 = e.touches[0].clientY; d = 0; tgt = box(); if(tgt){ tgt.style.transition = ""; top0 = tgt.getBoundingClientRect().top; } }, {passive:true});
+  el.addEventListener("touchmove", function(e){ if(y0==null) return; d = e.touches[0].clientY - y0; if(d <= 0){ paint(0, 0); if(sc() > 0) y0 = null; return; }
+    if(e.cancelable) e.preventDefault(); paint(shift(d), d/TH); }, {passive:false});
+  var end = function(){ if(y0==null) return; y0 = null;
+    if(d > TH){ busy = true; settle(HOLD); var t0 = Date.now();
+      chRefresh().then(function(){ setTimeout(function(){ busy = false; settle(0, function(){ ind.style.opacity = 0; ind.classList.remove("spin"); tgt = null; }); }, Math.max(0, 600 - (Date.now() - t0))); }); }
+    else settle(0, function(){ ind.style.opacity = 0; tgt = null; });
+    d = 0; };
+  el.addEventListener("touchend", end); el.addEventListener("touchcancel", end);
 })();
 function chStopAll(){ if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } CH = {list:[], byId:{}, got:false}; chOpen = null; chBadge(); }
 function chMarkRead(cid){ var me = acct.user && acct.user.uid; if(!me || !CH.byId[cid]) return; var o = {}; o["read."+me] = Date.now(); fbDb.collection("chats").doc(cid).update(o).catch(function(){}); }
@@ -5138,7 +5159,7 @@ function startLocate(silent){
     me = {la:pos.coords.latitude, lo:pos.coords.longitude, acc:pos.coords.accuracy, hd:pos.coords.heading, spd:pos.coords.speed};
     if(me.acc < 60){ var lt = trail[trail.length-1]; if(!lt || dist(lt, me) > 6){ trail.push({la:me.la, lo:me.lo, t:Date.now()}); if(trail.length > 400) trail.shift(); } }
     if(firstFix){ firstFix = false; centerOn(me, 15.5); }
-    setLocBtn(); scheduleOverlay(); locShare();
+    setLocBtn(); scheduleOverlay(); locShare(); locLog();
     if(sel && !$("card").hidden) renderCard();
     var oldA = meA; meAnchor(); if(meA!==oldA && cur===todayKey()){ if(tab==="day") renderSheetSoon(); scheduleOverlay(); }
     if(goSt && !$("catPop").hidden && $("catPop").querySelector("[data-act=gofrom]")) renderGo();
@@ -6458,6 +6479,7 @@ function exifFromBuf(buf){
     var str = function(en){ var o = en.c > 4 ? g32(en.v) : en.v, s = ""; for(var k = 0; k < en.c; k++){ var ch = u[T0+o+k]; if(!ch) break; s += String.fromCharCode(ch); } return s; };
     var rat = function(en, k){ var o = g32(en.v) + k*8, d = g32(o+4); return d ? g32(o)/d : 0; };
     var out = {}, I0 = ifd(g32(4));
+    try { out.dbg = {n0:Object.keys(I0).length, gp:!!I0[0x8825], sw:I0[0x0131] ? str(I0[0x0131]).slice(0, 24) : "", mk:I0[0x010F] ? str(I0[0x010F]).slice(0, 12) : ""}; if(I0[0x8825]){ var Gd = ifd(g32(I0[0x8825].v)); out.dbg.g = Object.keys(Gd).join("/"); } } catch(e){ out.dbg = {err:String(e && e.message || e)}; }
     try {
       if(I0[0x8825]){ var G = ifd(g32(I0[0x8825].v)), la, lo;
         if(G[2] && G[4]){
@@ -6507,7 +6529,7 @@ function xmpGps(buf){ var u = new Uint8Array(buf), s = "", CH = 65536;
   return isFinite(la) && isFinite(lo) ? {la:la, lo:lo} : null; }
 function photoMeta(file){
   var head = Math.min(file.size, 1024*1024), diag = {type:file.type || "?", size:file.size, exif:false, gps:false, heif:false};
-  var fin = function(r){ r = r || {}; diag.exif = diag.exif || !!r.when || !!r.gps; diag.gps = !!r.gps; r.diag = diag; return r; };
+  var fin = function(r){ r = r || {}; diag.exif = diag.exif || !!r.when || !!r.gps || !!r.dbg; diag.gps = !!r.gps; if(r.dbg) diag.dbg = r.dbg; r.diag = diag; return r; };
   return file.slice(0, head).arrayBuffer().then(function(buf){
     var r = exifFromBuf(buf); if(r){ diag.exif = true; if(r.gps) return fin(r); }
     var rg = null; try { rg = heifExifRange(buf); } catch(e){} diag.heif = !!rg;
@@ -6520,17 +6542,31 @@ function photoMeta(file){
     });
   }).catch(function(e){ diag.err = String(e && e.message || e); return fin({}); });
 }
+/* Standortverlauf auf dem Gerät (nur lokal): ordnet Fotos ohne Ortsdaten über die Aufnahmezeit zu */
+var LOCLOG = null;
+function locLogGet(){ if(LOCLOG) return LOCLOG; try { LOCLOG = JSON.parse(lsGet("rp-loclog")||"[]") || []; } catch(e){ LOCLOG = []; } return LOCLOG; }
+function locLog(){
+  if(!me || (me.acc && me.acc > 150)) return; var L = locLogGet(), now = Date.now(), l = L[L.length-1];
+  if(l && now - l[0] < 60000 && dist({la:l[1], lo:l[2]}, me) < 40) return;
+  L.push([now, +me.la.toFixed(5), +me.lo.toFixed(5)]);
+  var cut = now - 21*864e5; while(L.length && (L[0][0] < cut || L.length > 6000)) L.shift();
+  lsSet("rp-loclog", JSON.stringify(L));
+}
+function locAt(when){ if(!when) return null; var t = +when, L = locLogGet(), best = null, bd = 20*60000;
+  for(var i = 0; i < L.length; i++){ var d = Math.abs(L[i][0] - t); if(d < bd){ bd = d; best = L[i]; } }
+  return best ? {la:best[1], lo:best[2]} : null; }
 /* Fotos aus der Mediathek: nach der Auswahl fragen – aktueller Standort oder Aufnahmeort aus den Metadaten */
 var LIBP = null;
 function libImport(fs){
   Promise.all(fs.map(function(f){ return photoMeta(f).then(function(m){ m.f = f; return m; }); })).then(function(ms){
-    LIBP = ms; var n = ms.length, g = ms.filter(function(m){ return m.gps; }).length;
+    ms.forEach(function(m){ if(!m.gps && m.when){ var q = locAt(m.when); if(q){ m.gps = q; m.fromLog = true; } } });
+    LIBP = ms; var n = ms.length, g = ms.filter(function(m){ return m.gps; }).length, gl = ms.filter(function(m){ return m.fromLog; }).length;
     var m = $("addMenu");
     m.innerHTML = "<div class=\"am-head\"><b>"+(n===1 ? "Foto einordnen" : n+" Fotos einordnen")+"</b><button type=\"button\" class=\"x\" data-act=\"libcancel\" aria-label=\"Abbrechen\">✕</button></div>"+
       "<button type=\"button\" data-act=\"libcur\"><span class=\"ai\">"+IPIN+"</span><span>Aktueller Standort<small>"+(n===1 ? "Fotospot" : "Ein Fotospot")+" hier, im Plan von heute</small></span></button>"+
       "<button type=\"button\" data-act=\"libexif\""+(g ? "" : " disabled")+"><span class=\"ai\">"+ILIB+"</span><span>Aufnahmeort aus Metadaten<small>"+
-        (g ? (n===1 ? "Ort und Zeit aus dem Foto" : g+" von "+n+" mit Ortsdaten"+(g<n ? ", Rest an deinen Standort" : "")) : "Keine Ortsdaten – in der Fotoauswahl unter „Optionen“ den Schalter „Ort“ einschalten")+"</small></span></button>"+
-      (g < n ? "<p class=\"am-diag\">Technik: "+ms.filter(function(x){ return !x.gps; }).slice(0, 3).map(function(x){ var d = x.diag || {}; return esc((d.type||"?")+", "+Math.round((d.size||0)/1024)+" KB, Exif "+(d.exif ? "ja" : "nein")+(d.heif ? ", HEIF" : "")+(d.err ? ", Fehler: "+d.err : "")); }).join(" · ")+"</p>" : "");
+        (g ? (gl===n ? (n===1 ? "Ort aus deinem Standortverlauf zur Aufnahmezeit" : "Orte aus deinem Standortverlauf zur Aufnahmezeit") : n===1 ? "Ort und Zeit aus dem Foto" : g+" von "+n+" mit Ortsdaten"+(gl ? " (davon "+gl+" aus dem Standortverlauf)" : "")+(g<n ? ", Rest an deinen Standort" : "")) : "Keine Ortsdaten – in der Fotoauswahl unter „Optionen“ den Schalter „Ort“ einschalten")+"</small></span></button>"+
+      (g < n ? "<p class=\"am-diag\">Technik: "+ms.filter(function(x){ return !x.gps; }).slice(0, 3).map(function(x){ var d = x.diag || {}; return esc((d.type||"?")+", "+Math.round((d.size||0)/1024)+" KB, Exif "+(d.exif ? "ja" : "nein")+(d.heif ? ", HEIF" : "")+(d.dbg ? ", Tags "+(d.dbg.n0||0)+", GPS-Block "+(d.dbg.gp ? "ja ("+(d.dbg.g||"leer")+")" : "nein")+(d.dbg.mk ? ", "+d.dbg.mk : "")+(d.dbg.sw ? ", "+d.dbg.sw : "")+(d.dbg.err ? ", "+d.dbg.err : "") : "")+(d.err ? ", Fehler: "+d.err : "")); }).join(" · ")+"</p>" : "");
     m.classList.add("wide"); m.hidden = false; $("camBtn").setAttribute("aria-expanded", "true"); placeAddMenu();
   });
 }
