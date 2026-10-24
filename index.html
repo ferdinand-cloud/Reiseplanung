@@ -3928,9 +3928,9 @@ function renderLs(){
       "<button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"unrated\" aria-selected=\""+(lsFilter==="unrated")+"\">Noch nicht bewertet"+(unr0.length ? " <b>"+unr0.length+"</b>" : "")+"</button></div>";
   h += "</div>";
   var row = function(id, sub){ var p = P(id), r = RATES.filter(function(x){ return x[0]===rateOf(id); })[0], ph = photosOf(id);
-    return "<button type=\"button\" class=\"ls-row\" data-act=\"lsgo\" data-pid=\""+id+"\">"+(ph.length ? "<img class=\"ls-th\" data-ph=\""+ph[ph.length-1]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span>")+
+    return "<button type=\"button\" class=\"ls-row\" data-act=\"lsopen\" data-pid=\""+id+"\">"+(ph.length ? "<img class=\"ls-th\" data-ph=\""+ph[ph.length-1]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span>")+
       "<span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+esc(sub || [timeOf(id), CATNAME[p.c]].filter(Boolean).join(" · "))+(r ? " · <i style=\"color:"+r[2]+"\">"+r[1]+"</i>" : "")+(ph.length ? " · "+ph.length+(ph.length===1?" Foto":" Fotos") : "")+"</small></span>"+
-      "<span class=\"ls-go\" aria-hidden=\"true\">"+MAPGO+"</span></button>"; };
+      "<span class=\"ls-go\" role=\"button\" data-act=\"lsgo\" data-pid=\""+id+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</span></button>"; };
   if(lsTab==="places"){
     var unr = unr0;
     var shownV = lsFilter==="unrated" ? unr : visited;
@@ -7999,6 +7999,7 @@ document.addEventListener("click", function(e){
     case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;
     case "lsfilt": lsFilter = t.getAttribute("data-v"); renderLs(); break;
     case "lsgo": lsGoMap(t.getAttribute("data-pid")); break;
+    case "lsopen": var lop = t.getAttribute("data-pid"); if(P(lop)){ openJPop(lop, dayOf(lop) || ""); if(jp) jp.ret = "list"; } break;
     case "lsday": closeLsPage(); var lsd = t.getAttribute("data-day"); if(dayByKey(lsd)){ cur = lsd; tab = "day"; renderAll(); fitDay(); } break;
     case "lsph": var lpid = t.getAttribute("data-pid"); if(P(lpid)){ openJPop(lpid, dayOf(lpid) || "", t.getAttribute("data-ph")); if(jp) jp.ret = "list"; } break;
     case "navprof": if(profOpen) closeProfile(); else openProfile(); break;
