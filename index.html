@@ -5170,6 +5170,8 @@ function dayLegs(k){
     prevOpen = p; lastAny = p;
   });
   if(HT && prevOpen) out.push([prevOpen, HT]);
+  // heute alles erledigt: Weg zurück zum Hotel (vom Standort, sonst vom letzten Ziel) weiter anzeigen
+  else if(HT && !prevOpen && k===todayKey() && lastAny && lastAny!==HT){ var home = live || lastAny; if(dist(home, HT) > 60) out.push([home, HT]); }
   return out;
 }
 
