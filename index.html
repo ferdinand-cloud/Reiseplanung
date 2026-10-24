@@ -4341,7 +4341,7 @@ function lpRender(){
   var h = "<div class=\"pop-card lpcard\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Markierter Punkt\"><div class=\"pop-head\"><h4>Markierter Punkt</h4><button type=\"button\" class=\"x\" data-act=\"lpclose\" aria-label=\"Schließen\">×</button></div>";
   h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || "Unbenannter Ort"))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
   if(ro) h += "<p class=\"note\">Als Beobachter kannst du nichts übernehmen.</p>";
-  else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"lpday\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+(dayByKey(cur) && dayLegs(cur).length ? "<button type=\"button\" class=\"btn g\" data-act=\"lpvia\">Als Wegpunkt für die Gehroute</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button><button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button></div>";
+  else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"planpick\" data-lp=\"1\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+(dayByKey(cur) && dayLegs(cur).length ? "<button type=\"button\" class=\"btn g\" data-act=\"lpvia\">Als Wegpunkt für die Gehroute</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button><button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button></div>";
   el.innerHTML = h+"</div>"; el.hidden = false;
 }
 function lpClose(){ lpPt = null; if(lpMark){ lpMark.remove(); lpMark = null; } closeCatPop(); }
@@ -7349,7 +7349,8 @@ function plan(id, k, at){
 var PLANCTX = null;
 function planPick(btn){
   var D = dayByKey(cur); if(!D) return;
-  PLANCTX = {poi:btn.getAttribute("data-poi")==="1", pid:btn.getAttribute("data-pid") || sel, name:btn.getAttribute("data-poi")==="1" ? (poiSel && poiSel.n) : (P(btn.getAttribute("data-pid") || sel) || {}).n};
+  var isLp = btn.getAttribute("data-lp")==="1";
+  PLANCTX = {poi:btn.getAttribute("data-poi")==="1", lp:isLp && lpPt ? JSON.parse(JSON.stringify(lpPt)) : null, pid:btn.getAttribute("data-pid") || sel, name:btn.getAttribute("data-poi")==="1" ? (poiSel && poiSel.n) : isLp ? ((lpPt && (lpPt.n || lpPt.addr)) || "Markierter Ort") : (P(btn.getAttribute("data-pid") || sel) || {}).n};
   var n = ord(cur).length;
   jpPopover("plan", btn, "<div class=\"dc-dh\">Zu "+esc(D.lbl)+" hinzufügen</div>"+
     "<button type=\"button\" data-act=\"planend\" role=\"menuitem\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 5h9M4 9h9M4 13h5M15 11v6M12 14h6\"/></svg></span><span>Ans Ende"+(n ? " (Stopp "+(n+1)+")" : "")+"</span></button>"+
@@ -7358,6 +7359,9 @@ function planPick(btn){
 function planDo(at){
   var c = PLANCTX; PLANCTX = null; if(!c) return;
   if(c.poi){ poiAdd("day", at); return; }
+  if(c.lp){ if(lpPt) lpClose(); var q0 = c.lp, D0 = dayByKey(cur); if(!D0) return; var npid = uid("w");
+    T().places[npid] = {id:npid, n:(q0.n || q0.addr || "Markierter Ort").slice(0,80), c:"sight", list:(T().lists[0]||{}).id||null, note:"", addr:(q0.addr||"").slice(0,120), la:q0.la, lo:q0.lo};
+    plan(npid, cur, at); tab = "day"; renderAll(); select(npid); return; }
   var id = c.pid; if(!P(id)) return; plan(id, cur, at); sel = id; renderAll();
 }
 function planNodes(){
@@ -7575,7 +7579,7 @@ document.addEventListener("click", function(e){
     case "plan": plan(id, cur); sel = id; renderAll(); break;
     case "planpick": planPick(t); break;
     case "planend": closeJpMore(); planDo(null); break;
-    case "planins": closeJpMore(); setTimeout(function(){ openPlanIns(null); }, 30); break;
+    case "planins": closeJpMore(); if(PLANCTX && PLANCTX.lp && lpPt) lpClose(); setTimeout(function(){ openPlanIns(null); }, 30); break;
     case "planinspick": planInsPick(parseInt(t.getAttribute("data-i"), 10)); break;
     case "unplan": closeCatPop(); unplan(id); renderAll(); break;
     case "go": openGo(id || sel); break;
