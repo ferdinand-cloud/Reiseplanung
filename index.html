@@ -1515,6 +1515,31 @@ body.profopen .toprow{display:none}
 .ntview .nt-invite .nt-ic{color:#C9A227}
 .ntview .nt.new .nt-ic{color:#fff !important}
 .nt-empty{margin-top:24px;text-align:center}
+.ls-trip1{margin:0 0 12px;color:var(--muted)}
+.ls-trip1 b{color:var(--ink)}
+.ls-trips{margin-bottom:12px}
+.ls-dh{display:flex;align-items:center;justify-content:space-between}
+.ls-dmap{border:0;background:none;color:var(--accent);font:600 13px/1.2 var(--f-body);text-transform:none;letter-spacing:0;cursor:pointer;padding:0}
+.ls-list .ls-row{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:10px 12px;color:var(--ink);text-align:left;cursor:pointer}
+.ls-list .ls-row + .ls-row{border-top:.5px solid var(--sep,var(--line))}
+.ls-th{width:46px;height:46px;flex:0 0 46px;border-radius:10px;object-fit:cover;background:var(--fill)}
+.ls-th.ico{display:grid;place-items:center;color:var(--cc);background:color-mix(in srgb,var(--cc) 14%,transparent)}
+.ls-th.ico svg{width:22px;height:22px}
+.ls-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ls-t b{font:600 15px/1.25 var(--f-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ls-t small{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ls-t i{font-style:normal;font-weight:600}
+.ls-go{width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--accent)}
+.ls-go svg{width:16px;height:16px}
+.ls-filt{margin-bottom:4px}
+.ls-wrap{display:flex;align-items:center}
+.ls-list .ls-wrap + .ls-wrap{border-top:.5px solid var(--sep,var(--line))}
+.ls-wrap .ls-row{flex:1;min-width:0;border-top:0 !important}
+.ls-wrap .ls-go{display:none}
+.ls-rate{flex:0 0 auto;margin-right:10px;border:0;border-radius:999px;padding:7px 11px;background:color-mix(in srgb,#C9A227 18%,transparent);color:var(--ink);font:600 13px/1.2 var(--f-body);cursor:pointer;white-space:nowrap}
+.ls-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;border-radius:12px;overflow:hidden}
+.ls-ph{border:0;padding:0;background:var(--fill);aspect-ratio:1/1;cursor:pointer}
+.ls-ph img{width:100%;height:100%;object-fit:cover;display:block}
 .pf-inv{display:block;width:100%;margin-top:12px;border:0;border-radius:12px;padding:12px 14px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--ink);font:600 14px/1.3 var(--f-body);text-align:left;cursor:pointer}
 .pf-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
 .pf-acts .btn{flex:1 1 auto}
@@ -1659,6 +1684,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 <div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü" hidden></button>
 <nav class="tabbar" id="tabbar" aria-label="Navigation">
 <button type="button" class="tb on" id="tbMap" data-act="navmap" aria-label="Karte" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4z"/><path d="M9 4v14M15 6v14"/></svg></button>
+<button type="button" class="tb" id="tbList" data-act="navlist" aria-label="Liste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor"/></svg></button>
 <button type="button" class="tb" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg></button>
 <button type="button" class="tb" id="bellBtn" data-act="bell" aria-label="Mitteilungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.8a6 6 0 0 1 12 0c0 4.3 1.7 6 2.3 6.7H3.7C4.3 15.8 6 14.1 6 9.8z"/><path d="M9.8 19.6a2.3 2.3 0 0 0 4.4 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
 <button type="button" class="tb" id="tbProf" data-act="navprof" aria-label="Profil"><span class="tbav" id="tbAv"></span></button>
@@ -1666,6 +1692,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 <div class="toprow"><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="camBtn" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button></div></div>
 <div class="profview" id="profView" hidden></div>
 <div class="profview ntview" id="ntView" hidden></div>
+<div class="profview lsview" id="lsView" hidden></div>
 <input type="file" id="avIn" accept="image/*" hidden>
 <div class="tripmenu" id="tripMenu" hidden></div>
 <div class="addmenu" id="addMenu" role="dialog" aria-label="Hinzufügen" hidden></div>
@@ -2637,10 +2664,76 @@ function notifsHTML(){
   h += "</div><div class=\"nt-foot\">"+(ntUnread() ? "<button type=\"button\" class=\"btn g s\" data-act=\"ntread\">Alle als gelesen markieren</button>" : "")+"<button type=\"button\" class=\"btn g s\" data-act=\"ntclear\">Alle entfernen</button></div></div>";
   return h;
 }
+/* ---------- Listenansicht: besuchte Orte, Highlights und Fotos einer Reise ---------- */
+var lsPage = false, lsTab = "places", lsFilter = "all";
+function openLsPage(){ closeMenus(); closeProfile(); closeNtPage(); lsPage = true; renderLs(); $("lsView").hidden = false; navActive(); }
+function closeLsPage(){ if(!lsPage) return; lsPage = false; $("lsView").hidden = true; navActive(); }
+function lsGoMap(pid){
+  closeLsPage(); var p = P(pid); if(!p) return;
+  var dk = dayOf(pid); if(dk) cur = dk; tab = dk ? "day" : "wish"; renderAll(); select(pid); revealPoint(p, 16, true);
+}
+function renderLs(){
+  var el = $("lsView"); if(!el) return;
+  var t = T(), ds = days(), ids = Object.keys(S.trips).filter(function(id){ return !isViewerOf(id); }); // nur eigene Reisen, keine beobachteten
+  var h = "<div class=\"pf ls-page\"><h2 class=\"nt-h\">Liste</h2>";
+  if(!ids.length){ el.innerHTML = h+"<p class=\"note nt-empty\">Die Liste gibt es für deine eigenen Reisen. Du hast noch keine.</p></div>"; return; }
+  if(isViewerOf(S.cur)){
+    h += "<div class=\"nt-kinds ls-trips\" role=\"tablist\" aria-label=\"Reise\">"+ids.map(function(id){ return "<button type=\"button\" role=\"tab\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" aria-selected=\"false\">"+esc(S.trips[id].name||"Reise")+"</button>"; }).join("")+"</div>";
+    el.innerHTML = h+"<p class=\"note nt-empty\">Die Liste gibt es nur für deine eigenen Reisen. Wähle oben eine aus.</p></div>"; return;
+  }
+  if(ids.length > 1) h += "<div class=\"nt-kinds ls-trips\" role=\"tablist\" aria-label=\"Reise\">"+ids.sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); }).map(function(id){
+    return "<button type=\"button\" role=\"tab\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" aria-selected=\""+(id===S.cur)+"\">"+esc(S.trips[id].name||"Reise")+"</button>"; }).join("")+"</div>";
+  else h += "<p class=\"ls-trip1\"><b>"+esc(t.name||"Reise")+"</b>"+(t.start && t.end ? " · "+shortD(t.start)+"–"+shortD(t.end) : "")+"</p>";
+  // besuchte Orte je Tag
+  var visited = [], nPh = 0;
+  ds.forEach(function(D){ (t.order[D.key]||[]).forEach(function(id){ var p = P(id); if(p && t.done[id] && p.k!=="hotel") visited.push({id:id, D:D}); }); });
+  var hls = ds.map(function(D){ var J = (t.journal||{})[D.key] || {}; if(!J.hl) return null; var hid = (t.order[D.key]||[]).filter(function(id){ return P(id) && P(id).n===J.hl; })[0]; return {D:D, n:J.hl, id:hid}; }).filter(Boolean);
+  var tops = visited.filter(function(v){ var r = rateOf(v.id); return r===1 || r===2; });
+  var phs = []; ds.forEach(function(D){ (t.order[D.key]||[]).forEach(function(id){ (photosOf(id)||[]).forEach(function(ph){ phs.push({ph:ph, id:id, D:D}); }); }); });
+  Object.keys(t.photos||{}).forEach(function(id){ if(!dayOf(id) && !isRO()) (t.photos[id]||[]).forEach(function(ph){ phs.push({ph:ph, id:id, D:null}); }); });
+  h += "<div class=\"pf-seg\" role=\"tablist\">"+[["places","Orte · "+visited.length],["hl","Highlights · "+(hls.length+tops.length)],["photos","Fotos · "+phs.length]].map(function(x){
+    return "<button type=\"button\" role=\"tab\" data-act=\"lstab\" data-v=\""+x[0]+"\" aria-selected=\""+(lsTab===x[0])+"\">"+x[1]+"</button>"; }).join("")+"</div>";
+  var row = function(id, sub){ var p = P(id), r = RATES.filter(function(x){ return x[0]===rateOf(id); })[0], ph = photosOf(id);
+    return "<button type=\"button\" class=\"ls-row\" data-act=\"lsgo\" data-pid=\""+id+"\">"+(ph.length ? "<img class=\"ls-th\" data-ph=\""+ph[ph.length-1]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span>")+
+      "<span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+esc(sub || [timeOf(id), CATNAME[p.c]].filter(Boolean).join(" · "))+(r ? " · <i style=\"color:"+r[2]+"\">"+r[1]+"</i>" : "")+(ph.length ? " · "+ph.length+(ph.length===1?" Foto":" Fotos") : "")+"</small></span>"+
+      "<span class=\"ls-go\" aria-hidden=\"true\">"+MAPGO+"</span></button>"; };
+  if(lsTab==="places"){
+    var unr = visited.filter(function(v){ return !rateOf(v.id); });
+    if(visited.length) h += "<div class=\"nt-kinds ls-filt\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"all\" aria-selected=\""+(lsFilter==="all")+"\">Alle besuchten</button>"+
+      "<button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"unrated\" aria-selected=\""+(lsFilter==="unrated")+"\">Noch nicht bewertet"+(unr.length ? " <b>"+unr.length+"</b>" : "")+"</button></div>";
+    var shownV = lsFilter==="unrated" ? unr : visited;
+    if(!visited.length) h += "<p class=\"note nt-empty\">Noch keine besuchten Orte. Abgehakte Stopps erscheinen hier.</p>";
+    else if(!shownV.length) h += "<p class=\"note nt-empty\">Alle besuchten Orte sind bewertet. 🎉</p>";
+    var lastD = null;
+    shownV.forEach(function(v){
+      if(v.D!==lastD){ if(lastD) h += "</div>"; lastD = v.D; h += "<div class=\"nt-sec ls-dh\"><span>Tag "+v.D.n+" · "+esc(v.D.lbl)+"</span><button type=\"button\" class=\"ls-dmap\" data-act=\"lsday\" data-day=\""+v.D.key+"\">Auf der Karte ›</button></div><div class=\"ag-grp ls-list\">"; }
+      if(lsFilter==="unrated" && !isRO()){
+        var rh = row(v.id).replace('<button type="button" class="ls-row" data-act="lsgo"', '<button type="button" class="ls-row ls-in" data-act="lsgo"');
+        h += "<div class=\"ls-wrap\" data-id=\""+v.id+"\">"+rh+"<button type=\"button\" class=\"ls-rate\" data-act=\"ratepick\" aria-haspopup=\"menu\">☆ Bewerten</button></div>";
+      } else h += row(v.id);
+    });
+    if(lastD) h += "</div>";
+  } else if(lsTab==="hl"){
+    if(!hls.length && !tops.length) h += "<p class=\"note nt-empty\">Noch keine Highlights. Markiere in der Bewertung eines Ortes „★ Highlight des Tages“ oder bewerte Orte mit Outstanding oder Must Have.</p>";
+    if(hls.length){ h += "<div class=\"nt-sec\">★ Highlights der Tage</div><div class=\"ag-grp ls-list\">"+hls.map(function(x){ return x.id ? row(x.id, "Tag "+x.D.n+" · "+x.D.lbl) : "<div class=\"ls-row\"><span class=\"ls-t\"><b>"+esc(x.n)+"</b><small>Tag "+x.D.n+" · "+esc(x.D.lbl)+"</small></span></div>"; }).join("")+"</div>"; }
+    if(tops.length){ h += "<div class=\"nt-sec\">Bestbewertet</div><div class=\"ag-grp ls-list\">"+tops.sort(function(a, b){ return rateOf(a.id) - rateOf(b.id); }).map(function(v){ return row(v.id, "Tag "+v.D.n+" · "+v.D.lbl); }).join("")+"</div>"; }
+  } else {
+    if(!phs.length) h += "<p class=\"note nt-empty\">Noch keine Fotos in dieser Reise.</p>";
+    var lastG = undefined;
+    phs.forEach(function(x){
+      var g = x.D ? x.D.key : "";
+      if(g!==lastG){ if(lastG!==undefined) h += "</div>"; lastG = g; h += "<div class=\"nt-sec\">"+(x.D ? "Tag "+x.D.n+" · "+esc(x.D.lbl) : "Ohne Tag")+"</div><div class=\"ls-grid\">"; }
+      h += "<button type=\"button\" class=\"ls-ph\" data-act=\"lsph\" data-pid=\""+x.id+"\" data-ph=\""+x.ph+"\" aria-label=\"Foto von "+esc(P(x.id).n)+"\"><img data-ph=\""+x.ph+"\" alt=\"\"></button>";
+    });
+    if(lastG!==undefined) h += "</div>";
+  }
+  el.innerHTML = h+"</div>"; fillPhotos(el);
+}
+var MAPGO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/></svg>";
 /* Mitteilungen als eigene Seite, nach Art filterbar */
 var ntPage = false, ntKind = "all";
 var NTKINDS = [["all","Alle"],["comment","Kommentare"],["like","Gefällt mir"],["friend","Freunde"],["invite","Einladungen"],["join","Mitreisende"]];
-function openNtPage(){ closeMenus(); closeProfile(); ntPage = true; renderNt(); $("ntView").hidden = false; document.body.classList.add("profopen"); navActive(); }
+function openNtPage(){ closeMenus(); closeProfile(); closeLsPage(); ntPage = true; renderNt(); $("ntView").hidden = false; document.body.classList.add("profopen"); navActive(); }
 function closeNtPage(){ if(!ntPage) return; ntPage = false; $("ntView").hidden = true; if(!profOpen) document.body.classList.remove("profopen"); navActive(); }
 function renderNt(){
   var el = $("ntView"); if(!el) return;
@@ -2722,12 +2815,13 @@ function acctHTML(){
 /* ---------- Leiste oben & Profilseite ---------- */
 var profOpen = false, profTab = "mine";
 function setNavDot(on){ var a = $("menuBtn"); if(a) a.classList.toggle("dot", !!on); var b = $("tbProf"); if(b) b.classList.toggle("dot", !!on); }
-function navActive(){ var pm = profOpen, np = typeof ntPage!=="undefined" && ntPage; $("tbMap").classList.toggle("on", !pm && !np); $("tbProf").classList.toggle("on", pm); $("bellBtn").classList.toggle("on", np);
+function navActive(){ var pm = profOpen, np = ntPage, lp = lsPage; $("tbMap").classList.toggle("on", !pm && !np && !lp); $("tbProf").classList.toggle("on", pm); $("bellBtn").classList.toggle("on", np); $("tbList").classList.toggle("on", lp);
+  document.body.classList.toggle("profopen", pm || np || lp);
   if(pm){ $("tbProf").setAttribute("aria-current", "page"); $("tbMap").removeAttribute("aria-current"); } else { $("tbMap").setAttribute("aria-current", "page"); $("tbProf").removeAttribute("aria-current"); } }
 function avHTML(cls){ var ph = PROF && PROF.photo, nm = (PROF && PROF.name) || myMail() || "?";
   return ph ? "<img class=\""+cls+"\" src=\""+ph+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
 function navAv(){ var e = $("tbAv"); if(!e) return; e.innerHTML = acct.user ? avHTML("tbimg") : "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/><path d=\"M6.2 18.4a7 7 0 0 1 11.6 0\"/></svg>"; }
-function openProfile(){ closeMenus(); closeNtPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
+function openProfile(){ closeMenus(); closeNtPage(); closeLsPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
 function closeProfile(){ if(!profOpen) return; profOpen = false; $("profView").hidden = true; if(!ntPage) document.body.classList.remove("profopen"); navActive(); }
 function tripCover(id){ var t = S.trips[id], ps = (t && t.photos) || {}, ks = Object.keys(ps); for(var i = 0; i < ks.length; i++){ var a = ps[ks[i]] || []; if(a.length) return a[a.length-1]; } return null; }
 function renderProfile(){
@@ -5981,7 +6075,7 @@ function applyRO(){
   if(mapReady) applyLayers();
   var c = $("lColor"); if(c) c.checked = colorOn;
 }
-function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); navAv(); if(profOpen) renderProfile(); }
+function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); navAv(); if(profOpen) renderProfile(); if(lsPage) renderLs(); }
 function pickDefaultDay(){
   var ds = days(), tk = todayKey();
   cur = ds.length ? ((dayByKey(tk) && tk) || ds[0].key) : "";
@@ -6185,8 +6279,15 @@ document.addEventListener("click", function(e){
     case "hotelafter": var hpid = t.getAttribute("data-pid") || id; closeCatPop(); hotelStop(dayOf(hpid), hpid); renderAll(); break;
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
-    case "srchopen": closeMenus(); closeProfile(); closeNtPage(); openSearch(); break;
-    case "navmap": closeProfile(); closeNtPage(); closeMenus(); break;
+    case "srchopen": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); openSearch(); break;
+    case "navmap": closeProfile(); closeNtPage(); closeLsPage(); closeMenus(); break;
+    case "navlist": if(lsPage) closeLsPage(); else openLsPage(); break;
+    case "lstrip": var lst = t.getAttribute("data-trip"); if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
+    case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;
+    case "lsfilt": lsFilter = t.getAttribute("data-v"); renderLs(); break;
+    case "lsgo": lsGoMap(t.getAttribute("data-pid")); break;
+    case "lsday": closeLsPage(); var lsd = t.getAttribute("data-day"); if(dayByKey(lsd)){ cur = lsd; tab = "day"; renderAll(); fitDay(); } break;
+    case "lsph": var lpid = t.getAttribute("data-pid"); if(P(lpid)) openJPop(lpid, dayOf(lpid) || "", t.getAttribute("data-ph")); break;
     case "navprof": if(profOpen) closeProfile(); else openProfile(); break;
     case "pftab": profTab = t.getAttribute("data-v"); renderProfile(); break;
     case "pfopen": closeProfile(); var pft = t.getAttribute("data-trip"); if(S.trips[pft]){ closeSettings(); grpSel = ""; S.cur = pft; save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
@@ -6288,7 +6389,7 @@ document.addEventListener("click", function(e){
     case "jpmore": openJpMore(jp ? jp.pid : id, t); break;
     case "ratepick": openRatePick(t.closest("#jPop") && jp ? jp.pid : id, t); break;
     case "cphopen": var cpp = sel; if(P(cpp)) openJPop(cpp, dayOf(cpp) || "", t.getAttribute("data-ph")); break;
-    case "rate": if(t.closest("#catPop")) closeCatPop(); var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); break;
+    case "rate": if(t.closest("#catPop")) closeCatPop(); var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); if(lsPage) setTimeout(renderLs, 0); break;
     case "acsignup": openSignup(); break;
     case "suclose": closeSignup(); break;
     case "lpclose": lpClose(); break;
