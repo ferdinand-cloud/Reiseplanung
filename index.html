@@ -2035,6 +2035,7 @@ body.sheetmin .sheet .handle{width:56px;height:5px;background:color-mix(in srgb,
 .lfbtn .lcat-dot{position:absolute;top:4px;right:4px;width:8px;height:8px;border:1.5px solid var(--sheet)}
 .lcats.shut{display:none}
 .lcats{margin:0 0 6px 34px !important}
+#cfPop{z-index:99}
 </style>
 </head>
 <body>
@@ -2414,7 +2415,16 @@ function phPrivSync(ids){
   if(!fbDb || !acct.user) return; var q = phQueue(), tid = gidFor(S.cur); if(!KNOWN[tid]) return;
   ids.forEach(function(ph){ if(q.up.indexOf(ph)>-1) return; phCol(tid).doc(ph).set({priv:isPrivPh(ph)}, {merge:true}).catch(function(){}); });
 }
-function togglePriv(kind, key){
+function togglePriv(kind, key, after){
+  var t0 = T(), k0 = kind==="p" ? "privP" : kind==="n" ? "privN" : "privPh";
+  if(t0[k0] && t0[k0][key]){
+    var what = kind==="p" ? ["Ort öffentlich machen?", "Beobachter sehen den Ort dann mit allen Notizen, Fotos und Kommentaren."] : kind==="n" ? ["Notiz öffentlich machen?", "Beobachter können die Notiz dann lesen."] : ["Foto öffentlich machen?", "Beobachter sehen das Foto dann samt Kommentaren und Likes."];
+    askConfirm(what[0], what[1], "Öffentlich machen", function(){ togglePrivDo(kind, key); if(after) after(); });
+    return;
+  }
+  togglePrivDo(kind, key); if(after) after();
+}
+function togglePrivDo(kind, key){
   var t = T(), k = kind==="p" ? "privP" : kind==="n" ? "privN" : "privPh"; t[k] = t[k] || {};
   var on = !t[k][key]; if(on) t[k][key] = 1; else delete t[k][key];
   save();
@@ -5966,8 +5976,12 @@ function captPrompt(ids, edit, after){
   el.onclick = function(ev){ ev.stopPropagation();
     var lk = ev.target.closest("[data-cappv]"), all = ev.target.closest("[data-capall]");
     if(lk || all){
-      if(lk){ var k0 = lk.getAttribute("data-cappv"); CAPPV[k0] = !CAPPV[k0]; }
-      else { var to = !CAPQ.every(function(x){ return CAPPV[x] || placeP(x); }); CAPQ.forEach(function(x){ CAPPV[x] = to; }); }
+      if(lk){ var k0 = lk.getAttribute("data-cappv");
+        if(CAPPV[k0]){ askConfirm("Foto öffentlich machen?", "Beobachter sehen das Foto dann.", "Öffentlich machen", function(){ CAPPV[k0] = false; captPrompt([], edit); }); return; }
+        CAPPV[k0] = true; }
+      else { var to = !CAPQ.every(function(x){ return CAPPV[x] || placeP(x); });
+        if(!to && CAPQ.some(function(x){ return CAPPV[x]; })){ askConfirm("Alle Fotos öffentlich machen?", "Beobachter sehen die Fotos dann.", "Öffentlich machen", function(){ CAPQ.forEach(function(x){ CAPPV[x] = false; }); captPrompt([], edit); }); return; }
+        CAPQ.forEach(function(x){ CAPPV[x] = to; }); }
       captPrompt([], edit); return;
     }
     if(ev.target.closest(".cap-cancel")){
@@ -7838,9 +7852,9 @@ document.addEventListener("click", function(e){
     case "phretry": phRetry(); phFlush(); break;
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
     case "phback": if(jp && jp.ret==="list"){ closeJPop(); break; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
-    case "privp": if(t.closest("#catPop")) closeCatPop(); togglePriv("p", rootPid(jp ? jp.pid : id)); if(jp) renderJPop(); renderSheet(); break;
-    case "privn": togglePriv("n", jp.pid); renderJPop(); break;
-    case "phpriv": togglePriv("ph", t.getAttribute("data-ph")); phMetaRefresh(); break;
+    case "privp": if(t.closest("#catPop")) closeCatPop(); togglePriv("p", rootPid(jp ? jp.pid : id), function(){ if(jp) renderJPop(); renderSheet(); }); break;
+    case "privn": togglePriv("n", jp.pid, function(){ renderJPop(); }); break;
+    case "phpriv": togglePriv("ph", t.getAttribute("data-ph"), function(){ phMetaRefresh(); }); break;
     case "capedit": captPrompt([t.getAttribute("data-ph")], true); break;
     case "pvcm": pvCm = !pvCm; phMetaRefresh(); if(pvCm) setTimeout(function(){ var a = $("pvCm"); if(a) a.scrollTop = a.scrollHeight; }, 0); break;
     case "phstep": phStep(+t.getAttribute("data-v")); break;
