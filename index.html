@@ -1515,6 +1515,12 @@ body.profopen .toprow{display:none}
 .ntview .nt-invite .nt-ic{color:#C9A227}
 .ntview .nt.new .nt-ic{color:#fff !important}
 .nt-empty{margin-top:24px;text-align:center}
+.ls-head{position:sticky;top:-2px;z-index:2;margin:-6px -16px 0;padding:8px 16px 8px;background:var(--sheet);box-shadow:0 -120px 0 0 var(--sheet),0 8px 12px -10px rgba(0,0,0,.35)}
+.ls-head .pf-seg{margin-bottom:8px}
+.ls-head .ls-filt{margin-bottom:0}
+.ls-head .nt-kinds{margin-bottom:8px}
+.ls-head > :last-child{margin-bottom:0}
+.lsview{padding-top:calc(env(safe-area-inset-top,0px) + 70px)}
 .ls-trip1{margin:0 0 12px;color:var(--muted)}
 .ls-trip1 b{color:var(--ink)}
 .ls-trips{margin-bottom:12px}
@@ -2675,11 +2681,11 @@ function lsGoMap(pid){
 function renderLs(){
   var el = $("lsView"); if(!el) return;
   var t = T(), ds = days(), ids = Object.keys(S.trips).filter(function(id){ return !isViewerOf(id); }); // nur eigene Reisen, keine beobachteten
-  var h = "<div class=\"pf ls-page\"><h2 class=\"nt-h\">Liste</h2>";
-  if(!ids.length){ el.innerHTML = h+"<p class=\"note nt-empty\">Die Liste gibt es für deine eigenen Reisen. Du hast noch keine.</p></div>"; return; }
+  var h = "<div class=\"pf ls-page\"><div class=\"ls-head\">";
+  if(!ids.length){ el.innerHTML = h+"</div><p class=\"note nt-empty\">Die Liste gibt es für deine eigenen Reisen. Du hast noch keine.</p></div>"; return; }
   if(isViewerOf(S.cur)){
     h += "<div class=\"nt-kinds ls-trips\" role=\"tablist\" aria-label=\"Reise\">"+ids.map(function(id){ return "<button type=\"button\" role=\"tab\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" aria-selected=\"false\">"+esc(S.trips[id].name||"Reise")+"</button>"; }).join("")+"</div>";
-    el.innerHTML = h+"<p class=\"note nt-empty\">Die Liste gibt es nur für deine eigenen Reisen. Wähle oben eine aus.</p></div>"; return;
+    el.innerHTML = h+"</div><p class=\"note nt-empty\">Die Liste gibt es nur für deine eigenen Reisen. Wähle oben eine aus.</p></div>"; return;
   }
   if(ids.length > 1) h += "<div class=\"nt-kinds ls-trips\" role=\"tablist\" aria-label=\"Reise\">"+ids.sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); }).map(function(id){
     return "<button type=\"button\" role=\"tab\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" aria-selected=\""+(id===S.cur)+"\">"+esc(S.trips[id].name||"Reise")+"</button>"; }).join("")+"</div>";
@@ -2693,14 +2699,16 @@ function renderLs(){
   Object.keys(t.photos||{}).forEach(function(id){ if(!dayOf(id) && !isRO()) (t.photos[id]||[]).forEach(function(ph){ phs.push({ph:ph, id:id, D:null}); }); });
   h += "<div class=\"pf-seg\" role=\"tablist\">"+[["places","Orte · "+visited.length],["hl","Highlights · "+(hls.length+tops.length)],["photos","Fotos · "+phs.length]].map(function(x){
     return "<button type=\"button\" role=\"tab\" data-act=\"lstab\" data-v=\""+x[0]+"\" aria-selected=\""+(lsTab===x[0])+"\">"+x[1]+"</button>"; }).join("")+"</div>";
+  var unr0 = visited.filter(function(v){ return !rateOf(v.id); });
+  if(lsTab==="places" && visited.length) h += "<div class=\"nt-kinds ls-filt\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"all\" aria-selected=\""+(lsFilter==="all")+"\">Alle besuchten</button>"+
+      "<button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"unrated\" aria-selected=\""+(lsFilter==="unrated")+"\">Noch nicht bewertet"+(unr0.length ? " <b>"+unr0.length+"</b>" : "")+"</button></div>";
+  h += "</div>";
   var row = function(id, sub){ var p = P(id), r = RATES.filter(function(x){ return x[0]===rateOf(id); })[0], ph = photosOf(id);
     return "<button type=\"button\" class=\"ls-row\" data-act=\"lsgo\" data-pid=\""+id+"\">"+(ph.length ? "<img class=\"ls-th\" data-ph=\""+ph[ph.length-1]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span>")+
       "<span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+esc(sub || [timeOf(id), CATNAME[p.c]].filter(Boolean).join(" · "))+(r ? " · <i style=\"color:"+r[2]+"\">"+r[1]+"</i>" : "")+(ph.length ? " · "+ph.length+(ph.length===1?" Foto":" Fotos") : "")+"</small></span>"+
       "<span class=\"ls-go\" aria-hidden=\"true\">"+MAPGO+"</span></button>"; };
   if(lsTab==="places"){
-    var unr = visited.filter(function(v){ return !rateOf(v.id); });
-    if(visited.length) h += "<div class=\"nt-kinds ls-filt\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"all\" aria-selected=\""+(lsFilter==="all")+"\">Alle besuchten</button>"+
-      "<button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"unrated\" aria-selected=\""+(lsFilter==="unrated")+"\">Noch nicht bewertet"+(unr.length ? " <b>"+unr.length+"</b>" : "")+"</button></div>";
+    var unr = unr0;
     var shownV = lsFilter==="unrated" ? unr : visited;
     if(!visited.length) h += "<p class=\"note nt-empty\">Noch keine besuchten Orte. Abgehakte Stopps erscheinen hier.</p>";
     else if(!shownV.length) h += "<p class=\"note nt-empty\">Alle besuchten Orte sind bewertet. 🎉</p>";
