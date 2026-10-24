@@ -6153,7 +6153,7 @@ function placeFloating(){
     if(!g) return;
     var dy = y - g.y; if(Math.abs(dy) > 6) g.moved = true;
     var now = performance.now(), dt = now - g.lt; if(dt > 0){ g.v = .7*((y - g.last)/dt) + .3*g.v; g.last = y; g.lt = now; }
-    nextY = Math.max(Math.max(0, g.hh - sheetFullH()), Math.min(g.hh - sheetLow(), g.t0 + dy));
+    nextY = Math.max(Math.max(0, g.hh - sheetFullH()), Math.min(g.hh - Math.max(24, sheetLow() - 60), g.t0 + dy));
     if(!raf) raf = requestAnimationFrame(paint);
   }
   function end(y, tapToggles){
@@ -6162,7 +6162,9 @@ function placeFloating(){
     var G = g; g = null;
     if(!G.moved){ if(tapToggles){ if(sheetVisible() > sheetLow() + 40) setSheet("peek", sheetLow()); else setSheet("mid"); } else applySheet(); return; }
     noClick = Date.now();
-    var h = window.innerHeight, vis = G.hh - Math.max(0, Math.min(G.hh - sheetLow(), G.t0 + (y - G.y)));
+    var h = window.innerHeight, vis = G.hh - Math.max(0, G.t0 + (y - G.y));
+    // unter die Mindesthöhe gezogen (oder kräftig nach unten gewischt): einklappen, dann erscheint der Knopf
+    if(vis < sheetLow() - 25 || (G.v > 0.9 && vis < sheetLow() + 60)){ setSheet("min"); return; }
     // stufenlos: dort bleiben, wo losgelassen wurde (zwischen kleinster Höhe und ganz oben)
     vis = Math.max(sheetLow(), Math.min(sheetFullH(), vis));
     var near = vis >= sheetFullH() - 24 ? "full" : vis >= h*0.5 ? "mid" : "peek";
@@ -6188,27 +6190,6 @@ function placeFloating(){
   function pend(e){ if(e.pointerId!==pid || !g) return; pid = null; var onTab = g.onTab; end(e.clientY, !onTab); }
   grab.addEventListener("pointerup", pend); grab.addEventListener("pointercancel", pend);
   grab.addEventListener("click", function(e){ if(Date.now() - noClick < 350){ e.stopPropagation(); e.preventDefault(); } }, true);
-  // Liste: hochwischen vergrößert das Blatt, am oberen Rand runterwischen verkleinert es
-  var body = $("body"), tch = null;
-  body.addEventListener("touchstart", function(e){
-    if(desktop.matches || e.touches.length!==1) { tch = null; return; }
-    var t = e.target;
-    if(t.closest(".grip,input,textarea,select,.ph,ol.plan.sorting")) { tch = null; return; }
-    tch = {y:e.touches[0].clientY, x:e.touches[0].clientX, mode:null};
-  }, {passive:true});
-  body.addEventListener("touchmove", function(e){
-    if(!tch) return;
-    var y = e.touches[0].clientY, dy = y - tch.y, dx = e.touches[0].clientX - tch.x;
-    if(!tch.mode){
-      if(Math.abs(dy) < 8 && Math.abs(dx) < 8) return;
-      if(Math.abs(dx) > Math.abs(dy)){ tch = null; return; }
-      var atTop = body.scrollTop <= 0;
-      if((dy < 0 && sheetState!=="full") || (dy > 0 && atTop)){ tch.mode = "sheet"; start(tch.y); } else { tch = null; return; }
-    }
-    e.preventDefault(); move(y);
-  }, {passive:false});
-  function tend(e){ if(tch && tch.mode==="sheet"){ var t = e.changedTouches[0]; end(t ? t.clientY : tch.y, false); } tch = null; }
-  body.addEventListener("touchend", tend); body.addEventListener("touchcancel", tend);
 })();
 
 /* ---------- Reise-Kopf und Tagesleiste ---------- */
