@@ -5165,7 +5165,8 @@ function arm(key){ confirmKey = key; clearTimeout(confirmTimer); confirmTimer = 
 
 /* ---------- Blatt ---------- */
 var sheet = $("sheet"), grab = $("grab");
-function sheetVisible(){ if(desktop.matches) return 0; var h = window.innerHeight; return sheetState==="min" ? MIN : sheetState==="peek" ? PEEK : sheetState==="full" ? Math.round(h*0.9) : Math.round(h*0.5); }
+function sheetFullH(){ var h = window.innerHeight, t = document.querySelector(".top"); var tb = t ? t.getBoundingClientRect().bottom : 0; return Math.round(Math.min(h*0.9, h - tb - 10)); }
+function sheetVisible(){ if(desktop.matches) return 0; var h = window.innerHeight; return sheetState==="min" ? MIN : sheetState==="peek" ? PEEK : sheetState==="full" ? sheetFullH() : Math.round(h*0.5); }
 function applySheet(){
   var body = $("body");
   if(desktop.matches){ sheet.style.transform = ""; body.style.paddingBottom = ""; return; }
@@ -5220,7 +5221,7 @@ function placeFloating(){
     if(!g) return;
     var dy = y - g.y; if(Math.abs(dy) > 6) g.moved = true;
     var now = performance.now(), dt = now - g.lt; if(dt > 0){ g.v = .7*((y - g.last)/dt) + .3*g.v; g.last = y; g.lt = now; }
-    nextY = Math.max(0, Math.min(g.hh - MIN, g.t0 + dy));
+    nextY = Math.max(Math.max(0, g.hh - sheetFullH()), Math.min(g.hh - MIN, g.t0 + dy));
     if(!raf) raf = requestAnimationFrame(paint);
   }
   function end(y, tapToggles){
@@ -5230,7 +5231,7 @@ function placeFloating(){
     if(!G.moved){ if(tapToggles) setSheet(sheetState==="min" ? "peek" : sheetState==="peek" ? "mid" : sheetState==="mid" ? "full" : "min"); else applySheet(); return; }
     noClick = Date.now();
     var h = window.innerHeight, vis = G.hh - Math.max(0, Math.min(G.hh - MIN, G.t0 + (y - G.y)));
-    var opts = [["min",MIN],["peek",PEEK],["mid",h*0.5],["full",h*0.9]], order = ["min","peek","mid","full"];
+    var opts = [["min",MIN],["peek",PEEK],["mid",h*0.5],["full",sheetFullH()]], order = ["min","peek","mid","full"];
     var target = opts.reduce(function(a,b){ return Math.abs(b[1]-vis) < Math.abs(a[1]-vis) ? b : a; })[0];
     if(Math.abs(G.v) > 0.45){
       // Schwung: zur nächsten Stufe in Wischrichtung, ausgehend von der aktuellen Höhe
