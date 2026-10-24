@@ -1565,6 +1565,37 @@ form.gnew{position:relative}
 .ls-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;border-radius:12px;overflow:hidden}
 .ls-ph{border:0;padding:0;background:var(--fill);aspect-ratio:1/1;cursor:pointer}
 .ls-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.dc-head .dc-title{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.dc-head .dc-title b{font:700 22px/1.2 var(--f-body)}
+.dc-head .dc-title small{color:var(--muted);font-size:13px}
+.dc-card{margin:14px 0;border-radius:18px;overflow:hidden;background:var(--fill)}
+.dc-top{display:flex;align-items:center;gap:10px;padding:10px 12px}
+.dc-av{width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font:700 14px/1 var(--f-body);flex:0 0 34px}
+.dc-who{flex:1;min-width:0;display:flex;flex-direction:column}
+.dc-who b{font:600 14px/1.2 var(--f-body)}
+.dc-who small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-hl{flex:0 0 auto;border-radius:999px;padding:4px 9px;background:#C9A227;color:#fff;font:700 12px/1.2 var(--f-body)}
+.dc-ph{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;background:#000}
+.dc-ph::-webkit-scrollbar{display:none}
+.dc-ph img{flex:0 0 100%;width:100%;aspect-ratio:1/1;max-height:56vh;object-fit:cover;scroll-snap-align:center;display:block}
+.dc-ph img:only-child{aspect-ratio:auto;max-height:62vh}
+.dc-body{padding:10px 12px 12px}
+.dc-name{display:flex;align-items:center;gap:8px}
+.dc-name .cic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:var(--cc);background:color-mix(in srgb,var(--cc) 14%,transparent);flex:0 0 26px}
+.dc-name .cic svg{width:16px;height:16px}
+.dc-name b{font:700 17px/1.25 var(--f-body)}
+.dc-sub{display:block;margin-top:3px;color:var(--muted);font-size:12.5px}
+.dc-sub i{font-style:normal;font-weight:600}
+.dc-note{margin:8px 0 0;font-size:14.5px;line-height:1.4;white-space:pre-line}
+.dc-acts{display:flex;align-items:center;gap:8px;margin-top:10px}
+.dc-in{color:var(--ok);font:600 13.5px/1.2 var(--f-body)}
+.dc-map{margin-left:auto;width:36px;height:36px;border:0;border-radius:50%;background:var(--sheet);color:var(--accent);display:grid;place-items:center;cursor:pointer}
+.dc-map svg{width:18px;height:18px}
+.dc-dh{padding:6px 10px 4px;font:600 12px/1.2 var(--f-body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.sw-mini{flex:0 0 auto;position:relative;width:42px;height:25px;border-radius:999px;background:var(--line);transition:background .15s}
+.sw-mini::after{content:"";position:absolute;top:2px;left:2px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.sw-mini.on{background:var(--ok)}
+.sw-mini.on::after{transform:translateX(17px)}
 .pf-inv{display:block;width:100%;margin-top:12px;border:0;border-radius:12px;padding:12px 14px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--ink);font:600 14px/1.3 var(--f-body);text-align:left;cursor:pointer}
 .pf-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
 .pf-acts .btn{flex:1 1 auto}
@@ -1710,6 +1741,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 <nav class="tabbar" id="tabbar" aria-label="Navigation">
 <button type="button" class="tb on" id="tbMap" data-act="navmap" aria-label="Karte" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4z"/><path d="M9 4v14M15 6v14"/></svg></button>
 <button type="button" class="tb" id="tbList" data-act="navlist" aria-label="Liste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor"/></svg></button>
+<button type="button" class="tb" id="tbDisc" data-act="navdisc" aria-label="Entdecken"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8z"/></svg></button>
 <button type="button" class="tb" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg></button>
 <button type="button" class="tb" id="bellBtn" data-act="bell" aria-label="Mitteilungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.8a6 6 0 0 1 12 0c0 4.3 1.7 6 2.3 6.7H3.7C4.3 15.8 6 14.1 6 9.8z"/><path d="M9.8 19.6a2.3 2.3 0 0 0 4.4 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
 <button type="button" class="tb" id="tbProf" data-act="navprof" aria-label="Profil"><span class="tbav" id="tbAv"></span></button>
@@ -1718,6 +1750,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 <div class="profview" id="profView" hidden></div>
 <div class="profview ntview" id="ntView" hidden></div>
 <div class="profview lsview" id="lsView" hidden></div>
+<div class="profview dcview" id="dcView" hidden></div>
 <input type="file" id="avIn" accept="image/*" hidden>
 <div class="tripmenu" id="tripMenu" hidden></div>
 <div class="addmenu" id="addMenu" role="dialog" aria-label="Hinzufügen" hidden></div>
@@ -1946,6 +1979,7 @@ function save(){
   }
   pushSoon();
   acctTrack();
+  recSyncSoon();
 }
 /* ---------- Konto & Abgleich (Firebase: Anmeldung + Firestore) ----------
    Öffentliche Web-Konfiguration; der Zugriff ist über Firestore-Regeln pro Benutzer abgesichert. */
@@ -2737,9 +2771,104 @@ function notifsHTML(){
   h += "</div><div class=\"nt-foot\">"+(ntUnread() ? "<button type=\"button\" class=\"btn g s\" data-act=\"ntread\">Alle als gelesen markieren</button>" : "")+"<button type=\"button\" class=\"btn g s\" data-act=\"ntclear\">Alle entfernen</button></div></div>";
   return h;
 }
+/* ---------- Empfehlungen: eigene gut bewertete Orte für Freunde veröffentlichen (recs/{uid}/items) ---------- */
+var recShare = lsGet("rp-recshare")!=="0", recT = null, recBusy = false;
+function recSyncSoon(){ if(!recShare) return; clearTimeout(recT); recT = setTimeout(recSync, 4000); }
+function recCol(uid0){ return fbDb.collection("recs").doc(uid0).collection("items"); }
+function recThumb(ph){ return phGet(ph).then(function(d){ if(!d) return null; return new Promise(function(res){ var im = new Image(); im.onload = function(){ var m = 560, k = Math.min(1, m/Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement("canvas");
+  c.width = Math.round(im.naturalWidth*k); c.height = Math.round(im.naturalHeight*k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL("image/jpeg", .72)); }; im.onerror = function(){ res(null); }; im.src = d; }); }).catch(function(){ return null; }); }
+function recCollect(){
+  var out = {}, me = acct.user && acct.user.uid;
+  Object.keys(S.trips).forEach(function(tid){
+    if(isViewerOf(tid) || !KNOWN[tid]) return; var t = S.trips[tid], hl = {};
+    Object.keys(t.journal||{}).forEach(function(dk){ var J = t.journal[dk]; if(J && J.hl) hl[J.hl] = 1; });
+    var isP = function(pid){ var q = t.places[pid]; return !!(t.privP && (t.privP[pid] || (q && q.of && t.privP[q.of]))); };
+    Object.keys(t.places).forEach(function(pid){
+      var p = t.places[pid]; if(!p || p.k==="hotel" || !p.la || !t.done[pid] || isP(pid)) return;
+      var r = (t.rating||{})[pid] || 0, isHl = !!hl[p.n]; if(!(isHl || (r && r <= 3))) return;
+      var note = (t.privN||{})[pid] ? "" : ((t.notes||{})[pid] || "");
+      var phs = ((t.photos||{})[pid] || []).filter(function(x){ return !(t.privPh||{})[x]; }).slice(-3);
+      var key = tid.replace(/[^A-Za-z0-9_-]/g, "")+"_"+pid;
+      out[key] = {by:me, n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", rating:r, hl:isHl, note:note.slice(0, 600), trip:t.name||"", ph:phs, at:(t.updatedAt||Date.now())};
+    });
+  });
+  return out;
+}
+function recSig(r){ return JSON.stringify([r.n, r.c, r.la, r.lo, r.rating, r.hl, r.note, r.trip, r.ph]); }
+function recSync(){
+  if(!recShare || recBusy || !fbDb || !acct.user || !navigator.onLine) return;
+  recBusy = true;
+  var me = acct.user.uid, want = recCollect(), SK = "rp-recs-"+me, prev = {}; try { prev = JSON.parse(lsGet(SK)||"{}") || {}; } catch(e){}
+  var jobs = [], next = {};
+  Object.keys(want).forEach(function(k){
+    var r = want[k], sg = recSig(r); next[k] = sg; if(prev[k]===sg) return;
+    jobs.push(Promise.all(r.ph.map(recThumb)).then(function(th){
+      var doc = {by:me, n:r.n, c:r.c, la:r.la, lo:r.lo, addr:r.addr, rating:r.rating, hl:r.hl, note:r.note, trip:r.trip, photos:th.filter(Boolean), at:Date.now(), name:(PROF && PROF.name)||""};
+      return recCol(me).doc(k).set(doc);
+    }).catch(function(){ delete next[k]; }));
+  });
+  Object.keys(prev).forEach(function(k){ if(!want[k]) jobs.push(recCol(me).doc(k).delete().catch(function(){ next[k] = prev[k]; })); });
+  Promise.all(jobs).then(function(){ lsSet(SK, JSON.stringify(next)); recBusy = false; }, function(){ recBusy = false; });
+}
+function recWipe(){ if(!fbDb || !acct.user) return; var me = acct.user.uid; recCol(me).get().then(function(qs){ qs.docs.forEach(function(d){ d.ref.delete(); }); lsSet("rp-recs-"+me, "{}"); toast("Deine Empfehlungen sind nicht mehr für Freunde sichtbar.", false); }, function(){}); }
+
+/* ---------- Entdecken: Empfehlungen von Freunden am Reiseziel ---------- */
+var dcPage = false, dcScope = "here", DC = {items:[], byKey:{}, at:0, busy:false, err:""};
+function openDcPage(){ closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); dcPage = true; renderDc(); $("dcView").hidden = false; navActive(); if(Date.now() - DC.at > 120000) dcLoad(); }
+function closeDcPage(){ if(!dcPage) return; dcPage = false; $("dcView").hidden = true; closeJpMore(); navActive(); }
+function dcLoad(){
+  if(!fbDb || !acct.user){ renderDc(); return; }
+  var fr = FR.friends.filter(function(f){ return f.uid; }); DC.busy = true; DC.err = ""; renderDc();
+  Promise.all(fr.map(function(f){ return recCol(f.uid).orderBy("at", "desc").limit(150).get().then(function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.key = f.uid+"/"+d.id; v.fname = f.name || v.name || ""; return v; }); }, function(){ return []; }); }))
+    .then(function(all){ DC.items = [].concat.apply([], all); DC.byKey = {}; DC.items.forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); DC.busy = false; if(dcPage) renderDc(); });
+}
+function tripCenter(){
+  var t = T(), pts = (t.hotels||[]).filter(hasLoc).concat((t.orte||[]).filter(hasLoc));
+  if(!pts.length) pts = Object.keys(t.places).map(P).filter(hasLoc);
+  if(!pts.length) return null;
+  return {la: pts.reduce(function(a, p){ return a + p.la; }, 0)/pts.length, lo: pts.reduce(function(a, p){ return a + p.lo; }, 0)/pts.length};
+}
+function dcInTrip(r){ var t = T(); return Object.keys(t.places).some(function(id){ var p = t.places[id]; return p && hasLoc(p) && dist(p, r) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(r.n||"").toLowerCase().slice(0, 6); }); }
+function renderDc(){
+  var el = $("dcView"); if(!el) return;
+  var h = "<div class=\"pf dc-page\"><div class=\"ls-head dc-head\"><div class=\"dc-title\"><b>Entdecken</b><small>Empfehlungen deiner Freunde</small></div>";
+  var C = tripCenter();
+  h += "<div class=\"nt-kinds\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"dcscope\" data-v=\"here\" aria-selected=\""+(dcScope==="here")+"\">Rund um „"+esc(T().name||"Reise")+"“</button><button type=\"button\" role=\"tab\" data-act=\"dcscope\" data-v=\"all\" aria-selected=\""+(dcScope==="all")+"\">Überall</button></div></div>";
+  if(!acct.user){ el.innerHTML = h+"<p class=\"note nt-empty\">Melde dich an, um Empfehlungen deiner Freunde zu sehen.</p></div>"; return; }
+  if(!FR.friends.length){ el.innerHTML = h+"<p class=\"note nt-empty\">Noch keine Freunde. Füge Freunde hinzu – ihre besuchten und gut bewerteten Orte erscheinen dann hier.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div></div>"; return; }
+  var list = DC.items.slice();
+  if(dcScope==="here" && C) list = list.filter(function(r){ return r.la && dist(C, r) < 40000; });
+  list.sort(function(a, b){ var ra = a.hl ? 0 : (a.rating||9), rb = b.hl ? 0 : (b.rating||9); return ra - rb || (b.at||0) - (a.at||0); });
+  if(DC.busy && !DC.items.length) h += "<p class=\"note nt-empty\">Lädt Empfehlungen …</p>";
+  else if(!list.length) h += "<p class=\"note nt-empty\">"+(dcScope==="here" ? "Für dieses Reiseziel haben deine Freunde noch nichts empfohlen. Schau unter „Überall“." : "Deine Freunde haben noch keine Empfehlungen geteilt.")+"</p>";
+  list.forEach(function(r){
+    var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0], inT = dcInTrip(r), dd = C ? dist(C, r) : null;
+    h += "<article class=\"dc-card\">"+
+      "<div class=\"dc-top\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><span class=\"dc-who\"><b>@"+esc(r.fname||"Freund")+"</b><small>"+esc([r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small></span>"+
+        (r.hl ? "<span class=\"dc-hl\">★ Highlight</span>" : "")+"</div>"+
+      (r.photos && r.photos.length ? "<div class=\"dc-ph\">"+r.photos.map(function(u){ return "<img src=\""+u+"\" alt=\"\" loading=\"lazy\">"; }).join("")+"</div>" : "")+
+      "<div class=\"dc-body\"><div class=\"dc-name\"><span class=\"cic\" style=\"--cc:"+catCol(r.c)+"\">"+icon(r.c)+"</span><b>"+esc(r.n)+"</b></div>"+
+        "<small class=\"dc-sub\">"+esc([CATNAME[r.c], r.addr, dd!=null && dcScope==="all" ? fmtDist(dd)+" vom Reiseziel" : ""].filter(Boolean).join(" · "))+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"</small>"+
+        (r.note ? "<p class=\"dc-note\">„"+esc(r.note)+"“</p>" : "")+
+        "<div class=\"dc-acts\">"+(inT ? "<span class=\"dc-in\">✓ In deiner Reise</span>" : (isRO() ? "" : "<button type=\"button\" class=\"btn g s\" data-act=\"dcwish\" data-k=\""+esc(r.key)+"\">＋ Wunschliste</button><button type=\"button\" class=\"btn s\" data-act=\"dcplan\" data-k=\""+esc(r.key)+"\">Einplanen …</button>"))+
+          "<button type=\"button\" class=\"dc-map\" data-act=\"dcmap\" data-k=\""+esc(r.key)+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button></div></div></article>";
+  });
+  if(DC.items.length) h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"dcreload\">Aktualisieren</button></div>";
+  el.innerHTML = h+"</div>";
+}
+function dcAdd(key, dk){
+  closeJpMore();
+  var r = DC.byKey[key]; if(!r || isRO()) return;
+  if(dcInTrip(r)){ toast("„"+r.n+"“ ist schon in deiner Reise", false); return; }
+  var t = T(), id = uid("w");
+  t.places[id] = {id:id, n:r.n, c:CATNAME[r.c] ? r.c : "sight", la:r.la, lo:r.lo, addr:r.addr||"", note:"Empfehlung von @"+(r.fname||"Freund")+(r.note ? ": "+r.note.slice(0, 200) : ""), list:(t.lists && t.lists[0] || {}).id || null, rec:{by:r.by, name:r.fname||""}};
+  save();
+  if(dk && dayByKey(dk)){ plan(id, dk); } else toast("„"+r.n+"“ liegt jetzt in der Wunschliste", true);
+  dirty(); renderSheet(); scheduleOverlay(); renderDc();
+}
 /* ---------- Listenansicht: besuchte Orte, Highlights und Fotos einer Reise ---------- */
 var lsPage = false, lsTab = "places", lsFilter = "all";
-function openLsPage(){ closeMenus(); closeProfile(); closeNtPage(); lsPage = true; renderLs(); $("lsView").hidden = false; navActive(); }
+function openLsPage(){ closeMenus(); closeProfile(); closeNtPage(); closeDcPage(); lsPage = true; renderLs(); $("lsView").hidden = false; navActive(); }
 function closeLsPage(){ if(!lsPage) return; lsPage = false; $("lsView").hidden = true; navActive(); }
 function lsGoMap(pid){
   closeLsPage(); var p = P(pid); if(!p) return;
@@ -2808,7 +2937,7 @@ var MAPGO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" st
 /* Mitteilungen als eigene Seite, nach Art filterbar */
 var ntPage = false, ntKind = "all";
 var NTKINDS = [["all","Alle"],["mention","Erwähnungen"],["reply","Antworten"],["comment","Kommentare"],["like","Gefällt mir"],["friend","Freunde"],["invite","Einladungen"],["join","Mitreisende"]];
-function openNtPage(){ closeMenus(); closeProfile(); closeLsPage(); ntPage = true; renderNt(); $("ntView").hidden = false; document.body.classList.add("profopen"); navActive(); }
+function openNtPage(){ closeMenus(); closeProfile(); closeLsPage(); closeDcPage(); ntPage = true; renderNt(); $("ntView").hidden = false; document.body.classList.add("profopen"); navActive(); }
 function closeNtPage(){ if(!ntPage) return; ntPage = false; $("ntView").hidden = true; if(!profOpen) document.body.classList.remove("profopen"); navActive(); }
 function renderNt(){
   var el = $("ntView"); if(!el) return;
@@ -2882,6 +3011,8 @@ function acctHTML(){
   h += "<div class=\"ag-lbl\">Bewertungen &amp; Fotos</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"gtoggle\" aria-expanded=\""+gOpen+"\"><span><b>Google-Schlüssel</b><small>"+(gKey ? "Aktiv – nur auf diesem Gerät" : "Nicht eingerichtet")+"</small></span><em class=\"chev\">"+(gOpen?"⌄":"›")+"</em></button>";
   if(gOpen) h += "<div class=\"ag-in\"><div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\">"+esc(gMsg)+"</p>":"")+"</div>";
   h += "</div>";
+  // Empfehlungen
+  if(u) h += "<div class=\"ag-lbl\">Empfehlungen</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"recshare\" role=\"switch\" aria-checked=\""+recShare+"\"><span><b>Mit Freunden teilen</b><small>Besuchte und gut bewertete Orte (Nice und besser, Highlights) mit öffentlicher Notiz und Fotos erscheinen bei deinen Freunden unter „Entdecken“. Private Orte, Notizen und Fotos nie.</small></span><em class=\"sw-mini"+(recShare?" on":"")+"\"></em></button></div>";
   // Sicherung
   h += "<div class=\"ag-lbl\">Sicherung</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"export\"><span><b>Plan als Datei sichern</b></span><em class=\"chev\">›</em></button><label class=\"ag-row\" for=\"impFileG\"><span><b>Sicherung laden</b></span><em class=\"chev\">›</em></label></div>";
   if(u) h += "<div class=\"ag-grp ag-out\"><button type=\"button\" class=\"ag-row\" data-act=\"acout\"><span><b>Abmelden</b></span></button></div>";
@@ -2890,13 +3021,13 @@ function acctHTML(){
 /* ---------- Leiste oben & Profilseite ---------- */
 var profOpen = false, profTab = "mine";
 function setNavDot(on){ var a = $("menuBtn"); if(a) a.classList.toggle("dot", !!on); var b = $("tbProf"); if(b) b.classList.toggle("dot", !!on); }
-function navActive(){ var pm = profOpen, np = ntPage, lp = lsPage; $("tbMap").classList.toggle("on", !pm && !np && !lp); $("tbProf").classList.toggle("on", pm); $("bellBtn").classList.toggle("on", np); $("tbList").classList.toggle("on", lp);
-  document.body.classList.toggle("profopen", pm || np || lp);
+function navActive(){ var pm = profOpen, np = ntPage, lp = lsPage, dp = dcPage; $("tbMap").classList.toggle("on", !pm && !np && !lp && !dp); $("tbProf").classList.toggle("on", pm); $("bellBtn").classList.toggle("on", np); $("tbList").classList.toggle("on", lp); $("tbDisc").classList.toggle("on", dp);
+  document.body.classList.toggle("profopen", pm || np || lp || dp);
   if(pm){ $("tbProf").setAttribute("aria-current", "page"); $("tbMap").removeAttribute("aria-current"); } else { $("tbMap").setAttribute("aria-current", "page"); $("tbProf").removeAttribute("aria-current"); } }
 function avHTML(cls){ var ph = PROF && PROF.photo, nm = (PROF && PROF.name) || myMail() || "?";
   return ph ? "<img class=\""+cls+"\" src=\""+ph+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
 function navAv(){ var e = $("tbAv"); if(!e) return; e.innerHTML = acct.user ? avHTML("tbimg") : "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/><path d=\"M6.2 18.4a7 7 0 0 1 11.6 0\"/></svg>"; }
-function openProfile(){ closeMenus(); closeNtPage(); closeLsPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
+function openProfile(){ closeMenus(); closeNtPage(); closeLsPage(); closeDcPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
 function closeProfile(){ if(!profOpen) return; profOpen = false; $("profView").hidden = true; if(!ntPage) document.body.classList.remove("profopen"); navActive(); }
 function tripCover(id){ var t = S.trips[id], ps = (t && t.photos) || {}, ks = Object.keys(ps); for(var i = 0; i < ks.length; i++){ var a = ps[ks[i]] || []; if(a.length) return a[a.length-1]; } return null; }
 function renderProfile(){
@@ -5085,7 +5216,7 @@ var jOpen = lsGet("nyc-j-open")!=="0";
 var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#5E9970"],[3,"Nice","#007AFF"],[4,"Okay","#6b7785"],[5,"Overrated","#FF3B30"]];
 function rateOf(id){ return ((T().rating||{})[id]) || 0; }
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=ratepick]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=ratepick],[data-act=dcplan]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -6178,7 +6309,7 @@ function applyRO(){
   if(mapReady) applyLayers();
   var c = $("lColor"); if(c) c.checked = colorOn;
 }
-function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); navAv(); if(profOpen) renderProfile(); if(lsPage) renderLs(); }
+function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); navAv(); if(profOpen) renderProfile(); if(lsPage) renderLs(); if(dcPage) renderDc(); }
 function pickDefaultDay(){
   var ds = days(), tk = todayKey();
   cur = ds.length ? ((dayByKey(tk) && tk) || ds[0].key) : "";
@@ -6393,8 +6524,16 @@ document.addEventListener("click", function(e){
     case "hotelafter": var hpid = t.getAttribute("data-pid") || id; closeCatPop(); hotelStop(dayOf(hpid), hpid); renderAll(); break;
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
-    case "srchopen": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); openSearch(); break;
-    case "navmap": closeProfile(); closeNtPage(); closeLsPage(); closeMenus(); break;
+    case "srchopen": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); openSearch(); break;
+    case "navmap": closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeMenus(); break;
+    case "navdisc": if(dcPage) closeDcPage(); else openDcPage(); break;
+    case "dcscope": dcScope = t.getAttribute("data-v"); renderDc(); break;
+    case "dcwish": dcAdd(t.getAttribute("data-k"), null); break;
+    case "dcplan": var dk0 = t.getAttribute("data-k"); jpPopover("dc", t, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"dcday\" data-k=\""+esc(dk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "dcplan"); break;
+    case "dcday": dcAdd(t.getAttribute("data-k"), t.getAttribute("data-day")); break;
+    case "dcmap": var dcr = DC.byKey[t.getAttribute("data-k")]; if(dcr){ closeDcPage(); map.easeTo({center:[dcr.lo, dcr.la], zoom:16, duration: reduceMotion?0:500}); } break;
+    case "dcreload": DC.at = 0; dcLoad(); break;
+    case "recshare": recShare = !recShare; lsSet("rp-recshare", recShare ? "1" : "0"); if(recShare) recSyncSoon(); else recWipe(); openSettings(); break;
     case "navlist": if(lsPage) closeLsPage(); else openLsPage(); break;
     case "lstrip": var lst = t.getAttribute("data-trip"); if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
     case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;
@@ -6532,7 +6671,7 @@ document.addEventListener("click", function(e){
     case "tripstab": tripsTab = t.getAttribute("data-v"); openSettings(); break;
     case "tripdetails": closeSettings(); tab = "trip"; renderSheet(); scheduleOverlay(); break;
     case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; openSettings(); break;
-    case "opentrip": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeSettings();
+    case "opentrip": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeSettings();
       var otr = t.getAttribute("data-trip"); if(otr && S.trips[otr] && otr!==S.cur){ grpSel = ""; S.cur = otr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); }
       tab = "trip"; tdraft = null; renderSheet(); scheduleOverlay();
       setTimeout(function(){ var sh = document.querySelector("#tripPop .share"); if(sh) sh.scrollIntoView({block:"start", behavior: reduceMotion ? "auto" : "smooth"}); }, 250); break;
