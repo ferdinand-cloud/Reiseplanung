@@ -6776,7 +6776,7 @@ function camTarget(loc, lib, when){
            note: when ? "Foto vom "+w.toLocaleDateString("de-DE", {day:"numeric", month:"numeric"})+", "+tm+" Uhr" : (lib ? "Foto hinzugefügt um " : "Foto aufgenommen um ")+tm, addr:""};
   if(loc){ p.la = +loc.la.toFixed(6); p.lo = +loc.lo.toFixed(6); var nb = nbOf(p); if(nb) p.n = "Fotospot "+nb; }
   t.places[pid] = p;
-  if(D){ ord(tk).push(pid); t.done[pid] = true; t.times = t.times || {}; t.times[pid] = tm; }
+  if(D){ ord(tk).push(pid); t.done[pid] = true; doneMove(pid, tk); t.times = t.times || {}; t.times[pid] = tm; }
   return {pid:pid, neu:true, day:D ? tk : ""};
 }
 document.addEventListener("change", function(e){
@@ -7376,7 +7376,16 @@ function applyRO(){
   if(mapReady) applyLayers();
   var c = $("lColor"); if(c) c.checked = colorOn;
 }
-function renderAll(){ if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); navAv(); if(profOpen) renderProfile(); if(lsPage) renderLs(); if(dcPage) renderDc(); }
+/* Erledigte Stopps stehen vorn: wer abgehakt wird, rückt direkt hinter die bisher erledigten */
+function doneMove(id, k){ k = k || dayOf(id); if(!k) return; var o = ord(k), i = o.indexOf(id); if(i < 0) return; o.splice(i, 1);
+  var j = -1; o.forEach(function(x, n){ if(T().done[x]) j = n; }); o.splice(j + 1, 0, id); }
+function doneOrderFix(){
+  var t = T(); if(!t || t.doneOrd || isRO()) return; var ch = false;
+  Object.keys(t.order||{}).forEach(function(k){ var o = t.order[k]; if(!Array.isArray(o)) return; var d = o.filter(function(x){ return t.done[x]; }), u = o.filter(function(x){ return !t.done[x]; }), n = d.concat(u);
+    if(n.join("|")!==o.join("|")){ t.order[k] = n; ch = true; } });
+  t.doneOrd = 1; save(); if(ch) dirty();
+}
+function renderAll(){ doneOrderFix(); if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); navAv(); if(profOpen) renderProfile(); if(lsPage) renderLs(); if(dcPage) renderDc(); }
 function pickDefaultDay(){
   var ds = days(), tk = todayKey();
   cur = ds.length ? ((dayByKey(tk) && tk) || ds[0].key) : "";
@@ -7895,7 +7904,7 @@ document.addEventListener("click", function(e){
       else { var gk = dayOf(goSt.id); if(gk){ if(gk!==cur){ cur = gk; renderAll(); } var gi = -1; dayLegs(cur).forEach(function(lg, i){ if(lg[1] && lg[1].id===goSt.id) gi = i; }); if(gi>-1){ legSel = -1; var lb = document.querySelector("[data-act=legsel][data-leg=\""+gi+"\"]"); var gp = dayLegs(cur)[gi]; if(gp && legMode(gp[0], gp[1])!=="oepnv"){ setLegMode(gp[0], gp[1], "oepnv"); renderSheet(); lb = document.querySelector("[data-act=legsel][data-leg=\""+gi+"\"]"); } if(lb) lb.click(); } } }
       break;
     case "sugtoggle": sugOpen = !sugOpen; lsSet("nyc-sug-open", sugOpen?"1":"0"); renderSheet(); scheduleOverlay(); break;
-    case "done": if(T().done[id]) delete T().done[id]; else T().done[id] = true; save(); renderSheet(); if(sel===id) renderCard(); scheduleOverlay(); if(jp && jp.pid===id && !$("jPop").hidden) renderJPop(); break;
+    case "done": if(T().done[id]) delete T().done[id]; else { T().done[id] = true; doneMove(id); } save(); renderSheet(); if(sel===id) renderCard(); scheduleOverlay(); if(jp && jp.pid===id && !$("jPop").hidden) renderJPop(); break;
     case "list": activeList = t.getAttribute("data-list"); renderSheet(); scheduleOverlay(); break;
     case "lsub": var ln = t.getAttribute("data-line"); if(offSub[ln]) delete offSub[ln]; else offSub[ln] = 1; applyLines(); break;
     case "lsuball": offSub = {}; applyLines(); break;
