@@ -2075,6 +2075,7 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 .vis-seg .vs-priv[aria-checked="true"]{color:#B07A00}
 .vis-seg .vs-pub[aria-checked="true"]{color:#0A84FF}
 .vis-seg button.off{opacity:.5}
+.vis-hint{margin:6px 2px 0;font-size:12px}
 .pubmk{display:inline-flex;vertical-align:-2px;margin-left:5px;color:#0A84FF}
 .pubmk svg{width:14px;height:14px}
 .jp-strip button{position:relative}
@@ -3363,9 +3364,9 @@ function recCollect(){
       if(!(t.pubP && t.pubP[pid])) return; // nur bewusst veröffentlichte Orte
       var r = (t.rating||{})[pid] || 0, isHl = !!hl[p.n];
       var note = (t.privN||{})[pid] ? "" : ((t.notes||{})[pid] || "");
-      var phs = [].concat.apply([], vs.map(function(k){ return (t.photos||{})[k] || []; })).filter(function(x){ return !(t.privPh||{})[x]; }).slice(-3);
+      var phs = [].concat.apply([], vs.map(function(k){ return (t.photos||{})[k] || []; })).filter(function(x){ return !(t.privPh||{})[x]; }).slice(-12);
       var key = tid.replace(/[^A-Za-z0-9_-]/g, "")+"_"+pid;
-      out[key] = {by:me, n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", rating:r, hl:isHl, note:note.slice(0, 600), trip:t.name||"", ph:phs, at:(t.updatedAt||Date.now())};
+      out[key] = {by:me, n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", rating:r, hl:isHl, note:note.slice(0, 3000), trip:t.name||"", ph:phs, at:(t.updatedAt||Date.now())};
     });
   });
   return out;
@@ -3379,6 +3380,8 @@ function recSync(){
   Object.keys(want).forEach(function(k){
     var r = want[k], sg = recSig(r); next[k] = sg; if(prev[k]===sg) return;
     jobs.push(Promise.all(r.ph.map(recThumb)).then(function(th){
+      // Dokumentgröße begrenzen: so viele Fotos wie hineinpassen (neueste zuerst behalten)
+      th = th.filter(Boolean); var tot = th.reduce(function(a, x){ return a + x.length; }, 0); while(th.length > 1 && tot > 850000){ tot -= th.shift().length; }
       var doc = {by:me, n:r.n, c:r.c, la:r.la, lo:r.lo, addr:r.addr, rating:r.rating, hl:r.hl, note:r.note, trip:r.trip, photos:th.filter(Boolean), at:Date.now(), name:(PROF && PROF.name)||""};
       return recCol(me).doc(k).set(doc);
     }).catch(function(){ delete next[k]; }));
@@ -6676,8 +6679,9 @@ function renderJPop(){
     h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Sichtbarkeit</div><div class=\"vis-seg\" role=\"radiogroup\" aria-label=\"Sichtbarkeit\">"+
       [["priv", ILOCK+"Privat", "nur Mitreisende"], ["trip", VISTRIP+"Reise", "+ Beobachter"], ["pub", VISPUB+"Freunde", vis1 ? "veröffentlicht" : "nach Besuch"]].map(function(o){
         return "<button type=\"button\" role=\"radio\" data-act=\"vis\" data-v=\""+o[0]+"\" aria-checked=\""+(vv===o[0])+"\" class=\"vs-"+o[0]+(o[0]==="pub" && !vis1 ? " off" : "")+"\"><b>"+o[1]+"</b><small>"+o[2]+"</small></button>"; }).join("")+"</div>"+
+      (vv!=="priv" ? "<p class=\"note vis-hint\">"+(vv==="pub" ? "Freunde sehen, was auch Beobachter sehen." : "Beobachter sehen den Ort mit Notiz und Fotos.")+" Notiz oder Fotos mit Schloss bleiben trotzdem privat.</p>" : "")+
       (vv==="pub" && !recShare ? "<p class=\"note\" style=\"margin:6px 2px 0\">Teilen mit Freunden ist in den Einstellungen ausgeschaltet – der Ort wird erst geteilt, wenn du es wieder einschaltest.</p>" : "")+"</div>"; }
-  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : "<button type=\"button\" class=\"jp-pv"+(isPrivN(jp.pid)?" on":"")+"\" data-act=\"privn\" aria-pressed=\""+isPrivN(jp.pid)+"\">"+ILOCK+(isPrivN(jp.pid) ? "privat" : "Reise")+"</button>") : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+rootOf(jp.pid)+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
+  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : "<button type=\"button\" class=\"jp-pv"+(isPrivN(jp.pid)?" on":"")+"\" data-act=\"privn\" aria-pressed=\""+isPrivN(jp.pid)+"\">"+ILOCK+(isPrivN(jp.pid) ? "privat" : "privat machen")+"</button>") : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+rootOf(jp.pid)+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
   var qn = (function(){ var q = phQueue(); return ph.filter(function(x){ return q.up.indexOf(x) > -1; }).length; })();
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Fotos"+(ph.length ? " · "+ph.length : "")+(qn ? "<small> · "+qn+" noch nicht hochgeladen</small>" : "")+"</div><div class=\"jp-strip\">"+
        "<label class=\"jp-add\" for=\"phIn\"><span>＋</span></label>"+
