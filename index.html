@@ -2024,6 +2024,13 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 body.sheetmin .sheet .tabs,body.sheetmin #body{opacity:0;pointer-events:none}
 body.sheetmin .sheet .handle{width:56px;height:5px;background:color-mix(in srgb,var(--ink) 45%,transparent)}
 @media (min-width:900px){ body.sheetmin .sheet .tabs,body.sheetmin #body{opacity:1;pointer-events:auto} }
+/* Eingeklappt: Blatt ganz weg, stattdessen Knopf zum Antippen – mit Abstand zur Home-Leiste (Wischen dort öffnet das iOS-Multitasking) */
+#sheetOpen{display:none;position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);transform:translateX(-50%);z-index:17;align-items:center;gap:8px;padding:11px 18px;border-radius:999px;border:.5px solid var(--glass-bd,var(--line));background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:0 4px 20px rgba(0,0,0,.16);color:var(--ink);font:inherit;font-size:15px;font-weight:600;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+#sheetOpen svg{width:16px;height:16px}
+#sheetOpen:active{transform:translateX(-50%) scale(.96)}
+body.sheetmin #sheetOpen{display:inline-flex}
+body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2,.8,.2,1),visibility 0s .28s}
+@media (min-width:900px){ body.sheetmin #sheetOpen{display:none} body.sheetmin .sheet{visibility:visible} }
 
 .lrow{display:flex;align-items:center;gap:6px}
 .lrow > label{flex:1;min-width:0}
@@ -2140,6 +2147,7 @@ body.sheetmin .sheet .handle{width:56px;height:5px;background:color-mix(in srgb,
   </div>
   <div class="body" id="body"></div>
 </section>
+<button type="button" id="sheetOpen" aria-label="Planung öffnen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l5-5 5 5"/></svg><span>Tagesplan &amp; Wunschliste</span></button>
 
 <script>
 (function(){
@@ -6035,11 +6043,12 @@ function arm(key){ confirmKey = key; clearTimeout(confirmTimer); confirmTimer = 
 /* ---------- Blatt ---------- */
 var sheet = $("sheet"), grab = $("grab");
 function sheetFullH(){ var h = window.innerHeight, t = document.querySelector(".top"); var tb = t ? t.getBoundingClientRect().bottom : 0; return Math.round(Math.min(h*0.9, h - tb - 10)); }
-function sheetVisible(){ if(desktop.matches) return 0; var h = window.innerHeight; return sheetState==="min" ? MIN : sheetState==="peek" ? PEEK : sheetState==="full" ? sheetFullH() : Math.round(h*0.5); }
+function sheetVisible(){ if(desktop.matches) return 0; var h = window.innerHeight; return sheetState==="min" ? minVisible() : sheetState==="peek" ? PEEK : sheetState==="full" ? sheetFullH() : Math.round(h*0.5); }
+function minVisible(){ var b = $("sheetOpen"); if(!b || !b.offsetHeight) return MIN; return Math.round(window.innerHeight - b.getBoundingClientRect().top + 6); }
 function applySheet(){
   var body = $("body");
   if(desktop.matches){ sheet.style.transform = ""; body.style.paddingBottom = ""; return; }
-  var hh = sheet.offsetHeight, off = Math.max(0, hh - sheetVisible());
+  var hh = sheet.offsetHeight, off = sheetState==="min" ? hh + 20 : Math.max(0, hh - sheetVisible());
   sheet.style.transform = "translate3d(0,"+off+"px,0)";
   var pb = "calc("+(off+28)+"px + env(safe-area-inset-bottom,0px))";
   if(body.style.paddingBottom !== pb) body.style.paddingBottom = pb;
@@ -6110,6 +6119,11 @@ function placeFloating(){
     }
     setSheet(target);
   }
+  // Knopf im eingeklappten Zustand: Tippen oder Hochwischen öffnet die Planung
+  var so = $("sheetOpen"), soY = null;
+  so.addEventListener("click", function(){ setSheet("peek"); });
+  so.addEventListener("touchstart", function(e){ soY = e.touches[0].clientY; }, {passive:true});
+  so.addEventListener("touchmove", function(e){ if(soY!==null && soY - e.touches[0].clientY > 30){ soY = null; setSheet("mid"); } }, {passive:true});
   // Griff + Reiter: Pointer-Events (Reiter bleiben antippbar)
   var pid = null;
   grab.addEventListener("pointerdown", function(e){
