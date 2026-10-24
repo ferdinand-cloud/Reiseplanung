@@ -2062,6 +2062,7 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 @media (min-width:900px){ body.sheetmin #sheetOpen{display:none} body.sheetmin .sheet{visibility:visible} }
 
 .lrow{display:flex;align-items:center;gap:6px}
+.tf-del{margin-top:22px;padding-top:14px;border-top:.5px solid var(--line);justify-content:center}
 .lrow > label{flex:1;min-width:0}
 .lfbtn{margin-left:auto;position:relative;width:32px;height:32px;flex:0 0 32px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;padding:0;cursor:pointer}
 .lfbtn[hidden]{display:none}
@@ -7344,7 +7345,6 @@ function renderTrip(){
     });
     h += "<div class=\"sec\"><h4>Reisetagebuch</h4>"+(any ? jh : "<p class=\"empty\">Noch keine Einträge. Schreib im Tagesplan unter „Tagebuch“, was ihr erlebt habt.</p>")+"</div>";
     h += "<div class=\"backup\"><button type=\"button\" class=\"btn g s\" data-act=\"export\">Plan als Datei sichern</button><label class=\"btn g s\" for=\"impFile\">Sicherung laden</label><input type=\"file\" id=\"impFile\" accept=\"application/json,.json\"></div>";
-    if(canDelTrip(S.cur)) h += "<div class=\"row\"><button type=\"button\" class=\"btn g s warn\" data-act=\"deltrip\">Reise löschen</button></div>";
     h += "<div class=\"row\">"+confirmBtn("reset", "Prototyp zurücksetzen", "Wirklich alles zurücksetzen?", "reset")+"</div>";
     return h;
   }
@@ -7378,7 +7378,8 @@ function renderTrip(){
   h2 += items("hotels", "Hotels", "Hotel hinzufügen", "Hotel oder Adresse suchen …", "H");
   h2 += items("orte", d.mode==="new" ? "Reiseziel" : "Orte", "Ort hinzufügen", "Stadt suchen, z. B. Boston …", "◎");
   if(d.err) h2 += "<p class=\"err\" role=\"alert\">"+esc(d.err)+"</p>";
-  h2 += "<div class=\"tf-foot\"><button class=\"btn g\" type=\"button\" data-act=\"tcancel\">Abbrechen</button><button class=\"btn\" type=\"submit\">"+(d.mode==="new"?"Reise anlegen":"Speichern")+"</button></div></form>";
+  h2 += "<div class=\"tf-foot\"><button class=\"btn g\" type=\"button\" data-act=\"tcancel\">Abbrechen</button><button class=\"btn\" type=\"submit\">"+(d.mode==="new"?"Reise anlegen":"Speichern")+"</button></div></form>"+
+    (d.mode==="edit" && canDelTrip(S.cur) ? "<div class=\"row tf-del\"><button type=\"button\" class=\"btn g s warn\" data-act=\"deltrip\">Reise löschen</button></div>" : "");
   if(d.mode==="edit") h2 += shareBlock();
   return h2;
 }
