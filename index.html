@@ -1452,8 +1452,6 @@ body.ro label:has(#lRoute),body.ro label:has(#lWish),body.ro label:has(#lSub),bo
 .tabbar .tb.on{background:color-mix(in srgb,var(--ink) 12%,transparent) !important}
 .tabbar .tb svg{width:24px;height:24px}
 .tabbar .tb[hidden]{display:grid !important;visibility:hidden}
-#tabbar #camBtn{border:0 !important;background:none !important;box-shadow:none !important;color:var(--ink) !important;margin:0 !important}
-#tabbar #camBtn[aria-expanded="true"]{background:color-mix(in srgb,var(--ink) 12%,transparent) !important}
 .tabbar .bell-n{position:absolute;top:4px;left:calc(50% + 4px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#E5484D;color:#fff;font:700 11px/18px var(--f-body);text-align:center}
 .tabbar .bell-n[hidden]{display:none}
 .tbav{display:grid;place-items:center}
@@ -1461,13 +1459,23 @@ body.ro label:has(#lRoute),body.ro label:has(#lWish),body.ro label:has(#lSub),bo
 .tbav .tbimg.init{background:var(--accent);color:#fff;font:700 13px/28px var(--f-body);text-align:center}
 .tb.on .tbav .tbimg{box-shadow:0 0 0 2px var(--ink)}
 #tbProf.dot::after{content:"";position:absolute;top:8px;left:calc(50% + 9px);width:9px;height:9px;border-radius:50%;background:#E5484D;border:2px solid var(--sheet)}
-.top .trip{align-self:center;max-width:calc(100% - 24px)}
-body.profopen .top .trip{display:none}
+.toprow{display:flex;align-items:center;gap:8px;width:min(440px,100%);pointer-events:none}
+.toprow .trip{flex:0 1 auto;min-width:0;max-width:none;margin-right:auto}
+.toprow #camBtn{flex:0 0 44px;margin-left:auto}
+body.profopen .toprow{display:none}
 @media (min-width:900px){ .tabbar{width:min(440px,calc(100% - 24px))} }
 /* Profilseite */
 .profview{position:fixed;inset:0;z-index:21;background:var(--sheet);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top,0px) + 76px) 16px calc(env(safe-area-inset-bottom,0px) + 24px)}
 .profview[hidden]{display:none}
-.pf{max-width:560px;margin:0 auto}
+.pf{max-width:560px;margin:0 auto;position:relative}
+.pf-gear{position:absolute;top:0;right:0;width:40px;height:40px;border:0;border-radius:50%;background:var(--fill);color:var(--ink);display:grid;place-items:center;cursor:pointer}
+.pf-gear svg{width:21px;height:21px}
+.pf-head{padding-right:48px}
+.pe-av{display:flex;align-items:center;gap:14px;margin:4px 0 8px}
+.pe-img{width:64px;height:64px;border-radius:50%;object-fit:cover;display:block;flex:0 0 64px}
+.pe-img.init{display:grid;place-items:center;background:var(--accent);color:#fff;font:700 26px/1 var(--f-body)}
+.pe-btns{display:flex;gap:8px;flex-wrap:wrap}
+.ag-av img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
 .pf-head{display:flex;align-items:center;gap:16px;margin:8px 0 16px}
 .pf-avb{position:relative;border:0;background:none;padding:0;cursor:pointer;flex:0 0 auto}
 .pf-av{width:84px;height:84px;border-radius:50%;object-fit:cover;display:block}
@@ -1639,11 +1647,10 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 <nav class="tabbar" id="tabbar" aria-label="Navigation">
 <button type="button" class="tb on" id="tbMap" data-act="navmap" aria-label="Karte" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4z"/><path d="M9 4v14M15 6v14"/></svg></button>
 <button type="button" class="tb" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg></button>
-<button type="button" class="tb" id="camBtn" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M12 8v8M8 12h8"/></svg></button>
 <button type="button" class="tb" id="bellBtn" data-act="bell" aria-label="Mitteilungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.8a6 6 0 0 1 12 0c0 4.3 1.7 6 2.3 6.7H3.7C4.3 15.8 6 14.1 6 9.8z"/><path d="M9.8 19.6a2.3 2.3 0 0 0 4.4 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
 <button type="button" class="tb" id="tbProf" data-act="navprof" aria-label="Profil"><span class="tbav" id="tbAv"></span></button>
 </nav>
-<button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button></div>
+<div class="toprow"><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="camBtn" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button></div></div>
 <div class="profview" id="profView" hidden></div>
 <input type="file" id="avIn" accept="image/*" hidden>
 <div class="tripmenu" id="tripMenu" hidden></div>
@@ -2390,6 +2397,9 @@ function friendsHTML(){
 function profileHTML(){
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Profil bearbeiten\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
   h += "<button type=\"button\" class=\"back\" data-act=\"accview\" data-v=\"main\">‹ Mein Konto</button><h3 class=\"ag-title\">Profil bearbeiten</h3>";
+  h += "<div class=\"ag-lbl\">Profilbild</div><div class=\"pe-av\">"+avHTML("pe-img")+"<div class=\"pe-btns\"><button type=\"button\" class=\"btn s\" data-act=\"avpick\">"+(PROF && PROF.photo ? "Ändern" : "Bild wählen")+"</button>"+
+       (PROF && PROF.photo ? "<button type=\"button\" class=\"btn g s\" data-act=\"avdel\">Entfernen</button>" : "")+"</div></div>"+
+       (PROF && PROF.name ? "" : "<p class=\"note\">Zuerst einen Benutzernamen speichern, dann kannst du ein Profilbild hinzufügen.</p>");
   h += "<div class=\"ag-lbl\">Benutzername</div><form class=\"gnew\" id=\"unForm\"><input type=\"text\" id=\"unIn\" maxlength=\"20\" value=\""+esc(PROF ? PROF.name : "")+"\" placeholder=\"z. B. ferdinand\" autocomplete=\"off\" autocapitalize=\"off\"><button type=\"submit\" class=\"btn s\">Speichern</button></form>";
   h += "<p class=\"note\" id=\"unMsg\">"+esc(unameMsg || "3–20 Zeichen: Buchstaben, Zahlen, Punkt, Minus oder Unterstrich. Unter diesem Namen finden dich andere.")+"</p>";
   h += "<div class=\"ag-lbl\">E-Mail</div><p class=\"note\">"+esc(myMail())+" – nur für dich und deine Freunde sichtbar.</p>";
@@ -2653,7 +2663,7 @@ function acctHTML(){
   var st = !u ? ["off","Nicht angemeldet"] : acct.state==="sync" ? ["sync","Gleiche ab …"] : acct.state==="error" ? ["err","Abgleich fehlgeschlagen – wird erneut versucht"] : !navigator.onLine ? ["off","Offline – Änderungen folgen später"] : ["ok","Synchronisiert"+(acct.at ? " um "+new Date(acct.at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "")];
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mein Konto\">";
   h += "<button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
-  h += "<div class=\"ag-head\"><span class=\"ag-av\">"+esc(PROF ? PROF.name[0].toUpperCase() : ini)+"</span><div><b class=\"ag-name\">"+(PROF ? "@"+esc(PROF.name) : esc(mail || "Mein Konto"))+(u ? "<button type=\"button\" class=\"ag-edit\" data-act=\"accview\" data-v=\"profile\" aria-label=\"Profil bearbeiten\" title=\"Profil bearbeiten\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M13.5 3.5l3 3L7 16H4v-3z\"/><path d=\"M11.5 5.5l3 3\"/></svg></button>" : "")+"</b>"+(PROF ? "<span class=\"ag-sub\">"+esc(mail)+"</span>" : "")+"<span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+(u ? "<button type=\"button\" class=\"ag-sync\" data-act=\"acsync\" aria-label=\"Jetzt abgleichen\" title=\"Jetzt abgleichen\">↻</button>" : "")+"</span></div></div>";
+  h += "<div class=\"ag-head\"><span class=\"ag-av\">"+(PROF && PROF.photo ? "<img src=\""+PROF.photo+"\" alt=\"\">" : esc(PROF ? PROF.name[0].toUpperCase() : ini))+"</span><div><b class=\"ag-name\">"+(PROF ? "@"+esc(PROF.name) : esc(mail || "Mein Konto"))+(u ? "<button type=\"button\" class=\"ag-edit\" data-act=\"accview\" data-v=\"profile\" aria-label=\"Profil bearbeiten\" title=\"Profil bearbeiten\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M13.5 3.5l3 3L7 16H4v-3z\"/><path d=\"M11.5 5.5l3 3\"/></svg></button>" : "")+"</b>"+(PROF ? "<span class=\"ag-sub\">"+esc(mail)+"</span>" : "")+"<span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+(u ? "<button type=\"button\" class=\"ag-sync\" data-act=\"acsync\" aria-label=\"Jetzt abgleichen\" title=\"Jetzt abgleichen\">↻</button>" : "")+"</span></div></div>";
 
   if(u && !PROF) h += "<p class=\"note\">Tipp: Über den Stift oben legst du einen Benutzernamen fest, damit dich Freunde finden.</p>";
 
@@ -2686,9 +2696,9 @@ function renderProfile(){
     el.innerHTML = h; return;
   }
   var ids = Object.keys(S.trips), mine = ids.filter(function(id){ return !isViewerOf(id); }), obs = ids.filter(function(id){ return isViewerOf(id); });
-  h += "<div class=\"pf-head\"><button type=\"button\" class=\"pf-avb\" data-act=\"avpick\" aria-label=\"Profilbild ändern\">"+avHTML("pf-av")+"<i>＋</i></button>"+
-       "<div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b><small>"+esc(myMail())+"</small>"+
-       "<button type=\"button\" class=\"pf-edit\" data-act=\"accview\" data-v=\"profile\">Profil bearbeiten</button></div></div>";
+  h += "<button type=\"button\" class=\"pf-gear\" data-act=\"openacct\" aria-label=\"Konto &amp; Einstellungen\" title=\"Konto &amp; Einstellungen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg></button>";
+  h += "<div class=\"pf-head\">"+avHTML("pf-av")+
+       "<div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b><small>"+esc(myMail())+"</small></div></div>";
   h += "<div class=\"pf-stats\"><button type=\"button\" data-act=\"pftab\" data-v=\"mine\"><b>"+mine.length+"</b><span>Reisen</span></button>"+
        "<button type=\"button\" data-act=\"pftab\" data-v=\"obs\"><b>"+obs.length+"</b><span>Beobachtet</span></button>"+
        "<button type=\"button\" data-act=\"openfriends\"><b>"+FR.friends.length+"</b><span>Freunde</span></button></div>";
@@ -2708,7 +2718,7 @@ function renderProfile(){
   if(INVITES.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"opentrips\" data-v=\"req\">✉ "+INVITES.length+(INVITES.length===1 ? " Einladung zu einer Reise" : " Einladungen zu Reisen")+" ›</button>";
   if(FR.inc.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"openfriends\">👋 "+FR.inc.length+(FR.inc.length===1 ? " Freundschaftsanfrage" : " Freundschaftsanfragen")+" ›</button>";
   h += "<div class=\"pf-acts\">"+(profTab==="mine" ? "<button type=\"button\" class=\"btn g\" data-act=\"pfnew\">＋ Neue Reise</button>" : "")+
-       "<button type=\"button\" class=\"btn g\" data-act=\"openacct\">Konto &amp; Einstellungen</button></div>";
+       "</div>";
   h += "</div>";
   el.innerHTML = h; fillPhotos(el);
 }
@@ -2720,7 +2730,7 @@ function setAvatar(file){
   im.onload = function(){ var z = 240, w = im.naturalWidth, hh = im.naturalHeight, k = z / Math.min(w, hh), c = document.createElement("canvas"); c.width = z; c.height = z;
     c.getContext("2d").drawImage(im, (z - w*k)/2, (z - hh*k)/2, w*k, hh*k); URL.revokeObjectURL(url);
     var d = c.toDataURL("image/jpeg", .82);
-    fbDb.collection("profiles").doc(acct.user.uid).set({photo:d}, {merge:true}).then(function(){ PROF = Object.assign({}, PROF, {photo:d}); navAv(); renderProfile(); toast("Profilbild gespeichert", false); },
+    fbDb.collection("profiles").doc(acct.user.uid).set({photo:d}, {merge:true}).then(function(){ PROF = Object.assign({}, PROF, {photo:d}); navAv(); refreshSettings(); if(profOpen) renderProfile(); toast("Profilbild gespeichert", false); },
       function(e){ toast("Profilbild nicht gespeichert: "+(e && e.message), false); }); };
   im.onerror = function(){ URL.revokeObjectURL(url); toast("Bild konnte nicht gelesen werden.", false); };
   im.src = url;
@@ -6139,6 +6149,7 @@ document.addEventListener("click", function(e){
     case "pfopen": closeProfile(); var pft = t.getAttribute("data-trip"); if(S.trips[pft]){ closeSettings(); grpSel = ""; S.cur = pft; save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
     case "pfnew": closeProfile(); var tnb = document.createElement("button"); tnb.setAttribute("data-act", "tripnew"); tnb.hidden = true; document.body.appendChild(tnb); tnb.click(); tnb.remove(); break;
     case "avpick": var avi = $("avIn"); if(avi) avi.click(); break;
+    case "avdel": if(acct.user && fbDb) fbDb.collection("profiles").doc(acct.user.uid).set({photo:window.firebase.firestore.FieldValue.delete()}, {merge:true}).then(function(){ if(PROF) delete PROF.photo; navAv(); refreshSettings(); if(profOpen) renderProfile(); toast("Profilbild entfernt", false); }, function(e){ toast("Entfernen fehlgeschlagen: "+(e && e.message), false); }); break;
     case "srchclose": closeSearch(); break;
     case "srchgo": srchGo(+t.getAttribute("data-i")); break;
     case "daypick": closeCatPop(); cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
