@@ -1375,7 +1375,7 @@ li.st .sub{margin-top:1px}
 .cap-list{padding:2px 6px 6px 2px;grid-template-columns:minmax(0,1fr)}
 .cap-row{min-width:0}
 .cap-row textarea{max-width:100%}
-.cap-row textarea{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--sheet);color:var(--ink);padding:8px 10px;font:16px/1.35 var(--f-body);resize:none}
+.cap-row textarea{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--sheet);color:var(--ink);padding:8px 10px;font:16px/1.35 var(--f-body);resize:none;min-height:64px;overflow-y:auto}
 .cap-ok{background:var(--ink) !important;color:var(--sheet) !important}
 .vmring{animation:vmp 1.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes vmp{50%{opacity:.35}}
@@ -6200,6 +6200,10 @@ function captPrompt(ids, edit, after){
     "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\">"+(edit ? "Abbrechen" : "Überspringen")+"</button><button type=\"button\" class=\"cf-ok cap-ok\">Speichern</button></div>"+
     (CAPDONE.length ? "<button type=\"button\" class=\"cap-cancel\">Abbrechen – "+(n===1 ? "Foto nicht hinzufügen" : "Fotos nicht hinzufügen")+"</button>" : "")+"</div>";
   el.hidden = false; fillPhotos(el);
+  // Textfeld wächst mit dem Text (bis etwa ein Drittel des sichtbaren Bereichs), danach scrollt es
+  var capFit = function(ta){ var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight, mx = Math.max(110, Math.min(240, Math.round(vh*0.38)));
+    ta.style.height = "auto"; ta.style.height = Math.min(mx, ta.scrollHeight + 2)+"px"; };
+  el.querySelectorAll("textarea[data-cap]").forEach(function(ta){ capFit(ta); ta.addEventListener("input", function(){ capFit(ta); }); ta.addEventListener("focus", function(){ setTimeout(function(){ capFit(ta); }, 300); }); });
   var applyPv = function(){
     if(!pv) return; var t = T(), ch = []; t.privPh = t.privPh || {};
     CAPQ.forEach(function(x){ var was = !!t.privPh[x]; if(CAPPV[x] && !was){ t.privPh[x] = 1; ch.push(x); } else if(!CAPPV[x] && was){ delete t.privPh[x]; ch.push(x); } });
