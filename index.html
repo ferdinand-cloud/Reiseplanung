@@ -2464,7 +2464,9 @@ function normTrip(t){
   if(t.rating && typeof t.rating==="object") Object.keys(t.rating).forEach(function(id){ if(t.rating[id]===5){ t.overrated = t.overrated && typeof t.overrated==="object" ? t.overrated : {}; t.overrated[id] = 1; delete t.rating[id]; } });
   Object.keys(t.places).forEach(function(k){ var q = t.places[k], ro = q && q.of; if(!ro || !t.places[ro]) return;
     if(t.rating && t.rating[k]){ if(!t.rating[ro]) t.rating[ro] = t.rating[k]; delete t.rating[k]; }
-    if(t.overrated && t.overrated[k]){ t.overrated[ro] = 1; delete t.overrated[k]; } });
+    if(t.overrated && t.overrated[k]){ t.overrated[ro] = 1; delete t.overrated[k]; }
+    if(t.notes && t.notes[k]){ var a0 = t.notes[ro] || ""; if(a0.indexOf(t.notes[k]) < 0) t.notes[ro] = a0 ? a0+"\n\n"+t.notes[k] : t.notes[k]; delete t.notes[k]; }
+    if(t.privN && t.privN[k]){ t.privN[ro] = 1; delete t.privN[k]; } });
   migrateJournal(t);
   return t;
 }
@@ -2595,7 +2597,7 @@ function pvCombine(pub, pubUpd, pv, local){
 var ILOCK = "<svg class=\"lk\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4.5\" y=\"9\" width=\"11\" height=\"8\" rx=\"2\"/><path d=\"M7 9V6.5a3 3 0 0 1 6 0V9\"/></svg>";
 function rootPid(pid){ var q = T().places[pid]; return q && q.of && T().places[q.of] ? q.of : pid; }
 function isPrivP(pid){ var t = T(); return !!(t.privP && (t.privP[pid] || t.privP[rootPid(pid)])); }
-function isPrivN(pid){ return isPrivP(pid) || !!((T().privN||{})[pid]); }
+function isPrivN(pid){ var pn = T().privN||{}; return isPrivP(pid) || !!(pn[rootOf(pid)] || pn[pid]); }
 function phPlace(ph){ var ps = T().photos || {}, r = ""; Object.keys(ps).forEach(function(k){ if((ps[k]||[]).indexOf(ph)>-1) r = k; }); return r; }
 function isPrivPh(ph, pid){ return !!((T().privPh||{})[ph]) || isPrivP(pid || phPlace(ph)); }
 function canPriv(){ return !!acct.user && !isRO(); }
@@ -6564,7 +6566,7 @@ function rateBadge(id){ var ov = isOver(id) ? " <span class=\"rbadge\" style=\"-
 function rateBadge0(r){ return " <span class=\"rbadge\" style=\"--rc:"+r[2]+"\">"+r[1]+"</span>"; }
 function jLine(id){ var p = P(id); return "• "+p.n+(timeOf(id)?" ("+timeOf(id)+")":"")+": "; }
 function jHas(J, id){ var p = P(id); return !!(J.text && J.text.indexOf("• "+p.n)>-1); }
-function noteOf(id){ return ((T().notes||{})[id]) || ""; }
+function noteOf(id){ var n = T().notes||{}; return n[rootOf(id)] || n[id] || ""; } // eine Notiz je Ort, auch bei mehreren Besuchen
 function photosOf(id){ return ((T().photos||{})[id]) || []; }
 function visitIds(id){ var r = rootOf(id), t = T(), out = [r]; Object.keys(t.places).forEach(function(k){ if(t.places[k] && t.places[k].of===r) out.push(k); }); return out; }
 /* alle Fotos des Orts über alle Besuche – erst der Tag, der gerade offen ist, dann die übrigen nach Datum */
@@ -6631,7 +6633,7 @@ function renderJPop(){
   if(!isRO()) h += "<button type=\"button\" class=\"jq"+(pv0?" pv":"")+(grpName(p.g)?" grp":"")+"\" data-act=\"jpmore\" aria-haspopup=\"dialog\" aria-label=\"Mehr: Gruppe"+(canPriv() ? ", Privat" : "")+"\" title=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Gruppe")+(pv0 ? " · privat" : "")+"\">"+
        (pv0 ? ILOCK : I("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>"))+"</button>";
   h += "</div>";
-  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : "<button type=\"button\" class=\"jp-pv"+(isPrivN(jp.pid)?" on":"")+"\" data-act=\"privn\" aria-pressed=\""+isPrivN(jp.pid)+"\">"+ILOCK+(isPrivN(jp.pid) ? "privat" : "öffentlich")+"</button>") : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+jp.pid+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
+  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : "<button type=\"button\" class=\"jp-pv"+(isPrivN(jp.pid)?" on":"")+"\" data-act=\"privn\" aria-pressed=\""+isPrivN(jp.pid)+"\">"+ILOCK+(isPrivN(jp.pid) ? "privat" : "öffentlich")+"</button>") : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+rootOf(jp.pid)+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
   var qn = (function(){ var q = phQueue(); return ph.filter(function(x){ return q.up.indexOf(x) > -1; }).length; })();
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Fotos"+(ph.length ? " · "+ph.length : "")+(qn ? "<small> · "+qn+" noch nicht hochgeladen</small>" : "")+"</div><div class=\"jp-strip\">"+
        "<label class=\"jp-add\" for=\"phIn\"><span>＋</span></label>"+
@@ -8134,7 +8136,7 @@ document.addEventListener("click", function(e){
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
     case "phback": if(jp && !!jp.ret){ closeJPop(); break; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
     case "privp": if(t.closest("#catPop")) closeCatPop(); togglePriv("p", rootPid(jp ? jp.pid : id), function(){ if(jp) renderJPop(); renderSheet(); }); break;
-    case "privn": togglePriv("n", jp.pid, function(){ renderJPop(); }); break;
+    case "privn": togglePriv("n", rootOf(jp.pid), function(){ renderJPop(); }); break;
     case "phpriv": togglePriv("ph", t.getAttribute("data-ph"), function(){ phMetaRefresh(); }); break;
     case "capedit": captPrompt([t.getAttribute("data-ph")], true); break;
     case "pvcm": pvCm = !pvCm; phMetaRefresh(); if(pvCm) setTimeout(function(){ var a = $("pvCm"); if(a) a.scrollTop = a.scrollHeight; }, 0); break;
