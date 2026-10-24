@@ -1325,6 +1325,7 @@ li.st .sub{margin-top:1px}
 .hsbtn{display:inline-flex;align-items:center;gap:6px;margin-left:auto;border:0;border-radius:999px;padding:5px 11px 5px 6px;background:var(--fill);color:var(--ink);font:600 13px/1.2 var(--f-body);flex:0 0 auto;cursor:pointer}
 .hsbtn svg{width:14px;height:14px;padding:3px;border-radius:6px;background:var(--ink);color:var(--sheet)}
 .rhead .hsbtn + .rtog{margin-left:6px}
+.rhead .rtog + .rtog{margin-left:10px}
 .lk{width:13px;height:13px;margin-left:5px;vertical-align:-1px;color:var(--muted);flex:0 0 auto}
 .jp-priv{display:inline-flex;align-items:center;gap:5px}
 .jp-priv .lk{margin:0;width:13px;height:13px}
@@ -4966,6 +4967,7 @@ $("menuBtn").addEventListener("click", function(){ var open = $("mainMenu").hidd
 $("tripBtn").addEventListener("click", function(){ var open = $("tripMenu").hidden; closeMenus(); $("tripMenu").hidden = !open; this.setAttribute("aria-expanded", open); placeFloating(); });
 
 /* ---------- Inhalt: Tagesplan ---------- */
+var legsList = lsGet("rp-legs")!=="0";
 function renderDay(){
   var D = dayByKey(cur);
   if(!D) return "<p class=\"empty\">Diese Reise hat noch keine gültigen Daten. Trage im Reiter „Reise“ An- und Abreise ein.</p>";
@@ -4999,9 +5001,10 @@ function renderDay(){
   h += "</div>";
 
   var hn = HT ? esc(HT.n) : "";
-  h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>"+(isRO() ? "Stopps" : "Route")+"</h4>"+(HT && !isRO() ? "<button type=\"button\" class=\"hsbtn\" data-act=\"hotelstopadd\" title=\"Zwischenstopp im "+hn+"\">"+icon("hotel")+"Zwischenstopp</button>" : "")+(isRO() ? "" : "<button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+routeAnyVisible()+"\" aria-label=\"Alle Etappen auf der Karte ein- oder ausblenden\">"+(routeAnyVisible()?EYE:EYEOFF)+"<span>Karte</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>")+"</div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
+  h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>"+(isRO() ? "Stopps" : "Route")+"</h4>"+(HT && !isRO() ? "<button type=\"button\" class=\"hsbtn\" data-act=\"hotelstopadd\" title=\"Zwischenstopp im "+hn+"\">"+icon("hotel")+"Zwischenstopp</button>" : "")+(isRO() ? "" : "<button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+routeAnyVisible()+"\" aria-label=\"Alle Etappen auf der Karte ein- oder ausblenden\">"+(routeAnyVisible()?EYE:EYEOFF)+"<span>Karte</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>"+
+       "<button type=\"button\" class=\"rtog\" data-act=\"legslist\" role=\"switch\" aria-checked=\""+legsList+"\" aria-label=\"Wege zwischen den Stopps im Tagesplan ein- oder ausblenden\"><span>Wege</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>")+"</div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
   var LG = isRO() ? [] : dayLegs(cur); // Beobachter sehen keine Etappen und Verbindungen
-  var legLi = function(a, b, i){
+  var legLi0 = function(a, b, i){
     var m = legMode(a, b);
     var pre = a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#007AFF\">●</span><span><b>Mein Standort</b> <span class=\"sub\">Start zum nächsten Ziel</span></span></li>"
             : (a.id && T().done[a.id]) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (zuletzt erledigt)</span></li>" : "";
@@ -5016,6 +5019,8 @@ function renderDay(){
       (open && alts.length > 1 ? "<div class=\"alts2\" role=\"group\" aria-label=\"Andere Verbindungen\"><span class=\"alts-l\">Verbindung</span>"+alts.map(function(x, j){ return "<button type=\"button\" data-act=\"legalt\" data-leg=\""+i+"\" data-alt=\""+j+"\" aria-pressed=\""+(j===ai)+"\">"+transitSummary(x)+"</button>"; }).join("")+"</div>" : "")+
       (open && !r.walk ? transitSteps(r, a, b, legCtx(a)) : "")+"</li>";
   };
+  // Wege zwischen den Stopps im Tagesplan ausgeblendet: nur die Stopps zeigen (Startzeile „Mein Standort“ bleibt)
+  var legLi = function(a, b, i){ if(legsList) return legLi0(a, b, i); return a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#007AFF\">●</span><span><b>Mein Standort</b></span></li>" : ""; };
   if(HT && (!LG.length || LG[0][0]===HT)) h += "<li class=\"ht\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">Start</span></span></li>";
   var prev = HT, n = 0;
   var nHid = 0, shown = 0;
@@ -6527,6 +6532,7 @@ document.addEventListener("click", function(e){
       if(meRoute && me && P(sel)){ var mr = transit(me, P(sel), todayKey()), fp = [me, P(sel)]; mr.legs.forEach(function(l){ if(l.t==="ride") l.stops.forEach(function(si){ fp.push(stLL(si)); }); }); fitPoints(fp, 1); }
       break;
     case "export": exportPlan(); break;
+    case "legslist": legsList = !legsList; lsSet("rp-legs", legsList ? "1" : "0"); renderSheet(); break;
     case "rtoggle": // zentral: alle Etappen des Tages ein- oder ausblenden
       var showAll = !routeAnyVisible();
       dayLegs(cur).forEach(function(pr){ var k3 = legKey(pr[0], pr[1]); if(showAll) delete legHid[k3]; else legHid[k3] = 1; });
