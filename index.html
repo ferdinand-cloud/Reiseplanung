@@ -1499,7 +1499,10 @@ body.profopen .toprow{display:none}
 .pf-seg button{flex:1;border:0;background:none;border-radius:8px;padding:7px 8px;font:600 13.5px/1.2 var(--f-body);color:var(--muted);cursor:pointer}
 .pf-seg button[aria-selected="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .pf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.pf-trip{border:0;background:none;padding:0;text-align:left;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:6px;min-width:0}
+.pf-tw{position:relative;min-width:0}
+.pf-share{position:absolute;top:8px;right:8px;z-index:1;width:34px;height:34px;border:0;border-radius:50%;background:rgba(0,0,0,.45);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;display:grid;place-items:center;cursor:pointer}
+.pf-share svg{width:18px;height:18px}
+.pf-trip{width:100%;border:0;background:none;padding:0;text-align:left;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:6px;min-width:0}
 .pf-cov{aspect-ratio:1/1;width:100%;border-radius:14px;overflow:hidden;background:var(--fill);display:grid;place-items:center}
 .pf-cov img{width:100%;height:100%;object-fit:cover;display:block}
 .pf-cov i{font:700 32px/1 var(--f-body);font-style:normal;color:var(--muted)}
@@ -2919,9 +2922,10 @@ function renderProfile(){
   list.forEach(function(id){
     var t = S.trips[id], m = META[id], cov = tripCover(id), n = m ? (m.members||[]).length : 1, own = m && acct.user && m.owner===acct.user.uid;
     var role = isViewerOf(id) ? "Beobachter" : own || !m ? (n > 1 ? "mit "+(n-1)+(n===2?" Person":" Personen") : "Privat") : "Mitreisende/r";
-    h += "<button type=\"button\" class=\"pf-trip"+(id===S.cur?" cur":"")+"\" data-act=\"pfopen\" data-trip=\""+esc(id)+"\">"+
+    h += "<div class=\"pf-tw\">"+(isViewerOf(id) ? "" : "<button type=\"button\" class=\"pf-share\" data-act=\"opentrip\" data-trip=\""+esc(id)+"\" aria-label=\"Mitreisende &amp; Beobachter einladen\" title=\"Mitreisende &amp; Beobachter\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"7.5\" cy=\"7\" r=\"2.8\"/><path d=\"M2.5 16c.5-2.8 2.5-4.3 5-4.3s4.5 1.5 5 4.3M15 6.5v5M12.5 9h5\"/></svg></button>")+
+         "<button type=\"button\" class=\"pf-trip"+(id===S.cur?" cur":"")+"\" data-act=\"pfopen\" data-trip=\""+esc(id)+"\">"+
          "<span class=\"pf-cov\">"+(cov ? "<img data-ph=\""+cov+"\" alt=\"\">" : "<i>"+esc(((t.name||"?")[0]||"?").toUpperCase())+"</i>")+"</span>"+
-         "<span class=\"pf-tt\"><b>"+esc(t.name||"Reise")+"</b><small>"+esc([t.start && t.end ? shortD(t.start)+"–"+shortD(t.end) : "", role].filter(Boolean).join(" · "))+"</small></span></button>";
+         "<span class=\"pf-tt\"><b>"+esc(t.name||"Reise")+"</b><small>"+esc([t.start && t.end ? shortD(t.start)+"–"+shortD(t.end) : "", role].filter(Boolean).join(" · "))+"</small></span></button></div>";
   });
   h += "</div>";
   if(INVITES.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"opentrips\" data-v=\"req\">✉ "+INVITES.length+(INVITES.length===1 ? " Einladung zu einer Reise" : " Einladungen zu Reisen")+" ›</button>";
@@ -4974,7 +4978,8 @@ function renderTop(){
   Object.keys(S.trips).map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).forEach(function(x){
     h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur)+"\"><span>"+esc(x.name)+"</span><small>"+esc(rangeLabel(x.start,x.end))+"</small></button>";
   });
-  h += "<hr><button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button><button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
+  h += "<hr>"+(acct.user && !isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Mitreisende &amp; Beobachter</span><small>einladen, Rollen</small></button>" : "")+
+       (acct.user && isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Reise-Details</span><small>Mitglieder</small></button>" : "<button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button>")+"<button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
   $("tripMenu").innerHTML = h;
   var d = dayByKey(cur), r = "";
   if(d) r = "<button type=\"button\" class=\"rd-day\" data-act=\"daypop\" aria-haspopup=\"dialog\" aria-label=\""+esc(d.title)+" – Tag wechseln\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span>"+d.wd+"<span class=\"cnt\">"+shortD(d.key)+"</span><span class=\"chev\">"+CHEV+"</span></button>";
@@ -6527,7 +6532,10 @@ document.addEventListener("click", function(e){
     case "tripstab": tripsTab = t.getAttribute("data-v"); openSettings(); break;
     case "tripdetails": closeSettings(); tab = "trip"; renderSheet(); scheduleOverlay(); break;
     case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; openSettings(); break;
-    case "opentrip": closeMenus(); tab = "trip"; renderSheet(); scheduleOverlay(); break;
+    case "opentrip": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeSettings();
+      var otr = t.getAttribute("data-trip"); if(otr && S.trips[otr] && otr!==S.cur){ grpSel = ""; S.cur = otr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); }
+      tab = "trip"; tdraft = null; renderSheet(); scheduleOverlay();
+      setTimeout(function(){ var sh = document.querySelector("#tripPop .share"); if(sh) sh.scrollIntoView({block:"start", behavior: reduceMotion ? "auto" : "smooth"}); }, 250); break;
     case "tripclose": closeTrip(); break;
     case "acsync": acctPull(); break;
     case "geopick": geoPick(t.getAttribute("data-path"), +t.getAttribute("data-i")); break;
