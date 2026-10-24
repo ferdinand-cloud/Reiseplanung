@@ -6418,14 +6418,13 @@ function libPick(){
 }
 function dKey(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 /* EXIF lesen: Aufnahmeort (GPS) und Aufnahmezeit. Funktioniert für JPEG und HEIC (sucht den Exif-Block im Dateianfang). */
-function photoMeta(file){
-  return file.slice(0, 512*1024).arrayBuffer().then(function(buf){
+function exifFromBuf(buf){
     var u = new Uint8Array(buf), dv = new DataView(buf), T0 = -1;
     for(var i = 0; i < u.length - 10; i++){
       if(u[i]===0x45 && u[i+1]===0x78 && u[i+2]===0x69 && u[i+3]===0x66 && u[i+4]===0 && u[i+5]===0 &&
          ((u[i+6]===0x49 && u[i+7]===0x49 && u[i+8]===0x2A) || (u[i+6]===0x4D && u[i+7]===0x4D && u[i+9]===0x2A))){ T0 = i+6; break; }
     }
-    if(T0 < 0) return {};
+    if(T0 < 0) return null;
     var le = u[T0]===0x49, g16 = function(o){ return dv.getUint16(T0+o, le); }, g32 = function(o){ return dv.getUint32(T0+o, le); };
     var ifd = function(off){ var r = {}, n = g16(off); for(var k = 0; k < n; k++){ var e = off+2+k*12; r[g16(e)] = {t:g16(e+2), c:g32(e+4), v:e+8}; } return r; };
     var str = function(en){ var o = en.c > 4 ? g32(en.v) : en.v, s = ""; for(var k = 0; k < en.c; k++){ var ch = u[T0+o+k]; if(!ch) break; s += String.fromCharCode(ch); } return s; };
@@ -6446,6 +6445,32 @@ function photoMeta(file){
       if(m){ var d = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5]); if(!isNaN(d)) out.when = d; }
     } catch(e){}
     return out;
+}
+/* HEIC/HEIF: Exif-Block über die Item-Tabelle (iinf/iloc) finden – er liegt oft am Dateiende */
+function heifExifRange(buf){
+  var dv = new DataView(buf), n = buf.byteLength, u8 = new Uint8Array(buf);
+  var t4 = function(o){ return String.fromCharCode(u8[o], u8[o+1], u8[o+2], u8[o+3]); };
+  var rd = function(o, sz){ return sz===0 ? 0 : sz===2 ? dv.getUint16(o) : sz===4 ? dv.getUint32(o) : sz===8 ? dv.getUint32(o)*4294967296 + dv.getUint32(o+4) : 0; };
+  var boxes = function(o, e, fn){ while(o + 8 <= e){ var sz = dv.getUint32(o), ty = t4(o+4), h = 8; if(sz===1){ sz = rd(o+8, 8); h = 16; } else if(sz===0) sz = e - o; if(sz < h) break; fn(ty, o+h, o+sz); o += sz; } };
+  var meta = null; boxes(0, n, function(ty, b, e){ if(ty==="meta" && !meta) meta = [b+4, e]; });
+  if(!meta) return null;
+  var exifId = -1, loc = {};
+  boxes(meta[0], Math.min(meta[1], n), function(ty, b, e){
+    if(ty==="iinf"){ var v = u8[b], c = v===0 ? 6 : 8; boxes(b+c, e, function(t2, b2){ if(t2!=="infe") return; var v2 = u8[b2], id, typ; if(v2 < 2) return; if(v2===2){ id = dv.getUint16(b2+4); typ = t4(b2+8); } else { id = dv.getUint32(b2+4); typ = t4(b2+10); } if(typ==="Exif") exifId = id; }); }
+    if(ty==="iloc"){ var v = u8[b], o = b+4, a = u8[o], c2 = u8[o+1], offS = a>>4, lenS = a&15, baseS = c2>>4, idxS = (v===1||v===2) ? c2&15 : 0; o += 2;
+      var cnt = v < 2 ? dv.getUint16(o) : dv.getUint32(o); o += v < 2 ? 2 : 4;
+      for(var i = 0; i < cnt && o < e; i++){ var id = v < 2 ? dv.getUint16(o) : dv.getUint32(o); o += v < 2 ? 2 : 4; if(v===1||v===2) o += 2; o += 2; var base = rd(o, baseS); o += baseS; var ec = dv.getUint16(o); o += 2;
+        for(var j = 0; j < ec; j++){ o += idxS; var eo = rd(o, offS); o += offS; var el = rd(o, lenS); o += lenS; if(j===0) loc[id] = [base + eo, el]; } } }
+  });
+  return exifId > -1 && loc[exifId] ? loc[exifId] : null;
+}
+function photoMeta(file){
+  var head = Math.min(file.size, 1024*1024);
+  return file.slice(0, head).arrayBuffer().then(function(buf){
+    var r = exifFromBuf(buf); if(r) return r;
+    var rg = null; try { rg = heifExifRange(buf); } catch(e){}
+    var pr = rg && rg[1] > 0 && rg[0] < file.size ? file.slice(rg[0], rg[0] + Math.min(rg[1], 512*1024)).arrayBuffer() : file.slice(Math.max(0, file.size - 2*1024*1024)).arrayBuffer();
+    return pr.then(function(b2){ return exifFromBuf(b2) || (rg ? file.slice(Math.max(0, file.size - 2*1024*1024)).arrayBuffer().then(function(b3){ return exifFromBuf(b3) || {}; }) : {}); });
   }).catch(function(){ return {}; });
 }
 /* Fotos aus der Mediathek: nach der Auswahl fragen – aktueller Standort oder Aufnahmeort aus den Metadaten */
