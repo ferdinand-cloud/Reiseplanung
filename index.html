@@ -2024,6 +2024,17 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 body.sheetmin .sheet .tabs,body.sheetmin #body{opacity:0;pointer-events:none}
 body.sheetmin .sheet .handle{width:56px;height:5px;background:color-mix(in srgb,var(--ink) 45%,transparent)}
 @media (min-width:900px){ body.sheetmin .sheet .tabs,body.sheetmin #body{opacity:1;pointer-events:auto} }
+
+.layers label{position:relative}
+.lfbtn{margin-left:auto;position:relative;width:32px;height:32px;flex:0 0 32px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;padding:0;cursor:pointer}
+.lfbtn[hidden]{display:none}
+.lfbtn svg{width:18px;height:18px}
+.lfbtn.act{color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,transparent)}
+.lfbtn.open{background:var(--fill);color:var(--ink)}
+.lfbtn.act.open{color:var(--accent)}
+.lfbtn .lcat-dot{position:absolute;top:4px;right:4px;width:8px;height:8px;border:1.5px solid var(--sheet)}
+.lcats.shut{display:none}
+.lcats{margin:0 0 6px 34px !important}
 </style>
 </head>
 <body>
@@ -5672,16 +5683,23 @@ function applyPoi(){
   ["poi-dot","poi-lbl","poi-dot-g","poi-lbl-g"].forEach(function(l){ if(!map.getLayer(l)) return; map.setLayoutProperty(l, "visibility", poiOn ? "visible" : "none"); map.setFilter(l, poiFilter(/-g$/.test(l))); });
 }
 var lcatOpen = {wish:false, poi:false};
-function lcatHead(k, txt, active){ var o = lcatOpen[k]; return "<button type=\"button\" class=\"lcat-h"+(active?" act":"")+"\" data-act=\"lcattog\" data-k=\""+k+"\" aria-expanded=\""+o+"\"><span>Kategorien</span><b>"+esc(txt)+"</b>"+(active ? "<i class=\"lcat-dot\" aria-label=\"Filter aktiv\"></i>" : "")+CHEV+"</button>"; }
+var IFILT = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 5h14l-5.5 6.5V16l-3 1.5v-6z\"/></svg>";
+/* Filter-Knopf rechts in der Ebenen-Zeile (statt Zeile darunter); Punkt zeigt aktiven Filter */
+function lcatHead(k, txt, active){
+  var lab = $(k==="wish" ? "lWish" : "lPoi"); lab = lab && lab.parentNode; if(!lab) return "";
+  var b = lab.querySelector(".lfbtn"); if(!b){ b = document.createElement("button"); b.type = "button"; b.className = "lfbtn"; b.setAttribute("data-act", "lcattog"); b.setAttribute("data-k", k); lab.appendChild(b); }
+  b.classList.toggle("act", !!active); b.classList.toggle("open", !!lcatOpen[k]); b.setAttribute("aria-expanded", !!lcatOpen[k]); b.setAttribute("aria-label", "Kategorien filtern"+(active ? " – Filter aktiv: "+txt : "")); b.title = active ? "Filter aktiv: "+txt : "Kategorien filtern";
+  b.innerHTML = IFILT+(active ? "<i class=\"lcat-dot\"></i>" : "");
+  return ""; }
 function renderPoiCats(){
-  var el = $("poiCats"); el.hidden = !poiOn; if(!poiOn) return;
+  var el = $("poiCats"); el.hidden = !poiOn; var fb0 = $("lPoi").parentNode.querySelector(".lfbtn"); if(fb0) fb0.hidden = !poiOn; if(!poiOn) return;
   var on = POIGROUPS.filter(function(g){ return !poiOff[g[0]]; }).length, act = on < POIGROUPS.length;
-  el.classList.add("lcats");
+  el.classList.add("lcats"); el.classList.toggle("shut", !lcatOpen.poi);
   el.innerHTML = lcatHead("poi", act ? on+" von "+POIGROUPS.length : "Alle", act)+(lcatOpen.poi ? "<div class=\"la\"><button type=\"button\" data-act=\"poiall\">Alle</button><button type=\"button\" data-act=\"poinone\">Keine</button></div><div class=\"pc\">"+
     POIGROUPS.map(function(g){ return "<button type=\"button\" data-act=\"poicat\" data-cat=\""+g[0]+"\" aria-pressed=\""+!poiOff[g[0]]+"\"><i style=\"background:"+g[2]+"\"></i>"+esc(g[1])+"</button>"; }).join("")+"</div>" : "");
 }
 function renderWishCats(){
-  var el = $("wishCats"); if(!el) return; var show = !!(layers.wish || isRO()) && !isRO(); el.hidden = !show; if(!show) return;
+  var el = $("wishCats"); if(!el) return; var show = !!(layers.wish || isRO()) && !isRO(); el.hidden = !show; var fb1 = $("lWish").parentNode.querySelector(".lfbtn"); if(fb1) fb1.hidden = !show; if(!show) return; el.classList.toggle("shut", !lcatOpen.wish);
   var ks = Object.keys(catFilter), act = ks.length > 0, cc = {}; wishes().forEach(function(p){ cc[p.c] = (cc[p.c]||0) + 1; });
   el.innerHTML = lcatHead("wish", act ? ks.map(function(k){ return CATNAME[k]; }).slice(0, 2).join(", ")+(ks.length > 2 ? " +"+(ks.length-2) : "") : "Alle", act)+
     (lcatOpen.wish ? "<div class=\"la\"><button type=\"button\" data-act=\"lwcat\" data-cat=\"\">Alle</button><span class=\"cnt\">wirkt auch auf die Wunschliste</span></div><div class=\"pc\">"+
