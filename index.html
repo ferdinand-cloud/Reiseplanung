@@ -5548,7 +5548,7 @@ function poiCard(){
   var c = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button><h3>"+esc(q.n)+"</h3>";
   c += "<p><span class=\"cat\">"+icon(q.c)+esc(sub ? sub.charAt(0).toUpperCase()+sub.slice(1) : CATNAME[q.c])+"</span>"+(nbOf(q)?" · "+esc(nbOf(q)):"")+"</p>"+gBlock(q)+stationLine(q);
   c += "<div class=\"row poisel\">";
-  if(D) c += "<button class=\"btn\" type=\"button\" data-act=\"poiadd\" data-to=\"day\">Zu "+esc(D.lbl)+" hinzufügen"+addLabel(cur, q)+"</button>";
+  if(D) c += "<button class=\"btn\" type=\"button\" data-act=\"planpick\" data-poi=\"1\">Zu "+esc(D.lbl)+" hinzufügen"+addLabel(cur, q)+"</button>";
   var lists = T().lists, al = (activeList && lists.some(function(l){ return l.id===activeList; })) ? activeList : (lists[0]||{}).id || "";
   c += "<button class=\"btn g\" type=\"button\" data-act=\"poiadd\" data-to=\"wish\">Zur Wunschliste</button>";
   if(lists.length > 1) c += "<select id=\"poiList\" aria-label=\"Liste\">"+lists.map(function(l){ return "<option value=\""+l.id+"\""+(l.id===al?" selected":"")+">"+esc(l.name)+"</option>"; }).join("")+"</select>";
@@ -5556,12 +5556,12 @@ function poiCard(){
   c += "</div>";
   return c;
 }
-function poiAdd(to){
+function poiAdd(to, at){
   var q = poiSel; if(!q) return;
   var ex = poiExisting(q);
   if(ex){
     ex = rootOf(ex);
-    if(to==="day" && !dayOf(ex)){ plan(ex, cur); }
+    if(to==="day" && !dayOf(ex)){ plan(ex, cur, at); }
     else if(to==="day" && !visitsOf(ex).some(function(v){ return v.k===cur; })){ revisit(ex, cur); }
     else toast(q.n+" ist schon "+(dayOf(ex) ? "am "+dayByKey(dayOf(ex)).lbl+" geplant" : "in der Wunschliste"), false);
     poiSel = null; renderAll(); select(ex); return;
@@ -5570,7 +5570,7 @@ function poiAdd(to){
   var pid = uid("w"), p = {id:pid, n:q.n.slice(0,80), c:q.c, list:lid||null, note:"", addr:(q.addr||"").slice(0,120), la:q.la, lo:q.lo}, gq = gInfo[gK(q)];
   if(gq && gq.st==="ok"){ p.gid = gq.d.id; gInfo[gK(p)] = gq; }
   T().places[pid] = p;
-  if(to==="day") plan(pid, cur); else { save(); toast(p.n+" steht in der Wunschliste", false); }
+  if(to==="day") plan(pid, cur, at); else { save(); toast(p.n+" steht in der Wunschliste", false); }
   poiSel = null; renderAll(); select(pid);
 }
 /* ---------- Google-Bewertungen & Fotos (Places API, Schlüssel nur auf diesem Gerät) ---------- */
@@ -5729,7 +5729,7 @@ function renderCard(){
   var dn = !!T().done[sel], ph = photosOf(sel).length, nc = (CMTS[sel]||[]).length;
   c += "<div class=\"jp-tiles ctiles\" data-id=\""+sel+"\">";
   if(dk) c += "<button type=\"button\" class=\"jp-tile"+(dn?" on":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"<span>"+(dn?"Erledigt":"Abhaken")+"</span></button>";
-  else if(D) c += "<button type=\"button\" class=\"jp-tile pri\" data-act=\"plan\">"+I("<path d=\"M10 4.5v11M4.5 10h11\"/>")+"<span>Zu "+esc(D.wd || D.lbl.split(" ")[0])+"</span></button>";
+  else if(D) c += "<button type=\"button\" class=\"jp-tile pri\" data-act=\"planpick\" data-pid=\""+sel+"\">"+I("<path d=\"M10 4.5v11M4.5 10h11\"/>")+"<span>Zu "+esc(D.wd || D.lbl.split(" ")[0])+"</span></button>";
   else c += "<button type=\"button\" class=\"jp-tile\" data-act=\"revisit\" data-pid=\""+sel+"\">"+I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/>")+"<span>Einplanen</span></button>";
   if(dk){ var crv = rateOf(sel), crr = RATES.filter(function(r){ return r[0]===crv; })[0];
     c += "<button type=\"button\" class=\"jp-tile crate"+(crr?" set":"")+"\""+(crr ? " style=\"--rc:"+crr[2]+"\"" : "")+(isRO() ? " disabled" : " data-act=\"ratepick\"")+" aria-haspopup=\"menu\">"+
@@ -6072,7 +6072,7 @@ var jOpen = lsGet("nyc-j-open")!=="0";
 var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#5E9970"],[3,"Nice","#007AFF"],[4,"Okay","#6b7785"],[5,"Overrated","#FF3B30"]];
 function rateOf(id){ return ((T().rating||{})[id]) || 0; }
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=ratepick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=ratepick],[data-act=dcplan],[data-act=chplan],[data-act=phsend],[data-act=planpick]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -7196,7 +7196,7 @@ function renderSheet(){
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
-var RO_ACTS = {"done":1,"plan":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
+var RO_ACTS = {"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
 function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 var roWas = null;
 function applyRO(){
@@ -7338,12 +7338,53 @@ function toast(msg, undo){
   el.hidden = false; clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ el.hidden = true; undoSnap = null; }, 5000);
 }
-function plan(id, k){
+function plan(id, k, at){
   var p = P(id); if(!p || dayOf(id) || !dayByKey(k)) return;
   undoSnap = snapshot();
-  var idx = insertIdx(k, p);
+  var idx = at!=null && at >= 0 && at <= ord(k).length ? at : insertIdx(k, p);
   ord(k).splice(idx, 0, id);
   save(); toast(p.n+" ist jetzt Stopp "+(idx+1)+" am "+dayByKey(k).lbl, true);
+}
+/* Einplanen von der Karte: ans Ende oder zwischen zwei Punkte des Tages */
+var PLANCTX = null;
+function planPick(btn){
+  var D = dayByKey(cur); if(!D) return;
+  PLANCTX = {poi:btn.getAttribute("data-poi")==="1", pid:btn.getAttribute("data-pid") || sel, name:btn.getAttribute("data-poi")==="1" ? (poiSel && poiSel.n) : (P(btn.getAttribute("data-pid") || sel) || {}).n};
+  var n = ord(cur).length;
+  jpPopover("plan", btn, "<div class=\"dc-dh\">Zu "+esc(D.lbl)+" hinzufügen</div>"+
+    "<button type=\"button\" data-act=\"planend\" role=\"menuitem\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 5h9M4 9h9M4 13h5M15 11v6M12 14h6\"/></svg></span><span>Ans Ende"+(n ? " (Stopp "+(n+1)+")" : "")+"</span></button>"+
+    (n ? "<button type=\"button\" data-act=\"planins\" role=\"menuitem\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 4h12M4 16h12M10 7v6M7 10h6\"/></svg></span><span>Dazwischen einschieben …</span></button>" : ""), "planpick");
+}
+function planDo(at){
+  var c = PLANCTX; PLANCTX = null; if(!c) return;
+  if(c.poi){ poiAdd("day", at); return; }
+  var id = c.pid; if(!P(id)) return; plan(id, cur, at); sel = id; renderAll();
+}
+function planNodes(){
+  var D = dayByKey(cur), H = D && D.hotel, o = ord(cur), nodes = [];
+  nodes.push(H ? {n:H.n, h:true} : {n:"Tagesbeginn", h:true, pseudo:true});
+  o.forEach(function(id, i){ var p = P(id); nodes.push({n:p ? p.n : "?", id:id, no:i+1, done:!!T().done[id], hs:p && p.k==="hotel"}); });
+  nodes.push(H ? {n:H.n, h:true} : {n:"Tagesende", h:true, pseudo:true});
+  return nodes;
+}
+function openPlanIns(first){
+  var c = PLANCTX; if(!c) return; c.first = first==null ? null : first;
+  var nodes = planNodes(), D = dayByKey(cur), f = c.first;
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Einschieben\"><div class=\"pop-head\"><h4>„"+esc(c.name || "Ort")+"“ einschieben</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<p class=\"note\" style=\"margin:0 2px 10px\">"+(f==null ? "Tippe auf die beiden Punkte, zwischen die der neue Stopp kommen soll." : "„"+esc(nodes[f].n)+"“ gewählt – jetzt den Punkt davor oder danach antippen.")+"</p><div class=\"pop-list addlist vm2\">";
+  nodes.forEach(function(n, i){
+    var on = f===i, near = f!=null && Math.abs(f - i)===1, off = f!=null && !on && !near;
+    var badge = n.h ? "<span class=\"ai vm2-n hs\">"+(n.pseudo ? "•" : "H")+"</span>" : n.hs ? "<span class=\"ai vm2-n hs\">H</span>" : "<span class=\"ai vm2-n\" style=\"background:"+(n.done ? "var(--muted)" : D ? dayColor(D) : "var(--accent)")+"\">"+(n.done ? "✓" : n.no)+"</span>";
+    h += "<button type=\"button\" data-act=\"planinspick\" data-i=\""+i+"\" class=\""+(on ? "vm2-on" : "")+(off ? " vm2-off" : "")+(near ? " vm2-near" : "")+"\">"+badge+"<span class=\"dt\"><b>"+esc(n.n)+"</b>"+(on ? "<small>erster Punkt</small>" : near ? "<small>antippen zum Einschieben</small>" : i===0 && !n.pseudo ? "<small>Start</small>" : i===nodes.length-1 && !n.pseudo ? "<small>Ende</small>" : "")+"</span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>";
+    if(i < nodes.length - 1) h += "<div class=\"vm2-leg"+(f!=null && (i===f || i===f-1) ? " hi" : "")+"\"></div>";
+  });
+  h += "</div></div>"; $("catPop").innerHTML = h; $("catPop").hidden = false;
+}
+function planInsPick(i){
+  var c = PLANCTX; if(!c) return; var f = c.first;
+  if(f==null || f===i){ openPlanIns(f===i ? null : i); return; }
+  if(Math.abs(f - i)!==1){ openPlanIns(i); return; }
+  var at = Math.min(f, i); closeCatPop(); planDo(at);
 }
 /* Stopp auf einen anderen Tag verschieben (an die Stelle, an die auch neue Stopps kommen) */
 function moveToDay(id, to){
@@ -7532,6 +7573,10 @@ document.addEventListener("click", function(e){
     case "jpedit": openJPop(t.getAttribute("data-pid") || sel); break;
     case "focus": select(id); if(!desktop.matches && sheetState==="full") setSheet("mid"); revealPoint(P(id), 15, true); break;
     case "plan": plan(id, cur); sel = id; renderAll(); break;
+    case "planpick": planPick(t); break;
+    case "planend": closeJpMore(); planDo(null); break;
+    case "planins": closeJpMore(); setTimeout(function(){ openPlanIns(null); }, 30); break;
+    case "planinspick": planInsPick(parseInt(t.getAttribute("data-i"), 10)); break;
     case "unplan": closeCatPop(); unplan(id); renderAll(); break;
     case "go": openGo(id || sel); break;
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
