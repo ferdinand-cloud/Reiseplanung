@@ -1359,7 +1359,19 @@ li.st .sub{margin-top:1px}
 .cap-card b,.cap-card > p{text-align:center}
 .cap-list{display:grid;gap:10px;margin-top:12px;max-height:min(52vh,420px);overflow-y:auto}
 .cap-row{display:flex;gap:10px;align-items:flex-start}
-.cap-row img{width:64px;height:64px;flex:0 0 64px;border-radius:10px;object-fit:cover;background:var(--chip)}
+.cap-im{position:relative;width:64px;height:64px;flex:0 0 64px}
+.cap-row img{width:64px;height:64px;flex:0 0 64px;border-radius:10px;object-fit:cover;background:var(--chip);display:block}
+.cap-lk{position:absolute;right:-6px;bottom:-6px;width:28px;height:28px;border-radius:50%;border:2px solid var(--sheet);background:var(--fill-solid,#3a3a3c);color:#fff;display:grid;place-items:center;padding:0;cursor:pointer;opacity:.85}
+.cap-lk svg{width:14px;height:14px;color:#fff !important;stroke:#fff !important;opacity:1 !important}
+.cap-lk.on{background:#E5A100;opacity:1}
+.cap-lk:disabled{cursor:default}
+.cap-all{display:flex;align-items:center;gap:6px;margin:10px auto 0;border:0;border-radius:999px;padding:7px 14px;background:var(--fill);color:var(--ink);font:600 13.5px/1.2 var(--f-body);cursor:pointer}
+.cap-all svg{width:15px;height:15px}
+.cap-all.on{background:color-mix(in srgb,#E5A100 22%,transparent);color:#B07A00}
+.cap-row textarea{width:auto;box-sizing:border-box}
+.cap-list{padding:2px 6px 6px 2px;grid-template-columns:minmax(0,1fr)}
+.cap-row{min-width:0}
+.cap-row textarea{max-width:100%}
 .cap-row textarea{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--sheet);color:var(--ink);padding:8px 10px;font:16px/1.35 var(--f-body);resize:none}
 .cap-ok{background:var(--ink) !important;color:var(--sheet) !important}
 .cfpop{position:fixed;inset:0;z-index:95;background:rgba(8,12,18,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:grid;place-items:center;padding:24px}
@@ -5433,23 +5445,42 @@ function openCardMore(){
 /* ---------- Bildunterschriften: je Foto ein Text, erscheint unten am Foto ---------- */
 function captOf(ph){ return ((T().capt||{})[ph]) || ""; }
 var CAPQ = [];
-function captPrompt(ids, edit){
+var CAPPV = {}, CAPDONE = [];
+function captPrompt(ids, edit, after){
   var el = $("capPop"); if(!el){ el = document.createElement("div"); el.id = "capPop"; el.className = "cfpop"; document.body.appendChild(el); }
   var keep = {}; el.querySelectorAll && el.querySelectorAll("textarea[data-cap]").forEach(function(x){ keep[x.getAttribute("data-cap")] = x.value; });
-  ids.forEach(function(x){ if(CAPQ.indexOf(x)<0) CAPQ.push(x); });
-  var n = CAPQ.length;
-  el.innerHTML = "<div class=\"cf-card cap-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Bildunterschrift\"><b>"+(edit ? "Bildunterschrift" : n===1 ? "Text zum Foto" : "Text zu den Fotos")+"</b>"+(edit ? "" : "<p>Optional – erscheint unten am Foto.</p>")+
+  if(after) CAPDONE.push(after);
+  ids.forEach(function(x){ if(CAPQ.indexOf(x)<0){ CAPQ.push(x); CAPPV[x] = !!((T().privPh||{})[x]); } });
+  var n = CAPQ.length, pv = canPriv(), placeP = function(x){ return isPrivP(phPlace(x)); };
+  var lockBtn = function(x){ var on = CAPPV[x] || placeP(x);
+    return "<button type=\"button\" class=\"cap-lk"+(on?" on":"")+"\" data-cappv=\""+x+"\" aria-pressed=\""+on+"\""+(placeP(x) ? " disabled title=\"Der Ort ist privat\"" : "")+" aria-label=\""+(on ? "Privat – nur Mitreisende" : "Für alle sichtbar")+"\">"+ILOCK+"</button>"; };
+  var allOn = CAPQ.every(function(x){ return CAPPV[x] || placeP(x); });
+  el.innerHTML = "<div class=\"cf-card cap-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Bildunterschrift\"><b>"+(edit ? "Bildunterschrift" : n===1 ? "Text zum Foto" : "Text zu den Fotos")+"</b>"+(edit ? "" : "<p>Optional – erscheint unten am Foto."+(pv ? " Mit dem Schloss machst du ein Foto privat." : "")+"</p>")+
+    (pv && n > 1 ? "<button type=\"button\" class=\"cap-all"+(allOn?" on":"")+"\" data-capall=\"1\" aria-pressed=\""+allOn+"\">"+ILOCK+"<span>"+(allOn ? "Alle privat" : "Alle privat machen")+"</span></button>" : "")+
     "<div class=\"cap-list\">"+CAPQ.map(function(x){ var v = keep[x]!==undefined ? keep[x] : captOf(x);
-      return "<div class=\"cap-row\"><img data-ph=\""+x+"\" alt=\"\"><textarea data-cap=\""+x+"\" rows=\"2\" maxlength=\"500\" placeholder=\"Text zum Foto …\">"+esc(v)+"</textarea></div>"; }).join("")+"</div>"+
+      return "<div class=\"cap-row\"><div class=\"cap-im\"><img data-ph=\""+x+"\" alt=\"\">"+(pv ? lockBtn(x) : "")+"</div><textarea data-cap=\""+x+"\" rows=\"2\" maxlength=\"500\" placeholder=\"Text zum Foto …\">"+esc(v)+"</textarea></div>"; }).join("")+"</div>"+
     "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\">"+(edit ? "Abbrechen" : "Überspringen")+"</button><button type=\"button\" class=\"cf-ok cap-ok\">Speichern</button></div></div>";
   el.hidden = false; fillPhotos(el);
-  var close = function(){ el.hidden = true; el.innerHTML = ""; CAPQ = []; };
+  var applyPv = function(){
+    if(!pv) return; var t = T(), ch = []; t.privPh = t.privPh || {};
+    CAPQ.forEach(function(x){ var was = !!t.privPh[x]; if(CAPPV[x] && !was){ t.privPh[x] = 1; ch.push(x); } else if(!CAPPV[x] && was){ delete t.privPh[x]; ch.push(x); } });
+    if(ch.length){ phPrivSync(ch); cmResync(); }
+    return ch.length;
+  };
+  var close = function(){ el.hidden = true; el.innerHTML = ""; CAPQ = []; CAPPV = {}; var fs = CAPDONE; CAPDONE = []; fs.forEach(function(f){ try { f(); } catch(e){} }); };
   el.onclick = function(ev){ ev.stopPropagation();
-    if(ev.target===el || ev.target.closest(".cf-no")) close();
+    var lk = ev.target.closest("[data-cappv]"), all = ev.target.closest("[data-capall]");
+    if(lk || all){
+      if(lk){ var k0 = lk.getAttribute("data-cappv"); CAPPV[k0] = !CAPPV[k0]; }
+      else { var to = !CAPQ.every(function(x){ return CAPPV[x] || placeP(x); }); CAPQ.forEach(function(x){ CAPPV[x] = to; }); }
+      captPrompt([], edit); return;
+    }
+    if(ev.target===el || ev.target.closest(".cf-no")){ if(!edit && applyPv()){ save(); if(jp && !$("jPop").hidden) renderJPop(); } close(); }
     else if(ev.target.closest(".cap-ok")){
       var t = T(); t.capt = t.capt || {};
       el.querySelectorAll("textarea[data-cap]").forEach(function(x){ var k = x.getAttribute("data-cap"), v = x.value.trim().slice(0,500); if(v) t.capt[k] = v; else delete t.capt[k]; });
-      close(); save(); if(jp && jp.view) phMetaRefresh(); else if(jp && !$("jPop").hidden) renderJPop();
+      var npv = applyPv(); close(); save(); if(jp && jp.view) phMetaRefresh(); else if(jp && !$("jPop").hidden) renderJPop();
+      if(npv) toast(npv===1 ? "Privatsphäre des Fotos geändert" : "Privatsphäre von "+npv+" Fotos geändert", false);
     } };
   if(edit) setTimeout(function(){ var ta = el.querySelector("textarea"); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 50);
 }
@@ -6097,11 +6128,11 @@ function addPhotos(pid, files){
     var add = function(){ var t = T(); t.photos = t.photos || {}; t.photos[pid] = (t.photos[pid]||[]).concat([id]); var q = phQueue(); q.up.push(id); phSaveQ(q); ok++; ids.push(id); if(list.length===1 && CAMF.pending===f){ CAMF[id] = f; CAMF.pending = null; } };
     return idbDo("readwrite", function(st){ st.put({id:id, data:d, place:pid, trip:tid}); }).then(add, function(){ noDev++; add(); });
   }, function(){ bad++; }); }); }, Promise.resolve()).then(function(){
-    save(); if(jp && !$("jPop").hidden) renderJPop(); renderSheet(); phFlush();
+    save(); if(jp && !$("jPop").hidden) renderJPop(); renderSheet();
     if(bad && !ok) toast("Foto konnte nicht gelesen werden. Bitte ein anderes Foto wählen.", false);
     else if(noDev) toast((ok===1?"Foto":"Fotos")+" hinzugefügt – wird ins Konto hochgeladen (Gerätespeicher gerade nicht verfügbar).", false);
     else toast(ok===1 ? "Foto hinzugefügt" : ok+" Fotos hinzugefügt"+(bad ? ", "+bad+" nicht lesbar" : ""), false);
-    if(ids.length) captPrompt(ids);
+    if(ids.length) captPrompt(ids, false, phFlush); else phFlush();
     return ids;
   }).finally(function(){ var inp = $("phIn"); if(inp) try { inp.value = ""; } catch(e){} });
 }
