@@ -1513,6 +1513,16 @@ body.profopen .toprow{display:none}
 .ntview .nt-like .nt-ic{color:#E5484D}
 .ntview .nt-friend .nt-ic,.ntview .nt-join .nt-ic{color:var(--accent)}
 .ntview .nt-invite .nt-ic{color:#C9A227}
+.ntview .nt-mention .nt-ic,.ntview .nt-reply .nt-ic{color:#7B61FF}
+.cm .mn{color:var(--accent);font-weight:600}
+.cm.re{margin-left:18px}
+.cmrep{border:0;background:none;padding:2px 0 0;color:var(--muted);font:600 12px/1.2 var(--f-body);cursor:pointer}
+form.gnew{position:relative}
+.mnlist{position:absolute;left:0;bottom:calc(100% + 6px);z-index:5;min-width:180px;max-width:100%;padding:4px;border-radius:12px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:.5px solid var(--glass-bd,var(--line));box-shadow:0 6px 20px rgba(0,0,0,.25);display:grid}
+.mnlist[hidden]{display:none}
+.mnlist button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:8px;color:var(--ink);font:600 14px/1.2 var(--f-body);cursor:pointer}
+.mnlist button:hover,.mnlist button:focus{background:var(--fill)}
+.mnlist .note{margin:6px 8px}
 .ntview .nt.new .nt-ic{color:#fff !important}
 .nt-empty{margin-top:24px;text-align:center}
 .ls-head{position:sticky;top:-2px;z-index:2;margin:-6px -16px 0;padding:8px 16px 8px;background:var(--sheet);box-shadow:0 -120px 0 0 var(--sheet),0 8px 12px -10px rgba(0,0,0,.35)}
@@ -2533,7 +2543,7 @@ function cmWatch(){
   if(!KNOWN[cmTrip]) return;
   var RAW = {comments:[], pcomments:[]}, uns = [];
   var onQs = function(col){ return function(qs){
-    RAW[col] = qs.docs.map(function(d){ var v = d.data(); return {id:d.id, pid:v.pid, text:v.text, by:v.by, email:v.email, at:v.at, col:col}; });
+    RAW[col] = qs.docs.map(function(d){ var v = d.data(); return {id:d.id, pid:v.pid, text:v.text, by:v.by, email:v.email, at:v.at, col:col, mentions:v.mentions||[], replyTo:v.replyTo||"", replyToUid:v.replyToUid||""}; });
     CMTS = {};
     RAW.comments.concat(RAW.pcomments).sort(function(a, b){ return (a.at||0) - (b.at||0); }).forEach(function(c){ (CMTS[c.pid] = CMTS[c.pid] || []).push(c); });
     cmResyncSoon();
@@ -2557,15 +2567,59 @@ function cmResync(){
   Object.keys(CMTS).forEach(function(pid){ (CMTS[pid]||[]).forEach(function(c){
     var want = cmCol(c.pid); if(!c.col || c.col===want || c.moving) return; c.moving = true;
     var from = tripRef(S.cur).collection(c.col).doc(c.id), to = tripRef(S.cur).collection(want).doc(c.id);
-    to.set({pid:c.pid, text:c.text||"", by:c.by||"", email:c.email||"", at:c.at||Date.now()}).then(function(){ return from.delete(); }).catch(function(){ c.moving = false; });
+    to.set({pid:c.pid, text:c.text||"", by:c.by||"", email:c.email||"", at:c.at||Date.now(), mentions:c.mentions||[], replyTo:c.replyTo||"", replyToUid:c.replyToUid||""}).then(function(){ return from.delete(); }).catch(function(){ c.moving = false; });
   }); });
 }
+/* ---------- Kommentare: @Erwähnungen von Mitreisenden, Antworten ---------- */
+// Personen dieser Reise (ohne mich) mit Benutzernamen – nur sie können Kommentare lesen
+function tripPeople(){
+  var m = META[S.cur], me = acct.user && acct.user.uid, out = [];
+  ((m && m.members) || []).forEach(function(uid0){ if(uid0===me) return; var nm = personName(uid0); if(nm) out.push({uid:uid0, name:nm}); });
+  return out;
+}
+var PNASK = {};
+function personName(uid0){
+  if(acct.user && uid0===acct.user.uid) return PROF && PROF.name || "";
+  var f = FR.friends.filter(function(x){ return x.uid===uid0; })[0]; if(f && f.name) return f.name;
+  if(INVN[uid0]) return INVN[uid0];
+  if(uid0 && !PNASK[uid0] && fbDb){ PNASK[uid0] = 1; fbDb.collection("profiles").doc(uid0).get().then(function(d){ var v = d.exists && d.data(); if(v && v.name){ INVN[uid0] = v.name; if(jp) { if(jp.view) phMetaRefresh(); else if(!$("jPop").hidden && !(document.activeElement && /^(cmIn|phcIn)$/.test(document.activeElement.id))) renderJPop(); } } }, function(){}); }
+  return "";
+}
+function mentionUids(text){
+  var ppl = tripPeople(), out = [];
+  (text.match(/@([A-Za-z0-9._-]{2,20})/g) || []).forEach(function(tok){ var n = tok.slice(1).toLowerCase(); ppl.forEach(function(x){ if(x.name.toLowerCase()===n && out.indexOf(x.uid)<0) out.push(x.uid); }); });
+  return out;
+}
+function cmText(t){ return esc(t||"").replace(/@([A-Za-z0-9._-]{2,20})/g, "<b class=\"mn\">@$1</b>"); }
+var REPLY = null;
 function cmListHTML(pid){
   var list = CMTS[pid] || [];
   if(!list.length) return "<p class=\"note\">Noch keine Kommentare.</p>";
-  return list.map(function(c){ var mine = acct.user && c.by===acct.user.uid;
-    return "<div class=\"cm"+(mine?" mine":"")+"\"><b>"+esc((c.email||"").split("@")[0])+"</b> <small>"+(c.at?new Date(c.at).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"")+"</small>"+(mine?"<button type=\"button\" class=\"cmdel\" data-act=\"cmdel\" data-cid=\""+c.id+"\" aria-label=\"Kommentar löschen\">×</button>":"")+"<p>"+esc(c.text)+"</p></div>"; }).join("");
+  return list.map(function(c){ var mine = acct.user && c.by===acct.user.uid, nm = personName(c.by), who = nm ? "@"+nm : (c.email||"").split("@")[0];
+    var to = c.replyTo ? (list.filter(function(x){ return x.id===c.replyTo; })[0]) : null;
+    return "<div class=\"cm"+(mine?" mine":"")+(c.replyTo?" re":"")+"\"><b>"+esc(who)+"</b> <small>"+(c.at?new Date(c.at).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"")+(to ? " · Antwort" : "")+"</small>"+
+      (mine?"<button type=\"button\" class=\"cmdel\" data-act=\"cmdel\" data-cid=\""+c.id+"\" aria-label=\"Kommentar löschen\">×</button>":"")+"<p>"+cmText(c.text)+"</p>"+
+      (!mine && acct.user && !(c.pid||"").match(/^lk:/) ? "<button type=\"button\" class=\"cmrep\" data-act=\"cmreply\" data-cid=\""+c.id+"\" data-by=\""+esc(c.by||"")+"\" data-name=\""+esc(nm)+"\">Antworten</button>" : "")+"</div>"; }).join("");
 }
+// Vorschlagsliste beim Tippen von @
+function mnUpdate(inp){
+  var form = inp.closest("form"); if(!form) return;
+  var box = form.querySelector(".mnlist"); if(!box){ box = document.createElement("div"); box.className = "mnlist"; box.setAttribute("role", "listbox"); form.appendChild(box); }
+  var pos = inp.selectionStart || inp.value.length, m = /(^|\s)@([A-Za-z0-9._-]{0,20})$/.exec(inp.value.slice(0, pos));
+  if(!m){ box.hidden = true; return; }
+  var q = m[2].toLowerCase(), ppl = tripPeople().filter(function(x){ return x.name.toLowerCase().indexOf(q)===0; });
+  if(!ppl.length){ box.innerHTML = "<p class=\"note\">"+(tripPeople().length ? "Niemand mit diesem Namen in der Reise." : "Erwähnen kannst du Mitreisende und Beobachter dieser Reise.")+"</p>"; box.hidden = false; return; }
+  box.innerHTML = ppl.slice(0, 6).map(function(x){ return "<button type=\"button\" data-mn=\""+esc(x.name)+"\" role=\"option\">@"+esc(x.name)+"</button>"; }).join(""); box.hidden = false;
+}
+document.addEventListener("input", function(e){ if(e.target && /^(cmIn|phcIn)$/.test(e.target.id)) mnUpdate(e.target); });
+document.addEventListener("pointerdown", function(e){
+  var b = e.target.closest && e.target.closest(".mnlist [data-mn]"); if(!b) return;
+  e.preventDefault();
+  var form = b.closest("form"), inp = form && form.querySelector("input[type=text]"); if(!inp) return;
+  var pos = inp.selectionStart || inp.value.length, before = inp.value.slice(0, pos).replace(/@([A-Za-z0-9._-]{0,20})$/, "@"+b.getAttribute("data-mn")+" "), after = inp.value.slice(pos);
+  inp.value = before + after; inp.focus(); inp.setSelectionRange(before.length, before.length);
+  b.closest(".mnlist").hidden = true;
+}, true);
 /* ---------- Mitteilungen: Kommentare, Freundschaften, Einladungen, Beitritte ---------- */
 var NT = {items:[]}, ntUid = null, ntCm = {}, ntNames = {};
 function ntKey(){ return "rp-notif-"+ntUid; }
@@ -2612,16 +2666,18 @@ function ntSyncTrips(){
         if(kind){
           ntName(v.by, (v.email||"").split("@")[0], function(nm){
             var txt = (v.text||"").replace(/\s+/g, " ").trim();
-            ntAdd({id:(kind==="like" ? "lk:" : "cm:")+ch.doc.id+(kind==="like" ? ":"+(v.at||0) : ""), type:kind==="like" ? "like" : "comment", trip:id, pid:ppid, ph:phid, at:v.at || Date.now(),
-                   text:nm+(kind==="like" ? " gefällt ein Foto" : " hat ein Foto kommentiert")+(p ? " von „"+p.n+"“" : "")+" in „"+tripName(id)+"“",
+            var men = kind!=="like" && (v.mentions||[]).indexOf(ntUid) > -1, rpl = kind!=="like" && v.replyToUid===ntUid;
+            ntAdd({id:(kind==="like" ? "lk:" : "cm:")+ch.doc.id+(kind==="like" ? ":"+(v.at||0) : ""), type:kind==="like" ? "like" : men ? "mention" : rpl ? "reply" : "comment", trip:id, pid:ppid, ph:phid, at:v.at || Date.now(),
+                   text:nm+(kind==="like" ? " gefällt ein Foto" : men ? " hat dich in einem Kommentar zu einem Foto erwähnt" : rpl ? " hat auf deinen Kommentar zu einem Foto geantwortet" : " hat ein Foto kommentiert")+(p ? " von „"+p.n+"“" : "")+" in „"+tripName(id)+"“",
                    sub:kind==="like" ? "" : (txt.length > 90 ? txt.slice(0, 88)+" …" : txt)});
           });
           return;
         }
         ntName(v.by, (v.email||"").split("@")[0], function(nm){
           var txt = (v.text||"").replace(/\s+/g, " ").trim();
-          ntAdd({id:"cm:"+ch.doc.id, type:"comment", trip:id, pid:v.pid, at:v.at || Date.now(),
-                 text:nm+" hat "+(p ? "„"+p.n+"“" : "einen Punkt")+" in „"+tripName(id)+"“ kommentiert",
+          var men2 = (v.mentions||[]).indexOf(ntUid) > -1, rpl2 = v.replyToUid===ntUid;
+          ntAdd({id:"cm:"+ch.doc.id, type:men2 ? "mention" : rpl2 ? "reply" : "comment", trip:id, pid:v.pid, at:v.at || Date.now(),
+                 text:men2 ? nm+" hat dich bei „"+(p ? p.n : "einem Punkt")+"“ in „"+tripName(id)+"“ erwähnt" : rpl2 ? nm+" hat auf deinen Kommentar zu „"+(p ? p.n : "einem Punkt")+"“ geantwortet" : nm+" hat "+(p ? "„"+p.n+"“" : "einen Punkt")+" in „"+tripName(id)+"“ kommentiert",
                  sub:txt.length > 90 ? txt.slice(0, 88)+" …" : txt});
         });
       });
@@ -2654,7 +2710,9 @@ function ntAgo(t){
   if(d < 1440) return "vor "+Math.round(d/60)+" Std.";
   return new Date(t).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"})+" "+new Date(t).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
 }
-var NTIC = {comment:"<path d=\"M4 4.5h12a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H9l-4 3v-3H4A1.5 1.5 0 0 1 2.5 13V6A1.5 1.5 0 0 1 4 4.5z\"/>",
+var NTIC = {mention:"<circle cx=\"10\" cy=\"10\" r=\"3\"/><path d=\"M13 10v1.2a2.3 2.3 0 0 0 4.5 0V10a7.5 7.5 0 1 0-3 6\"/>",
+  reply:"<path d=\"M8 5 3.5 9.5 8 14\"/><path d=\"M3.5 9.5H12a4.5 4.5 0 0 1 4.5 4.5v1.5\"/>",
+  comment:"<path d=\"M4 4.5h12a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H9l-4 3v-3H4A1.5 1.5 0 0 1 2.5 13V6A1.5 1.5 0 0 1 4 4.5z\"/>",
   friend:"<circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.5 16.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M15 6v5M12.5 8.5h5\"/>",
   invite:"<path d=\"M2.5 6l7.5 5 7.5-5\"/><rect x=\"2.5\" y=\"4.5\" width=\"15\" height=\"11\" rx=\"2\"/>",
   like:"<path d=\"M10 17s-6.5-4-6.5-8.6A3.6 3.6 0 0 1 10 6.3a3.6 3.6 0 0 1 6.5 2.1C16.5 13 10 17 10 17z\"/>",
@@ -2740,7 +2798,7 @@ function renderLs(){
 var MAPGO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/></svg>";
 /* Mitteilungen als eigene Seite, nach Art filterbar */
 var ntPage = false, ntKind = "all";
-var NTKINDS = [["all","Alle"],["comment","Kommentare"],["like","Gefällt mir"],["friend","Freunde"],["invite","Einladungen"],["join","Mitreisende"]];
+var NTKINDS = [["all","Alle"],["mention","Erwähnungen"],["reply","Antworten"],["comment","Kommentare"],["like","Gefällt mir"],["friend","Freunde"],["invite","Einladungen"],["join","Mitreisende"]];
 function openNtPage(){ closeMenus(); closeProfile(); closeLsPage(); ntPage = true; renderNt(); $("ntView").hidden = false; document.body.classList.add("profopen"); navActive(); }
 function closeNtPage(){ if(!ntPage) return; ntPage = false; $("ntView").hidden = true; if(!profOpen) document.body.classList.remove("profopen"); navActive(); }
 function renderNt(){
@@ -2779,7 +2837,7 @@ function ntOpen(id){
     grpSel = ""; S.cur = it.trip; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay();
   }
   if(it.trip && !S.trips[it.trip]){ toast("Diese Reise ist nicht mehr verfügbar", false); renderAll(); return; }
-  if((it.type==="comment" || it.type==="like") && P(it.pid)){
+  if((it.type==="comment" || it.type==="like" || it.type==="mention" || it.type==="reply") && P(it.pid)){
     var dk = dayOf(it.pid); if(dk) cur = dk;
     tab = dk ? "day" : "wish"; renderAll(); cmWatch(); select(it.pid); if(hasLoc(P(it.pid))) centerOn(P(it.pid)); openJPop(it.pid, dk || "", it.ph && photosOf(it.pid).indexOf(it.ph) > -1 ? it.ph : null);
     setTimeout(function(){ var c = $(it.ph ? "pvCm" : "cmList"); if(c) c.scrollIntoView({block:"center"}); }, 350);
@@ -5090,7 +5148,7 @@ function renderJPop(){
        "</div><input type=\"file\" id=\"phIn\" accept=\"image/*\" multiple hidden>"+
        "<p class=\"note pherr\" id=\"jpPhErr\" hidden><span></span> <button type=\"button\" class=\"tf-link\" data-act=\"phretry\">Erneut laden</button></p></div>";
   if(acct.user && KNOWN[S.cur] && shared){
-    h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Kommentare</div><div id=\"cmList\" class=\"cmlist\">"+cmListHTML(jp.pid)+"</div><form class=\"gnew\" id=\"cmForm\"><input type=\"text\" id=\"cmIn\" maxlength=\"1000\" placeholder=\"Kommentar schreiben …\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form></div>";
+    h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Kommentare</div><div id=\"cmList\" class=\"cmlist\">"+cmListHTML(jp.pid)+"</div><form class=\"gnew\" id=\"cmForm\"><input type=\"text\" id=\"cmIn\" maxlength=\"1000\" placeholder=\"Kommentieren · @ erwähnt Mitreisende\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form></div>";
   }
   h += "<p class=\"note\" id=\"jpNote\" hidden></p></div>";
   el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el);
@@ -5129,7 +5187,7 @@ function phMetaHTML(ph){
     h += "<div class=\"pv-panel\"><div class=\"pv-ph\"><b>Kommentare"+(C.length ? " · "+C.length : "")+"</b><button type=\"button\" class=\"x\" data-act=\"pvcm\" aria-label=\"Kommentare schließen\">"+PVX+"</button></div>"+
          (who ? "<p class=\"pv-who\">Gefällt "+esc(who)+"</p>" : "")+
          "<div id=\"pvCm\" class=\"cmlist\">"+(C.length ? cmListHTML("ph:"+ph) : "<p class=\"note\">Noch keine Kommentare zu diesem Foto.</p>")+"</div>"+
-         "<form class=\"gnew\" id=\"phcForm\"><input type=\"text\" id=\"phcIn\" maxlength=\"1000\" placeholder=\"Kommentieren …\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form></div>";
+         "<form class=\"gnew\" id=\"phcForm\"><input type=\"text\" id=\"phcIn\" maxlength=\"1000\" placeholder=\"Kommentieren · @ erwähnt\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form></div>";
   }
   return h;
 }
@@ -6343,6 +6401,12 @@ document.addEventListener("click", function(e){
     case "minvdel": tripRef(S.cur).update({invites:window.firebase.firestore.FieldValue.arrayRemove(t.getAttribute("data-mail")), viewInvites:window.firebase.firestore.FieldValue.arrayRemove(t.getAttribute("data-mail"))}).then(function(){ var m = META[S.cur]; if(m) m.invites = m.invites.filter(function(x){ return x!==t.getAttribute("data-mail"); }); renderSheet(); }); break;
     case "mremove": var ru2 = t.getAttribute("data-uid"), FV2 = window.firebase.firestore.FieldValue, up2 = {members:FV2.arrayRemove(ru2), viewers:FV2.arrayRemove(ru2)}; up2["memberEmails."+ru2] = FV2.delete(); tripRef(S.cur).update(up2).then(function(){ toast("Entfernt", false); }); break;
     case "mleave": var lt = S.cur; delete S.trips[lt]; S.cur = Object.keys(S.trips)[0] || S.cur; save(); if(!Object.keys(S.trips).length){ S = fresh(); acctInitSigs(); } pickDefaultDay(); renderAll(); toast("Reise verlassen", false); break;
+    case "cmreply": var rcid = t.getAttribute("data-cid"), rby = t.getAttribute("data-by"), rnm = t.getAttribute("data-name") || personName(rby);
+      var rin = $(jp && jp.view ? "phcIn" : "cmIn"); if(!rin) break;
+      var rpid = ""; Object.keys(CMTS).forEach(function(k){ (CMTS[k]||[]).forEach(function(c){ if(c.id===rcid) rpid = c.pid; }); });
+      REPLY = {cid:rcid, uid:rby, name:rnm, pid:rpid};
+      if(rnm && rin.value.indexOf("@"+rnm)<0) rin.value = "@"+rnm+" "+rin.value.replace(/^\s+/, "");
+      rin.focus(); rin.setSelectionRange(rin.value.length, rin.value.length); break;
     case "cmdel": var cdid = t.getAttribute("data-cid"), ccol = "comments"; Object.keys(CMTS).forEach(function(k){ (CMTS[k]||[]).forEach(function(c){ if(c.id===cdid && c.col) ccol = c.col; }); });
       tripRef(S.cur).collection(ccol).doc(cdid).delete(); break;
     case "grppick": grpEdit = null; openGrpPop(id); break;
@@ -6574,13 +6638,17 @@ document.addEventListener("submit", function(e){
   if(id==="phcForm"){
     var pt = ($("phcIn").value||"").trim(); if(!pt || !jp || !jp.view) return;
     $("phcIn").value = "";
-    cmRef("ph:"+jp.view).add({pid:"ph:"+jp.view, text:pt.slice(0,1000), by:acct.user.uid, email:myMail(), at:Date.now()}).catch(function(e2){ toast("Kommentar nicht gespeichert: "+(e2 && e2.message), false); });
+    var pdoc = {pid:"ph:"+jp.view, text:pt.slice(0,1000), by:acct.user.uid, email:myMail(), at:Date.now(), mentions:mentionUids(pt)};
+    if(REPLY && REPLY.pid==="ph:"+jp.view && pt.indexOf("@"+REPLY.name)>-1){ pdoc.replyTo = REPLY.cid; pdoc.replyToUid = REPLY.uid; } REPLY = null;
+    cmRef("ph:"+jp.view).add(pdoc).catch(function(e2){ toast("Kommentar nicht gespeichert: "+(e2 && e2.message), false); });
     return;
   }
   if(id==="cmForm"){
     var ct = ($("cmIn").value||"").trim(); if(!ct || !jp) return;
     $("cmIn").value = "";
-    cmRef(jp.pid).add({pid:jp.pid, text:ct.slice(0,1000), by:acct.user.uid, email:myMail(), at:Date.now()}).catch(function(e2){ toast("Kommentar nicht gespeichert: "+(e2 && e2.message), false); });
+    var cdoc = {pid:jp.pid, text:ct.slice(0,1000), by:acct.user.uid, email:myMail(), at:Date.now(), mentions:mentionUids(ct)};
+    if(REPLY && REPLY.pid===jp.pid && ct.indexOf("@"+REPLY.name)>-1){ cdoc.replyTo = REPLY.cid; cdoc.replyToUid = REPLY.uid; } REPLY = null;
+    cmRef(jp.pid).add(cdoc).catch(function(e2){ toast("Kommentar nicht gespeichert: "+(e2 && e2.message), false); });
     return;
   }
   if(id==="grpNew"){
