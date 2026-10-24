@@ -1941,6 +1941,11 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .chpv-x{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;width:36px;height:36px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:16px}
 .chpv-cap{color:#fff;text-align:center;padding:14px;display:flex;flex-direction:column;gap:3px}
 .chpv-cap small{color:rgba(255,255,255,.7)}
+
+.cphadd{flex:0 0 auto;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--fill);color:var(--ink);cursor:pointer;margin-left:auto}
+.cphadd svg{width:19px;height:19px}
+.card .ch .cph + .cphadd{margin-left:6px;width:30px;height:30px}
+.cphadd.sm svg{width:17px;height:17px}
 </style>
 </head>
 <body>
@@ -5575,8 +5580,9 @@ function renderCard(){
   var dk = dayOf(sel), D = dayByKey(cur), cc = catCol(p.c);
   var c = x+"<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+cc+"\">"+icon(p.c)+"</span><div class=\"cht\"><h3>"+esc(p.n)+"</h3><p>"+esc([CATNAME[p.c], nbOf(p), dk ? (visitsOf(sel).length>1 ? visitsOf(sel).length+" Besuche geplant" : "") : "Wunsch in „"+listName(p.list)+"“"].filter(Boolean).join(" · "))+"</p></div></div>";
   var cph = photosOf(sel);
-  if(cph.length) c = c.replace(/<\/div><\/div>$/, "</div><button type=\"button\" class=\"cph\" data-act=\"cphopen\" data-ph=\""+cph[0]+"\" aria-label=\""+cph.length+(cph.length===1?" Foto":" Fotos")+" ansehen\">"+
-         cph.slice(0,3).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(cph.length>1 ? "<b>"+cph.length+"</b>" : "")+"</button></div>");
+  var cadd = isRO() ? "" : "<label class=\"cphadd"+(cph.length?" sm":"")+"\" for=\"cphIn\" title=\"Fotos hinzufügen\" aria-label=\"Fotos hinzufügen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2.5 7h2.6l1.4-2h4\"/><path d=\"M12.5 9.8V15.5H2.5V7\"/><circle cx=\"7.5\" cy=\"10.8\" r=\"2.3\"/><path d=\"M15.5 3v6M12.5 6h6\"/></svg><input type=\"file\" id=\"cphIn\" accept=\"image/*\" multiple hidden></label>";
+  if(cph.length || cadd) c = c.replace(/<\/div><\/div>$/, "</div>"+(cph.length ? "<button type=\"button\" class=\"cph\" data-act=\"cphopen\" data-ph=\""+cph[0]+"\" aria-label=\""+cph.length+(cph.length===1?" Foto":" Fotos")+" ansehen\">"+
+         cph.slice(0,3).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(cph.length>1 ? "<b>"+cph.length+"</b>" : "")+"</button>" : "")+cadd+"</div>");
   c += "<div class=\"cchips\">"+dayChip(sel)+(grpName(p.g) ? "<button type=\"button\" class=\"gtag on\" data-act=\"grppick\" data-id=\""+sel+"\">▦ "+esc(grpName(p.g))+"</button>" : "")+"</div>";
   if(p.addr || p.note || noteOf(sel)) c += "<p class=\"cnote\">"+[p.addr ? esc(p.addr) : "", p.note ? esc(p.note) : "", noteOf(sel) ? "<span class=\"cmine\">"+esc(noteOf(sel).length > 140 ? noteOf(sel).slice(0,138)+" …" : noteOf(sel))+"</span>" : ""].filter(Boolean).join("<br>")+"</p>";
   if(hasLoc(p)) c += rvChips(p);
@@ -6436,6 +6442,7 @@ function camTarget(loc, lib, when){
   return {pid:pid, neu:true, day:D ? tk : ""};
 }
 document.addEventListener("change", function(e){
+  if(e.target.id==="cphIn"){ var cfs = e.target.files ? Array.prototype.slice.call(e.target.files) : [], csel = sel; if(cfs.length && P(csel) && !isRO()) addPhotos(csel, cfs).then(function(){ e.target.value = ""; renderCard(); scheduleOverlay(); }); return; }
   var lib = e.target.id==="libIn";
   if((e.target.id!=="camIn" && !lib) || !e.target.files || !e.target.files[0]) return;
   var fs = Array.prototype.slice.call(e.target.files), f = fs[0]; if(lib){ libImport(fs); return; } CAMF.pending = f;
