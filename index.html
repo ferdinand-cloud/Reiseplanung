@@ -1915,6 +1915,13 @@ li.st .lcol .grip{position:absolute;left:0;top:0;bottom:0;width:22px;height:auto
 li.st .lcol .grip svg{width:14px;height:20px;opacity:.55}
 li.st .lcol .grip::before{content:"";position:absolute;right:0;top:10px;bottom:10px;width:.5px;background:var(--hair,var(--line))}
 li.st .lcol .grip:active,ol.plan.sorting .st.drag .grip{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+
+/* Lösch-X in Eingabefeldern */
+#clrX{position:fixed;z-index:200;width:28px;height:28px;border:0;background:none;padding:5px;color:color-mix(in srgb,var(--ink) 38%,transparent);cursor:pointer;display:grid;place-items:center}
+#clrX[hidden]{display:none}
+#clrX svg{width:18px;height:18px;display:block}
+input.hasclr{padding-right:34px !important}
+input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-search-decoration{-webkit-appearance:none;appearance:none;display:none}
 </style>
 </head>
 <body>
@@ -3178,6 +3185,32 @@ function drawLocs(){
   });
   return s;
 }
+
+/* ---------- Suchfelder: kleines X rechts löscht den ganzen Text (nur Suche, nicht Chat/Notizen) ---------- */
+(function(){
+  var btn = document.createElement("button"); btn.type = "button"; btn.id = "clrX"; btn.setAttribute("aria-label", "Text löschen"); btn.tabIndex = -1; btn.hidden = true;
+  btn.innerHTML = "<svg viewBox=\"0 0 20 20\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"8\" fill=\"currentColor\"/><path d=\"M7 7l6 6M13 7l-6 6\" stroke=\"var(--clrx-fg,#fff)\" stroke-width=\"1.8\" stroke-linecap=\"round\"/></svg>";
+  document.body.appendChild(btn);
+  var cur = null;
+  var ok = function(el){ return el && el.tagName==="INPUT" && (el.getAttribute("type")||"").toLowerCase()==="search" && !el.readOnly && !el.disabled && !el.closest("[data-noclr]"); };
+  var place = function(){
+    if(!cur || !document.contains(cur) || !cur.value){ btn.hidden = true; if(cur && !cur.value) cur.classList.remove("hasclr"); return; }
+    cur.classList.add("hasclr");
+    var r = cur.getBoundingClientRect(); if(!r.width || !cur.offsetParent){ btn.hidden = true; return; }
+    var top = document.elementFromPoint(Math.round(r.right - 16), Math.round(r.top + r.height/2)); if(top && top!==cur && top!==btn && !btn.contains(top) && !cur.contains(top)){ btn.hidden = true; return; }
+    btn.style.left = Math.round(r.right - 30)+"px"; btn.style.top = Math.round(r.top + r.height/2 - 14)+"px"; btn.hidden = false;
+  };
+  document.addEventListener("focusin", function(e){ if(ok(e.target)){ cur = e.target; place(); } });
+  document.addEventListener("input", function(e){ if(ok(e.target)){ cur = e.target; place(); } });
+  document.addEventListener("focusout", function(e){ if(e.target===cur) setTimeout(place, 120); });
+  window.addEventListener("resize", place); document.addEventListener("scroll", place, true);
+  document.addEventListener("click", function(){ setTimeout(place, 60); }, true); setInterval(function(){ if(cur) place(); }, 700);
+  if(window.visualViewport) window.visualViewport.addEventListener("resize", place);
+  var clear = function(e){ e.preventDefault(); e.stopPropagation(); if(!cur) return; var el = cur; el.value = ""; el.dispatchEvent(new Event("input", {bubbles:true})); el.dispatchEvent(new Event("change", {bubbles:true})); el.focus(); place(); };
+  btn.addEventListener("pointerdown", function(e){ e.preventDefault(); });
+  btn.addEventListener("mousedown", function(e){ e.preventDefault(); });
+  btn.addEventListener("click", clear);
+})();
 /* ---------- Chat mit Freunden (auch über Orte) ---------- */
 var chNewOn = false, chNewQ = "", chMsgErr = false, chPage = false, chOpen = null, chDraft = null, chPickOn = false, chPickQ = "", chMsgs = [], chMsgUnsub = null, chStart = 0, chSending = false;
 var CH = {list:[], byId:{}, got:false}, CHP = {}, CHPROF = {}, CHPL = {};
