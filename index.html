@@ -1973,6 +1973,13 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 #chPtr.spin svg{animation:ptrspin .8s steps(8) infinite}
 #chPtr.spin rect{opacity:calc(.25 + .75 * (var(--k) + 1) / 8)}
 @keyframes ptrspin{to{transform:rotate(360deg)}}
+
+.srcats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:10px -16px 4px;padding:0 16px 2px;-webkit-overflow-scrolling:touch}
+.srcats::-webkit-scrollbar{display:none}
+.srcats button{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;border:0;border-radius:999px;padding:7px 12px;background:var(--fill);color:var(--ink);font:600 13px/1.1 var(--f-body);cursor:pointer;white-space:nowrap}
+.srcats button svg{width:14px;height:14px;color:var(--cc,var(--ink))}
+.srcats button[aria-selected="true"]{background:var(--ink);color:var(--sheet)}
+.srcats button[aria-selected="true"] svg{color:var(--sheet)}
 </style>
 </head>
 <body>
@@ -4200,13 +4207,18 @@ function initMap(){
 }
 
 /* ---------- Allgemeine Suche: Plan, Wunschliste, Punkte auf der Karte, weitere Orte ---------- */
-var srch = {q:"", res:[], web:[], busy:false}, srchT = null;
+var srch = {q:"", res:[], web:[], busy:false, cat:""}, srchT = null;
+/* Kategorien für die Suche: eigene Kategorie, passende OSM-Werte (Karte) und Photon-Filter (Web) */
+var SRCAT = {essen:["amenity:restaurant","amenity:fast_food","amenity:food_court"], cafe:["amenity:cafe","shop:bakery","amenity:ice_cream","shop:confectionery"], bar:["amenity:bar","amenity:pub","amenity:biergarten","amenity:nightclub"],
+  kultur:["tourism:museum","tourism:gallery","amenity:theatre","amenity:arts_centre","amenity:cinema"], aussicht:["tourism:viewpoint"], sight:["tourism:attraction","historic:monument","historic:memorial","amenity:place_of_worship","tourism:artwork"],
+  park:["leisure:park","leisure:garden","tourism:zoo"], shop:["shop"], erlebnis:["leisure:sports_centre","leisure:fitness_centre","amenity:spa","leisure:water_park","tourism:theme_park","leisure:bowling_alley"]};
+function srchCatOk(r){ return !srch.cat || r.kind==="web" || r.c===srch.cat; }
 function openSearch(){ var el = $("srchPop"); el.hidden = false; document.body.classList.add("glass"); renderSearch(true); }
 function closeSearch(){ var el = $("srchPop"); el.hidden = true; el.innerHTML = ""; if($("acctPop").hidden && $("tripPop").hidden) document.body.classList.remove("glass"); }
 function srchCenter(){ if(map){ var c = map.getCenter(); return {la:c.lat, lo:c.lng}; } var h = T().hotels.filter(hasLoc)[0]; return h || {la:40.758, lo:-73.985}; }
 function srchLocal(q){
   var w = norm(q).split(/\s+/).filter(Boolean), out = [], C = srchCenter(), seen = {};
-  if(!w.length) return out;
+  if(!w.length && !srch.cat) return out;
   var hit = function(txt){ var h = norm(txt); return w.every(function(x){ return h.indexOf(x) > -1; }); };
   Object.keys(T().places).map(P).forEach(function(p){
     if(p.of || (isRO() && !visitsOf(p.id).length) || !hit([p.n, p.addr, p.note, CATNAME[p.c], nbOf(p), grpName(p.g)].join(" "))) return;
@@ -4225,24 +4237,28 @@ function srchLocal(q){
         var co = f.geometry.coordinates, la = +co[1].toFixed(6), lo = +co[0].toFixed(6), key = norm(nm).slice(0,10)+Math.round(la*2000)+","+Math.round(lo*2000);
         if(seen[key]) return; seen[key] = 1;
         var cls = pr["class"], sub = pr.subclass;
-        pois.push({kind:"poi", n:nm, cls:cls, subc:sub, c: FOODSUB.indexOf(sub)>-1 ? "shop" : (POICLASS[cls] || "sight"), la:la, lo:lo, sub:(POISUB[sub] || POISUB[cls] || (sub||cls||"").replace(/_/g," ")), d: dist(C, {la:la, lo:lo})});
+        pois.push({kind:"poi", n:nm, cls:cls, subc:sub, c: (sub==="viewpoint" || cls==="viewpoint") ? "aussicht" : FOODSUB.indexOf(sub)>-1 ? "shop" : (POICLASS[sub] || POICLASS[cls] || "sight"), la:la, lo:lo, sub:(POISUB[sub] || POISUB[cls] || (sub||cls||"").replace(/_/g," ")), d: dist(C, {la:la, lo:lo})});
       });
       pois.sort(function(a, b){ return a.d - b.d; });
-      out = out.concat(pois.slice(0, 25));
+      if(srch.cat) pois = pois.filter(srchCatOk);
+      out = out.concat(pois.slice(0, srch.cat ? 40 : 25));
     }
   } catch(e){}
+  if(srch.cat) out = out.filter(srchCatOk);
+  if(!w.length) out.sort(function(a, b){ return (a.d==null ? 1e9 : a.d) - (b.d==null ? 1e9 : b.d); });
   return out;
 }
 function srchWeb(q){
   clearTimeout(srchT); if(q.trim().length < 3){ srch.web = []; return; }
   srchT = setTimeout(function(){
     var C = srchCenter(), qq = q;
-    fetch("https://photon.komoot.io/api/?q="+encodeURIComponent(q)+"&limit=8&lang=de&lat="+C.la.toFixed(4)+"&lon="+C.lo.toFixed(4)).then(function(r){ return r.json(); }).then(function(j){
-      if(srch.q!==qq) return;
+    var tagq = srch.cat && SRCAT[srch.cat] ? SRCAT[srch.cat].map(function(x){ return "&osm_tag="+encodeURIComponent(x); }).join("") : "", cat0 = srch.cat;
+    fetch("https://photon.komoot.io/api/?q="+encodeURIComponent(q)+"&limit="+(tagq ? 12 : 8)+"&lang=de&lat="+C.la.toFixed(4)+"&lon="+C.lo.toFixed(4)+tagq).then(function(r){ return r.json(); }).then(function(j){
+      if(srch.q!==qq || srch.cat!==cat0) return;
       var seen = {}; srch.res.forEach(function(r){ seen[norm(r.n)] = 1; });
       srch.web = (j.features||[]).map(function(f){ var pr = f.properties||{}, co = f.geometry && f.geometry.coordinates; if(!co) return null;
         var str = [pr.street, pr.housenumber].filter(Boolean).join(" "), nm = pr.name || str; if(!nm || seen[norm(nm)]) return null; seen[norm(nm)] = 1;
-        return {kind:"web", n:nm, la:+co[1].toFixed(6), lo:+co[0].toFixed(6), addr:[str, pr.city || pr.district].filter(Boolean).join(", "), sub:[pr.osm_value ? (POISUB[pr.osm_value] || pr.osm_value.replace(/_/g," ")) : "", [str, pr.city].filter(Boolean).join(", ")].filter(Boolean).join(" · "), c: POICLASS[pr.osm_value] || (pr.osm_key==="amenity" && /restaurant|cafe|bar|fast_food|pub/.test(pr.osm_value) ? "essen" : "sight"), cls:pr.osm_value, d: dist(C, {la:+co[1], lo:+co[0]})};
+        return {kind:"web", n:nm, la:+co[1].toFixed(6), lo:+co[0].toFixed(6), addr:[str, pr.city || pr.district].filter(Boolean).join(", "), sub:[pr.osm_value ? (POISUB[pr.osm_value] || pr.osm_value.replace(/_/g," ")) : "", [str, pr.city].filter(Boolean).join(", ")].filter(Boolean).join(" · "), c: cat0 || (pr.osm_value==="viewpoint" ? "aussicht" : POICLASS[pr.osm_value] || (pr.osm_key==="shop" ? "shop" : pr.osm_key==="leisure" && pr.osm_value!=="park" ? "erlebnis" : "sight")), cls:pr.osm_value, d: dist(C, {la:+co[1], lo:+co[0]})};
       }).filter(Boolean);
       renderSearch(false);
     }).catch(function(){});
@@ -4251,10 +4267,15 @@ function srchWeb(q){
 function renderSearch(focus){
   var el = $("srchPop"), q = srch.q;
   var head = "<div class=\"ag-card srch\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Suchen\"><button type=\"button\" class=\"ag-x\" data-act=\"srchclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Suchen</h3>"+
-    "<input type=\"search\" id=\"srchIn\" class=\"frq\" placeholder=\"Ort, Café, Adresse, Notiz …\" autocomplete=\"off\" autocapitalize=\"off\" enterkeyhint=\"search\" value=\""+esc(q)+"\"><div id=\"srchRes\"></div></div>";
+    "<input type=\"search\" id=\"srchIn\" class=\"frq\" placeholder=\"Ort, Café, Adresse, Notiz …\" autocomplete=\"off\" autocapitalize=\"off\" enterkeyhint=\"search\" value=\""+esc(q)+"\"><div class=\"srcats\" id=\"srCats\" role=\"tablist\" aria-label=\"Kategorie\"></div><div id=\"srchRes\"></div></div>";
   if(!el.querySelector("#srchIn")) el.innerHTML = head;
+  var cats = $("srCats"); if(cats) cats.innerHTML = "<button type=\"button\" role=\"tab\" data-act=\"srcat\" data-v=\"\" aria-selected=\""+(!srch.cat)+"\">Alle</button>"+CATS.map(function(c){ return "<button type=\"button\" role=\"tab\" data-act=\"srcat\" data-v=\""+c[0]+"\" aria-selected=\""+(srch.cat===c[0])+"\" style=\"--cc:"+catCol(c[0])+"\">"+icon(c[0])+"<span>"+esc(c[1])+"</span></button>"; }).join("");
   var all = srch.res.concat(srch.web), h = "";
-  if(!q.trim()) h = "<p class=\"note\">Durchsucht deinen Plan, die Wunschliste, alle Punkte im aktuellen Kartenausschnitt und weitere Orte in der Umgebung.</p>";
+  if(!q.trim() && srch.cat){ var near = all.map(function(r, i){ return {r:r, i:i}; });
+    h = near.length ? "<div class=\"srlbl\">"+esc(CATNAME[srch.cat])+" in der Nähe · "+near.length+"</div><ul class=\"srlist\">"+near.map(function(x){ var r = x.r; return "<li><button type=\"button\" class=\"srow\" data-act=\"srchgo\" data-i=\""+x.i+"\"><span class=\"sric\">"+icon(r.c || "sight")+"</span><span class=\"srt\"><b>"+esc(r.n)+"</b><small>"+esc(r.sub||"")+"</small></span>"+(r.d!=null ? "<span class=\"srd\">"+fmtDist(r.d)+"</span>" : "")+"</button></li>"; }).join("")+"</ul>"
+      : "<p class=\"note\">Keine "+esc(CATNAME[srch.cat])+" im aktuellen Kartenausschnitt oder in deinem Plan. Gib einen Suchbegriff ein, um weiter zu suchen.</p>";
+  }
+  else if(!q.trim()) h = "<p class=\"note\">Durchsucht deinen Plan, die Wunschliste, alle Punkte im aktuellen Kartenausschnitt und weitere Orte in der Umgebung.</p>";
   else {
     var grp = function(kind, title){ var xs = all.map(function(r, i){ return {r:r, i:i}; }).filter(function(x){ return x.r.kind===kind; }); if(!xs.length) return "";
       return "<div class=\"srlbl\">"+title+" · "+xs.length+"</div><ul class=\"srlist\">"+xs.map(function(x){ var r = x.r; return "<li><button type=\"button\" class=\"srow\" data-act=\"srchgo\" data-i=\""+x.i+"\"><span class=\"sric\">"+icon(r.c || "sight")+"</span><span class=\"srt\"><b>"+hlq(r.n, q)+"</b><small>"+esc(r.sub||"")+"</small></span>"+(r.d!=null ? "<span class=\"srd\">"+fmtDist(r.d)+"</span>" : "")+"</button></li>"; }).join("")+"</ul>"; };
@@ -7493,6 +7514,7 @@ document.addEventListener("click", function(e){
     case "avpick": var avi = $("avIn"); if(avi) avi.click(); break;
     case "avdel": if(acct.user && fbDb) fbDb.collection("profiles").doc(acct.user.uid).set({photo:window.firebase.firestore.FieldValue.delete()}, {merge:true}).then(function(){ if(PROF) delete PROF.photo; navAv(); refreshSettings(); if(profOpen) renderProfile(); toast("Profilbild entfernt", false); }, function(e){ toast("Entfernen fehlgeschlagen: "+(e && e.message), false); }); break;
     case "srchclose": closeSearch(); break;
+    case "srcat": srch.cat = t.getAttribute("data-v") || ""; srch.res = srchLocal(srch.q); srch.web = []; renderSearch(false); srchWeb(srch.q); var sb = t; setTimeout(function(){ try { sb.scrollIntoView({inline:"center", block:"nearest", behavior: reduceMotion ? "auto" : "smooth"}); } catch(e){} }, 0); break;
     case "srchgo": srchGo(+t.getAttribute("data-i")); break;
     case "daypick": closeCatPop(); cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "day": cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
