@@ -1326,6 +1326,11 @@ li.st .sub{margin-top:1px}
 .hsbtn svg{width:14px;height:14px;padding:3px;border-radius:6px;background:var(--ink);color:var(--sheet)}
 .rhead .hsbtn + .rtog{margin-left:6px}
 .rhead .rtog + .rtog{margin-left:10px}
+.viab{position:relative;flex:0 0 auto;width:30px;height:30px;border:0;border-radius:50%;background:none;color:var(--muted);display:grid;place-items:center;padding:0;cursor:pointer}
+.viab svg{width:17px;height:17px}
+.viab.on{color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.viab b{position:absolute;top:-3px;right:-3px;min-width:15px;height:15px;padding:0 4px;border-radius:8px;background:var(--accent);color:#fff;font:700 10px/15px var(--f-body);text-align:center}
+#pick span small{color:var(--muted);font-size:12.5px}
 .lk{width:13px;height:13px;margin-left:5px;vertical-align:-1px;color:var(--muted);flex:0 0 auto}
 .jp-priv{display:inline-flex;align-items:center;gap:5px}
 .jp-priv .lk{margin:0;width:13px;height:13px}
@@ -1976,7 +1981,7 @@ function renameLocal(){
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["places","done","times","journal","order","legMode","legAlt","rating","notes","photos","groups","privP","privN","privPh","capt"];
+var MAPK = ["places","done","times","journal","order","legMode","legAlt","via","rating","notes","photos","groups","privP","privN","privPh","capt"];
 /* ---------- Privat: Orte, Notizen und Fotos, die Beobachter nicht bekommen ----------
    Mitreisende lesen und schreiben die vollständige Reise in trips/{id}/priv/data;
    das Reise-Dokument selbst (für Beobachter lesbar) enthält nur den öffentlichen Teil. */
@@ -3933,7 +3938,7 @@ function f1(n){ return n.toFixed(1); }
 
 /* ---------- Kartenmarker ---------- */
 function catCol(c){ return CATCOL[c] || CATCOL.sight; }
-var THUMB = {}, thumbBusy = {}, thumbTry = {}, PHMK = [];
+var THUMB = {}, thumbBusy = {}, thumbTry = {}, PHMK = [], VIAMK = [];
 /* kleine runde Vorschaubilder für die Karte (96 px), einmal erzeugt und zwischengespeichert */
 function thumbOf(ph){
   if(THUMB[ph]) return THUMB[ph];
@@ -4025,7 +4030,7 @@ function drawOverlay(){
     });
   }
   // Route des Tages: Hotel → Stopps → Hotel (Fußweg oder ÖPNV)
-  var HT = D && D.hotel, pts = D ? routePts(cur) : [], col = dayColor(cur);
+  var HT = D && D.hotel, pts = D ? routePts(cur) : [], col = dayColor(cur), viaSvg = ""; VIAMK = [];
   if(!layers.route || isRO()){ /* Route ausgeblendet; Beobachter sehen keine Routen */ }
   else if(pts.length){
     var labels = "";
@@ -4034,7 +4039,10 @@ function drawOverlay(){
       var op = (legSel<0 || legSel===li) ? 1 : .28;
       if(legMode(pair[0], pair[1])==="walk"){
         var hotelLeg = HT && (pair[0]===HT || pair[1]===HT);
-        var dw = walkPath(pair[0], pair[1]).map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
+        var vv = legVia(pair[0], pair[1]);
+        var dw = walkPath(pair[0], pair[1], vv).map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
+        vv.forEach(function(q, vi){ var z = pt({la:q[0], lo:q[1]}); VIAMK.push({li:li, vi:vi, x:z[0], y:z[1]});
+          viaSvg += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"7\" fill=\"#fff\" stroke=\""+col+"\" stroke-width=\"3\" opacity=\""+op+"\"/><circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"2.2\" fill=\""+col+"\" opacity=\""+op+"\"/>"; });
         s += "<path d=\""+dw+"\" stroke=\"var(--land)\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\""+(.9*op)+"\"/>";
         s += "<path d=\""+dw+"\" stroke=\""+col+"\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(hotelLeg?" stroke-dasharray=\"2 7\"":"")+" opacity=\""+op+"\"/>";
         return;
@@ -4069,6 +4077,7 @@ function drawOverlay(){
          "<path d=\"M"+f1(q[0]-6)+" "+f1(q[1]+5)+"v-9.5M"+f1(q[0]-6)+" "+f1(q[1]+1.5)+"h12v3.5M"+f1(q[0]-6)+" "+f1(q[1]+1.5)+"v-3.2h4.2a2.6 2.6 0 0 1 2.6 2.6\" stroke=\"#fff\" stroke-width=\"1.7\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\""+f1(q[0]+3.4)+"\" cy=\""+f1(q[1]-2.2)+"\" r=\"1.9\" fill=\"#fff\"/></g>";
     if(zoomed || sel===h.id) mkLabel(q[0]+18, q[1], h.n, sel===h.id, sel===h.id ? 10 : 2);
   });
+  s += viaSvg;
   // Stopps
   var n = 0, ancIds = {}, slabels = "";
   if(D) ord(cur).forEach(function(id){
@@ -4304,6 +4313,13 @@ function tap(x, y){
     endPick(); setSheet("mid"); renderSheet(); scheduleOverlay();
     return;
   }
+  if(viaPick){
+    var lp = dayLegs(cur)[viaPick.li]; if(!lp){ endViaPick(); return; }
+    var hit = VIAMK.filter(function(m){ return m.li===viaPick.li && Math.hypot(m.x-x, m.y-y) < 16; })[0];
+    if(hit){ var vv0 = legVia(lp[0], lp[1]).slice(); vv0.splice(hit.vi, 1); setLegVia(lp[0], lp[1], vv0); toast("Wegpunkt entfernt", false); }
+    else { var ll = map.unproject([x, y]); addVia(lp[0], lp[1], {la:ll.lat, lo:ll.lng}); }
+    viaBanner(); scheduleOverlay(); renderSheetSoon(); return;
+  }
   var best = null, bd = 24, D = dayByKey(cur);
   function test(id, p, rad){ if(!hasLoc(p)) return; var q = pt(p), d = Math.hypot(q[0]-x, q[1]-y); if(d < Math.max(rad, bd) && (!best || d < bd)){ best = id; bd = d; } }
   if(D) ord(cur).forEach(function(id){ test(id, P(id), 20); });
@@ -4321,7 +4337,15 @@ function select(id){ if(id!==sel) meRoute = false; if(id!=="poi") poiSel = null;
 /* ---------- Tatsächliche Wege: Fußwege über OSM-Routing, U-Bahn entlang der Gleise ---------- */
 var WALKC = {}, walkQ = [], walkBusy = 0;
 try { WALKC = JSON.parse(lsGet("nyc-walk-cache")||"{}") || {}; } catch(e){ WALKC = {}; }
-function wKey(a, b){ return (+a.la).toFixed(5)+","+(+a.lo).toFixed(5)+">"+(+b.la).toFixed(5)+","+(+b.lo).toFixed(5); }
+function wKey(a, b, v){ return (+a.la).toFixed(5)+","+(+a.lo).toFixed(5)+">"+(+b.la).toFixed(5)+","+(+b.lo).toFixed(5)+(v && v.length ? "|"+v.map(function(q){ return (+q[0]).toFixed(5)+","+(+q[1]).toFixed(5); }).join(";") : ""); }
+/* Wegpunkte: gesetzte Punkte auf der Karte, die den Fußweg einer Etappe lenken (nicht im Tagesplan) */
+function legVia(a, b){ var v = (T().via||{})[legKey(a, b)]; return Array.isArray(v) ? v : []; }
+function setLegVia(a, b, v){ var t = T(); t.via = t.via || {}; var k = legKey(a, b); if(v && v.length) t.via[k] = v; else delete t.via[k]; save(); }
+function addVia(a, b, q){
+  var v = legVia(a, b).slice(), pts = [a].concat(v.map(function(x){ return {la:x[0], lo:x[1]}; }), [b]), best = 0, bc = Infinity;
+  for(var i = 0; i < pts.length-1; i++){ var c = dist(pts[i], q) + dist(q, pts[i+1]) - dist(pts[i], pts[i+1]); if(c < bc){ bc = c; best = i; } }
+  v.splice(best, 0, [+q.la.toFixed(6), +q.lo.toFixed(6)]); setLegVia(a, b, v);
+}
 function walkSave(){
   // nur feste Etappen dauerhaft merken (nicht die vom eigenen Standort), höchstens ca. 300 KB
   var keep = {}, size = 0, ks = Object.keys(WALKC).filter(function(k){ return WALKC[k] && WALKC[k].p && !WALKC[k].live; }).reverse();
@@ -4332,7 +4356,7 @@ function walkPump(){
   while(walkBusy < 2 && walkQ.length){
     var job = walkQ.shift(); walkBusy++;
     (function(job){
-      var u = "https://routing.openstreetmap.de/routed-foot/route/v1/driving/"+(+job.a.lo).toFixed(6)+","+(+job.a.la).toFixed(6)+";"+(+job.b.lo).toFixed(6)+","+(+job.b.la).toFixed(6)+"?overview=full&geometries=geojson";
+      var u = "https://routing.openstreetmap.de/routed-foot/route/v1/driving/"+[[job.a.la, job.a.lo]].concat(job.v||[], [[job.b.la, job.b.lo]]).map(function(q){ return (+q[1]).toFixed(6)+","+(+q[0]).toFixed(6); }).join(";")+"?overview=full&geometries=geojson";
       fetch(u).then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(function(j){
         var rt = j.routes && j.routes[0];
         if(rt && rt.geometry){ var c = rt.geometry.coordinates, out = [];
@@ -4346,15 +4370,16 @@ function walkPump(){
 }
 var rsTimer = null;
 function renderSheetSoon(){ clearTimeout(rsTimer); rsTimer = setTimeout(function(){ var ae = document.activeElement; if(ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) return; var y = document.querySelector(".body"), st = y ? y.scrollTop : 0; renderSheet(); if(y){ var y2 = document.querySelector(".body"); if(y2) y2.scrollTop = st; } }, 400); }
-function walkPath(a, b){
-  if(dist(a, b) < 40) return [a, b];
-  var k = wKey(a, b), c = WALKC[k];
+function walkPath(a, b, v){
+  v = v || []; var direct = [a].concat(v.map(function(q){ return {la:q[0], lo:q[1]}; }), [b]);
+  if(!v.length && dist(a, b) < 40) return [a, b];
+  var k = wKey(a, b, v), c = WALKC[k];
   if(c && c.p){ var pts = c.p.map(function(q){ return {la:q[0], lo:q[1]}; }); pts.unshift(a); pts.push(b); return pts; }
-  if(c && (c.p===null || (c.fail && Date.now()-c.fail < 60000))) return [a, b];
-  if(!c || c.fail){ WALKC[k] = {pend:1}; walkQ.push({k:k, a:a, b:b, live:a.id==="me" || b.id==="me" || a===me}); setTimeout(walkPump, 0); }
-  return [a, b];
+  if(c && (c.p===null || (c.fail && Date.now()-c.fail < 60000))) return direct;
+  if(!c || c.fail){ WALKC[k] = {pend:1}; walkQ.push({k:k, a:a, b:b, v:v, live:a.id==="me" || b.id==="me" || a===me}); setTimeout(walkPump, 0); }
+  return direct;
 }
-function walkDist(a, b){ var c = WALKC[wKey(a, b)]; return c && c.d ? c.d : null; }
+function walkDist(a, b, v){ var c = WALKC[wKey(a, b, v)]; return c && c.d ? c.d : null; }
 var SHAPES = null, RIDEC = {};
 function shapesFor(name){
   if(!SHAPES){ SHAPES = {}; TRANSIT.subway.forEach(function(t){ SHAPES[t.r] = (SHAPES[t.r]||[]).concat(t.l.map(decPts)); }); }
@@ -4968,6 +4993,8 @@ $("tripBtn").addEventListener("click", function(){ var open = $("tripMenu").hidd
 
 /* ---------- Inhalt: Tagesplan ---------- */
 var legsList = lsGet("rp-legs")!=="0";
+var VIAICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"4.5\" cy=\"15.5\" r=\"2\"/><circle cx=\"15.5\" cy=\"4.5\" r=\"2\"/><circle cx=\"11\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/><path d=\"M6 14c2-1 3.5-1.3 5-2M12.3 10.8c1-1.7 1.8-3.5 2.2-4.6\"/></svg>";
+function viaBtn(i, v){ return isRO() ? "" : "<button type=\"button\" class=\"viab"+(v.length?" on":"")+"\" data-act=\"viaedit\" data-leg=\""+i+"\" title=\"Fußweg über Wegpunkte lenken\" aria-label=\"Wegpunkte setzen"+(v.length ? ", "+v.length+" gesetzt" : "")+"\">"+VIAICO+(v.length ? "<b>"+v.length+"</b>" : "")+"</button>"; }
 function renderDay(){
   var D = dayByKey(cur);
   if(!D) return "<p class=\"empty\">Diese Reise hat noch keine gültigen Daten. Trage im Reiter „Reise“ An- und Abreise ein.</p>";
@@ -5010,8 +5037,8 @@ function renderDay(){
             : (a.id && T().done[a.id]) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (zuletzt erledigt)</span></li>" : "";
     var lh = legHidden(a, b), ev = "<button type=\"button\" class=\"leye\" data-act=\"legvis\" data-leg=\""+i+"\" aria-pressed=\""+!lh+"\" title=\""+(lh?"Etappe auf der Karte einblenden":"Etappe auf der Karte ausblenden")+"\" aria-label=\"Etappe auf der Karte zeigen\">"+(lh?EYEOFF:EYE)+"</button>";
     var sw = "<span class=\"lm\" role=\"group\" aria-label=\"Unterwegs auf dieser Etappe\"><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"walk\" aria-pressed=\""+(m==="walk")+"\" title=\"Zu Fuß\" aria-label=\"Zu Fuß\">"+LMWALK+"</button><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"oepnv\" aria-pressed=\""+(m==="oepnv")+"\" title=\"U-Bahn\" aria-label=\"U-Bahn\">"+LMSUB+"</button></span>";
-    if(m==="walk"){ walkPath(a, b); var wd = walkDist(a, b) || dist(a, b)*1.25;
-      return pre+"<li class=\"leg tleg lw"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><b>"+Math.max(1,Math.round(wd/1.33/60))+" Min.</b> · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+ev+"</div></li>"; }
+    if(m==="walk"){ var lv = legVia(a, b); walkPath(a, b, lv); var wd = walkDist(a, b, lv) || dist(a, b)*1.25;
+      return pre+"<li class=\"leg tleg lw"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><b>"+Math.max(1,Math.round(wd/1.33/60))+" Min.</b> · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+viaBtn(i, lv)+ev+"</div></li>"; }
     var alts = transitAlts(a, b, cur), r = legRoute(a, b, cur), open = !!legOpen[cur+"|"+i], ai = alts.indexOf(r);
     var fr = !r.walk && r.legs.filter(function(l){ return l.t==="ride"; })[0], lc = fr ? NET.r[fr.r][1] : "";
     return pre+"<li class=\"leg tleg "+(r.walk ? "lw" : "lt")+(legSel===i?" sel":"")+"\""+(lc ? " style=\"--lc:"+lc+"\"" : "")+"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r, true)+"</button>"+
@@ -6318,7 +6345,18 @@ function openDayPop(forId, mv){
   var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
 }
 function closeCatPop(){ $("catPop").hidden = true; locSt = null; }
-function endPick(){ pick = null; $("pick").hidden = true; }
+function endPick(){ pick = null; $("pick").hidden = true; if(viaPick) endViaPick(); }
+var viaPick = null;
+function viaBanner(){ var lp = viaPick && dayLegs(cur)[viaPick.li]; if(!lp) return; var n = legVia(lp[0], lp[1]).length, b = $("pick");
+  b.querySelector("span").innerHTML = "<b>Fußweg lenken</b> · "+esc(lp[0].n || "Start")+" → "+esc(lp[1].n || "Ziel")+"<br><small>Tippe auf die Karte, um einen Wegpunkt zu setzen"+(n ? ", auf einen Wegpunkt, um ihn zu entfernen" : "")+".</small>";
+  $("pickCancel").textContent = "Fertig"; b.hidden = false; }
+function startViaPick(li){
+  var lp = dayLegs(cur)[li]; if(!lp) return;
+  if(legMode(lp[0], lp[1])!=="walk") setLegMode(lp[0], lp[1], "walk");
+  pick = null; viaPick = {li:li}; legSel = li; layers.route = true; select(null); viaBanner();
+  setSheet(desktop.matches ? sheetState : "min"); fitPoints([lp[0], lp[1]].concat(legVia(lp[0], lp[1]).map(function(q){ return {la:q[0], lo:q[1]}; })), 1); scheduleOverlay();
+}
+function endViaPick(){ viaPick = null; legSel = -1; $("pick").hidden = true; $("pick").querySelector("span").textContent = "Tippe auf die Karte, um den Ort zu setzen."; $("pickCancel").textContent = "Abbrechen"; scheduleOverlay(); }
 
 document.addEventListener("click", function(e){
   if(e.target.id==="catPop"){ if(lpPt){ if(Date.now()-lpAt > 900) lpClose(); } else closeCatPop(); return; }
@@ -6566,6 +6604,8 @@ document.addEventListener("click", function(e){
     case "catpop": openCatPop(); break;
     case "dcat": draft.c = t.getAttribute("data-cat"); closeCatPop(); renderSheet(); var cb = document.querySelector("[data-act=catpop]"); if(cb) cb.focus(); break;
     case "catclose": closeCatPop(); break;
+    case "viaedit": startViaPick(parseInt(t.getAttribute("data-leg"), 10)); break;
+    case "viaclear": var vlp = dayLegs(cur)[parseInt(t.getAttribute("data-leg"), 10)]; if(vlp){ setLegVia(vlp[0], vlp[1], []); renderSheet(); scheduleOverlay(); } break;
     case "pick": pick = t.getAttribute("data-target"); $("pick").hidden = false; select(null); renderSheet(); setSheet(desktop.matches ? sheetState : "min"); break;
     case "arm": arm(t.getAttribute("data-key")); break;
     case "swdel": deletePlace(id); break;
