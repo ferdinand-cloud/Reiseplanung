@@ -3898,7 +3898,9 @@ function openLsPage(){ closeMenus(); closeChPage(); closeGsPage(); closeProfile(
 function closeLsPage(){ if(!lsPage) return; lsPage = false; $("lsView").hidden = true; navActive(); }
 function lsGoMap(pid){
   closeLsPage(); var p = P(pid); if(!p) return;
-  var dk = dayOf(pid); if(dk) cur = dk; tab = dk ? "day" : "wish"; renderAll(); select(pid); revealPoint(p, 16, true);
+  var dk = dayOf(pid); if(dk) cur = dk; tab = dk ? "day" : "wish"; renderAll(); select(pid);
+  // wie im Tagesplan: Planung ganz einklappen, Pop-up offen, Punkt mit Abstand darüber
+  if(!desktop.matches && hasLoc(p)){ setSheet("min"); setTimeout(function(){ revealPoint(p, 16, true); }, 60); } else revealPoint(p, 16, true);
 }
 function renderLs(){
   var el = $("lsView"); if(!el) return;
