@@ -1589,6 +1589,65 @@ form.gnew{position:relative}
 .dc-head .dc-title b{font:700 22px/1.2 var(--f-body)}
 .dc-head .dc-title small{color:var(--muted);font-size:13px}
 .dc-src{margin-bottom:8px}
+/* Chat */
+.tbcnt{position:absolute;top:5px;left:calc(50% + 5px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#E5484D;color:#fff;font:700 10.5px/17px var(--f-body);text-align:center;border:2px solid var(--sheet);box-sizing:content-box}
+.tbcnt[hidden]{display:none}
+.ch-av{width:46px;height:46px;flex:0 0 46px;border-radius:50%;object-fit:cover;display:block}
+.ch-av.init{display:grid;place-items:center;background:var(--accent);color:#fff;font:700 18px/1 var(--f-body)}
+.ch-av.sm{width:32px;height:32px;flex:0 0 32px;font-size:14px}
+.ch-av.xs{width:24px;height:24px;flex:0 0 24px;font-size:11px}
+.jpmenu .ai .ch-av{margin:0}
+.ch-list .ls-row.un b{font-weight:800}
+.ch-list .ls-row.un small{color:var(--ink);font-weight:600}
+.ch-meta{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto}
+.ch-meta small{font-size:12px;color:var(--muted)}
+.ch-page .ls-head{margin-bottom:12px}
+.ch-dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.chview.conv{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.ch-conv{display:flex;flex-direction:column;height:100%;max-width:640px;width:100%;margin:0 auto;padding-top:calc(env(safe-area-inset-top,0px) + 72px);box-sizing:border-box}
+.ch-head{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:.5px solid var(--sep,var(--line))}
+.ch-head b{font:700 16px/1.2 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-back{width:36px;height:36px;border:0;border-radius:50%;background:var(--fill);color:var(--ink);display:grid;place-items:center;cursor:pointer;flex:0 0 36px}
+.ch-back svg{width:19px;height:19px}
+.ch-msgs{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:10px 12px 6px;display:flex;flex-direction:column;gap:2px}
+.ch-empty{text-align:center;margin:auto 20px}
+.ch-day{align-self:center;margin:12px 0 6px;font:600 12px/1.2 var(--f-body);color:var(--muted)}
+.ch-msg{display:flex;flex-direction:column;align-items:flex-start;max-width:80%;gap:3px}
+.ch-msg.me{align-self:flex-end;align-items:flex-end}
+.ch-msg.tail{margin-bottom:8px}
+.ch-bub{padding:8px 13px;border-radius:19px;background:var(--fill);color:var(--ink);font:15.5px/1.35 var(--f-body);overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
+.ch-msg.me .ch-bub{background:var(--accent);color:#fff}
+.ch-tm{font-size:11px;color:var(--muted);padding:0 6px}
+.ch-pl{width:260px;max-width:100%;border-radius:16px;overflow:hidden;background:var(--sheet);box-shadow:0 0 0 .5px var(--hair),0 2px 10px rgba(0,0,0,.08)}
+.ch-plimg{display:block;width:100%;aspect-ratio:16/10;object-fit:cover}
+.ch-plb{padding:10px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.ch-pln{display:flex;align-items:center;gap:8px;min-width:0}
+.ch-pln b{font:600 15px/1.25 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-pln .cic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:var(--cc);background:color-mix(in srgb,var(--cc) 14%,transparent);flex:0 0 26px}
+.ch-pln .cic svg{width:15px;height:15px}
+.ch-plb small{font-size:12.5px;color:var(--muted)}
+.ch-plb small i{font-style:normal;font-weight:600}
+.ch-pla{display:flex;flex-wrap:nowrap;gap:6px;margin-top:4px;align-items:center}
+.ch-pla .btn{padding:6px 10px;font-size:13px;display:inline-flex;align-items:center;gap:4px}
+.ch-pla .btn svg{width:14px;height:14px}
+.ch-pla .ch-map{width:32px;height:32px;flex:0 0 32px;background:var(--fill)}
+.ch-pla .btn{white-space:nowrap}
+.ch-draft{padding:6px 12px 0}
+.ch-draft[hidden]{display:none}
+.ch-dr{position:relative;display:inline-block;max-width:100%}
+.ch-dr .ch-pl{width:220px}
+.ch-dr .ch-plimg{aspect-ratio:16/7}
+.ch-drx{position:absolute;top:6px;right:6px;width:26px;height:26px;border:0;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font:600 12px/26px var(--f-body);cursor:pointer;padding:0}
+.ch-comp{display:flex;align-items:flex-end;gap:8px;padding:8px 12px calc(env(safe-area-inset-bottom,0px) + 8px)}
+.ch-comp textarea{flex:1;min-width:0;resize:none;border:.5px solid var(--sep,var(--line));border-radius:20px;background:var(--fill2,var(--fill));color:var(--ink);font:16px/1.35 var(--f-body);padding:9px 14px;max-height:120px;outline:none}
+.ch-att,.ch-send{width:40px;height:40px;flex:0 0 40px;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer}
+.ch-att{background:var(--fill);color:var(--ink)}
+.ch-send{background:var(--accent);color:#fff}
+.ch-att svg,.ch-send svg{width:21px;height:21px}
+.ch-pick{max-height:45%;overflow-y:auto;padding:8px 12px;border-top:.5px solid var(--sep,var(--line))}
+.ch-pick[hidden]{display:none}
+.ch-pickh{display:flex;gap:8px;align-items:center;margin-bottom:8px;position:sticky;top:-8px;background:var(--sheet);padding:6px 0;z-index:1}
+.ch-pickh .gs-box{flex:1}
 .gs-box{display:flex;align-items:center;gap:8px;padding:0 12px;border-radius:12px;background:var(--fill)}
 .gs-box svg{width:18px;height:18px;color:var(--muted);flex:0 0 18px}
 .gs-box input{flex:1;min-width:0;border:0;background:none;color:var(--ink);font:16px/1.3 var(--f-body);padding:11px 0;outline:none}
@@ -1793,6 +1852,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 <button type="button" class="tb" id="tbList" data-act="navlist" aria-label="Liste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor"/></svg></button>
 <button type="button" class="tb" id="tbDisc" data-act="navdisc" aria-label="Entdecken"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8z"/></svg></button>
 <button type="button" class="tb" id="tbSearch" data-act="navsrch" aria-label="Suche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg></button>
+<button type="button" class="tb" id="tbChat" data-act="navchat" aria-label="Chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.6c0 4.3-3.8 7.6-8.5 7.6-1.2 0-2.3-.2-3.3-.6L4 20l1.2-3.6C4.1 15 3.5 13.4 3.5 11.6 3.5 7.4 7.3 4 12 4s8.5 3.4 8.5 7.6z"/></svg><b class="tbcnt" id="chBadge" hidden></b></button>
 <button type="button" class="tb" id="bellBtn" data-act="bell" aria-label="Mitteilungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.8a6 6 0 0 1 12 0c0 4.3 1.7 6 2.3 6.7H3.7C4.3 15.8 6 14.1 6 9.8z"/><path d="M9.8 19.6a2.3 2.3 0 0 0 4.4 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
 <button type="button" class="tb" id="tbProf" data-act="navprof" aria-label="Profil"><span class="tbav" id="tbAv"></span></button>
 </nav>
@@ -1802,6 +1862,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 <div class="profview lsview" id="lsView" hidden></div>
 <div class="profview dcview" id="dcView" hidden></div>
 <div class="profview gsview" id="gsView" hidden></div>
+<div class="profview chview" id="chView" hidden></div>
 <input type="file" id="avIn" accept="image/*" hidden>
 <div class="tripmenu" id="tripMenu" hidden></div>
 <div class="addmenu" id="addMenu" role="dialog" aria-label="Hinzufügen" hidden></div>
@@ -2451,8 +2512,9 @@ function frWatch(){
   var rows = function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); };
   frUnsub.push(fbDb.collection("friendReqs").where("to", "==", uid0).onSnapshot(function(qs){ var n0 = A.filter(function(r){ return r.status==="pending"; }).length; A = rows(qs); upd(); var n1 = FR.inc.length; gotA = true; upd(); }, function(){}));
   frUnsub.push(fbDb.collection("friendReqs").where("from", "==", uid0).onSnapshot(function(qs){ B = rows(qs); gotB = true; upd(); }, function(){}));
+  chWatch();
 }
-function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; PROF = null; FR = {inc:[], out:[], friends:[]}; navAv(); }
+function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; chStopAll(); if(chPage) closeChPage(); PROF = null; FR = {inc:[], out:[], friends:[]}; navAv(); }
 function validName(n){ return /^[a-zA-Z0-9._-]{3,20}$/.test(n); }
 function setUsername(n){
   n = (n||"").trim().replace(/^@/, "");
@@ -2865,7 +2927,7 @@ function recWipe(){ if(!fbDb || !acct.user) return; var me = acct.user.uid; recC
 
 /* ---------- Entdecken: Empfehlungen von Freunden am Reiseziel ---------- */
 var dcPage = false, dcScope = "here", dcSrc = lsGet("rp-dcsrc") || "all", DC = {items:[], byKey:{}, at:0, busy:false, err:""};
-function openDcPage(){ closeMenus(); closeGsPage(); closeProfile(); closeNtPage(); closeLsPage(); dcPage = true; renderDc(); $("dcView").hidden = false; navActive(); if(Date.now() - DC.at > 120000) dcLoad(); }
+function openDcPage(){ closeMenus(); closeChPage(); closeGsPage(); closeProfile(); closeNtPage(); closeLsPage(); dcPage = true; renderDc(); $("dcView").hidden = false; navActive(); if(Date.now() - DC.at > 120000) dcLoad(); }
 function closeDcPage(){ if(!dcPage) return; dcPage = false; $("dcView").hidden = true; closeJpMore(); navActive(); }
 function dcLoad(){
   if(!fbDb || !acct.user){ renderDc(); return; }
@@ -2922,7 +2984,7 @@ function dcAdd(key, dk){
 }
 /* ---------- Suche (Leiste oben): Personen, Reisen, Orte aus allen Reisen, Empfehlungen ---------- */
 var gsPage = false, gsQ = "", gsPeople = [], gsT = null, gsBusy = false;
-function openGsPage(){ closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); gsPage = true; renderGs(true); $("gsView").hidden = false; navActive(); if(acct.user && FR.friends.length && Date.now() - DC.at > 300000) dcLoad(); setTimeout(function(){ var i = $("gsIn"); if(i) i.focus(); }, 60); }
+function openGsPage(){ closeMenus(); closeChPage(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); gsPage = true; renderGs(true); $("gsView").hidden = false; navActive(); if(acct.user && FR.friends.length && Date.now() - DC.at > 300000) dcLoad(); setTimeout(function(){ var i = $("gsIn"); if(i) i.focus(); }, 60); }
 function closeGsPage(){ if(!gsPage) return; gsPage = false; $("gsView").hidden = true; navActive(); }
 function gsPeopleSearch(q){
   clearTimeout(gsT); q = q.replace(/^@/, "").toLowerCase();
@@ -2964,6 +3026,163 @@ function renderGs(full){
   $("gsRes").innerHTML = res; fillPhotos($("gsRes"));
 }
 document.addEventListener("input", function(e){ if(e.target && e.target.id==="gsIn"){ gsQ = e.target.value; gsPeopleSearch(gsQ.trim()); renderGs(); } });
+/* ---------- Chat mit Freunden (auch über Orte) ---------- */
+var chMsgErr = false, chPage = false, chOpen = null, chDraft = null, chPickOn = false, chPickQ = "", chMsgs = [], chMsgUnsub = null, chStart = 0, chSending = false;
+var CH = {list:[], byId:{}, got:false}, CHP = {}, CHPROF = {}, CHPL = {};
+function chId(a, b){ return [a, b].sort().join("_"); }
+function chOther(c){ var me = acct.user && acct.user.uid; return (c.members||[]).filter(function(u){ return u!==me; })[0] || ""; }
+function chName(u){ var f = FR.friends.filter(function(x){ return x.uid===u; })[0]; return (CHPROF[u] && CHPROF[u].name) || (f && f.name) || "Freund"; }
+function chProf(u){
+  if(!u || CHPROF[u] || !fbDb) return; CHPROF[u] = {name:"", photo:""};
+  fbDb.collection("profiles").doc(u).get().then(function(d){ var v = d.exists && d.data(); if(v){ CHPROF[u] = {name:v.name||"", photo:v.photo||""}; if(chPage) renderCh(); } }, function(){});
+}
+function chAv(u, cls){ var p = CHPROF[u], nm = chName(u); chProf(u);
+  return p && p.photo ? "<img class=\""+cls+"\" src=\""+p.photo+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
+function chTime(at, long){ if(!at) return ""; var d = new Date(at), n = new Date();
+  if(d.toDateString()===n.toDateString()) return d.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
+  var y = new Date(n); y.setDate(n.getDate()-1); if(d.toDateString()===y.toDateString()) return "Gestern"+(long ? ", "+d.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}) : "");
+  return d.toLocaleDateString("de-DE", {day:"numeric", month:"short"})+(long ? ", "+d.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}) : ""); }
+function chUnread(c){ var me = acct.user && acct.user.uid, L = c.last || {}; return !!(L.at && L.from && L.from!==me && L.at > ((c.read||{})[me]||0)); }
+function chBadge(){ var n = CH.list.filter(chUnread).length, b = $("chBadge"); if(b){ b.hidden = !n; b.textContent = n > 9 ? "9+" : n; } }
+function chWatch(){
+  if(!fbDb || !acct.user) return; var me = acct.user.uid; chStart = Date.now(); CH = {list:[], byId:{}, got:false};
+  frUnsub.push(fbDb.collection("chats").where("members", "array-contains", me).onSnapshot(function(qs){
+    var first = !CH.got;
+    qs.docChanges().forEach(function(ch){
+      var c = ch.doc.data(), L = c.last || {}; if(first || ch.type==="removed" || !L.at || L.from===me || L.at < chStart) return;
+      if(chPage && chOpen===ch.doc.id) return;
+      var nm = chName(L.from); setTimeout(function(){ frToast("@"+nm+": "+(L.t || (L.place ? "📍 "+L.place : "")), "chgo", ch.doc.id); }, 200);
+    });
+    CH.list = qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }).sort(function(a, b){ return (b.at||0) - (a.at||0); });
+    CH.byId = {}; CH.list.forEach(function(c){ CH.byId[c.id] = c; }); CH.got = true;
+    if(chPage && chOpen && chUnread(CH.byId[chOpen] || {})) chMarkRead(chOpen);
+    chBadge(); if(chPage && !chOpen) renderCh();
+  }, function(){ CH.got = true; chBadge(); }));
+}
+function chStopAll(){ if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } CH = {list:[], byId:{}, got:false}; chOpen = null; chBadge(); }
+function chMarkRead(cid){ var me = acct.user && acct.user.uid; if(!me || !CH.byId[cid]) return; var o = {}; o["read."+me] = Date.now(); fbDb.collection("chats").doc(cid).update(o).catch(function(){}); }
+function openChPage(cid){ closeMenus(); closeGsPage(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); if($("jPop") && !$("jPop").hidden) closeJPop(); chPage = true; $("chView").hidden = false; navActive(); if(cid) chOpenConv(cid); else { chCloseConv(); renderCh(); } }
+function closeChPage(){ if(!chPage) return; chPage = false; chCloseConv(); $("chView").hidden = true; closeJpMore(); navActive(); }
+function chOpenConv(cid){
+  if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; }
+  chOpen = cid; chMsgs = []; chMsgErr = false; chPickOn = false; renderCh(true);
+  var me = acct.user && acct.user.uid; if(!me || !fbDb) return;
+  chMsgUnsub = fbDb.collection("chats").doc(cid).collection("msgs").orderBy("at").limitToLast(300).onSnapshot(function(qs){
+    chMsgs = qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); chMsgs.forEach(function(m){ if(m.place) CHPL[m.id] = m.place; });
+    if(chOpen===cid){ renderChMsgs(true); if(chUnread(CH.byId[cid] || {})) chMarkRead(cid); }
+  }, function(){ chMsgs = []; chMsgErr = true; if(chOpen===cid) renderChMsgs(); });
+}
+function chCloseConv(){ if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } chOpen = null; chMsgs = []; chPickOn = false; chVV(); }
+function chWith(u){ var me = acct.user && acct.user.uid; if(!me || !u) return null; return chId(me, u); }
+function chMatch(pl){ var out = null; Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; return Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = {tid:tid, pid:pid}; return true; } return false; }); }); return out; }
+function chPlaceCard(pl, key, draft){
+  var RR = RATES.filter(function(x){ return x[0]===pl.rating; })[0], inT = chMatch(pl);
+  return "<div class=\"ch-pl\">"+(pl.ph ? "<img class=\"ch-plimg\" src=\""+pl.ph+"\" alt=\"\">" : "")+
+    "<div class=\"ch-plb\"><div class=\"ch-pln\"><span class=\"cic\" style=\"--cc:"+catCol(pl.c)+"\">"+icon(pl.c)+"</span><b>"+esc(pl.n)+"</b></div>"+
+    "<small>"+esc([CATNAME[pl.c], pl.addr].filter(Boolean).join(" · "))+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"</small>"+
+    (draft ? "" : "<div class=\"ch-pla\">"+
+      (inT ? "<span class=\"dc-in\">✓ In deiner Reise</span>" : (isRO() ? "" : "<button type=\"button\" class=\"btn g s\" data-act=\"chwish\" data-k=\""+key+"\">＋ Wunschliste</button><button type=\"button\" class=\"btn s\" data-act=\"chplan\" data-k=\""+key+"\">Einplanen</button>"))+"<button type=\"button\" class=\"dc-map ch-map\" data-act=\"chmap\" data-k=\""+key+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button></div>")+
+    "</div></div>";
+}
+function chMsgsHTML(){
+  var me = acct.user && acct.user.uid, h = "", lastDay = "";
+  if(!chMsgs.length) return "<p class=\"note ch-empty\">Noch keine Nachrichten. Schreib etwas oder teile einen Ort mit 📍.</p>";
+  chMsgs.forEach(function(m, i){
+    var d = new Date(m.at||0).toDateString(); if(d!==lastDay){ lastDay = d; h += "<div class=\"ch-day\">"+esc(new Date(m.at||0).toLocaleDateString("de-DE", {weekday:"short", day:"numeric", month:"long"}))+"</div>"; }
+    var mine = m.from===me, nx = chMsgs[i+1], tail = !nx || nx.from!==m.from || (nx.at - m.at) > 300000;
+    h += "<div class=\"ch-msg"+(mine?" me":"")+(tail?" tail":"")+"\" data-mid=\""+esc(m.id)+"\">"+
+      (m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+
+      (tail ? "<small class=\"ch-tm\">"+chTime(m.at, true)+"</small>" : "")+"</div>";
+  });
+  return h;
+}
+function renderChMsgs(stick){
+  var box = $("chMsgs"); if(!box) return; var atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  box.innerHTML = chMsgsHTML(); if(stick !== false && (atEnd || stick)) box.scrollTop = box.scrollHeight;
+}
+function chPickHTML(){
+  var t = T(), q = norm(chPickQ.trim()), all = [];
+  Object.keys(S.trips).forEach(function(tid){ var tt = S.trips[tid]; Object.keys(tt.places||{}).forEach(function(pid){ var p = tt.places[pid]; if(p && !p.of && p.k!=="hotel" && hasLoc(p) && !(tt.privP||{})[pid]) all.push({tid:tid, p:p, cur:tid===S.cur, done:!!(tt.done||{})[pid]}); }); });
+  if(q) all = all.filter(function(x){ return norm([x.p.n, x.p.addr, CATNAME[x.p.c], S.trips[x.tid].name].join(" ")).indexOf(q) > -1; });
+  all.sort(function(a, b){ return (b.cur - a.cur) || (b.done - a.done) || String(a.p.n).localeCompare(b.p.n); });
+  return all.slice(0, 60).map(function(x){ return "<button type=\"button\" class=\"ls-row\" data-act=\"chpickp\" data-trip=\""+esc(x.tid)+"\" data-pid=\""+esc(x.p.id)+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(x.p.c)+"\">"+icon(x.p.c)+"</span><span class=\"ls-t\"><b>"+esc(x.p.n)+"</b><small>"+esc([S.trips[x.tid].name, CATNAME[x.p.c], x.done ? "besucht" : ""].filter(Boolean).join(" · "))+"</small></span></button>"; }).join("") || "<p class=\"note nt-empty\">Keine Orte gefunden.</p>";
+}
+function renderCh(full){
+  var el = $("chView"); if(!el) return; var me = acct.user && acct.user.uid;
+  if(!chOpen){
+    el.classList.remove("conv"); chVV();
+    var h = "<div class=\"pf ch-page\"><div class=\"ls-head dc-head\"><div class=\"dc-title\"><b>Chats</b><small>Mit deinen Freunden schreiben und Orte teilen</small></div></div>";
+    if(!me){ el.innerHTML = h+"<p class=\"note nt-empty\">Melde dich an, um mit Freunden zu chatten.</p></div>"; return; }
+    if(CH.list.length){
+      h += "<div class=\"ag-grp ls-list ch-list\">"+CH.list.map(function(c){ var u = chOther(c), L = c.last || {}, un = chUnread(c);
+        return "<button type=\"button\" class=\"ls-row"+(un?" un":"")+"\" data-act=\"chopen\" data-v=\""+esc(c.id)+"\">"+chAv(u, "ch-av")+"<span class=\"ls-t\"><b>@"+esc(chName(u))+"</b><small>"+(L.from===me ? "Du: " : "")+esc(L.t || (L.place ? "📍 "+L.place : ""))+"</small></span><span class=\"ch-meta\"><small>"+chTime(L.at)+"</small>"+(un ? "<i class=\"ch-dot\"></i>" : "")+"</span></button>"; }).join("")+"</div>";
+    } else if(CH.got) h += "<p class=\"note nt-empty\">Noch keine Chats.</p>";
+    var rest = FR.friends.filter(function(f){ return f.uid && !CH.byId[chId(me, f.uid)]; });
+    if(rest.length) h += "<div class=\"nt-sec\">Neuer Chat</div><div class=\"ag-grp ls-list\">"+rest.map(function(f){ return "<button type=\"button\" class=\"ls-row\" data-act=\"chnew\" data-uid=\""+esc(f.uid)+"\">"+chAv(f.uid, "ch-av")+"<span class=\"ls-t\"><b>@"+esc(chName(f.uid))+"</b><small>Chat beginnen</small></span><span class=\"ls-go\">›</span></button>"; }).join("")+"</div>";
+    if(!FR.friends.length) h += "<p class=\"note nt-empty\">Füge Freunde hinzu, um mit ihnen zu chatten.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div>";
+    el.innerHTML = h+"</div>"; return;
+  }
+  var c = CH.byId[chOpen], u = c ? chOther(c) : chOpen.split("_").filter(function(x){ return x!==me; })[0];
+  if(full || !$("chMsgs")){
+    el.classList.add("conv");
+    el.innerHTML = "<div class=\"ch-conv\"><div class=\"ch-head\"><button type=\"button\" class=\"ch-back\" data-act=\"chback\" aria-label=\"Zurück zu den Chats\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.5 4.5 7 10l5.5 5.5\"/></svg></button>"+chAv(u, "ch-av sm")+"<b>@"+esc(chName(u))+"</b></div>"+
+      "<div class=\"ch-msgs\" id=\"chMsgs\"></div>"+
+      "<div class=\"ch-pick\" id=\"chPick\" hidden><div class=\"ch-pickh\"><div class=\"gs-box\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"chPickIn\" placeholder=\"Ort aus deinen Reisen teilen\" autocomplete=\"off\"></div><button type=\"button\" class=\"btn g s\" data-act=\"chpick\">Fertig</button></div><div class=\"ag-grp ls-list\" id=\"chPickRes\"></div></div>"+
+      "<div class=\"ch-draft\" id=\"chDraftBox\"></div>"+
+      "<div class=\"ch-comp\"><button type=\"button\" class=\"ch-att\" data-act=\"chpick\" aria-label=\"Ort teilen\" title=\"Ort teilen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z\"/><circle cx=\"12\" cy=\"9.5\" r=\"2.5\"/></svg></button>"+
+      "<textarea id=\"chIn\" rows=\"1\" placeholder=\"Nachricht\" enterkeyhint=\"send\"></textarea><button type=\"button\" class=\"ch-send\" data-act=\"chsend\" aria-label=\"Senden\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 19V5M5.5 11.5 12 5l6.5 6.5\"/></svg></button></div></div>";
+    chVV();
+  }
+  renderChMsgs(true); renderChDraft();
+  var pk = $("chPick"); if(pk){ pk.hidden = !chPickOn; if(chPickOn) $("chPickRes").innerHTML = chPickHTML(); }
+}
+function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; b.innerHTML = chDraft ? "<div class=\"ch-dr\">"+chPlaceCard(chDraft, "", true)+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; }
+function chPlaceFrom(tid, pid){
+  var t = S.trips[tid], p = t && t.places[pid]; if(!p) return Promise.resolve(null);
+  var pl = {n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", trip:t.name||""}, r = (t.rating||{})[pid]; if(r) pl.rating = r;
+  var phs = ((t.photos||{})[pid]||[]).filter(function(x){ return !(t.privPh||{})[x]; });
+  return phs.length ? recThumb(phs[phs.length-1]).then(function(th){ if(th) pl.ph = th; return pl; }, function(){ return pl; }) : Promise.resolve(pl);
+}
+function chSend(){
+  var me = acct.user && acct.user.uid, inp = $("chIn"), txt = inp ? inp.value.trim().slice(0, 4000) : "";
+  if(!me || !chOpen || chSending || (!txt && !chDraft)) return;
+  var c = CH.byId[chOpen], u = c ? chOther(c) : chOpen.split("_").filter(function(x){ return x!==me; })[0];
+  var now = Date.now(), msg = {from:me, t:txt, at:now}, pl = chDraft; if(pl) msg.place = pl;
+  var names = {}; names[me] = (PROF && PROF.name) || ""; names[u] = chName(u);
+  var read = {}; read[me] = now;
+  var cref = fbDb.collection("chats").doc(chOpen), b = fbDb.batch();
+  b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:pl ? pl.n : ""}, read:read}, {merge:true});
+  b.set(cref.collection("msgs").doc(), msg);
+  chSending = true; var keepT = txt, keepP = chDraft; if(inp){ inp.value = ""; chGrow(); } chDraft = null; renderChDraft();
+  b.commit().then(function(){ chSending = false; if(chMsgErr && chOpen){ var dr = chDraft; chOpenConv(chOpen); chDraft = dr; renderChDraft(); } }, function(e){ chSending = false; if(inp && !inp.value) inp.value = keepT; chDraft = keepP; renderChDraft(); toast("Senden fehlgeschlagen: "+((e && e.code)==="permission-denied" ? "keine Berechtigung (Firestore-Regeln für Chats ergänzen?)" : (e && e.message) || ""), false); });
+}
+function chGrow(){ var i = $("chIn"); if(!i) return; i.style.height = "auto"; i.style.height = Math.min(120, i.scrollHeight)+"px"; }
+function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualViewport;
+  if(chPage && chOpen && vv){ el.style.top = vv.offsetTop+"px"; el.style.height = vv.height+"px"; el.style.bottom = "auto"; } else { el.style.top = ""; el.style.height = ""; el.style.bottom = ""; } }
+if(window.visualViewport){ window.visualViewport.addEventListener("resize", function(){ if(chPage && chOpen){ var box = $("chMsgs"), end = box && box.scrollHeight - box.scrollTop - box.clientHeight < 80; chVV(); if(end) box.scrollTop = box.scrollHeight; } }); window.visualViewport.addEventListener("scroll", function(){ if(chPage && chOpen) chVV(); }); }
+document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn") chGrow(); if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
+document.addEventListener("keydown", function(e){ if(e.target && e.target.id==="chIn" && e.key==="Enter" && !e.shiftKey && !e.isComposing && !("ontouchstart" in window)){ e.preventDefault(); chSend(); } });
+/* Ort aus dem Ort-Fenster im Chat teilen: erst Freund wählen */
+function chShareMenu(pid, btn){
+  if(!acct.user){ toast("Melde dich an, um Orte zu teilen", false); return; }
+  if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
+  var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
+  jpPopover(pid, btn, "<div class=\"dc-dh\">Im Chat teilen mit …</div>"+fr.map(function(f){ return "<button type=\"button\" data-act=\"chshareto\" data-uid=\""+esc(f.uid)+"\" data-pid=\""+esc(pid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "chshare");
+}
+function chShareTo(u, pid){
+  closeJpMore(); var cid = chWith(u); if(!cid) return;
+  chPlaceFrom(S.cur, pid).then(function(pl){ openChPage(cid); chDraft = pl; renderChDraft(); setTimeout(function(){ var i = $("chIn"); if(i) i.focus(); }, 80); });
+}
+function chAddPlace(key, dk){
+  var pl = CHPL[key]; if(!pl || isRO()) return; closeJpMore();
+  if(chMatch(pl)){ toast("„"+pl.n+"“ ist schon in deiner Reise", false); return; }
+  var m = chMsgs.filter(function(x){ return x.id===key; })[0], by = m && m.from, nm = by ? chName(by) : "Freund";
+  var t = T(), id = uid("w");
+  t.places[id] = {id:id, n:pl.n, c:CATNAME[pl.c] ? pl.c : "sight", la:pl.la, lo:pl.lo, addr:pl.addr||"", note:"Geteilt von @"+nm+" im Chat", list:(t.lists && t.lists[0] || {}).id || null, rec:{by:by||"", name:nm}};
+  save();
+  if(dk && dayByKey(dk)) plan(id, dk); else toast("„"+pl.n+"“ liegt jetzt in der Wunschliste", true);
+  dirty(); renderSheet(); scheduleOverlay(); renderChMsgs(false);
+}
 /* ---------- Bewertungen an einem Ort: Freunde (Empfehlungen) und öffentlich (vorgesehen) ---------- */
 var rvTab = "friends";
 function friendRecs(p){
@@ -2996,7 +3215,7 @@ function rvSection(p){
 }
 /* ---------- Listenansicht: besuchte Orte, Highlights und Fotos einer Reise ---------- */
 var lsPage = false, lsTab = "places", lsFilter = "all";
-function openLsPage(){ closeMenus(); closeGsPage(); closeProfile(); closeNtPage(); closeDcPage(); lsPage = true; renderLs(); $("lsView").hidden = false; navActive(); }
+function openLsPage(){ closeMenus(); closeChPage(); closeGsPage(); closeProfile(); closeNtPage(); closeDcPage(); lsPage = true; renderLs(); $("lsView").hidden = false; navActive(); }
 function closeLsPage(){ if(!lsPage) return; lsPage = false; $("lsView").hidden = true; navActive(); }
 function lsGoMap(pid){
   closeLsPage(); var p = P(pid); if(!p) return;
@@ -3065,7 +3284,7 @@ var MAPGO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" st
 /* Mitteilungen als eigene Seite, nach Art filterbar */
 var ntPage = false, ntKind = "all";
 var NTKINDS = [["all","Alle"],["mention","Erwähnungen"],["reply","Antworten"],["comment","Kommentare"],["like","Gefällt mir"],["friend","Freunde"],["invite","Einladungen"],["join","Mitreisende"]];
-function openNtPage(){ closeMenus(); closeGsPage(); closeProfile(); closeLsPage(); closeDcPage(); ntPage = true; renderNt(); $("ntView").hidden = false; document.body.classList.add("profopen"); navActive(); }
+function openNtPage(){ closeMenus(); closeChPage(); closeGsPage(); closeProfile(); closeLsPage(); closeDcPage(); ntPage = true; renderNt(); $("ntView").hidden = false; document.body.classList.add("profopen"); navActive(); }
 function closeNtPage(){ if(!ntPage) return; ntPage = false; $("ntView").hidden = true; if(!profOpen) document.body.classList.remove("profopen"); navActive(); }
 function renderNt(){
   var el = $("ntView"); if(!el) return;
@@ -3149,13 +3368,13 @@ function acctHTML(){
 /* ---------- Leiste oben & Profilseite ---------- */
 var profOpen = false, profTab = "mine";
 function setNavDot(on){ var a = $("menuBtn"); if(a) a.classList.toggle("dot", !!on); var b = $("tbProf"); if(b) b.classList.toggle("dot", !!on); }
-function navActive(){ var pm = profOpen, np = ntPage, lp = lsPage, dp = dcPage, gp = gsPage; $("tbSearch").classList.toggle("on", gp); $("tbMap").classList.toggle("on", !pm && !np && !lp && !dp && !gp); $("tbProf").classList.toggle("on", pm); $("bellBtn").classList.toggle("on", np); $("tbList").classList.toggle("on", lp); $("tbDisc").classList.toggle("on", dp);
+function navActive(){ var pm = profOpen, np = ntPage, lp = lsPage, dp = dcPage, gp = gsPage || chPage; $("tbChat").classList.toggle("on", chPage); $("tbSearch").classList.toggle("on", gsPage); $("tbMap").classList.toggle("on", !pm && !np && !lp && !dp && !gp); $("tbProf").classList.toggle("on", pm); $("bellBtn").classList.toggle("on", np); $("tbList").classList.toggle("on", lp); $("tbDisc").classList.toggle("on", dp);
   document.body.classList.toggle("profopen", pm || np || lp || dp || gp);
   if(pm){ $("tbProf").setAttribute("aria-current", "page"); $("tbMap").removeAttribute("aria-current"); } else { $("tbMap").setAttribute("aria-current", "page"); $("tbProf").removeAttribute("aria-current"); } }
 function avHTML(cls){ var ph = PROF && PROF.photo, nm = (PROF && PROF.name) || myMail() || "?";
   return ph ? "<img class=\""+cls+"\" src=\""+ph+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
 function navAv(){ var e = $("tbAv"); if(!e) return; e.innerHTML = acct.user ? avHTML("tbimg") : "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/><path d=\"M6.2 18.4a7 7 0 0 1 11.6 0\"/></svg>"; }
-function openProfile(){ closeMenus(); closeGsPage(); closeNtPage(); closeLsPage(); closeDcPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
+function openProfile(){ closeMenus(); closeChPage(); closeGsPage(); closeNtPage(); closeLsPage(); closeDcPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
 function closeProfile(){ if(!profOpen) return; profOpen = false; $("profView").hidden = true; if(!ntPage) document.body.classList.remove("profopen"); navActive(); }
 function tripCover(id){ var t = S.trips[id], ps = (t && t.photos) || {}, ks = Object.keys(ps); for(var i = 0; i < ks.length; i++){ var a = ps[ks[i]] || []; if(a.length) return a[a.length-1]; } return null; }
 function renderProfile(){
@@ -5399,7 +5618,7 @@ var jOpen = lsGet("nyc-j-open")!=="0";
 var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#5E9970"],[3,"Nice","#007AFF"],[4,"Okay","#6b7785"],[5,"Overrated","#FF3B30"]];
 function rateOf(id){ return ((T().rating||{})[id]) || 0; }
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=ratepick],[data-act=dcplan]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=ratepick],[data-act=dcplan],[data-act=chplan]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -5415,6 +5634,7 @@ function openJpMore(id, btn){
   var p = P(id); if(!p) return; var g = grpName(p.g), pv = isPrivP(id);
   jpPopover(id, btn, "<button type=\"button\" data-act=\"grppick\" role=\"menuitem\"><span class=\"ai\">▦</span><span>"+(g ? "Gruppe: "+esc(g) : "Zu Gruppe hinzufügen")+"</span></button>"+
     (canPriv() ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : "")+
+    (hasLoc(p) && p.k!=="hotel" && acct.user ? "<button type=\"button\" data-act=\"chshare\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">💬</span><span>Im Chat teilen</span></button>" : "")+
     (dayOf(id) && !isRO() && p.k!=="hotel" && hasLoc(p) ? "<button type=\"button\" data-act=\"tovia\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+VIAICO+"</span><span>Nur als Wegpunkt</span></button>" : ""), "more");
 }
 function openRatePick(id, btn){
@@ -6711,6 +6931,24 @@ document.addEventListener("click", function(e){
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
     case "srchopen": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); openSearch(); break;
     case "navmap": closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); closeMenus(); break;
+    case "navchat": if(chPage && !chOpen) closeChPage(); else openChPage(); break;
+    case "chgo": $("toast").hidden = true; openChPage(t.getAttribute("data-v")); break;
+    case "chopen": chOpenConv(t.getAttribute("data-v")); break;
+    case "chnew": var chu = chWith(t.getAttribute("data-uid")); if(chu) chOpenConv(chu); break;
+    case "chback": chCloseConv(); renderCh(); break;
+    case "chsend": chSend(); break;
+    case "chpick": chPickOn = !chPickOn; chPickQ = ""; var chpk = $("chPick"); if(chpk){ chpk.hidden = !chPickOn; if(chPickOn){ $("chPickIn").value = ""; $("chPickRes").innerHTML = chPickHTML(); } } break;
+    case "chpickp": chPickOn = false; $("chPick").hidden = true; chPlaceFrom(t.getAttribute("data-trip"), t.getAttribute("data-pid")).then(function(pl){ chDraft = pl; renderChDraft(); var ci = $("chIn"); if(ci) ci.focus(); }); break;
+    case "chdrx": chDraft = null; renderChDraft(); break;
+    case "chmap": var chpl = CHPL[t.getAttribute("data-k")]; if(chpl){ var chm = chMatch(chpl); closeChPage();
+      if(chm){ if(chm.tid!==S.cur){ grpSel = ""; S.cur = chm.tid; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
+        if(P(chm.pid)){ var chdk = dayOf(chm.pid); if(chdk) cur = chdk; tab = chdk ? "day" : "wish"; renderAll(); select(chm.pid); revealPoint(P(chm.pid), 16, true); } }
+      else map.easeTo({center:[chpl.lo, chpl.la], zoom:16, duration: reduceMotion?0:500}); } break;
+    case "chwish": chAddPlace(t.getAttribute("data-k"), null); break;
+    case "chplan": var chk0 = t.getAttribute("data-k"); jpPopover("ch", t, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"chday\" data-k=\""+esc(chk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "chplan"); break;
+    case "chday": chAddPlace(t.getAttribute("data-k"), t.getAttribute("data-day")); break;
+    case "chshare": var chsp = t.getAttribute("data-pid"); var chbtn = document.querySelector("#jPop [data-act=jpmore]") || t; closeJpMore(); if(chsp) setTimeout(function(){ chShareMenu(chsp, chbtn); }, 30); break;
+    case "chshareto": chShareTo(t.getAttribute("data-uid"), t.getAttribute("data-pid")); break;
     case "navsrch": if(gsPage) closeGsPage(); else openGsPage(); break;
     case "gsfriend": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); setTimeout(renderGs, 600); break;
     case "gstrip": closeGsPage(); var gtr = t.getAttribute("data-trip"); if(S.trips[gtr] && gtr!==S.cur){ grpSel = ""; S.cur = gtr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
