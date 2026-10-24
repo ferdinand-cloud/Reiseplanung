@@ -4531,7 +4531,7 @@ function transitAlts(a, b, k, force){
   return (ALTCACHE[key] = top);
 }
 function legRoute(a, b, k){
-  var alts = transitAlts(a, b, k, ((T().legMode||{})[legKey(a, b)])==="oepnv"), i = ((T().legAlt||{})[legKey(a, b)]) || 0;
+  var alts = transitAlts(a, b, k, legGet("legMode", b)==="oepnv"), i = legGet("legAlt", b) || 0;
   return alts[Math.min(i, alts.length-1)];
 }
 function mins(s){ return Math.max(1, Math.round(s/60)); }
@@ -4677,12 +4677,12 @@ function legCtx(a){
 }
 var routeMode = "walk"; // nicht mehr global; jede Etappe hat ihre eigene Wahl
 function legKey(a, b){ return (a.id||((+a.la).toFixed(4)+","+(+a.lo).toFixed(4)))+">"+(b.id||((+b.la).toFixed(4)+","+(+b.lo).toFixed(4))); }
-function legMode(a, b){ var m = (T().legMode||{})[legKey(a, b)]; if(m) return m; if(dist(a, b) < 1100) return "walk"; return transit(a, b, cur).walk ? "walk" : "oepnv"; }
-function setLegMode(a, b, m){ var t = T(); t.legMode = t.legMode || {}; t.legMode[legKey(a, b)] = m; save(); }
+function legMode(a, b){ var m = legGet("legMode", b); if(m) return m; if(dist(a, b) < 1100) return "walk"; return transit(a, b, cur).walk ? "walk" : "oepnv"; }
+function setLegMode(a, b, m){ legSet("legMode", b, m); }
 var legOpen = {}, legSel = -1;
 /* Einzelne Etappen auf der Karte ein-/ausblenden (pro Tag, gemerkt auf diesem Gerät) */
 var legHid = (function(){ try { return JSON.parse(lsGet("nyc-leg-hid")||"{}") || {}; } catch(e){ return {}; } })();
-function legKey(a, b){ return cur+"|"+(a.id||"h")+">"+(b.id||"h"); }
+function legKey(a, b){ return viaKey(b); }
 function legHidden(a, b){ return !!legHid[legKey(a, b)]; }
 function routeAnyVisible(){ return !!layers.route && dayLegs(cur).some(function(pr){ return !legHidden(pr[0], pr[1]); }); }
 function saveLegHid(){ lsSet("nyc-leg-hid", JSON.stringify(legHid)); }
@@ -5225,6 +5225,9 @@ function viaKey(b){ return cur+"|>"+(b.id||"h"); }
 function viaOld(V, b){ var pre = cur+"|", suf = ">"+(b.id||"h"); return Object.keys(V).filter(function(k){ return k.indexOf(pre)===0 && k.indexOf("|>")<0 && k.slice(-suf.length)===suf; }); }
 function legVia(a, b){ var V = T().via || {}, v = V[viaKey(b)]; if(Array.isArray(v)) return v;
   var o = viaOld(V, b).filter(function(k){ return Array.isArray(V[k]) && V[k].length; })[0]; return o ? V[o] : []; }
+/* Verkehrsmittel und gewählte Verbindung genauso am Ziel der Etappe speichern */
+function legGet(f, b){ var V = T()[f] || {}, v = V[viaKey(b)]; if(v!==undefined) return v; var o = viaOld(V, b)[0]; return o ? V[o] : undefined; }
+function legSet(f, b, v){ var t = T(); t[f] = t[f] || {}; viaOld(t[f], b).forEach(function(k){ delete t[f][k]; }); if(v===undefined || v===null) delete t[f][viaKey(b)]; else t[f][viaKey(b)] = v; save(); }
 function setLegVia(a, b, v){ var t = T(); t.via = t.via || {}; viaOld(t.via, b).forEach(function(k){ delete t.via[k]; }); var k = viaKey(b); if(v && v.length) t.via[k] = v; else delete t.via[k]; save(); }
 function addVia(a, b, q){
   var v = legVia(a, b).slice(), pts = [a].concat(v.map(function(x){ return {la:x[0], lo:x[1]}; }), [b]), best = 0, bc = Infinity;
@@ -7569,7 +7572,7 @@ document.addEventListener("click", function(e){
       var showAll = !routeAnyVisible();
       dayLegs(cur).forEach(function(pr){ var k3 = legKey(pr[0], pr[1]); if(showAll) delete legHid[k3]; else legHid[k3] = 1; });
       layers.route = true; lsSet("nyc-l-route", "1"); saveLegHid(); applyLayers(); renderSheet(); scheduleOverlay(); break;
-    case "legalt": var la2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(la2){ var tq = T(); tq.legAlt = tq.legAlt || {}; tq.legAlt[legKey(la2[0], la2[1])] = parseInt(t.getAttribute("data-alt"),10); save(); renderSheet(); scheduleOverlay(); } break;
+    case "legalt": var la2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(la2){ legSet("legAlt", la2[1], parseInt(t.getAttribute("data-alt"),10)); renderSheet(); scheduleOverlay(); } break;
     case "lmode": var lp = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(lp){ setLegMode(lp[0], lp[1], t.getAttribute("data-mode")); renderSheet(); scheduleOverlay(); } break;
     case "legvis": var lp = dayLegs(cur)[+t.getAttribute("data-leg")]; if(lp){ var hk = legKey(lp[0], lp[1]); if(!layers.route){ dayLegs(cur).forEach(function(pr){ legHid[legKey(pr[0], pr[1])] = 1; }); layers.route = true; lsSet("nyc-l-route","1"); applyLayers(); }
       if(legHid[hk]) delete legHid[hk]; else legHid[hk] = 1; saveLegHid(); } renderSheet(); scheduleOverlay(); break;
