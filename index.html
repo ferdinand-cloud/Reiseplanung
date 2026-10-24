@@ -1375,6 +1375,7 @@ li.st .sub{margin-top:1px}
 .cap-row textarea{max-width:100%}
 .cap-row textarea{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--sheet);color:var(--ink);padding:8px 10px;font:16px/1.35 var(--f-body);resize:none}
 .cap-ok{background:var(--ink) !important;color:var(--sheet) !important}
+.cap-cancel{display:block;margin:12px auto 0;border:0;background:none;color:#FF453A;font:600 14.5px/1.2 var(--f-body);padding:6px 10px;cursor:pointer}
 .cfpop{position:fixed;inset:0;z-index:95;background:rgba(8,12,18,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:grid;place-items:center;padding:24px}
 .cfpop[hidden]{display:none}
 .cf-card{width:min(320px,100%);background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-bd,var(--line));border-radius:18px;padding:18px 16px 14px;box-shadow:0 12px 40px rgba(0,0,0,.3);color:var(--ink);text-align:center}
@@ -5446,7 +5447,7 @@ function openCardMore(){
 /* ---------- Bildunterschriften: je Foto ein Text, erscheint unten am Foto ---------- */
 function captOf(ph){ return ((T().capt||{})[ph]) || ""; }
 var CAPQ = [];
-var CAPPV = {}, CAPDONE = [];
+var CAPPV = {}, CAPDONE = [], CAPPID = {};
 function captPrompt(ids, edit, after){
   var el = $("capPop"); if(!el){ el = document.createElement("div"); el.id = "capPop"; el.className = "cfpop"; document.body.appendChild(el); }
   var keep = {}; el.querySelectorAll && el.querySelectorAll("textarea[data-cap]").forEach(function(x){ keep[x.getAttribute("data-cap")] = x.value; });
@@ -5460,7 +5461,8 @@ function captPrompt(ids, edit, after){
     (pv && n > 1 ? "<button type=\"button\" class=\"cap-all"+(allOn?" on":"")+"\" data-capall=\"1\" aria-pressed=\""+allOn+"\">"+ILOCK+"<span>"+(allOn ? "Alle privat" : "Alle privat machen")+"</span></button>" : "")+
     "<div class=\"cap-list\">"+CAPQ.map(function(x){ var v = keep[x]!==undefined ? keep[x] : captOf(x);
       return "<div class=\"cap-row\"><div class=\"cap-im\"><img data-ph=\""+x+"\" alt=\"\">"+(pv ? lockBtn(x) : "")+"</div><textarea data-cap=\""+x+"\" rows=\"2\" maxlength=\"500\" placeholder=\"Text zum Foto …\">"+esc(v)+"</textarea></div>"; }).join("")+"</div>"+
-    "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\">"+(edit ? "Abbrechen" : "Überspringen")+"</button><button type=\"button\" class=\"cf-ok cap-ok\">Speichern</button></div></div>";
+    "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\">"+(edit ? "Abbrechen" : "Überspringen")+"</button><button type=\"button\" class=\"cf-ok cap-ok\">Speichern</button></div>"+
+    (CAPDONE.length ? "<button type=\"button\" class=\"cap-cancel\">Abbrechen – "+(n===1 ? "Foto nicht hinzufügen" : "Fotos nicht hinzufügen")+"</button>" : "")+"</div>";
   el.hidden = false; fillPhotos(el);
   var applyPv = function(){
     if(!pv) return; var t = T(), ch = []; t.privPh = t.privPh || {};
@@ -5475,6 +5477,14 @@ function captPrompt(ids, edit, after){
       if(lk){ var k0 = lk.getAttribute("data-cappv"); CAPPV[k0] = !CAPPV[k0]; }
       else { var to = !CAPQ.every(function(x){ return CAPPV[x] || placeP(x); }); CAPQ.forEach(function(x){ CAPPV[x] = to; }); }
       captPrompt([], edit); return;
+    }
+    if(ev.target.closest(".cap-cancel")){
+      var gone = CAPQ.slice(), t0 = T(); el.hidden = true; el.innerHTML = ""; CAPQ = []; CAPPV = {}; CAPDONE = [];
+      gone.forEach(function(x){ var pid = phPlace(x); CAPPID[x] = pid; if(t0.privPh) delete t0.privPh[x]; delete PHMEM[x]; if(pid) delPhoto(pid, x); else { delete PHC[x]; idbDo("readwrite", function(st){ st.delete(x); }); var q = phQueue(); q.up = q.up.filter(function(y){ return y!==x; }); phSaveQ(q); } });
+      var pids = {}; gone.forEach(function(x){ var pp = CAPPID[x]; if(pp) pids[pp] = 1; });
+      Object.keys(pids).forEach(function(pp){ var q0 = t0.places[pp]; if(q0 && q0.k==="photo" && !((t0.photos||{})[pp]||[]).length){ var k0 = dayOf(pp); if(k0) t0.order[k0] = ord(k0).filter(function(y){ return y!==pp; }); delete t0.places[pp]; delete t0.done[pp]; if(t0.times) delete t0.times[pp]; if(sel===pp) sel = null; if(jp && jp.pid===pp) closeJPop(); } });
+      save(); if(jp && !$("jPop").hidden) renderJPop(); renderAll();
+      toast(gone.length===1 ? "Foto nicht hinzugefügt" : gone.length+" Fotos nicht hinzugefügt", false); return;
     }
     if(ev.target===el || ev.target.closest(".cf-no")){ if(!edit && applyPv()){ save(); if(jp && !$("jPop").hidden) renderJPop(); } close(); }
     else if(ev.target.closest(".cap-ok")){
