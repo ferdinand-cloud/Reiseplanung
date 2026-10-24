@@ -2250,7 +2250,7 @@ body.mving #gl{cursor:grabbing}
 
 <nav class="rail" id="rail" aria-label="Reisetage"></nav>
 <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
-<input type="file" id="libIn" accept="image/*" multiple hidden>
+<input type="file" id="libIn" accept="image/*,image/heic,image/heif" multiple hidden>
 <div class="ctrl" id="ctrl">
   <div class="cg cg-zoom"><button type="button" id="zin" aria-label="Hineinzoomen">+</button><button type="button" id="zout" aria-label="Herauszoomen">−</button></div>
   <div class="cg">
@@ -2281,7 +2281,7 @@ body.mving #gl{cursor:grabbing}
   <select id="nbAdd" aria-label="Stadtviertel hervorheben"></select>
   <div class="hl-list" id="nbList"></div>
 </div>
-<input type="file" id="cphIn" accept="image/*" multiple hidden>
+<input type="file" id="cphIn" accept="image/*,image/heic,image/heif" multiple hidden>
 <div class="banner" id="pick" hidden><span>Tippe auf die Karte, um den Ort zu setzen.</span><button type="button" id="pickCancel">Abbrechen</button></div>
 <div class="mapnote" id="mapnote" hidden></div>
 <div class="offline" id="offline" hidden>Offline: Plan und Routen gehen weiter, neue Kartenbereiche laden erst wieder mit Netz.</div>
@@ -6186,6 +6186,7 @@ var CAPQ = [];
 var CAPPV = {}, CAPDONE = [], CAPPID = {};
 function captPrompt(ids, edit, after){
   var el = $("capPop"); if(!el){ el = document.createElement("div"); el.id = "capPop"; el.className = "cfpop"; document.body.appendChild(el); }
+  var capSL = el.querySelector && el.querySelector(".cap-list"), capST = capSL ? capSL.scrollTop : 0;
   var keep = {}; el.querySelectorAll && el.querySelectorAll("textarea[data-cap]").forEach(function(x){ keep[x.getAttribute("data-cap")] = x.value; });
   if(after) CAPDONE.push(after);
   ids.forEach(function(x){ if(CAPQ.indexOf(x)<0){ CAPQ.push(x); CAPPV[x] = !!((T().privPh||{})[x]); } });
@@ -6200,10 +6201,13 @@ function captPrompt(ids, edit, after){
     "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\">"+(edit ? "Abbrechen" : "Überspringen")+"</button><button type=\"button\" class=\"cf-ok cap-ok\">Speichern</button></div>"+
     (CAPDONE.length ? "<button type=\"button\" class=\"cap-cancel\">Abbrechen – "+(n===1 ? "Foto nicht hinzufügen" : "Fotos nicht hinzufügen")+"</button>" : "")+"</div>";
   el.hidden = false; fillPhotos(el);
+  // nach dem Neuaufbau (z. B. Schloss angetippt) an derselben Stelle der Liste bleiben
+  var capL2 = el.querySelector(".cap-list"); if(capL2 && capST) capL2.scrollTop = capST;
   // Textfeld wächst mit dem Text (bis etwa ein Drittel des sichtbaren Bereichs), danach scrollt es
   var capFit = function(ta){ var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight, mx = Math.max(110, Math.min(240, Math.round(vh*0.38)));
     ta.style.height = "auto"; ta.style.height = Math.min(mx, ta.scrollHeight + 2)+"px"; };
   el.querySelectorAll("textarea[data-cap]").forEach(function(ta){ capFit(ta); ta.addEventListener("input", function(){ capFit(ta); }); ta.addEventListener("focus", function(){ setTimeout(function(){ capFit(ta); }, 300); }); });
+  if(capL2 && capST) capL2.scrollTop = capST;
   var applyPv = function(){
     if(!pv) return; var t = T(), ch = []; t.privPh = t.privPh || {};
     CAPQ.forEach(function(x){ var was = !!t.privPh[x]; if(CAPPV[x] && !was){ t.privPh[x] = 1; ch.push(x); } else if(!CAPPV[x] && was){ delete t.privPh[x]; ch.push(x); } });
@@ -6237,7 +6241,7 @@ function captPrompt(ids, edit, after){
       var npv = applyPv(); close(); save(); if(jp && jp.view) phMetaRefresh(); else if(jp && !$("jPop").hidden) renderJPop();
       if(npv) toast(npv===1 ? "Privatsphäre des Fotos geändert" : "Privatsphäre von "+npv+" Fotos geändert", false);
     } };
-  if(edit) setTimeout(function(){ var ta = el.querySelector("textarea"); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 50);
+  if(edit && !capSL) setTimeout(function(){ var ta = el.querySelector("textarea"); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 50);
 }
 var CONFIRM = {
   phdel:["Foto löschen?", "Das Foto wird aus der Reise entfernt, auch für alle Mitreisenden.", "Löschen"],
@@ -6594,7 +6598,7 @@ function renderJPop(){
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Fotos"+(ph.length ? " · "+ph.length : "")+(qn ? "<small> · "+qn+" noch nicht hochgeladen</small>" : "")+"</div><div class=\"jp-strip\">"+
        "<label class=\"jp-add\" for=\"phIn\"><span>＋</span></label>"+
        ph.map(function(x){ return "<button type=\"button\" data-act=\"phview\" data-ph=\""+x+"\""+(canPriv() && isPrivPh(x, jp.pid) ? " class=\"pv-lk\"" : "")+"><img data-ph=\""+x+"\" alt=\"Foto\">"+(canPriv() && isPrivPh(x, jp.pid) ? "<i>"+ILOCK+"</i>" : "")+"</button>"; }).join("")+
-       "</div><input type=\"file\" id=\"phIn\" accept=\"image/*\" multiple hidden>"+
+       "</div><input type=\"file\" id=\"phIn\" accept=\"image/*,image/heic,image/heif\" multiple hidden>"+
        "<p class=\"note pherr\" id=\"jpPhErr\" hidden><span></span> <button type=\"button\" class=\"tf-link\" data-act=\"phretry\">Erneut laden</button></p></div>";
   if(hasLoc(p)) h += rvSection(p);
   if(acct.user && KNOWN[S.cur] && shared){
