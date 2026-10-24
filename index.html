@@ -2066,6 +2066,8 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 @media (min-width:900px){ body.sheetmin #sheetOpen{display:none} body.sheetmin .sheet{visibility:visible} }
 
 .lrow{display:flex;align-items:center;gap:6px}
+.jp-strip button{position:relative}
+.jp-strip .phday{position:absolute;left:4px;bottom:4px;padding:1px 6px;border-radius:999px;font:700 10px/16px var(--f-body);font-style:normal;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
 .sgrp{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-weight:500;color:var(--muted);opacity:.9}
 .sgrp svg{width:11px;height:11px;flex:0 0 11px;opacity:.75}
 :where(button,a,label,select,summary,[data-act],[role=tab],[role=button]){touch-action:manipulation;-webkit-tap-highlight-color:transparent}
@@ -2460,6 +2462,9 @@ function normTrip(t){
   var seen = {};
   Object.keys(t.order).forEach(function(dk){ t.order[dk] = (Array.isArray(t.order[dk]) ? t.order[dk] : []).filter(function(id){ if(typeof id!=="string" || !t.places[id] || seen[id]) return false; seen[id]=1; return true; }); });
   if(t.rating && typeof t.rating==="object") Object.keys(t.rating).forEach(function(id){ if(t.rating[id]===5){ t.overrated = t.overrated && typeof t.overrated==="object" ? t.overrated : {}; t.overrated[id] = 1; delete t.rating[id]; } });
+  Object.keys(t.places).forEach(function(k){ var q = t.places[k], ro = q && q.of; if(!ro || !t.places[ro]) return;
+    if(t.rating && t.rating[k]){ if(!t.rating[ro]) t.rating[ro] = t.rating[k]; delete t.rating[k]; }
+    if(t.overrated && t.overrated[k]){ t.overrated[ro] = 1; delete t.overrated[k]; } });
   migrateJournal(t);
   return t;
 }
@@ -3312,10 +3317,12 @@ function recCollect(){
     Object.keys(t.journal||{}).forEach(function(dk){ var J = t.journal[dk]; if(J && J.hl) hl[J.hl] = 1; });
     var isP = function(pid){ var q = t.places[pid]; return !!(t.privP && (t.privP[pid] || (q && q.of && t.privP[q.of]))); };
     Object.keys(t.places).forEach(function(pid){
-      var p = t.places[pid]; if(!p || p.k==="hotel" || !p.la || !t.done[pid] || isP(pid)) return;
+      var p = t.places[pid]; if(!p || p.of || p.k==="hotel" || !p.la || isP(pid)) return; // je Ort einmal, Besuche zusammengefasst
+      var vs = [pid].concat(Object.keys(t.places).filter(function(k){ return t.places[k] && t.places[k].of===pid; }));
+      if(!vs.some(function(k){ return t.done[k]; })) return;
       var r = (t.rating||{})[pid] || 0, isHl = !!hl[p.n]; if(!(isHl || (r && rateRank(r) <= rateRank(3)))) return;
       var note = (t.privN||{})[pid] ? "" : ((t.notes||{})[pid] || "");
-      var phs = ((t.photos||{})[pid] || []).filter(function(x){ return !(t.privPh||{})[x]; }).slice(-3);
+      var phs = [].concat.apply([], vs.map(function(k){ return (t.photos||{})[k] || []; })).filter(function(x){ return !(t.privPh||{})[x]; }).slice(-3);
       var key = tid.replace(/[^A-Za-z0-9_-]/g, "")+"_"+pid;
       out[key] = {by:me, n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", rating:r, hl:isHl, note:note.slice(0, 600), trip:t.name||"", ph:phs, at:(t.updatedAt||Date.now())};
     });
@@ -3832,7 +3839,7 @@ function renderChNew(){
 function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; b.innerHTML = chDraft ? "<div class=\"ch-dr\">"+(chDraft.ph ? chPhotoCard(chDraft, "", true) : chPlaceCard(chDraft, "", true))+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; }
 function chPlaceFrom(tid, pid){
   var t = S.trips[tid], p = t && t.places[pid]; if(!p) return Promise.resolve(null);
-  var pl = {n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", trip:t.name||""}, r = (t.rating||{})[pid]; if(r) pl.rating = r;
+  var pl = {n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", trip:t.name||""}, r = (t.rating||{})[(p.of && t.places[p.of]) ? p.of : pid] || (t.rating||{})[pid]; if(r) pl.rating = r;
   var phs = ((t.photos||{})[pid]||[]).filter(function(x){ return !(t.privPh||{})[x]; });
   return phs.length ? recThumb(phs[phs.length-1]).then(function(th){ if(th) pl.ph = th; return pl; }, function(){ return pl; }) : Promise.resolve(pl);
 }
@@ -3941,7 +3948,7 @@ function renderLs(){
   if(lsTab==="places" && visited.length) h += "<div class=\"nt-kinds ls-filt\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"all\" aria-selected=\""+(lsFilter==="all")+"\">Alle besuchten</button>"+
       "<button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"unrated\" aria-selected=\""+(lsFilter==="unrated")+"\">Noch nicht bewertet"+(unr0.length ? " <b>"+unr0.length+"</b>" : "")+"</button></div>";
   h += "</div>";
-  var row = function(id, sub){ var p = P(id), r = RATES.filter(function(x){ return x[0]===rateOf(id); })[0], ph = photosOf(id);
+  var row = function(id, sub){ var p = P(id), r = rateDef(rateOf(id)), ph = photosAll(id);
     return "<button type=\"button\" class=\"ls-row\" data-act=\"lsopen\" data-pid=\""+id+"\">"+(ph.length ? "<img class=\"ls-th\" data-ph=\""+ph[ph.length-1]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span>")+
       "<span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+esc(sub || [timeOf(id), CATNAME[p.c]].filter(Boolean).join(" · "))+(r ? " · <i style=\"color:"+r[2]+"\">"+r[1]+"</i>" : "")+(ph.length ? " · "+ph.length+(ph.length===1?" Foto":" Fotos") : "")+"</small></span>"+
       "<span class=\"ls-go\" role=\"button\" data-act=\"lsgo\" data-pid=\""+id+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</span></button>"; };
@@ -4838,7 +4845,7 @@ function stopToVia(id){
   undoSnap = snapshot();
   var t = T(), q = {la:p.la, lo:p.lo};
   t.order[k] = ord(k).filter(function(x){ return x!==id; }); delete t.done[id]; if(t.times) delete t.times[id];
-  var bare = !noteOf(id) && !photosOf(id).length && !(CMTS[id]||[]).length && !rateOf(id);
+  var bare = !noteOf(id) && !photosAll(id).length && !(CMTS[id]||[]).length && !rateOf(id);
   if(p.of || (bare && (p.k==="spot" || !p.note))){ delete t.places[id]; }
   if(k!==cur) cur = k; dirty();
   viaAt(q, k); sel = null; save(); renderAll(); scheduleOverlay();
@@ -6151,7 +6158,7 @@ function renderCard(){
   var p = P(sel); if(!p){ sel = null; el.hidden = true; return; }
   var dk = dayOf(sel), D = dayByKey(cur), cc = catCol(p.c);
   var c = x+"<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+cc+"\">"+icon(p.c)+"</span><div class=\"cht\"><h3>"+esc(p.n)+"</h3><p>"+esc([CATNAME[p.c], nbOf(p), dk ? (visitsOf(sel).length>1 ? visitsOf(sel).length+" Besuche geplant" : "") : "Wunsch in „"+listName(p.list)+"“"].filter(Boolean).join(" · "))+"</p></div></div>";
-  var cph = photosOf(sel);
+  var cph = photosAll(sel);
   var cadd = isRO() ? "" : "<label class=\"cphadd"+(cph.length?" sm":"")+"\" for=\"cphIn\" data-act=\"cphpick\" data-pid=\""+sel+"\" title=\"Fotos hinzufügen\" aria-label=\"Fotos hinzufügen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2.5 7h2.6l1.4-2h4\"/><path d=\"M12.5 9.8V15.5H2.5V7\"/><circle cx=\"7.5\" cy=\"10.8\" r=\"2.3\"/><path d=\"M15.5 3v6M12.5 6h6\"/></svg></label>";
   if(cph.length || cadd) c = c.replace(/<\/div><\/div>$/, "</div>"+(cph.length ? "<button type=\"button\" class=\"cph\" data-act=\"cphopen\" data-ph=\""+cph[0]+"\" aria-label=\""+cph.length+(cph.length===1?" Foto":" Fotos")+" ansehen\">"+
          cph.slice(0,3).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(cph.length>1 ? "<b>"+cph.length+"</b>" : "")+"</button>" : "")+cadd+"</div>");
@@ -6165,7 +6172,7 @@ function renderCard(){
          "<button type=\"button\" class=\"tdet\" data-act=\"meroute\" aria-expanded=\""+meRoute+"\">"+(meRoute?"Ausblenden":"Weg")+"</button></div>"+(meRoute && !rr.walk ? transitSteps(rr, me, p, {day: nyNow().key}) : "")+"</div>";
   }
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
-  var dn = !!T().done[sel], ph = photosOf(sel).length, nc = (CMTS[sel]||[]).length;
+  var dn = !!T().done[sel], ph = photosAll(sel).length, nc = (CMTS[sel]||[]).length;
   c += "<div class=\"jp-tiles ctiles\" data-id=\""+sel+"\">";
   if(dk) c += "<button type=\"button\" class=\"jp-tile"+(dn?" on":"")+"\" data-act=\"done\" aria-pressed=\""+dn+"\">"+I(dn ? "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.5 10.2l2.4 2.4 4.6-4.9\"/>" : "<circle cx=\"10\" cy=\"10\" r=\"7.5\"/>")+"<span>"+(dn?"Erledigt":"Abhaken")+"</span></button>";
   else if(D) c += "<button type=\"button\" class=\"jp-tile pri\" data-act=\"planpick\" data-pid=\""+sel+"\">"+I("<path d=\"M10 4.5v11M4.5 10h11\"/>")+"<span>Zu "+esc(D.wd || D.lbl.split(" ")[0])+"</span></button>";
@@ -6518,9 +6525,9 @@ var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#5E9970"],[6,"Very Good
 // „Overrated“ ist keine Stufe mehr, sondern wie „Highlight des Tages“ eine eigene Markierung (T().overrated); alter Wert 5 nur noch zur Anzeige fremder Empfehlungen
 var RATE_OLD = [5,"Overrated","#C2185B"];
 function rateDef(v){ return RATES.filter(function(x){ return x[0]===v; })[0] || (v===5 ? RATE_OLD : null); }
-function isOver(id){ return !!((T().overrated||{})[id]); }
+function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]); }
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
-function rateOf(id){ return ((T().rating||{})[id]) || 0; }
+function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
 function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=ratepick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
@@ -6559,6 +6566,11 @@ function jLine(id){ var p = P(id); return "• "+p.n+(timeOf(id)?" ("+timeOf(id)
 function jHas(J, id){ var p = P(id); return !!(J.text && J.text.indexOf("• "+p.n)>-1); }
 function noteOf(id){ return ((T().notes||{})[id]) || ""; }
 function photosOf(id){ return ((T().photos||{})[id]) || []; }
+function visitIds(id){ var r = rootOf(id), t = T(), out = [r]; Object.keys(t.places).forEach(function(k){ if(t.places[k] && t.places[k].of===r) out.push(k); }); return out; }
+/* alle Fotos des Orts über alle Besuche – erst der Tag, der gerade offen ist, dann die übrigen nach Datum */
+function photosAll(id){ var ids = visitIds(id), seen = {}, out = [];
+  ids.sort(function(a, b){ if(a===id) return -1; if(b===id) return 1; return (dayOf(a)||"~") < (dayOf(b)||"~") ? -1 : 1; });
+  ids.forEach(function(k){ photosOf(k).forEach(function(ph){ if(!seen[ph]){ seen[ph] = 1; out.push(ph); } }); }); return out; }
 function jItem(id, dk){
   var p = P(id), J = (T().journal||{})[dk] || {}, nt = noteOf(id), ph = photosOf(id), isHl = J.hl===p.n;
   return "<li><button type=\"button\" class=\"jcard\" data-act=\"jopen\" data-pid=\""+id+"\" data-day=\""+dk+"\">"+badge(p.c,"width:26px;height:26px")+
@@ -6589,7 +6601,7 @@ function openJPop(pid, dk, view){
 }
 function renderJPop(){
   var el = $("jPop"); if(!jp || !P(jp.pid)){ el.hidden = true; return; }
-  var p = P(jp.pid), J = (T().journal||{})[jp.dk] || {}, isHl = J.hl===p.n, ph = photosOf(jp.pid), D = dayByKey(jp.dk);
+  var p = P(jp.pid), J = (T().journal||{})[jp.dk] || {}, isHl = J.hl===p.n, ph = photosAll(jp.pid), D = dayByKey(jp.dk);
   var h = "<div class=\"ag-card jp\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+esc(p.n)+"\" data-id=\""+jp.pid+"\"><button type=\"button\" class=\"ag-x\" data-act=\"jclose\" aria-label=\"Schließen\">×</button>";
   if(jp.view){
     if(ph.indexOf(jp.view) < 0) ph = [jp.view];
@@ -6623,7 +6635,7 @@ function renderJPop(){
   var qn = (function(){ var q = phQueue(); return ph.filter(function(x){ return q.up.indexOf(x) > -1; }).length; })();
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Fotos"+(ph.length ? " · "+ph.length : "")+(qn ? "<small> · "+qn+" noch nicht hochgeladen</small>" : "")+"</div><div class=\"jp-strip\">"+
        "<label class=\"jp-add\" for=\"phIn\"><span>＋</span></label>"+
-       ph.map(function(x){ return "<button type=\"button\" data-act=\"phview\" data-ph=\""+x+"\""+(canPriv() && isPrivPh(x, jp.pid) ? " class=\"pv-lk\"" : "")+"><img data-ph=\""+x+"\" alt=\"Foto\">"+(canPriv() && isPrivPh(x, jp.pid) ? "<i>"+ILOCK+"</i>" : "")+"</button>"; }).join("")+
+       ph.map(function(x){ var own = phPlace(x), od = own && own!==jp.pid ? dayByKey(dayOf(own)) : null; return "<button type=\"button\" data-act=\"phview\" data-ph=\""+x+"\""+(canPriv() && isPrivPh(x, own || jp.pid) ? " class=\"pv-lk\"" : "")+"><img data-ph=\""+x+"\" alt=\"Foto\">"+(canPriv() && isPrivPh(x, own || jp.pid) ? "<i>"+ILOCK+"</i>" : "")+(od ? "<em class=\"phday\" style=\"background:"+dayColor(od)+"\">"+esc(shortD(od.key))+"</em>" : "")+"</button>"; }).join("")+
        "</div><input type=\"file\" id=\"phIn\" accept=\"image/*,image/heic,image/heif\" multiple hidden>"+
        "<p class=\"note pherr\" id=\"jpPhErr\" hidden><span></span> <button type=\"button\" class=\"tf-link\" data-act=\"phretry\">Erneut laden</button></p></div>";
   if(hasLoc(p)) h += rvSection(p);
@@ -8142,14 +8154,14 @@ document.addEventListener("click", function(e){
     case "gmopen": if(P(sel)) window.open(gmInfoUrl(P(sel)), "_blank", "noopener"); break;
     case "moredel": var mdId = sel; askConfirm("Ort löschen?", "„"+((P(mdId)||{}).n||"Ort")+"“ wird aus der Reise entfernt.", "Löschen", function(){ if(sel!==mdId) select(mdId); var tb = document.createElement("button"); tb.type = "button"; tb.setAttribute("data-act", "delplace"); tb.hidden = true; document.body.appendChild(tb); tb.click(); tb.remove(); }); break;
     case "locset": locStart(); break;
-    case "phdel": var dph = t.getAttribute("data-ph"), rest = photosOf(jp.pid).filter(function(x){ return x!==dph; }), di = photosOf(jp.pid).indexOf(dph);
-      delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; if(lsPage) renderLs(); if(!jp.view && !!jp.ret){ closeJPop(); break; } renderJPop(); break;
+    case "phdel": var dph = t.getAttribute("data-ph"), rest = photosAll(jp.pid).filter(function(x){ return x!==dph; }), di = photosAll(jp.pid).indexOf(dph);
+      delPhoto(phPlace(dph) || jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; if(lsPage) renderLs(); if(!jp.view && !!jp.ret){ closeJPop(); break; } renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
     case "jpmore": openJpMore(jp ? jp.pid : id, t); break;
     case "ratepick": openRatePick(t.closest("#jPop") && jp ? jp.pid : id, t); break;
     case "cphopen": var cpp = sel; if(P(cpp)){ openJPop(cpp, dayOf(cpp) || "", t.getAttribute("data-ph")); if(jp) jp.ret = "card"; } break; // Foto aus der Ortskarte: beim Schließen zurück zur Karte
-    case "rateover": if(t.closest("#catPop")) closeCatPop(); var tov = T(); tov.overrated = tov.overrated || {}; if(tov.overrated[id]) delete tov.overrated[id]; else tov.overrated[id] = 1; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); if(lsPage) setTimeout(renderLs, 0); break;
-    case "rate": if(t.closest("#catPop")) closeCatPop(); var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); if(lsPage) setTimeout(renderLs, 0); break;
+    case "rateover": if(t.closest("#catPop")) closeCatPop(); var tov = T(), ovr = rootOf(id), ovOn = isOver(id); tov.overrated = tov.overrated || {}; visitIds(ovr).forEach(function(x){ delete tov.overrated[x]; }); if(!ovOn) tov.overrated[ovr] = 1; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); if(lsPage) setTimeout(renderLs, 0); break;
+    case "rate": if(t.closest("#catPop")) closeCatPop(); var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"), rro = rootOf(id), rOld = rateOf(id); visitIds(rro).forEach(function(x){ delete tr.rating[x]; }); if(rOld!==rv) tr.rating[rro] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); if(lsPage) setTimeout(renderLs, 0); break;
     case "acsignup": openSignup(); break;
     case "suclose": closeSignup(); break;
     case "lpclose": lpClose(); break;
