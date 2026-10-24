@@ -2062,6 +2062,7 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 @media (min-width:900px){ body.sheetmin #sheetOpen{display:none} body.sheetmin .sheet{visibility:visible} }
 
 .lrow{display:flex;align-items:center;gap:6px}
+:where(button,a,label,select,summary,[data-act],[role=tab],[role=button]){touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .tf-del{margin-top:22px;padding-top:14px;border-top:.5px solid var(--line);justify-content:center}
 .lrow > label{flex:1;min-width:0}
 .lfbtn{margin-left:auto;position:relative;width:32px;height:32px;flex:0 0 32px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;padding:0;cursor:pointer}
@@ -6151,7 +6152,7 @@ function placeFloating(){
   function paint(){ raf = 0; if(g) sheet.style.transform = "translate3d(0,"+nextY+"px,0)"; }
   function move(y){
     if(!g) return;
-    var dy = y - g.y; if(Math.abs(dy) > 6) g.moved = true;
+    var dy = y - g.y; if(Math.abs(dy) > 10) g.moved = true;
     var now = performance.now(), dt = now - g.lt; if(dt > 0){ g.v = .7*((y - g.last)/dt) + .3*g.v; g.last = y; g.lt = now; }
     nextY = Math.max(Math.max(0, g.hh - sheetFullH()), Math.min(g.hh - Math.max(24, sheetLow() - 60), g.t0 + dy));
     if(!raf) raf = requestAnimationFrame(paint);
@@ -8229,6 +8230,20 @@ renderAll();
 function markLegOverflow(){ Array.prototype.forEach.call(document.querySelectorAll(".tl > .tsum"), function(x){ x.classList.toggle("ovf", x.scrollWidth > x.clientWidth + 1); }); }
 var renderSheet0 = renderSheet; renderSheet = function(){ var r = renderSheet0.apply(this, arguments); markLegOverflow(); return r; };
 window.addEventListener("resize", markLegOverflow);
+/* Tipp-Schutz: Hintergrund-Aktualisierungen (Standort, Sync, Timer) bauen die Oberfläche nicht neu auf,
+   während ein Finger liegt oder gerade abgehoben wurde – sonst wird der Knopf unter dem Finger ersetzt und der Tipp geht verloren */
+(function(){
+  var down = 0, upAt = 0, queued = {}, flushT = 0, HOLD = 380;
+  function busy(){ return down > 0 || Date.now() - upAt < HOLD; }
+  function userEvent(){ var e = window.event; return !!(e && e.type && e.isTrusted !== false); }
+  function flush(){ flushT = 0; if(busy()){ flushT = setTimeout(flush, 120); return; } var q = queued; queued = {};
+    if(q.all){ renderAll(); return; } if(q.top) renderTop(); if(q.sheet){ var y = document.querySelector(".body"), st = y ? y.scrollTop : 0; renderSheet(); var y2 = document.querySelector(".body"); if(y2) y2.scrollTop = st; } if(q.card) renderCard(); }
+  function guard(name, fn){ return function(){ if(busy() && !userEvent()){ queued[name] = 1; if(!flushT) flushT = setTimeout(flush, 120); return; } if(name==="all") queued = {}; else delete queued[name]; return fn.apply(this, arguments); }; }
+  document.addEventListener("touchstart", function(e){ down = e.touches.length; }, {passive:true, capture:true});
+  var up = function(e){ down = e.touches ? e.touches.length : 0; upAt = Date.now(); };
+  document.addEventListener("touchend", up, {passive:true, capture:true}); document.addEventListener("touchcancel", up, {passive:true, capture:true});
+  renderAll = guard("all", renderAll); renderSheet = guard("sheet", renderSheet); renderCard = guard("card", renderCard); renderTop = guard("top", renderTop);
+})();
 syncSide();
 initMap();
 resize();
