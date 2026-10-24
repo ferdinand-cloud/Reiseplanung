@@ -2075,6 +2075,124 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 .lcats.shut{display:none}
 .lcats{margin:0 0 6px 34px !important}
 #cfPop{z-index:99}
+
+/* ---------- Tagesrückblick: immersive Tagesansicht mit Karte, Route, Fotos und Tagebuch ---------- */
+#rc{position:fixed;inset:0;z-index:90;background:#06080c;color:#f3f5f9;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;--dc:#0A84FF;opacity:0;transform:scale(1.04);transition:opacity .35s ease,transform .5s cubic-bezier(.2,.8,.2,1)}
+#rc.on{opacity:1;transform:none}
+#rc[hidden]{display:none}
+#rc *{box-sizing:border-box}
+.rc-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 10px;background:linear-gradient(180deg,rgba(6,8,12,.75),rgba(6,8,12,0));-webkit-backdrop-filter:blur(0);pointer-events:none}
+.rc-bar>*{pointer-events:auto}
+.rc-glass{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.04));-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border:.5px solid rgba(255,255,255,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 8px 24px rgba(0,0,0,.35)}
+.rc-x{width:40px;height:40px;flex:0 0 40px;border-radius:50%;color:#fff;font-size:20px;display:grid;place-items:center;padding:0}
+.rc-days{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:4px;border-radius:999px;scroll-behavior:smooth}
+.rc-days::-webkit-scrollbar{display:none}
+.rc-days button{flex:0 0 auto;min-width:38px;height:32px;padding:0 10px;border-radius:999px;border:0;background:transparent;color:rgba(255,255,255,.72);font:600 13px/32px var(--f-body,system-ui);transition:background .25s,color .25s,transform .25s}
+.rc-days button[aria-current="true"]{background:var(--dc);color:#fff;box-shadow:0 0 18px color-mix(in srgb,var(--dc) 70%,transparent);transform:scale(1.05)}
+.rc-days button .d{opacity:.7;font-weight:500;margin-left:4px}
+
+.rc-hero{position:relative;min-height:84vh;margin-top:calc(-62px - env(safe-area-inset-top,0px));display:flex;flex-direction:column;justify-content:flex-end;padding:0 22px 34px;overflow:hidden;isolation:isolate}
+.rc-hbg{position:absolute;inset:-6%;z-index:-3;background-size:cover;background-position:center;animation:rcKen 22s ease-in-out infinite alternate;filter:saturate(1.15)}
+.rc-hbg img{width:100%;height:100%;object-fit:cover;display:block}
+.rc-hero::before{content:"";position:absolute;inset:0;z-index:-2;background:radial-gradient(60% 50% at 15% 20%,color-mix(in srgb,var(--dc) 55%,transparent),transparent 70%),radial-gradient(50% 45% at 90% 35%,rgba(191,90,242,.45),transparent 70%),radial-gradient(60% 50% at 60% 90%,rgba(10,132,255,.35),transparent 70%);mix-blend-mode:screen;animation:rcAurora 14s ease-in-out infinite alternate;opacity:.9}
+.rc-hero.ph::before{opacity:.55}
+.rc-hero::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(6,8,12,.15) 0%,rgba(6,8,12,.1) 35%,rgba(6,8,12,.75) 72%,#06080c 100%)}
+.rc-kick{display:inline-flex;align-items:center;gap:8px;font:700 12px/1 var(--f-body,system-ui);letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.8)}
+.rc-kick i{width:8px;height:8px;border-radius:50%;background:var(--dc);box-shadow:0 0 12px var(--dc);animation:rcPulse 2s ease-in-out infinite}
+.rc-big{font:800 clamp(64px,22vw,120px)/.95 var(--f-body,system-ui);letter-spacing:-.05em;margin:14px 0 0;padding-bottom:.08em;background:linear-gradient(120deg,#fff 20%,color-mix(in srgb,var(--dc) 60%,#fff) 50%,#fff 80%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rcShine 6s linear infinite}
+.rc-date{font:600 22px/1.2 var(--f-body,system-ui);letter-spacing:-.01em}
+.rc-sub{margin-top:6px;color:rgba(255,255,255,.66);font-size:15px}
+.rc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px}
+.rc-stat{border-radius:20px;padding:14px 12px 12px}
+.rc-stat b{display:block;font:800 30px/1 var(--f-body,system-ui);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.rc-stat span{display:block;margin-top:6px;font-size:12px;color:rgba(255,255,255,.7);font-weight:600;letter-spacing:.02em}
+.rc-hl{margin-top:12px;display:flex;align-items:center;gap:10px;border-radius:18px;padding:12px 14px;font-weight:600}
+.rc-hl .st{color:#FFD60A;font-size:18px;filter:drop-shadow(0 0 8px rgba(255,214,10,.7))}
+.rc-hl small{display:block;font-weight:500;color:rgba(255,255,255,.62);font-size:12px}
+
+.rc-sec{padding:34px 18px 8px}
+.rc-h{display:flex;align-items:baseline;gap:10px;margin:0 4px 14px;font:800 26px/1.1 var(--f-body,system-ui);letter-spacing:-.02em}
+.rc-h small{font:600 13px/1 var(--f-body,system-ui);color:rgba(255,255,255,.5);letter-spacing:.04em;text-transform:uppercase}
+
+.rc-mapw{position:relative;border-radius:28px;padding:1.5px;background:conic-gradient(from var(--rca,0deg),var(--dc),#BF5AF2,#64D2FF,var(--dc));animation:rcSpin 6s linear infinite}
+@property --rca{syntax:"<angle>";inherits:false;initial-value:0deg}
+.rc-map{position:relative;height:min(58vh,480px);border-radius:27px;overflow:hidden;background:#11151c}
+.rc-map .maplibregl-canvas{filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.92) saturate(.6)}
+.rc-map .maplibregl-ctrl-attrib,.rc-map .maplibregl-ctrl-logo{display:none}
+.rc-mapbtn{position:absolute;right:12px;bottom:12px;z-index:3;border-radius:999px;color:#fff;padding:9px 14px;font:600 13px/1 var(--f-body,system-ui)}
+.rc-mk{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;font:800 13px/1 var(--f-body,system-ui);background:var(--dc);border:2px solid #fff;box-shadow:0 0 0 4px color-mix(in srgb,var(--dc) 35%,transparent),0 6px 16px rgba(0,0,0,.5);transform:scale(0);transition:transform .45s cubic-bezier(.3,1.6,.5,1)}
+.rc-mk.ph{width:46px;height:46px;overflow:hidden;padding:0}
+.rc-mk.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.rc-mk.ph em{position:absolute;right:-4px;top:-4px;min-width:20px;height:20px;border-radius:10px;background:var(--dc);border:2px solid #fff;font:800 11px/16px var(--f-body,system-ui);font-style:normal;text-align:center}
+.rc-mkw{position:relative}
+.rc-mk.in{transform:scale(1)}
+.rc-mk.hot{background:#fff;color:#111;border-color:#111}
+
+.rc-tl{position:relative;padding-left:46px}
+.rc-tl::before{content:"";position:absolute;left:19px;top:8px;bottom:8px;width:2px;border-radius:2px;background:linear-gradient(180deg,var(--dc),#BF5AF2 60%,rgba(100,210,255,.2))}
+.rc-it{position:relative;margin-bottom:14px}
+.rc-it .no{position:absolute;left:-46px;top:12px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 15px/1 var(--f-body,system-ui);background:#0d1117;border:2px solid var(--dc);box-shadow:0 0 16px color-mix(in srgb,var(--dc) 55%,transparent)}
+.rc-card{border-radius:22px;padding:14px;overflow:hidden;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.rc-card:active{transform:scale(.985)}
+.rc-card .tp{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.62);font-weight:600;letter-spacing:.02em}
+.rc-card .tp .cat{display:inline-flex;align-items:center;gap:5px}
+.rc-card .tp .cat i{width:8px;height:8px;border-radius:50%;background:var(--cc)}
+.rc-card h3{margin:6px 0 0;font:700 19px/1.2 var(--f-body,system-ui);letter-spacing:-.01em}
+.rc-card p{margin:6px 0 0;color:rgba(255,255,255,.78);font-size:14px;line-height:1.45}
+.rc-card .rb{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:color-mix(in srgb,var(--rc) 30%,transparent);color:#fff;border:.5px solid color-mix(in srgb,var(--rc) 70%,transparent)}
+.rc-strip{display:flex;gap:8px;overflow-x:auto;margin:12px -14px -2px;padding:0 14px 2px;scroll-snap-type:x mandatory;scrollbar-width:none}
+.rc-strip::-webkit-scrollbar{display:none}
+.rc-strip button{flex:0 0 auto;width:118px;height:148px;border-radius:16px;overflow:hidden;padding:0;border:0;background:#1a1f28;scroll-snap-align:start}
+.rc-strip img,.rc-mo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s cubic-bezier(.2,.8,.2,1),filter .6s}
+.rc-mo{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:110px;grid-auto-flow:dense;gap:6px}
+.rc-mo button{border:0;padding:0;border-radius:16px;overflow:hidden;background:#1a1f28}
+.rc-mo button:nth-child(5n+1){grid-column:span 2;grid-row:span 2}
+.rc-mo button:nth-child(7n+4){grid-row:span 2}
+.rc-mo button:active img,.rc-strip button:active img{transform:scale(1.06)}
+
+.rc-quote{position:relative;border-radius:26px;padding:22px 20px 20px;font:500 17px/1.55 var(--f-body,system-ui);white-space:pre-wrap}
+.rc-quote::before{content:"“";position:absolute;top:-28px;left:14px;font:800 96px/1 Georgia,serif;background:linear-gradient(180deg,var(--dc),#BF5AF2);-webkit-background-clip:text;background-clip:text;color:transparent}
+.rc-empty{color:rgba(255,255,255,.55);font-size:15px;margin:0 4px}
+
+.rc-next{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:26px 0 0;border-radius:24px;padding:18px 20px;color:#fff;text-align:left}
+.rc-next small{display:block;color:rgba(255,255,255,.6);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.rc-next b{font:700 20px/1.2 var(--f-body,system-ui)}
+.rc-next .ar{width:44px;height:44px;flex:0 0 44px;border-radius:50%;display:grid;place-items:center;background:var(--dc);box-shadow:0 0 22px color-mix(in srgb,var(--dc) 70%,transparent);font-size:20px}
+.rc-end{height:calc(env(safe-area-inset-bottom,0px) + 40px)}
+
+/* Einblenden beim Scrollen */
+.rc-rv{opacity:0;transform:translateY(28px) scale(.98);filter:blur(6px);transition:opacity .7s ease,transform .8s cubic-bezier(.2,.8,.2,1),filter .7s ease;transition-delay:var(--dl,0s)}
+.rc-rv.in{opacity:1;transform:none;filter:none}
+
+/* Vollbild-Foto */
+.rc-lb{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.94);display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;animation:rcFade .25s ease}
+.rc-lb::-webkit-scrollbar{display:none}
+.rc-lb figure{position:relative;flex:0 0 100%;height:100%;margin:0;display:grid;place-items:center;scroll-snap-align:center;padding:calc(env(safe-area-inset-top,0px) + 60px) 0 calc(env(safe-area-inset-bottom,0px) + 50px)}
+.rc-lb img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
+.rc-lb figcaption{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);text-align:center;color:rgba(255,255,255,.8);font-weight:600;font-size:14px}
+.rc-lbx{position:fixed;z-index:96;top:calc(env(safe-area-inset-top,0px) + 12px);right:14px}
+
+/* Einstieg im Tagesplan */
+.rc-open{position:relative;display:flex;align-items:center;gap:12px;width:100%;margin:2px 0 14px;padding:12px 14px;border-radius:20px;border:0;color:#fff;text-align:left;overflow:hidden;isolation:isolate;background:#0d1117;box-shadow:0 10px 26px rgba(0,0,0,.18)}
+.rc-open::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(70% 120% at 0% 0%,color-mix(in srgb,var(--dc) 75%,transparent),transparent 60%),radial-gradient(70% 120% at 100% 100%,rgba(191,90,242,.6),transparent 60%);animation:rcAurora 10s ease-in-out infinite alternate}
+.rc-open::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.22) 50%,transparent 65%);background-size:250% 100%;animation:rcShine 4.5s ease-in-out infinite}
+.rc-open .stk{display:flex;flex:0 0 auto}
+.rc-open .stk img,.rc-open .stk span{width:38px;height:38px;border-radius:12px;object-fit:cover;border:2px solid rgba(255,255,255,.85);margin-left:-14px;background:#1a1f28;box-shadow:0 4px 10px rgba(0,0,0,.35);display:grid;place-items:center;font-size:18px}
+.rc-open .stk :first-child{margin-left:0;transform:rotate(-6deg)}
+.rc-open .stk :nth-child(3){transform:rotate(6deg)}
+.rc-open .tx{flex:1;min-width:0}
+.rc-open b{display:block;font:700 16px/1.2 var(--f-body,system-ui)}
+.rc-open small{display:block;margin-top:2px;color:rgba(255,255,255,.75);font-size:12px;font-weight:500}
+.rc-open .ar{font-size:20px;opacity:.9}
+
+@keyframes rcKen{from{transform:scale(1.05) translate(0,0)}to{transform:scale(1.18) translate(-2%,-3%)}}
+@keyframes rcAurora{0%{transform:translate(0,0) scale(1)}50%{transform:translate(4%,-3%) scale(1.08)}100%{transform:translate(-3%,4%) scale(1.03)}}
+@keyframes rcShine{from{background-position:120% 0}to{background-position:-120% 0}}
+@keyframes rcPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.6);opacity:.5}}
+@keyframes rcSpin{to{--rca:360deg}}
+@keyframes rcFade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){ #rc,#rc *,.rc-open,.rc-open::before,.rc-open::after{animation:none !important;transition:none !important} .rc-rv{opacity:1;transform:none;filter:none} .rc-mk{transform:scale(1)} }
+@media (min-width:900px){ .rc-in{max-width:760px;margin:0 auto} .rc-hero{min-height:70vh} }
 </style>
 </head>
 <body>
@@ -6240,6 +6358,7 @@ function renderDay(){
   if(D.hint) meta.push(D.hint);
   var h = "<div class=\"dh\" data-act=\"daypop\" role=\"button\" tabindex=\"0\" aria-label=\"Tag wechseln\"><span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><div style=\"flex:1;min-width:0\"><h2>"+esc(D.title)+"<svg class=\"dhchev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></h2><p>"+esc(meta.join(" · "))+"</p>"+(ids.length?"<div class=\"dprog\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\""+ids.length+"\" aria-valuenow=\""+nDone+"\"><i style=\"width:"+Math.round(nDone/ids.length*100)+"%\"></i></div>":"")+"</div></div>";
 
+  h += rcEntry(D);
   if(isViewerOf(S.cur)) h += "<p class=\"note rolenote\">👁 Du beobachtest diese Reise – ansehen und kommentieren, aber nichts ändern.</p>";
   if(!isRO()){ // Beobachter sehen keine Wunschliste und keine Vorschläge daraus
   var sug = suggest(cur, 3);
@@ -7889,6 +8008,7 @@ document.addEventListener("click", function(e){
     case "wsort": var sv = t.getAttribute("data-v").split(":"); wView = sv[0]; if(sv[1]){ wDistDir = sv[1]; lsSet("rp-wdir", wDistDir); } lsSet("rp-wview", wView); closeCatPop(); renderSheet(); break;
     case "wreset": catFilter = {}; grpSel = ""; activeList = "open"; wishQuery = ""; nbSel = {}; applyNb(); renderSheet(); scheduleOverlay(); break;
     case "wview": var wv = t.getAttribute("data-v"); if(wv==="dist" && wView==="dist"){ wDistDir = wDistDir==="asc" ? "desc" : "asc"; lsSet("rp-wdir", wDistDir); } wView = wv; lsSet("rp-wview", wView); renderSheet(); break;
+    case "recap": openRecap(t.getAttribute("data-day") || cur); break;
     case "jopen": var jop = t.getAttribute("data-pid"), jod = t.getAttribute("data-day");
       // Karte zum Punkt bewegen (bei einem anderen Tag auch dessen Tagesroute zeigen)
       if(jod && jod!==cur && dayByKey(jod)){ cur = jod; renderAll(); }
@@ -8230,6 +8350,193 @@ renderAll();
 function markLegOverflow(){ Array.prototype.forEach.call(document.querySelectorAll(".tl > .tsum"), function(x){ x.classList.toggle("ovf", x.scrollWidth > x.clientWidth + 1); }); }
 var renderSheet0 = renderSheet; renderSheet = function(){ var r = renderSheet0.apply(this, arguments); markLegOverflow(); return r; };
 window.addEventListener("resize", markLegOverflow);
+/* ---------- Tagesrückblick: Karte mit animierter Route, Stationen, Fotos und Tagebuch pro Tag ---------- */
+var RC = {key:null, map:null, io:null, raf:0, ph:[], mks:[], drawn:false};
+function rcColor(D){ var v = getComputedStyle(document.documentElement).getPropertyValue("--c"+((D.i%10)+1)).trim(); return v || "#0A84FF"; }
+function rcStops(k){
+  var all = ord(k).filter(function(id){ return P(id); }), done = all.filter(function(id){ return T().done[id]; });
+  return {list: done.length ? done : all, pre: !done.length, all: all};
+}
+function rcPhotos(list){ var out = []; list.forEach(function(id){ photosOf(id).forEach(function(ph){ out.push({ph:ph, id:id}); }); }); return out; }
+function rcKm(D, list){
+  var pts = list.map(P).filter(hasLoc), HT = D.hotel && hasLoc(D.hotel) ? D.hotel : null, all = (HT?[HT]:[]).concat(pts, HT && pts.length?[HT]:[]), m = 0;
+  for(var i=0;i<all.length-1;i++) m += dist(all[i], all[i+1]);
+  return m;
+}
+/* Einstieg im Tagesplan */
+function rcEntry(D){
+  var s = rcStops(D.key); if(!s.all.length) return "";
+  var ph = rcPhotos(s.list), stk = ph.slice(0, 3).map(function(x){ return "<img data-ph=\""+x.ph+"\" alt=\"\">"; }).join("");
+  if(!stk) stk = "<span>🗺️</span><span>✨</span>";
+  var lbl = s.pre ? "Tagesvorschau" : D.key===todayKey() ? "Dein Tag bisher" : "Tagesrückblick";
+  var sub = s.list.length+(s.list.length===1?" Ort":" Orte")+(ph.length ? " · "+ph.length+(ph.length===1?" Foto":" Fotos") : "")+" · Karte & Route";
+  return "<button type=\"button\" class=\"rc-open\" data-act=\"recap\" data-day=\""+D.key+"\" style=\"--dc:"+rcColor(D)+"\"><span class=\"stk\">"+stk+"</span><span class=\"tx\"><b>"+lbl+"</b><small>"+esc(sub)+"</small></span><span class=\"ar\">›</span></button>";
+}
+function rcHTML(k){
+  var D = dayByKey(k), ds = days(), s = rcStops(k), list = s.list, ph = rcPhotos(list), J = (T().journal||{})[k] || {};
+  var km = rcKm(D, list), hlId = J.hl ? list.filter(function(id){ return P(id).n===J.hl; })[0] : null;
+  var heroPh = (hlId && photosOf(hlId)[0]) || (ph[0] && ph[0].ph) || "";
+  var kick = s.pre ? "Vorschau" : k===todayKey() ? "Heute bisher" : "Rückblick";
+  var h = "<div class=\"rc-bar\"><button type=\"button\" class=\"rc-x rc-glass\" data-rc=\"close\" aria-label=\"Schließen\">×</button><div class=\"rc-days rc-glass\" role=\"tablist\" aria-label=\"Tag wählen\">"+
+    ds.map(function(d){ return "<button type=\"button\" role=\"tab\" data-rc=\"day\" data-day=\""+d.key+"\" aria-current=\""+(d.key===k)+"\">"+d.n+"<span class=\"d\">"+esc(d.wd)+"</span></button>"; }).join("")+"</div></div>";
+  h += "<section class=\"rc-hero"+(heroPh?" ph":"")+"\">"+(heroPh ? "<div class=\"rc-hbg\"><img data-ph=\""+heroPh+"\" alt=\"\"></div>" : "")+
+    "<div class=\"rc-in\"><div class=\"rc-kick rc-rv\"><i></i>"+kick+" · "+esc(T().name)+"</div>"+
+    "<div class=\"rc-big rc-rv\" style=\"--dl:.08s\">Tag "+D.n+"</div><div class=\"rc-date rc-rv\" style=\"--dl:.14s\">"+esc(D.title)+"</div>"+
+    (D.ort || D.hotel ? "<div class=\"rc-sub rc-rv\" style=\"--dl:.18s\">"+esc([D.ort && D.ort.n, D.hotel && "🛏 "+D.hotel.n].filter(Boolean).join(" · "))+"</div>" : "")+
+    "<div class=\"rc-stats\">"+
+      "<div class=\"rc-stat rc-glass rc-rv\" style=\"--dl:.22s\"><b data-cu=\""+list.length+"\">0</b><span>"+(s.pre?"geplante Orte":"besuchte Orte")+"</span></div>"+
+      "<div class=\"rc-stat rc-glass rc-rv\" style=\"--dl:.3s\"><b data-cu=\""+(Math.round(km/100)/10)+"\" data-dec=\"1\">0</b><span>km Luftlinie</span></div>"+
+      "<div class=\"rc-stat rc-glass rc-rv\" style=\"--dl:.38s\"><b data-cu=\""+ph.length+"\">0</b><span>Fotos</span></div></div>"+
+    (J.hl ? "<div class=\"rc-hl rc-glass rc-rv\" style=\"--dl:.46s\"><span class=\"st\">★</span><span>"+esc(J.hl)+"<small>Highlight des Tages</small></span></div>" : "")+
+    "</div></section>";
+  h += "<div class=\"rc-in\">";
+  // Karte
+  h += "<section class=\"rc-sec\"><h2 class=\"rc-h rc-rv\">Route <small>"+(list.filter(function(id){ return hasLoc(P(id)); }).length)+" Stationen</small></h2>"+
+    "<div class=\"rc-mapw rc-rv\"><div class=\"rc-map\" id=\"rcMap\"></div><button type=\"button\" class=\"rc-mapbtn rc-glass\" data-rc=\"mapmove\">Karte bewegen</button></div></section>";
+  // Stationen
+  h += "<section class=\"rc-sec\"><h2 class=\"rc-h rc-rv\">"+(s.pre?"Geplant":"Stationen")+" <small>"+list.length+"</small></h2>";
+  if(list.length){
+    h += "<div class=\"rc-tl\">"+list.map(function(id, i){
+      var p = P(id), nt = noteOf(id), pp = photosOf(id), tm = timeOf(id), rv = rateOf(id), r = rv ? RATES[rv-1] : null;
+      return "<div class=\"rc-it rc-rv\"><span class=\"no\">"+(i+1)+"</span><div class=\"rc-card rc-glass\" data-rc=\"focus\" data-pid=\""+id+"\">"+
+        "<div class=\"tp\">"+(tm ? "<span>"+esc(tm)+"</span>·" : "")+"<span class=\"cat\" style=\"--cc:"+catCol(p.c)+"\"><i></i>"+esc(CATNAME[p.c]||"")+"</span>"+(J.hl===p.n ? "<span style=\"color:#FFD60A\">★ Highlight</span>" : "")+"</div>"+
+        "<h3>"+esc(p.n)+(r ? "<span class=\"rb\" style=\"--rc:"+r[2]+"\">"+esc(r[1])+"</span>" : "")+"</h3>"+
+        (nt ? "<p>"+esc(nt)+"</p>" : "")+
+        (pp.length ? "<div class=\"rc-strip\">"+pp.map(function(x){ return "<button type=\"button\" data-rc=\"ph\" data-ph=\""+x+"\"><img data-ph=\""+x+"\" alt=\"\" loading=\"lazy\"></button>"; }).join("")+"</div>" : "")+
+        "</div></div>";
+    }).join("")+"</div>";
+  } else h += "<p class=\"rc-empty\">Für diesen Tag ist noch nichts eingeplant.</p>";
+  h += "</section>";
+  // Fotos
+  if(ph.length > 1) h += "<section class=\"rc-sec\"><h2 class=\"rc-h rc-rv\">Momente <small>"+ph.length+" Fotos</small></h2><div class=\"rc-mo\">"+
+    ph.map(function(x, i){ return "<button type=\"button\" class=\"rc-rv\" style=\"--dl:"+((i%6)*0.06)+"s\" data-rc=\"ph\" data-ph=\""+x.ph+"\"><img data-ph=\""+x.ph+"\" alt=\"\" loading=\"lazy\"></button>"; }).join("")+"</div></section>";
+  // Tagebuch
+  if(J.text) h += "<section class=\"rc-sec\"><h2 class=\"rc-h rc-rv\">Tagebuch</h2><div class=\"rc-quote rc-glass rc-rv\">"+esc(J.text)+"</div></section>";
+  // weiter
+  var nx = ds[D.i+1];
+  h += "<section class=\"rc-sec\">"+(nx ? "<button type=\"button\" class=\"rc-next rc-glass rc-rv\" data-rc=\"day\" data-day=\""+nx.key+"\"><span><small>Nächster Tag</small><b>Tag "+nx.n+" · "+esc(nx.title)+"</b></span><span class=\"ar\">→</span></button>"
+    : "<button type=\"button\" class=\"rc-next rc-glass rc-rv\" data-rc=\"close\"><span><small>Ende der Reise</small><b>Zurück zur Karte</b></span><span class=\"ar\">✓</span></button>")+"</section><div class=\"rc-end\"></div></div>";
+  RC.ph = ph.map(function(x){ return x.ph; });
+  return h;
+}
+function rcCountUp(root){
+  root.querySelectorAll("[data-cu]").forEach(function(b){
+    var to = parseFloat(b.getAttribute("data-cu")) || 0, dec = b.hasAttribute("data-dec"), t0 = performance.now(), dur = reduceMotion ? 0 : 1300;
+    var fmt = function(v){ return dec ? v.toFixed(1).replace(".", ",") : String(Math.round(v)); };
+    (function step(now){ var q = dur ? Math.min(1, (now - t0)/dur) : 1, e = 1 - Math.pow(1 - q, 3); b.textContent = fmt(to*e); if(q < 1) requestAnimationFrame(step); })(t0);
+  });
+}
+function rcMapStop(){ cancelAnimationFrame(RC.raf); RC.raf = 0; RC.mks.forEach(function(m){ m.remove(); }); RC.mks = []; if(RC.map){ try { RC.map.remove(); } catch(e){} RC.map = null; } }
+function rcMap(k){
+  rcMapStop(); RC.drawn = false;
+  var el = $("rcMap"), D = dayByKey(k); if(!el || !D || !window.maplibregl) return;
+  var list = rcStops(k).list.filter(function(id){ return hasLoc(P(id)); }), HT = D.hotel && hasLoc(D.hotel) ? D.hotel : null;
+  var pts = (HT?[HT]:[]).concat(list.map(P), HT && list.length?[HT]:[]);
+  if(!pts.length){ el.innerHTML = "<p class=\"rc-empty\" style=\"padding:24px\">Keine Orte mit Lage für diesen Tag.</p>"; return; }
+  var col = rcColor(D), b = new maplibregl.LngLatBounds();
+  pts.forEach(function(p){ b.extend([p.lo, p.la]); });
+  var m = RC.map = new maplibregl.Map({container:el, style:STYLE_URL, bounds:b, fitBoundsOptions:{padding:64, maxZoom:15.5}, attributionControl:false, dragPan:false, scrollZoom:false, boxZoom:false, dragRotate:false, keyboard:false, doubleClickZoom:false, touchZoomRotate:false, touchPitch:false, fadeDuration:0});
+  // Stationen als Marker: mit Foto, sonst Nummer
+  var mkEls = [];
+  if(HT){ var he = document.createElement("div"); he.className = "rc-mk hot"; he.textContent = "H"; mkEls.push({el:he, at:0}); RC.mks.push(new maplibregl.Marker({element:he}).setLngLat([HT.lo, HT.la]).addTo(m)); }
+  list.forEach(function(id, i){
+    var p = P(id), ph = photosOf(id)[0], w = document.createElement("div"); w.className = "rc-mkw";
+    var e = document.createElement("div"); e.className = "rc-mk"+(ph?" ph":""); e.style.setProperty("--dc", col);
+    e.innerHTML = ph ? "<img data-ph=\""+ph+"\" alt=\"\"><em>"+(i+1)+"</em>" : String(i+1);
+    w.appendChild(e); mkEls.push({el:e, at:(HT?i+1:i)});
+    RC.mks.push(new maplibregl.Marker({element:w}).setLngLat([p.lo, p.la]).addTo(m));
+  });
+  fillPhotos(el);
+  var coords = pts.map(function(p){ return [p.lo, p.la]; });
+  // Länge je Abschnitt für gleichmäßiges Zeichnen
+  var seg = [], tot = 0; for(var i=0;i<coords.length-1;i++){ var d = dist(pts[i], pts[i+1]); seg.push(d); tot += d; }
+  function partial(q){
+    if(coords.length < 2) return coords.slice(); var goal = tot*q, acc = 0, out = [coords[0]];
+    for(var i=0;i<seg.length;i++){ if(acc + seg[i] >= goal){ var f = seg[i] ? (goal - acc)/seg[i] : 1; out.push([coords[i][0] + (coords[i+1][0]-coords[i][0])*f, coords[i][1] + (coords[i+1][1]-coords[i][1])*f]); return {c:out, n:i}; } acc += seg[i]; out.push(coords[i+1]); }
+    return {c:out, n:seg.length};
+  }
+  var lineData = function(c){ return {type:"Feature", geometry:{type:"LineString", coordinates:c.length > 1 ? c : [coords[0], coords[0]]}}; }, lastC = [coords[0], coords[0]];
+  RC.draw = function(){
+    if(RC.drawn) return; RC.drawn = true;
+    var t0 = performance.now(), dur = reduceMotion ? 0 : Math.min(4200, 1400 + coords.length*260);
+    (function step(now){
+      if(!RC.map) return;
+      var q = dur ? Math.min(1, (now - t0)/dur) : 1, e = q<.5 ? 2*q*q : 1 - Math.pow(-2*q + 2, 2)/2, r = partial(e);
+      lastC = r.c; var src = m.getSource && m.getSource("rc"); if(src) src.setData(lineData(r.c));
+      mkEls.forEach(function(x){ if(x.at <= r.n + (q>=1?1:0) || x.at===0) x.el.classList.add("in"); });
+      if(q < 1) RC.raf = requestAnimationFrame(step); else mkEls.forEach(function(x){ x.el.classList.add("in"); });
+    })(t0);
+  };
+  m.on("load", function(){
+    m.addSource("rc", {type:"geojson", data:lineData(lastC)});
+    m.addLayer({id:"rc-glow", type:"line", source:"rc", layout:{"line-cap":"round","line-join":"round"}, paint:{"line-color":col, "line-width":16, "line-blur":12, "line-opacity":.55}});
+    m.addLayer({id:"rc-line", type:"line", source:"rc", layout:{"line-cap":"round","line-join":"round"}, paint:{"line-color":"#ffffff", "line-width":3.2}});
+    // filmischer Kameraschwenk in die Schräge
+    if(!reduceMotion) setTimeout(function(){ if(RC.map===m) m.easeTo({pitch:42, bearing:-12, duration:2400, easing:function(t){ return 1 - Math.pow(1 - t, 3); }}); }, 500);
+    m.addLayer({id:"rc-core", type:"line", source:"rc", layout:{"line-cap":"round","line-join":"round"}, paint:{"line-color":col, "line-width":1.6}});
+  });
+  // nach dem Einblenden des Rückblicks Größe neu bestimmen und Route einpassen
+  setTimeout(function(){ if(RC.map!==m) return; m.resize(); m.fitBounds(b, {padding:64, maxZoom:15.5, duration:0}); }, 420);
+  if(RC.mapSeen) setTimeout(RC.draw, 300);
+}
+function rcObserve(root){
+  if(RC.io) RC.io.disconnect(); RC.mapSeen = false;
+  if(!("IntersectionObserver" in window) || reduceMotion){ root.querySelectorAll(".rc-rv").forEach(function(x){ x.classList.add("in"); }); RC.mapSeen = true; return; }
+  RC.io = new IntersectionObserver(function(es){ es.forEach(function(e){ if(!e.isIntersecting) return; e.target.classList.add("in"); RC.io.unobserve(e.target);
+    if(e.target.classList.contains("rc-mapw")){ RC.mapSeen = true; if(RC.draw) setTimeout(RC.draw, 350); } }); }, {root:root, threshold:.12, rootMargin:"0px 0px -6% 0px"});
+  root.querySelectorAll(".rc-rv").forEach(function(x){ RC.io.observe(x); });
+}
+function renderRecap(k){
+  var el = $("rc"); if(!el || !dayByKey(k)) return;
+  RC.key = k; RC.draw = null; el.style.setProperty("--dc", rcColor(dayByKey(k)));
+  el.innerHTML = rcHTML(k); el.scrollTop = 0;
+  fillPhotos(el); rcObserve(el);
+  setTimeout(function(){ rcCountUp(el); }, 250);
+  rcMap(k);
+  var a = el.querySelector(".rc-days [aria-current=\"true\"]"); if(a) a.scrollIntoView({inline:"center", block:"nearest"});
+}
+function openRecap(k){
+  var el = $("rc");
+  if(!el){
+    el = document.createElement("div"); el.id = "rc"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "Tagesrückblick"); el.hidden = true; document.body.appendChild(el);
+    el.addEventListener("click", rcClick);
+  }
+  closeMenus && closeMenus();
+  el.hidden = false; renderRecap(k || cur);
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.classList.add("on"); }); });
+}
+function closeRecap(){
+  var el = $("rc"); if(!el || el.hidden) return; rcLbClose();
+  if(RC.io) RC.io.disconnect(); el.classList.remove("on");
+  setTimeout(function(){ rcMapStop(); el.hidden = true; el.innerHTML = ""; }, reduceMotion ? 0 : 360);
+}
+function rcLb(ph){
+  var i = Math.max(0, RC.ph.indexOf(ph)), lb = document.createElement("div"); lb.className = "rc-lb"; lb.id = "rcLb";
+  lb.innerHTML = RC.ph.map(function(x, j){ return "<figure><img data-ph=\""+x+"\" alt=\"\"><figcaption>"+(j+1)+" / "+RC.ph.length+"</figcaption></figure>"; }).join("");
+  var x = document.createElement("button"); x.type = "button"; x.className = "rc-x rc-glass rc-lbx"; x.id = "rcLbX"; x.setAttribute("aria-label", "Foto schließen"); x.textContent = "×";
+  x.addEventListener("click", rcLbClose); lb.addEventListener("click", function(e){ if(e.target===lb || e.target.tagName==="FIGURE") rcLbClose(); });
+  document.body.appendChild(lb); document.body.appendChild(x); fillPhotos(lb);
+  lb.scrollLeft = i * lb.clientWidth;
+}
+function rcLbClose(){ ["rcLb","rcLbX"].forEach(function(id){ var n = $(id); if(n) n.remove(); }); }
+function rcClick(e){
+  var t = e.target.closest("[data-rc]"); if(!t) return;
+  var a = t.getAttribute("data-rc");
+  if(a==="close") closeRecap();
+  else if(a==="day"){ var k = t.getAttribute("data-day"); if(k!==RC.key) renderRecap(k); }
+  else if(a==="ph"){ e.stopPropagation(); rcLb(t.getAttribute("data-ph")); }
+  else if(a==="mapmove" && RC.map){
+    var on = t.getAttribute("aria-pressed")!=="true", m = RC.map;
+    ["dragPan","touchZoomRotate","doubleClickZoom","scrollZoom"].forEach(function(h){ if(m[h]) m[h][on ? "enable" : "disable"](); });
+    t.setAttribute("aria-pressed", on); t.textContent = on ? "Fertig" : "Karte bewegen";
+  }
+  else if(a==="focus"){
+    var pid = t.getAttribute("data-pid"), p = P(pid); if(!p || !hasLoc(p) || !RC.map) return;
+    var mw = $("rcMap"); if(mw) mw.closest(".rc-sec").scrollIntoView({behavior: reduceMotion ? "auto" : "smooth", block:"start"});
+    RC.map.flyTo({center:[p.lo, p.la], zoom:16.2, pitch:50, speed:.9, essential:true});
+  }
+}
+document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if($("rcLb")){ e.stopPropagation(); rcLbClose(); return; } var el = $("rc"); if(el && !el.hidden){ e.stopPropagation(); closeRecap(); } }, true);
 /* Tipp-Schutz: Hintergrund-Aktualisierungen (Standort, Sync, Timer) bauen die Oberfläche nicht neu auf,
    während ein Finger liegt oder gerade abgehoben wurde – sonst wird der Knopf unter dem Finger ersetzt und der Tipp geht verloren */
 (function(){
