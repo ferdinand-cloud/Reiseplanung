@@ -5159,7 +5159,7 @@ function startLocate(silent){
     me = {la:pos.coords.latitude, lo:pos.coords.longitude, acc:pos.coords.accuracy, hd:pos.coords.heading, spd:pos.coords.speed};
     if(me.acc < 60){ var lt = trail[trail.length-1]; if(!lt || dist(lt, me) > 6){ trail.push({la:me.la, lo:me.lo, t:Date.now()}); if(trail.length > 400) trail.shift(); } }
     if(firstFix){ firstFix = false; centerOn(me, 15.5); }
-    setLocBtn(); scheduleOverlay(); locShare(); locLog();
+    setLocBtn(); scheduleOverlay(); locShare();
     if(sel && !$("card").hidden) renderCard();
     var oldA = meA; meAnchor(); if(meA!==oldA && cur===todayKey()){ if(tab==="day") renderSheetSoon(); scheduleOverlay(); }
     if(goSt && !$("catPop").hidden && $("catPop").querySelector("[data-act=gofrom]")) renderGo();
@@ -6542,31 +6542,17 @@ function photoMeta(file){
     });
   }).catch(function(e){ diag.err = String(e && e.message || e); return fin({}); });
 }
-/* Standortverlauf auf dem Gerät (nur lokal): ordnet Fotos ohne Ortsdaten über die Aufnahmezeit zu */
-var LOCLOG = null;
-function locLogGet(){ if(LOCLOG) return LOCLOG; try { LOCLOG = JSON.parse(lsGet("rp-loclog")||"[]") || []; } catch(e){ LOCLOG = []; } return LOCLOG; }
-function locLog(){
-  if(!me || (me.acc && me.acc > 150)) return; var L = locLogGet(), now = Date.now(), l = L[L.length-1];
-  if(l && now - l[0] < 60000 && dist({la:l[1], lo:l[2]}, me) < 40) return;
-  L.push([now, +me.la.toFixed(5), +me.lo.toFixed(5)]);
-  var cut = now - 21*864e5; while(L.length && (L[0][0] < cut || L.length > 6000)) L.shift();
-  lsSet("rp-loclog", JSON.stringify(L));
-}
-function locAt(when){ if(!when) return null; var t = +when, L = locLogGet(), best = null, bd = 20*60000;
-  for(var i = 0; i < L.length; i++){ var d = Math.abs(L[i][0] - t); if(d < bd){ bd = d; best = L[i]; } }
-  return best ? {la:best[1], lo:best[2]} : null; }
+try { localStorage.removeItem("rp-loclog"); } catch(e){}
 /* Fotos aus der Mediathek: nach der Auswahl fragen – aktueller Standort oder Aufnahmeort aus den Metadaten */
 var LIBP = null;
 function libImport(fs){
   Promise.all(fs.map(function(f){ return photoMeta(f).then(function(m){ m.f = f; return m; }); })).then(function(ms){
-    ms.forEach(function(m){ if(!m.gps && m.when){ var q = locAt(m.when); if(q){ m.gps = q; m.fromLog = true; } } });
-    LIBP = ms; var n = ms.length, g = ms.filter(function(m){ return m.gps; }).length, gl = ms.filter(function(m){ return m.fromLog; }).length;
+    LIBP = ms; var n = ms.length, g = ms.filter(function(m){ return m.gps; }).length;
     var m = $("addMenu");
     m.innerHTML = "<div class=\"am-head\"><b>"+(n===1 ? "Foto einordnen" : n+" Fotos einordnen")+"</b><button type=\"button\" class=\"x\" data-act=\"libcancel\" aria-label=\"Abbrechen\">✕</button></div>"+
       "<button type=\"button\" data-act=\"libcur\"><span class=\"ai\">"+IPIN+"</span><span>Aktueller Standort<small>"+(n===1 ? "Fotospot" : "Ein Fotospot")+" hier, im Plan von heute</small></span></button>"+
       "<button type=\"button\" data-act=\"libexif\""+(g ? "" : " disabled")+"><span class=\"ai\">"+ILIB+"</span><span>Aufnahmeort aus Metadaten<small>"+
-        (g ? (gl===n ? (n===1 ? "Ort aus deinem Standortverlauf zur Aufnahmezeit" : "Orte aus deinem Standortverlauf zur Aufnahmezeit") : n===1 ? "Ort und Zeit aus dem Foto" : g+" von "+n+" mit Ortsdaten"+(gl ? " (davon "+gl+" aus dem Standortverlauf)" : "")+(g<n ? ", Rest an deinen Standort" : "")) : "Keine Ortsdaten – in der Fotoauswahl unter „Optionen“ den Schalter „Ort“ einschalten")+"</small></span></button>"+
-      (g < n ? "<p class=\"am-diag\">Technik: "+ms.filter(function(x){ return !x.gps; }).slice(0, 3).map(function(x){ var d = x.diag || {}; return esc((d.type||"?")+", "+Math.round((d.size||0)/1024)+" KB, Exif "+(d.exif ? "ja" : "nein")+(d.heif ? ", HEIF" : "")+(d.dbg ? ", Tags "+(d.dbg.n0||0)+", GPS-Block "+(d.dbg.gp ? "ja ("+(d.dbg.g||"leer")+")" : "nein")+(d.dbg.mk ? ", "+d.dbg.mk : "")+(d.dbg.sw ? ", "+d.dbg.sw : "")+(d.dbg.err ? ", "+d.dbg.err : "") : "")+(d.err ? ", Fehler: "+d.err : "")); }).join(" · ")+"</p>" : "");
+        (g ? (n===1 ? "Ort und Zeit aus dem Foto" : g+" von "+n+" mit Ortsdaten"+(g<n ? ", Rest an deinen Standort" : "")) : "Keine Ortsdaten im Foto – Safari gibt sie derzeit nicht an Web-Apps weiter")+"</small></span></button>";
     m.classList.add("wide"); m.hidden = false; $("camBtn").setAttribute("aria-expanded", "true"); placeAddMenu();
   });
 }
