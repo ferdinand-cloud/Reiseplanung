@@ -6279,8 +6279,8 @@ function sheetFullH(){ var h = window.innerHeight, t = document.querySelector(".
 /* Blatt stufenlos: nach dem Ziehen bleibt es auf der losgelassenen Höhe (sheetPx); kleinste Höhe zeigt noch Griff und Reiter */
 var sheetPx = 0;
 function safeBottom(){ var p = $("sbProbe"); if(!p){ p = document.createElement("div"); p.id = "sbProbe"; p.style.cssText = "position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none"; document.body.appendChild(p); } return p.offsetHeight || 0; }
-function sheetLow(){ var gh = grab ? grab.offsetHeight : 70; return Math.round(gh + safeBottom() + 18); }
-function sheetVisible(){ if(desktop.matches) return 0; var h = window.innerHeight; if(sheetPx && sheetState!=="min") return Math.max(sheetLow(), Math.min(sheetFullH(), sheetPx)); return sheetState==="min" ? minVisible() : sheetState==="peek" ? PEEK : sheetState==="full" ? sheetFullH() : Math.round(h*0.5); }
+function sheetLow(){ var gh = grab ? grab.offsetHeight : 70; return Math.round(Math.max(PEEK, gh + 18) + safeBottom()); } // kleinste Höhe = Standardansicht (Reiter + Tagesüberschrift); darunter klappt es ein
+function sheetVisible(){ if(desktop.matches) return 0; var h = window.innerHeight; if(sheetPx && sheetState!=="min") return Math.max(sheetLow(), Math.min(sheetFullH(), sheetPx)); return sheetState==="min" ? minVisible() : sheetState==="peek" ? sheetLow() : sheetState==="full" ? sheetFullH() : Math.round(h*0.5); }
 function minVisible(){ var b = $("sheetOpen"); if(!b || !b.offsetHeight) return MIN; return Math.round(window.innerHeight - b.getBoundingClientRect().top + 6); }
 function applySheet(){
   var body = $("body");
