@@ -6093,7 +6093,11 @@ function arm(key){ confirmKey = key; clearTimeout(confirmTimer); confirmTimer = 
 /* ---------- Blatt ---------- */
 var sheet = $("sheet"), grab = $("grab");
 function sheetFullH(){ var h = window.innerHeight, t = document.querySelector(".top"); var tb = t ? t.getBoundingClientRect().bottom : 0; return Math.round(Math.min(h*0.9, h - tb - 10)); }
-function sheetVisible(){ if(desktop.matches) return 0; var h = window.innerHeight; return sheetState==="min" ? minVisible() : sheetState==="peek" ? PEEK : sheetState==="full" ? sheetFullH() : Math.round(h*0.5); }
+/* Blatt stufenlos: nach dem Ziehen bleibt es auf der losgelassenen Höhe (sheetPx); kleinste Höhe zeigt noch Griff und Reiter */
+var sheetPx = 0;
+function safeBottom(){ var p = $("sbProbe"); if(!p){ p = document.createElement("div"); p.id = "sbProbe"; p.style.cssText = "position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none"; document.body.appendChild(p); } return p.offsetHeight || 0; }
+function sheetLow(){ var gh = grab ? grab.offsetHeight : 70; return Math.round(gh + safeBottom() + 18); }
+function sheetVisible(){ if(desktop.matches) return 0; var h = window.innerHeight; if(sheetPx && sheetState!=="min") return Math.max(sheetLow(), Math.min(sheetFullH(), sheetPx)); return sheetState==="min" ? minVisible() : sheetState==="peek" ? PEEK : sheetState==="full" ? sheetFullH() : Math.round(h*0.5); }
 function minVisible(){ var b = $("sheetOpen"); if(!b || !b.offsetHeight) return MIN; return Math.round(window.innerHeight - b.getBoundingClientRect().top + 6); }
 function applySheet(){
   var body = $("body");
@@ -6103,7 +6107,7 @@ function applySheet(){
   var pb = "calc("+(off+28)+"px + env(safe-area-inset-bottom,0px))";
   if(body.style.paddingBottom !== pb) body.style.paddingBottom = pb;
 }
-function setSheet(s){ sheetState = s; document.body.classList.toggle("sheetfull", s==="full"); document.body.classList.toggle("sheetmin", s==="min"); if(s!=="min") sideOpen = true; syncSide(); applySheet(); placeFloating(); }
+function setSheet(s, px){ sheetPx = px || 0; sheetState = s; document.body.classList.toggle("sheetfull", s==="full"); document.body.classList.toggle("sheetmin", s==="min"); if(s!=="min") sideOpen = true; syncSide(); applySheet(); placeFloating(); }
 function syncSide(){
   document.body.classList.toggle("side-off", desktop.matches && !sideOpen);
   var open = desktop.matches ? sideOpen : sheetState!=="min";
@@ -6149,25 +6153,20 @@ function placeFloating(){
     if(!g) return;
     var dy = y - g.y; if(Math.abs(dy) > 6) g.moved = true;
     var now = performance.now(), dt = now - g.lt; if(dt > 0){ g.v = .7*((y - g.last)/dt) + .3*g.v; g.last = y; g.lt = now; }
-    nextY = Math.max(Math.max(0, g.hh - sheetFullH()), Math.min(g.hh - MIN, g.t0 + dy));
+    nextY = Math.max(Math.max(0, g.hh - sheetFullH()), Math.min(g.hh - sheetLow(), g.t0 + dy));
     if(!raf) raf = requestAnimationFrame(paint);
   }
   function end(y, tapToggles){
     if(!g) return; sheet.classList.remove("dragging");
     if(raf){ cancelAnimationFrame(raf); raf = 0; }
     var G = g; g = null;
-    if(!G.moved){ if(tapToggles) setSheet(sheetState==="min" ? "peek" : sheetState==="peek" ? "mid" : sheetState==="mid" ? "full" : "min"); else applySheet(); return; }
+    if(!G.moved){ if(tapToggles){ if(sheetVisible() > sheetLow() + 40) setSheet("peek", sheetLow()); else setSheet("mid"); } else applySheet(); return; }
     noClick = Date.now();
-    var h = window.innerHeight, vis = G.hh - Math.max(0, Math.min(G.hh - MIN, G.t0 + (y - G.y)));
-    var opts = [["min",MIN],["peek",PEEK],["mid",h*0.5],["full",sheetFullH()]], order = ["min","peek","mid","full"];
-    var target = opts.reduce(function(a,b){ return Math.abs(b[1]-vis) < Math.abs(a[1]-vis) ? b : a; })[0];
-    if(Math.abs(G.v) > 0.45){
-      // Schwung: zur nächsten Stufe in Wischrichtung, ausgehend von der aktuellen Höhe
-      var up = G.v < 0, i;
-      if(up){ for(i=0;i<opts.length;i++) if(opts[i][1] > vis + 10){ target = opts[i][0]; break; } if(i===opts.length) target = "full"; }
-      else { for(i=opts.length-1;i>=0;i--) if(opts[i][1] < vis - 10){ target = opts[i][0]; break; } if(i<0) target = "min"; }
-    }
-    setSheet(target);
+    var h = window.innerHeight, vis = G.hh - Math.max(0, Math.min(G.hh - sheetLow(), G.t0 + (y - G.y)));
+    // stufenlos: dort bleiben, wo losgelassen wurde (zwischen kleinster Höhe und ganz oben)
+    vis = Math.max(sheetLow(), Math.min(sheetFullH(), vis));
+    var near = vis >= sheetFullH() - 24 ? "full" : vis >= h*0.5 ? "mid" : "peek";
+    setSheet(near, near==="full" ? 0 : vis);
   }
   // Knopf im eingeklappten Zustand: Tippen oder Hochwischen öffnet die Planung
   var so = $("sheetOpen"), soY = null;
