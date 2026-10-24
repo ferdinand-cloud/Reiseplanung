@@ -1993,6 +1993,7 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 
 .sugb{color:#E5A100}
 .sug-card .pf-seg{margin-bottom:6px}
+.sug-card .pf-seg button{padding:7px 4px;font-size:13px}
 .sugcats{margin:4px -4px 8px;padding:0 4px 2px}
 .sug-row{display:flex;align-items:center;gap:6px}
 .sug-row .srow{flex:1;min-width:0}
@@ -3108,7 +3109,7 @@ function dcLoad(){
   if(!fbDb || !acct.user){ renderDc(); return; }
   var fr = FR.friends.filter(function(f){ return f.uid; }); DC.busy = true; DC.err = ""; renderDc();
   Promise.all(fr.map(function(f){ return recCol(f.uid).orderBy("at", "desc").limit(150).get().then(function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.key = f.uid+"/"+d.id; v.fname = f.name || v.name || ""; return v; }); }, function(){ return []; }); }))
-    .then(function(all){ DC.items = [].concat.apply([], all); DC.byKey = {}; DC.items.forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); DC.busy = false; if(dcPage) renderDc();
+    .then(function(all){ DC.items = [].concat.apply([], all); DC.byKey = {}; DC.items.forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); DC.busy = false; if(dcPage) renderDc(); if(SUG.tab==="fr" && $("catPop") && !$("catPop").hidden && $("catPop").querySelector(".sug-card")) renderSug();
       if(sel) renderCard(); if(jp && !jp.view && !$("jPop").hidden && !(document.activeElement && /^(cmIn|nText)$/.test(document.activeElement.id))) renderJPop(); });
 }
 function tripCenter(){
@@ -3349,6 +3350,9 @@ function renderSug(first){
   var path = sugPath(pr), list = [];
   if(SUG.tab==="wish"){
     wishes().forEach(function(p){ if(!hasLoc(p) || p.k==="hotel") return; var d = sugDist(p, path); if(d <= SUGR*1.6) list.push({id:p.id, n:p.n, c:p.c, la:p.la, lo:p.lo, d:d, sub:p.addr || listName(p.list)}); });
+  } else if(SUG.tab==="fr"){
+    DC.items.forEach(function(r){ if(!r.la) return; var d = sugDist(r, path); if(d <= SUGR*1.6){ var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
+      list.push({n:r.n, c:CATNAME[r.c] ? r.c : "sight", la:r.la, lo:r.lo, d:d, addr:r.addr, fr:r, sub:"@"+(r.fname||"Freund")+(RR ? " · "+RR[1] : "")+(r.hl ? " · ★ Highlight" : ""), inT:sugInTrip(r)}); } });
   } else {
     (SUG.pub[SUG.pubKey] || []).forEach(function(r){ var d = sugDist(r, path); if(d <= SUGR) list.push({n:r.n, c:r.c, la:r.la, lo:r.lo, d:d, addr:r.addr, sub:[r.kind, r.addr].filter(Boolean).join(" · "), pub:1, inT:sugInTrip(r)}); });
   }
@@ -3357,13 +3361,16 @@ function renderSug(first){
   list.sort(function(a, b){ return a.d - b.d; });
   SUG.list = list;
   var h = "<div class=\"pop-card sug-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Vorschläge auf dem Weg\"><div class=\"pop-head\"><h4>Vorschläge auf dem Weg</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
-    "<p class=\"note\" style=\"margin:0 2px 10px\">"+esc(pr[0].n || "Hotel")+" → "+esc(pr[1].n || "Hotel")+" · bis "+(SUG.tab==="wish" ? Math.round(SUGR*1.6) : SUGR)+" m vom Weg</p>"+
-    "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"sugtab\" data-v=\"wish\" aria-selected=\""+(SUG.tab==="wish")+"\">Aus deiner Wunschliste</button><button type=\"button\" role=\"tab\" data-act=\"sugtab\" data-v=\"pub\" aria-selected=\""+(SUG.tab==="pub")+"\">Öffentlich</button></div>"+
+    "<p class=\"note\" style=\"margin:0 2px 10px\">"+esc(pr[0].n || "Hotel")+" → "+esc(pr[1].n || "Hotel")+" · bis "+(SUG.tab!=="pub" ? Math.round(SUGR*1.6) : SUGR)+" m vom Weg</p>"+
+    "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"sugtab\" data-v=\"wish\" aria-selected=\""+(SUG.tab==="wish")+"\">Wunschliste</button><button type=\"button\" role=\"tab\" data-act=\"sugtab\" data-v=\"fr\" aria-selected=\""+(SUG.tab==="fr")+"\">Freunde</button><button type=\"button\" role=\"tab\" data-act=\"sugtab\" data-v=\"pub\" aria-selected=\""+(SUG.tab==="pub")+"\">Öffentlich</button></div>"+
     "<div class=\"srcats sugcats\" role=\"tablist\" aria-label=\"Kategorie\"><button type=\"button\" role=\"tab\" data-act=\"sugcat\" data-v=\"\" aria-selected=\""+(!SUG.cat)+"\">Alle</button>"+
       CATS.map(function(c){ return "<button type=\"button\" role=\"tab\" data-act=\"sugcat\" data-v=\""+c[0]+"\" aria-selected=\""+(SUG.cat===c[0])+"\" style=\"--cc:"+catCol(c[0])+"\">"+icon(c[0])+"<span>"+esc(c[1])+(counts[c[0]] ? " · "+counts[c[0]] : "")+"</span></button>"; }).join("")+"</div><div class=\"sug-list\">";
   if(SUG.tab==="pub" && SUG.busy) h += "<p class=\"note nt-empty\">Suche Orte entlang des Wegs …</p>";
   else if(SUG.tab==="pub" && SUG.err) h += "<p class=\"note nt-empty\">"+esc(SUG.err)+"</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"sugretry\">Nochmal versuchen</button></div>";
-  else if(!list.length) h += "<p class=\"note nt-empty\">"+(SUG.tab==="wish" ? "Keine Wünsche"+(SUG.cat ? " dieser Kategorie" : "")+" in der Nähe dieses Wegs." : "Keine öffentlichen Orte"+(SUG.cat ? " dieser Kategorie" : "")+" direkt am Weg gefunden.")+"</p>";
+  else if(SUG.tab==="fr" && !acct.user) h += "<p class=\"note nt-empty\">Melde dich an, um Empfehlungen deiner Freunde zu sehen.</p>";
+  else if(SUG.tab==="fr" && !FR.friends.length) h += "<p class=\"note nt-empty\">Füge Freunde hinzu – ihre besuchten und gut bewerteten Orte erscheinen dann hier.</p>";
+  else if(SUG.tab==="fr" && DC.busy && !DC.items.length) h += "<p class=\"note nt-empty\">Lädt Empfehlungen deiner Freunde …</p>";
+  else if(!list.length) h += "<p class=\"note nt-empty\">"+(SUG.tab==="fr" ? "Deine Freunde haben entlang dieses Wegs noch nichts empfohlen." : SUG.tab==="wish" ? "Keine Wünsche"+(SUG.cat ? " dieser Kategorie" : "")+" in der Nähe dieses Wegs." : "Keine öffentlichen Orte"+(SUG.cat ? " dieser Kategorie" : "")+" direkt am Weg gefunden.")+"</p>";
   else h += "<ul class=\"srlist\">"+list.slice(0, 60).map(function(r, i){
       return "<li class=\"sug-row\"><button type=\"button\" class=\"srow\" data-act=\"sugmap\" data-i=\""+i+"\"><span class=\"sric\" style=\"color:"+catCol(r.c)+"\">"+icon(r.c)+"</span><span class=\"srt\"><b>"+esc(r.n)+"</b><small>"+esc([Math.round(r.d/10)*10+" m vom Weg", CATNAME[r.c], r.sub].filter(Boolean).join(" · "))+"</small></span></button>"+
         (r.inT ? "<span class=\"dc-in sug-in\">✓ In Reise</span>" : "<button type=\"button\" class=\"btn s sug-add\" data-act=\"sugadd\" data-i=\""+i+"\">Einschieben</button>")+"</li>"; }).join("")+"</ul>";
@@ -3373,14 +3380,14 @@ function renderSug(first){
 function sugAdd(i){
   var r = SUG.list && SUG.list[i], LG = dayLegs(cur), pr = LG[SUG.li]; if(!r || !pr || isRO()) return;
   var at = sugInsertIdx(pr), id = r.id;
-  if(!id){ id = uid("w"); T().places[id] = {id:id, n:r.n.slice(0, 80), c:r.c, list:(T().lists[0]||{}).id || null, note:"", addr:(r.addr||"").slice(0, 120), la:r.la, lo:r.lo}; }
+  if(!id){ id = uid("w"); T().places[id] = {id:id, n:r.n.slice(0, 80), c:r.c, list:(T().lists[0]||{}).id || null, note:r.fr ? "Empfehlung von @"+(r.fr.fname||"Freund")+(r.fr.note ? ": "+r.fr.note.slice(0, 200) : "") : "", addr:(r.addr||"").slice(0, 120), la:r.la, lo:r.lo}; if(r.fr) T().places[id].rec = {by:r.fr.by, name:r.fr.fname||""}; }
   closeCatPop(); plan(id, cur, at); tab = "day"; renderAll(); select(id);
 }
 function sugMap(i){
   var r = SUG.list && SUG.list[i]; if(!r) return; closeCatPop();
   if(r.id){ select(r.id); revealPoint(P(r.id), 16, true); return; }
   poiSel = {n:r.n, cls:"", sub:"", c:r.c, la:r.la, lo:r.lo, addr:r.addr || ""}; sel = null; select("poi"); poiSel = poiSel || null;
-  if(map) map.easeTo({center:[r.lo, r.la], zoom:Math.max(map.getZoom(), 16), duration:reduceMotion?0:600}); renderCard(); scheduleOverlay();
+  renderCard(); scheduleOverlay(); revealPoint({la:r.la, lo:r.lo}, 16, true);
 }
 /* ---------- Chat mit Freunden (auch über Orte) ---------- */
 var chNewOn = false, chNewQ = "", chMsgErr = false, chPage = false, chOpen = null, chDraft = null, chPickOn = false, chPickQ = "", chMsgs = [], chMsgUnsub = null, chStart = 0, chSending = false;
@@ -3771,7 +3778,7 @@ function ntOpen(id){
   if(it.trip && !S.trips[it.trip]){ toast("Diese Reise ist nicht mehr verfügbar", false); renderAll(); return; }
   if((it.type==="comment" || it.type==="like" || it.type==="mention" || it.type==="reply") && P(it.pid)){
     var dk = dayOf(it.pid); if(dk) cur = dk;
-    tab = dk ? "day" : "wish"; renderAll(); cmWatch(); select(it.pid); if(hasLoc(P(it.pid))) centerOn(P(it.pid)); openJPop(it.pid, dk || "", it.ph && photosOf(it.pid).indexOf(it.ph) > -1 ? it.ph : null);
+    tab = dk ? "day" : "wish"; renderAll(); cmWatch(); select(it.pid); if(hasLoc(P(it.pid))) revealPoint(P(it.pid), 15, true); openJPop(it.pid, dk || "", it.ph && photosOf(it.pid).indexOf(it.ph) > -1 ? it.ph : null);
     setTimeout(function(){ var c = $(it.ph ? "pvCm" : "cmList"); if(c) c.scrollIntoView({block:"center"}); }, 350);
     return;
   }
@@ -4401,10 +4408,10 @@ function hlq(txt, q){ var t = esc(txt), w = norm(q).split(/\s+/).filter(Boolean)
 function srchGo(i){
   var r = srch.res.concat(srch.web)[i]; if(!r) return;
   closeSearch(); if(document.activeElement) document.activeElement.blur();
-  if(r.kind==="place"){ var vs = visitsOf(r.id); if(vs.length && vs.every(function(v){ return v.k!==cur; })){ cur = vs[0].k; } tab = vs.length ? "day" : "wish"; renderAll(); select(r.id); var p = P(r.id); if(hasLoc(p) && map) map.easeTo({center:[p.lo, p.la], zoom:Math.max(map.getZoom(), 15), duration:reduceMotion?0:600}); return; }
+  if(r.kind==="place"){ var vs = visitsOf(r.id); if(vs.length && vs.every(function(v){ return v.k!==cur; })){ cur = vs[0].k; } tab = vs.length ? "day" : "wish"; renderAll(); select(r.id); var p = P(r.id); if(hasLoc(p)) revealPoint(p, 15, true); return; }
   poiSel = {n:r.n, cls:r.cls || "", sub:r.subc || r.cls || "", c:r.c || "sight", la:r.la, lo:r.lo, addr:r.addr || ""};
   sel = null; select("poi"); poiSel = poiSel || null;
-  if(map) map.easeTo({center:[r.lo, r.la], zoom:Math.max(map.getZoom(), 16), duration:reduceMotion?0:600});
+  revealPoint({la:r.la, lo:r.lo}, 16, true);
   renderCard(); scheduleOverlay();
 }
 
@@ -5215,8 +5222,9 @@ function centerOn(p, z){
 function centerAround(p, z){ revealPoint(p, z, true); }
 // Punkt so zeigen, dass weder Fenster noch Karte des Ortes noch das Blatt ihn verdecken:
 // er kommt in die Mitte des größten freien Bereichs. always=false: nur bewegen, wenn er gerade verdeckt ist.
-function revealPoint(p, z, always){
+function revealPoint(p, z, always, again){
   if(!p || !hasLoc(p) || !map) return;
+  if(!again){ clearTimeout(revealPoint.t); var chk = function(){ if(map.isMoving()){ revealPoint.t = setTimeout(chk, 150); return; } revealPoint(p, 0, false, true); }; revealPoint.t = setTimeout(chk, reduceMotion ? 150 : 900); }
   requestAnimationFrame(function(){ requestAnimationFrame(function(){
     var mr = mapEl.getBoundingClientRect(), Hh = window.innerHeight, cx = mr.left + mr.width/2;
     var obs = [], vis = function(el){ return el && !el.hidden && el.getClientRects().length; };
@@ -5230,6 +5238,8 @@ function revealPoint(p, z, always){
     var free = [], y = 0; obs.forEach(function(o){ if(o[0] > y) free.push([y, o[0]]); y = Math.max(y, o[1]); }); if(y < Hh) free.push([y, Hh]);
     if(!free.length) return;
     var best = free.reduce(function(a, b){ return (b[1]-b[0]) > (a[1]-a[0]) ? b : a; });
+    // kein Platz zwischen Pop-up und Planung: Planung einklappen, dann neu ausrichten
+    if(best[1] - best[0] < 110 && !desktop.matches && (sheetState==="mid" || sheetState==="full")){ setSheet("peek"); setTimeout(function(){ revealPoint(p, z, true, true); }, 340); return; }
     var q = map.project([p.lo, p.la]), qy = q.y + mr.top, qx = q.x + mr.left;
     var covered = !(qy > best[0] + 16 && qy < best[1] - 16) || qx < mr.left + 16 || qx > mr.right - 16;
     var zz = z ? Math.max(map.getZoom(), z) : map.getZoom();
@@ -6709,7 +6719,7 @@ function libApply(useExif){
     }); }, Promise.resolve()).then(function(){
       if(!first) return;
       var p = P(first.tg.pid), dk = dayOf(first.tg.pid); if(dk) cur = dk;
-      tab = dk ? "day" : "wish"; renderAll(); select(first.tg.pid); if(hasLoc(p)) centerOn(p, 16);
+      tab = dk ? "day" : "wish"; renderAll(); select(first.tg.pid); if(hasLoc(p)) revealPoint(p, 16, true);
       openJPop(first.tg.pid, dk, first.ph);
       var msg;
       if(!useExif) msg = "Neuer Fotospot"+(dk ? " im Plan von heute" : " in der Wunschliste");
@@ -6743,7 +6753,7 @@ document.addEventListener("change", function(e){
     return addPhotos(tg.pid, lib ? fs : [f]).then(function(ids){
       if(!ids || !ids.length) return;
       var dk = dayOf(tg.pid); if(dk) cur = dk;
-      tab = dk ? "day" : "wish"; renderAll(); select(tg.pid); if(hasLoc(p)) centerOn(p, 16);
+      tab = dk ? "day" : "wish"; renderAll(); select(tg.pid); if(hasLoc(p)) revealPoint(p, 16, true);
       openJPop(tg.pid, dk, ids[0]);
       toast("Neuer Fotospot"+(tg.day ? " im Plan von heute" : " in der Wunschliste")+(!loc ? " (ohne Standort)" : ""), false);
     });
@@ -6802,7 +6812,7 @@ function locSave(){
   if(note){ t.notes = t.notes || {}; t.notes[pid] = note.slice(0,5000); }
   if(D){ ord(tk).push(pid); t.times = t.times || {}; t.times[pid] = new Date().toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}); }
   save(); locSt = null; closeAddMenu();
-  if(D) cur = tk; tab = D ? "day" : "wish"; renderAll(); select(pid); centerOn(P(pid), 16); openJPop(pid, D ? tk : "");
+  if(D) cur = tk; tab = D ? "day" : "wish"; renderAll(); select(pid); revealPoint(P(pid), 16, true); openJPop(pid, D ? tk : "");
   toast("„"+nm+"“ "+(D ? "im Plan von "+D.lbl : "in der Wunschliste"), true);
 }
 /* Foto in die Fotomediathek: über das Teilen-Menü („Bild sichern“); Originalaufnahme, wenn vorhanden */
@@ -7635,7 +7645,7 @@ document.addEventListener("click", function(e){
     case "chmap": var chpl = CHPL[t.getAttribute("data-k")]; if(chpl){ var chm = chMatch(chpl); closeChPage();
       if(chm){ if(chm.tid!==S.cur){ grpSel = ""; S.cur = chm.tid; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
         if(P(chm.pid)){ var chdk = dayOf(chm.pid); if(chdk) cur = chdk; tab = chdk ? "day" : "wish"; renderAll(); select(chm.pid); revealPoint(P(chm.pid), 16, true); } }
-      else map.easeTo({center:[chpl.lo, chpl.la], zoom:16, duration: reduceMotion?0:500}); } break;
+      else { poiSel = {n:chpl.n, cls:"", sub:"", c:chpl.c || "sight", la:chpl.la, lo:chpl.lo, addr:chpl.addr || ""}; sel = null; select("poi"); renderCard(); revealPoint({la:chpl.la, lo:chpl.lo}, 16, true); } } break;
     case "chwish": chAddPlace(t.getAttribute("data-k"), null); break;
     case "chplan": var chk0 = t.getAttribute("data-k"); jpPopover("ch", t, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"chday\" data-k=\""+esc(chk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "chplan"); break;
     case "chday": chAddPlace(t.getAttribute("data-k"), t.getAttribute("data-day")); break;
@@ -7661,7 +7671,7 @@ document.addEventListener("click", function(e){
     case "dcwish": dcAdd(t.getAttribute("data-k"), null); break;
     case "dcplan": var dk0 = t.getAttribute("data-k"); jpPopover("dc", t, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"dcday\" data-k=\""+esc(dk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "dcplan"); break;
     case "dcday": dcAdd(t.getAttribute("data-k"), t.getAttribute("data-day")); break;
-    case "dcmap": var dcr = DC.byKey[t.getAttribute("data-k")]; if(dcr){ closeDcPage(); map.easeTo({center:[dcr.lo, dcr.la], zoom:16, duration: reduceMotion?0:500}); } break;
+    case "dcmap": var dcr = DC.byKey[t.getAttribute("data-k")]; if(dcr){ closeDcPage(); poiSel = {n:dcr.n, cls:"", sub:"", c:dcr.c || "sight", la:dcr.la, lo:dcr.lo, addr:dcr.addr || ""}; sel = null; select("poi"); renderCard(); revealPoint({la:dcr.la, lo:dcr.lo}, 16, true); } break;
     case "dcreload": DC.at = 0; dcLoad(); break;
     case "recshare": recShare = !recShare; lsSet("rp-recshare", recShare ? "1" : "0"); if(recShare) recSyncSoon(); else recWipe(); openSettings(); break;
     case "navlist": if(lsPage) closeLsPage(); else openLsPage(); break;
@@ -7698,7 +7708,7 @@ document.addEventListener("click", function(e){
     case "plan": plan(id, cur); sel = id; renderAll(); break;
     case "planpick": planPick(t); break;
     case "sugopen": SUG.cat = ""; openSug(parseInt(t.getAttribute("data-leg"), 10)); break;
-    case "sugtab": SUG.tab = t.getAttribute("data-v"); renderSug(); if(SUG.tab==="pub") sugLoadPub(SUG.li); break;
+    case "sugtab": SUG.tab = t.getAttribute("data-v"); renderSug(); if(SUG.tab==="pub") sugLoadPub(SUG.li); if(SUG.tab==="fr" && acct.user && FR.friends.length && !DC.busy && Date.now() - DC.at > 120000){ dcLoad(); setTimeout(function(){ if(!$("catPop").hidden && SUG.tab==="fr") renderSug(); }, 1500); } break;
     case "sugcat": SUG.cat = t.getAttribute("data-v") || ""; renderSug(); break;
     case "sugretry": SUG.pub[SUG.pubKey] = null; SUG.pubKey = ""; sugLoadPub(SUG.li); break;
     case "sugadd": sugAdd(parseInt(t.getAttribute("data-i"), 10)); break;
