@@ -1908,6 +1908,13 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 .card .ctiles .jp-tile{min-height:46px;gap:3px;border-radius:12px;font-size:11px;padding-top:5px;padding-bottom:5px}
 .card .ctiles .jp-tile svg{width:19px;height:19px}
 .card .ctiles .tbadge{top:2px}
+
+/* Verschiebebalken ganz links über die volle Höhe des Eintrags */
+li.st > .stc{padding-left:24px !important}
+li.st .lcol .grip{position:absolute;left:0;top:0;bottom:0;width:22px;height:auto !important;border-radius:16px 0 0 16px;opacity:1 !important;display:flex;align-items:center;justify-content:center;color:var(--muted);background:color-mix(in srgb,var(--ink) 4%,transparent)}
+li.st .lcol .grip svg{width:14px;height:20px;opacity:.55}
+li.st .lcol .grip::before{content:"";position:absolute;right:0;top:10px;bottom:10px;width:.5px;background:var(--hair,var(--line))}
+li.st .lcol .grip:active,ol.plan.sorting .st.drag .grip{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
 </style>
 </head>
 <body>
