@@ -2446,6 +2446,7 @@ function normTrip(t){
   }
   var seen = {};
   Object.keys(t.order).forEach(function(dk){ t.order[dk] = (Array.isArray(t.order[dk]) ? t.order[dk] : []).filter(function(id){ if(typeof id!=="string" || !t.places[id] || seen[id]) return false; seen[id]=1; return true; }); });
+  if(t.rating && typeof t.rating==="object") Object.keys(t.rating).forEach(function(id){ if(t.rating[id]===5){ t.overrated = t.overrated && typeof t.overrated==="object" ? t.overrated : {}; t.overrated[id] = 1; delete t.rating[id]; } });
   migrateJournal(t);
   return t;
 }
@@ -3299,7 +3300,7 @@ function recCollect(){
     var isP = function(pid){ var q = t.places[pid]; return !!(t.privP && (t.privP[pid] || (q && q.of && t.privP[q.of]))); };
     Object.keys(t.places).forEach(function(pid){
       var p = t.places[pid]; if(!p || p.k==="hotel" || !p.la || !t.done[pid] || isP(pid)) return;
-      var r = (t.rating||{})[pid] || 0, isHl = !!hl[p.n]; if(!(isHl || (r && r <= 3))) return;
+      var r = (t.rating||{})[pid] || 0, isHl = !!hl[p.n]; if(!(isHl || (r && rateRank(r) <= rateRank(3)))) return;
       var note = (t.privN||{})[pid] ? "" : ((t.notes||{})[pid] || "");
       var phs = ((t.photos||{})[pid] || []).filter(function(x){ return !(t.privPh||{})[x]; }).slice(-3);
       var key = tid.replace(/[^A-Za-z0-9_-]/g, "")+"_"+pid;
@@ -3355,7 +3356,7 @@ function renderDc(){
   if(!FR.friends.length){ el.innerHTML = h+"<p class=\"note nt-empty\">Noch keine Freunde. Füge Freunde hinzu – ihre besuchten und gut bewerteten Orte erscheinen dann hier.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div></div>"; return; }
   var list = DC.items.slice();
   if(dcScope==="here" && C) list = list.filter(function(r){ return r.la && dist(C, r) < 40000; });
-  list.sort(function(a, b){ var ra = a.hl ? 0 : (a.rating||9), rb = b.hl ? 0 : (b.rating||9); return ra - rb || (b.at||0) - (a.at||0); });
+  list.sort(function(a, b){ var ra = a.hl ? 0 : (a.rating ? rateRank(a.rating) : 99), rb = b.hl ? 0 : (b.rating ? rateRank(b.rating) : 99); return ra - rb || (b.at||0) - (a.at||0); });
   if(DC.busy && !DC.items.length) h += "<p class=\"note nt-empty\">Lädt Empfehlungen …</p>";
   else if(!list.length) h += "<p class=\"note nt-empty\">"+(dcScope==="here" ? "Für dieses Reiseziel haben deine Freunde noch nichts empfohlen. Schau unter „Überall“." : "Deine Freunde haben noch keine Empfehlungen geteilt.")+"</p>";
   list.forEach(function(r){
@@ -3871,7 +3872,7 @@ function friendRecs(p){
   return DC.items.filter(function(r){ if(!r.la) return false; var d = dist(p, r); return d < 40 || (d < 150 && (r.n||"").toLowerCase().slice(0, 6)===nm); });
 }
 function rvChips(p){
-  var fr = friendRecs(p), best = fr.reduce(function(m, r){ return r.rating && (!m || r.rating < m) ? r.rating : m; }, 0), RR = RATES.filter(function(x){ return x[0]===best; })[0];
+  var fr = friendRecs(p), best = fr.reduce(function(m, r){ return r.rating && (!m || rateRank(r.rating) < rateRank(m)) ? r.rating : m; }, 0), RR = RATES.filter(function(x){ return x[0]===best; })[0];
   var g = gKey && gInfo[gK(p)], gr = g && g.d && g.d.rating;
   return "<div class=\"rvchips\"><button type=\"button\" class=\"rvc"+(fr.length?" on":"")+"\" data-act=\"rvopen\" data-v=\"friends\"><span class=\"rvi\">👥</span><span><b>Freunde</b><small>"+(fr.length ? (RR ? fr.length+" · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : fr.length+(fr.length===1?" Empfehlung":" Empfehlungen")) : "keine")+"</small></span></button>"+
     "<button type=\"button\" class=\"rvc\" data-act=\"rvopen\" data-v=\"public\"><span class=\"rvi\">🌐</span><span><b>Öffentlich</b><small>"+(gr ? "★ "+String(gr).replace(".", ",")+" (Google)" : "bald")+"</small></span></button></div>";
@@ -3948,7 +3949,7 @@ function renderLs(){
   } else if(lsTab==="hl"){
     if(!hls.length && !tops.length) h += "<p class=\"note nt-empty\">Noch keine Highlights. Markiere in der Bewertung eines Ortes „★ Highlight des Tages“ oder bewerte Orte mit Outstanding oder Must Have.</p>";
     if(hls.length){ h += "<div class=\"nt-sec\">★ Highlights der Tage</div><div class=\"ag-grp ls-list\">"+hls.map(function(x){ return x.id ? row(x.id, "Tag "+x.D.n+" · "+x.D.lbl) : "<div class=\"ls-row\"><span class=\"ls-t\"><b>"+esc(x.n)+"</b><small>Tag "+x.D.n+" · "+esc(x.D.lbl)+"</small></span></div>"; }).join("")+"</div>"; }
-    if(tops.length){ h += "<div class=\"nt-sec\">Bestbewertet</div><div class=\"ag-grp ls-list\">"+tops.sort(function(a, b){ return rateOf(a.id) - rateOf(b.id); }).map(function(v){ return row(v.id, "Tag "+v.D.n+" · "+v.D.lbl); }).join("")+"</div>"; }
+    if(tops.length){ h += "<div class=\"nt-sec\">Bestbewertet</div><div class=\"ag-grp ls-list\">"+tops.sort(function(a, b){ return rateRank(rateOf(a.id)) - rateRank(rateOf(b.id)); }).map(function(v){ return row(v.id, "Tag "+v.D.n+" · "+v.D.lbl); }).join("")+"</div>"; }
   } else {
     if(!phs.length) h += "<p class=\"note nt-empty\">Noch keine Fotos in dieser Reise.</p>";
     var lastG = undefined;
@@ -6500,7 +6501,13 @@ function renderDay(){
 }
 var jOpen = lsGet("nyc-j-open")!=="0";
 /* Bewertung besuchter Orte */
-var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#5E9970"],[3,"Nice","#007AFF"],[4,"Okay","#6b7785"],[5,"Overrated","#FF3B30"]];
+// Gespeicherte Werte bleiben stabil (1–5 wie bisher); neue Stufen haben neue Werte und werden über die Reihenfolge einsortiert
+var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#5E9970"],[6,"Very Good","#2E9E9A"],[3,"Nice","#007AFF"],[4,"Okay","#6b7785"],[7,"Not So Good","#E8853A"],[8,"Bad","#FF3B30"]];
+// „Overrated“ ist keine Stufe mehr, sondern wie „Highlight des Tages“ eine eigene Markierung (T().overrated); alter Wert 5 nur noch zur Anzeige fremder Empfehlungen
+var RATE_OLD = [5,"Overrated","#C2185B"];
+function rateDef(v){ return RATES.filter(function(x){ return x[0]===v; })[0] || (v===5 ? RATE_OLD : null); }
+function isOver(id){ return !!((T().overrated||{})[id]); }
+function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ return ((T().rating||{})[id]) || 0; }
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
 function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=ratepick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
@@ -6525,6 +6532,8 @@ function openJpMore(id, btn){
 function openRatePick(id, btn){
   var v = rateOf(id), dkx = jp && jp.pid===id ? jp.dk : dayOf(id), J = (T().journal||{})[dkx] || {}, hl = !!(P(id) && J.hl===P(id).n);
   var h = "<button type=\"button\" data-act=\"jphl\" role=\"menuitemcheckbox\" aria-checked=\""+hl+"\" class=\"rp-hl"+(hl?" sel":"")+"\"><span class=\"ai hlst\">★</span><span>Highlight des Tages</span>"+(hl ? "<b class=\"ck\">✓</b>" : "")+"</button>";
+  var ov = isOver(id);
+  h += "<button type=\"button\" data-act=\"rateover\" role=\"menuitemcheckbox\" aria-checked=\""+ov+"\" class=\"rp-hl rp-ov"+(ov?" sel":"")+"\"><span class=\"ai\" style=\"color:"+RATE_OLD[2]+";font-weight:800\">↯</span><span>Overrated</span>"+(ov ? "<b class=\"ck\">✓</b>" : "")+"</button>";
   RATES.forEach(function(r){ h += "<button type=\"button\" data-act=\"rate\" data-v=\""+r[0]+"\" role=\"menuitemradio\" aria-checked=\""+(v===r[0])+"\" class=\"rp"+(v===r[0]?" sel":"")+"\" style=\"--rc:"+r[2]+"\"><span class=\"ai\"><i class=\"dot\"></i></span><span>"+r[1]+"</span>"+(v===r[0] ? "<b class=\"ck\">✓</b>" : "")+"</button>"; });
   jpPopover(id, btn, h, "rate");
 }
@@ -6532,7 +6541,8 @@ function rateRow(id){
   var v = rateOf(id);
   return "<div class=\"rate\" role=\"group\" aria-label=\"Bewertung\">"+RATES.map(function(r){ return "<button type=\"button\" data-act=\"rate\" data-v=\""+r[0]+"\" aria-pressed=\""+(v===r[0])+"\" style=\"--rc:"+r[2]+"\">"+r[1]+"</button>"; }).join("")+"</div>";
 }
-function rateBadge(id){ var v = rateOf(id); if(!v) return ""; var r = RATES[v-1]; return " <span class=\"rbadge\" style=\"--rc:"+r[2]+"\">"+r[1]+"</span>"; }
+function rateBadge(id){ var ov = isOver(id) ? " <span class=\"rbadge\" style=\"--rc:"+RATE_OLD[2]+"\">Overrated</span>" : "", v = rateOf(id); if(!v) return ov; var r = rateDef(v); if(!r) return ov; return rateBadge0(r)+ov; }
+function rateBadge0(r){ return " <span class=\"rbadge\" style=\"--rc:"+r[2]+"\">"+r[1]+"</span>"; }
 function jLine(id){ var p = P(id); return "• "+p.n+(timeOf(id)?" ("+timeOf(id)+")":"")+": "; }
 function jHas(J, id){ var p = P(id); return !!(J.text && J.text.indexOf("• "+p.n)>-1); }
 function noteOf(id){ return ((T().notes||{})[id]) || ""; }
@@ -7627,7 +7637,7 @@ function renderSheet(){
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
-var RO_ACTS = {"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
+var RO_ACTS = {"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
 function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 var roWas = null;
 function applyRO(){
@@ -8124,6 +8134,7 @@ document.addEventListener("click", function(e){
     case "jpmore": openJpMore(jp ? jp.pid : id, t); break;
     case "ratepick": openRatePick(t.closest("#jPop") && jp ? jp.pid : id, t); break;
     case "cphopen": var cpp = sel; if(P(cpp)) openJPop(cpp, dayOf(cpp) || "", t.getAttribute("data-ph")); break;
+    case "rateover": if(t.closest("#catPop")) closeCatPop(); var tov = T(); tov.overrated = tov.overrated || {}; if(tov.overrated[id]) delete tov.overrated[id]; else tov.overrated[id] = 1; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); if(lsPage) setTimeout(renderLs, 0); break;
     case "rate": if(t.closest("#catPop")) closeCatPop(); var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); if(lsPage) setTimeout(renderLs, 0); break;
     case "acsignup": openSignup(); break;
     case "suclose": closeSignup(); break;
@@ -8471,7 +8482,7 @@ function rcHTML(k){
   h += "<section class=\"rc-sec\"><h2 class=\"rc-h rc-rv\">"+(s.pre?"Geplant":"Stationen")+" <small>"+list.length+"</small></h2>";
   if(list.length){
     h += "<div class=\"rc-tl\">"+list.map(function(id, i){
-      var p = P(id), nt = noteOf(id), pp = photosOf(id), tm = timeOf(id), rv = rateOf(id), r = rv ? RATES[rv-1] : null;
+      var p = P(id), nt = noteOf(id), pp = photosOf(id), tm = timeOf(id), rv = rateOf(id), r = rv ? rateDef(rv) : null;
       return "<div class=\"rc-it rc-rv\"><span class=\"no\">"+(i+1)+"</span><div class=\"rc-card rc-glass\" data-rc=\"focus\" data-pid=\""+id+"\">"+
         "<div class=\"tp\">"+(tm ? "<span>"+esc(tm)+"</span>·" : "")+"<span class=\"cat\" style=\"--cc:"+catCol(p.c)+"\"><i></i>"+esc(CATNAME[p.c]||"")+"</span>"+(J.hl===p.n ? "<span style=\"color:#FFD60A\">★ Highlight</span>" : "")+"</div>"+
         "<h3>"+esc(p.n)+(r ? "<span class=\"rb\" style=\"--rc:"+r[2]+"\">"+esc(r[1])+"</span>" : "")+"</h3>"+
