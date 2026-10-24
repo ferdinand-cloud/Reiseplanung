@@ -2063,6 +2063,18 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 
 .lrow{display:flex;align-items:center;gap:6px}
 :where(button,a,label,select,summary,[data-act],[role=tab],[role=button]){touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.lpring.mvring{border-color:#0A84FF;box-shadow:0 0 0 4px rgba(10,132,255,.25)}
+.mvghost{position:fixed;left:0;top:0;width:0;height:0;z-index:80;pointer-events:none;will-change:transform}
+.mvghost .mvpin{position:absolute;left:-23px;top:-84px;width:46px;height:46px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);display:grid;place-items:center;overflow:hidden;background:var(--cc,#0A84FF);color:#fff;border:3px solid #fff;box-shadow:0 14px 28px rgba(0,0,0,.35);animation:mvLift .25s cubic-bezier(.3,1.5,.5,1)}
+.mvghost .mvpin>*{transform:rotate(45deg)}
+.mvghost .mvpin img{width:140%;height:140%;object-fit:cover}
+.mvghost .mvpin svg{width:22px;height:22px}
+.mvghost b{position:absolute;left:0;top:-122px;transform:translateX(-50%);white-space:nowrap;max-width:60vw;overflow:hidden;text-overflow:ellipsis;padding:5px 10px;border-radius:999px;font-size:12px;background:var(--lg-bg,var(--sheet));-webkit-backdrop-filter:var(--lg-blur,blur(18px));backdrop-filter:var(--lg-blur,blur(18px));border:.5px solid var(--lg-bd,var(--line));color:var(--ink)}
+.mvghost .mvdot{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:#0A84FF;border:2px solid #fff;box-shadow:0 0 0 6px rgba(10,132,255,.25)}
+.mvghost.drop .mvpin{animation:mvDrop .2s ease-in forwards}
+body.mving #gl{cursor:grabbing}
+@keyframes mvLift{from{transform:rotate(-45deg) scale(.4);opacity:0}to{transform:rotate(-45deg) scale(1);opacity:1}}
+@keyframes mvDrop{to{transform:rotate(-45deg) translate(-12px,12px) scale(.6);opacity:0}}
 .tf-del{margin-top:22px;padding-top:14px;border-top:.5px solid var(--line);justify-content:center}
 .lrow > label{flex:1;min-width:0}
 .lfbtn{margin-left:auto;position:relative;width:32px;height:32px;flex:0 0 32px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;padding:0;cursor:pointer}
@@ -4649,15 +4661,57 @@ function lpInit(){
     if(e.touches && e.touches.length > 1){ lpCancel(); return; }
     if(e.button > 0) return;
     var tg = e.target; if(!tg || !(tg.closest("#gl") || tg.id==="ov" || tg.closest("#ov"))) return;
-    var p = xy(e); if(!p) return; lpCancel();
+    var p = xy(e); if(!p) return; lpCancel(); if(mv) return;
     var ring = document.createElement("div"); ring.className = "lpring"; ring.style.left = p[0]+"px"; ring.style.top = p[1]+"px"; document.body.appendChild(ring);
-    lp = {x:p[0], y:p[1], ring:ring, t:setTimeout(lpFire, LP_MS)};
+    var gr = $("gl").getBoundingClientRect(), mid = movableAt(p[0] - gr.left, p[1] - gr.top);
+    if(mid) ring.classList.add("mvring");
+    lp = {x:p[0], y:p[1], ring:ring, mid:mid, t:setTimeout(mid ? function(){ mvStart(mid); } : lpFire, mid ? 420 : LP_MS)};
   }
-  function move(e){ if(!lp) return; if(e.touches && e.touches.length > 1){ lpCancel(); return; } var p = xy(e); if(p && Math.hypot(p[0]-lp.x, p[1]-lp.y) > 12) lpCancel(); }
-  el.addEventListener("touchstart", start, {passive:true}); el.addEventListener("touchmove", move, {passive:true});
-  el.addEventListener("touchend", lpCancel); el.addEventListener("touchcancel", lpCancel);
-  el.addEventListener("mousedown", start); el.addEventListener("mousemove", move); window.addEventListener("mouseup", lpCancel);
+  function move(e){ if(mv){ var q = xy(e); if(q){ mvMove(q[0], q[1]); if(e.cancelable) e.preventDefault(); } return; } if(!lp) return; if(e.touches && e.touches.length > 1){ lpCancel(); return; } var p = xy(e); if(p && Math.hypot(p[0]-lp.x, p[1]-lp.y) > 12) lpCancel(); }
+  el.addEventListener("touchstart", start, {passive:true}); el.addEventListener("touchmove", move, {passive:false});
+  el.addEventListener("touchend", function(e){ if(mv){ mvEnd(false); return; } lpCancel(); }); el.addEventListener("touchcancel", function(){ if(mv){ mvEnd(true); return; } lpCancel(); });
+  el.addEventListener("mousedown", start); window.addEventListener("mousemove", move); window.addEventListener("mouseup", function(){ if(mv){ mvEnd(false); return; } lpCancel(); });
   el.addEventListener("contextmenu", function(e){ if(lp || Date.now()-lpAt < 900) e.preventDefault(); });
+}
+/* ---------- Eigene Orte und Fotospots durch Gedrückthalten verschieben ---------- */
+var mv = null;
+function canMove(p){ return !!p && !isRO() && hasLoc(p) && (p.own || p.k==="photo" || p.k==="spot"); }
+function movableAt(x, y){
+  if(pick || vmPick || viaPick || isRO() || !map) return null;
+  var best = null, bd = 26, D = dayByKey(cur);
+  function test(id){ var r = rootOf(id), p = P(r); if(!canMove(p)) return; var q = pt(P(id)), d = Math.hypot(q[0]-x, q[1]-y); if(d < bd){ best = r; bd = d; } }
+  if(D) ord(cur).forEach(test);
+  if(layers.wish || tab==="wish") wishes().forEach(function(w){ test(w.id); });
+  PHMK.forEach(test);
+  return best;
+}
+function mvStart(id){
+  var x = lp.x, y = lp.y; lpCancel(); lpAt = Date.now();
+  var p = P(id); if(!canMove(p)) return;
+  try { navigator.vibrate && navigator.vibrate(25); } catch(e){}
+  var g = document.createElement("div"); g.className = "mvghost";
+  var ph = photosOf(id)[0];
+  g.innerHTML = "<span class=\"mvpin\" style=\"--cc:"+catCol(p.c)+"\">"+(ph ? "<img data-ph=\""+ph+"\" alt=\"\">" : icon(p.c))+"</span><b>"+esc(p.n)+"</b><i class=\"mvdot\"></i>";
+  document.body.appendChild(g); fillPhotos(g);
+  mv = {id:id, g:g, x:x, y:y};
+  ["dragPan","touchZoomRotate","dragRotate","doubleClickZoom"].forEach(function(h){ try { map[h].disable(); } catch(e){} });
+  document.body.classList.add("mving");
+  mvMove(x, y);
+  toast("Verschieben: an die neue Stelle ziehen und loslassen", false);
+}
+function mvMove(x, y){ if(!mv) return; mv.x = x; mv.y = y; mv.g.style.transform = "translate3d("+x+"px,"+y+"px,0)"; }
+function mvEnd(cancel){
+  if(!mv) return; var m = mv; mv = null; lpAt = Date.now();
+  ["dragPan","touchZoomRotate","dragRotate","doubleClickZoom"].forEach(function(h){ try { map[h].enable(); } catch(e){} });
+  document.body.classList.remove("mving");
+  m.g.classList.add("drop"); setTimeout(function(){ m.g.remove(); }, 220);
+  if(cancel) return;
+  var gr = $("gl").getBoundingClientRect(), ll = map.unproject([m.x - gr.left, m.y - gr.top]), p = P(m.id); if(!p) return;
+  var la = +ll.lat.toFixed(6), lo = +ll.lng.toFixed(6); if(Math.abs(la - p.la) < 1e-6 && Math.abs(lo - p.lo) < 1e-6) return;
+  undoSnap = snapshot();
+  Object.keys(T().places).forEach(function(k){ var q = T().places[k]; if(k===m.id || q.of===m.id){ q.la = la; q.lo = lo; } });
+  if(p.k==="photo"){ var nb = nbOf(p); if(nb && /^Fotospot( |$)/.test(p.n)) p.n = "Fotospot "+nb; }
+  save(); dirty(); toast("„"+p.n+"“ verschoben", true); renderAll(); select(m.id);
 }
 function lpCancel(){ if(!lp) return; clearTimeout(lp.t); if(lp.ring) lp.ring.remove(); lp = null; }
 function lpFire(){
@@ -4696,7 +4750,7 @@ function lpToWish(){
 }
 function lpToDay(){
   var p = lpPt, D = dayByKey(cur); lpClose(); if(!p || !D) return;
-  var pid = uid("w"), q = {id:pid, n:(p.n || p.addr || "Markierter Ort").slice(0,80), c:"sight", list:(T().lists[0]||{}).id||null, note:"", addr:(p.addr||"").slice(0,120), la:p.la, lo:p.lo};
+  var pid = uid("w"), q = {id:pid, own:1, n:(p.n || p.addr || "Markierter Ort").slice(0,80), c:"sight", list:(T().lists[0]||{}).id||null, note:"", addr:(p.addr||"").slice(0,120), la:p.la, lo:p.lo};
   T().places[pid] = q; plan(pid, cur); tab = "day"; renderAll(); select(pid);
 }
 // Etappe des Tages, für die ein Punkt den kleinsten Umweg bedeutet (dort ist er sinnvoller Zwischenpunkt)
@@ -7733,7 +7787,7 @@ function planDo(at){
   var c = PLANCTX; PLANCTX = null; if(!c) return;
   if(c.poi){ poiAdd("day", at); return; }
   if(c.lp){ if(lpPt) lpClose(); var q0 = c.lp, D0 = dayByKey(cur); if(!D0) return; var npid = uid("w");
-    T().places[npid] = {id:npid, n:(q0.n || q0.addr || "Markierter Ort").slice(0,80), c:"sight", list:(T().lists[0]||{}).id||null, note:"", addr:(q0.addr||"").slice(0,120), la:q0.la, lo:q0.lo};
+    T().places[npid] = {id:npid, own:1, n:(q0.n || q0.addr || "Markierter Ort").slice(0,80), c:"sight", list:(T().lists[0]||{}).id||null, note:"", addr:(q0.addr||"").slice(0,120), la:q0.la, lo:q0.lo};
     plan(npid, cur, at); tab = "day"; renderAll(); select(npid); return; }
   var id = c.pid; if(!P(id)) return; plan(id, cur, at); sel = id; renderAll();
 }
@@ -8317,7 +8371,7 @@ document.addEventListener("submit", function(e){
     if(!n){ draft.err = "Bitte gib einen Namen ein."; renderSheet(); return; }
     var loc = parseLoc(draft.loc);
     if(loc===false){ draft.err = "Ort nicht erkannt. Füge einen langen Google-Maps-Link oder Koordinaten ein, wähle den Ort auf der Karte oder lass das Feld leer."; renderSheet(); return; }
-    var pid = uid("w"), p = {id:pid, n:n.slice(0,80), c:draft.c, list:draft.list||null, note:draft.note.trim().slice(0,200), addr:(draft.addr||"").trim().slice(0,120)};
+    var pid = uid("w"), p = {id:pid, own:1, n:n.slice(0,80), c:draft.c, list:draft.list||null, note:draft.note.trim().slice(0,200), addr:(draft.addr||"").trim().slice(0,120)};
     if(loc){ p.la = loc.la; p.lo = loc.lo; }
     T().places[pid] = p; save();
     draft.open = false; activeList = p.list || "none";
