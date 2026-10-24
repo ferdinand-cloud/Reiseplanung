@@ -1457,7 +1457,19 @@ body.ro label:has(#lRoute),body.ro label:has(#lWish),body.ro label:has(#lSub),bo
 .ctiles .crate span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;letter-spacing:-.2px}
 .card .ctiles{display:flex}
 .card .ctiles .jp-tile{flex:1 1 0;min-width:0;padding-left:2px;padding-right:2px}
-.card .ctiles .crate{flex:1.6 1 0}
+.card .ctiles .crate{flex:1.25 1 0}
+.card .ctiles .jp-tile.on{flex:1.15 1 0}
+/* Karte eines Ortes: nie breiter als das Fenster (kein seitliches Wischen) */
+.card{grid-template-columns:minmax(0,1fr);overflow-x:hidden}
+.card > *{min-width:0;max-width:100%}
+.card .rvchips{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.card .ctiles .jp-tile span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .cchips{flex-wrap:nowrap}
+.card .cchips .jp-day{flex:0 1 auto;min-width:0;overflow:hidden}
+.card .cchips .jp-day > span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .cchips .gtag{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .cph{flex:0 0 auto}
+.card .trbox,.card .trsum{min-width:0}
 /* Leiste oben im Stil einer App-Tableiste */
 .top{display:flex;flex-direction:column;align-items:center;gap:8px;z-index:22}
 .tabbar{pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:4px;width:min(440px,100%);padding:5px;border-radius:999px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:.5px solid var(--glass-bd,var(--line));box-shadow:var(--sh2,0 6px 20px rgba(0,0,0,.18))}
