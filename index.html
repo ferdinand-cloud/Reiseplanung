@@ -1855,6 +1855,38 @@ ol.rt li{display:grid;grid-template-columns:44px 18px 1fr;column-gap:8px;align-i
 ol.rt{color:var(--ink)}
 ol.rt .rt-x b{color:var(--ink)}
 ol.rt .rt-pt .rt-x small{color:var(--muted)}
+
+/* Ort-Karte kompakt */
+.card{gap:8px !important;padding:12px 14px !important}
+.card .ch{gap:10px;padding-right:36px;align-items:center}
+.card .cic{width:34px !important;height:34px !important;flex:0 0 34px !important;border-radius:10px !important}
+.card .cic svg{width:19px;height:19px}
+.card .cht{flex:1 1 auto}
+.card .cht h3{font-size:18px !important;line-height:1.12 !important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .cht p{font-size:12.5px}
+.card .ch .cph{margin-left:auto;flex:0 0 auto;padding:0}
+.card .ch .cph img{width:34px;height:34px;border-radius:8px}
+.card .ch .cph img + img{margin-left:-20px}
+.card .rvchips{margin:0;gap:6px}
+.card .rvc{padding:6px 8px;border-radius:10px;gap:5px}
+.card .rvc .rvi{font-size:13px}
+.card .rvc span:last-child{flex-direction:row;align-items:baseline;gap:4px;overflow:hidden}
+.card .rvc b{font-size:12px;flex:0 0 auto}
+.card .rvc small{font-size:11px;min-width:0}
+.card .cnote{font-size:13px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .rvc small::before{content:"· "}
+.card .trbox{margin:0;border-radius:10px}
+.card .trsum{padding:6px 9px;font-size:12.5px}
+.card .mecard{border-top:0;padding-top:0;gap:4px}
+.card .mecard .tl{gap:6px}
+.card .meic{width:26px;height:26px;flex:0 0 26px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.card .meic svg{width:13px;height:13px}
+.card .mecard .tsum{padding:4px 9px;font-size:12.5px}
+.card .mecard .tdet{margin-left:auto}
+.card .ctiles{gap:6px}
+.card .ctiles .jp-tile{min-height:46px;gap:3px;border-radius:12px;font-size:11px;padding-top:5px;padding-bottom:5px}
+.card .ctiles .jp-tile svg{width:19px;height:19px}
+.card .ctiles .tbadge{top:2px}
 </style>
 </head>
 <body>
@@ -3232,8 +3264,8 @@ function friendRecs(p){
 function rvChips(p){
   var fr = friendRecs(p), best = fr.reduce(function(m, r){ return r.rating && (!m || r.rating < m) ? r.rating : m; }, 0), RR = RATES.filter(function(x){ return x[0]===best; })[0];
   var g = gKey && gInfo[gK(p)], gr = g && g.d && g.d.rating;
-  return "<div class=\"rvchips\"><button type=\"button\" class=\"rvc"+(fr.length?" on":"")+"\" data-act=\"rvopen\" data-v=\"friends\"><span class=\"rvi\">👥</span><span><b>Freunde</b><small>"+(fr.length ? (RR ? fr.length+" · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : fr.length+(fr.length===1?" Empfehlung":" Empfehlungen")) : "noch keine")+"</small></span></button>"+
-    "<button type=\"button\" class=\"rvc\" data-act=\"rvopen\" data-v=\"public\"><span class=\"rvi\">🌐</span><span><b>Öffentlich</b><small>"+(gr ? "★ "+String(gr).replace(".", ",")+" (Google)" : "bald verfügbar")+"</small></span></button></div>";
+  return "<div class=\"rvchips\"><button type=\"button\" class=\"rvc"+(fr.length?" on":"")+"\" data-act=\"rvopen\" data-v=\"friends\"><span class=\"rvi\">👥</span><span><b>Freunde</b><small>"+(fr.length ? (RR ? fr.length+" · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : fr.length+(fr.length===1?" Empfehlung":" Empfehlungen")) : "keine")+"</small></span></button>"+
+    "<button type=\"button\" class=\"rvc\" data-act=\"rvopen\" data-v=\"public\"><span class=\"rvi\">🌐</span><span><b>Öffentlich</b><small>"+(gr ? "★ "+String(gr).replace(".", ",")+" (Google)" : "bald")+"</small></span></button></div>";
 }
 function rvSection(p){
   var fr = friendRecs(p);
@@ -5353,16 +5385,16 @@ function renderCard(){
   var dk = dayOf(sel), D = dayByKey(cur), cc = catCol(p.c);
   var c = x+"<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+cc+"\">"+icon(p.c)+"</span><div class=\"cht\"><h3>"+esc(p.n)+"</h3><p>"+esc([CATNAME[p.c], nbOf(p), dk ? (visitsOf(sel).length>1 ? visitsOf(sel).length+" Besuche geplant" : "") : "Wunsch in „"+listName(p.list)+"“"].filter(Boolean).join(" · "))+"</p></div></div>";
   var cph = photosOf(sel);
-  c += "<div class=\"cchips\">"+dayChip(sel)+(grpName(p.g) ? "<button type=\"button\" class=\"gtag on\" data-act=\"grppick\" data-id=\""+sel+"\">▦ "+esc(grpName(p.g))+"</button>" : "")+
-       (cph.length ? "<button type=\"button\" class=\"cph\" data-act=\"cphopen\" data-ph=\""+cph[0]+"\" aria-label=\""+cph.length+(cph.length===1?" Foto":" Fotos")+" ansehen\">"+
-         cph.slice(0,3).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(cph.length>1 ? "<b>"+cph.length+"</b>" : "")+"</button>" : "")+"</div>";
+  if(cph.length) c = c.replace(/<\/div><\/div>$/, "</div><button type=\"button\" class=\"cph\" data-act=\"cphopen\" data-ph=\""+cph[0]+"\" aria-label=\""+cph.length+(cph.length===1?" Foto":" Fotos")+" ansehen\">"+
+         cph.slice(0,3).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(cph.length>1 ? "<b>"+cph.length+"</b>" : "")+"</button></div>");
+  c += "<div class=\"cchips\">"+dayChip(sel)+(grpName(p.g) ? "<button type=\"button\" class=\"gtag on\" data-act=\"grppick\" data-id=\""+sel+"\">▦ "+esc(grpName(p.g))+"</button>" : "")+"</div>";
   if(p.addr || p.note || noteOf(sel)) c += "<p class=\"cnote\">"+[p.addr ? esc(p.addr) : "", p.note ? esc(p.note) : "", noteOf(sel) ? "<span class=\"cmine\">"+esc(noteOf(sel).length > 140 ? noteOf(sel).slice(0,138)+" …" : noteOf(sel))+"</span>" : ""].filter(Boolean).join("<br>")+"</p>";
   if(hasLoc(p)) c += rvChips(p);
   if(hasLoc(p)) c += stationLine(p);
   if(me && hasLoc(p) && dist(me, p) < 40000){
     var rr = meRouteFor(p);
-    c += "<div class=\"mecard\"><span class=\"sub\">Von deinem Standort</span><div class=\"tl\"><button type=\"button\" class=\"tsum\" data-act=\"meroute\">"+transitSummary(rr)+"</button>"+
-         "<button type=\"button\" class=\"tdet\" data-act=\"meroute\" aria-expanded=\""+meRoute+"\">"+(meRoute?"Weg ausblenden":"Weg zeigen")+"</button></div>"+(meRoute && !rr.walk ? transitSteps(rr, me, p, {day: nyNow().key}) : "")+"</div>";
+    c += "<div class=\"mecard\"><div class=\"tl\"><span class=\"meic\" title=\"Von deinem Standort\" aria-label=\"Von deinem Standort\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M17.5 2.5 2.8 8.6l6.3 2.3 2.3 6.3z\"/></svg></span><button type=\"button\" class=\"tsum\" data-act=\"meroute\">"+transitSummary(rr)+"</button>"+
+         "<button type=\"button\" class=\"tdet\" data-act=\"meroute\" aria-expanded=\""+meRoute+"\">"+(meRoute?"Ausblenden":"Weg")+"</button></div>"+(meRoute && !rr.walk ? transitSteps(rr, me, p, {day: nyNow().key}) : "")+"</div>";
   }
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   var dn = !!T().done[sel], ph = photosOf(sel).length, nc = (CMTS[sel]||[]).length;
