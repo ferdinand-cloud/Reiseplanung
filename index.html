@@ -1596,6 +1596,28 @@ form.gnew{position:relative}
 .sw-mini::after{content:"";position:absolute;top:2px;left:2px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
 .sw-mini.on{background:var(--ok)}
 .sw-mini.on::after{transform:translateX(17px)}
+.rvchips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 2px}
+.rvc{display:flex;align-items:center;gap:8px;min-width:0;border:0;border-radius:12px;padding:8px 10px;background:var(--fill);color:var(--ink);text-align:left;cursor:pointer}
+.rvc .rvi{font-size:16px;flex:0 0 auto}
+.rvc span:last-child{display:flex;flex-direction:column;min-width:0}
+.rvc b{font:600 13px/1.2 var(--f-body)}
+.rvc small{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rvc small i{font-style:normal;font-weight:600}
+.rvc.on{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.rvseg{margin:6px 0 10px}
+.rvrow{display:flex;gap:10px;padding:8px 0}
+.rvrow + .rvrow{border-top:.5px solid var(--sep,var(--line))}
+.rvt{flex:1;min-width:0}
+.rvt b{font:600 14px/1.3 var(--f-body)}
+.rvt i{font-style:normal;font-weight:600;font-size:13px}
+.rvt small{display:block;color:var(--muted);font-size:12px}
+.rvt p{margin:4px 0 0;font-size:14px;line-height:1.4;white-space:pre-line}
+.rvhl{font-size:11.5px;font-weight:700;color:#C9A227}
+.rvph{display:flex;gap:6px;margin-top:6px;overflow-x:auto;scrollbar-width:none}
+.rvph img{width:84px;height:84px;flex:0 0 84px;border-radius:10px;object-fit:cover}
+.rvsoon{border:1px dashed var(--line);border-radius:12px;padding:12px;color:var(--muted)}
+.rvsoon b{color:var(--ink);font:600 14px/1.3 var(--f-body)}
+.rvsoon p{margin:4px 0 0;font-size:13px;line-height:1.4}
 .pf-inv{display:block;width:100%;margin-top:12px;border:0;border-radius:12px;padding:12px 14px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--ink);font:600 14px/1.3 var(--f-body);text-align:left;cursor:pointer}
 .pf-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
 .pf-acts .btn{flex:1 1 auto}
@@ -2820,7 +2842,8 @@ function dcLoad(){
   if(!fbDb || !acct.user){ renderDc(); return; }
   var fr = FR.friends.filter(function(f){ return f.uid; }); DC.busy = true; DC.err = ""; renderDc();
   Promise.all(fr.map(function(f){ return recCol(f.uid).orderBy("at", "desc").limit(150).get().then(function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.key = f.uid+"/"+d.id; v.fname = f.name || v.name || ""; return v; }); }, function(){ return []; }); }))
-    .then(function(all){ DC.items = [].concat.apply([], all); DC.byKey = {}; DC.items.forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); DC.busy = false; if(dcPage) renderDc(); });
+    .then(function(all){ DC.items = [].concat.apply([], all); DC.byKey = {}; DC.items.forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); DC.busy = false; if(dcPage) renderDc();
+      if(sel) renderCard(); if(jp && !jp.view && !$("jPop").hidden && !(document.activeElement && /^(cmIn|nText)$/.test(document.activeElement.id))) renderJPop(); });
 }
 function tripCenter(){
   var t = T(), pts = (t.hotels||[]).filter(hasLoc).concat((t.orte||[]).filter(hasLoc));
@@ -2865,6 +2888,36 @@ function dcAdd(key, dk){
   save();
   if(dk && dayByKey(dk)){ plan(id, dk); } else toast("„"+r.n+"“ liegt jetzt in der Wunschliste", true);
   dirty(); renderSheet(); scheduleOverlay(); renderDc();
+}
+/* ---------- Bewertungen an einem Ort: Freunde (Empfehlungen) und öffentlich (vorgesehen) ---------- */
+var rvTab = "friends";
+function friendRecs(p){
+  if(!p || !hasLoc(p)) return [];
+  if(acct.user && FR.friends.length && !DC.busy && Date.now() - DC.at > 300000) dcLoad();
+  var nm = (p.n||"").toLowerCase().slice(0, 6);
+  return DC.items.filter(function(r){ if(!r.la) return false; var d = dist(p, r); return d < 40 || (d < 150 && (r.n||"").toLowerCase().slice(0, 6)===nm); });
+}
+function rvChips(p){
+  var fr = friendRecs(p), best = fr.reduce(function(m, r){ return r.rating && (!m || r.rating < m) ? r.rating : m; }, 0), RR = RATES.filter(function(x){ return x[0]===best; })[0];
+  var g = gKey && gInfo[gK(p)], gr = g && g.d && g.d.rating;
+  return "<div class=\"rvchips\"><button type=\"button\" class=\"rvc"+(fr.length?" on":"")+"\" data-act=\"rvopen\" data-v=\"friends\"><span class=\"rvi\">👥</span><span><b>Freunde</b><small>"+(fr.length ? (RR ? fr.length+" · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : fr.length+(fr.length===1?" Empfehlung":" Empfehlungen")) : "noch keine")+"</small></span></button>"+
+    "<button type=\"button\" class=\"rvc\" data-act=\"rvopen\" data-v=\"public\"><span class=\"rvi\">🌐</span><span><b>Öffentlich</b><small>"+(gr ? "★ "+String(gr).replace(".", ",")+" (Google)" : "bald verfügbar")+"</small></span></button></div>";
+}
+function rvSection(p){
+  var fr = friendRecs(p);
+  var h = "<div class=\"jp-sec rvsec\"><div class=\"jp-lbl\">Bewertungen</div><div class=\"pf-seg rvseg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"rvtab\" data-v=\"friends\" aria-selected=\""+(rvTab==="friends")+"\">👥 Freunde"+(fr.length ? " · "+fr.length : "")+"</button><button type=\"button\" role=\"tab\" data-act=\"rvtab\" data-v=\"public\" aria-selected=\""+(rvTab==="public")+"\">🌐 Öffentlich</button></div>";
+  if(rvTab==="friends"){
+    if(!acct.user) h += "<p class=\"note\">Melde dich an, um Bewertungen deiner Freunde zu sehen.</p>";
+    else if(!fr.length) h += "<p class=\"note\">"+(DC.busy ? "Lädt …" : FR.friends.length ? "Keiner deiner Freunde hat diesen Ort bisher bewertet." : "Füge Freunde hinzu, um ihre Bewertungen zu sehen.")+"</p>";
+    fr.forEach(function(r){ var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
+      h += "<div class=\"rvrow\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><div class=\"rvt\"><b>@"+esc(r.fname||"Freund")+"</b>"+(RR ? " <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+(r.hl ? " <span class=\"rvhl\">★ Highlight</span>" : "")+
+        "<small>"+esc([r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+(r.note ? "<p>„"+esc(r.note)+"“</p>" : "")+
+        (r.photos && r.photos.length ? "<div class=\"rvph\">"+r.photos.map(function(u){ return "<img src=\""+u+"\" alt=\"\" loading=\"lazy\">"; }).join("")+"</div>" : "")+"</div></div>"; });
+  } else {
+    var gb = gBlock(p);
+    h += gb || "<div class=\"rvsoon\"><b>Öffentliche Bewertungen</b><p>Hier erscheinen künftig Bewertungen aller Nutzer zu diesem Ort – getrennt von denen deiner Freunde.</p></div>";
+  }
+  return h+"</div>";
 }
 /* ---------- Listenansicht: besuchte Orte, Highlights und Fotos einer Reise ---------- */
 var lsPage = false, lsTab = "places", lsFilter = "all";
@@ -4892,7 +4945,7 @@ function renderCard(){
        (cph.length ? "<button type=\"button\" class=\"cph\" data-act=\"cphopen\" data-ph=\""+cph[0]+"\" aria-label=\""+cph.length+(cph.length===1?" Foto":" Fotos")+" ansehen\">"+
          cph.slice(0,3).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(cph.length>1 ? "<b>"+cph.length+"</b>" : "")+"</button>" : "")+"</div>";
   if(p.addr || p.note || noteOf(sel)) c += "<p class=\"cnote\">"+[p.addr ? esc(p.addr) : "", p.note ? esc(p.note) : "", noteOf(sel) ? "<span class=\"cmine\">"+esc(noteOf(sel).length > 140 ? noteOf(sel).slice(0,138)+" …" : noteOf(sel))+"</span>" : ""].filter(Boolean).join("<br>")+"</p>";
-  c += gBlock(p);
+  if(hasLoc(p)) c += rvChips(p);
   if(hasLoc(p)) c += stationLine(p);
   if(me && hasLoc(p) && dist(me, p) < 40000){
     var rr = meRouteFor(p);
@@ -5315,6 +5368,7 @@ function renderJPop(){
        ph.map(function(x){ return "<button type=\"button\" data-act=\"phview\" data-ph=\""+x+"\""+(canPriv() && isPrivPh(x, jp.pid) ? " class=\"pv-lk\"" : "")+"><img data-ph=\""+x+"\" alt=\"Foto\">"+(canPriv() && isPrivPh(x, jp.pid) ? "<i>"+ILOCK+"</i>" : "")+"</button>"; }).join("")+
        "</div><input type=\"file\" id=\"phIn\" accept=\"image/*\" multiple hidden>"+
        "<p class=\"note pherr\" id=\"jpPhErr\" hidden><span></span> <button type=\"button\" class=\"tf-link\" data-act=\"phretry\">Erneut laden</button></p></div>";
+  if(hasLoc(p)) h += rvSection(p);
   if(acct.user && KNOWN[S.cur] && shared){
     h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Kommentare</div><div id=\"cmList\" class=\"cmlist\">"+cmListHTML(jp.pid)+"</div><form class=\"gnew\" id=\"cmForm\"><input type=\"text\" id=\"cmIn\" maxlength=\"1000\" placeholder=\"Kommentieren · @ erwähnt Mitreisende\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form></div>";
   }
@@ -6526,6 +6580,8 @@ document.addEventListener("click", function(e){
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
     case "srchopen": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); openSearch(); break;
     case "navmap": closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeMenus(); break;
+    case "rvopen": rvTab = t.getAttribute("data-v"); if(sel && P(sel)){ openJPop(sel, dayOf(sel) || ""); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"start", behavior: reduceMotion ? "auto" : "smooth"}); }, 120); } break;
+    case "rvtab": rvTab = t.getAttribute("data-v"); renderJPop(); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"nearest"}); }, 0); break;
     case "navdisc": if(dcPage) closeDcPage(); else openDcPage(); break;
     case "dcscope": dcScope = t.getAttribute("data-v"); renderDc(); break;
     case "dcwish": dcAdd(t.getAttribute("data-k"), null); break;
