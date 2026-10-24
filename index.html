@@ -1474,7 +1474,29 @@ body.ro label:has(#lRoute),body.ro label:has(#lWish),body.ro label:has(#lSub),bo
 .top{display:flex;flex-direction:column;align-items:center;gap:8px;z-index:22}
 .tabbar{pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:4px;width:min(440px,100%);padding:5px;border-radius:999px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:.5px solid var(--glass-bd,var(--line));box-shadow:var(--sh2,0 6px 20px rgba(0,0,0,.18))}
 .tabbar .tb{position:relative;flex:1 1 0;height:44px;min-width:0;border:0;border-radius:999px;background:none !important;box-shadow:none !important;color:var(--ink) !important;display:grid;place-items:center;padding:0;margin:0 !important;cursor:pointer;transition:background .15s}
-.tabbar .tb.on{background:color-mix(in srgb,var(--ink) 12%,transparent) !important}
+.tabbar .tb.on{background:none !important}
+/* Liquid Glass: durchscheinende Leiste mit Lichtkante, gleitende Glaslinse für den aktiven Reiter */
+.tabbar{position:relative;isolation:isolate;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.12)) ,color-mix(in srgb,var(--sheet) 46%,transparent) !important;
+  -webkit-backdrop-filter:blur(22px) saturate(200%) brightness(1.04);backdrop-filter:blur(22px) saturate(200%) brightness(1.04);
+  border:.5px solid rgba(255,255,255,.55) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75),inset 0 -1px 0 rgba(255,255,255,.18),inset 0 0 0 .5px rgba(255,255,255,.12),0 10px 30px rgba(0,0,0,.16),0 1px 3px rgba(0,0,0,.08) !important}
+.tabbar::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;background:radial-gradient(120% 90% at 20% -20%,rgba(255,255,255,.45),transparent 55%),radial-gradient(90% 80% at 110% 130%,rgba(255,255,255,.18),transparent 60%)}
+.tbpill{position:absolute;top:5px;left:0;transform:translateX(var(--x,0px)) scale(var(--s,1));height:44px;width:0;border-radius:999px;pointer-events:none;z-index:0;opacity:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.22)),color-mix(in srgb,var(--ink) 9%,transparent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 -1px 1px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.10);
+  transition:transform .42s cubic-bezier(.3,1.35,.5,1),width .42s cubic-bezier(.3,1.35,.5,1),opacity .2s}
+.tbpill.ready{opacity:1}
+.tabbar.drag .tbpill{--s:1.16;transition:width .2s,opacity .2s;background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,.3)),color-mix(in srgb,var(--ink) 6%,transparent);box-shadow:inset 0 1px 0 #fff,inset 0 -1px 2px rgba(0,0,0,.08),0 8px 22px rgba(0,0,0,.18)}
+.tabbar .tb{z-index:1;transition:transform .25s cubic-bezier(.3,1.4,.5,1)}
+.tabbar.drag .tb.hov{transform:scale(1.14)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .tabbar{background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.03)),color-mix(in srgb,var(--sheet) 50%,transparent) !important;border-color:rgba(255,255,255,.16) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05),0 10px 30px rgba(0,0,0,.45) !important}
+  :root:not([data-theme="light"]) .tabbar::before{background:radial-gradient(120% 90% at 20% -20%,rgba(255,255,255,.14),transparent 55%)}
+  :root:not([data-theme="light"]) .tbpill{background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.07));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 2px 8px rgba(0,0,0,.3)} }
+:root[data-theme="dark"] .tabbar{background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.03)),color-mix(in srgb,var(--sheet) 50%,transparent) !important;border-color:rgba(255,255,255,.16) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05),0 10px 30px rgba(0,0,0,.45) !important}
+:root[data-theme="dark"] .tabbar::before{background:radial-gradient(120% 90% at 20% -20%,rgba(255,255,255,.14),transparent 55%)}
+:root[data-theme="dark"] .tbpill{background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.07));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 2px 8px rgba(0,0,0,.3)}
+@media (prefers-reduced-motion: reduce){ .tbpill,.tabbar .tb{transition:none !important} }
 .tabbar .tb svg{width:24px;height:24px}
 .tabbar .tb[hidden]{display:grid !important;visibility:hidden}
 .tabbar .bell-n{position:absolute;top:4px;left:calc(50% + 4px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#E5484D;color:#fff;font:700 11px/18px var(--f-body);text-align:center}
@@ -1855,7 +1877,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 </div>
 
 <div class="top"><button type="button" class="menubtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menü" hidden></button>
-<nav class="tabbar" id="tabbar" aria-label="Navigation">
+<nav class="tabbar" id="tabbar" aria-label="Navigation"><span class="tbpill" id="tbPill" aria-hidden="true"></span>
 <button type="button" class="tb on" id="tbMap" data-act="navmap" aria-label="Karte" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4z"/><path d="M9 4v14M15 6v14"/></svg></button>
 <button type="button" class="tb" id="tbList" data-act="navlist" aria-label="Liste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor"/></svg></button>
 <button type="button" class="tb" id="tbDisc" data-act="navdisc" aria-label="Entdecken"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8z"/></svg></button>
@@ -3384,9 +3406,36 @@ function acctHTML(){
 /* ---------- Leiste oben & Profilseite ---------- */
 var profOpen = false, profTab = "mine";
 function setNavDot(on){ var a = $("menuBtn"); if(a) a.classList.toggle("dot", !!on); var b = $("tbProf"); if(b) b.classList.toggle("dot", !!on); }
+function tbPillSync(){
+  var bar = $("tabbar"), pill = $("tbPill"); if(!bar || !pill || bar.classList.contains("drag")) return;
+  var on = bar.querySelector(".tb.on"); if(!on || !on.offsetWidth){ pill.classList.remove("ready"); return; }
+  pill.style.width = on.offsetWidth+"px"; pill.style.setProperty("--x", on.offsetLeft+"px");
+  if(!pill.classList.contains("ready")) requestAnimationFrame(function(){ pill.classList.add("ready"); });
+}
+window.addEventListener("resize", function(){ tbPillSync(); });
+try { new MutationObserver(function(){ setTimeout(tbPillSync, 30); }).observe(document.body, {attributes:true, attributeFilter:["class"]}); } catch(e){}
+setTimeout(tbPillSync, 400); window.addEventListener("load", function(){ setTimeout(tbPillSync, 100); });
+/* Leiste: mit dem Finger hin und her ziehen, beim Loslassen wechselt der Reiter */
+(function(){
+  var bar = $("tabbar"); if(!bar) return; var g = null, eat = 0;
+  var tabs = function(){ return Array.prototype.filter.call(bar.querySelectorAll(".tb"), function(b){ return b.offsetWidth && getComputedStyle(b).visibility!=="hidden"; }); };
+  var at = function(x){ var best = null, bd = 1e9; tabs().forEach(function(b){ var r = b.getBoundingClientRect(), d = Math.abs(r.left + r.width/2 - x); if(d < bd){ bd = d; best = b; } }); return best; };
+  var place = function(x){ var pill = $("tbPill"), br = bar.getBoundingClientRect(), w = pill.offsetWidth || 44, L = Math.max(4, Math.min(br.width - w - 4, x - br.left - w/2));
+    pill.style.setProperty("--x", L+"px"); var h = at(x); tabs().forEach(function(b){ b.classList.toggle("hov", b===h); }); };
+  bar.addEventListener("pointerdown", function(e){ if(e.button > 0) return; g = {x:e.clientX, id:e.pointerId, drag:false}; });
+  bar.addEventListener("pointermove", function(e){ if(!g || e.pointerId!==g.id) return;
+    if(!g.drag && Math.abs(e.clientX - g.x) > 8){ g.drag = true; bar.classList.add("drag"); try { bar.setPointerCapture(g.id); } catch(_){} if(navigator.vibrate) navigator.vibrate(5); }
+    if(g.drag){ e.preventDefault(); place(e.clientX); } });
+  var end = function(e, cancel){ if(!g || e.pointerId!==g.id) return; var G = g; g = null; if(!G.drag) return;
+    bar.classList.remove("drag"); tabs().forEach(function(b){ b.classList.remove("hov"); }); eat = Date.now();
+    var b = !cancel && at(e.clientX); if(b && !b.classList.contains("on")) b.click(); tbPillSync(); };
+  bar.addEventListener("pointerup", function(e){ end(e, false); });
+  bar.addEventListener("pointercancel", function(e){ end(e, true); });
+  bar.addEventListener("click", function(e){ if(Date.now() - eat < 350 && e.isTrusted){ e.stopPropagation(); e.preventDefault(); } }, true);
+})();
 function navActive(){ var pm = profOpen, np = ntPage, lp = lsPage, dp = dcPage, gp = gsPage || chPage; $("tbChat").classList.toggle("on", chPage); $("tbSearch").classList.toggle("on", gsPage); $("tbMap").classList.toggle("on", !pm && !np && !lp && !dp && !gp); $("tbProf").classList.toggle("on", pm); $("bellBtn").classList.toggle("on", np); $("tbList").classList.toggle("on", lp); $("tbDisc").classList.toggle("on", dp);
   document.body.classList.toggle("profopen", pm || np || lp || dp || gp);
-  if(pm){ $("tbProf").setAttribute("aria-current", "page"); $("tbMap").removeAttribute("aria-current"); } else { $("tbMap").setAttribute("aria-current", "page"); $("tbProf").removeAttribute("aria-current"); } }
+  if(pm){ $("tbProf").setAttribute("aria-current", "page"); $("tbMap").removeAttribute("aria-current"); } else { $("tbMap").setAttribute("aria-current", "page"); $("tbProf").removeAttribute("aria-current"); }  tbPillSync(); }
 function avHTML(cls){ var ph = PROF && PROF.photo, nm = (PROF && PROF.name) || myMail() || "?";
   return ph ? "<img class=\""+cls+"\" src=\""+ph+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
 function navAv(){ var e = $("tbAv"); if(!e) return; e.innerHTML = acct.user ? avHTML("tbimg") : "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/><path d=\"M6.2 18.4a7 7 0 0 1 11.6 0\"/></svg>"; }
