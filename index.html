@@ -7639,7 +7639,9 @@ function planDo(at){
 }
 function planNodes(){
   var D = dayByKey(cur), H = D && D.hotel, o = ord(cur), nodes = [];
-  nodes.push(H ? {n:H.n, h:true} : {n:"Tagesbeginn", h:true, pseudo:true});
+  // heute mit bekanntem Standort: Start ist der aktuelle Ort, nicht das Hotel
+  var live = cur===todayKey() ? meAnchor() : null;
+  nodes.push(live ? {n:"Mein Standort", h:true, me:true} : H ? {n:H.n, h:true} : {n:"Tagesbeginn", h:true, pseudo:true});
   o.forEach(function(id, i){ if(T().done[id]) return; var p = P(id); nodes.push({n:p ? p.n : "?", id:id, oi:i, no:i+1, hs:p && p.k==="hotel"}); });
   nodes.push(H ? {n:H.n, h:true} : {n:"Tagesende", h:true, pseudo:true});
   return nodes;
@@ -7651,8 +7653,8 @@ function openPlanIns(first){
     "<p class=\"note\" style=\"margin:0 2px 10px\">"+(f==null ? "Tippe auf die beiden Punkte, zwischen die der neue Stopp kommen soll." : "„"+esc(nodes[f].n)+"“ gewählt – jetzt den Punkt davor oder danach antippen.")+"</p><div class=\"pop-list addlist vm2\">";
   nodes.forEach(function(n, i){
     var on = f===i, near = f!=null && Math.abs(f - i)===1, off = f!=null && !on && !near;
-    var badge = n.h ? "<span class=\"ai vm2-n hs\">"+(n.pseudo ? "•" : "H")+"</span>" : n.hs ? "<span class=\"ai vm2-n hs\">H</span>" : "<span class=\"ai vm2-n\" style=\"background:"+(n.done ? "var(--muted)" : D ? dayColor(D) : "var(--accent)")+"\">"+(n.done ? "✓" : n.no)+"</span>";
-    h += "<button type=\"button\" data-act=\"planinspick\" data-i=\""+i+"\" class=\""+(on ? "vm2-on" : "")+(off ? " vm2-off" : "")+(near ? " vm2-near" : "")+"\">"+badge+"<span class=\"dt\"><b>"+esc(n.n)+"</b>"+(on ? "<small>erster Punkt</small>" : near ? "<small>antippen zum Einschieben</small>" : i===0 && !n.pseudo ? "<small>Start</small>" : i===nodes.length-1 && !n.pseudo ? "<small>Ende</small>" : "")+"</span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>";
+    var badge = n.me ? "<span class=\"ai vm2-n\" style=\"background:#007AFF;color:#fff\">●</span>" : n.h ? "<span class=\"ai vm2-n hs\">"+(n.pseudo ? "•" : "H")+"</span>" : n.hs ? "<span class=\"ai vm2-n hs\">H</span>" : "<span class=\"ai vm2-n\" style=\"background:"+(n.done ? "var(--muted)" : D ? dayColor(D) : "var(--accent)")+"\">"+(n.done ? "✓" : n.no)+"</span>";
+    h += "<button type=\"button\" data-act=\"planinspick\" data-i=\""+i+"\" class=\""+(on ? "vm2-on" : "")+(off ? " vm2-off" : "")+(near ? " vm2-near" : "")+"\">"+badge+"<span class=\"dt\"><b>"+esc(n.n)+"</b>"+(on ? "<small>erster Punkt</small>" : near ? "<small>antippen zum Einschieben</small>" : i===0 && n.me ? "<small>Aktueller Ort</small>" : i===0 && !n.pseudo ? "<small>Start</small>" : i===nodes.length-1 && !n.pseudo ? "<small>Ende</small>" : "")+"</span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>";
     if(i < nodes.length - 1) h += "<div class=\"vm2-leg"+(f!=null && (i===f || i===f-1) ? " hi" : "")+"\"></div>";
   });
   h += "</div></div>"; catKeep(h);
