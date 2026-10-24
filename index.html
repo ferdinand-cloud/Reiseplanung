@@ -2066,6 +2066,17 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 @media (min-width:900px){ body.sheetmin #sheetOpen{display:none} body.sheetmin .sheet{visibility:visible} }
 
 .lrow{display:flex;align-items:center;gap:6px}
+.vis-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:14px;background:var(--fill)}
+.vis-seg button{display:flex;flex-direction:column;align-items:center;gap:2px;border:0;border-radius:11px;background:transparent;padding:7px 4px;color:var(--muted);cursor:pointer;transition:background .2s,color .2s}
+.vis-seg button b{display:inline-flex;align-items:center;gap:5px;font:600 13.5px/1.2 var(--f-body)}
+.vis-seg button b svg{width:15px;height:15px;margin:0;flex:0 0 15px}
+.vis-seg button small{font-size:11px;opacity:.85}
+.vis-seg button[aria-checked="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.vis-seg .vs-priv[aria-checked="true"]{color:#B07A00}
+.vis-seg .vs-pub[aria-checked="true"]{color:#0A84FF}
+.vis-seg button.off{opacity:.5}
+.pubmk{display:inline-flex;vertical-align:-2px;margin-left:5px;color:#0A84FF}
+.pubmk svg{width:14px;height:14px}
 .jp-strip button{position:relative}
 .jp-strip .phday{position:absolute;left:4px;bottom:4px;padding:1px 6px;border-radius:999px;font:700 10px/16px var(--f-body);font-style:normal;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
 .sgrp{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-weight:500;color:var(--muted);opacity:.9}
@@ -2594,6 +2605,8 @@ function pvCombine(pub, pubUpd, pv, local){
   if(local && privOf(local)) return privReadd(pub, local);
   return pub;
 }
+var VISTRIP = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"7.5\" cy=\"7\" r=\"2.6\"/><circle cx=\"13.8\" cy=\"7.8\" r=\"2.1\"/><path d=\"M2.8 16c.6-2.8 2.5-4.3 4.7-4.3s4.1 1.5 4.7 4.3M12.6 12c2.3-.3 4 1 4.6 3.6\"/></svg>";
+var VISPUB = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7.2\"/><path d=\"M2.8 10h14.4M10 2.8c2 2.1 2.9 4.5 2.9 7.2s-.9 5.1-2.9 7.2c-2-2.1-2.9-4.5-2.9-7.2s.9-5.1 2.9-7.2z\"/></svg>";
 var ILOCK = "<svg class=\"lk\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4.5\" y=\"9\" width=\"11\" height=\"8\" rx=\"2\"/><path d=\"M7 9V6.5a3 3 0 0 1 6 0V9\"/></svg>";
 function rootPid(pid){ var q = T().places[pid]; return q && q.of && T().places[q.of] ? q.of : pid; }
 function isPrivP(pid){ var t = T(); return !!(t.privP && (t.privP[pid] || t.privP[rootPid(pid)])); }
@@ -2601,6 +2614,30 @@ function isPrivN(pid){ var pn = T().privN||{}; return isPrivP(pid) || !!(pn[root
 function phPlace(ph){ var ps = T().photos || {}, r = ""; Object.keys(ps).forEach(function(k){ if((ps[k]||[]).indexOf(ph)>-1) r = k; }); return r; }
 function isPrivPh(ph, pid){ return !!((T().privPh||{})[ph]) || isPrivP(pid || phPlace(ph)); }
 function canPriv(){ return !!acct.user && !isRO(); }
+/* Sichtbarkeit eines Orts in drei Stufen:
+   privat (nur Mitreisende) · Reise (Standard: Mitreisende und Beobachter) · veröffentlicht (zusätzlich alle Freunde, wird ihnen vorgeschlagen)
+   Privat und Veröffentlichen sind beide bewusste Schritte; ein Ort ist nie beides zugleich. */
+function isPubP(pid){ return !!((T().pubP||{})[rootOf(pid)]); }
+function wasVisited(pid){ var t = T(); return visitIds(pid).some(function(k){ return !!t.done[k]; }); }
+function visOf(pid){ return isPrivP(pid) ? "priv" : isPubP(pid) ? "pub" : "trip"; }
+function setVis(pid, v){
+  var t = T(), ro = rootOf(pid), cur0 = visOf(pid); if(v===cur0) return;
+  var apply = function(){
+    t.privP = t.privP || {}; t.pubP = t.pubP || {};
+    visitIds(ro).forEach(function(k){ delete t.privP[k]; delete t.pubP[k]; });
+    if(v==="priv") t.privP[ro] = 1; else if(v==="pub") t.pubP[ro] = 1;
+    save(); phPrivSync(photosAll(ro)); cmResync();
+    toast(v==="priv" ? "Privat – nur Mitreisende sehen den Ort" : v==="pub" ? "Veröffentlicht – deine Freunde sehen den Ort mit Bewertung" : "Nur für diese Reise sichtbar (Mitreisende und Beobachter)", false);
+    if(jp && !$("jPop").hidden) renderJPop(); renderSheet(); if(sel) renderCard();
+  };
+  if(v==="pub"){
+    if(!wasVisited(ro)){ toast("Veröffentlichen geht, sobald du den Ort besucht hast", false); return; }
+    askConfirm("Für Freunde veröffentlichen?", "Deine Freunde sehen den Ort mit deiner Bewertung, der Notiz und den Fotos (außer privaten) und bekommen ihn vorgeschlagen, wenn sie in der Nähe planen."+(cur0==="priv" ? " Der Ort ist dann nicht mehr privat." : ""), "Veröffentlichen", apply); return;
+  }
+  if(cur0==="pub"){ askConfirm(v==="priv" ? "Privat machen?" : "Veröffentlichung zurücknehmen?", "Deine Freunde sehen den Ort dann nicht mehr.", v==="priv" ? "Privat machen" : "Zurücknehmen", apply); return; }
+  if(cur0==="priv"){ askConfirm("Privat aufheben?", "Beobachter der Reise sehen den Ort dann mit Notizen, Fotos und Kommentaren.", "Aufheben", apply); return; }
+  apply();
+}
 // Sichtbarkeit bereits hochgeladener Fotos im Konto nachziehen
 function phPrivSync(ids){
   if(!fbDb || !acct.user) return; var q = phQueue(), tid = gidFor(S.cur); if(!KNOWN[tid]) return;
@@ -2609,8 +2646,8 @@ function phPrivSync(ids){
 function togglePriv(kind, key, after){
   var t0 = T(), k0 = kind==="p" ? "privP" : kind==="n" ? "privN" : "privPh";
   if(t0[k0] && t0[k0][key]){
-    var what = kind==="p" ? ["Ort öffentlich machen?", "Beobachter sehen den Ort dann mit allen Notizen, Fotos und Kommentaren."] : kind==="n" ? ["Notiz öffentlich machen?", "Beobachter können die Notiz dann lesen."] : ["Foto öffentlich machen?", "Beobachter sehen das Foto dann samt Kommentaren und Likes."];
-    askConfirm(what[0], what[1], "Öffentlich machen", function(){ togglePrivDo(kind, key); if(after) after(); });
+    var what = kind==="p" ? ["Privat aufheben?", "Beobachter der Reise sehen den Ort dann mit allen Notizen, Fotos und Kommentaren."] : kind==="n" ? ["Privat aufheben?", "Beobachter der Reise können die Notiz dann lesen."] : ["Foto öffentlich machen?", "Beobachter sehen das Foto dann samt Kommentaren und Likes."];
+    askConfirm(what[0], what[1], "Aufheben", function(){ togglePrivDo(kind, key); if(after) after(); });
     return;
   }
   togglePrivDo(kind, key); if(after) after();
@@ -2618,11 +2655,12 @@ function togglePriv(kind, key, after){
 function togglePrivDo(kind, key){
   var t = T(), k = kind==="p" ? "privP" : kind==="n" ? "privN" : "privPh"; t[k] = t[k] || {};
   var on = !t[k][key]; if(on) t[k][key] = 1; else delete t[k][key];
+  if(on && kind==="p" && t.pubP) delete t.pubP[rootOf(key)];
   save();
   if(kind==="p") phPrivSync(photosOf(key)); else if(kind==="ph") phPrivSync([key]);
   if(kind!=="n") cmResync();
   toast(on ? (kind==="p" ? "Ort ist jetzt privat – Beobachter sehen ihn nicht" : kind==="n" ? "Notiz ist jetzt privat" : "Foto ist jetzt privat")
-           : (kind==="p" ? "Ort ist wieder für alle sichtbar" : kind==="n" ? "Notiz ist wieder für alle sichtbar" : "Foto ist wieder für alle sichtbar"), false);
+           : (kind==="p" ? "Ort ist wieder für die Reise sichtbar" : kind==="n" ? "Notiz ist wieder für die Reise sichtbar" : "Foto ist wieder für die Reise sichtbar"), false);
 }
 function privRef(id){ return tripRef(id).collection("priv").doc("data"); }
 var PVD = {}, pvUnsub = {}, pvWait = {}, pvLastQs = null, pvSeq = 0;
@@ -3322,7 +3360,8 @@ function recCollect(){
       var p = t.places[pid]; if(!p || p.of || p.k==="hotel" || !p.la || isP(pid)) return; // je Ort einmal, Besuche zusammengefasst
       var vs = [pid].concat(Object.keys(t.places).filter(function(k){ return t.places[k] && t.places[k].of===pid; }));
       if(!vs.some(function(k){ return t.done[k]; })) return;
-      var r = (t.rating||{})[pid] || 0, isHl = !!hl[p.n]; if(!(isHl || (r && rateRank(r) <= rateRank(3)))) return;
+      if(!(t.pubP && t.pubP[pid])) return; // nur bewusst veröffentlichte Orte
+      var r = (t.rating||{})[pid] || 0, isHl = !!hl[p.n];
       var note = (t.privN||{})[pid] ? "" : ((t.notes||{})[pid] || "");
       var phs = [].concat.apply([], vs.map(function(k){ return (t.photos||{})[k] || []; })).filter(function(x){ return !(t.privPh||{})[x]; }).slice(-3);
       var key = tid.replace(/[^A-Za-z0-9_-]/g, "")+"_"+pid;
@@ -4063,7 +4102,7 @@ function acctHTML(){
   if(gOpen) h += "<div class=\"ag-in\"><div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\">"+esc(gMsg)+"</p>":"")+"</div>";
   h += "</div>";
   // Empfehlungen
-  if(u) h += "<div class=\"ag-lbl\">Empfehlungen</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"recshare\" role=\"switch\" aria-checked=\""+recShare+"\"><span><b>Mit Freunden teilen</b><small>Besuchte und gut bewertete Orte (Nice und besser, Highlights) mit öffentlicher Notiz und Fotos erscheinen bei deinen Freunden unter „Entdecken“. Private Orte, Notizen und Fotos nie.</small></span><em class=\"sw-mini"+(recShare?" on":"")+"\"></em></button></div>";
+  if(u) h += "<div class=\"ag-lbl\">Empfehlungen</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"recshare\" role=\"switch\" aria-checked=\""+recShare+"\"><span><b>Veröffentlichte Orte teilen</b><small>Nur Orte, die du in den Details unter „Sichtbarkeit“ bewusst für Freunde veröffentlichst, erscheinen bei deinen Freunden unter „Entdecken“ und als Vorschlag – mit Bewertung, öffentlicher Notiz und Fotos. Private Notizen und Fotos nie.</small></span><em class=\"sw-mini"+(recShare?" on":"")+"\"></em></button></div>";
   // Sicherung
   h += "<div class=\"ag-lbl\">Sicherung</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"export\"><span><b>Plan als Datei sichern</b></span><em class=\"chev\">›</em></button><label class=\"ag-row\" for=\"impFileG\"><span><b>Sicherung laden</b></span><em class=\"chev\">›</em></label></div>";
   if(u) h += "<div class=\"ag-grp ag-out\"><button type=\"button\" class=\"ag-row\" data-act=\"acout\"><span><b>Abmelden</b></span></button></div>";
@@ -6507,7 +6546,7 @@ function renderDay(){
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
       "<div class=\"lcol\">"+(isH ? "<button type=\"button\" class=\"no hs\" data-act=\"stopopen\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":"H")+"</button>"
             : "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>")+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button>"+"</div>"+
-      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? ILOCK : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(p.k==="hotel" ? "Zwischenstopp im Hotel" : CATNAME[p.c])+(function(){ var gn = grpName((P(rootOf(id))||p).g); return gn ? " · <span class=\"sgrp\" title=\"Gruppe\">"+GRPICO+esc(gn)+"</span>" : ""; })()+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
+      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? ILOCK : "")+(canPriv() && isPubP(id) ? "<span class=\"pubmk\" title=\"Für Freunde veröffentlicht\">"+VISPUB+"</span>" : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(p.k==="hotel" ? "Zwischenstopp im Hotel" : CATNAME[p.c])+(function(){ var gn = grpName((P(rootOf(id))||p).g); return gn ? " · <span class=\"sgrp\" title=\"Gruppe\">"+GRPICO+esc(gn)+"</span>" : ""; })()+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(!isRO() && (hasLoc(p)||p.addr)?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/></svg><select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
       "</div></li>";
@@ -6633,7 +6672,12 @@ function renderJPop(){
   if(!isRO()) h += "<button type=\"button\" class=\"jq"+(pv0?" pv":"")+(grpName(p.g)?" grp":"")+"\" data-act=\"jpmore\" aria-haspopup=\"dialog\" aria-label=\"Mehr: Gruppe"+(canPriv() ? ", Privat" : "")+"\" title=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Gruppe")+(pv0 ? " · privat" : "")+"\">"+
        (pv0 ? ILOCK : I("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>"))+"</button>";
   h += "</div>";
-  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : "<button type=\"button\" class=\"jp-pv"+(isPrivN(jp.pid)?" on":"")+"\" data-act=\"privn\" aria-pressed=\""+isPrivN(jp.pid)+"\">"+ILOCK+(isPrivN(jp.pid) ? "privat" : "öffentlich")+"</button>") : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+rootOf(jp.pid)+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
+  if(canPriv() && p.k!=="hotel"){ var vv = visOf(jp.pid), vis1 = wasVisited(jp.pid);
+    h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Sichtbarkeit</div><div class=\"vis-seg\" role=\"radiogroup\" aria-label=\"Sichtbarkeit\">"+
+      [["priv", ILOCK+"Privat", "nur Mitreisende"], ["trip", VISTRIP+"Reise", "+ Beobachter"], ["pub", VISPUB+"Freunde", vis1 ? "veröffentlicht" : "nach Besuch"]].map(function(o){
+        return "<button type=\"button\" role=\"radio\" data-act=\"vis\" data-v=\""+o[0]+"\" aria-checked=\""+(vv===o[0])+"\" class=\"vs-"+o[0]+(o[0]==="pub" && !vis1 ? " off" : "")+"\"><b>"+o[1]+"</b><small>"+o[2]+"</small></button>"; }).join("")+"</div>"+
+      (vv==="pub" && !recShare ? "<p class=\"note\" style=\"margin:6px 2px 0\">Teilen mit Freunden ist in den Einstellungen ausgeschaltet – der Ort wird erst geteilt, wenn du es wieder einschaltest.</p>" : "")+"</div>"; }
+  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : "<button type=\"button\" class=\"jp-pv"+(isPrivN(jp.pid)?" on":"")+"\" data-act=\"privn\" aria-pressed=\""+isPrivN(jp.pid)+"\">"+ILOCK+(isPrivN(jp.pid) ? "privat" : "Reise")+"</button>") : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+rootOf(jp.pid)+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
   var qn = (function(){ var q = phQueue(); return ph.filter(function(x){ return q.up.indexOf(x) > -1; }).length; })();
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Fotos"+(ph.length ? " · "+ph.length : "")+(qn ? "<small> · "+qn+" noch nicht hochgeladen</small>" : "")+"</div><div class=\"jp-strip\">"+
        "<label class=\"jp-add\" for=\"phIn\"><span>＋</span></label>"+
@@ -7664,7 +7708,7 @@ function renderSheet(){
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
-var RO_ACTS = {"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
+var RO_ACTS = {"vis":1,"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
 function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 var roWas = null;
 function applyRO(){
@@ -8136,6 +8180,7 @@ document.addEventListener("click", function(e){
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
     case "phback": if(jp && !!jp.ret){ closeJPop(); break; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
     case "privp": if(t.closest("#catPop")) closeCatPop(); togglePriv("p", rootPid(jp ? jp.pid : id), function(){ if(jp) renderJPop(); renderSheet(); }); break;
+    case "vis": setVis(jp ? jp.pid : id, t.getAttribute("data-v")); break;
     case "privn": togglePriv("n", rootOf(jp.pid), function(){ renderJPop(); }); break;
     case "phpriv": togglePriv("ph", t.getAttribute("data-ph"), function(){ phMetaRefresh(); }); break;
     case "capedit": captPrompt([t.getAttribute("data-ph")], true); break;
