@@ -5256,7 +5256,7 @@ function pvHide(){ var L = $("pvLayer"); if(window.pvZoomReset) window.pvZoomRes
 /* Vollbild: nach unten wischen schließt das Foto (nicht im Zoom, nicht im Kommentarfeld) */
 (function(){
   var sw = null;
-  function closeView(){ if(!jp) return; jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); }
+  function closeView(){ if(!jp) return; if(jp.ret==="list"){ closeJPop(); return; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); }
   document.addEventListener("touchstart", function(e){
     var L = $("pvLayer"); sw = null;
     if(!L || L.hidden || e.touches.length!==1 || !L.contains(e.target)) return;
@@ -5289,7 +5289,7 @@ function pvHide(){ var L = $("pvLayer"); if(window.pvZoomReset) window.pvZoomRes
   document.addEventListener("touchend", end); document.addEventListener("touchcancel", end);
 })();
 function pvOpen(){ var L = $("pvLayer"); return !!(L && !L.hidden); }
-document.addEventListener("keydown", function(e){ if(e.key==="Escape" && pvOpen() && jp){ e.stopPropagation(); if(pvCm){ pvCm = false; phMetaRefresh(); return; } jp.view = null; renderJPop(); } }, true);
+document.addEventListener("keydown", function(e){ if(e.key==="Escape" && pvOpen() && jp){ e.stopPropagation(); if(pvCm){ pvCm = false; phMetaRefresh(); return; } if(jp.ret==="list"){ closeJPop(); return; } jp.view = null; renderJPop(); } }, true);
 function phStep(dir){ var tr = $("pvTrack"); if(!tr) return; var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)) + dir; if(i < 0 || i >= tr.children.length) return; tr.scrollTo({left:i*tr.clientWidth, behavior:"smooth"}); }
 function phLike(ph){
   if(!phSocial()) return;
@@ -6295,7 +6295,7 @@ document.addEventListener("click", function(e){
     case "lsfilt": lsFilter = t.getAttribute("data-v"); renderLs(); break;
     case "lsgo": lsGoMap(t.getAttribute("data-pid")); break;
     case "lsday": closeLsPage(); var lsd = t.getAttribute("data-day"); if(dayByKey(lsd)){ cur = lsd; tab = "day"; renderAll(); fitDay(); } break;
-    case "lsph": var lpid = t.getAttribute("data-pid"); if(P(lpid)) openJPop(lpid, dayOf(lpid) || "", t.getAttribute("data-ph")); break;
+    case "lsph": var lpid = t.getAttribute("data-pid"); if(P(lpid)){ openJPop(lpid, dayOf(lpid) || "", t.getAttribute("data-ph")); if(jp) jp.ret = "list"; } break;
     case "navprof": if(profOpen) closeProfile(); else openProfile(); break;
     case "pftab": profTab = t.getAttribute("data-v"); renderProfile(); break;
     case "pfopen": closeProfile(); var pft = t.getAttribute("data-trip"); if(S.trips[pft]){ closeSettings(); grpSel = ""; S.cur = pft; save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
@@ -6370,7 +6370,7 @@ document.addEventListener("click", function(e){
       if(hjp) renderJPop(); else { renderCard(); renderSheet(); } break;
     case "phretry": phRetry(); phFlush(); break;
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
-    case "phback": jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
+    case "phback": if(jp && jp.ret==="list"){ closeJPop(); break; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
     case "privp": if(t.closest("#catPop")) closeCatPop(); togglePriv("p", rootPid(jp ? jp.pid : id)); if(jp) renderJPop(); renderSheet(); break;
     case "privn": togglePriv("n", jp.pid); renderJPop(); break;
     case "phpriv": togglePriv("ph", t.getAttribute("data-ph")); phMetaRefresh(); break;
@@ -6392,7 +6392,7 @@ document.addEventListener("click", function(e){
     case "moredel": moreDel = true; openCardMore(); break;
     case "locset": locStart(); break;
     case "phdel": var dph = t.getAttribute("data-ph"), rest = photosOf(jp.pid).filter(function(x){ return x!==dph; }), di = photosOf(jp.pid).indexOf(dph);
-      delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; renderJPop(); break;
+      delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; if(lsPage) renderLs(); if(!jp.view && jp.ret==="list"){ closeJPop(); break; } renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
     case "jpmore": openJpMore(jp ? jp.pid : id, t); break;
     case "ratepick": openRatePick(t.closest("#jPop") && jp ? jp.pid : id, t); break;
