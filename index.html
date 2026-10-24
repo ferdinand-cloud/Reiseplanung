@@ -1999,6 +1999,31 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .sug-row .srow{flex:1;min-width:0}
 .sug-add{flex:0 0 auto;padding:7px 11px !important;font-size:13px !important}
 .sug-in{flex:0 0 auto;font-size:12.5px;padding-right:4px}
+
+.lcats{margin:-2px 0 6px 34px}
+.lcats[hidden]{display:none}
+.lcat-h{display:flex;align-items:center;gap:6px;width:100%;border:0;background:var(--fill);border-radius:10px;padding:6px 10px;color:var(--muted);font:500 12.5px/1.2 var(--f-body);cursor:pointer;text-align:left}
+.lcat-h b{color:var(--ink);font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lcat-h.act{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.lcat-h.act b{color:var(--accent)}
+.lcat-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:0 0 7px}
+.lcat-h > svg:last-child{width:12px;height:12px;flex:0 0 12px;transition:transform .15s}
+.lcat-h[aria-expanded="true"] > svg:last-child{transform:rotate(180deg)}
+.lcats .la{display:flex;align-items:center;gap:8px;margin:6px 0 4px}
+.lcats .la button{border:0;background:none;color:var(--accent);font:600 12.5px/1.2 var(--f-body);padding:2px 0;cursor:pointer}
+.lcats .la .cnt{font-size:11.5px;color:var(--muted)}
+#wishCats .pc{display:flex;flex-wrap:wrap;gap:4px}
+#wishCats .pc button{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 9px 3px 4px;font-size:12px;font-weight:600;color:var(--ink)}
+#wishCats .pc button i{width:10px;height:10px;border-radius:50%;display:block}
+#wishCats .pc button small{color:var(--muted);font-weight:500}
+#wishCats .pc button[aria-pressed="false"]{opacity:.45}
+#wishCats .pc button[aria-pressed="false"] i{background:var(--muted)!important}
+
+/* Planung ganz eingeklappt: nur der Griff, kein Text */
+.sheet .tabs,#body{transition:opacity .2s ease}
+body.sheetmin .sheet .tabs,body.sheetmin #body{opacity:0;pointer-events:none}
+body.sheetmin .sheet .handle{width:56px;height:5px;background:color-mix(in srgb,var(--ink) 45%,transparent)}
+@media (min-width:900px){ body.sheetmin .sheet .tabs,body.sheetmin #body{opacity:1;pointer-events:auto} }
 </style>
 </head>
 <body>
@@ -2065,6 +2090,7 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
   <div class="lines" id="busLines" hidden></div>
   <label><input type="checkbox" id="lRoute" checked><span class="sw" style="background:var(--c4)"></span>Tagesroute</label>
   <label><input type="checkbox" id="lWish" checked><span class="sw" style="background:var(--wish)"></span>Wünsche</label>
+  <div class="lines lcats" id="wishCats"></div>
   <label><input type="checkbox" id="lPoi"><span class="sw" style="background:conic-gradient(#e8710a 0 25%,#8a5a2b 25% 50%,#7b3fbf 50% 75%,#5E9970 75%)"></span>Cafés, Lokale &amp; Sehenswertes</label>
   <div class="lines" id="poiCats" hidden></div>
   <label><input type="checkbox" id="lColor"><span class="sw" style="background:linear-gradient(90deg,#A9D3F2 0 50%,#C9E7C1 50%)"></span>Farbige Karte</label>
@@ -4186,7 +4212,8 @@ var tdraft = null; // Reise-Formular
 var newList = {open:false, name:""};
 var confirmKey = null, confirmTimer = null;
 var undoSnap = null, toastTimer = null;
-var sheetState = "peek", PEEK = 172, MIN = 80, sideOpen = true;
+var sheetState = "peek", PEEK = 172, MIN = 30, sideOpen = true;
+(function(){ try { var pr = document.createElement("div"); pr.style.cssText = "position:fixed;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden"; document.body.appendChild(pr); MIN = 26 + (parseFloat(getComputedStyle(pr).paddingBottom) || 0); pr.remove(); } catch(e){} })();
 var desktop = window.matchMedia("(min-width: 900px)");
 
 /* ---------- Karte: MapLibre mit OpenFreeMap-Kacheln (weltweit) ---------- */
@@ -5060,7 +5087,7 @@ function drawOverlay(){
   if((layers.wish || tab==="wish") && !isRO()){
     wishes().forEach(function(w){
       if(!hasLoc(w)) return;
-      if(tab==="wish" && (!catOk(w.c) || !nbMatch(w) || !qMatch(w) || !grpOk(w)) && sel!==w.id) return;
+      if((!catOk(w.c) || (tab==="wish" && (!nbMatch(w) || !qMatch(w) || !grpOk(w)))) && sel!==w.id) return;
       var q = pt(w); if(!onScreen(q,30)) return;
       var strong = (tab==="wish" && activeList!=="open" && (w.list||"none")===activeList) || sugIds[w.id];
       wishMarks.push({w:w, q:q, strong:strong});
@@ -5253,12 +5280,12 @@ $("zin").addEventListener("click", function(){ map.zoomIn(); });
 $("zout").addEventListener("click", function(){ map.zoomOut(); });
 $("zfit").addEventListener("click", fitDay);
 $("compass").addEventListener("click", function(){ map.easeTo({bearing:0, pitch:0, duration: reduceMotion?0:400}); });
-$("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; this.setAttribute("aria-expanded", open); placeFloating(); });
+$("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; if(open){ renderWishCats(); renderPoiCats(); } this.setAttribute("aria-expanded", open); placeFloating(); });
 ["lSub","lBus","lFerry","lWish","lNb","lRoute"].forEach(function(id){
   $(id).addEventListener("change", function(){
     layers = {sub:$("lSub").checked, bus:$("lBus").checked, ferry:$("lFerry").checked, wish:$("lWish").checked, nb:$("lNb").checked, route:$("lRoute").checked}; lsSet("nyc-l-ferry", layers.ferry?"1":"0"); lsSet("nyc-l-nb", layers.nb?"1":"0"); lsSet("nyc-l-route", layers.route?"1":"0"); if(tab==="day") renderSheet();
     lsSet("nyc-l-sub", layers.sub?"1":"0"); lsSet("nyc-l-bus", layers.bus?"1":"0"); lsSet("nyc-l-wish", layers.wish?"1":"0");
-    applyLayers(); scheduleOverlay();
+    applyLayers(); scheduleOverlay(); renderWishCats();
   });
 });
 
@@ -5640,15 +5667,25 @@ function addPoiLayers(){
     paint:{"text-color":col, "text-halo-color":isDark()?"#111a22":"#ffffff", "text-halo-width":1.4}}); } catch(e){}
 }
 function applyPoi(){
-  $("lPoi").checked = poiOn; renderPoiCats();
+  $("lPoi").checked = poiOn; renderPoiCats(); renderWishCats();
   if(!mapReady || !map.getLayer("poi-dot")) return;
   ["poi-dot","poi-lbl","poi-dot-g","poi-lbl-g"].forEach(function(l){ if(!map.getLayer(l)) return; map.setLayoutProperty(l, "visibility", poiOn ? "visible" : "none"); map.setFilter(l, poiFilter(/-g$/.test(l))); });
 }
+var lcatOpen = {wish:false, poi:false};
+function lcatHead(k, txt, active){ var o = lcatOpen[k]; return "<button type=\"button\" class=\"lcat-h"+(active?" act":"")+"\" data-act=\"lcattog\" data-k=\""+k+"\" aria-expanded=\""+o+"\"><span>Kategorien</span><b>"+esc(txt)+"</b>"+(active ? "<i class=\"lcat-dot\" aria-label=\"Filter aktiv\"></i>" : "")+CHEV+"</button>"; }
 function renderPoiCats(){
   var el = $("poiCats"); el.hidden = !poiOn; if(!poiOn) return;
-  var on = POIGROUPS.filter(function(g){ return !poiOff[g[0]]; }).length;
-  el.innerHTML = "<div class=\"la\"><span class=\"cnt\">"+on+" von "+POIGROUPS.length+" sichtbar</span><button type=\"button\" data-act=\"poiall\">Alle</button><button type=\"button\" data-act=\"poinone\">Keine</button></div><div class=\"pc\">"+
-    POIGROUPS.map(function(g){ return "<button type=\"button\" data-act=\"poicat\" data-cat=\""+g[0]+"\" aria-pressed=\""+!poiOff[g[0]]+"\"><i style=\"background:"+g[2]+"\"></i>"+esc(g[1])+"</button>"; }).join("")+"</div>";
+  var on = POIGROUPS.filter(function(g){ return !poiOff[g[0]]; }).length, act = on < POIGROUPS.length;
+  el.classList.add("lcats");
+  el.innerHTML = lcatHead("poi", act ? on+" von "+POIGROUPS.length : "Alle", act)+(lcatOpen.poi ? "<div class=\"la\"><button type=\"button\" data-act=\"poiall\">Alle</button><button type=\"button\" data-act=\"poinone\">Keine</button></div><div class=\"pc\">"+
+    POIGROUPS.map(function(g){ return "<button type=\"button\" data-act=\"poicat\" data-cat=\""+g[0]+"\" aria-pressed=\""+!poiOff[g[0]]+"\"><i style=\"background:"+g[2]+"\"></i>"+esc(g[1])+"</button>"; }).join("")+"</div>" : "");
+}
+function renderWishCats(){
+  var el = $("wishCats"); if(!el) return; var show = !!(layers.wish || isRO()) && !isRO(); el.hidden = !show; if(!show) return;
+  var ks = Object.keys(catFilter), act = ks.length > 0, cc = {}; wishes().forEach(function(p){ cc[p.c] = (cc[p.c]||0) + 1; });
+  el.innerHTML = lcatHead("wish", act ? ks.map(function(k){ return CATNAME[k]; }).slice(0, 2).join(", ")+(ks.length > 2 ? " +"+(ks.length-2) : "") : "Alle", act)+
+    (lcatOpen.wish ? "<div class=\"la\"><button type=\"button\" data-act=\"lwcat\" data-cat=\"\">Alle</button><span class=\"cnt\">wirkt auch auf die Wunschliste</span></div><div class=\"pc\">"+
+      CATS.filter(function(c){ return cc[c[0]] || catFilter[c[0]]; }).map(function(c){ var on = !act || !!catFilter[c[0]]; return "<button type=\"button\" data-act=\"lwcat\" data-cat=\""+c[0]+"\" aria-pressed=\""+on+"\"><i style=\"background:"+catCol(c[0])+"\"></i>"+esc(c[1])+" <small>"+(cc[c[0]]||0)+"</small></button>"; }).join("")+"</div>" : "");
 }
 function poiAt(x, y){
   if(!poiOn || !mapReady || !map.getLayer("poi-dot")) return null;
@@ -5970,7 +6007,7 @@ function applySheet(){
   var pb = "calc("+(off+28)+"px + env(safe-area-inset-bottom,0px))";
   if(body.style.paddingBottom !== pb) body.style.paddingBottom = pb;
 }
-function setSheet(s){ sheetState = s; document.body.classList.toggle("sheetfull", s==="full"); if(s!=="min") sideOpen = true; syncSide(); applySheet(); placeFloating(); }
+function setSheet(s){ sheetState = s; document.body.classList.toggle("sheetfull", s==="full"); document.body.classList.toggle("sheetmin", s==="min"); if(s!=="min") sideOpen = true; syncSide(); applySheet(); placeFloating(); }
 function syncSide(){
   document.body.classList.toggle("side-off", desktop.matches && !sideOpen);
   var open = desktop.matches ? sideOpen : sheetState!=="min";
@@ -7888,7 +7925,9 @@ document.addEventListener("click", function(e){
       else fitDay();
       renderSheet(); scheduleOverlay(); break;
     case "sclear": wishQuery = ""; renderSheet(); scheduleOverlay(); var ws = $("wSearch"); if(ws) ws.focus(); break;
-    case "wcat": var wc = t.getAttribute("data-cat"); if(!wc) catFilter = {}; else if(catFilter[wc]) delete catFilter[wc]; else catFilter[wc] = 1; renderSheet(); scheduleOverlay(); if(wfiltK==="cat" && !$("catPop").hidden) openWFilt("cat"); break;
+    case "lcattog": var lk = t.getAttribute("data-k"); lcatOpen[lk] = !lcatOpen[lk]; if(lk==="poi") renderPoiCats(); else renderWishCats(); break;
+    case "lwcat": var lw = t.getAttribute("data-cat"); if(!lw) catFilter = {}; else if(catFilter[lw]) delete catFilter[lw]; else catFilter[lw] = 1; renderWishCats(); dirty(); renderSheet(); scheduleOverlay(); break;
+    case "wcat": var wc = t.getAttribute("data-cat"); if(!wc) catFilter = {}; else if(catFilter[wc]) delete catFilter[wc]; else catFilter[wc] = 1; renderSheet(); scheduleOverlay(); renderWishCats(); if(wfiltK==="cat" && !$("catPop").hidden) openWFilt("cat"); break;
     case "nbrem": delete nbHi[t.getAttribute("data-nb")]; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
     case "nbclear": nbHi = {}; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
     case "nbtoggle": var tn = t.getAttribute("data-nb"); if(nbHi[tn]) delete nbHi[tn]; else nbHi[tn] = 1; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
