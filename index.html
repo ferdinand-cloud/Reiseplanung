@@ -4222,6 +4222,7 @@ function suggest(k, n){
 var cur = "", tab = "day", activeList = "open", catFilter = {}, sel = null, pick = null;
 function catOk(c){ return !Object.keys(catFilter).length || !!catFilter[c]; }
 function catAny(){ return Object.keys(catFilter).length > 0; }
+function catKeys(){ return Object.keys(catFilter).filter(function(k){ return k!=="_none"; }); }
 var sugOpen = lsGet("nyc-sug-open")==="1";
 var layers = {sub: lsGet("nyc-l-sub")==="1", bus: lsGet("nyc-l-bus")==="1", ferry: lsGet("nyc-l-ferry")!=="0", wish: lsGet("nyc-l-wish")!=="0", nb: lsGet("nyc-l-nb")==="1", route: lsGet("nyc-l-route")!=="0"};
 var nbHi = {}; try { (JSON.parse(lsGet("nyc-nb-hi"))||[]).forEach(function(n){ nbHi[n] = 1; }); } catch(e){}
@@ -4515,7 +4516,7 @@ function lpRender(){
 function lpClose(){ lpPt = null; if(lpMark){ lpMark.remove(); lpMark = null; } closeCatPop(); }
 function lpToWish(){
   var p = lpPt; lpClose(); if(!p) return;
-  draft = {open:true, n:p.n || "", c:Object.keys(catFilter)[0]||"essen", list:(T().lists[0]||{}).id||"", loc:locStr(p), note:"", addr:p.addr || "", err:""};
+  draft = {open:true, n:p.n || "", c:catKeys()[0]||"essen", list:(T().lists[0]||{}).id||"", loc:locStr(p), note:"", addr:p.addr || "", err:""};
   tab = "wish"; renderSheet(); scheduleOverlay(); var wn = $("wName"); if(wn){ wn.focus(); try { wn.select(); } catch(e){} }
 }
 function lpToDay(){
@@ -5714,9 +5715,9 @@ function renderPoiCats(){
 }
 function renderWishCats(){
   var el = $("wishCats"); if(!el) return; var show = !!(layers.wish || isRO()) && !isRO(); el.hidden = !show; var fb1 = $("lWish").closest(".lrow"); fb1 = fb1 && fb1.querySelector(".lfbtn"); if(fb1) fb1.hidden = !show; if(!show) return; el.classList.toggle("shut", !lcatOpen.wish);
-  var ks = Object.keys(catFilter), act = ks.length > 0, cc = {}; wishes().forEach(function(p){ cc[p.c] = (cc[p.c]||0) + 1; });
-  el.innerHTML = lcatHead("wish", act ? ks.map(function(k){ return CATNAME[k]; }).slice(0, 2).join(", ")+(ks.length > 2 ? " +"+(ks.length-2) : "") : "Alle", act)+
-    (lcatOpen.wish ? "<div class=\"la\"><button type=\"button\" data-act=\"lwcat\" data-cat=\"\">Alle</button><span class=\"cnt\">wirkt auch auf die Wunschliste</span></div><div class=\"pc\">"+
+  var ks = catKeys(), none = !!catFilter._none, act = none || ks.length > 0, cc = {}; wishes().forEach(function(p){ cc[p.c] = (cc[p.c]||0) + 1; });
+  el.innerHTML = lcatHead("wish", none ? "Keine" : act ? ks.map(function(k){ return CATNAME[k]; }).slice(0, 2).join(", ")+(ks.length > 2 ? " +"+(ks.length-2) : "") : "Alle", act)+
+    (lcatOpen.wish ? "<div class=\"la\"><button type=\"button\" data-act=\"lwcat\" data-cat=\"\">Alle</button><button type=\"button\" data-act=\"lwnone\">Keine</button><span class=\"cnt\">wirkt auch auf die Wunschliste</span></div><div class=\"pc\">"+
       CATS.filter(function(c){ return cc[c[0]] || catFilter[c[0]]; }).map(function(c){ var on = !act || !!catFilter[c[0]]; return "<button type=\"button\" data-act=\"lwcat\" data-cat=\""+c[0]+"\" aria-pressed=\""+on+"\"><i style=\"background:"+catCol(c[0])+"\"></i>"+esc(c[1])+" <small>"+(cc[c[0]]||0)+"</small></button>"; }).join("")+"</div>" : "");
 }
 function poiAt(x, y){
@@ -6949,8 +6950,8 @@ function renderWish(){
   if(wView==="grp" && !gs.length) wView = "cat";
   var h = "<div class=\"wtop\"><div class=\"search\" role=\"search\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"wSearch\" value=\""+esc(wishQuery)+"\" placeholder=\"Wunschliste durchsuchen …\" aria-label=\"Wunschliste durchsuchen\" autocomplete=\"off\" enterkeyhint=\"search\">"+(wishQuery?"<button type=\"button\" data-act=\"sclear\" aria-label=\"Suche leeren\">×</button>":"")+"</div>"+
     "<button type=\"button\" class=\"wadd\" data-act=\"newwish\" aria-label=\"Wunsch hinzufügen\" title=\"Wunsch hinzufügen\">+</button></div>";
-  var ck = Object.keys(catFilter);
-  var catLbl = !ck.length ? "Kategorie" : ck.length===1 ? CATNAME[ck[0]] : ck.length+" Kategorien";
+  var ck = catKeys();
+  var catLbl = catFilter._none ? "Keine Kategorie" : !ck.length ? "Kategorie" : ck.length===1 ? CATNAME[ck[0]] : ck.length+" Kategorien";
   var grpLbl = !grpSel ? "Gruppe" : grpSel==="none" ? "Ohne Gruppe" : (grpName(grpSel) || "Gruppe");
   var sortLbl = wView==="grp" ? "Gruppe" : wView==="dist" ? (wDistDir==="asc" ? "Nächste zuerst" : "Weiteste zuerst") : "Kategorie";
   var chip = function(k, lbl, on){ return "<button type=\"button\" class=\"fchip"+(on?" on":"")+"\" data-act=\"wfilt\" data-k=\""+k+"\" aria-haspopup=\"dialog\">"+esc(lbl)+CHEV+"</button>"; };
@@ -7971,8 +7972,9 @@ document.addEventListener("click", function(e){
       renderSheet(); scheduleOverlay(); break;
     case "sclear": wishQuery = ""; renderSheet(); scheduleOverlay(); var ws = $("wSearch"); if(ws) ws.focus(); break;
     case "lcattog": var lk = t.getAttribute("data-k"); lcatOpen[lk] = !lcatOpen[lk]; if(lk==="poi") renderPoiCats(); else renderWishCats(); break;
-    case "lwcat": var lw = t.getAttribute("data-cat"); if(!lw) catFilter = {}; else if(catFilter[lw]) delete catFilter[lw]; else catFilter[lw] = 1; renderWishCats(); dirty(); renderSheet(); scheduleOverlay(); break;
-    case "wcat": var wc = t.getAttribute("data-cat"); if(!wc) catFilter = {}; else if(catFilter[wc]) delete catFilter[wc]; else catFilter[wc] = 1; renderSheet(); scheduleOverlay(); renderWishCats(); if(wfiltK==="cat" && !$("catPop").hidden) openWFilt("cat"); break;
+    case "lwcat": var lw = t.getAttribute("data-cat"); if(!lw) catFilter = {}; else { delete catFilter._none; if(catFilter[lw]){ delete catFilter[lw]; if(!catKeys().length) catFilter = {_none:1}; } else catFilter[lw] = 1; } renderWishCats(); dirty(); renderSheet(); scheduleOverlay(); break;
+    case "lwnone": catFilter = {_none:1}; renderWishCats(); dirty(); renderSheet(); scheduleOverlay(); break;
+    case "wcat": var wc = t.getAttribute("data-cat"); if(!wc) catFilter = {}; else { delete catFilter._none; if(catFilter[wc]){ delete catFilter[wc]; if(!catKeys().length) catFilter = {_none:1}; } else catFilter[wc] = 1; } renderSheet(); scheduleOverlay(); renderWishCats(); if(wfiltK==="cat" && !$("catPop").hidden) openWFilt("cat"); break;
     case "nbrem": delete nbHi[t.getAttribute("data-nb")]; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
     case "nbclear": nbHi = {}; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
     case "nbtoggle": var tn = t.getAttribute("data-nb"); if(nbHi[tn]) delete nbHi[tn]; else nbHi[tn] = 1; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
@@ -7984,7 +7986,7 @@ document.addEventListener("click", function(e){
     case "nbdone": closeCatPop(); if(nbKeys().length) fitNbs(nbKeys()); break;
     case "newlist": newList = {open:true, name:""}; renderSheet(); var nl = $("nlName"); if(nl) nl.focus(); break;
     case "nlcancel": newList.open = false; renderSheet(); break;
-    case "newwish": draft = {open:true, n:"", c:Object.keys(catFilter)[0]||"essen", list:(activeList!=="open"&&activeList!=="none")?activeList:(T().lists[0]||{}).id||"", loc:"", note:"", err:""}; renderSheet(); var wn = $("wName"); if(wn) wn.focus(); break;
+    case "newwish": draft = {open:true, n:"", c:catKeys()[0]||"essen", list:(activeList!=="open"&&activeList!=="none")?activeList:(T().lists[0]||{}).id||"", loc:"", note:"", err:""}; renderSheet(); var wn = $("wName"); if(wn) wn.focus(); break;
     case "wcancel": draft.open = false; closeCatPop(); renderWishPop(); scheduleOverlay(); break;
     case "catpop": openCatPop(); break;
     case "dcat": draft.c = t.getAttribute("data-cat"); closeCatPop(); renderSheet(); var cb = document.querySelector("[data-act=catpop]"); if(cb) cb.focus(); break;
