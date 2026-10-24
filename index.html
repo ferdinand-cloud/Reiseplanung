@@ -1602,6 +1602,14 @@ form.gnew{position:relative}
 .ch-meta{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto}
 .ch-meta small{font-size:12px;color:var(--muted)}
 .ch-page .ls-head{margin-bottom:12px}
+.ch-title{justify-content:space-between;align-items:center !important}
+.ch-plus{width:38px;height:38px;flex:0 0 38px;border:0;border-radius:50%;background:var(--fill);color:var(--ink);display:grid;place-items:center;cursor:pointer;transition:transform .2s}
+.ch-plus svg{width:19px;height:19px}
+.ch-plus.on{transform:rotate(45deg)}
+.ch-newbox{margin-top:2px}
+#chNewRes{margin-top:8px}
+.ch-newnote{margin:4px 2px 2px}
+.ch-newlist .ls-row{padding:8px 12px}
 .ch-dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
 .chview.conv{padding:0;overflow:hidden;display:flex;flex-direction:column}
 .ch-conv{display:flex;flex-direction:column;height:100%;max-width:640px;width:100%;margin:0 auto;padding-top:calc(env(safe-area-inset-top,0px) + 72px);box-sizing:border-box}
@@ -3027,7 +3035,7 @@ function renderGs(full){
 }
 document.addEventListener("input", function(e){ if(e.target && e.target.id==="gsIn"){ gsQ = e.target.value; gsPeopleSearch(gsQ.trim()); renderGs(); } });
 /* ---------- Chat mit Freunden (auch über Orte) ---------- */
-var chMsgErr = false, chPage = false, chOpen = null, chDraft = null, chPickOn = false, chPickQ = "", chMsgs = [], chMsgUnsub = null, chStart = 0, chSending = false;
+var chNewOn = false, chNewQ = "", chMsgErr = false, chPage = false, chOpen = null, chDraft = null, chPickOn = false, chPickQ = "", chMsgs = [], chMsgUnsub = null, chStart = 0, chSending = false;
 var CH = {list:[], byId:{}, got:false}, CHP = {}, CHPROF = {}, CHPL = {};
 function chId(a, b){ return [a, b].sort().join("_"); }
 function chOther(c){ var me = acct.user && acct.user.uid; return (c.members||[]).filter(function(u){ return u!==me; })[0] || ""; }
@@ -3111,16 +3119,15 @@ function renderCh(full){
   var el = $("chView"); if(!el) return; var me = acct.user && acct.user.uid;
   if(!chOpen){
     el.classList.remove("conv"); chVV();
-    var h = "<div class=\"pf ch-page\"><div class=\"ls-head dc-head\"><div class=\"dc-title\"><b>Chats</b><small>Mit deinen Freunden schreiben und Orte teilen</small></div></div>";
+    var h = "<div class=\"pf ch-page\"><div class=\"ls-head dc-head\"><div class=\"dc-title ch-title\"><b>Chats</b>"+(me ? "<button type=\"button\" class=\"ch-plus"+(chNewOn?" on":"")+"\" data-act=\"chnewtog\" aria-label=\"Neuer Chat\" aria-expanded=\""+chNewOn+"\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M10 4v12M4 10h12\"/></svg></button>" : "")+"</div>"+
+      (me && chNewOn ? "<div class=\"gs-box ch-newbox\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"chNewIn\" placeholder=\"Name des Freundes\" autocomplete=\"off\" autocapitalize=\"off\" value=\""+esc(chNewQ)+"\"></div><div id=\"chNewRes\"></div>" : "")+"</div>";
     if(!me){ el.innerHTML = h+"<p class=\"note nt-empty\">Melde dich an, um mit Freunden zu chatten.</p></div>"; return; }
     if(CH.list.length){
       h += "<div class=\"ag-grp ls-list ch-list\">"+CH.list.map(function(c){ var u = chOther(c), L = c.last || {}, un = chUnread(c);
         return "<button type=\"button\" class=\"ls-row"+(un?" un":"")+"\" data-act=\"chopen\" data-v=\""+esc(c.id)+"\">"+chAv(u, "ch-av")+"<span class=\"ls-t\"><b>@"+esc(chName(u))+"</b><small>"+(L.from===me ? "Du: " : "")+esc(L.t || (L.place ? "📍 "+L.place : ""))+"</small></span><span class=\"ch-meta\"><small>"+chTime(L.at)+"</small>"+(un ? "<i class=\"ch-dot\"></i>" : "")+"</span></button>"; }).join("")+"</div>";
-    } else if(CH.got) h += "<p class=\"note nt-empty\">Noch keine Chats.</p>";
-    var rest = FR.friends.filter(function(f){ return f.uid && !CH.byId[chId(me, f.uid)]; });
-    if(rest.length) h += "<div class=\"nt-sec\">Neuer Chat</div><div class=\"ag-grp ls-list\">"+rest.map(function(f){ return "<button type=\"button\" class=\"ls-row\" data-act=\"chnew\" data-uid=\""+esc(f.uid)+"\">"+chAv(f.uid, "ch-av")+"<span class=\"ls-t\"><b>@"+esc(chName(f.uid))+"</b><small>Chat beginnen</small></span><span class=\"ls-go\">›</span></button>"; }).join("")+"</div>";
+    } else if(CH.got && !chNewOn) h += "<p class=\"note nt-empty\">Noch keine Chats. Tippe auf ＋, um einen Chat mit einem Freund zu beginnen.</p>";
     if(!FR.friends.length) h += "<p class=\"note nt-empty\">Füge Freunde hinzu, um mit ihnen zu chatten.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div>";
-    el.innerHTML = h+"</div>"; return;
+    el.innerHTML = h+"</div>"; renderChNew(); return;
   }
   var c = CH.byId[chOpen], u = c ? chOther(c) : chOpen.split("_").filter(function(x){ return x!==me; })[0];
   if(full || !$("chMsgs")){
@@ -3135,6 +3142,15 @@ function renderCh(full){
   }
   renderChMsgs(true); renderChDraft();
   var pk = $("chPick"); if(pk){ pk.hidden = !chPickOn; if(chPickOn) $("chPickRes").innerHTML = chPickHTML(); }
+}
+function renderChNew(){
+  var r = $("chNewRes"); if(!r) return; var me = acct.user && acct.user.uid, q = norm(chNewQ.trim().replace(/^@/, ""));
+  var fr = FR.friends.filter(function(f){ return f.uid && (!q || norm(chName(f.uid)).indexOf(q) > -1); });
+  if(!FR.friends.length){ r.innerHTML = "<p class=\"note ch-newnote\">Du hast noch keine Freunde. Chatten kannst du nur mit Freunden.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div>"; return; }
+  if(!q){ r.innerHTML = "<p class=\"note ch-newnote\">Gib den Namen eines Freundes ein.</p>"; return; }
+  r.innerHTML = fr.length ? "<div class=\"ag-grp ls-list ch-newlist\">"+fr.slice(0, 20).map(function(f){ var ex = CH.byId[chId(me, f.uid)];
+    return "<button type=\"button\" class=\"ls-row\" data-act=\"chnew\" data-uid=\""+esc(f.uid)+"\">"+chAv(f.uid, "ch-av sm")+"<span class=\"ls-t\"><b>@"+esc(chName(f.uid))+"</b><small>"+(ex ? "Chat öffnen" : "Neuer Chat")+"</small></span></button>"; }).join("")+"</div>"
+    : "<p class=\"note ch-newnote\">Kein Freund mit diesem Namen. Chatten kannst du nur mit Freunden.</p>";
 }
 function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; b.innerHTML = chDraft ? "<div class=\"ch-dr\">"+chPlaceCard(chDraft, "", true)+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; }
 function chPlaceFrom(tid, pid){
@@ -3160,7 +3176,7 @@ function chGrow(){ var i = $("chIn"); if(!i) return; i.style.height = "auto"; i.
 function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualViewport;
   if(chPage && chOpen && vv){ el.style.top = vv.offsetTop+"px"; el.style.height = vv.height+"px"; el.style.bottom = "auto"; } else { el.style.top = ""; el.style.height = ""; el.style.bottom = ""; } }
 if(window.visualViewport){ window.visualViewport.addEventListener("resize", function(){ if(chPage && chOpen){ var box = $("chMsgs"), end = box && box.scrollHeight - box.scrollTop - box.clientHeight < 80; chVV(); if(end) box.scrollTop = box.scrollHeight; } }); window.visualViewport.addEventListener("scroll", function(){ if(chPage && chOpen) chVV(); }); }
-document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn") chGrow(); if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
+document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn") chGrow(); if(e.target.id==="chNewIn"){ chNewQ = e.target.value; renderChNew(); } if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
 document.addEventListener("keydown", function(e){ if(e.target && e.target.id==="chIn" && e.key==="Enter" && !e.shiftKey && !e.isComposing && !("ontouchstart" in window)){ e.preventDefault(); chSend(); } });
 /* Ort aus dem Ort-Fenster im Chat teilen: erst Freund wählen */
 function chShareMenu(pid, btn){
@@ -6930,11 +6946,12 @@ document.addEventListener("click", function(e){
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
     case "srchopen": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); openSearch(); break;
-    case "navmap": closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); closeMenus(); break;
+    case "navmap": closeChPage(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); closeMenus(); break;
     case "navchat": if(chPage && !chOpen) closeChPage(); else openChPage(); break;
     case "chgo": $("toast").hidden = true; openChPage(t.getAttribute("data-v")); break;
     case "chopen": chOpenConv(t.getAttribute("data-v")); break;
-    case "chnew": var chu = chWith(t.getAttribute("data-uid")); if(chu) chOpenConv(chu); break;
+    case "chnew": var chu = chWith(t.getAttribute("data-uid")); chNewOn = false; chNewQ = ""; if(chu) chOpenConv(chu); break;
+    case "chnewtog": chNewOn = !chNewOn; chNewQ = ""; renderCh(); if(chNewOn) setTimeout(function(){ var i = $("chNewIn"); if(i) i.focus(); }, 40); break;
     case "chback": chCloseConv(); renderCh(); break;
     case "chsend": chSend(); break;
     case "chpick": chPickOn = !chPickOn; chPickQ = ""; var chpk = $("chPick"); if(chpk){ chpk.hidden = !chPickOn; if(chPickOn){ $("chPickIn").value = ""; $("chPickRes").innerHTML = chPickHTML(); } } break;
