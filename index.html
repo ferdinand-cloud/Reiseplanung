@@ -2066,6 +2066,8 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 @media (min-width:900px){ body.sheetmin #sheetOpen{display:none} body.sheetmin .sheet{visibility:visible} }
 
 .lrow{display:flex;align-items:center;gap:6px}
+.sgrp{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-weight:500;color:var(--muted);opacity:.9}
+.sgrp svg{width:11px;height:11px;flex:0 0 11px;opacity:.75}
 :where(button,a,label,select,summary,[data-act],[role=tab],[role=button]){touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .lpring.mvring{border-color:#0A84FF;box-shadow:0 0 0 4px rgba(10,132,255,.25)}
 .mvghost{position:fixed;left:0;top:0;width:0;height:0;z-index:80;pointer-events:none;will-change:transform}
@@ -6489,7 +6491,7 @@ function renderDay(){
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
       "<div class=\"lcol\">"+(isH ? "<button type=\"button\" class=\"no hs\" data-act=\"stopopen\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":"H")+"</button>"
             : "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>")+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg></button>"+"</div>"+
-      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? ILOCK : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(p.k==="hotel" ? "Zwischenstopp im Hotel" : CATNAME[p.c])+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
+      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? ILOCK : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+esc(p.k==="hotel" ? "Zwischenstopp im Hotel" : CATNAME[p.c])+(function(){ var gn = grpName((P(rootOf(id))||p).g); return gn ? " · <span class=\"sgrp\" title=\"Gruppe\">"+GRPICO+esc(gn)+"</span>" : ""; })()+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(!isRO() && (hasLoc(p)||p.addr)?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/></svg><select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
       "</div></li>";
@@ -7257,6 +7259,7 @@ function openWFilt(k){
 /* ---------- Eigene Gruppen (z. B. „Central Park“) ---------- */
 var grpSel = "", wView = /^(grp|dist)$/.test(lsGet("rp-wview")||"") ? lsGet("rp-wview") : "cat";
 function groups(){ var g = T().groups || {}; return Object.keys(g).map(function(k){ return {id:k, n:g[k].n}; }).sort(function(a, b){ return a.n.localeCompare(b.n, "de"); }); }
+var GRPICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"3\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/></svg>";
 function grpName(gid){ var g = (T().groups||{})[gid]; return g ? g.n : ""; }
 function grpOk(p){ if(grpSel && grpSel!=="none" && !grpName(grpSel)) grpSel = ""; return !grpSel || (grpSel==="none" ? !grpName(p.g) : p.g===grpSel); }
 var grpTarget = null, grpEdit = null;
