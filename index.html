@@ -977,6 +977,8 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 #ov{pointer-events:none}
 .maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{display:none}
 #locBtn.on{color:#007AFF}
+#ghostBtn[hidden]{display:none}
+#ghostBtn.on{color:#FF9F0A}
 #locBtn[aria-pressed="true"]{color:#007AFF}
 .offline{position:fixed;left:50%;transform:translateX(-50%);z-index:26;width:max-content;max-width:calc(100% - 24px);background:var(--ink);color:var(--sheet);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600}
 .pulse{animation:pulse 2s ease-out infinite;transform-box:fill-box;transform-origin:center}
@@ -1960,6 +1962,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
   <div class="cg">
   <button type="button" id="sideBtn" aria-label="Planung ein- oder ausklappen" aria-expanded="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M8 3.5v13"/></svg></button>
   <button type="button" id="locBtn" aria-label="Meinen Standort zeigen" aria-pressed="false"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M17.6 2.4 2.9 8.7c-.6.3-.5 1.1.1 1.3l5.6 1.6 1.6 5.6c.2.6 1 .7 1.3.1l6.3-14.7c.2-.5-.3-1-.8-.8z"/></svg></button>
+  <button type="button" id="ghostBtn" aria-pressed="false" aria-label="Privatsphäre-Modus" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17.5V9a5 5 0 0 1 10 0v8.5l-1.7-1.3-1.6 1.3-1.7-1.3-1.7 1.3-1.6-1.3z"/><circle cx="8" cy="9" r=".9" fill="currentColor"/><circle cx="12" cy="9" r=".9" fill="currentColor"/></svg></button>
   <button type="button" id="zfit" aria-label="Tagesroute zeigen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="6"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3"/></svg></button></div>
 </div>
 <div class="layers" id="layers" hidden>
@@ -3107,6 +3110,67 @@ function renderGs(full){
   $("gsRes").innerHTML = res; fillPhotos($("gsRes"));
 }
 document.addEventListener("input", function(e){ if(e.target && e.target.id==="gsIn"){ gsQ = e.target.value; gsPeopleSearch(gsQ.trim()); renderGs(); } });
+/* ---------- Standort teilen: Mitreisende und Beobachter sehen, wo man gerade ist (außer im Privatsphäre-Modus) ---------- */
+var LOC = {tid:null, unsub:null, list:[]}, LOCMK = [], locLastW = 0, locLastP = null, locAutoTried = false;
+function ghostKey(){ return "rp-ghost-"+(acct.user ? acct.user.uid : ""); }
+function ghostOn(){ return lsGet(ghostKey())==="1"; }
+function locTargets(){
+  if(!acct.user || !fbDb) return [];
+  var tk = todayKey();
+  return Object.keys(S.trips).filter(function(tid){
+    var g = gidFor(tid), m = META[g] || META[tid], t = S.trips[tid]; if(!m || !t || isViewerOf(tid)) return false;
+    if(!((m.members||[]).length > 1 || (m.viewers||[]).length > 0)) return false;
+    if(t.start && t.end){ var d0 = new Date(t.start+"T00:00"), d1 = new Date(t.end+"T23:59"), n = new Date(); if(n < d0.getTime() - 864e5 || n > d1.getTime() + 864e5) return false; }
+    return true; }).map(gidFor);
+}
+function locCol(g){ return fbDb.collection("trips").doc(g).collection("loc"); }
+function locShare(force){
+  if(!me || !acct.user || !fbDb || ghostOn() || !navigator.onLine) return;
+  var now = Date.now(); if(!force && now - locLastW < 20000 && locLastP && dist(locLastP, me) < 25) return;
+  if(!force && now - locLastW < 8000) return;
+  var ts = locTargets(); if(!ts.length) return;
+  locLastW = now; locLastP = {la:me.la, lo:me.lo};
+  var d = {la:+me.la.toFixed(5), lo:+me.lo.toFixed(5), acc:Math.round(me.acc||0), at:now, name:(PROF && PROF.name) || ""};
+  ts.forEach(function(g){ locCol(g).doc(acct.user.uid).set(d).catch(function(){}); });
+}
+function locWipe(){ if(!acct.user || !fbDb) return; var me0 = acct.user.uid; locTargets().forEach(function(g){ locCol(g).doc(me0).delete().catch(function(){}); }); locLastW = 0; }
+function setGhost(on){
+  lsSet(ghostKey(), on ? "1" : "0"); ghostBtn();
+  if(on){ locWipe(); toast("Privatsphäre-Modus an – dein Standort wird nicht geteilt", false); }
+  else { locShare(true); toast(locTargets().length ? "Dein Standort wird wieder mit Mitreisenden und Beobachtern geteilt" : "Privatsphäre-Modus aus", false); if(!me && watchId===null) startLocate(true); }
+  scheduleOverlay();
+}
+function ghostBtn(){ var b = $("ghostBtn"); if(!b) return; var on = ghostOn(); b.hidden = !acct.user || isRO(); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on);
+  b.setAttribute("aria-label", on ? "Privatsphäre-Modus an: Standort wird nicht geteilt" : "Privatsphäre-Modus aus: Standort wird geteilt"); b.title = on ? "Privatsphäre-Modus an" : "Standort wird geteilt"; }
+/* Standorte der anderen in der aktuellen Reise beobachten */
+function locSync(){
+  var g = acct.user && fbDb && S.cur && S.trips[S.cur] ? gidFor(S.cur) : null;
+  if(g===LOC.tid) return;
+  if(LOC.unsub){ LOC.unsub(); LOC.unsub = null; } LOC.tid = g; LOC.list = [];
+  if(!g) return;
+  LOC.unsub = locCol(g).onSnapshot(function(qs){ var me0 = acct.user && acct.user.uid;
+    LOC.list = qs.docs.filter(function(d){ return d.id!==me0; }).map(function(d){ var v = d.data(); v.uid = d.id; chProf(d.id); return v; }); scheduleOverlay(); },
+    function(){ LOC.list = []; });
+  if(!locAutoTried && locTargets().length && !ghostOn() && watchId===null && navigator.permissions && navigator.permissions.query){
+    locAutoTried = true; navigator.permissions.query({name:"geolocation"}).then(function(r){ if(r.state==="granted" && watchId===null) startLocate(true); }, function(){});
+  }
+}
+function locAgo(at){ var m = Math.round((Date.now() - at)/60000); return m < 1 ? "gerade eben" : m < 60 ? "vor "+m+" Min." : "vor "+Math.round(m/60)+" Std."; }
+function drawLocs(){
+  LOCMK = []; locSync(); var s = "", now = Date.now();
+  LOC.list.forEach(function(v){
+    if(!v.la || !v.at || now - v.at > 45*60000) return;
+    var z = pt({la:v.la, lo:v.lo}); if(!onScreen(z, 40)) return;
+    var nm = (CHPROF[v.uid] && CHPROF[v.uid].name) || v.name || "?", ph = CHPROF[v.uid] && CHPROF[v.uid].photo, old = now - v.at > 10*60000, cid = "lc"+v.uid.replace(/[^A-Za-z0-9]/g, "");
+    s += "<g class=\"locmk\" opacity=\""+(old ? .6 : 1)+"\"><circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"17\" fill=\"#AF52DE\" opacity=\".18\"/>"+
+      "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"13\" fill=\"#AF52DE\" stroke=\"#fff\" stroke-width=\"2.5\"/>"+
+      (ph ? "<clipPath id=\""+cid+"\"><circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"10.5\"/></clipPath><image href=\""+ph+"\" x=\""+f1(z[0]-10.5)+"\" y=\""+f1(z[1]-10.5)+"\" width=\"21\" height=\"21\" clip-path=\"url(#"+cid+")\" preserveAspectRatio=\"xMidYMid slice\"/>"
+          : "<text x=\""+f1(z[0])+"\" y=\""+f1(z[1]+4.5)+"\" text-anchor=\"middle\" font-size=\"13\" font-weight=\"700\" fill=\"#fff\" font-family=\"-apple-system,system-ui,sans-serif\">"+esc((nm[0]||"?").toUpperCase())+"</text>")+"</g>";
+    mkLabel(z[0] + 19, z[1], "@"+nm, true, 3);
+    LOCMK.push({x:z[0], y:z[1], uid:v.uid, nm:nm, at:v.at});
+  });
+  return s;
+}
 /* ---------- Chat mit Freunden (auch über Orte) ---------- */
 var chNewOn = false, chNewQ = "", chMsgErr = false, chPage = false, chOpen = null, chDraft = null, chPickOn = false, chPickQ = "", chMsgs = [], chMsgUnsub = null, chStart = 0, chSending = false;
 var CH = {list:[], byId:{}, got:false}, CHP = {}, CHPROF = {}, CHPL = {};
@@ -3115,7 +3179,7 @@ function chOther(c){ var me = acct.user && acct.user.uid; return (c.members||[])
 function chName(u){ var f = FR.friends.filter(function(x){ return x.uid===u; })[0]; return (CHPROF[u] && CHPROF[u].name) || (f && f.name) || "Freund"; }
 function chProf(u){
   if(!u || CHPROF[u] || !fbDb) return; CHPROF[u] = {name:"", photo:""};
-  fbDb.collection("profiles").doc(u).get().then(function(d){ var v = d.exists && d.data(); if(v){ CHPROF[u] = {name:v.name||"", photo:v.photo||""}; if(chPage) renderCh(); } }, function(){});
+  fbDb.collection("profiles").doc(u).get().then(function(d){ var v = d.exists && d.data(); if(v){ CHPROF[u] = {name:v.name||"", photo:v.photo||""}; if(chPage) renderCh(); scheduleOverlay(); } }, function(){});
 }
 function chAv(u, cls){ var p = CHPROF[u], nm = chName(u); chProf(u);
   return p && p.photo ? "<img class=\""+cls+"\" src=\""+p.photo+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
@@ -4768,6 +4832,7 @@ function drawOverlay(){
       if(isSel2) mkLabel(qq[0] + r2 + 10, qq[1], q0p.n, true, 10);
     });
   })();
+  s += drawLocs(); ghostBtn();
   s += flushLabels(MK);
   var dl = draft.open ? parseLoc(draft.loc) : null;
   if(dl){ var pq = pt(dl); s += "<circle cx=\""+f1(pq[0])+"\" cy=\""+f1(pq[1])+"\" r=\"7\" fill=\"var(--land)\" stroke=\"var(--ink)\" stroke-width=\"2.5\" stroke-dasharray=\"3 3\"/>"; }
@@ -4885,16 +4950,16 @@ function meHeading(){
   if(trail.length > 2){ var a = trail[Math.max(0, trail.length-4)], b = trail[trail.length-1]; if(dist(a, b) > 12){ var dy = (b.la-a.la)*111320, dx = (b.lo-a.lo)*111320*Math.cos(b.la*Math.PI/180); return (Math.atan2(dx, dy)*180/Math.PI + 360) % 360; } }
   return null;
 }
-function startLocate(){
+function startLocate(silent){
   if(!("geolocation" in navigator)){ toast("Dieses Gerät gibt keinen Standort frei.", false); return; }
   startCompass();
   if(watchId!==null){ if(me) centerOn(me, 15.5); return; }
-  firstFix = true;
+  firstFix = silent!==true;
   watchId = navigator.geolocation.watchPosition(function(pos){
     me = {la:pos.coords.latitude, lo:pos.coords.longitude, acc:pos.coords.accuracy, hd:pos.coords.heading, spd:pos.coords.speed};
     if(me.acc < 60){ var lt = trail[trail.length-1]; if(!lt || dist(lt, me) > 6){ trail.push({la:me.la, lo:me.lo, t:Date.now()}); if(trail.length > 400) trail.shift(); } }
     if(firstFix){ firstFix = false; centerOn(me, 15.5); }
-    setLocBtn(); scheduleOverlay();
+    setLocBtn(); scheduleOverlay(); locShare();
     if(sel && !$("card").hidden) renderCard();
     var oldA = meA; meAnchor(); if(meA!==oldA && cur===todayKey()){ if(tab==="day") renderSheetSoon(); scheduleOverlay(); }
     if(goSt && !$("catPop").hidden && $("catPop").querySelector("[data-act=gofrom]")) renderGo();
@@ -4906,7 +4971,8 @@ function startLocate(){
   }, {enableHighAccuracy:true, maximumAge:5000, timeout:20000});
   setLocBtn();
 }
-$("locBtn").addEventListener("click", startLocate);
+$("locBtn").addEventListener("click", function(){ startLocate(); });
+$("ghostBtn").addEventListener("click", function(){ setGhost(!ghostOn()); });
 document.addEventListener("click", function(){ if(watchId!==null && !compOn && !compDenied) startCompass(); }, true);
 $("lColor").checked = colorOn;
 $("lColor").addEventListener("change", function(){ colorOn = this.checked; lsSet("rp-color", colorOn?"1":"0"); if(map){ mapReady = false; map.setStyle(STYLE_URL, {diff:false}); } });
@@ -4973,6 +5039,8 @@ function tap(x, y){
     else { var ll = map.unproject([x, y]); addVia(lp[0], lp[1], {la:ll.lat, lo:ll.lng}); }
     viaBanner(); scheduleOverlay(); renderSheetSoon(); return;
   }
+  var lhit = LOCMK.filter(function(m){ return Math.hypot(m.x-x, m.y-y) < 20; })[0];
+  if(lhit){ toast("@"+lhit.nm+" war hier · "+locAgo(lhit.at), false); return; }
   var vhit = !isRO() && VIAMK.filter(function(m){ return Math.hypot(m.x-x, m.y-y) < 16; }).sort(function(a, b){ return Math.hypot(a.x-x, a.y-y) - Math.hypot(b.x-x, b.y-y); })[0];
   if(vhit){ openViaPop(vhit.li, vhit.vi); return; }
   var best = null, bd = 24, D = dayByKey(cur);
