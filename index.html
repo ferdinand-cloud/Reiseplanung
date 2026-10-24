@@ -2025,7 +2025,8 @@ body.sheetmin .sheet .tabs,body.sheetmin #body{opacity:0;pointer-events:none}
 body.sheetmin .sheet .handle{width:56px;height:5px;background:color-mix(in srgb,var(--ink) 45%,transparent)}
 @media (min-width:900px){ body.sheetmin .sheet .tabs,body.sheetmin #body{opacity:1;pointer-events:auto} }
 
-.layers label{position:relative}
+.lrow{display:flex;align-items:center;gap:6px}
+.lrow > label{flex:1;min-width:0}
 .lfbtn{margin-left:auto;position:relative;width:32px;height:32px;flex:0 0 32px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;padding:0;cursor:pointer}
 .lfbtn[hidden]{display:none}
 .lfbtn svg{width:18px;height:18px}
@@ -5697,19 +5698,22 @@ var IFILT = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" st
 /* Filter-Knopf rechts in der Ebenen-Zeile (statt Zeile darunter); Punkt zeigt aktiven Filter */
 function lcatHead(k, txt, active){
   var lab = $(k==="wish" ? "lWish" : "lPoi"); lab = lab && lab.parentNode; if(!lab) return "";
-  var b = lab.querySelector(".lfbtn"); if(!b){ b = document.createElement("button"); b.type = "button"; b.className = "lfbtn"; b.setAttribute("data-act", "lcattog"); b.setAttribute("data-k", k); lab.appendChild(b); }
+  // Knopf außerhalb des Labels (sonst schaltet ein Tipp auf iOS die Ebene um): Zeile umschließen
+  var row = lab.parentNode.classList.contains("lrow") ? lab.parentNode : null;
+  if(!row){ row = document.createElement("div"); row.className = "lrow"; lab.parentNode.insertBefore(row, lab); row.appendChild(lab); }
+  var b = row.querySelector(".lfbtn"); if(!b){ b = document.createElement("button"); b.type = "button"; b.className = "lfbtn"; b.setAttribute("data-act", "lcattog"); b.setAttribute("data-k", k); row.appendChild(b); }
   b.classList.toggle("act", !!active); b.classList.toggle("open", !!lcatOpen[k]); b.setAttribute("aria-expanded", !!lcatOpen[k]); b.setAttribute("aria-label", "Kategorien filtern"+(active ? " – Filter aktiv: "+txt : "")); b.title = active ? "Filter aktiv: "+txt : "Kategorien filtern";
   b.innerHTML = IFILT+(active ? "<i class=\"lcat-dot\"></i>" : "");
   return ""; }
 function renderPoiCats(){
-  var el = $("poiCats"); el.hidden = !poiOn; var fb0 = $("lPoi").parentNode.querySelector(".lfbtn"); if(fb0) fb0.hidden = !poiOn; if(!poiOn) return;
+  var el = $("poiCats"); el.hidden = !poiOn; var fb0 = $("lPoi").closest(".lrow"); fb0 = fb0 && fb0.querySelector(".lfbtn"); if(fb0) fb0.hidden = !poiOn; if(!poiOn) return;
   var on = POIGROUPS.filter(function(g){ return !poiOff[g[0]]; }).length, act = on < POIGROUPS.length;
   el.classList.add("lcats"); el.classList.toggle("shut", !lcatOpen.poi);
   el.innerHTML = lcatHead("poi", act ? on+" von "+POIGROUPS.length : "Alle", act)+(lcatOpen.poi ? "<div class=\"la\"><button type=\"button\" data-act=\"poiall\">Alle</button><button type=\"button\" data-act=\"poinone\">Keine</button></div><div class=\"pc\">"+
     POIGROUPS.map(function(g){ return "<button type=\"button\" data-act=\"poicat\" data-cat=\""+g[0]+"\" aria-pressed=\""+!poiOff[g[0]]+"\"><i style=\"background:"+g[2]+"\"></i>"+esc(g[1])+"</button>"; }).join("")+"</div>" : "");
 }
 function renderWishCats(){
-  var el = $("wishCats"); if(!el) return; var show = !!(layers.wish || isRO()) && !isRO(); el.hidden = !show; var fb1 = $("lWish").parentNode.querySelector(".lfbtn"); if(fb1) fb1.hidden = !show; if(!show) return; el.classList.toggle("shut", !lcatOpen.wish);
+  var el = $("wishCats"); if(!el) return; var show = !!(layers.wish || isRO()) && !isRO(); el.hidden = !show; var fb1 = $("lWish").closest(".lrow"); fb1 = fb1 && fb1.querySelector(".lfbtn"); if(fb1) fb1.hidden = !show; if(!show) return; el.classList.toggle("shut", !lcatOpen.wish);
   var ks = Object.keys(catFilter), act = ks.length > 0, cc = {}; wishes().forEach(function(p){ cc[p.c] = (cc[p.c]||0) + 1; });
   el.innerHTML = lcatHead("wish", act ? ks.map(function(k){ return CATNAME[k]; }).slice(0, 2).join(", ")+(ks.length > 2 ? " +"+(ks.length-2) : "") : "Alle", act)+
     (lcatOpen.wish ? "<div class=\"la\"><button type=\"button\" data-act=\"lwcat\" data-cat=\"\">Alle</button><span class=\"cnt\">wirkt auch auf die Wunschliste</span></div><div class=\"pc\">"+
