@@ -1990,6 +1990,14 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .plan-opt b{font:600 15.5px/1.2 var(--f-body)}
 .plan-opt small{font-size:12.5px;color:var(--muted)}
 .plan-card .cf-row .cf-no{flex:1}
+
+.sugb{color:#E5A100}
+.sug-card .pf-seg{margin-bottom:6px}
+.sugcats{margin:4px -4px 8px;padding:0 4px 2px}
+.sug-row{display:flex;align-items:center;gap:6px}
+.sug-row .srow{flex:1;min-width:0}
+.sug-add{flex:0 0 auto;padding:7px 11px !important;font-size:13px !important}
+.sug-in{flex:0 0 auto;font-size:12.5px;padding-right:4px}
 </style>
 </head>
 <body>
@@ -3280,6 +3288,100 @@ function drawLocs(){
   btn.addEventListener("mousedown", function(e){ e.preventDefault(); });
   btn.addEventListener("click", clear);
 })();
+/* ---------- Vorschläge entlang einer Gehroute: aus der Wunschliste und öffentliche Orte (OpenStreetMap) ---------- */
+var SUG = {li:-1, tab:"wish", cat:"", pub:{}, busy:false, err:""}, SUGR = 250;
+function sugBtn(i){ return isRO() ? "" : "<button type=\"button\" class=\"viab sugb\" data-act=\"sugopen\" data-leg=\""+i+"\" title=\"Vorschläge auf dem Weg\" aria-label=\"Vorschläge auf diesem Weg\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 2.5l1.6 4.1 4.4.3-3.4 2.8 1.1 4.3L10 11.6 6.3 14l1.1-4.3L4 6.9l4.4-.3z\"/><path d=\"M15.5 13.5l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6z\"/></svg></button>"; }
+function sugPath(pr){ var p = walkPath(pr[0], pr[1], legVia(pr[0], pr[1])); return p && p.length > 1 ? p : [pr[0], pr[1]]; }
+function sugDist(q, path){
+  var k = 111320, cs = Math.cos(q.la*Math.PI/180), best = Infinity;
+  for(var i = 0; i < path.length - 1; i++){
+    var ax = (path[i].lo - q.lo)*k*cs, ay = (path[i].la - q.la)*k, bx = (path[i+1].lo - q.lo)*k*cs, by = (path[i+1].la - q.la)*k;
+    var dx = bx - ax, dy = by - ay, L = dx*dx + dy*dy, t = L ? Math.max(0, Math.min(1, -(ax*dx + ay*dy)/L)) : 0, x = ax + t*dx, y = ay + t*dy;
+    best = Math.min(best, Math.sqrt(x*x + y*y));
+  }
+  return best;
+}
+function sugInsertIdx(pr){ var o = ord(cur), bi = pr[1].id ? o.indexOf(pr[1].id) : -1; if(bi > -1) return bi; var ai = pr[0].id ? o.indexOf(pr[0].id) : -1; return ai > -1 ? ai + 1 : o.length; }
+function sugOsmCat(tg){
+  var a = tg.amenity, t = tg.tourism, s = tg.shop, l = tg.leisure, h = tg.historic;
+  if(/^(restaurant|fast_food|food_court)$/.test(a)) return "essen";
+  if(/^(cafe|ice_cream)$/.test(a) || /^(bakery|confectionery|chocolate|pastry)$/.test(s)) return "cafe";
+  if(/^(bar|pub|biergarten|nightclub)$/.test(a)) return "bar";
+  if(/^(museum|gallery)$/.test(t) || /^(theatre|arts_centre|cinema)$/.test(a)) return "kultur";
+  if(t==="viewpoint") return "aussicht";
+  if(/^(park|garden)$/.test(l) || t==="zoo") return "park";
+  if(/^(attraction|artwork)$/.test(t) || h || a==="place_of_worship") return "sight";
+  if(s) return "shop";
+  if(/^(spa)$/.test(a) || /^(sports_centre|fitness_centre|water_park|bowling_alley)$/.test(l) || t==="theme_park") return "erlebnis";
+  return "sight";
+}
+function sugLoadPub(li){
+  var LG = dayLegs(cur), pr = LG[li]; if(!pr) return;
+  var path = sugPath(pr), step = Math.max(1, Math.ceil(path.length/40)), pts = [];
+  for(var i = 0; i < path.length; i += step) pts.push(path[i]); pts.push(path[path.length-1]);
+  var key = cur+"|"+li+"|"+pts.map(function(p){ return (+p.la).toFixed(4)+","+(+p.lo).toFixed(4); }).join(";");
+  if(SUG.pub[key]){ SUG.pubKey = key; return; }
+  SUG.pubKey = key; SUG.busy = true; SUG.err = ""; renderSug();
+  var ll = pts.map(function(p){ return (+p.la).toFixed(5)+","+(+p.lo).toFixed(5); }).join(","), A = "(around:"+SUGR+","+ll+")";
+  var q = "[out:json][timeout:20];(" +
+    "nwr"+A+"[amenity~\"^(restaurant|fast_food|cafe|ice_cream|bar|pub|biergarten|theatre|arts_centre|place_of_worship|spa)$\"][name];" +
+    "nwr"+A+"[tourism~\"^(museum|gallery|attraction|viewpoint|artwork|zoo|theme_park)$\"][name];" +
+    "nwr"+A+"[shop~\"^(bakery|confectionery|chocolate|pastry|deli|books|clothes|department_store|gift|boutique|jewelry|shoes)$\"][name];" +
+    "nwr"+A+"[leisure~\"^(park|garden)$\"][name];" +
+    "nwr"+A+"[historic~\"^(monument|memorial|building|castle)$\"][name];" +
+    ");out center 200;";
+  fetch("https://overpass-api.de/api/interpreter", {method:"POST", body:"data="+encodeURIComponent(q), headers:{"Content-Type":"application/x-www-form-urlencoded"}})
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(j){
+      var seen = {}, out = [];
+      (j.elements||[]).forEach(function(e){ var tg = e.tags || {}, la = e.lat!=null ? e.lat : e.center && e.center.lat, lo = e.lon!=null ? e.lon : e.center && e.center.lon; if(la==null || !tg.name) return;
+        var k2 = norm(tg.name).slice(0, 14); if(seen[k2]) return; seen[k2] = 1;
+        var addr = [tg["addr:housenumber"], tg["addr:street"]].filter(Boolean).join(" ");
+        out.push({n:tg.name, la:+la.toFixed(6), lo:+lo.toFixed(6), c:sugOsmCat(tg), addr:addr, kind:tg.cuisine ? tg.cuisine.split(";")[0].replace(/_/g, " ") : (tg.amenity || tg.tourism || tg.shop || tg.leisure || tg.historic || "").replace(/_/g, " ")});
+      });
+      SUG.pub[key] = out; SUG.busy = false; renderSug();
+    }, function(e){ SUG.busy = false; SUG.err = "Öffentliche Vorschläge konnten nicht geladen werden ("+(e && e.message || "Netz")+")."; renderSug(); });
+}
+function openSug(li){ SUG.li = li; SUG.tab = SUG.tab || "wish"; SUG.sc = 0; renderSug(true); if(SUG.tab==="pub") sugLoadPub(li); }
+function sugInTrip(r){ var t = T(), nm = norm(r.n).slice(0, 6); return Object.keys(t.places).some(function(id){ var p = t.places[id]; return p && hasLoc(p) && dist(p, r) < 80 && norm(p.n).slice(0, 6)===nm; }); }
+function renderSug(first){
+  var LG = dayLegs(cur), pr = LG[SUG.li]; if(!pr){ closeCatPop(); return; }
+  var path = sugPath(pr), list = [];
+  if(SUG.tab==="wish"){
+    wishes().forEach(function(p){ if(!hasLoc(p) || p.k==="hotel") return; var d = sugDist(p, path); if(d <= SUGR*1.6) list.push({id:p.id, n:p.n, c:p.c, la:p.la, lo:p.lo, d:d, sub:p.addr || listName(p.list)}); });
+  } else {
+    (SUG.pub[SUG.pubKey] || []).forEach(function(r){ var d = sugDist(r, path); if(d <= SUGR) list.push({n:r.n, c:r.c, la:r.la, lo:r.lo, d:d, addr:r.addr, sub:[r.kind, r.addr].filter(Boolean).join(" · "), pub:1, inT:sugInTrip(r)}); });
+  }
+  var counts = {}; list.forEach(function(r){ counts[r.c] = (counts[r.c]||0) + 1; });
+  if(SUG.cat) list = list.filter(function(r){ return r.c===SUG.cat; });
+  list.sort(function(a, b){ return a.d - b.d; });
+  SUG.list = list;
+  var h = "<div class=\"pop-card sug-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Vorschläge auf dem Weg\"><div class=\"pop-head\"><h4>Vorschläge auf dem Weg</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<p class=\"note\" style=\"margin:0 2px 10px\">"+esc(pr[0].n || "Hotel")+" → "+esc(pr[1].n || "Hotel")+" · bis "+(SUG.tab==="wish" ? Math.round(SUGR*1.6) : SUGR)+" m vom Weg</p>"+
+    "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"sugtab\" data-v=\"wish\" aria-selected=\""+(SUG.tab==="wish")+"\">Aus deiner Wunschliste</button><button type=\"button\" role=\"tab\" data-act=\"sugtab\" data-v=\"pub\" aria-selected=\""+(SUG.tab==="pub")+"\">Öffentlich</button></div>"+
+    "<div class=\"srcats sugcats\" role=\"tablist\" aria-label=\"Kategorie\"><button type=\"button\" role=\"tab\" data-act=\"sugcat\" data-v=\"\" aria-selected=\""+(!SUG.cat)+"\">Alle</button>"+
+      CATS.map(function(c){ return "<button type=\"button\" role=\"tab\" data-act=\"sugcat\" data-v=\""+c[0]+"\" aria-selected=\""+(SUG.cat===c[0])+"\" style=\"--cc:"+catCol(c[0])+"\">"+icon(c[0])+"<span>"+esc(c[1])+(counts[c[0]] ? " · "+counts[c[0]] : "")+"</span></button>"; }).join("")+"</div><div class=\"sug-list\">";
+  if(SUG.tab==="pub" && SUG.busy) h += "<p class=\"note nt-empty\">Suche Orte entlang des Wegs …</p>";
+  else if(SUG.tab==="pub" && SUG.err) h += "<p class=\"note nt-empty\">"+esc(SUG.err)+"</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"sugretry\">Nochmal versuchen</button></div>";
+  else if(!list.length) h += "<p class=\"note nt-empty\">"+(SUG.tab==="wish" ? "Keine Wünsche"+(SUG.cat ? " dieser Kategorie" : "")+" in der Nähe dieses Wegs." : "Keine öffentlichen Orte"+(SUG.cat ? " dieser Kategorie" : "")+" direkt am Weg gefunden.")+"</p>";
+  else h += "<ul class=\"srlist\">"+list.slice(0, 60).map(function(r, i){
+      return "<li class=\"sug-row\"><button type=\"button\" class=\"srow\" data-act=\"sugmap\" data-i=\""+i+"\"><span class=\"sric\" style=\"color:"+catCol(r.c)+"\">"+icon(r.c)+"</span><span class=\"srt\"><b>"+esc(r.n)+"</b><small>"+esc([Math.round(r.d/10)*10+" m vom Weg", CATNAME[r.c], r.sub].filter(Boolean).join(" · "))+"</small></span></button>"+
+        (r.inT ? "<span class=\"dc-in sug-in\">✓ In Reise</span>" : "<button type=\"button\" class=\"btn s sug-add\" data-act=\"sugadd\" data-i=\""+i+"\">Einschieben</button>")+"</li>"; }).join("")+"</ul>";
+  h += "</div></div>";
+  if(first) { var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false; } else catKeep(h);
+}
+function sugAdd(i){
+  var r = SUG.list && SUG.list[i], LG = dayLegs(cur), pr = LG[SUG.li]; if(!r || !pr || isRO()) return;
+  var at = sugInsertIdx(pr), id = r.id;
+  if(!id){ id = uid("w"); T().places[id] = {id:id, n:r.n.slice(0, 80), c:r.c, list:(T().lists[0]||{}).id || null, note:"", addr:(r.addr||"").slice(0, 120), la:r.la, lo:r.lo}; }
+  closeCatPop(); plan(id, cur, at); tab = "day"; renderAll(); select(id);
+}
+function sugMap(i){
+  var r = SUG.list && SUG.list[i]; if(!r) return; closeCatPop();
+  if(r.id){ select(r.id); revealPoint(P(r.id), 16, true); return; }
+  poiSel = {n:r.n, cls:"", sub:"", c:r.c, la:r.la, lo:r.lo, addr:r.addr || ""}; sel = null; select("poi"); poiSel = poiSel || null;
+  if(map) map.easeTo({center:[r.lo, r.la], zoom:Math.max(map.getZoom(), 16), duration:reduceMotion?0:600}); renderCard(); scheduleOverlay();
+}
 /* ---------- Chat mit Freunden (auch über Orte) ---------- */
 var chNewOn = false, chNewQ = "", chMsgErr = false, chPage = false, chOpen = null, chDraft = null, chPickOn = false, chPickQ = "", chMsgs = [], chMsgUnsub = null, chStart = 0, chSending = false;
 var CHPH = {}, CH = {list:[], byId:{}, got:false}, CHP = {}, CHPROF = {}, CHPL = {};
@@ -6040,7 +6142,7 @@ function renderDay(){
     var lh = legHidden(a, b), ev = "<button type=\"button\" class=\"leye\" data-act=\"legvis\" data-leg=\""+i+"\" aria-pressed=\""+!lh+"\" title=\""+(lh?"Etappe auf der Karte einblenden":"Etappe auf der Karte ausblenden")+"\" aria-label=\"Etappe auf der Karte zeigen\">"+(lh?EYEOFF:EYE)+"</button>";
     var sw = "<span class=\"lm\" role=\"group\" aria-label=\"Unterwegs auf dieser Etappe\"><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"walk\" aria-pressed=\""+(m==="walk")+"\" title=\"Zu Fuß\" aria-label=\"Zu Fuß\">"+LMWALK+"</button><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"oepnv\" aria-pressed=\""+(m==="oepnv")+"\" title=\"U-Bahn\" aria-label=\"U-Bahn\">"+LMSUB+"</button></span>";
     if(m==="walk"){ var lv = legVia(a, b); walkPath(a, b, lv); var wd = walkDist(a, b, lv) || dist(a, b)*1.25;
-      return pre+"<li class=\"leg tleg lw"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><b>"+Math.max(1,Math.round(wd/1.33/60))+" Min.</b> · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+viaBtn(i, lv)+ev+"</div></li>"; }
+      return pre+"<li class=\"leg tleg lw"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><b>"+Math.max(1,Math.round(wd/1.33/60))+" Min.</b> · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+sugBtn(i)+viaBtn(i, lv)+ev+"</div></li>"; }
     var alts = transitAlts(a, b, cur), r = legRoute(a, b, cur), open = !!legOpen[cur+"|"+i], ai = alts.indexOf(r);
     var fr = !r.walk && r.legs.filter(function(l){ return l.t==="ride"; })[0], lc = fr ? NET.r[fr.r][1] : "";
     return pre+"<li class=\"leg tleg "+(r.walk ? "lw" : "lt")+(legSel===i?" sel":"")+"\""+(lc ? " style=\"--lc:"+lc+"\"" : "")+"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r, true)+"</button>"+
@@ -7206,7 +7308,7 @@ function renderSheet(){
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
-var RO_ACTS = {"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
+var RO_ACTS = {"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
 function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 var roWas = null;
 function applyRO(){
@@ -7595,6 +7697,12 @@ document.addEventListener("click", function(e){
     case "focus": select(id); if(!desktop.matches && sheetState==="full") setSheet("mid"); revealPoint(P(id), 15, true); break;
     case "plan": plan(id, cur); sel = id; renderAll(); break;
     case "planpick": planPick(t); break;
+    case "sugopen": SUG.cat = ""; openSug(parseInt(t.getAttribute("data-leg"), 10)); break;
+    case "sugtab": SUG.tab = t.getAttribute("data-v"); renderSug(); if(SUG.tab==="pub") sugLoadPub(SUG.li); break;
+    case "sugcat": SUG.cat = t.getAttribute("data-v") || ""; renderSug(); break;
+    case "sugretry": SUG.pub[SUG.pubKey] = null; SUG.pubKey = ""; sugLoadPub(SUG.li); break;
+    case "sugadd": sugAdd(parseInt(t.getAttribute("data-i"), 10)); break;
+    case "sugmap": sugMap(parseInt(t.getAttribute("data-i"), 10)); break;
     case "planend": planPopClose(); planDo(null); break;
     case "planins": planPopClose(); if(PLANCTX && PLANCTX.lp && lpPt) lpClose(); setTimeout(function(){ openPlanIns(null); }, 30); break;
     case "plancancel": planPopClose(); PLANCTX = null; break;
