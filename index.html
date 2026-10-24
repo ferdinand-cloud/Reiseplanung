@@ -6788,7 +6788,7 @@ function pvHide(){ var L = $("pvLayer"); if(window.pvZoomReset) window.pvZoomRes
 /* Vollbild: nach unten wischen schließt das Foto (nicht im Zoom, nicht im Kommentarfeld) */
 (function(){
   var sw = null;
-  function closeView(){ if(!jp) return; if(jp.ret==="list"){ closeJPop(); return; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); }
+  function closeView(){ if(!jp) return; if(!!jp.ret){ closeJPop(); return; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); }
   document.addEventListener("touchstart", function(e){
     var L = $("pvLayer"); sw = null;
     if(!L || L.hidden || e.touches.length!==1 || !L.contains(e.target)) return;
@@ -6821,7 +6821,7 @@ function pvHide(){ var L = $("pvLayer"); if(window.pvZoomReset) window.pvZoomRes
   document.addEventListener("touchend", end); document.addEventListener("touchcancel", end);
 })();
 function pvOpen(){ var L = $("pvLayer"); return !!(L && !L.hidden); }
-document.addEventListener("keydown", function(e){ if(e.key==="Escape" && pvOpen() && jp){ e.stopPropagation(); if(pvCm){ pvCm = false; phMetaRefresh(); return; } if(jp.ret==="list"){ closeJPop(); return; } jp.view = null; renderJPop(); } }, true);
+document.addEventListener("keydown", function(e){ if(e.key==="Escape" && pvOpen() && jp){ e.stopPropagation(); if(pvCm){ pvCm = false; phMetaRefresh(); return; } if(!!jp.ret){ closeJPop(); return; } jp.view = null; renderJPop(); } }, true);
 function phStep(dir){ var tr = $("pvTrack"); if(!tr) return; var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)) + dir; if(i < 0 || i >= tr.children.length) return; tr.scrollTo({left:i*tr.clientWidth, behavior:"smooth"}); }
 function phLike(ph){
   if(!phSocial()) return;
@@ -8015,7 +8015,7 @@ document.addEventListener("click", function(e){
     case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;
     case "lsfilt": lsFilter = t.getAttribute("data-v"); renderLs(); break;
     case "lsgo": lsGoMap(t.getAttribute("data-pid")); break;
-    case "lsopen": var lop = t.getAttribute("data-pid"); if(P(lop)){ openJPop(lop, dayOf(lop) || ""); if(jp) jp.ret = "list"; } break;
+    case "lsopen": var lop = t.getAttribute("data-pid"); if(P(lop)) openJPop(lop, dayOf(lop) || ""); break;
     case "lsday": closeLsPage(); var lsd = t.getAttribute("data-day"); if(dayByKey(lsd)){ cur = lsd; tab = "day"; renderAll(); fitDay(); } break;
     case "lsph": var lpid = t.getAttribute("data-pid"); if(P(lpid)){ openJPop(lpid, dayOf(lpid) || "", t.getAttribute("data-ph")); if(jp) jp.ret = "list"; } break;
     case "navprof": if(profOpen) closeProfile(); else openProfile(); break;
@@ -8113,7 +8113,7 @@ document.addEventListener("click", function(e){
       if(hjp) renderJPop(); else { renderCard(); renderSheet(); } break;
     case "phretry": phRetry(); phFlush(); break;
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
-    case "phback": if(jp && jp.ret==="list"){ closeJPop(); break; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
+    case "phback": if(jp && !!jp.ret){ closeJPop(); break; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
     case "privp": if(t.closest("#catPop")) closeCatPop(); togglePriv("p", rootPid(jp ? jp.pid : id), function(){ if(jp) renderJPop(); renderSheet(); }); break;
     case "privn": togglePriv("n", jp.pid, function(){ renderJPop(); }); break;
     case "phpriv": togglePriv("ph", t.getAttribute("data-ph"), function(){ phMetaRefresh(); }); break;
@@ -8136,11 +8136,11 @@ document.addEventListener("click", function(e){
     case "moredel": var mdId = sel; askConfirm("Ort löschen?", "„"+((P(mdId)||{}).n||"Ort")+"“ wird aus der Reise entfernt.", "Löschen", function(){ if(sel!==mdId) select(mdId); var tb = document.createElement("button"); tb.type = "button"; tb.setAttribute("data-act", "delplace"); tb.hidden = true; document.body.appendChild(tb); tb.click(); tb.remove(); }); break;
     case "locset": locStart(); break;
     case "phdel": var dph = t.getAttribute("data-ph"), rest = photosOf(jp.pid).filter(function(x){ return x!==dph; }), di = photosOf(jp.pid).indexOf(dph);
-      delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; if(lsPage) renderLs(); if(!jp.view && jp.ret==="list"){ closeJPop(); break; } renderJPop(); break;
+      delPhoto(jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; if(lsPage) renderLs(); if(!jp.view && !!jp.ret){ closeJPop(); break; } renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
     case "jpmore": openJpMore(jp ? jp.pid : id, t); break;
     case "ratepick": openRatePick(t.closest("#jPop") && jp ? jp.pid : id, t); break;
-    case "cphopen": var cpp = sel; if(P(cpp)) openJPop(cpp, dayOf(cpp) || "", t.getAttribute("data-ph")); break;
+    case "cphopen": var cpp = sel; if(P(cpp)){ openJPop(cpp, dayOf(cpp) || "", t.getAttribute("data-ph")); if(jp) jp.ret = "card"; } break; // Foto aus der Ortskarte: beim Schließen zurück zur Karte
     case "rateover": if(t.closest("#catPop")) closeCatPop(); var tov = T(); tov.overrated = tov.overrated || {}; if(tov.overrated[id]) delete tov.overrated[id]; else tov.overrated[id] = 1; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); if(lsPage) setTimeout(renderLs, 0); break;
     case "rate": if(t.closest("#catPop")) closeCatPop(); var tr = T(); tr.rating = tr.rating || {}; var rv = +t.getAttribute("data-v"); if(tr.rating[id]===rv) delete tr.rating[id]; else tr.rating[id] = rv; save(); if(jp && !$("jPop").hidden) renderJPop(); else renderSheet(); if(sel===id) renderCard(); if(lsPage) setTimeout(renderLs, 0); break;
     case "acsignup": openSignup(); break;
