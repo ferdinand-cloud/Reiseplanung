@@ -1502,6 +1502,19 @@ body.profopen .toprow{display:none}
 .pf-tt b{font:600 14.5px/1.25 var(--f-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pf-tt small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pf-empty{grid-column:1/-1}
+.nt-h{font:700 24px/1.2 var(--f-body);margin:4px 0 12px}
+.nt-kinds{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 12px;padding:0 16px}
+.nt-kinds::-webkit-scrollbar{display:none}
+.nt-kinds button{flex:0 0 auto;border:0;border-radius:999px;padding:7px 13px;background:var(--fill);color:var(--ink);font:600 13.5px/1.2 var(--f-body);cursor:pointer;white-space:nowrap}
+.nt-kinds button[aria-selected="true"]{background:var(--ink);color:var(--sheet)}
+.nt-kinds button b{display:inline-block;min-width:18px;height:18px;margin-left:4px;padding:0 5px;border-radius:9px;background:#E5484D;color:#fff;font:700 11px/18px var(--f-body);text-align:center}
+.nt-sec{margin:14px 2px 6px;font:600 13px/1.2 var(--f-body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.ntview .nt-list .ag-row{width:100%}
+.ntview .nt-like .nt-ic{color:#E5484D}
+.ntview .nt-friend .nt-ic,.ntview .nt-join .nt-ic{color:var(--accent)}
+.ntview .nt-invite .nt-ic{color:#C9A227}
+.ntview .nt.new .nt-ic{color:#fff !important}
+.nt-empty{margin-top:24px;text-align:center}
 .pf-inv{display:block;width:100%;margin-top:12px;border:0;border-radius:12px;padding:12px 14px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--ink);font:600 14px/1.3 var(--f-body);text-align:left;cursor:pointer}
 .pf-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
 .pf-acts .btn{flex:1 1 auto}
@@ -1652,6 +1665,7 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 </nav>
 <div class="toprow"><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="camBtn" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button></div></div>
 <div class="profview" id="profView" hidden></div>
+<div class="profview ntview" id="ntView" hidden></div>
 <input type="file" id="avIn" accept="image/*" hidden>
 <div class="tripmenu" id="tripMenu" hidden></div>
 <div class="addmenu" id="addMenu" role="dialog" aria-label="Hinzufügen" hidden></div>
@@ -2536,7 +2550,7 @@ function ntAdd(it, pop){
   if(!ntUid || NT.items.some(function(x){ return x.id===it.id; })) return;
   it.at = it.at || Date.now(); it.read = false;
   NT.items.push(it); NT.items.sort(function(a, b){ return b.at - a.at; });
-  ntSave(); ntBadge(); if(accView==="notifs" && !$("acctPop").hidden) openSettings();
+  ntSave(); ntBadge(); if(accView==="notifs" && !$("acctPop").hidden) openSettings(); if(ntPage) renderNt();
   if(pop !== false) setTimeout(function(){ frToast(it.text, "ntgo", it.id); }, 300);
 }
 function ntName(uid0, fb, cb){
@@ -2623,7 +2637,36 @@ function notifsHTML(){
   h += "</div><div class=\"nt-foot\">"+(ntUnread() ? "<button type=\"button\" class=\"btn g s\" data-act=\"ntread\">Alle als gelesen markieren</button>" : "")+"<button type=\"button\" class=\"btn g s\" data-act=\"ntclear\">Alle entfernen</button></div></div>";
   return h;
 }
+/* Mitteilungen als eigene Seite, nach Art filterbar */
+var ntPage = false, ntKind = "all";
+var NTKINDS = [["all","Alle"],["comment","Kommentare"],["like","Gefällt mir"],["friend","Freunde"],["invite","Einladungen"],["join","Mitreisende"]];
+function openNtPage(){ closeMenus(); closeProfile(); ntPage = true; renderNt(); $("ntView").hidden = false; document.body.classList.add("profopen"); navActive(); }
+function closeNtPage(){ if(!ntPage) return; ntPage = false; $("ntView").hidden = true; if(!profOpen) document.body.classList.remove("profopen"); navActive(); }
+function renderNt(){
+  var el = $("ntView"); if(!el) return;
+  var items = NT.items, cnt = {}; items.forEach(function(x){ if(!x.read){ cnt[x.type] = (cnt[x.type]||0) + 1; cnt.all = (cnt.all||0) + 1; } });
+  var has = {}; items.forEach(function(x){ has[x.type] = 1; });
+  var h = "<div class=\"pf nt-page\"><h2 class=\"nt-h\">Mitteilungen</h2>";
+  h += "<div class=\"nt-kinds\" role=\"tablist\">"+NTKINDS.filter(function(k){ return k[0]==="all" || has[k[0]]; }).map(function(k){
+    return "<button type=\"button\" role=\"tab\" data-act=\"ntkind\" data-v=\""+k[0]+"\" aria-selected=\""+(ntKind===k[0])+"\">"+k[1]+(cnt[k[0]] ? " <b>"+cnt[k[0]]+"</b>" : "")+"</button>"; }).join("")+"</div>";
+  var list = items.filter(function(x){ return ntKind==="all" || x.type===ntKind; });
+  if(!list.length){
+    h += "<p class=\"note nt-empty\">"+(items.length ? "Keine Mitteilungen dieser Art." : "Noch keine Mitteilungen. Hier erscheinen Kommentare und Likes in gemeinsamen Reisen, Freundschaftsanfragen, Einladungen und neue Mitreisende.")+"</p>";
+  } else {
+    var today = new Date(); today.setHours(0,0,0,0); var t0 = today.getTime(), t1 = t0 - 86400000, t7 = t0 - 6*86400000, grp = "";
+    list.forEach(function(x){
+      var g = x.at >= t0 ? "Heute" : x.at >= t1 ? "Gestern" : x.at >= t7 ? "Diese Woche" : "Früher";
+      if(g!==grp){ if(grp) h += "</div>"; grp = g; h += "<div class=\"nt-sec\">"+g+"</div><div class=\"ag-grp nt-list\">"; }
+      h += "<button type=\"button\" class=\"ag-row nt nt-"+esc(x.type)+(x.read ? "" : " new")+"\" data-act=\"ntgo\" data-v=\""+esc(x.id)+"\"><span class=\"nt-ic\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+(NTIC[x.type]||NTIC.comment)+"</svg></span>"+
+           "<span class=\"nt-t\"><b>"+esc(x.text)+"</b>"+(x.sub ? "<q>"+esc(x.sub)+"</q>" : "")+"<small>"+ntAgo(x.at)+"</small></span>"+(x.read ? "" : "<i class=\"nt-dot\" aria-label=\"neu\"></i>")+"</button>";
+    });
+    h += "</div>";
+  }
+  if(items.length) h += "<div class=\"pf-acts\">"+(ntUnread() ? "<button type=\"button\" class=\"btn g\" data-act=\"ntread\">Alle als gelesen markieren</button>" : "")+"<button type=\"button\" class=\"btn g\" data-act=\"ntclear\">Alle entfernen</button></div>";
+  el.innerHTML = h+"</div>";
+}
 function ntOpen(id){
+  closeNtPage();
   var it = NT.items.filter(function(x){ return x.id===id; })[0];
   $("toast").hidden = true;
   if(!it){ accView = "notifs"; openSettings(); return; }
@@ -2679,13 +2722,13 @@ function acctHTML(){
 /* ---------- Leiste oben & Profilseite ---------- */
 var profOpen = false, profTab = "mine";
 function setNavDot(on){ var a = $("menuBtn"); if(a) a.classList.toggle("dot", !!on); var b = $("tbProf"); if(b) b.classList.toggle("dot", !!on); }
-function navActive(){ var pm = profOpen; $("tbMap").classList.toggle("on", !pm); $("tbProf").classList.toggle("on", pm);
+function navActive(){ var pm = profOpen, np = typeof ntPage!=="undefined" && ntPage; $("tbMap").classList.toggle("on", !pm && !np); $("tbProf").classList.toggle("on", pm); $("bellBtn").classList.toggle("on", np);
   if(pm){ $("tbProf").setAttribute("aria-current", "page"); $("tbMap").removeAttribute("aria-current"); } else { $("tbMap").setAttribute("aria-current", "page"); $("tbProf").removeAttribute("aria-current"); } }
 function avHTML(cls){ var ph = PROF && PROF.photo, nm = (PROF && PROF.name) || myMail() || "?";
   return ph ? "<img class=\""+cls+"\" src=\""+ph+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
 function navAv(){ var e = $("tbAv"); if(!e) return; e.innerHTML = acct.user ? avHTML("tbimg") : "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/><path d=\"M6.2 18.4a7 7 0 0 1 11.6 0\"/></svg>"; }
-function openProfile(){ closeMenus(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
-function closeProfile(){ if(!profOpen) return; profOpen = false; $("profView").hidden = true; document.body.classList.remove("profopen"); navActive(); }
+function openProfile(){ closeMenus(); closeNtPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
+function closeProfile(){ if(!profOpen) return; profOpen = false; $("profView").hidden = true; if(!ntPage) document.body.classList.remove("profopen"); navActive(); }
 function tripCover(id){ var t = S.trips[id], ps = (t && t.photos) || {}, ks = Object.keys(ps); for(var i = 0; i < ks.length; i++){ var a = ps[ks[i]] || []; if(a.length) return a[a.length-1]; } return null; }
 function renderProfile(){
   var el = $("profView"); if(!el) return;
@@ -6142,8 +6185,8 @@ document.addEventListener("click", function(e){
     case "hotelafter": var hpid = t.getAttribute("data-pid") || id; closeCatPop(); hotelStop(dayOf(hpid), hpid); renderAll(); break;
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
-    case "srchopen": closeMenus(); openSearch(); break;
-    case "navmap": closeProfile(); closeMenus(); break;
+    case "srchopen": closeMenus(); closeProfile(); closeNtPage(); openSearch(); break;
+    case "navmap": closeProfile(); closeNtPage(); closeMenus(); break;
     case "navprof": if(profOpen) closeProfile(); else openProfile(); break;
     case "pftab": profTab = t.getAttribute("data-v"); renderProfile(); break;
     case "pfopen": closeProfile(); var pft = t.getAttribute("data-trip"); if(S.trips[pft]){ closeSettings(); grpSel = ""; S.cur = pft; save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
@@ -6173,10 +6216,11 @@ document.addEventListener("click", function(e){
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": poiAdd(t.getAttribute("data-to")); break;
     case "acctclose": closeSettings(); break;
-    case "bell": closeMenus(); $("toast").hidden = true; accView = "notifs"; openSettings(); break;
+    case "bell": closeMenus(); $("toast").hidden = true; if(ntPage) closeNtPage(); else openNtPage(); break;
+    case "ntkind": ntKind = t.getAttribute("data-v"); renderNt(); break;
     case "ntgo": ntOpen(t.getAttribute("data-v")); break;
-    case "ntread": NT.items.forEach(function(x){ x.read = true; }); ntSave(); ntBadge(); openSettings(); break;
-    case "ntclear": NT.items = []; ntSave(); ntBadge(); openSettings(); break;
+    case "ntread": NT.items.forEach(function(x){ x.read = true; }); ntSave(); ntBadge(); if(ntPage) renderNt(); else openSettings(); break;
+    case "ntclear": NT.items = []; ntSave(); ntBadge(); ntKind = "all"; if(ntPage) renderNt(); else openSettings(); break;
     case "accview": accView = t.getAttribute("data-v"); unameMsg = ""; openSettings(); var fi = $(accView==="search" ? "frQ" : "unIn"); if(fi && accView!=="main") fi.focus(); break;
     case "frreq": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); break;
     case "fracc": frAccept(t.getAttribute("data-uid")); break;
