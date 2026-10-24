@@ -1946,6 +1946,12 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .cphadd svg{width:19px;height:19px}
 .card .ch .cph + .cphadd{margin-left:6px;width:30px;height:30px}
 .cphadd.sm svg{width:17px;height:17px}
+
+.ch-phc img,.ch-phph{cursor:zoom-in}
+.ch-phcap{cursor:pointer}
+.ch-phc.dr .ch-phcap{cursor:default}
+.ch-phgo{margin-left:auto;width:28px;height:28px;flex:0 0 28px;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--accent)}
+.ch-phgo svg{width:14px;height:14px}
 </style>
 </head>
 <body>
@@ -3285,8 +3291,9 @@ function chCloseConv(){ if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } chOpe
 function chWith(u){ var me = acct.user && acct.user.uid; if(!me || !u) return null; return chId(me, u); }
 function chMatch(pl){ var out = null; Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; return Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = {tid:tid, pid:pid}; return true; } return false; }); }); return out; }
 function chPhotoCard(ph, key, draft){
-  return "<div class=\"ch-phc"+(draft?" dr":"")+"\""+(draft ? "" : " data-act=\"chphopen\" data-k=\""+key+"\" role=\"button\" tabindex=\"0\"")+">"+(ph.th ? "<img src=\""+ph.th+"\" alt=\"\">" : "<div class=\"ch-phph\">📷</div>")+
-    "<div class=\"ch-phcap\"><span class=\"cic\" style=\"--cc:"+catCol(ph.c)+"\">"+icon(ph.c)+"</span><span><b>"+esc(ph.n||"Foto")+"</b><small>"+esc([ph.trip, draft ? "" : "Antippen, um Foto und Eintrag zu öffnen"].filter(Boolean).join(" · "))+"</small></span></div></div>";
+  var A = function(act){ return draft ? "" : " data-act=\""+act+"\" data-k=\""+key+"\" role=\"button\" tabindex=\"0\""; };
+  return "<div class=\"ch-phc"+(draft?" dr":"")+"\">"+(ph.th ? "<img src=\""+ph.th+"\" alt=\"Foto ansehen\""+A("chphfull")+">" : "<div class=\"ch-phph\""+A("chphfull")+">📷</div>")+
+    "<div class=\"ch-phcap\""+A("chphopen")+"><span class=\"cic\" style=\"--cc:"+catCol(ph.c)+"\">"+icon(ph.c)+"</span><span><b>"+esc(ph.n||"Foto")+"</b><small>"+esc(ph.trip||"")+"</small></span>"+(draft ? "" : "<span class=\"ch-phgo\">"+MAPGO+"</span>")+"</div></div>";
 }
 function chPhotoFrom(ph){
   var tid = S.cur, t = T(), pid = phPlace(ph), p = pid && t.places[pid]; if(!p) return Promise.resolve(null);
@@ -3303,18 +3310,27 @@ function chPhSendTo(u, ph){
   closeJpMore(); var cid = chWith(u); if(!cid) return;
   chPhotoFrom(ph).then(function(o){ if(!o){ toast("Foto nicht gefunden", false); return; } pvHide(); openChPage(cid); chDraft = o; renderChDraft(); setTimeout(function(){ var i = $("chIn"); if(i) i.focus(); }, 80); });
 }
-function chPhOpen(key){
+function chPhFull(key){ chPhOpen(key, true); }
+function chPhOpen(key, full){
   var o = CHPH[key]; if(!o) return;
   var tid = Object.keys(S.trips).filter(function(id){ return id===o.gid || gidFor(id)===o.gid; })[0], t = tid && S.trips[tid];
-  if(t && t.places[o.pid] && ((t.photos||{})[o.pid]||[]).indexOf(o.ph) > -1){
+  var acc = !!(t && t.places[o.pid] && ((t.photos||{})[o.pid]||[]).indexOf(o.ph) > -1);
+  if(acc && !full){
     closeChPage();
     if(tid!==S.cur){ grpSel = ""; S.cur = tid; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
     var dk = dayOf(o.pid); if(dk) cur = dk; tab = dk ? "day" : "wish"; renderAll(); select(o.pid); revealPoint(P(o.pid), 16, true);
-    openJPop(o.pid, dk, o.ph); return;
+    return;
   }
-  var el = $("chPhView"); if(!el){ el = document.createElement("div"); el.id = "chPhView"; el.className = "chphview"; document.body.appendChild(el); el.addEventListener("click", function(){ el.hidden = true; el.innerHTML = ""; }); }
-  el.innerHTML = "<button type=\"button\" class=\"chpv-x\" aria-label=\"Schließen\">✕</button>"+(o.th ? "<img src=\""+o.th+"\" alt=\"\">" : "")+"<div class=\"chpv-cap\"><b>"+esc(o.n||"Foto")+"</b><small>"+esc(o.trip||"")+(t ? "" : " · Diese Reise ist nicht mit dir geteilt")+"</small></div>";
-  el.hidden = false;
+  if(!full){ toast("Diese Reise ist nicht mit dir geteilt – den Ort kannst du nicht auf deiner Karte öffnen.", false); return; }
+  var el = $("chPhView"); if(!el){ el = document.createElement("div"); el.id = "chPhView"; el.className = "chphview"; document.body.appendChild(el); var shut = function(){ el.hidden = true; el.innerHTML = ""; el.style.transform = ""; el.style.opacity = ""; };
+    el.addEventListener("click", function(){ if(Date.now() - (el._sw||0) < 400) return; shut(); });
+    var y0 = null; el.addEventListener("touchstart", function(e){ y0 = e.touches.length===1 ? e.touches[0].clientY : null; el.style.transition = "none"; }, {passive:true});
+    el.addEventListener("touchmove", function(e){ if(y0==null) return; var dy = Math.max(0, e.touches[0].clientY - y0); el.style.transform = "translateY("+dy+"px)"; el.style.opacity = String(Math.max(.3, 1 - dy/500)); }, {passive:true});
+    el.addEventListener("touchend", function(e){ if(y0==null) return; var dy = (e.changedTouches[0].clientY - y0); y0 = null; el.style.transition = "transform .2s, opacity .2s"; el._sw = Date.now();
+      if(dy > 110){ el.style.transform = "translateY(100%)"; el.style.opacity = "0"; setTimeout(shut, 200); } else { el.style.transform = ""; el.style.opacity = ""; if(Math.abs(dy) < 8) el._sw = 0; } }); }
+  el.innerHTML = "<button type=\"button\" class=\"chpv-x\" aria-label=\"Schließen\">✕</button>"+(o.th ? "<img id=\"chPvImg\" src=\""+o.th+"\" alt=\"\">" : "")+"<div class=\"chpv-cap\"><b>"+esc(o.n||"Foto")+"</b><small>"+esc(o.trip||"")+(acc ? "" : " · Diese Reise ist nicht mit dir geteilt")+"</small></div>";
+  el.style.transform = ""; el.style.opacity = ""; el.hidden = false;
+  if(acc) phGet(o.ph).then(function(d){ var im = $("chPvImg"); if(d && im && !el.hidden) im.src = d; }, function(){});
 }
 function chPlaceCard(pl, key, draft){
   var RR = RATES.filter(function(x){ return x[0]===pl.rating; })[0], inT = chMatch(pl);
@@ -7300,6 +7316,7 @@ document.addEventListener("click", function(e){
     case "phsend": chPhSendMenu(t.getAttribute("data-ph"), t); break;
     case "chphto": chPhSendTo(t.getAttribute("data-uid"), t.getAttribute("data-ph")); break;
     case "chphopen": chPhOpen(t.getAttribute("data-k")); break;
+    case "chphfull": chPhFull(t.getAttribute("data-k")); break;
     case "chshareto": chShareTo(t.getAttribute("data-uid"), t.getAttribute("data-pid")); break;
     case "navsrch": if(gsPage) closeGsPage(); else openGsPage(); break;
     case "gsfriend": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); setTimeout(renderGs, 600); break;
