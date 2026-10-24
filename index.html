@@ -1533,6 +1533,20 @@ body.ro label:has(#lRoute),body.ro label:has(#lWish),body.ro label:has(#lSub),bo
 .toprow #camBtn{flex:0 0 44px;margin-left:0}
 body.profopen .toprow{display:none}
 @media (min-width:900px){ .tabbar{width:min(440px,calc(100% - 24px))} }
+/* Knopf „Tagesplan & Wunschliste“ im selben Liquid-Glass-Look wie die Leiste oben */
+#sheetOpen{isolation:isolate;padding:12px 20px;
+  background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.12)),color-mix(in srgb,var(--sheet) 46%,transparent);
+  -webkit-backdrop-filter:blur(22px) saturate(200%) brightness(1.04);backdrop-filter:blur(22px) saturate(200%) brightness(1.04);
+  border:.5px solid rgba(255,255,255,.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75),inset 0 -1px 0 rgba(255,255,255,.18),inset 0 0 0 .5px rgba(255,255,255,.12),0 10px 30px rgba(0,0,0,.16),0 1px 3px rgba(0,0,0,.08);
+  transition:transform .25s cubic-bezier(.3,1.4,.5,1)}
+#sheetOpen::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;background:radial-gradient(120% 90% at 20% -20%,rgba(255,255,255,.45),transparent 55%),radial-gradient(90% 80% at 110% 130%,rgba(255,255,255,.18),transparent 60%)}
+#sheetOpen:active{transform:translateX(-50%) scale(1.06)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) #sheetOpen{background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.03)),color-mix(in srgb,var(--sheet) 50%,transparent);border-color:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05),0 10px 30px rgba(0,0,0,.45)}
+  :root:not([data-theme="light"]) #sheetOpen::before{background:radial-gradient(120% 90% at 20% -20%,rgba(255,255,255,.14),transparent 55%)} }
+:root[data-theme="dark"] #sheetOpen{background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.03)),color-mix(in srgb,var(--sheet) 50%,transparent);border-color:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05),0 10px 30px rgba(0,0,0,.45)}
+:root[data-theme="dark"] #sheetOpen::before{background:radial-gradient(120% 90% at 20% -20%,rgba(255,255,255,.14),transparent 55%)}
+@media (prefers-reduced-motion: reduce){ #sheetOpen{transition:none} }
 /* Profilseite */
 .profview{position:fixed;inset:0;z-index:21;background:var(--sheet);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top,0px) + 76px) 16px calc(env(safe-area-inset-bottom,0px) + 24px)}
 .profview[hidden]{display:none}
