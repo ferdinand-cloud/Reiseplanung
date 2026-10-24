@@ -1966,6 +1966,12 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .vm2-leg{height:10px;margin:-2px 0 -2px 27px;border-left:2px dotted color-mix(in srgb,var(--ink) 25%,transparent)}
 .vm2-leg.hi{border-left:3px solid #FF9F0A}
 .am-diag{margin:6px 12px 4px;font-size:11px;color:var(--muted);line-height:1.35}
+
+#chPtr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 84px);z-index:30;width:32px;height:32px;border-radius:50%;background:var(--sheet);box-shadow:0 2px 10px rgba(0,0,0,.25);opacity:0;transform:translate(-50%,0);pointer-events:none;display:grid;place-items:center;transition:opacity .15s}
+#chPtr span{width:16px;height:16px;border-radius:50%;border:2.4px solid color-mix(in srgb,var(--ink) 25%,transparent);border-top-color:var(--accent)}
+#chPtr.ready span{border-color:var(--accent);border-top-color:transparent}
+#chPtr.spin span{animation:ptrspin .7s linear infinite;border-color:color-mix(in srgb,var(--ink) 25%,transparent);border-top-color:var(--accent)}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -3275,8 +3281,9 @@ function chTime(at, long){ if(!at) return ""; var d = new Date(at), n = new Date
 function chUnread(c){ var me = acct.user && acct.user.uid, L = c.last || {}; return !!(L.at && L.from && L.from!==me && L.at > ((c.read||{})[me]||0)); }
 function chBadge(){ var n = CH.list.filter(chUnread).length, b = $("chBadge"); if(b){ b.hidden = !n; b.textContent = n > 9 ? "9+" : n; } }
 function chWatch(){
-  if(!fbDb || !acct.user) return; var me = acct.user.uid; chStart = Date.now(); CH = {list:[], byId:{}, got:false};
-  frUnsub.push(fbDb.collection("chats").where("members", "array-contains", me).onSnapshot(function(qs){
+  if(!fbDb || !acct.user) return; var me = acct.user.uid; chStart = Date.now(); if(chUn){ chUn(); chUn = null; } CH = {list:[], byId:{}, got:false};
+  if(!chUnReg){ chUnReg = true; frUnsub.push(function(){ if(chUn){ chUn(); chUn = null; } chUnReg = false; }); }
+  chUn = (fbDb.collection("chats").where("members", "array-contains", me).onSnapshot(function(qs){
     var first = !CH.got;
     qs.docChanges().forEach(function(ch){
       var c = ch.doc.data(), L = c.last || {}; if(first || ch.type==="removed" || !L.at || L.from===me || L.at < chStart) return;
@@ -3289,6 +3296,26 @@ function chWatch(){
     chBadge(); if(chPage && !chOpen) renderCh();
   }, function(){ CH.got = true; chBadge(); }));
 }
+var chUn = null, chUnReg = false;
+/* Ziehen zum Aktualisieren (Chat-Liste und Gespräch) */
+function chRefresh(){
+  return new Promise(function(res){
+    if(!acct.user || !fbDb){ res(); return; }
+    Object.keys(CHPROF).forEach(function(u){ delete CHPROF[u]; });
+    if(chOpen){ var cid = chOpen, dr = chDraft; chOpenConv(cid); chDraft = dr; renderChDraft(); }
+    else { var was = CH.list.length; chWatch(); renderCh(); }
+    setTimeout(res, 700);
+  });
+}
+(function(){
+  var el = $("chView"); if(!el) return; var ind = document.createElement("div"); ind.id = "chPtr"; ind.innerHTML = "<span></span>"; document.body.appendChild(ind);
+  var y0 = null, d = 0, busy = false, sc = function(){ var m = chOpen ? $("chMsgs") : el; return m ? m.scrollTop : 0; };
+  var setI = function(dd, spin){ ind.style.opacity = dd > 4 || spin ? 1 : 0; ind.style.transform = "translate(-50%,"+Math.min(70, dd*.6)+"px) rotate("+(spin ? 0 : dd*4)+"deg)"; ind.classList.toggle("spin", !!spin); ind.classList.toggle("ready", dd > 70); };
+  el.addEventListener("touchstart", function(e){ if(busy || !chPage || e.touches.length!==1 || $("chPick") && !$("chPick").hidden) return; if(e.target.closest && e.target.closest(".ch-comp,textarea,input")) return; y0 = sc() <= 0 ? e.touches[0].clientY : null; d = 0; }, {passive:true});
+  el.addEventListener("touchmove", function(e){ if(y0==null) return; d = e.touches[0].clientY - y0; if(d < 0 || sc() > 0){ y0 = null; setI(0); return; } setI(d); }, {passive:true});
+  el.addEventListener("touchend", function(){ if(y0==null) return; y0 = null;
+    if(d > 70){ busy = true; setI(70, true); if(navigator.vibrate) navigator.vibrate(8); chRefresh().then(function(){ busy = false; setI(0); }); } else setI(0); d = 0; });
+})();
 function chStopAll(){ if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } CH = {list:[], byId:{}, got:false}; chOpen = null; chBadge(); }
 function chMarkRead(cid){ var me = acct.user && acct.user.uid; if(!me || !CH.byId[cid]) return; var o = {}; o["read."+me] = Date.now(); fbDb.collection("chats").doc(cid).update(o).catch(function(){}); }
 function openChPage(cid){ closeMenus(); closeGsPage(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); if($("jPop") && !$("jPop").hidden) closeJPop(); chPage = true; $("chView").hidden = false; navActive(); if(cid) chOpenConv(cid); else { chCloseConv(); renderCh(); } }
