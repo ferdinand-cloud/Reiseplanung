@@ -6300,6 +6300,9 @@ function placeFloating(){
   var sv = desktop.matches ? 0 : sheetVisible();
   $("card").style.bottom = (desktop.matches ? 16 : sv + 12)+"px";
   var topB = document.querySelector(".top").getBoundingClientRect().bottom;
+  // Karte nach oben begrenzen: nie hinter die Leiste oben rutschen, Inhalt scrollt stattdessen
+  var tr = document.querySelector(".toprow"), cardTop = Math.max(topB, tr && tr.offsetParent ? tr.getBoundingClientRect().bottom : 0);
+  $("card").style.maxHeight = Math.max(160, window.innerHeight - (desktop.matches ? 16 : sv + 12) - (cardTop + 10))+"px";
   $("ctrl").style.top = (topB + 10)+"px";
   $("layers").style.top = Math.round($("layersBtn").getBoundingClientRect().top)+"px";
   $("mapnote").style.left = "";
