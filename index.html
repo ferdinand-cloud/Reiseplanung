@@ -6302,7 +6302,9 @@ function placeFloating(){
   var topB = document.querySelector(".top").getBoundingClientRect().bottom;
   // Karte nach oben begrenzen: nie hinter die Leiste oben rutschen, Inhalt scrollt stattdessen
   var tr = document.querySelector(".toprow"), cardTop = Math.max(topB, tr && tr.offsetParent ? tr.getBoundingClientRect().bottom : 0);
-  $("card").style.maxHeight = Math.max(160, window.innerHeight - (desktop.matches ? 16 : sv + 12) - (cardTop + 10))+"px";
+  var cmax = window.innerHeight - (desktop.matches ? 16 : sv + 12) - (cardTop + 10);
+  if(!desktop.matches) cmax = Math.min(cmax, Math.round(window.innerHeight*0.56)); // oberhalb bleibt Platz für den Punkt
+  $("card").style.maxHeight = Math.max(160, cmax)+"px";
   $("ctrl").style.top = (topB + 10)+"px";
   $("layers").style.top = Math.round($("layersBtn").getBoundingClientRect().top)+"px";
   $("mapnote").style.left = "";
@@ -8011,10 +8013,12 @@ document.addEventListener("click", function(e){
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); tdraft.ok = ""; renderSheet(); break;
     case "tfopen": var tk2 = t.getAttribute("data-k"); tdraft.ok = tdraft.ok===tk2 ? "" : tk2; renderSheet(); break;
     case "close": select(null); break;
-    case "stopopen": select(id); openJPop(id, cur); revealPoint(P(id), 15, true); break;
-    case "wopen": select(id); openJPop(id); revealPoint(P(id), 15, true); break;
+    // Handy: Planung ganz einklappen, auf den Punkt zoomen und dessen Pop-up zeigen – Punkt mit Abstand oberhalb des Pop-ups
+    case "stopopen": select(id); if(desktop.matches){ openJPop(id, cur); revealPoint(P(id), 15, true); } else if(hasLoc(P(id))){ setSheet("min"); setTimeout(function(){ revealPoint(P(id), 16, true); }, 60); } else openJPop(id, cur); break;
+    case "wopen": select(id); if(desktop.matches){ openJPop(id); revealPoint(P(id), 15, true); } else if(hasLoc(P(id))){ setSheet("min"); setTimeout(function(){ revealPoint(P(id), 16, true); }, 60); } else openJPop(id); break;
     case "jpedit": openJPop(t.getAttribute("data-pid") || sel); break;
-    case "focus": select(id); if(!desktop.matches && sheetState==="full") setSheet("mid"); revealPoint(P(id), 15, true); break;
+    case "focus": select(id); if(!desktop.matches) setSheet("min"); // Planung ganz einklappen, Punkt oberhalb des Pop-ups zeigen
+      setTimeout(function(){ revealPoint(P(id), 16, true); }, desktop.matches ? 0 : 60); break;
     case "plan": plan(id, cur); sel = id; renderAll(); break;
     case "planpick": planPick(t); break;
     case "sugopen": SUG.cat = ""; openSug(parseInt(t.getAttribute("data-leg"), 10)); break;
