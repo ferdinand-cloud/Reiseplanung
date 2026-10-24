@@ -1568,6 +1568,8 @@ form.gnew{position:relative}
 .dc-head .dc-title{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
 .dc-head .dc-title b{font:700 22px/1.2 var(--f-body)}
 .dc-head .dc-title small{color:var(--muted);font-size:13px}
+.dc-src{margin-bottom:8px}
+.dc-soon{margin:12px 0 0}
 .dc-card{margin:14px 0;border-radius:18px;overflow:hidden;background:var(--fill)}
 .dc-top{display:flex;align-items:center;gap:10px;padding:10px 12px}
 .dc-av{width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font:700 14px/1 var(--f-body);flex:0 0 34px}
@@ -2835,7 +2837,7 @@ function recSync(){
 function recWipe(){ if(!fbDb || !acct.user) return; var me = acct.user.uid; recCol(me).get().then(function(qs){ qs.docs.forEach(function(d){ d.ref.delete(); }); lsSet("rp-recs-"+me, "{}"); toast("Deine Empfehlungen sind nicht mehr für Freunde sichtbar.", false); }, function(){}); }
 
 /* ---------- Entdecken: Empfehlungen von Freunden am Reiseziel ---------- */
-var dcPage = false, dcScope = "here", DC = {items:[], byKey:{}, at:0, busy:false, err:""};
+var dcPage = false, dcScope = "here", dcSrc = lsGet("rp-dcsrc") || "all", DC = {items:[], byKey:{}, at:0, busy:false, err:""};
 function openDcPage(){ closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); dcPage = true; renderDc(); $("dcView").hidden = false; navActive(); if(Date.now() - DC.at > 120000) dcLoad(); }
 function closeDcPage(){ if(!dcPage) return; dcPage = false; $("dcView").hidden = true; closeJpMore(); navActive(); }
 function dcLoad(){
@@ -2854,10 +2856,12 @@ function tripCenter(){
 function dcInTrip(r){ var t = T(); return Object.keys(t.places).some(function(id){ var p = t.places[id]; return p && hasLoc(p) && dist(p, r) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(r.n||"").toLowerCase().slice(0, 6); }); }
 function renderDc(){
   var el = $("dcView"); if(!el) return;
-  var h = "<div class=\"pf dc-page\"><div class=\"ls-head dc-head\"><div class=\"dc-title\"><b>Entdecken</b><small>Empfehlungen deiner Freunde</small></div>";
+  var h = "<div class=\"pf dc-page\"><div class=\"ls-head dc-head\"><div class=\"dc-title\"><b>Entdecken</b><small>"+(dcSrc==="friends" ? "Empfehlungen deiner Freunde" : "Empfehlungen von Freunden und allen")+"</small></div>";
   var C = tripCenter();
+  h += "<div class=\"pf-seg dc-src\" role=\"tablist\" aria-label=\"Quelle\"><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"all\" aria-selected=\""+(dcSrc==="all")+"\">🌐 Alle</button><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"friends\" aria-selected=\""+(dcSrc==="friends")+"\">👥 Nur Freunde</button></div>";
   h += "<div class=\"nt-kinds\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"dcscope\" data-v=\"here\" aria-selected=\""+(dcScope==="here")+"\">Rund um „"+esc(T().name||"Reise")+"“</button><button type=\"button\" role=\"tab\" data-act=\"dcscope\" data-v=\"all\" aria-selected=\""+(dcScope==="all")+"\">Überall</button></div></div>";
-  if(!acct.user){ el.innerHTML = h+"<p class=\"note nt-empty\">Melde dich an, um Empfehlungen deiner Freunde zu sehen.</p></div>"; return; }
+  if(!acct.user){ el.innerHTML = h+"<p class=\"note nt-empty\">Melde dich an, um Empfehlungen zu sehen.</p></div>"; return; }
+  if(dcSrc==="all") h += "<div class=\"rvsoon dc-soon\"><b>Öffentliche Empfehlungen</b><p>Hier erscheinen künftig auch Empfehlungen aller Nutzer. Bis dahin siehst du die deiner Freunde.</p></div>";
   if(!FR.friends.length){ el.innerHTML = h+"<p class=\"note nt-empty\">Noch keine Freunde. Füge Freunde hinzu – ihre besuchten und gut bewerteten Orte erscheinen dann hier.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div></div>"; return; }
   var list = DC.items.slice();
   if(dcScope==="here" && C) list = list.filter(function(r){ return r.la && dist(C, r) < 40000; });
@@ -3671,7 +3675,7 @@ function lpRender(){
   var h = "<div class=\"pop-card lpcard\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Markierter Punkt\"><div class=\"pop-head\"><h4>Markierter Punkt</h4><button type=\"button\" class=\"x\" data-act=\"lpclose\" aria-label=\"Schließen\">×</button></div>";
   h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || "Unbenannter Ort"))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
   if(ro) h += "<p class=\"note\">Als Beobachter kannst du nichts übernehmen.</p>";
-  else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"lpday\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button><button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button></div>";
+  else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"lpday\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+(dayByKey(cur) && dayLegs(cur).length ? "<button type=\"button\" class=\"btn g\" data-act=\"lpvia\">Als Wegpunkt für die Gehroute</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button><button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button></div>";
   el.innerHTML = h+"</div>"; el.hidden = false;
 }
 function lpClose(){ lpPt = null; if(lpMark){ lpMark.remove(); lpMark = null; } closeCatPop(); }
@@ -3684,6 +3688,38 @@ function lpToDay(){
   var p = lpPt, D = dayByKey(cur); lpClose(); if(!p || !D) return;
   var pid = uid("w"), q = {id:pid, n:(p.n || p.addr || "Markierter Ort").slice(0,80), c:"sight", list:(T().lists[0]||{}).id||null, note:"", addr:(p.addr||"").slice(0,120), la:p.la, lo:p.lo};
   T().places[pid] = q; plan(pid, cur); tab = "day"; renderAll(); select(pid);
+}
+// Etappe des Tages, für die ein Punkt den kleinsten Umweg bedeutet (dort ist er sinnvoller Zwischenpunkt)
+function bestLegFor(q, k){
+  var LG = dayLegs(k || cur), best = -1, bc = Infinity;
+  LG.forEach(function(pr, i){ if(!hasLoc(pr[0]) || !hasLoc(pr[1]) || pr[0].id==="me") return;
+    var pts = [pr[0]].concat(legVia(pr[0], pr[1]).map(function(x){ return {la:x[0], lo:x[1]}; }), [pr[1]]), c = Infinity;
+    for(var j = 0; j < pts.length-1; j++) c = Math.min(c, dist(pts[j], q) + dist(q, pts[j+1]) - dist(pts[j], pts[j+1]));
+    if(c < bc){ bc = c; best = i; } });
+  return best;
+}
+function viaAt(q, k){
+  var li = bestLegFor(q, k); if(li < 0){ toast("Kein passender Weg an diesem Tag gefunden.", false); return false; }
+  var lp = dayLegs(k || cur)[li];
+  if(legMode(lp[0], lp[1])!=="walk") setLegMode(lp[0], lp[1], "walk");
+  addVia(lp[0], lp[1], q); layers.route = true;
+  toast("Wegpunkt zwischen „"+(lp[0].n || "Hotel")+"“ und „"+(lp[1].n || "Hotel")+"“ gesetzt", false);
+  return true;
+}
+function lpToVia(){
+  var p = lpPt; lpClose(); if(!p || !dayByKey(cur)) return;
+  if(viaAt({la:p.la, lo:p.lo})){ tab = "day"; renderAll(); scheduleOverlay(); }
+}
+// geplanten Stopp in einen Wegpunkt umwandeln: verlässt den Tagesplan, lenkt nur noch den Fußweg
+function stopToVia(id){
+  var p = P(id), k = dayOf(id); if(!p || !k || !hasLoc(p)) return;
+  undoSnap = snapshot();
+  var t = T(), q = {la:p.la, lo:p.lo};
+  t.order[k] = ord(k).filter(function(x){ return x!==id; }); delete t.done[id]; if(t.times) delete t.times[id];
+  var bare = !noteOf(id) && !photosOf(id).length && !(CMTS[id]||[]).length && !rateOf(id);
+  if(p.of || (bare && (p.k==="spot" || !p.note))){ delete t.places[id]; }
+  if(k!==cur) cur = k; dirty();
+  viaAt(q, k); sel = null; save(); renderAll(); scheduleOverlay();
 }
 function lpToHotel(){
   var p = lpPt; lpClose(); if(!p) return;
@@ -4979,6 +5015,7 @@ function openCardMore(){
   if(!isHs) h += row("grppick", I("<rect x=\"3\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"3\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/>"), grpName(p.g) ? "Gruppe ändern" : "Zu Gruppe hinzufügen", grpName(p.g) ? "Jetzt: "+esc(grpName(p.g)) : "");
   if(dk && !isHs) h += row("revisit", I("<path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/>"), "Nochmal besuchen …", "Zusätzlich an einem weiteren Tag einplanen", " data-pid=\""+sel+"\"");
   if(dk && dk!==cur) h += row("gotoday", I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14\"/>"), "Tag "+dayByKey(dk).n+" öffnen", esc(dayByKey(dk).lbl), " data-day=\""+dk+"\"");
+  if(dk && !isRO() && p.k!=="hotel" && hasLoc(p)) h += row("tovia", "<span class=\"ai\">"+VIAICO+"</span>", "Nur als Wegpunkt", "Aus dem Tagesplan nehmen, Gehroute führt hier vorbei", " data-pid=\""+sel+"\"");
   if(dk===cur) h += row("unplan", I("<path d=\"M12 5l-5 5 5 5\"/>"), isHs ? "Zwischenstopp entfernen" : p.of ? "Diesen Besuch entfernen" : "Zurück in die Wunschliste", "Aus dem Tagesplan nehmen");
   h += "<a href=\""+gmInfoUrl(p)+"\" target=\"_blank\" rel=\"noopener\" class=\"pl-a\">"+I("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"<span class=\"dt\"><b>In Google Maps öffnen</b><small>Öffnungszeiten, Bewertungen, Fotos</small></span></a>";
   h += row(moreDel ? "delplace" : "moredel", I("<path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/>", "warn"), moreDel ? "Wirklich löschen?" : "Löschen", moreDel ? "Tippe noch einmal zum Bestätigen" : "Punkt aus der Reise entfernen", " class=\"del\"");
@@ -5284,7 +5321,8 @@ function jpPopover(id, btn, html, kind){
 function openJpMore(id, btn){
   var p = P(id); if(!p) return; var g = grpName(p.g), pv = isPrivP(id);
   jpPopover(id, btn, "<button type=\"button\" data-act=\"grppick\" role=\"menuitem\"><span class=\"ai\">▦</span><span>"+(g ? "Gruppe: "+esc(g) : "Zu Gruppe hinzufügen")+"</span></button>"+
-    (canPriv() ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : ""), "more");
+    (canPriv() ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : "")+
+    (dayOf(id) && !isRO() && p.k!=="hotel" && hasLoc(p) ? "<button type=\"button\" data-act=\"tovia\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+VIAICO+"</span><span>Nur als Wegpunkt</span></button>" : ""), "more");
 }
 function openRatePick(id, btn){
   var v = rateOf(id), dkx = jp && jp.pid===id ? jp.dk : dayOf(id), J = (T().journal||{})[dkx] || {}, hl = !!(P(id) && J.hl===P(id).n);
@@ -6583,6 +6621,7 @@ document.addEventListener("click", function(e){
     case "rvopen": rvTab = t.getAttribute("data-v"); if(sel && P(sel)){ openJPop(sel, dayOf(sel) || ""); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"start", behavior: reduceMotion ? "auto" : "smooth"}); }, 120); } break;
     case "rvtab": rvTab = t.getAttribute("data-v"); renderJPop(); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"nearest"}); }, 0); break;
     case "navdisc": if(dcPage) closeDcPage(); else openDcPage(); break;
+    case "dcsrc": dcSrc = t.getAttribute("data-v"); lsSet("rp-dcsrc", dcSrc); renderDc(); break;
     case "dcscope": dcScope = t.getAttribute("data-v"); renderDc(); break;
     case "dcwish": dcAdd(t.getAttribute("data-k"), null); break;
     case "dcplan": var dk0 = t.getAttribute("data-k"); jpPopover("dc", t, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"dcday\" data-k=\""+esc(dk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "dcplan"); break;
@@ -6711,6 +6750,8 @@ document.addEventListener("click", function(e){
     case "lpwish": lpToWish(); break;
     case "lpday": lpToDay(); break;
     case "lphotel": lpToHotel(); break;
+    case "lpvia": lpToVia(); break;
+    case "tovia": var tvid = t.getAttribute("data-pid") || (jp && jp.pid) || sel; closeCatPop(); closeJpMore(); if(jp) closeJPop(); stopToVia(tvid); break;
     case "vcheck": acct.vmsg = "Prüfe …"; renderGate(true); verifyCheck(true); break;
     case "vresend": sendVerify().then(function(){ acct.vmsg = "Neue E-Mail ist unterwegs."; renderGate(true); }, function(e){ acct.vmsg = /too-many/.test(e && e.code || "") ? "Gerade erst gesendet – bitte ein paar Minuten warten." : acctErr(e); renderGate(true); }); break;
     case "vout": window.firebase.auth().signOut(); break;
