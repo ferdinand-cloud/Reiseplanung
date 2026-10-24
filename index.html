@@ -1486,7 +1486,8 @@ body.ro label:has(#lRoute),body.ro label:has(#lWish),body.ro label:has(#lSub),bo
 #tbProf.dot::after{content:"";position:absolute;top:8px;left:calc(50% + 9px);width:9px;height:9px;border-radius:50%;background:#E5484D;border:2px solid var(--sheet)}
 .toprow{display:flex;align-items:center;gap:8px;width:min(440px,100%);pointer-events:none}
 .toprow .trip{flex:0 1 auto;min-width:0;max-width:none;margin-right:auto}
-.toprow #camBtn{flex:0 0 44px;margin-left:auto}
+.toprow #srchBtn{flex:0 0 44px;margin-left:auto}
+.toprow #camBtn{flex:0 0 44px;margin-left:0}
 body.profopen .toprow{display:none}
 @media (min-width:900px){ .tabbar{width:min(440px,calc(100% - 24px))} }
 /* Profilseite */
@@ -1588,6 +1589,12 @@ form.gnew{position:relative}
 .dc-head .dc-title b{font:700 22px/1.2 var(--f-body)}
 .dc-head .dc-title small{color:var(--muted);font-size:13px}
 .dc-src{margin-bottom:8px}
+.gs-box{display:flex;align-items:center;gap:8px;padding:0 12px;border-radius:12px;background:var(--fill)}
+.gs-box svg{width:18px;height:18px;color:var(--muted);flex:0 0 18px}
+.gs-box input{flex:1;min-width:0;border:0;background:none;color:var(--ink);font:16px/1.3 var(--f-body);padding:11px 0;outline:none}
+.gsav{display:grid;place-items:center;border-radius:50%;background:var(--accent);color:#fff;font:700 18px/1 var(--f-body);overflow:hidden}
+.gsav img{width:100%;height:100%;object-fit:cover}
+.gs-page .ls-list .ls-row .btn{flex:0 0 auto}
 .dc-soon{margin:12px 0 0}
 .dc-card{margin:14px 0;border-radius:18px;overflow:hidden;background:var(--fill)}
 .dc-top{display:flex;align-items:center;gap:10px;padding:10px 12px}
@@ -1785,15 +1792,16 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 <button type="button" class="tb on" id="tbMap" data-act="navmap" aria-label="Karte" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4z"/><path d="M9 4v14M15 6v14"/></svg></button>
 <button type="button" class="tb" id="tbList" data-act="navlist" aria-label="Liste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor"/></svg></button>
 <button type="button" class="tb" id="tbDisc" data-act="navdisc" aria-label="Entdecken"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8z"/></svg></button>
-<button type="button" class="tb" id="srchBtn" data-act="srchopen" aria-label="Suchen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg></button>
+<button type="button" class="tb" id="tbSearch" data-act="navsrch" aria-label="Suche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg></button>
 <button type="button" class="tb" id="bellBtn" data-act="bell" aria-label="Mitteilungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.8a6 6 0 0 1 12 0c0 4.3 1.7 6 2.3 6.7H3.7C4.3 15.8 6 14.1 6 9.8z"/><path d="M9.8 19.6a2.3 2.3 0 0 0 4.4 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
 <button type="button" class="tb" id="tbProf" data-act="navprof" aria-label="Profil"><span class="tbav" id="tbAv"></span></button>
 </nav>
-<div class="toprow"><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="camBtn" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button></div></div>
+<div class="toprow"><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="srchBtn" data-act="srchopen" aria-label="Orte suchen" title="Orte suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button><button type="button" class="menubtn" id="camBtn" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button></div></div>
 <div class="profview" id="profView" hidden></div>
 <div class="profview ntview" id="ntView" hidden></div>
 <div class="profview lsview" id="lsView" hidden></div>
 <div class="profview dcview" id="dcView" hidden></div>
+<div class="profview gsview" id="gsView" hidden></div>
 <input type="file" id="avIn" accept="image/*" hidden>
 <div class="tripmenu" id="tripMenu" hidden></div>
 <div class="addmenu" id="addMenu" role="dialog" aria-label="Hinzufügen" hidden></div>
@@ -2857,7 +2865,7 @@ function recWipe(){ if(!fbDb || !acct.user) return; var me = acct.user.uid; recC
 
 /* ---------- Entdecken: Empfehlungen von Freunden am Reiseziel ---------- */
 var dcPage = false, dcScope = "here", dcSrc = lsGet("rp-dcsrc") || "all", DC = {items:[], byKey:{}, at:0, busy:false, err:""};
-function openDcPage(){ closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); dcPage = true; renderDc(); $("dcView").hidden = false; navActive(); if(Date.now() - DC.at > 120000) dcLoad(); }
+function openDcPage(){ closeMenus(); closeGsPage(); closeProfile(); closeNtPage(); closeLsPage(); dcPage = true; renderDc(); $("dcView").hidden = false; navActive(); if(Date.now() - DC.at > 120000) dcLoad(); }
 function closeDcPage(){ if(!dcPage) return; dcPage = false; $("dcView").hidden = true; closeJpMore(); navActive(); }
 function dcLoad(){
   if(!fbDb || !acct.user){ renderDc(); return; }
@@ -2912,6 +2920,50 @@ function dcAdd(key, dk){
   if(dk && dayByKey(dk)){ plan(id, dk); } else toast("„"+r.n+"“ liegt jetzt in der Wunschliste", true);
   dirty(); renderSheet(); scheduleOverlay(); renderDc();
 }
+/* ---------- Suche (Leiste oben): Personen, Reisen, Orte aus allen Reisen, Empfehlungen ---------- */
+var gsPage = false, gsQ = "", gsPeople = [], gsT = null, gsBusy = false;
+function openGsPage(){ closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); gsPage = true; renderGs(true); $("gsView").hidden = false; navActive(); if(acct.user && FR.friends.length && Date.now() - DC.at > 300000) dcLoad(); setTimeout(function(){ var i = $("gsIn"); if(i) i.focus(); }, 60); }
+function closeGsPage(){ if(!gsPage) return; gsPage = false; $("gsView").hidden = true; navActive(); }
+function gsPeopleSearch(q){
+  clearTimeout(gsT); q = q.replace(/^@/, "").toLowerCase();
+  if(q.length < 2 || !fbDb || !acct.user){ gsPeople = []; gsBusy = false; return; }
+  gsBusy = true;
+  gsT = setTimeout(function(){
+    fbDb.collection("profiles").where("nameLower", ">=", q).where("nameLower", "<=", q+"\uf8ff").orderBy("nameLower").limit(8).get().then(function(qs){
+      if(gsQ.replace(/^@/, "").toLowerCase()!==q) return;
+      gsPeople = qs.docs.filter(function(d){ return d.id!==acct.user.uid; }).map(function(d){ var v = d.data(); return {uid:d.id, name:v.name, photo:v.photo||""}; }); gsBusy = false; renderGs();
+    }, function(){ gsBusy = false; gsPeople = []; renderGs(); });
+  }, 280);
+}
+function renderGs(full){
+  var el = $("gsView"); if(!el) return;
+  var q = gsQ.trim(), w = norm(q).split(/\s+/).filter(Boolean), hit = function(txt){ var h = norm(txt||""); return w.length && w.every(function(x){ return h.indexOf(x) > -1; }); };
+  var res = "";
+  if(!q){ res = "<p class=\"note nt-empty\">Suche nach Personen, deinen Reisen, Orten aus allen Reisen und Empfehlungen deiner Freunde.</p>"; }
+  else {
+    var ppl = gsPeople.slice(0, 8), trips = Object.keys(S.trips).filter(function(id){ return hit(S.trips[id].name); });
+    var places = []; Object.keys(S.trips).forEach(function(id){ var t = S.trips[id]; Object.keys(t.places||{}).forEach(function(pid){ var p = t.places[pid]; if(p && !p.of && p.k!=="hotel" && hit([p.n, p.addr, p.note, CATNAME[p.c]].join(" "))) places.push({tid:id, p:p, done:!!(t.done||{})[pid]}); }); });
+    var recs = DC.items.filter(function(r){ return hit([r.n, r.addr, r.note, r.fname, r.trip, CATNAME[r.c]].join(" ")); });
+    var sec = function(title, n, body){ return n ? "<div class=\"nt-sec\">"+title+" · "+n+"</div><div class=\"ag-grp ls-list\">"+body+"</div>" : ""; };
+    res += sec("Personen", ppl.length, ppl.map(function(x){ var st = frState(x.uid);
+      return "<div class=\"ls-row\"><span class=\"ls-th gsav\">"+(x.photo ? "<img src=\""+x.photo+"\" alt=\"\">" : esc((x.name[0]||"?").toUpperCase()))+"</span><span class=\"ls-t\"><b>@"+esc(x.name)+"</b><small>"+(st==="friend" ? "Freund" : st==="out" ? "Anfrage gesendet" : st==="inc" ? "möchte mit dir befreundet sein" : "")+"</small></span>"+
+        (st==="" ? "<button type=\"button\" class=\"btn s\" data-act=\"gsfriend\" data-uid=\""+x.uid+"\" data-name=\""+esc(x.name)+"\">Anfrage</button>" : st==="inc" ? "<button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+x.uid+"\">Annehmen</button>" : "")+"</div>"; }).join(""));
+    res += sec("Reisen", trips.length, trips.map(function(id){ var t = S.trips[id], cov = tripCover(id);
+      return "<button type=\"button\" class=\"ls-row\" data-act=\"gstrip\" data-trip=\""+esc(id)+"\">"+(cov ? "<img class=\"ls-th\" data-ph=\""+cov+"\" alt=\"\">" : "<span class=\"ls-th gsav\">"+esc(((t.name||"?")[0]).toUpperCase())+"</span>")+"<span class=\"ls-t\"><b>"+esc(t.name)+"</b><small>"+esc([rangeLabel(t.start, t.end), isViewerOf(id) ? "beobachtet" : ""].filter(Boolean).join(" · "))+"</small></span></button>"; }).join(""));
+    res += sec("Orte in deinen Reisen", places.length, places.slice(0, 40).map(function(x){ var p = x.p, ph = ((S.trips[x.tid].photos||{})[p.id]||[]);
+      return "<button type=\"button\" class=\"ls-row\" data-act=\"gsplace\" data-trip=\""+esc(x.tid)+"\" data-pid=\""+esc(p.id)+"\">"+(ph.length ? "<img class=\"ls-th\" data-ph=\""+ph[ph.length-1]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span>")+
+        "<span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+esc([S.trips[x.tid].name, CATNAME[p.c], x.done ? "besucht" : ""].filter(Boolean).join(" · "))+"</small></span><span class=\"ls-go\">"+MAPGO+"</span></button>"; }).join(""));
+    res += sec("Empfehlungen von Freunden", recs.length, recs.slice(0, 30).map(function(r){ var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
+      return "<button type=\"button\" class=\"ls-row\" data-act=\"gsrec\">"+(r.photos && r.photos.length ? "<img class=\"ls-th\" src=\""+r.photos[0]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(r.c)+"\">"+icon(r.c)+"</span>")+
+        "<span class=\"ls-t\"><b>"+esc(r.n)+"</b><small>@"+esc(r.fname||"")+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+(r.trip ? " · "+esc(r.trip) : "")+"</small></span></button>"; }).join(""));
+    if(!res) res = "<p class=\"note nt-empty\">"+(gsBusy ? "Suche …" : "Nichts gefunden.")+"</p>";
+  }
+  if(full || !$("gsRes")){
+    el.innerHTML = "<div class=\"pf gs-page\"><div class=\"ls-head\"><div class=\"gs-box\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"gsIn\" placeholder=\"Personen, Reisen, Orte, Empfehlungen\" autocomplete=\"off\" autocapitalize=\"off\" value=\""+esc(gsQ)+"\"></div></div><div id=\"gsRes\"></div></div>";
+  }
+  $("gsRes").innerHTML = res; fillPhotos($("gsRes"));
+}
+document.addEventListener("input", function(e){ if(e.target && e.target.id==="gsIn"){ gsQ = e.target.value; gsPeopleSearch(gsQ.trim()); renderGs(); } });
 /* ---------- Bewertungen an einem Ort: Freunde (Empfehlungen) und öffentlich (vorgesehen) ---------- */
 var rvTab = "friends";
 function friendRecs(p){
@@ -2944,7 +2996,7 @@ function rvSection(p){
 }
 /* ---------- Listenansicht: besuchte Orte, Highlights und Fotos einer Reise ---------- */
 var lsPage = false, lsTab = "places", lsFilter = "all";
-function openLsPage(){ closeMenus(); closeProfile(); closeNtPage(); closeDcPage(); lsPage = true; renderLs(); $("lsView").hidden = false; navActive(); }
+function openLsPage(){ closeMenus(); closeGsPage(); closeProfile(); closeNtPage(); closeDcPage(); lsPage = true; renderLs(); $("lsView").hidden = false; navActive(); }
 function closeLsPage(){ if(!lsPage) return; lsPage = false; $("lsView").hidden = true; navActive(); }
 function lsGoMap(pid){
   closeLsPage(); var p = P(pid); if(!p) return;
@@ -3013,7 +3065,7 @@ var MAPGO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" st
 /* Mitteilungen als eigene Seite, nach Art filterbar */
 var ntPage = false, ntKind = "all";
 var NTKINDS = [["all","Alle"],["mention","Erwähnungen"],["reply","Antworten"],["comment","Kommentare"],["like","Gefällt mir"],["friend","Freunde"],["invite","Einladungen"],["join","Mitreisende"]];
-function openNtPage(){ closeMenus(); closeProfile(); closeLsPage(); closeDcPage(); ntPage = true; renderNt(); $("ntView").hidden = false; document.body.classList.add("profopen"); navActive(); }
+function openNtPage(){ closeMenus(); closeGsPage(); closeProfile(); closeLsPage(); closeDcPage(); ntPage = true; renderNt(); $("ntView").hidden = false; document.body.classList.add("profopen"); navActive(); }
 function closeNtPage(){ if(!ntPage) return; ntPage = false; $("ntView").hidden = true; if(!profOpen) document.body.classList.remove("profopen"); navActive(); }
 function renderNt(){
   var el = $("ntView"); if(!el) return;
@@ -3097,13 +3149,13 @@ function acctHTML(){
 /* ---------- Leiste oben & Profilseite ---------- */
 var profOpen = false, profTab = "mine";
 function setNavDot(on){ var a = $("menuBtn"); if(a) a.classList.toggle("dot", !!on); var b = $("tbProf"); if(b) b.classList.toggle("dot", !!on); }
-function navActive(){ var pm = profOpen, np = ntPage, lp = lsPage, dp = dcPage; $("tbMap").classList.toggle("on", !pm && !np && !lp && !dp); $("tbProf").classList.toggle("on", pm); $("bellBtn").classList.toggle("on", np); $("tbList").classList.toggle("on", lp); $("tbDisc").classList.toggle("on", dp);
-  document.body.classList.toggle("profopen", pm || np || lp || dp);
+function navActive(){ var pm = profOpen, np = ntPage, lp = lsPage, dp = dcPage, gp = gsPage; $("tbSearch").classList.toggle("on", gp); $("tbMap").classList.toggle("on", !pm && !np && !lp && !dp && !gp); $("tbProf").classList.toggle("on", pm); $("bellBtn").classList.toggle("on", np); $("tbList").classList.toggle("on", lp); $("tbDisc").classList.toggle("on", dp);
+  document.body.classList.toggle("profopen", pm || np || lp || dp || gp);
   if(pm){ $("tbProf").setAttribute("aria-current", "page"); $("tbMap").removeAttribute("aria-current"); } else { $("tbMap").setAttribute("aria-current", "page"); $("tbProf").removeAttribute("aria-current"); } }
 function avHTML(cls){ var ph = PROF && PROF.photo, nm = (PROF && PROF.name) || myMail() || "?";
   return ph ? "<img class=\""+cls+"\" src=\""+ph+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
 function navAv(){ var e = $("tbAv"); if(!e) return; e.innerHTML = acct.user ? avHTML("tbimg") : "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/><path d=\"M6.2 18.4a7 7 0 0 1 11.6 0\"/></svg>"; }
-function openProfile(){ closeMenus(); closeNtPage(); closeLsPage(); closeDcPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
+function openProfile(){ closeMenus(); closeGsPage(); closeNtPage(); closeLsPage(); closeDcPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
 function closeProfile(){ if(!profOpen) return; profOpen = false; $("profView").hidden = true; if(!ntPage) document.body.classList.remove("profopen"); navActive(); }
 function tripCover(id){ var t = S.trips[id], ps = (t && t.photos) || {}, ks = Object.keys(ps); for(var i = 0; i < ks.length; i++){ var a = ps[ks[i]] || []; if(a.length) return a[a.length-1]; } return null; }
 function renderProfile(){
@@ -6656,8 +6708,15 @@ document.addEventListener("click", function(e){
     case "hotelafter": var hpid = t.getAttribute("data-pid") || id; closeCatPop(); hotelStop(dayOf(hpid), hpid); renderAll(); break;
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
-    case "srchopen": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); openSearch(); break;
-    case "navmap": closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeMenus(); break;
+    case "srchopen": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); openSearch(); break;
+    case "navmap": closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); closeMenus(); break;
+    case "navsrch": if(gsPage) closeGsPage(); else openGsPage(); break;
+    case "gsfriend": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); setTimeout(renderGs, 600); break;
+    case "gstrip": closeGsPage(); var gtr = t.getAttribute("data-trip"); if(S.trips[gtr] && gtr!==S.cur){ grpSel = ""; S.cur = gtr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
+    case "gsplace": closeGsPage(); var gpt = t.getAttribute("data-trip"), gpp = t.getAttribute("data-pid");
+      if(S.trips[gpt] && gpt!==S.cur){ grpSel = ""; S.cur = gpt; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
+      if(P(gpp)){ var gdk = dayOf(gpp); if(gdk) cur = gdk; tab = gdk ? "day" : "wish"; renderAll(); select(gpp); revealPoint(P(gpp), 16, true); } break;
+    case "gsrec": closeGsPage(); openDcPage(); break;
     case "rvopen": rvTab = t.getAttribute("data-v"); if(sel && P(sel)){ openJPop(sel, dayOf(sel) || ""); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"start", behavior: reduceMotion ? "auto" : "smooth"}); }, 120); } break;
     case "rvtab": rvTab = t.getAttribute("data-v"); renderJPop(); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"nearest"}); }, 0); break;
     case "navdisc": if(dcPage) closeDcPage(); else openDcPage(); break;
