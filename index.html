@@ -3658,7 +3658,6 @@ function dcvMeta(){
   if(acct.user) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvsend\" aria-label=\"Im Chat schicken\">"+dcvSV("<path d=\"M17.5 2.5 9 11M17.5 2.5l-5 15-3.5-6.5-6.5-3.5z\"/>")+"</button>";
   if(!inT && !isRO()) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvwish\" aria-label=\"Zur Wunschliste\">"+dcvSV("<path d=\"M10 16.5s-6-3.6-6-8a3.3 3.3 0 0 1 6-1.9 3.3 3.3 0 0 1 6 1.9c0 4.4-6 8-6 8z\"/>")+"</button>";
   if(r.la) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvmap\" aria-label=\"Auf der Karte zeigen\">"+dcvSV("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"</button>";
-  h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvsave\" aria-label=\"In Fotos sichern\">"+dcvSV("<path d=\"M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4 15.5h12\"/>")+"</button>";
   h += "</div>";
   if(DCV.cm){
     var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
@@ -3695,14 +3694,6 @@ function dcvSendTo(u){
   var r = DCV && DC.byKey[DCV.key]; closeJpMore(); if(!r) return; var cid = chWith(u); if(!cid) return;
   var pl = {n:r.n, c:r.c, la:+r.la, lo:+r.lo, addr:r.addr||"", trip:r.trip||""}; if(r.rating) pl.rating = r.rating; var u0 = (r.photos||[])[DCV.i]; if(u0) pl.ph = u0;
   dcvClose(); closeDcPage(); openChPage(cid); chDraft = pl; renderChDraft(); setTimeout(function(){ var i = $("chIn"); if(i) i.focus(); }, 80);
-}
-function dcvSave(){
-  var r = DCV && DC.byKey[DCV.key], u = r && (r.photos||[])[DCV.i]; if(!u) return;
-  fetch(u).then(function(x){ return x.blob(); }).then(function(b){
-    var file = new File([b], (r.n||"Foto").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-")+"-"+(DCV.i+1)+".jpg", {type:b.type || "image/jpeg"});
-    if(navigator.canShare && navigator.canShare({files:[file]})) return navigator.share({files:[file]}).catch(function(){});
-    var a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-  }).catch(function(e){ toast("Sichern nicht möglich: "+(e && e.message || e), false); });
 }
 function dcAdd(key, dk){
   closeJpMore();
@@ -7098,7 +7089,7 @@ function phMetaHTML(ph){
     h += "<button type=\"button\" class=\"pvi pv-vis vlv-"+phv+"\" data-act=\"itemvispick\" data-k=\"ph\" data-key=\""+ph+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit des Fotos: "+VISLBL[phv]+"\">"+IEYE+"<em class=\"pvv\">"+VISLBL[phv]+"</em></button>";
   }
   if(acct.user) h += "<button type=\"button\" class=\"pvi\" data-act=\"phsend\" data-ph=\""+ph+"\" aria-label=\"Im Chat schicken\">"+SV("<path d=\"M17.5 2.5 9 11M17.5 2.5l-5 15-3.5-6.5-6.5-3.5z\"/>")+"</button>";
-  h += "<button type=\"button\" class=\"pvi pv-save"+(CAMF[ph] && !CAMF[ph].saved ? " hot" : "")+"\" data-act=\"phsave\" data-ph=\""+ph+"\" aria-label=\"In Fotos sichern\">"+SV("<path d=\"M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4 15.5h12\"/>")+"</button>";
+  if(!isRO()) h += "<button type=\"button\" class=\"pvi pv-save"+(CAMF[ph] && !CAMF[ph].saved ? " hot" : "")+"\" data-act=\"phsave\" data-ph=\""+ph+"\" aria-label=\"In Fotos sichern\">"+SV("<path d=\"M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4 15.5h12\"/>")+"</button>";
   if(!isRO()) h += "<button type=\"button\" class=\"pvi warn\" data-act=\"phdel\" data-ph=\""+ph+"\" aria-label=\"Foto löschen\">"+SV("<path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/>")+"</button>";
   h += "</div>";
   if(soc && pvCm){
@@ -7592,6 +7583,7 @@ function phFile(ph){
   return phGet(ph).then(function(d){ if(!d) throw new Error("Foto nicht geladen"); return fetch(d).then(function(r){ return r.blob(); }).then(function(b){ return new File([b], "Reiseplan-"+ph+".jpg", {type:b.type || "image/jpeg"}); }); });
 }
 function phSaveLib(ph){
+  if(isRO()){ toast("Fotos herunterladen können nur Mitreisende.", false); return; }
   phFile(ph).then(function(file){
     if(navigator.canShare && navigator.canShare({files:[file]})){
       return navigator.share({files:[file]}).then(function(){ var b = document.querySelector(".pv-save"); if(b) b.classList.remove("hot"); }, function(){});
@@ -8480,7 +8472,6 @@ document.addEventListener("click", function(e){
     case "dcvcm": if(DCV){ DCV.cm = !DCV.cm; dcvRefresh(); } break;
     case "dcvsend": dcvSendMenu(t); break;
     case "dcvto": dcvSendTo(t.getAttribute("data-uid")); break;
-    case "dcvsave": dcvSave(); break;
     case "rclbcm": rcLbFull(true); break;
     case "rclbopen": rcLbFull(false); break;
     case "rclbsend": var rph = rcLbPh(); if(rph) chPhSendMenu(rph, t); break;
@@ -9170,7 +9161,7 @@ function rcLbSide(){
   var nc = (CMTS["ph:"+ph] || []).length, SV = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   sd.innerHTML = (phSocial() ? "<button type=\"button\" class=\"pvi\" data-act=\"rclbcm\" aria-label=\"Kommentare und Gefällt mir\">"+SV("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/>")+"<span>"+(nc || "")+"</span></button>" : "")+
     (acct.user ? "<button type=\"button\" class=\"pvi\" data-act=\"rclbsend\" aria-label=\"Im Chat schicken\">"+SV("<path d=\"M17.5 2.5 9 11M17.5 2.5l-5 15-3.5-6.5-6.5-3.5z\"/>")+"</button>" : "")+
-    "<button type=\"button\" class=\"pvi\" data-act=\"rclbsave\" aria-label=\"In Fotos sichern\">"+SV("<path d=\"M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4 15.5h12\"/>")+"</button>"+
+    (isRO() ? "" : "<button type=\"button\" class=\"pvi\" data-act=\"rclbsave\" aria-label=\"In Fotos sichern\">"+SV("<path d=\"M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4 15.5h12\"/>")+"</button>")+
     (phPlace(ph) ? "<button type=\"button\" class=\"pvi\" data-act=\"rclbopen\" aria-label=\"Alle Optionen zum Foto\">"+SV("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>")+"</button>" : "");
 }
 function rcLbFull(cm){ var ph = rcLbPh(), pid = ph && phPlace(ph); if(!pid || !P(pid)) return; openJPop(pid, dayOf(pid) || "", ph); if(jp) jp.ret = "recap"; if(cm){ pvCm = true; phMetaRefresh(); } }
