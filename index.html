@@ -8473,7 +8473,7 @@ document.addEventListener("click", function(e){
   // Löschen u. Ä. erst nach Bestätigung (Wischen hat stattdessen „Rückgängig“)
   var cf = CONFIRM[act];
   if(cf && !(act==="frdel" && !t.hasAttribute("aria-label"))){
-    if(t.getAttribute("data-ok")!=="1"){ e.preventDefault(); askConfirm(cf[0], cf[1], cf[2], function(){ t.setAttribute("data-ok", "1"); t.click(); }); return; }
+    if(t.getAttribute("data-ok")!=="1"){ e.preventDefault(); askConfirm(cf[0], cf[1], cf[2], function(){ t.setAttribute("data-ok", "1"); if(document.body.contains(t)) t.click(); else { t.hidden = true; document.body.appendChild(t); t.click(); t.remove(); } }); return; }
     t.removeAttribute("data-ok");
   }
   var holder = t.closest("[data-id]"), id = holder ? holder.getAttribute("data-id") : null;
@@ -8686,8 +8686,7 @@ document.addEventListener("click", function(e){
     case "gmopen": if(P(sel)) window.open(gmInfoUrl(P(sel)), "_blank", "noopener"); break;
     case "moredel": var mdId = sel; askConfirm("Ort löschen?", "„"+((P(mdId)||{}).n||"Ort")+"“ wird aus der Reise entfernt.", "Löschen", function(){ if(sel!==mdId) select(mdId); var tb = document.createElement("button"); tb.type = "button"; tb.setAttribute("data-act", "delplace"); tb.hidden = true; document.body.appendChild(tb); tb.click(); tb.remove(); }); break;
     case "locset": locStart(); break;
-    case "phdel": if(!t.hasAttribute("data-ok")){ var dq = t.getAttribute("data-ph"); askConfirm("Foto löschen?", "Das Foto wird aus der Reise entfernt.", "Löschen", function(){ var db = document.createElement("button"); db.type = "button"; db.hidden = true; db.setAttribute("data-act", "phdel"); db.setAttribute("data-ph", dq); db.setAttribute("data-ok", "1"); document.body.appendChild(db); db.click(); db.remove(); }); break; }
-      var dph = t.getAttribute("data-ph"), dsrc = jp.list || photosAll(jp.pid), rest = dsrc.filter(function(x){ return x!==dph; }), di = dsrc.indexOf(dph); if(jp.list){ jp.list = rest; RC.dirty = true; }
+    case "phdel": var dph = t.getAttribute("data-ph"), dsrc = jp.list || photosAll(jp.pid), rest = dsrc.filter(function(x){ return x!==dph; }), di = dsrc.indexOf(dph); if(jp.list){ jp.list = rest; RC.dirty = true; }
       delPhoto(phPlace(dph) || jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; if(jp.list && jp.view && phPlace(jp.view)) jp.pid = phPlace(jp.view); if(lsPage) renderLs(); if(!jp.view && !!jp.ret){ closeJPop(); break; } renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
     case "jpmore": openJpMore(jp ? jp.pid : id, t); break;
