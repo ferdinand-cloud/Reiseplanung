@@ -1089,6 +1089,24 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 .ai-top .ai-tt{margin-right:2px}
 .ai-top{gap:8px}
 .ai-top .ai-av{margin-right:3px}
+.ai-in .ai-mic{flex:0 0 36px;width:36px;height:36px;border-radius:50%;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;padding:0;transition:color .15s,background .15s,transform .15s}
+.ai-in .ai-mic:active{transform:scale(.92);background:color-mix(in srgb,#7B5CFF 12%,transparent);color:#7B5CFF}
+.ai-in .ai-mic svg{width:19px;height:19px}
+.ai-chat.voice .ai-foot{display:none}
+.ai-chat.voice .ai-log{-webkit-mask-image:none;mask-image:none}
+.ai-vs{margin:auto 0;display:grid;justify-items:center;text-align:center;gap:10px;padding:10px 8px 6px}
+.ai-vs b{font:700 19px/1.2 var(--f-display);color:var(--ink);margin-top:14px}
+.ai-vs p{margin:0;font-size:14.5px;line-height:1.45;color:var(--ink);max-width:320px}
+.ai-vs p.ai-na{color:var(--muted);font-size:13.5px}
+.ai-vend{margin-top:12px;border:0;border-radius:999px;padding:11px 22px;font:inherit;font-weight:600;font-size:15px;color:#fff;background:var(--ai-g);box-shadow:0 6px 18px rgba(123,92,255,.3)}
+.ai-orb{position:relative;width:150px;height:150px;display:grid;place-items:center}
+.ai-orb i{position:absolute;inset:0;border-radius:50%;background:var(--ai-g)}
+.ai-orb i:nth-child(1){inset:22px;box-shadow:0 10px 40px rgba(123,92,255,.45),inset 0 -10px 30px rgba(255,255,255,.25);animation:aiOrb 2.4s ease-in-out infinite}
+.ai-orb i:nth-child(2){opacity:.22;animation:aiRing 2.4s ease-out infinite}
+.ai-orb i:nth-child(3){opacity:.14;animation:aiRing 2.4s ease-out 1.2s infinite}
+@keyframes aiOrb{0%,100%{transform:scale(1);border-radius:50%}33%{transform:scale(1.06);border-radius:48% 52% 50% 50%}66%{transform:scale(.96);border-radius:52% 48% 50% 50%}}
+@keyframes aiRing{from{transform:scale(.55);opacity:.32}to{transform:scale(1.05);opacity:0}}
+@media (prefers-reduced-motion:reduce){.ai-orb i{animation:none !important}}
 @media (prefers-reduced-motion:reduce){.ai-row{animation:none}.ai-typing i,.ai-bot.streaming > :last-child::after{animation:none}}
 #layersBtn[aria-expanded="true"]{background:var(--ink);color:var(--sheet)}
 .attr{font-size:10px;padding:2px 8px;border-radius:999px;opacity:1;box-shadow:none}
@@ -6097,13 +6115,15 @@ var AI_IC_HIST = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor
 var AI_IC_NEW = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 3.5H5.5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V11\"/><path d=\"M14.6 2.9a1.6 1.6 0 0 1 2.3 2.3L10.5 11.6 7.5 12.5l.9-3z\"/></svg>";
 var AI_IC_BACK = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.5 4 6.5 10l6 6\"/></svg>";
 var AI_IC_DEL = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 6h12M8 6V4.5h4V6M6 6l.7 10h6.6L14 6\"/></svg>";
+var AI_IC_MIC = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"7\" y=\"2.5\" width=\"6\" height=\"10\" rx=\"3\"/><path d=\"M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5\"/></svg>";
 var AI_SUGG = ["Hintergrundinfos zum Flatiron Building", "Zeig mir alle Fährverbindungen", "Wie komme ich zum Hotel?", "Cafés in der Nähe", "Was steht morgen an?"];
 var AI_WELCOME = "<p>Hallo! Ich bin der KI-Assistent für deine Reise. Bald kannst du mir hier sagen, was du auf der Karte sehen willst, oder mich zu Orten fragen:</p>"+
   "<ul><li><b>Verbindungen filtern</b> – „Zeig mir alle Fähren nach Staten Island“, alles andere wird ausgeblendet</li>"+
   "<li><b>Wege finden</b> – „Wie komme ich am schnellsten zum Hotel?“</li>"+
   "<li><b>Orte entdecken</b> – „Frühstückscafés in der Nähe meines nächsten Stopps“</li>"+
   "<li><b>Infos zu Orten</b> – „Gib mir Hintergrundinfos zum Flatiron Building“, die Antwort kommt direkt hier in den Chat</li>"+
-  "<li><b>Fragen zur Reise</b> – „Was steht morgen auf dem Plan?“</li></ul>"+
+  "<li><b>Fragen zur Reise</b> – „Was steht morgen auf dem Plan?“</li>"+
+  "<li><b>Sprachchat</b> – einfach sprechen statt tippen, die KI antwortet mit Stimme</li></ul>"+
   "<p class=\"ai-na\">In der aktuellen Version bin ich noch nicht verfügbar.</p>";
 var AI_REPLY = "<p>Das kann ich in dieser Version leider noch nicht beantworten. Der KI-Assistent kommt mit einem der nächsten Updates – dann bekommst du hier direkt deine Antwort.</p>";
 var AI_KEY = "reiseplan-ki-chats";
@@ -6138,6 +6158,9 @@ function aiRowHtml(m, i){
 }
 function aiRenderHead(){
   var h = $("aiHead"); if(!h) return;
+  if(aiView==="voice"){ h.innerHTML = "<button type=\"button\" class=\"ai-ib\" data-ai=\"back\" aria-label=\"Zurück zum Chat\">"+AI_IC_BACK+"</button>"+
+    "<div class=\"ai-tt\"><b id=\"aiT\">Sprachchat</b><small>Vorschau</small></div>"+
+    "<button type=\"button\" class=\"ai-ib\" data-ai=\"close\" aria-label=\"Schließen\">✕</button>"; return; }
   if(aiView==="hist") h.innerHTML = "<button type=\"button\" class=\"ai-ib\" data-ai=\"back\" aria-label=\"Zurück zum Chat\">"+AI_IC_BACK+"</button>"+
     "<div class=\"ai-tt\"><b id=\"aiT\">Verlauf</b><small class=\"plain\">"+(aiChats.length ? aiChats.length+(aiChats.length===1?" Chat":" Chats")+" auf diesem Gerät" : "Noch keine Chats")+"</small></div>"+
     "<button type=\"button\" class=\"ai-ib\" data-ai=\"new\" aria-label=\"Neuer Chat\" title=\"Neuer Chat\">"+AI_IC_NEW+"</button>"+
@@ -6149,8 +6172,15 @@ function aiRenderHead(){
 }
 function aiRender(){
   aiRenderHead();
-  var card = document.querySelector(".ai-chat"); if(card) card.classList.toggle("hist", aiView==="hist");
+  var card = document.querySelector(".ai-chat"); if(card){ card.classList.toggle("hist", aiView==="hist"); card.classList.toggle("voice", aiView==="voice"); }
   var log = $("aiLogBox"); if(!log) return;
+  if(aiView==="voice"){
+    log.innerHTML = "<div class=\"ai-vs\"><div class=\"ai-orb\" aria-hidden=\"true\"><i></i><i></i><i></i></div>"+
+      "<b>Sprich einfach mit der KI</b><p>Stell deine Fragen per Stimme – „Was ist das Flatiron Building?“ – und die KI antwortet dir laut, ganz ohne Tippen. Praktisch unterwegs, wenn du die Hände nicht frei hast.</p>"+
+      "<p class=\"ai-na\">Der Sprachchat ist in der aktuellen Version noch nicht verfügbar.</p>"+
+      "<button type=\"button\" class=\"ai-vend\" data-ai=\"back\">Zurück zum Chat</button></div>";
+    return;
+  }
   if(aiView==="hist"){
     log.innerHTML = aiChats.length ? "<div class=\"ai-hl\">"+aiChats.map(function(c){
       var cur = c.id===aiCur.id;
@@ -6202,6 +6232,7 @@ function aiSend(){
 }
 function aiAct(a, id){
   if(a==="hist"){ aiFinish(); aiView = "hist"; aiRender(); }
+  else if(a==="voice"){ aiFinish(); aiView = "voice"; aiRender(); }
   else if(a==="back"){ aiView = "chat"; aiRender(); }
   else if(a==="new"){ aiFinish(); aiView = "chat"; if(aiHasUser(aiCur)) aiCur = aiNewChatObj(); else aiCur.msgs[0].done = false; aiRender(); var ta = $("aiTa"); if(ta) ta.focus(); }
   else if(a==="open"){ var c = aiChats.find(function(x){ return x.id===id; }); if(c){ aiCur = {id:c.id, ts:c.ts, msgs:c.msgs.map(function(m){ return Object.assign({}, m, {done:true}); })}; aiView = "chat"; aiRender(); } }
@@ -6214,6 +6245,7 @@ function openAiChat(){
     "<div class=\"ai-log\" id=\"aiLogBox\" aria-live=\"polite\"></div>"+
     "<div class=\"ai-foot\"><div class=\"ai-sugg\">"+AI_SUGG.map(function(q){ return "<button type=\"button\" data-q=\""+esc(q)+"\">"+AI_SPARK+esc(q)+"</button>"; }).join("")+"</div>"+
     "<form class=\"ai-in\" id=\"aiForm\"><textarea id=\"aiTa\" rows=\"1\" placeholder=\"Frag die KI …\" aria-label=\"Nachricht an den KI-Assistenten\" enterkeyhint=\"send\"></textarea>"+
+    "<button type=\"button\" class=\"ai-mic\" data-ai=\"voice\" aria-label=\"Sprachchat\" title=\"Sprachchat\">"+AI_IC_MIC+"</button>"+
     "<button type=\"submit\" class=\"ai-send\" id=\"aiSendBtn\" aria-label=\"Senden\" disabled><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 16V4M5 9l5-5 5 5\"/></svg></button></form></div></div>";
   el.hidden = false;
   aiView = "chat"; aiBusy = false;
@@ -6223,7 +6255,7 @@ function openAiChat(){
   ta.addEventListener("keydown", function(ev){ if(ev.key==="Enter" && !ev.shiftKey){ ev.preventDefault(); aiSend(); } });
   $("aiForm").addEventListener("submit", function(ev){ ev.preventDefault(); aiSend(); });
   var close = function(){ aiFinish(); el.hidden = true; el.innerHTML = ""; document.removeEventListener("keydown", key, true); $("aiBtn").focus(); };
-  var key = function(ev){ if(ev.key==="Escape"){ ev.stopPropagation(); if(aiView==="hist") aiAct("back"); else close(); } };
+  var key = function(ev){ if(ev.key==="Escape"){ ev.stopPropagation(); if(aiView!=="chat") aiAct("back"); else close(); } };
   document.addEventListener("keydown", key, true);
   el.onclick = function(ev){ ev.stopPropagation(); var q, b;
     if(ev.target===el) close();
