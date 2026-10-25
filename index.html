@@ -2254,6 +2254,42 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 .leg.tleg .lm.one button svg{width:15px;height:15px}
 .leg.tleg.lbk .lm button[aria-pressed="true"]{background:#0A6CDB !important;color:#fff !important}
 .addmenu.jpmenu .ai.lmi svg{width:17px;height:17px}
+/* Navigation in der App */
+.nav-ui{position:fixed;left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 10px);z-index:58;pointer-events:none;display:flex;flex-direction:column;gap:8px}
+.nav-ui > *{pointer-events:auto}
+body.navon .top,body.navon #rail{visibility:hidden}
+.nav-top{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:22px;background:#0b6b3a;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.nav-top.ride{background:#1d3f8c}
+.nav-top.arr{background:#0A84FF}
+.nav-ic{flex:0 0 46px;width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.16);display:grid;place-items:center}
+.nav-ic svg{width:30px;height:30px;transition:transform .3s}
+.nav-ic.spin svg{animation:navPulse 1.2s ease-in-out infinite}
+@keyframes navPulse{50%{opacity:.4}}
+.nav-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.nav-tx em{font:700 15px/1.2 var(--f-body);font-style:normal;opacity:.85}
+.nav-tx b{font:800 20px/1.2 var(--f-body)}
+.nav-tx small{font-size:13px;opacity:.85}
+.nav-off{padding:8px 12px;border-radius:14px;background:#FF9F0A;color:#1a1300;font:600 13px/1.3 var(--f-body);align-self:flex-start}
+.nav-foot{position:fixed;left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;align-items:center;gap:8px;padding:10px 10px 10px 14px;border-radius:22px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:.5px solid var(--glass-bd,var(--line));box-shadow:0 10px 30px rgba(0,0,0,.25);color:var(--ink);pointer-events:auto}
+.nav-sum{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.nav-sum b{display:block;font:800 20px/1.1 var(--f-body);color:#0b8a4b}
+.nav-sum small{display:block;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-mode{width:34px;height:34px;border-radius:50%;background:var(--fill);display:grid;place-items:center;flex:0 0 34px}
+.nav-mode svg{width:18px;height:18px}
+.nav-b{border:0;border-radius:999px;padding:10px 13px;background:var(--fill);color:var(--ink);font:700 13.5px/1 var(--f-body);cursor:pointer;display:grid;place-items:center}
+.nav-b svg{width:16px;height:16px;color:#0A84FF}
+.nav-b.end{background:#FF3B30;color:#fff}
+.nav-b.go{background:#34C759;color:#fff}
+.nav-ui.min{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 76px);align-items:center}
+.nav-pill{display:flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:8px 14px 8px 8px;background:#0b6b3a;color:#fff;font:600 14px/1.2 var(--f-body);box-shadow:0 8px 22px rgba(0,0,0,.28);cursor:pointer;align-self:center;max-width:100%}
+.nav-pill span:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-pi{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;flex:0 0 28px}
+.nav-pi svg{width:16px;height:16px}
+.nav-pe{font-weight:800;opacity:.9;padding-left:4px}
+.gp-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+.gp-nav button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;border:0;border-radius:14px;background:#0b8a4b;color:#fff;font:inherit;cursor:pointer}
+.gp-nav button svg{width:20px;height:20px}
+.gp-nav button b{font-size:12.5px}
 .cb-av{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 6px}
 .cb-av span{display:flex;flex-direction:column;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,#0A6CDB 12%,transparent);font-size:12.5px;color:var(--muted)}
 .cb-av b{font:800 24px/1.1 var(--f-body);color:#0A6CDB}
@@ -6276,7 +6312,7 @@ function drawOverlay(){
   }
   // Route des Tages: Hotel → Stopps → Hotel (Fußweg oder ÖPNV)
   var HT = D && D.hotel, pts = D ? routePts(cur) : [], col = dayColor(cur), viaSvg = ""; VIAMK = [];
-  if(!layers.route || isRO()){ /* Route ausgeblendet; Beobachter sehen keine Routen */ }
+  if(!layers.route || isRO() || (NAV && !NAV.hidden && NAV.pts)){ /* Route ausgeblendet; Beobachter sehen keine Routen; während der Navigation nur deren Weg */ }
   else if(pts.length){
     var labels = "";
     if(vmPick){ var vmz = pt({la:vmPick.q[0], lo:vmPick.q[1]}); viaSvg += "<circle class=\"vmring\" cx=\""+f1(vmz[0])+"\" cy=\""+f1(vmz[1])+"\" r=\"13\" fill=\"none\" stroke=\"#FF9F0A\" stroke-width=\"3\"/>";
@@ -6383,7 +6419,7 @@ function drawOverlay(){
   s += flushLabels(MK);
   var dl = draft.open ? parseLoc(draft.loc) : null;
   if(dl){ var pq = pt(dl); s += "<circle cx=\""+f1(pq[0])+"\" cy=\""+f1(pq[1])+"\" r=\"7\" fill=\"var(--land)\" stroke=\"var(--ink)\" stroke-width=\"2.5\" stroke-dasharray=\"3 3\"/>"; }
-  s += drawMeRoute() + drawMe();
+  s += drawMeRoute() + navSvg() + drawMe();
   if(sel==="poi" && poiSel){ var pq2 = pt(poiSel); s += "<circle cx=\""+f1(pq2[0])+"\" cy=\""+f1(pq2[1])+"\" r=\"11\" fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"2.5\"/>"; }
   ov.setAttribute("viewBox","0 0 "+W+" "+H);
   ov.innerHTML = s;
@@ -6516,6 +6552,7 @@ function startLocate(silent){
     if(sel && !$("card").hidden) renderCard();
     var oldA = meA; meAnchor(); if(meA!==oldA && cur===todayKey()){ if(tab==="day") renderSheetSoon(); scheduleOverlay(); }
     if(goSt && !$("catPop").hidden && $("catPop").querySelector("[data-act=gofrom]")) renderGo();
+    navOnPos();
   }, function(err){
     var m = err && err.code===1 ? "Standortzugriff abgelehnt. Erlaube ihn unter Einstellungen › Datenschutz › Ortungsdienste › Safari-Websites." : "Standort konnte nicht bestimmt werden.";
     if(!me || (err && err.code===1)) toast(m, false);
@@ -7441,7 +7478,9 @@ function renderGo(){
   var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Route starten\"><div class=\"pop-head\"><h4>Route zu "+esc(p.n)+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
   h += "<div class=\"gp-lbl\">Start</div><div class=\"gp-from\" role=\"group\" aria-label=\"Start\"><button type=\"button\" data-act=\"gofrom\" data-from=\"me\" aria-pressed=\""+(goSt.from==="me")+"\">Mein Standort</button>";
   if(prev) h += "<button type=\"button\" data-act=\"gofrom\" data-from=\"prev\" aria-pressed=\""+(goSt.from==="prev")+"\">"+(D && prev===D.hotel ? "Hotel" : "Vorheriger Stopp")+": "+esc(prev.n)+"</button>";
-  h += "</div><div class=\"gp-lbl\">Unterwegs</div><div class=\"gp-modes\">";
+  h += "</div><div class=\"gp-lbl\">In der App navigieren</div><div class=\"gp-nav\" role=\"group\" aria-label=\"In der App navigieren\">"+
+    [["walk", LMWALK, "Zu Fuß"], ["bike", LMBIKE, "Citi Bike"], ["oepnv", LMSUB, "U-Bahn & Bus"]].map(function(m){ return "<button type=\"button\" data-act=\"navstart\" data-mode=\""+m[0]+"\">"+m[1]+"<b>"+m[2]+"</b></button>"; }).join("")+"</div>";
+  h += "<div class=\"gp-lbl\">In anderer App öffnen</div><div class=\"gp-modes\">";
   GOMODES.forEach(function(m){
     h += "<a href=\""+esc(goUrl(m[0], from, p, goApp))+"\" target=\"_blank\" rel=\"noopener\" data-act=\"gogo\">"+m[2]+"<b>"+m[1]+"</b><span>"+(goEst(m[0], a, p) || "&nbsp;")+"</span></a>";
   });
@@ -7807,6 +7846,150 @@ function bikeRoute(a, b){
   vv.forEach(function(q){ var z = {la:q[0], lo:q[1]}; est += dist(q0, z); q0 = z; }); est = (est + dist(q0, s2.s)) * 1.3;
   var rideD = bp ? bp.d : est;
   return {s1:s1, s2:s2, rideD:rideD, exact:!!bp, path:bp ? bp.p : null, via:vv.length, secs:s1.d/WALK + 90 + rideD/BIKE + 60 + s2.d/WALK};
+}
+/* ---------- Navigation in der App: Weg vom eigenen Standort zum Ziel mit Abbiegehinweisen ----------
+   Zu Fuß und Citi Bike mit Abbiegehinweisen (OSRM), U-Bahn & Bus mit Ein-/Aussteigen. Die Karte folgt dem Standort,
+   der Weg wird bei Abweichung neu berechnet. Ausblenden lässt nur eine kleine Leiste stehen. */
+var NAV = null, navWake = null, navDragHooked = false;
+var NAVMOD = {left:"links", right:"rechts", "slight left":"leicht links", "slight right":"leicht rechts", "sharp left":"scharf links", "sharp right":"scharf rechts", straight:"geradeaus", uturn:"wenden"};
+var NAVANG = {straight:0, "slight right":40, right:90, "sharp right":135, uturn:180, "sharp left":-135, left:-90, "slight left":-40};
+function navArrow(deg){ return "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" style=\"transform:rotate("+deg+"deg)\"><path d=\"M12 20V5M6 11l6-6 6 6\"/></svg>"; }
+var NAVFLAG = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 21V4h11l-2 4 2 4H5\"/></svg>";
+function navText(m, name){
+  var ty = m.type, md = NAVMOD[m.modifier] || "", on = name ? " auf "+name : "";
+  if(ty==="depart") return name ? "Los auf "+name : "Losgehen";
+  if(ty==="arrive") return "Ziel erreicht";
+  if(ty==="roundabout" || ty==="rotary") return "Im Kreisverkehr die "+(m.exit || 1)+". Ausfahrt"+(name ? " auf "+name : "");
+  if(ty==="fork") return "An der Gabelung "+(md || "weiter")+" halten"+on;
+  if(ty==="end of road") return "Am Ende der Straße "+(md || "abbiegen")+(md && md!=="wenden" ? " abbiegen" : "")+on;
+  if(ty==="new name" || (ty==="continue" && (!md || md==="geradeaus"))) return name ? "Weiter auf "+name : "Geradeaus weiter";
+  if(md==="wenden") return "Wenden"+on;
+  if(md==="geradeaus") return "Geradeaus"+on;
+  return md ? md.charAt(0).toUpperCase()+md.slice(1)+" abbiegen"+on : "Weiter"+on;
+}
+function navOsrm(base, pts){
+  return fetch(base+"route/v1/driving/"+pts.map(function(q){ return (+q.lo).toFixed(6)+","+(+q.la).toFixed(6); }).join(";")+"?overview=full&geometries=geojson&steps=true&continue_straight=false")
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }).then(function(j){
+      var rt = j && j.routes && j.routes[0]; if(!rt) throw new Error("kein Weg");
+      var coords = rt.geometry.coordinates.map(function(q){ return {la:q[1], lo:q[0]}; }), steps = [];
+      (rt.legs||[]).forEach(function(lg){ (lg.steps||[]).forEach(function(st){ var m = st.maneuver || {}; if(!m.location) return;
+        steps.push({at:{la:m.location[1], lo:m.location[0]}, text:navText(m, st.name), ic:m.type==="arrive" ? NAVFLAG : navArrow(m.type==="depart" ? 0 : (NAVANG[m.modifier] || 0)), arrive:m.type==="arrive"}); }); });
+      return {coords:coords, steps:steps, d:rt.distance, secs:rt.duration};
+    });
+}
+function navLegVia(p){ var hit = null; if(cur) dayLegs(cur).forEach(function(lg){ if(lg[1]===p) hit = lg; }); return hit ? legVia(hit[0], hit[1]) : []; }
+function navBuild(){
+  var N = NAV; if(!N || !me) return;
+  var p = N.tgt, mode = N.mode, from = {la:me.la, lo:me.lo}, vv = navLegVia(N.pref || p).map(function(q){ return {la:q[0], lo:q[1]}; }), jobs;
+  N.busy = true; N.err = ""; navRender();
+  if(mode==="bike"){
+    if(!CB.st.length){ cbLoad(true); N.busy = false; N.err = "Citi-Bike-Stationen werden geladen …"; navRender(); setTimeout(function(){ if(NAV===N) navBuild(); }, 2500); return; }
+    var s1 = cbNear(from, "bike", 1200), s2 = cbNear(p, "dock", 1200);
+    if(!s1 || !s2 || s1.s===s2.s){ N.busy = false; N.err = "Keine passende Citi-Bike-Station in der Nähe – nimm „Zu Fuß“."; navRender(); return; }
+    jobs = [navOsrm(OSRMF, [from, s1.s]).then(function(r){ r.kind = "walk"; r.steps = r.steps.filter(function(x){ return !x.arrive; }); r.steps.push({at:s1.s, text:"Rad an „"+s1.s.n+"“ ausleihen", sub:cbAvail(s1.s), ic:LMBIKE}); return r; }),
+            navOsrm(OSRMB, [s1.s].concat(vv, [s2.s])).then(function(r){ r.kind = "bike"; r.steps = r.steps.filter(function(x){ return !x.arrive && x.text.indexOf("Los")!==0; }); r.steps.push({at:s2.s, text:"Rad an „"+s2.s.n+"“ abgeben", sub:cbAvail(s2.s), ic:LMBIKE}); return r; }),
+            navOsrm(OSRMF, [s2.s, p]).then(function(r){ r.kind = "walk"; r.steps = r.steps.filter(function(x){ return x.text.indexOf("Los")!==0; }); return r; })];
+  } else if(mode==="oepnv" && !transit(from, p, todayKey()).walk){
+    var tr = transit(from, p, todayKey()), at = from; jobs = [];
+    tr.legs.forEach(function(l, i){
+      if(l.t==="walk"){ var to = l.to==="Ziel" ? p : stLL(l.st), a0 = at; jobs.push(navOsrm(OSRMF, [a0, to]).then(function(r){ r.kind = "walk"; if(i) r.steps = r.steps.filter(function(x){ return x.text.indexOf("Los")!==0; }); if(l.to!=="Ziel") r.steps = r.steps.filter(function(x){ return !x.arrive; }); return r; })); at = to; }
+      else if(l.t==="xfer"){ var tx = stLL(l.to); jobs.push(Promise.resolve({kind:"walk", coords:[at, tx], d:dist(at, tx), secs:l.secs||60, steps:[{at:at, text:"Umsteigen in "+NET.s[l.to][0], ic:LMWALK}]})); at = tx; }
+      else if(l.t==="ride"){ var rp0 = ridePath(l), n = l.stops.length - 1, rc = NET.r[l.r][1];
+        jobs.push(Promise.resolve({kind:"ride", col:rc, coords:rp0, d:0, secs:l.secs, steps:[{at:stLL(l.from), text:lineName(l.r)+" Richtung "+(l.hd||""), sub:"Einsteigen an "+NET.s[l.from][0]+" · "+n+(n===1 ? " Station" : " Stationen")+" bis "+NET.s[l.to][0], ic:LMSUB, ride:true}, {at:stLL(l.to), text:"Aussteigen: "+NET.s[l.to][0], ic:LMSUB}]}));
+        at = stLL(l.to); }
+    });
+  } else {
+    jobs = [navOsrm(OSRMF, [from].concat(vv, [p])).then(function(r){ r.kind = "walk"; return r; })];
+  }
+  Promise.all(jobs).then(function(segs){
+    if(NAV!==N) return;
+    var pts = [], steps = [], segInfo = [], secs = 0;
+    segs.forEach(function(sg){ var o = pts.length; sg.coords.forEach(function(q){ pts.push(q); }); segInfo.push({o:o, n:sg.coords.length, kind:sg.kind, col:sg.col}); secs += sg.secs || 0;
+      sg.steps.forEach(function(st){ var bi = o, bd = 1e9; for(var i = o; i < o + sg.coords.length; i++){ var d = dist(pts[i], st.at); if(d < bd){ bd = d; bi = i; } } st.i = bi; steps.push(st); }); });
+    var cum = [0]; for(var i = 1; i < pts.length; i++) cum.push(cum[i-1] + dist(pts[i-1], pts[i]));
+    N.pts = pts; N.cum = cum; N.steps = steps; N.segs = segInfo; N.secs = secs; N.total = cum[cum.length-1] || 1; N.pi = 0; N.off = 0; N.rt = Date.now(); N.busy = false;
+    navProgress(); navRender(); scheduleOverlay();
+    if(N.first){ N.first = false; fitPoints(pts.concat([p]), 1); setTimeout(function(){ if(NAV===N && N.follow) navFollow(true); }, 1600); }
+  }, function(e){ if(NAV!==N) return; N.busy = false; N.err = "Weg konnte nicht berechnet werden"+(e && e.message ? " ("+e.message+")" : "")+". Neuer Versuch …"; navRender(); setTimeout(function(){ if(NAV===N) navBuild(); }, 8000); });
+}
+function navStart(p, mode, pref){
+  if(!p || !hasLoc(p)) return;
+  navEnd(true);
+  NAV = {tgt:{la:p.la, lo:p.lo, n:p.n, id:p.id || null}, pref:pref || p, mode:mode || "walk", follow:true, hidden:false, first:true, busy:false, err:""};
+  closeCatPop(); select(null); if(!desktop.matches) setSheet("min");
+  document.body.classList.add("navon");
+  if(!navDragHooked && map){ navDragHooked = true; map.on("dragstart", function(){ if(NAV && NAV.follow){ NAV.follow = false; navRender(); } }); }
+  try { if(navigator.wakeLock) navigator.wakeLock.request("screen").then(function(l){ navWake = l; }, function(){}); } catch(e){}
+  if(!me){ NAV.err = "Standort wird bestimmt …"; navRender(); startLocate(true); return; }
+  navBuild();
+}
+function navEnd(silent){
+  if(!NAV) return; NAV = null; document.body.classList.remove("navon");
+  try { if(navWake) navWake.release(); } catch(e){} navWake = null;
+  var el = $("navUi"); if(el) el.remove(); scheduleOverlay();
+  if(!silent) toast("Navigation beendet", false);
+}
+document.addEventListener("visibilitychange", function(){ if(NAV && document.visibilityState==="visible" && navigator.wakeLock && !navWake) navigator.wakeLock.request("screen").then(function(l){ navWake = l; }, function(){}); });
+function navProgress(){
+  var N = NAV; if(!N || !N.pts || !me) return;
+  var P0 = N.pts, from = Math.max(0, N.pi - 3), to = Math.min(P0.length - 1, N.pi + 400), bi = N.pi, bd = 1e9;
+  for(var i = from; i <= to; i++){ var d = dist(me, P0[i]); if(d < bd){ bd = d; bi = i; } }
+  if(bd > 120){ for(var j = 0; j < P0.length; j++){ var d2 = dist(me, P0[j]); if(d2 < bd){ bd = d2; bi = j; } } }
+  N.pi = Math.max(N.pi, bi); N.offD = bd;
+  N.left = Math.max(0, N.total - N.cum[N.pi]);
+  N.next = N.steps.filter(function(st){ return st.i > N.pi + 1 || (st.i >= N.pi && dist(me, st.at) > 15); })[0] || null;
+  if(dist(me, N.tgt) < 25 || (N.left < 20 && N.pi >= P0.length - 2)) N.arrived = true;
+}
+function navOnPos(){
+  var N = NAV; if(!N) return;
+  if(!N.pts){ if(!N.busy && me) navBuild(); return; }
+  navProgress();
+  // vom Weg abgekommen: zweimal hintereinander > 45 m (bei brauchbarer Genauigkeit) → neu berechnen
+  if(!N.arrived && N.offD > 45 && (!me.acc || me.acc < 50)){ N.off = (N.off||0) + 1; if(N.off >= 2 && Date.now() - N.rt > 15000 && !N.busy){ N.off = 0; N.pi = 0; navBuild(); toast("Neuer Weg wird berechnet", false); } } else N.off = 0;
+  if(N.follow && !N.hidden) navFollow(false);
+  navRender(); scheduleOverlay();
+}
+function navFollow(zoom){ if(!NAV || !me || !map) return; map.easeTo({center:[me.lo, me.la], zoom: zoom ? Math.max(map.getZoom(), 16.5) : map.getZoom(), duration: reduceMotion ? 0 : 600}); }
+function navMins(s){ return Math.max(1, Math.round(s/60)); }
+function navRender(){
+  var N = NAV, el = $("navUi");
+  document.body.classList.toggle("navon", !!N && !N.hidden);
+  if(!N){ if(el) el.remove(); return; }
+  if(!el){ el = document.createElement("div"); el.id = "navUi"; document.body.appendChild(el); }
+  var left = N.left!=null ? N.left : N.total, secs = N.secs && N.total ? N.secs * (left / N.total) : left / WALK;
+  var eta = new Date(Date.now() + secs*1000), etaS = String(eta.getHours()).padStart(2, "0")+":"+String(eta.getMinutes()).padStart(2, "0");
+  var mi = {walk:LMWALK, bike:LMBIKE, oepnv:LMSUB}[N.mode], mn = {walk:"Zu Fuß", bike:"Citi Bike", oepnv:"U-Bahn & Bus"}[N.mode];
+  if(N.hidden){
+    el.className = "nav-ui min"; el.innerHTML = "<button type=\"button\" class=\"nav-pill\" data-act=\"navshow\"><span class=\"nav-pi\">"+mi+"</span><span><b>"+esc(N.tgt.n||"Ziel")+"</b> · "+(N.pts ? navMins(secs)+" Min." : "…")+"</span><span class=\"nav-pe\">Einblenden</span></button>";
+    return;
+  }
+  var top;
+  if(N.arrived) top = "<div class=\"nav-top arr\"><span class=\"nav-ic\">"+NAVFLAG+"</span><div class=\"nav-tx\"><b>Angekommen</b><small>"+esc(N.tgt.n||"Ziel")+"</small></div></div>";
+  else if(!N.pts || N.busy) top = "<div class=\"nav-top\"><span class=\"nav-ic spin\">"+mi+"</span><div class=\"nav-tx\"><b>"+esc(N.err || "Weg wird berechnet …")+"</b><small>zu "+esc(N.tgt.n||"Ziel")+"</small></div></div>";
+  else { var nx = N.next, dn = nx ? Math.max(0, N.cum[nx.i] - N.cum[N.pi]) : left;
+    top = "<div class=\"nav-top"+(nx && nx.ride ? " ride" : "")+"\"><span class=\"nav-ic\">"+(nx ? nx.ic : NAVFLAG)+"</span><div class=\"nav-tx\"><em>"+(nx && dn > 8 ? "In "+fmtDist(dn) : "Jetzt")+"</em><b>"+esc(nx ? nx.text : "Ziel erreicht")+"</b>"+(nx && nx.sub ? "<small>"+esc(nx.sub)+"</small>" : "")+"</div></div>"+
+      (N.offD > 45 ? "<div class=\"nav-off\">Du bist vom Weg abgekommen – er wird gleich neu berechnet.</div>" : ""); }
+  var canDone = N.arrived && N.tgt.id && P(N.tgt.id) && dayOf(N.tgt.id) && !T().done[N.tgt.id] && !isRO();
+  el.className = "nav-ui";
+  el.innerHTML = top+"<div class=\"nav-foot\"><div class=\"nav-sum\"><span class=\"nav-mode\">"+mi+"</span><span><b>"+(N.pts ? navMins(secs)+" Min." : "–")+"</b><small>"+(N.pts ? fmtDist(left)+" · Ankunft "+etaS : mn)+"</small></span></div>"+
+    (canDone ? "<button type=\"button\" class=\"nav-b go\" data-act=\"navdone\">Abhaken</button>" : "")+
+    (!N.follow && !N.arrived ? "<button type=\"button\" class=\"nav-b\" data-act=\"navfollow\" aria-label=\"Karte folgt mir\">"+LOCICO+"</button>" : "")+
+    "<button type=\"button\" class=\"nav-b\" data-act=\"navhide\">Ausblenden</button><button type=\"button\" class=\"nav-b end\" data-act=\"navend\">Beenden</button></div>";
+}
+var LOCICO = "<svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M17.6 2.4 2.9 8.7c-.6.3-.5 1.1.1 1.3l5.6 1.6 1.6 5.6c.2.6 1 .7 1.3.1l6.3-14.7c.2-.5-.3-1-.8-.8z\"/></svg>";
+function navSvg(){
+  var N = NAV; if(!N || N.hidden || !N.pts) return "";
+  var s = "", P0 = N.pts;
+  N.segs.forEach(function(sg){
+    var a = sg.o, b = sg.o + sg.n - 1, col = sg.kind==="bike" ? CBCOL : sg.kind==="ride" ? (sg.col || "#0A84FF") : "#0A84FF";
+    var mk = function(i0, i1){ var d = ""; for(var i = i0; i <= i1; i++){ var z = pt(P0[i]); d += (i===i0 ? "M" : "L")+f1(z[0])+" "+f1(z[1]); } return d; };
+    var cut = Math.min(Math.max(N.pi, a), b);
+    if(cut > a){ s += "<path d=\""+mk(a, cut)+"\" stroke=\"#8E8E93\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".55\"/>"; }
+    if(cut < b){ var d1 = mk(cut, b); s += "<path d=\""+d1+"\" stroke=\"#fff\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".9\"/><path d=\""+d1+"\" stroke=\""+col+"\" stroke-width=\"6.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(sg.kind==="walk" && N.mode!=="walk" ? " stroke-dasharray=\"1 9\"" : "")+"/>"; }
+  });
+  if(N.next && !N.arrived){ var z = pt(N.next.at); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"8\" fill=\"#fff\" stroke=\"#0A84FF\" stroke-width=\"3.5\"/>"; }
+  var zt = pt(N.tgt); s += "<circle cx=\""+f1(zt[0])+"\" cy=\""+f1(zt[1])+"\" r=\"11\" fill=\"#FF3B30\" stroke=\"#fff\" stroke-width=\"3\"/>";
+  return s;
 }
 function cbAvail(s){ return s.known ? (s.b + s.e)+(s.b + s.e===1 ? " Rad" : " Räder")+(s.e ? " ("+s.e+" E-Bike"+(s.e===1?"":"s")+")" : "")+" · "+s.d+(s.d===1 ? " freier Platz" : " freie Plätze") : "Verfügbarkeit wird geladen …"; }
 function cbCard(id){
@@ -9527,6 +9710,12 @@ document.addEventListener("click", function(e){
     case "lsday": closeLsPage(); var lsd = t.getAttribute("data-day"); if(dayByKey(lsd)){ cur = lsd; tab = "day"; renderAll(); fitDay(); } break;
     case "lsph": var lpid = t.getAttribute("data-pid"); if(P(lpid)){ openJPop(lpid, dayOf(lpid) || "", t.getAttribute("data-ph")); if(jp) jp.ret = "list"; } break;
     case "navprof": if(profOpen) closeProfile(); else openProfile(); break;
+    case "navstart": if(goSt && P(goSt.id)) navStart(P(goSt.id), t.getAttribute("data-mode")); break;
+    case "navend": navEnd(); break;
+    case "navhide": if(NAV){ NAV.hidden = true; navRender(); scheduleOverlay(); } break;
+    case "navshow": if(NAV){ NAV.hidden = false; NAV.follow = true; navRender(); scheduleOverlay(); navFollow(false); } break;
+    case "navfollow": if(NAV){ NAV.follow = true; navRender(); navFollow(true); } break;
+    case "navdone": if(NAV && NAV.tgt.id && P(NAV.tgt.id)){ var ndid = NAV.tgt.id; T().done[ndid] = true; doneMove(ndid); save(); renderSheet(); scheduleOverlay(); toast("„"+P(ndid).n+"“ abgehakt", false); } navEnd(true); break;
     case "cbrefresh": cbLoad(true); break;
     case "pfmore": openPfMore(t.getAttribute("data-trip"), t); break;
     case "pfcover": var cvt = t.getAttribute("data-trip"), cvv = t.getAttribute("data-v"); closeJpMore(); if(cvv==="auto") coverSave(cvt, null); else openCoverPick(cvt, cvv); break;

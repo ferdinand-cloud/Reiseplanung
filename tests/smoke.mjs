@@ -47,6 +47,11 @@ async function newPage(){
     if(u.includes("routed-bike/route")){ OSRMREQ.push(u); const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
       const coords = []; pts.forEach((p, i) => { if(i){ const q = pts[i-1]; coords.push([q[0] + (p[0]-q[0])*0.5 + 0.0008, q[1] + (p[1]-q[1])*0.5]); } coords.push(p); });
       return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:1800, geometry:{type:"LineString", coordinates:coords}}]}) }); }
+    if(u.includes("routed-foot/route") && u.includes("steps=true")){ const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
+      const A = pts[0], B = pts[pts.length-1], M = [A[0], B[1]], co = [];
+      for(let i = 0; i <= 10; i++) co.push([A[0], A[1] + (M[1]-A[1])*i/10]); for(let i = 1; i <= 10; i++) co.push([M[0] + (B[0]-M[0])*i/10, M[1]]);
+      return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:1200, duration:900, geometry:{type:"LineString", coordinates:co},
+        legs:[{steps:[{name:"Bowery", maneuver:{type:"depart", location:A}}, {name:"Bleecker Street", maneuver:{type:"turn", modifier:"right", location:M}}, {name:"", maneuver:{type:"arrive", location:B}}]}]}]}) }); }
     if(u.includes("openfreemap.org/styles")) return rt.fulfill({ contentType: "application/json", body: JSON.stringify({version:8, sources:{}, layers:[{id:"bg", type:"background", paint:{"background-color":"#dde"}}]}) });
     return rt.abort();
   });
@@ -359,6 +364,28 @@ await test("Citi Bike: Radweg folgt den Wegpunkten, keine Luftlinie", async () =
   await page.route(/routed-bike/, rt => rt.abort());
   const r2 = await rp(`(function(){ var L = dayLegs(cur)[${li}], b = bikeRoute(L[0], L[1]); return {exact:b.exact, path:b.path}; })()`);
   ok(!r2.exact && r2.path===null, "Ohne berechneten Weg wird trotzdem eine Linie geliefert");
+});
+
+await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abhaken", async () => {
+  await seed();
+  await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; openGo("p2");`); await page.waitForTimeout(200);
+  ok(await page.locator("#catPop .gp-nav [data-act=navstart]").count()===3, "Navigation in der App fehlt im Routen-Pop-up");
+  await click("#catPop [data-act=navstart][data-mode=walk]");
+  await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts)"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`!!(NAV && NAV.pts && NAV.pts.length > 5)`), "Weg für die Navigation nicht berechnet");
+  ok(await visible("#navUi .nav-top") && await visible("#navUi .nav-foot"), "Navigationsanzeige fehlt");
+  const t1 = await page.locator("#navUi .nav-top").innerText();
+  ok(t1.includes("Rechts abbiegen") && t1.includes("Bleecker"), "Abbiegehinweis fehlt: "+t1);
+  ok(await rp(`document.body.classList.contains("navon")`), "Obere Leiste wird während der Navigation nicht ausgeblendet");
+  await click("#navUi [data-act=navhide]");
+  ok(await visible("#navUi .nav-pill") && !(await visible("#navUi .nav-top")), "Ausblenden funktioniert nicht");
+  ok(await rp(`navSvg()===""`) && !(await rp(`document.body.classList.contains("navon")`)), "Weg/Leisten bleiben beim Ausblenden sichtbar");
+  await click("#navUi [data-act=navshow]");
+  ok(await visible("#navUi .nav-top"), "Einblenden funktioniert nicht");
+  await rp(`me = {la:NAV.tgt.la, lo:NAV.tgt.lo, acc:8}; navOnPos();`); await page.waitForTimeout(150);
+  ok((await page.locator("#navUi .nav-top").innerText()).includes("Angekommen"), "Ankunft wird nicht erkannt");
+  await click("#navUi [data-act=navdone]");
+  ok(await rp(`!!T().done.p2 && NAV===null`), "Abhaken bei Ankunft funktioniert nicht");
 });
 
 await test("Tagesplan: Privat-Plakette sichtbar", async () => {
