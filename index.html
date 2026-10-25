@@ -4539,7 +4539,7 @@ function revisit(id, k, at){
   ["n","c","addr","la","lo","note","list","g","web","tel"].forEach(function(f){ if(p[f]!==undefined) c[f] = p[f]; });
   var o = ord(k), idx = at!=null && at >= 0 && at <= o.length ? at : o.length;
   T().places[nid] = c; o.splice(idx, 0, nid);
-  save(); toast(p.n+" zusätzlich am "+D.lbl+" eingeplant (Stopp "+(idx+1)+")", true);
+  save(); toast(p.n+" zusätzlich am "+D.lbl+" eingeplant (Stopp "+stopNo(nid, k)+")", true);
 }
 
 /* Zwischenstopp im Hotel: eigener Stopp mit Verweis auf das Hotel des Tages (wie ein weiterer Besuch, ohne Wunschliste) */
@@ -4974,6 +4974,8 @@ function openViaPop(li, vi){
   $("catPop").innerHTML = h; $("catPop").hidden = false;
 }
 var VM2 = null;
+/* Stoppnummer wie auf der Karte: Hotel-Zwischenstopps zählen nicht mit */
+function stopNo(id, k){ var n = 0, r = 0; ord(k || cur).forEach(function(x){ var p = P(x); if(p && p.k==="hotel") return; n++; if(x===id) r = n; }); return r; }
 function openViaMove2(li, vi, first){
   var LG = dayLegs(cur); if(!LG[li]) return; VM2 = {li:li, vi:vi, first:first==null ? null : first};
   var nodes = [LG[0][0]].concat(LG.map(function(pr){ return pr[1]; })), D = dayByKey(cur), f = VM2.first;
@@ -4982,7 +4984,7 @@ function openViaMove2(li, vi, first){
     "<p class=\"note\" style=\"margin:0 2px 10px\">"+(f==null ? "Tippe auf die beiden Punkte, zwischen denen der Wegpunkt liegen soll." : "„"+esc(nodes[f].n || "Hotel")+"“ gewählt – jetzt den Punkt davor oder danach antippen.")+"</p><div class=\"pop-list addlist vm2\">";
   nodes.forEach(function(n, i){
     var isH = n.id!=="me" && (!n.id || n.k==="hotel" || (T().hotels||[]).some(function(x){ return x.id===n.id; })), on = f===i, near = f!=null && Math.abs(f - i)===1, off = f!=null && !on && !near, curr = (i===cA || i===cB) && f==null;
-    var badge = n.id==="me" ? "<span class=\"ai vm2-n vm2-me\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M17.5 2.5 2.8 8.6l6.3 2.3 2.3 6.3z\"/></svg></span>" : isH ? "<span class=\"ai vm2-n hs\">H</span>" : "<span class=\"ai vm2-n\" style=\"background:"+(D ? dayColor(D) : "var(--accent)")+"\">"+i+"</span>";
+    var badge = n.id==="me" ? "<span class=\"ai vm2-n vm2-me\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M17.5 2.5 2.8 8.6l6.3 2.3 2.3 6.3z\"/></svg></span>" : isH ? "<span class=\"ai vm2-n hs\">H</span>" : "<span class=\"ai vm2-n\" style=\"background:"+(D ? dayColor(D) : "var(--accent)")+"\">"+(stopNo(n.id) || i)+"</span>";
     h += "<button type=\"button\" data-act=\"vm2pick\" data-i=\""+i+"\" class=\""+(on ? "vm2-on" : "")+(off ? " vm2-off" : "")+(near ? " vm2-near" : "")+"\""+(off ? " aria-disabled=\"true\"" : "")+">"+badge+"<span class=\"dt\"><b>"+esc(n.n || "Hotel")+"</b>"+(curr ? "<small>aktuell zugeordnet</small>" : on ? "<small>erster Punkt</small>" : near ? "<small>antippen zum Zuordnen</small>" : "")+"</span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>";
     if(i < nodes.length - 1) h += "<div class=\"vm2-leg"+((f==null && i===li) || (f!=null && (i===f || i===f-1)) ? " hi" : "")+"\"></div>";
   });
@@ -8032,7 +8034,7 @@ function plan(id, k, at){
   undoSnap = snapshot();
   var idx = at!=null && at >= 0 && at <= ord(k).length ? at : insertIdx(k, p);
   ord(k).splice(idx, 0, id);
-  save(); toast(p.n+" ist jetzt Stopp "+(idx+1)+" am "+dayByKey(k).lbl, true);
+  save(); toast(p.n+" ist jetzt Stopp "+stopNo(id, k)+" am "+dayByKey(k).lbl, true);
 }
 /* Einplanen von der Karte: ans Ende oder zwischen zwei Punkte des Tages */
 var PLANCTX = null;
@@ -8052,7 +8054,7 @@ function revisitAsk(id, k){
 }
 function planAsk(){
   var c = PLANCTX, k = c.k || cur, D = dayByKey(k); if(!D){ PLANCTX = null; return; }
-  var n = ord(k).filter(function(id){ return !T().done[id]; }).length, N = ord(k).length;
+  var n = ord(k).filter(function(id){ return !T().done[id]; }).length, N = ord(k).filter(function(id){ var q = P(id); return !(q && q.k==="hotel"); }).length;
   var el = $("planPop"); if(!el){ el = document.createElement("div"); el.id = "planPop"; el.className = "cfpop"; document.body.appendChild(el); el.addEventListener("click", function(e){ if(e.target===el){ el.hidden = true; PLANCTX = null; } }); }
   el.innerHTML = "<div class=\"cf-card plan-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Einplanen\"><b>„"+esc(PLANCTX.name || "Ort")+"“</b><p>Zu "+esc(D.lbl)+" hinzufügen – wohin im Tagesplan?</p>"+
     "<button type=\"button\" class=\"plan-opt\" data-act=\"planend\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 5h9M4 9h9M4 13h5M15 11v6M12 14h6\"/></svg></span><span><b>Ans Ende</b><small>als Stopp "+(N+1)+"</small></span></button>"+
@@ -8075,7 +8077,7 @@ function planNodes(){
   // heute mit bekanntem Standort: Start ist der aktuelle Ort, nicht das Hotel
   var live = k===todayKey() ? meAnchor() : null;
   nodes.push(live ? {n:"Mein Standort", h:true, me:true} : H ? {n:H.n, h:true} : {n:"Tagesbeginn", h:true, pseudo:true});
-  o.forEach(function(id, i){ if(T().done[id]) return; var p = P(id); nodes.push({n:p ? p.n : "?", id:id, oi:i, no:i+1, hs:p && p.k==="hotel"}); });
+  o.forEach(function(id, i){ if(T().done[id]) return; var p = P(id); nodes.push({n:p ? p.n : "?", id:id, oi:i, no:stopNo(id, k) || i+1, hs:p && p.k==="hotel"}); });
   nodes.push(H ? {n:H.n, h:true} : {n:"Tagesende", h:true, pseudo:true});
   return nodes;
 }
