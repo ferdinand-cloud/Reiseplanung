@@ -15,6 +15,8 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="stylesheet" href="maplibre-gl.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
 <script src="maplibre-gl.js"></script>
 <style>
 /* Layout: Karte füllt den ganzen Bildschirm; Tagesplan und Wunschliste liegen als ziehbares Blatt darüber (Desktop: Seitenleiste). */
@@ -2836,6 +2838,50 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 /* Plan eingeklappt beim Kartenschritt */
 .dm-mock[data-a="map"] .m-sheet{height:16%}
 @media (prefers-reduced-motion:reduce){.dm-mock *,.dm-mock{animation:none !important}}
+
+/* ===== Designsprache: filigran, luftig, Glas mit Haarlinien (zuletzt, überschreibt Früheres) ===== */
+:root,:root[data-theme="light"]{
+  --f-display:"Figtree",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --f-body:"Figtree",-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",Roboto,sans-serif;
+  --f-round:"Figtree",ui-rounded,-apple-system,system-ui,sans-serif;
+}
+:root[data-theme="light"]{
+  --ink:#1b2433; --muted:#5f6b7d;
+  --glass:rgba(236,243,250,.66); --glass-hi:rgba(243,248,253,.80); --glass-bd:rgba(110,135,165,.30);
+  --sh1:0 1px 2px rgba(20,40,70,.05),0 4px 14px rgba(20,40,70,.07);
+  --sh2:0 1px 2px rgba(20,40,70,.06),0 10px 30px rgba(20,40,70,.11);
+}
+@media not (prefers-color-scheme: dark){ :root:not([data-theme="dark"]){
+  --ink:#1b2433; --muted:#5f6b7d;
+  --glass:rgba(236,243,250,.66); --glass-hi:rgba(243,248,253,.80); --glass-bd:rgba(110,135,165,.30);
+  --sh1:0 1px 2px rgba(20,40,70,.05),0 4px 14px rgba(20,40,70,.07);
+  --sh2:0 1px 2px rgba(20,40,70,.06),0 10px 30px rgba(20,40,70,.11);
+} }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --glass:rgba(26,31,38,.66); --glass-hi:rgba(28,33,41,.82); --glass-bd:rgba(255,255,255,.13);
+  --sh1:0 1px 2px rgba(0,0,0,.25),0 4px 14px rgba(0,0,0,.28);
+  --sh2:0 1px 2px rgba(0,0,0,.3),0 12px 34px rgba(0,0,0,.42);
+} }
+:root[data-theme="dark"]{ --glass:rgba(26,31,38,.66); --glass-hi:rgba(28,33,41,.82); --glass-bd:rgba(255,255,255,.13); }
+body{font-family:var(--f-body);-webkit-font-smoothing:antialiased;letter-spacing:.005em}
+input,textarea,select,button{font-family:inherit}
+/* feine Linien-Symbole in der Bedienung (Kartenlinien und Navigationspfeile bleiben kräftig) */
+:is(button,a,label,.tb,.cic,.ai,.jp-tile,.pvi,.rc-x,.nav-mode,.nn-ic,.tic) svg :is(path,circle,rect,line,polyline,ellipse,polygon){stroke-width:1.55}
+:is(.nh-ring,.no-arr,.no-dial,.nav-pi,.dm-mock) svg :is(path,circle,rect,line,polyline,ellipse,polygon){stroke-width:revert-layer}
+.nh-ring svg *{stroke-width:2.4}
+/* schwebende Leisten und Knöpfe: Glas mit Haarlinie, sanfter Schatten */
+.tabbar,.ctrl .cg,.toprow .trip,.toprow .menubtn,.rail,.nav-foot,.addmenu,.pop-card,.cf-card,.card,.toast{border:1px solid var(--glass-bd) !important;box-shadow:var(--sh2) !important}
+.sheet{border-top:1px solid var(--glass-bd) !important}
+.tabbar,.ctrl .cg,.toprow .trip,.toprow .menubtn,.rail{-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%)}
+.tb svg{width:24px;height:24px}
+.tb{color:var(--ink)}
+#srchBtn svg{color:var(--accent)}
+/* Typografie: ruhiger, etwas leichter */
+h1,h2,h3,h4,.ag-title,.pf-id b,.dc-title b{font-weight:600;letter-spacing:-.005em}
+.nh-tx em,.rc-big,.rc-rb{font-weight:700}
+small,.sub,.note{color:var(--muted)}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.85;font-weight:400}
+.btn{font-weight:600;letter-spacing:.01em}
 </style>
 </head>
 <body>
@@ -7877,9 +7923,11 @@ function cbAddLayer(){
   if(map.getSource("cb")) return;
   map.addSource("cb", {type:"geojson", data:cbGeo()});
   map.addLayer({id:"cb", type:"circle", source:"cb", minzoom:12, layout:{visibility:layers.bike ? "visible" : "none"}, paint:{
-    "circle-radius":["interpolate",["linear"],["zoom"],12,2.5,14,5,16,8],
-    "circle-color":["case",["==",["get","ok"],0],"#9aa3ad",["<",["get","b"],0],"#7fa7d9",["==",["get","b"],0],"#9aa3ad",["<",["get","b"],3],"#FF9F0A",CBCOL],
-    "circle-stroke-color":"#ffffff","circle-stroke-width":["interpolate",["linear"],["zoom"],12,.8,16,2]}});
+    // eine Farbe für alle Stationen, die Verfügbarkeit zeigt nur der Ring: grün = genug Räder, orange = 1–2, grau = leer/außer Betrieb, weiß = noch unbekannt
+    "circle-radius":["interpolate",["linear"],["zoom"],12,2.5,14,4.5,16,7],
+    "circle-color":CBCOL,
+    "circle-stroke-color":["case",["==",["get","ok"],0],"#8E8E93",["<",["get","b"],0],"#ffffff",["==",["get","b"],0],"#8E8E93",["<",["get","b"],3],"#FF9F0A","#34C759"],
+    "circle-stroke-width":["interpolate",["linear"],["zoom"],12,1.2,14,2.2,16,3]}});
 }
 function cbNeeded(){ if(layers.bike) return true; if(!cur || isRO()) return false; return dayLegs(cur).some(function(p){ return legMode(p[0], p[1])==="bike"; }); }
 setInterval(function(){ if(document.visibilityState==="visible" && cbNeeded()) cbLoad(); }, 30000);

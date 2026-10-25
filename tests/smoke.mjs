@@ -331,6 +331,8 @@ await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad",
   ok(await rp(`layers.bike && lsGet("nyc-l-bike")==="1"`), "Ebene wird nicht eingeschaltet");
   ok(await rp(`CB.st.length`)===3, "Stationen nicht geladen ("+await rp(`CB.st.length + " " + CB.err`)+")");
   ok(await rp(`map.getSource("cb")._data.features.length`)===3, "Stationen nicht auf der Karte");
+  ok(await rp(`typeof map.getPaintProperty("cb","circle-color")==="string"`), "Stationspunkte haben nicht eine einheitliche Füllfarbe");
+  ok(await rp(`Array.isArray(map.getPaintProperty("cb","circle-stroke-color"))`), "Verfügbarkeit wird nicht über den Ring gezeigt");
   await rp(`select("cb:S1")`); await page.waitForTimeout(150);
   const card = await page.locator("#card").innerText();
   ok(card.includes("Ludlow") && card.includes("7") && card.includes("freie Plätze"), "Stations-Karte unvollständig: "+card.slice(0, 120));
@@ -346,6 +348,18 @@ await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad",
   ok(leg.includes("Min.") && leg.includes("Ludlow") && leg.includes("Washington Sq E"), "Rad-Etappe falsch: "+leg.slice(0, 160));
   ok(await page.evaluate(() => document.querySelector(".leg.lbk .tsum").getBoundingClientRect().width > 80), "Zusammenfassung der Rad-Etappe ist nicht sichtbar");
   ok(await rp(`legMode(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1])`)==="bike", "Rad-Modus wird nicht gespeichert");
+});
+
+await test("Dunkler Modus: Texte bleiben hell und lesbar", async () => {
+  await page.emulateMedia({colorScheme: "dark"});
+  await seed();
+  const ink = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--ink").trim());
+  const col = await page.evaluate(() => getComputedStyle(document.querySelector("#tripBtn")).color);
+  const lum = c => { const m = c.match(/[\d.]+/g).map(Number); return (m[0]*299 + m[1]*587 + m[2]*114) / 1000; };
+  ok(lum(col) > 150, "Reise-Knopf im dunklen Modus zu dunkel: "+col+" (--ink "+ink+")");
+  await page.emulateMedia({colorScheme: "light"});
+  const col2 = await page.evaluate(() => getComputedStyle(document.querySelector("#tripBtn")).color);
+  ok(lum(col2) < 100, "Reise-Knopf im hellen Modus zu hell: "+col2);
 });
 
 await test("Citi Bike: Radweg folgt den Wegpunkten, keine Luftlinie", async () => {
