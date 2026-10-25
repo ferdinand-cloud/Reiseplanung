@@ -409,6 +409,16 @@ await test("Navigation zu U-Bahn- und Citi-Bike-Stationen", async () => {
   ok(await page.locator("#card [data-act=navsub]").count()===1, "„Hinlaufen“ zur nächsten U-Bahn fehlt im Orts-Pop-up");
 });
 
+await test("Routen-Pop-up bleibt bei Standort-Updates ruhig", async () => {
+  await seed();
+  await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; openGo("p2");`); await page.waitForTimeout(300);
+  await page.evaluate(() => { window.__pc = document.querySelector("#catPop .pop-card"); });
+  for(let i = 0; i < 5; i++){ await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; renderGo(true);`); await page.waitForTimeout(60); }
+  ok(await page.evaluate(() => window.__pc === document.querySelector("#catPop .pop-card")), "Pop-up wird bei jedem Standort-Update neu aufgebaut (zuckt)");
+  await rp(`me = {la:40.7000, lo:-73.9890, acc:8}; renderGo(true);`); await page.waitForTimeout(60);
+  ok(await page.evaluate(() => { const c = document.querySelector("#catPop .pop-card"); return !!c && getComputedStyle(c).animationName==="none"; }), "Aktualisierung spielt die Einblend-Animation erneut ab");
+});
+
 await test("Tagesplan: Privat-Plakette sichtbar", async () => {
   await seed();
   await rp(`T().privP = {p2:1}; renderSheet();`);

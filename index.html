@@ -6551,9 +6551,10 @@ function startLocate(silent){
     if(me.acc < 60){ var lt = trail[trail.length-1]; if(!lt || dist(lt, me) > 6){ trail.push({la:me.la, lo:me.lo, t:Date.now()}); if(trail.length > 400) trail.shift(); } }
     if(firstFix){ firstFix = false; centerOn(me, 15.5); }
     setLocBtn(); scheduleOverlay(); locShare();
-    if(sel && !$("card").hidden) renderCard();
+    // Orts-Pop-up bei Standort-Updates höchstens alle 15 s neu aufbauen (sonst flackert es)
+    if(sel && !$("card").hidden && Date.now() - (window.__cardLoc||0) > 15000){ window.__cardLoc = Date.now(); renderCard(); }
     var oldA = meA; meAnchor(); if(meA!==oldA && cur===todayKey()){ if(tab==="day") renderSheetSoon(); scheduleOverlay(); }
-    if(goSt && !$("catPop").hidden && $("catPop").querySelector("[data-act=gofrom]")) renderGo();
+    if(goSt && !$("catPop").hidden && $("catPop").querySelector("[data-act=gofrom]")) renderGo(true);
     navOnPos();
   }, function(err){
     var m = err && err.code===1 ? "Standortzugriff abgelehnt. Erlaube ihn unter Einstellungen › Datenschutz › Ortungsdienste › Safari-Websites." : "Standort konnte nicht bestimmt werden.";
@@ -7469,11 +7470,11 @@ function goEst(mode, a, b){
 function openGo(id){
   var p = P(id); if(!p) return;
   var prev = goPrev(id);
-  goSt = {id:id, from: (me || !prev || dayOf(id)===todayKey()) ? "me" : "prev"};
+  goSt = {html:"", id:id, from: (me || !prev || dayOf(id)===todayKey()) ? "me" : "prev"};
   if(!me && watchId===null && "geolocation" in navigator) startLocate();
   renderGo();
 }
-function renderGo(){
+function renderGo(live){
   var p = P(goSt.id); if(!p){ closeCatPop(); return; }
   var prev = goPrev(goSt.id), D = dayByKey(dayOf(goSt.id)||"");
   if(goSt.from==="prev" && !prev) goSt.from = "me";
@@ -7491,7 +7492,12 @@ function renderGo(){
   if(a && hasLoc(p) && dist(a, p) < 40000 && !transit(a, p, dayOf(goSt.id)||todayKey()).walk) h += "<button type=\"button\" class=\"btn g gp-in\" data-act=\"goin\">U-Bahn-Weg hier in der Karte zeigen</button>";
   h += "<div class=\"gp-lbl\">Öffnen in</div><div class=\"gp-app\" role=\"group\" aria-label=\"Karten-App\"><button type=\"button\" data-act=\"goapp\" data-app=\"apple\" aria-pressed=\""+(goApp==="apple")+"\">Apple Karten</button><button type=\"button\" data-act=\"goapp\" data-app=\"google\" aria-pressed=\""+(goApp==="google")+"\">Google Maps</button></div>";
   h += "<p class=\"gp-note\">"+(from==="me" && !me ? "Dein Standort wird in der Karten-App bestimmt. " : "")+"Die Navigation startet in der gewählten Karten-App.</p></div>";
-  $("catPop").innerHTML = h; $("catPop").hidden = false;
+  // Standort-Updates: nur neu aufbauen, wenn sich wirklich etwas geändert hat – dann ohne Einblend-Animation und mit gleicher Scroll-Position (sonst „zuckt“ das Pop-up)
+  var cp = $("catPop"), open = !cp.hidden && !!cp.querySelector("[data-act=gofrom]");
+  if(open && goSt.html===h) return;
+  var oc = open ? cp.querySelector(".pop-card") : null, st = oc ? oc.scrollTop : 0;
+  goSt.html = h; cp.innerHTML = h; cp.hidden = false;
+  if(open){ var nc = cp.querySelector(".pop-card"); if(nc){ nc.style.setProperty("animation", "none", "important"); nc.scrollTop = st; } }
 }
 function renderCard(){
   var el = $("card");
