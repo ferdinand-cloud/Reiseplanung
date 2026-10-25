@@ -2394,6 +2394,8 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .dc-ph img[data-act]{cursor:zoom-in}
 .dcv-by{display:block;font-size:12px;font-weight:500;opacity:.75}
 .dcv-cm p{margin:0 0 8px}
+.rc-pg{will-change:auto}
+#rc{overflow-x:hidden}
 .rc-flash{outline:2.5px solid var(--dc,#0A84FF);outline-offset:2px;border-radius:12px;transition:outline-color .6s ease}
 .rc-lbx{position:fixed;z-index:96;top:calc(env(safe-area-inset-top,0px) + 12px);right:14px}
 
@@ -9846,7 +9848,7 @@ function rcObserve(root){
 function renderRecap(k){
   var el = $("rc"); if(!el || !dayByKey(k)) return;
   RC.key = k; RC.draw = null; el.style.setProperty("--dc", rcColor(dayByKey(k)));
-  el.innerHTML = rcHTML(k); el.scrollTop = 0;
+  var rh = rcHTML(k), ri = rh.indexOf("<section class=\"rc-hero"); el.innerHTML = ri > -1 ? rh.slice(0, ri)+"<div class=\"rc-pg\">"+rh.slice(ri)+"</div>" : rh; el.scrollTop = 0;
   fillPhotos(el); rcObserve(el);
   setTimeout(function(){ rcCountUp(el); }, 250);
   rcMap(k);
@@ -9862,17 +9864,25 @@ function openRecap(k){
     el.addEventListener("touchstart", function(e){ dsw = null; if(e.touches.length!==1) return; var tg = e.target;
       if(tg.closest && tg.closest(".rc-map,.rc-mapw,.rc-strip,.rc-days,.rc-bar,input,textarea")) return;
       var t = e.touches[0]; if(t.clientX < 20 || t.clientX > window.innerWidth - 20) return; dsw = {x:t.clientX, y:t.clientY, t:Date.now(), h:null}; }, {passive:true});
+    // nur der Inhalt (.rc-pg) gleitet, der dunkle Hintergrund bleibt stehen – kein Durchblitzen der App darunter
+    var pgOf = function(){ return el.querySelector(".rc-pg"); };
     el.addEventListener("touchmove", function(e){ if(!dsw || e.touches.length!==1) return; var t = e.touches[0], dx = t.clientX - dsw.x, dy = t.clientY - dsw.y;
       if(dsw.h===null){ if(Math.abs(dx) < 10 && Math.abs(dy) < 10) return; dsw.h = Math.abs(dx) > Math.abs(dy)*1.5; if(!dsw.h){ dsw = null; return; } }
-      var ds = days(), D = dayByKey(RC.key), nb = D && ds[D.i + (dx < 0 ? 1 : -1)], k = nb ? 1 : 0.25;
-      el.style.transition = "none"; el.style.transform = "translateX("+(dx*k*0.5)+"px)"; el.style.opacity = String(1 - Math.min(Math.abs(dx), 240)/240*0.35*k); dsw.dx = dx; }, {passive:true});
+      var ds = days(), D = dayByKey(RC.key), nb = D && ds[D.i + (dx < 0 ? 1 : -1)], pg = pgOf(); if(!pg) return;
+      pg.style.transition = "none"; pg.style.transform = "translateX("+(nb ? dx : dx*0.25)+"px)"; dsw.dx = dx; }, {passive:true});
     var dend = function(){ if(!dsw || !dsw.h){ dsw = null; return; } var s0 = dsw, dx = s0.dx || 0; dsw = null;
-      var ds = days(), D = dayByKey(RC.key), nb = D && ds[D.i + (dx < 0 ? 1 : -1)];
+      var ds = days(), D = dayByKey(RC.key), nb = D && ds[D.i + (dx < 0 ? 1 : -1)], pg = pgOf(), W = el.clientWidth || window.innerWidth; if(!pg) return;
       if(nb && (Math.abs(dx) > 80 || (Math.abs(dx) > 40 && Date.now() - s0.t < 250))){
-        el.style.transition = "transform .16s ease, opacity .16s ease"; el.style.transform = "translateX("+(dx < 0 ? -60 : 60)+"px)"; el.style.opacity = "0";
-        setTimeout(function(){ renderRecap(nb.key); el.style.transition = "none"; el.style.transform = "translateX("+(dx < 0 ? 60 : -60)+"px)"; el.style.opacity = "0";
-          requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.style.transition = "transform .24s cubic-bezier(.2,.8,.2,1), opacity .24s ease"; el.style.transform = ""; el.style.opacity = ""; setTimeout(function(){ el.style.transition = ""; }, 260); }); }); }, 160);
-      } else { el.style.transition = "transform .2s ease, opacity .2s ease"; el.style.transform = ""; el.style.opacity = ""; setTimeout(function(){ el.style.transition = ""; }, 220); } };
+        pg.style.transition = "transform .2s cubic-bezier(.4,0,.6,1)"; pg.style.transform = "translateX("+(dx < 0 ? -W : W)+"px)";
+        setTimeout(function(){
+          renderRecap(nb.key);
+          var np = pgOf(); if(!np) return;
+          // was gleich zu sehen ist, sofort zeigen (ohne Einblend-Effekt)
+          Array.prototype.forEach.call(np.querySelectorAll(".rc-rv"), function(x){ if(x.getBoundingClientRect().top < window.innerHeight) x.classList.add("in"); });
+          np.style.transition = "none"; np.style.transform = "translateX("+(dx < 0 ? W : -W)+"px)";
+          requestAnimationFrame(function(){ requestAnimationFrame(function(){ np.style.transition = "transform .3s cubic-bezier(.2,.8,.2,1)"; np.style.transform = ""; setTimeout(function(){ np.style.transition = ""; }, 320); }); });
+        }, 200);
+      } else { pg.style.transition = "transform .22s ease"; pg.style.transform = ""; setTimeout(function(){ pg.style.transition = ""; }, 240); } };
     el.addEventListener("touchend", dend); el.addEventListener("touchcancel", dend);
     ["gesturestart","gesturechange","gestureend"].forEach(function(n){ el.addEventListener(n, function(e){ e.preventDefault(); }, {passive:false}); });
     el.addEventListener("touchmove", function(e){ if(e.touches.length > 1 && !(e.target.closest && e.target.closest(".rc-map.moving"))) e.preventDefault(); }, {passive:false});

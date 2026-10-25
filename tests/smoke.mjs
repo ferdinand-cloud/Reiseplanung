@@ -211,9 +211,15 @@ await test("Rückblick: seitlich wischen wechselt den Tag", async () => {
     tg.dispatchEvent(new TouchEvent("touchstart", {bubbles:true, touches:[T(300, 500)], changedTouches:[T(300, 500)]}));
     tg.dispatchEvent(new TouchEvent("touchmove", {bubbles:true, touches:[T(200, 503)], changedTouches:[T(200, 503)]}));
     tg.dispatchEvent(new TouchEvent("touchmove", {bubbles:true, touches:[T(120, 505)], changedTouches:[T(120, 505)]}));
+    window.__rcMid = {op: getComputedStyle(el).opacity, tf: el.style.transform || "", pg: (el.querySelector(".rc-pg") || {style:{}}).style.transform || ""};
     tg.dispatchEvent(new TouchEvent("touchend", {bubbles:true, touches:[], changedTouches:[T(120, 505)]}));
   });
   await page.waitForTimeout(700);
+  const mid = await page.evaluate(() => window.__rcMid);
+  ok(mid.op==="1" && !mid.tf, "Rückblick selbst wird beim Wischen verschoben/ausgeblendet (App blitzt durch)");
+  ok(mid.pg.includes("translateX"), "Inhalt folgt dem Finger nicht");
+  await page.waitForTimeout(80);
+  ok(await page.evaluate(() => getComputedStyle(document.getElementById("rc")).opacity)==="1", "Rückblick wird beim Tageswechsel ausgeblendet");
   const k = await rp(`RC.key`);
   ok(k > Y, "Wischen nach links wechselt nicht zum nächsten Tag ("+k+")");
 });
