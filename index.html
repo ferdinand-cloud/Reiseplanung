@@ -2078,6 +2078,15 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 .vis-seg .vs-pub[aria-checked="true"]{color:#0A84FF}
 .vis-seg button.off{opacity:.5}
 .vis-hint{margin:6px 2px 0;font-size:12px}
+.plan-days{display:flex;gap:6px;overflow-x:auto;margin:4px -4px 10px;padding:2px 4px 4px;scrollbar-width:none}
+.plan-days::-webkit-scrollbar{display:none}
+.plan-days .pd{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:74px;padding:8px 8px 7px;border:1.5px solid var(--line);border-radius:14px;background:transparent;color:var(--ink)}
+.plan-days .pd i{width:24px;height:24px;border-radius:50%;background:var(--dc);color:#fff;font:700 12.5px/24px var(--f-body);font-style:normal;text-align:center}
+.plan-days .pd b{font:600 12.5px/1.2 var(--f-body);white-space:nowrap}
+.plan-days .pd span{display:flex;gap:3px}
+.plan-days .pd em{font:700 10px/1 var(--f-body);font-style:normal;padding:3px 5px;border-radius:6px;background:var(--fill);color:var(--muted)}
+.plan-days .pd em.pd-today{background:color-mix(in srgb,#34C759 22%,transparent);color:#34C759}
+.plan-days .pd.on{border-color:var(--dc);background:color-mix(in srgb,var(--dc) 16%,transparent)}
 .pub-card{width:min(380px,100%);max-height:calc(var(--vvh,100vh) - 48px);overflow-y:auto;text-align:left}
 .pub-card > b,.pub-card > p{text-align:center;display:block}
 .pub-h{display:flex;align-items:center;justify-content:space-between;margin:14px 2px 8px;font:600 13.5px/1.3 var(--f-body)}
@@ -6266,13 +6275,13 @@ function poiCard(){
   c += "</div>";
   return c;
 }
-function poiAdd(to, at){
-  var q = poiSel; if(!q) return;
+function poiAdd(to, at, k){
+  var q = poiSel; if(!q) return; k = k || cur;
   var ex = poiExisting(q);
   if(ex){
     ex = rootOf(ex);
-    if(to==="day" && !dayOf(ex)){ plan(ex, cur, at); }
-    else if(to==="day" && !visitsOf(ex).some(function(v){ return v.k===cur; })){ revisit(ex, cur); }
+    if(to==="day" && !dayOf(ex)){ plan(ex, k, at); }
+    else if(to==="day" && !visitsOf(ex).some(function(v){ return v.k===k; })){ revisit(ex, k, at); }
     else toast(q.n+" ist schon "+(dayOf(ex) ? "am "+dayByKey(dayOf(ex)).lbl+" geplant" : "in der Wunschliste"), false);
     poiSel = null; renderAll(); select(ex); return;
   }
@@ -6280,7 +6289,7 @@ function poiAdd(to, at){
   var pid = uid("w"), p = {id:pid, n:q.n.slice(0,80), c:q.c, list:lid||null, note:"", addr:(q.addr||"").slice(0,120), la:q.la, lo:q.lo}, gq = gInfo[gK(q)];
   if(gq && gq.st==="ok"){ p.gid = gq.d.id; gInfo[gK(p)] = gq; }
   T().places[pid] = p;
-  if(to==="day") plan(pid, cur, at); else { save(); toast(p.n+" steht in der Wunschliste", false); }
+  if(to==="day") plan(pid, k, at); else { save(); toast(p.n+" steht in der Wunschliste", false); }
   poiSel = null; renderAll(); select(pid);
 }
 /* ---------- Google-Bewertungen & Fotos (Places API, Schlüssel nur auf diesem Gerät) ---------- */
@@ -8113,21 +8122,29 @@ function planAsk(){
   var c = PLANCTX, k = c.k || cur, D = dayByKey(k); if(!D){ PLANCTX = null; return; }
   var n = ord(k).filter(function(id){ return !T().done[id]; }).length, N = ord(k).filter(function(id){ var q = P(id); return !(q && q.k==="hotel"); }).length;
   var el = $("planPop"); if(!el){ el = document.createElement("div"); el.id = "planPop"; el.className = "cfpop"; document.body.appendChild(el); el.addEventListener("click", function(e){ if(e.target===el){ el.hidden = true; PLANCTX = null; } }); }
-  el.innerHTML = "<div class=\"cf-card plan-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Einplanen\"><b>„"+esc(PLANCTX.name || "Ort")+"“</b><p>Zu "+esc(D.lbl)+" hinzufügen – wohin im Tagesplan?</p>"+
+  // Tag wählbar (außer bei „Nochmal besuchen“, dort ist der Tag schon gewählt); Kartentag und heute gekennzeichnet
+  var tk0 = todayKey(), dl = days(), chips = (!c.rev && dl.length > 1) ? "<div class=\"plan-days\" role=\"radiogroup\" aria-label=\"Tag\">"+dl.map(function(d){
+      var on = d.key===k, tags = (d.key===cur ? "<em class=\"pd-map\">Karte</em>" : "")+(d.key===tk0 ? "<em class=\"pd-today\">Heute</em>" : "");
+      return "<button type=\"button\" role=\"radio\" aria-checked=\""+on+"\" class=\"pd"+(on ? " on" : "")+"\" data-act=\"plankday\" data-day=\""+d.key+"\" style=\"--dc:"+dayColor(d)+"\"><i>"+d.n+"</i><b>"+esc(d.lbl)+"</b>"+(tags ? "<span>"+tags+"</span>" : "")+"</button>"; }).join("")+"</div>" : "";
+  el.innerHTML = "<div class=\"cf-card plan-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Einplanen\"><b>„"+esc(PLANCTX.name || "Ort")+"“</b><p>"+(chips ? "Zu welchem Tag – und wohin im Tagesplan?" : "Zu "+esc(D.lbl)+" hinzufügen – wohin im Tagesplan?")+"</p>"+chips+
     "<button type=\"button\" class=\"plan-opt\" data-act=\"planend\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 5h9M4 9h9M4 13h5M15 11v6M12 14h6\"/></svg></span><span><b>Ans Ende</b><small>als Stopp "+(N+1)+"</small></span></button>"+
     (n ? "<button type=\"button\" class=\"plan-opt\" data-act=\"planins\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 4h12M4 16h12M10 7v6M7 10h6\"/></svg></span><span><b>Dazwischen einschieben …</b><small>zwischen zwei offene Punkte des Tages</small></span></button>" : "")+
     "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\" data-act=\"plancancel\">Abbrechen</button></div></div>";
   el.hidden = false;
+  var on0 = el.querySelector(".pd.on"); if(on0 && on0.scrollIntoView) try { on0.scrollIntoView({block:"nearest", inline:"center"}); } catch(e){}
 }
 function planPopClose(){ var el = $("planPop"); if(el) el.hidden = true; }
 function planDo(at){
   var c = PLANCTX; PLANCTX = null; if(!c) return;
   if(c.rev){ revisit(c.rev, c.k, at); renderAll(); if(typeof jp!=="undefined" && jp && $("jPop") && !$("jPop").hidden){ if(jp.pid===c.rev && !jp.dk) jp.dk = dayOf(c.rev); renderJPop(); } return; }
-  if(c.poi){ poiAdd("day", at); return; }
-  if(c.lp){ if(lpPt) lpClose(); var q0 = c.lp, D0 = dayByKey(cur); if(!D0) return; var npid = uid("w");
+  var k = c.k && dayByKey(c.k) ? c.k : cur;
+  if(c.poi){ poiAdd("day", at, k); return; }
+  if(c.lp){ if(lpPt) lpClose(); var q0 = c.lp, D0 = dayByKey(k); if(!D0) return; var npid = uid("w");
     T().places[npid] = {id:npid, own:1, n:(q0.n || q0.addr || "Markierter Ort").slice(0,80), c:"sight", list:(T().lists[0]||{}).id||null, note:"", addr:(q0.addr||"").slice(0,120), la:q0.la, lo:q0.lo};
-    plan(npid, cur, at); tab = "day"; renderAll(); select(npid); return; }
-  var id = c.pid; if(!P(id)) return; plan(id, cur, at); sel = id; renderAll();
+    plan(npid, k, at); tab = "day"; renderAll(); select(npid); return; }
+  var id = c.pid; if(!P(id)) return;
+  if(dayOf(id) && dayOf(id)!==k) revisit(id, k, at); else plan(id, k, at);
+  sel = id; renderAll();
 }
 function planNodes(){
   var k = (PLANCTX && PLANCTX.k) || cur, D = dayByKey(k), H = D && D.hotel, o = ord(k), nodes = [];
@@ -8351,6 +8368,7 @@ document.addEventListener("click", function(e){
       setTimeout(function(){ revealPoint(P(id), 16, true); }, desktop.matches ? 0 : 60); break;
     case "plan": plan(id, cur); sel = id; renderAll(); break;
     case "planpick": planPick(t); break;
+    case "plankday": if(PLANCTX){ PLANCTX.k = t.getAttribute("data-day"); planAsk(); } break;
     case "sugopen": SUG.cat = ""; openSug(parseInt(t.getAttribute("data-leg"), 10)); break;
     case "sugtab": SUG.tab = t.getAttribute("data-v"); renderSug(); if(SUG.tab==="pub") sugLoadPub(SUG.li); if(SUG.tab==="fr" && acct.user && FR.friends.length && !DC.busy && Date.now() - DC.at > 120000){ dcLoad(); setTimeout(function(){ if(!$("catPop").hidden && SUG.tab==="fr") renderSug(); }, 1500); } break;
     case "sugcat": SUG.cat = t.getAttribute("data-v") || ""; renderSug(); break;
