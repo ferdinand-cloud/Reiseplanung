@@ -2076,6 +2076,24 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 .vis-seg .vs-pub[aria-checked="true"]{color:#0A84FF}
 .vis-seg button.off{opacity:.5}
 .vis-hint{margin:6px 2px 0;font-size:12px}
+.pub-card{width:min(380px,100%);max-height:calc(var(--vvh,100vh) - 48px);overflow-y:auto;text-align:left}
+.pub-card > b,.pub-card > p{text-align:center;display:block}
+.pub-h{display:flex;align-items:center;justify-content:space-between;margin:14px 2px 8px;font:600 13.5px/1.3 var(--f-body)}
+.pub-h button{border:0;background:var(--fill);color:var(--ink);border-radius:999px;padding:5px 12px;font:600 12.5px/1 var(--f-body)}
+.pub-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pub-grid button{position:relative;aspect-ratio:1;border:0;padding:0;border-radius:12px;overflow:hidden;background:var(--chip);outline:2.5px solid transparent;outline-offset:-2.5px;transition:outline-color .15s,transform .15s}
+.pub-grid button img{width:100%;height:100%;object-fit:cover;display:block;opacity:.55;transition:opacity .15s}
+.pub-grid button.on{outline-color:#0A84FF}
+.pub-grid button.on img{opacity:1}
+.pub-grid button i,.pub-note i{position:absolute;right:6px;top:6px;width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.35);color:#fff;font:800 12px/18px var(--f-body);font-style:normal;text-align:center}
+.pub-grid button.on i,.pub-note.on i{background:#0A84FF}
+.pub-grid button:active{transform:scale(.96)}
+.pub-n{display:block;margin:8px 2px 0;color:var(--muted);font-size:12px}
+.pub-note{position:relative;display:flex;align-items:center;gap:10px;width:100%;margin-top:12px;padding:10px 12px 10px 44px;border:0;border-radius:14px;background:var(--fill);color:var(--ink);text-align:left}
+.pub-note i{left:12px;right:auto;top:50%;margin-top:-11px}
+.pub-note b{display:block;font:600 14px/1.2 var(--f-body)}
+.pub-note small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.pub-ok{background:#0A84FF !important}
 .jp-pv svg{width:14px;height:14px;margin:0}
 .jp-strip button i.vp{background:#0A84FF;color:#fff}
 .jp-strip button i.vp svg{width:12px;height:12px}
@@ -2657,6 +2675,38 @@ function setItemVis(kind, key, pid, v){
   if(was==="priv" && v!=="priv"){ askConfirm("Privat aufheben?", (kind==="n" ? "Die Notiz" : "Das Foto")+" ist dann für "+(v==="pub" ? "Beobachter und Freunde" : "Beobachter der Reise")+" sichtbar.", "Aufheben", apply); return; }
   apply();
 }
+/* Veröffentlichen: in einem Schritt auswählen, welche Fotos (und ob die Notiz) Freunde sehen */
+function pubPrompt(ro, cur0, apply){
+  var t = T(), phs = photosAll(ro).filter(function(x){ return !(t.privPh||{})[x]; }), note = noteOf(ro) && !(t.privN||{})[ro];
+  var sel0 = {}; phs.forEach(function(x){ if((t.pubItem||{})["ph:"+x]) sel0[x] = 1; }); var noteOn = !!(t.pubItem||{})["n:"+ro];
+  var el = $("pubPop"); if(!el){ el = document.createElement("div"); el.id = "pubPop"; el.className = "cfpop"; document.body.appendChild(el); }
+  var draw = function(){
+    var n = Object.keys(sel0).length, all = phs.length && n===phs.length;
+    el.innerHTML = "<div class=\"cf-card pub-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"pubT\"><b id=\"pubT\">Für Freunde veröffentlichen</b>"+
+      "<p>Deine Freunde sehen den Ort mit deiner Bewertung und bekommen ihn vorgeschlagen, wenn sie in der Nähe planen."+(cur0==="priv" ? " Der Ort ist dann nicht mehr privat." : "")+"</p>"+
+      (phs.length ? "<div class=\"pub-h\"><span>Welche Fotos sollen Freunde sehen?</span><button type=\"button\" data-pub=\"all\">"+(all ? "Keine" : "Alle")+"</button></div><div class=\"pub-grid\">"+
+        phs.map(function(x){ var on = !!sel0[x]; return "<button type=\"button\" data-pubph=\""+x+"\" aria-pressed=\""+on+"\" class=\""+(on?"on":"")+"\"><img data-ph=\""+x+"\" alt=\"\"><i>"+(on ? "✓" : "")+"</i></button>"; }).join("")+"</div>"+
+        "<small class=\"pub-n\">"+(n ? n+" von "+phs.length+" Fotos ausgewählt" : "Keine Fotos ausgewählt – Freunde sehen nur Ort und Bewertung")+(photosAll(ro).length > phs.length ? " · private Fotos sind ausgeblendet" : "")+"</small>" : "")+
+      (note ? "<button type=\"button\" class=\"pub-note"+(noteOn?" on":"")+"\" data-pub=\"note\" aria-pressed=\""+noteOn+"\"><i>"+(noteOn ? "✓" : "")+"</i><span><b>Notiz auch zeigen</b><small>"+esc(noteOf(ro).slice(0, 80))+(noteOf(ro).length > 80 ? " …" : "")+"</small></span></button>" : "")+
+      "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\">Abbrechen</button><button type=\"button\" class=\"cf-ok pub-ok\">Veröffentlichen</button></div></div>";
+    fillPhotos(el);
+  };
+  var close = function(){ el.hidden = true; el.innerHTML = ""; };
+  el.onclick = function(ev){ ev.stopPropagation();
+    var ph = ev.target.closest("[data-pubph]"), pb = ev.target.closest("[data-pub]");
+    if(ph){ var k = ph.getAttribute("data-pubph"); if(sel0[k]) delete sel0[k]; else sel0[k] = 1; draw(); return; }
+    if(pb && pb.getAttribute("data-pub")==="all"){ if(Object.keys(sel0).length===phs.length) sel0 = {}; else phs.forEach(function(x){ sel0[x] = 1; }); draw(); return; }
+    if(pb && pb.getAttribute("data-pub")==="note"){ noteOn = !noteOn; draw(); return; }
+    if(ev.target===el || ev.target.closest(".cf-no")){ close(); return; }
+    if(ev.target.closest(".pub-ok")){
+      t.pubItem = t.pubItem || {};
+      phs.forEach(function(x){ if(sel0[x]) t.pubItem["ph:"+x] = 1; else delete t.pubItem["ph:"+x]; });
+      if(note){ if(noteOn) t.pubItem["n:"+ro] = 1; else delete t.pubItem["n:"+ro]; }
+      close(); apply();
+    }
+  };
+  el.hidden = false; draw();
+}
 function openItemVis(kind, key, pid, btn){
   var cur0 = itemVis(kind, key, pid), top = visOf(pid);
   var h = "<div class=\"vp-h\">"+(kind==="n" ? "Notiz" : "Foto")+" sichtbar für</div>"+["priv","trip","pub"].map(function(v){
@@ -2676,7 +2726,7 @@ function setVis(pid, v){
   };
   if(v==="pub"){
     if(!wasVisited(ro)){ toast("Veröffentlichen geht, sobald du den Ort besucht hast", false); return; }
-    askConfirm("Für Freunde veröffentlichen?", "Deine Freunde sehen den Ort mit deiner Bewertung und bekommen ihn vorgeschlagen, wenn sie in der Nähe planen. Notiz und Fotos bleiben bei „Reise“, bis du sie über das Auge einzeln für Freunde freigibst."+(cur0==="priv" ? " Der Ort ist dann nicht mehr privat." : ""), "Veröffentlichen", apply); return;
+    pubPrompt(ro, cur0, apply); return;
   }
   if(cur0==="pub"){ askConfirm(v==="priv" ? "Privat machen?" : "Veröffentlichung zurücknehmen?", "Deine Freunde sehen den Ort dann nicht mehr.", v==="priv" ? "Privat machen" : "Zurücknehmen", apply); return; }
   if(cur0==="priv"){ askConfirm("Privat aufheben?", "Beobachter der Reise sehen den Ort dann mit Notizen, Fotos und Kommentaren.", "Aufheben", apply); return; }
