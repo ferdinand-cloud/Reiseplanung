@@ -267,6 +267,31 @@ await test("App-Demo: Auswahl Reisende/Beobachter, alle Schritte durchklickbar",
   ok(await page.locator("#demo").count()===0, "Demo schließt am Ende nicht");
 });
 
+await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kachel", async () => {
+  await seed();
+  await rp(`(function(){ S.trips.t_mal = newTripObj({id:"t_mal", name:"Mallorca", start:"2027-05-01", end:"2027-05-05"}); PROF = {name:"tester"}; openProfile(); })()`);
+  await page.waitForTimeout(300);
+  ok(await page.locator("#profView .pf-share").count()===0, "Einladen-Symbol sitzt noch direkt auf der Kachel");
+  ok(await page.locator("#profView .pf-tw .pf-more").count()===2, "⋯ fehlt auf den Kacheln");
+  ok(await page.locator("#profView .pf-new").count()===1, "Neue Reise ist keine Kachel");
+  ok(await page.locator("#profView .pf-cov.lt i").first().innerText()==="M", "Buchstaben-Kachel ohne Initialen");
+  await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
+  ok(await page.locator("#jpMenu [data-act=opentrip]").count()===1, "Mitreisende einladen fehlt im ⋯-Menü");
+  await click("#jpMenu [data-act=pfcover][data-v=photo]");
+  ok(await visible("#cvPop .cv-grid"), "Foto-Auswahl öffnet nicht");
+  await page.locator("#cvPop [data-act=cvph]").last().click(); await page.waitForTimeout(200);
+  ok(!!(await rp(`S.trips.t_test.cover && S.trips.t_test.cover.ph`)), "Titelbild wird nicht gespeichert");
+  await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
+  await click("#jpMenu [data-act=pfcover][data-v=letters]");
+  await page.locator("#cvPop [data-act=cvcol]").nth(2).click();
+  await click("#cvPop [data-act=cvletters]");
+  ok(await rp(`!!(S.trips.t_test.cover && S.trips.t_test.cover.txt)`), "Buchstaben-Modus wird nicht gespeichert");
+  ok(await page.locator("#profView .pf-tw:has([data-trip=t_test]) .pf-cov.lt").count()===1, "Kachel zeigt nach Buchstaben-Wahl noch ein Foto");
+  await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
+  await click("#jpMenu [data-act=pfcover][data-v=auto]");
+  ok(await rp(`!S.trips.t_test.cover`), "Automatisch setzt nicht zurück");
+});
+
 await test("Tagesplan: Privat-Plakette sichtbar", async () => {
   await seed();
   await rp(`T().privP = {p2:1}; renderSheet();`);
