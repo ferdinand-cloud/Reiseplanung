@@ -2883,6 +2883,8 @@ small,.sub,.note{color:var(--muted)}
 input::placeholder,textarea::placeholder{color:var(--muted);opacity:.85;font-weight:400}
 .btn{font-weight:600;letter-spacing:.01em}
 
+body.navon .ctrl{transition:top .3s ease}
+body.navon .ctrl .cg-ai{display:none}
 /* ===== Navigation: dunkles Glas, Kreuzungsskizze mit Annäherungsring, leuchtender Weg ===== */
 .nav-ui{gap:0}
 .nav-ui .nav-hero{--ac:#30d158;gap:14px;padding:14px 18px 14px 14px;border-radius:28px;color:#fff;
@@ -7871,7 +7873,7 @@ function placeFloating(){
   var cmax = window.innerHeight - (desktop.matches ? 16 : sv + 12) - (cardTop + 10);
   if(!desktop.matches) cmax = Math.min(cmax, Math.round(window.innerHeight*0.56)); // oberhalb bleibt Platz für den Punkt
   $("card").style.maxHeight = Math.max(160, cmax)+"px";
-  $("ctrl").style.top = (topB + 10)+"px";
+  $("ctrl").style.top = (topB + 10)+"px"; navPlace();
   $("layers").style.top = Math.round($("layersBtn").getBoundingClientRect().top)+"px";
   $("mapnote").style.left = "";
   $("tripMenu").style.top = (topB + 6)+"px";
@@ -8127,7 +8129,7 @@ function navStart(p, mode, pref){
 function navEnd(silent){
   if(!NAV) return; NAV = null; if(navRotOn && map && map.getBearing()) map.easeTo({bearing:0, duration: reduceMotion ? 0 : 500}); document.body.classList.remove("navon");
   try { if(navWake) navWake.release(); } catch(e){} navWake = null;
-  var el = $("navUi"); if(el) el.remove(); scheduleOverlay();
+  var el = $("navUi"); if(el) el.remove(); scheduleOverlay(); placeFloating();
   if(!silent) toast("Navigation beendet", false);
 }
 document.addEventListener("visibilitychange", function(){ if(NAV && document.visibilityState==="visible" && navigator.wakeLock && !navWake) navigator.wakeLock.request("screen").then(function(l){ navWake = l; }, function(){}); });
@@ -8182,6 +8184,15 @@ function navRotToggle(){
   if(NAV){ NAV.follow = true; if(navRotOn) navFollow(true); else map.easeTo({bearing:0, duration: reduceMotion ? 0 : 500}); navRender(); }
   toast(navRotOn ? "Karte dreht sich in Gehrichtung" : "Norden oben", false);
 }
+/* Kartenknöpfe während der Navigation unter die Kacheln setzen, damit nichts verdeckt wird */
+function navPlace(){
+  var c = $("ctrl"), el = $("navUi"); if(!c || desktop.matches) return;
+  if(!NAV || NAV.hidden || !el || el.classList.contains("min")) return;
+  var b = 0; [".nv-hero", ".nv-then", "#navOri", ".nv-off"].forEach(function(q){ var x = el.querySelector(q); if(!x || x.hidden || !x.firstChild && q!=="#navOri") return;
+    var r = x.getBoundingClientRect(); if(r.height > 0) b = Math.max(b, r.bottom); });
+  if(!b) return;
+  var t = Math.round(b + 10)+"px"; if(c.style.top!==t) c.style.top = t;
+}
 function navMins(s){ return Math.max(1, Math.round(s/60)); }
 function navRender(){
   var N = NAV, el = $("navUi");
@@ -8192,6 +8203,7 @@ function navRender(){
   var eta = new Date(Date.now() + secs*1000), etaS = String(eta.getHours()).padStart(2, "0")+":"+String(eta.getMinutes()).padStart(2, "0");
   var mi = {walk:LMWALK, bike:LMBIKE, oepnv:LMSUB}[N.mode], mn = {walk:"Zu Fuß", bike:"Citi Bike", oepnv:"U-Bahn & Bus"}[N.mode];
   if(N.hidden){
+    if(el.className!=="nav-ui min") setTimeout(placeFloating, 0);
     el.className = "nav-ui min"; el.innerHTML = "<button type=\"button\" class=\"nav-pill\" data-act=\"navshow\"><span class=\"nav-pi\">"+mi+"</span><span><b>"+esc(N.tgt.n||"Ziel")+"</b> · "+(N.pts ? navMins(secs)+" Min." : "…")+"</span><span class=\"nav-pe\">Einblenden</span></button>";
     return;
   }
@@ -8235,7 +8247,7 @@ function navRender(){
   var put = function(sel, h){ var b = el.querySelector(sel); if(b && b.__h!==h){ b.__h = h; b.innerHTML = h; } };
   put(".nv-then", nextH); put(".nv-off", offH); put(".nv-foot", footH);
   el.querySelector(".nv-foot").style.setProperty("--p", prog.toFixed(3));
-  navOrient();
+  navOrient(); navPlace();
 }
 function navSplit(t){ var i = t.indexOf(" auf "); return i > 0 ? {a:t.slice(0, i), s:t.slice(i + 5)} : {a:t, s:""}; }
 /* Kreuzungsskizze: der echte Wegverlauf ±22 m um die Abbiegestelle, so gedreht, dass man von unten kommt */
@@ -8279,7 +8291,8 @@ function navLook(N){
   return P0[i];
 }
 function navBear(a, b){ var dy = (b.la - a.la)*111320, dx = (b.lo - a.lo)*111320*Math.cos(a.la*Math.PI/180); return (Math.atan2(dx, dy)*180/Math.PI + 360) % 360; }
-function navOrient(){
+function navOrient(){ navOrient0(); navPlace(); }
+function navOrient0(){
   var N = NAV, box = $("navOri"); if(!N || !box || N.hidden || !N.pts || N.arrived || !me) { if(box) box.hidden = true; return; }
   var tgt = navLook(N); if(!tgt){ box.hidden = true; return; }
   var moving = me.spd!=null && me.spd > 0.8 && me.hd!=null && !isNaN(me.hd);
@@ -8293,9 +8306,9 @@ function navOrient(){
   // läuft man in die richtige Richtung (GPS), keine Dreh-Hinweise
   if(moving && delta!=null && Math.abs(delta) < 60) { off = false; N.offSince = 0; }
   var bad = wrong || (off && now - N.offSince > (N.oriWasBad ? 0 : 2500));
-  if(off && !bad){ clearTimeout(N.oriT); N.oriT = setTimeout(function(){ if(NAV===N) navOrient(); }, 2600); }
+  if(off && !bad){ clearTimeout(N.oriT); N.oriT = setTimeout(function(){ if(NAV===N){ navOrient(); navPlace(); } }, 2600); }
   if(!bad){
-    if(N.oriWasBad && !N.oriOk){ N.oriOk = true; N.oriWasBad = false; box.className = "nav-ori ok"; box.innerHTML = "<span class=\"no-ic\">✓</span><span class=\"no-tx\"><b>Richtung stimmt</b><small>Folge dem Weg</small></span>"; box.hidden = false; setTimeout(function(){ if(NAV===N){ N.oriOk = false; var b2 = $("navOri"); if(b2 && b2.classList.contains("ok")) b2.hidden = true; } }, 1600); }
+    if(N.oriWasBad && !N.oriOk){ N.oriOk = true; N.oriWasBad = false; box.className = "nav-ori ok"; box.innerHTML = "<span class=\"no-ic\">✓</span><span class=\"no-tx\"><b>Richtung stimmt</b><small>Folge dem Weg</small></span>"; box.hidden = false; setTimeout(function(){ if(NAV===N){ N.oriOk = false; var b2 = $("navOri"); if(b2 && b2.classList.contains("ok")){ b2.hidden = true; navPlace(); } } }, 1600); }
     else if(!N.oriOk) box.hidden = true;
     return;
   }
@@ -8313,7 +8326,7 @@ function navOrient(){
   box.querySelector(".no-tx b").textContent = title; box.querySelector(".no-tx small").textContent = sub;
 }
 var navOriRaf = 0;
-function navOrientSoon(){ if(!NAV || navOriRaf) return; navOriRaf = requestAnimationFrame(function(){ navOriRaf = 0; navOrient(); }); }
+function navOrientSoon(){ if(!NAV || navOriRaf) return; navOriRaf = requestAnimationFrame(function(){ navOriRaf = 0; navOrient(); navPlace(); }); }
 var LOCICO = "<svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M17.6 2.4 2.9 8.7c-.6.3-.5 1.1.1 1.3l5.6 1.6 1.6 5.6c.2.6 1 .7 1.3.1l6.3-14.7c.2-.5-.3-1-.8-.8z\"/></svg>";
 function navSvg(){
   var N = NAV; if(!N || !N.pts) return ""; // auch ausgeblendet bleibt der Navigationsweg auf der Karte – nur die Leisten verschwinden

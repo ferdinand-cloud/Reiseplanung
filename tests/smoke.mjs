@@ -395,6 +395,14 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   for(let i = 0; i < 4; i++){ await rp(`me = {la:40.7215 + ${i}*0.00002, lo:-73.9890, acc:8}; navOnPos();`); await page.waitForTimeout(80); }
   ok(await page.evaluate(() => window.__hero === document.querySelector("#navUi .nav-hero")), "Kacheln werden bei jeder Standortmeldung neu aufgebaut (zucken)");
   // neues Aussehen: Kreuzungsskizze aus der Weggeometrie, Annäherungsring, fließende Punkte auf dem Weg
+  // Kartenknöpfe liegen unter den Navi-Kacheln und über der Fußleiste, nichts wird verdeckt
+  const noCover = async () => page.evaluate(() => {
+    const boxes = [...document.querySelectorAll("#navUi .nav-hero, #navUi .nav-then, #navOri:not([hidden]), #navUi .nav-foot")].map(e => e.getBoundingClientRect()).filter(r => r.height > 0);
+    const btns = [...document.querySelectorAll("#ctrl button")].filter(b => b.offsetParent).map(b => b.getBoundingClientRect());
+    return btns.length > 2 && btns.every(b => boxes.every(r => b.bottom <= r.top || b.top >= r.bottom || b.right <= r.left || b.left >= r.right));
+  });
+  await page.waitForTimeout(400);
+  ok(await noCover(), "Navi-Kacheln verdecken Kartenknöpfe");
   ok(await page.locator("#navUi .nav-hero .nh-gl").count()===1, "Kreuzungsskizze fehlt in der Hauptkachel");
   ok(await page.locator("#navUi .nav-hero .nh-ap .fg").count()===1, "Annäherungsring fehlt");
   ok(await rp(`navSvg().indexOf("nv-flow")>-1`), "Fließende Richtungspunkte auf dem Weg fehlen");
@@ -426,6 +434,8 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   await feed(180, 4200);
   ok(await visible("#navOri") && (await page.locator("#navOri").innerText()).includes("Umdrehen"), "Dauerhaft falsche Ausrichtung zeigt keine Kachel „Umdrehen“");
   ok(await page.evaluate(() => /rotate\(/.test(document.querySelector("#navOri .no-arr").style.transform)), "Pfeil dreht sich nicht mit");
+  await page.waitForTimeout(400);
+  ok(await noCover(), "Ausrichtungs-Hinweis verdeckt Kartenknöpfe");
   await feed(2, 2400);
   ok(!(await visible("#navOri .no-arr")), "Kachel verschwindet nicht, wenn die Richtung wieder stimmt");
   // beim Gehen in die richtige Richtung (GPS) zählt nicht, wohin das Handy zeigt
