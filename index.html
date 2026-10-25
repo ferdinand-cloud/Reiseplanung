@@ -5958,21 +5958,33 @@ function walkPump(){
   while(walkBusy < 2 && walkQ.length){
     var job = walkQ.shift(); walkBusy++;
     (function(job){
-      var u = "https://routing.openstreetmap.de/routed-foot/route/v1/driving/"+[[job.a.la, job.a.lo]].concat(job.v||[], [[job.b.la, job.b.lo]]).map(function(q){ return (+q[1]).toFixed(6)+","+(+q[0]).toFixed(6); }).join(";")+"?overview=full&geometries=geojson";
-      fetch(u).then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(function(j){
-        var rt = j.routes && j.routes[0];
-        // unsinniger Umweg ohne Wegpunkte: Start/Ziel wurde auf einen ungünstigen Weg eingerastet (z. B. Parkweg) – andere Einrastpunkte probieren
-        if(rt && !(job.v && job.v.length) && walkAbsurd(job.a, job.b, rt.distance)) return walkResnap(job.a, job.b).then(function(r2){ return r2 && r2.distance < rt.distance ? r2 : rt; });
-        return rt;
-      }).then(function(rt){
-        if(rt && rt.geometry){ var c = rt.geometry.coordinates, out = [];
-          for(var i=0;i<c.length;i++) out.push([+c[i][1].toFixed(5), +c[i][0].toFixed(5)]);
-          WALKC[job.k] = {p:out, d:Math.round(rt.distance), live:!!job.live, sv:1}; if(!job.live) walkSave(); }
-        else WALKC[job.k] = {p:null};
+      // Weg mit Wegpunkten: jedes Teilstück einzeln berechnen (A→W1, W1→W2, …, Wn→B).
+      // So darf der Weg am Wegpunkt umkehren, und jedes Teilstück wird für sich auf unsinnige Umwege geprüft.
+      var pts = [job.a].concat((job.v||[]).map(function(q){ return {la:+q[0], lo:+q[1]}; }), [job.b]), parts = [];
+      for(var i = 0; i < pts.length-1; i++) parts.push(walkRoute(pts[i], pts[i+1]));
+      Promise.all(parts).then(function(rs){
+        if(rs.some(function(r){ return !r; })){ WALKC[job.k] = {p:null}; return; }
+        var out = [], d = 0;
+        rs.forEach(function(rt, n){
+          if(n) out.push([+(+pts[n].la).toFixed(5), +(+pts[n].lo).toFixed(5)]); // genau über den gesetzten Wegpunkt
+          var c = rt.geometry.coordinates; for(var j=0;j<c.length;j++) out.push([+c[j][1].toFixed(5), +c[j][0].toFixed(5)]);
+          d += rt.distance;
+        });
+        WALKC[job.k] = {p:out, d:Math.round(d), live:!!job.live, sv:1}; if(!job.live) walkSave();
       }).catch(function(){ WALKC[job.k] = {fail:Date.now()}; })
         .then(function(){ walkBusy--; scheduleOverlay(); if(tab==="day") renderSheetSoon(); walkPump(); });
     })(job);
   }
+}
+/* ein Teilstück zu Fuß; bei unsinnigem Umweg (ungünstig eingerastet, z. B. auf einem Parkweg ohne Zugang) andere Einrastpunkte probieren */
+function walkRoute(a, b){
+  if(dist(a, b) < 15) return Promise.resolve({geometry:{coordinates:[]}, distance:dist(a, b)});
+  var u = OSRMF+"route/v1/driving/"+(+a.lo).toFixed(6)+","+(+a.la).toFixed(6)+";"+(+b.lo).toFixed(6)+","+(+b.la).toFixed(6)+"?overview=full&geometries=geojson";
+  return fetch(u).then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(function(j){
+    var rt = j.routes && j.routes[0]; if(!rt || !rt.geometry) return null;
+    if(walkAbsurd(a, b, rt.distance)) return walkResnap(a, b).then(function(r2){ return r2 && r2.distance < rt.distance ? r2 : rt; });
+    return rt;
+  });
 }
 function walkAbsurd(a, b, d){ var s = dist(a, b); return d > 1.8*s + 300; }
 var OSRMF = "https://routing.openstreetmap.de/routed-foot/";
@@ -5997,7 +6009,7 @@ function walkPath(a, b, v){
   if(!v.length && dist(a, b) < 40) return [a, b];
   var k = wKey(a, b, v), c = WALKC[k];
   // ältere gespeicherte Wege mit unsinnigem Umweg einmal neu berechnen (mit besserem Einrasten)
-  if(c && c.p && !c.sv && !v.length && walkAbsurd(a, b, c.d || 0)){ c.sv = 1; walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
+  if(c && c.p && !c.sv && (v.length || walkAbsurd(a, b, c.d || 0))){ c.sv = 1; walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
   if(c && c.p){ var pts = c.p.map(function(q){ return {la:q[0], lo:q[1]}; }); pts.unshift(a); pts.push(b); return pts; }
   if(c && (c.p===null || (c.fail && Date.now()-c.fail < 60000))) return direct;
   if(!c || c.fail){ WALKC[k] = {pend:1}; walkQ.push({k:k, a:a, b:b, v:v, live:a.id==="me" || b.id==="me" || a===me}); setTimeout(walkPump, 0); }
