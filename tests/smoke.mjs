@@ -490,6 +490,25 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   ok(await rp(`!!T().done.p2 && NAV===null`), "Abhaken bei Ankunft funktioniert nicht");
 });
 
+await test("ÖPNV-Navigation: Linie(n) zum Einsteigen sichtbar (Kachel, Fußleiste, Karte)", async () => {
+  await seed();
+  await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; navStart({la:40.7680, lo:-73.9819, n:"Columbus Circle"}, "oepnv");`);
+  await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts && !NAV.busy)"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`!!(NAV && NAV.segs && NAV.segs.some(function(sg){ return sg.kind==="ride"; }))`), "Keine Fahrt im ÖPNV-Weg");
+  ok(await page.locator("#navUi .nav-foot .nav-line .bul").count() > 0, "Fußleiste zeigt nicht, welche Linie man nehmen muss");
+  const ft = await page.locator("#navUi .nav-line").innerText();
+  ok(/Nimm diese Linie|Nimm eine dieser Linien/.test(ft) && ft.includes("Einsteigen an"), "Linienzeile unvollständig: "+ft);
+  ok(await rp(`(function(){ var sg = NAV.segs.filter(function(x){ return x.ride; })[0]; return sg.ride.lines.length === document.querySelectorAll("#navUi .nav-line .nl-b .bul").length; })()`), "Nicht alle passenden Linien angezeigt");
+  ok(await rp(`navSvg().indexOf("nv-bul")>-1`), "Liniensymbol an der Einstiegsstation fehlt auf der Karte");
+  await shot("nav-oepnv-linie");
+  // Hinweis „Einsteigen“: Liniensymbole in der Hauptkachel
+  await rp(`(function(){ var st = NAV.steps.filter(function(x){ return x.ride; })[0]; NAV.next = st; NAV.heroKey = null; navRender(); })()`);
+  ok(await page.locator("#navUi .nav-hero .nh-lines .bul").count() > 0, "Hauptkachel zeigt beim Einsteigen keine Linie");
+  // während der Fahrt: Aussteigen-Hinweis
+  await rp(`(function(){ var sg = NAV.segs.filter(function(x){ return x.ride; })[0]; NAV.pi = sg.o + 1; navRender(); })()`);
+  ok((await page.locator("#navUi .nav-line").innerText()).includes("Aussteigen an"), "Während der Fahrt fehlt der Ausstiegshinweis");
+});
+
 await test("Navigation zu U-Bahn- und Citi-Bike-Stationen", async () => {
   await seed();
   await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; layers.sub = true; layers.bike = true; cbLoad(true);`); await page.waitForTimeout(800);

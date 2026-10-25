@@ -2961,6 +2961,19 @@ body.ro .navtools [data-act="addpop"]{display:none}
 .nav-ui .nav-pill{background:rgba(14,18,24,.86);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.12);font-weight:500;padding:7px 14px 7px 7px}
 .nav-ui .nav-pi{background:#30d158}
 .nav-ui .nav-pe{font-weight:600;color:#30d158;opacity:1}
+/* Linie(n) für die nächste Fahrt: oberste Zeile der Fußleiste */
+.nav-ui .nav-foot{flex-wrap:wrap}
+.nav-ui .nav-line{flex:1 0 100%;display:flex;align-items:center;gap:10px;margin:2px 0 6px;padding:0 0 9px 2px;border-bottom:1px solid var(--glass-bd)}
+.nav-ui .nl-b{display:flex;align-items:center;flex-wrap:wrap;gap:2px;flex:0 0 auto;max-width:45%}
+.nav-ui .nl-b .bul,.nav-ui .nh-lines .bul{width:26px;height:26px;font-size:15px;margin:0;vertical-align:-6px}
+.nav-ui .nl-b .bul.bus,.nav-ui .nh-lines .bul.bus{width:auto;min-width:26px;font-size:13px}
+.nav-ui .nl-b .or,.nav-ui .nh-lines .or,.nav-ui .nav-line small .or,.nav-ui .nt-tx .or{opacity:.5;margin:0 2px;font-weight:500}
+.nav-ui .nl-t{display:flex;flex-direction:column;min-width:0}
+.nav-ui .nl-t b{font:600 15px/1.2 var(--f-body);color:var(--ink)}
+.nav-ui .nl-t small{font-size:12.5px;line-height:1.3;color:var(--muted);margin-top:2px}
+.nav-ui .nl-t small .bul{width:16px;height:16px;font-size:10px;vertical-align:-3px}
+.nav-ui .nh-lines{display:inline-flex;align-items:center;gap:2px;margin-right:8px;vertical-align:-4px}
+.nav-ui .nt-tx .bul{width:17px;height:17px;font-size:10.5px;vertical-align:-3px}
 /* Weg auf der Karte: fließende Punkte in Gehrichtung */
 .nv-flow{animation:nvFlow 1.4s linear infinite}
 @keyframes nvFlow{to{stroke-dashoffset:-16.1}}
@@ -8109,8 +8122,9 @@ function navBuild(){
     tr.legs.forEach(function(l, i){
       if(l.t==="walk"){ var to = l.to==="Ziel" ? p : stLL(l.st), a0 = at; jobs.push(navOsrm(OSRMF, [a0, to]).then(function(r){ r.kind = "walk"; if(i) r.steps = r.steps.filter(function(x){ return x.text.indexOf("Los")!==0; }); if(l.to!=="Ziel") r.steps = r.steps.filter(function(x){ return !x.arrive; }); return r; })); at = to; }
       else if(l.t==="xfer"){ var tx = stLL(l.to); jobs.push(Promise.resolve({kind:"walk", coords:[at, tx], d:dist(at, tx), secs:l.secs||60, steps:[{at:at, text:"Umsteigen in "+NET.s[l.to][0], ic:LMWALK}]})); at = tx; }
-      else if(l.t==="ride"){ var rp0 = ridePath(l), n = l.stops.length - 1, rc = NET.r[l.r][1];
-        jobs.push(Promise.resolve({kind:"ride", col:rc, coords:rp0, d:0, secs:l.secs, steps:[{at:stLL(l.from), text:lineName(l.r)+" Richtung "+(l.hd||""), sub:"Einsteigen an "+NET.s[l.from][0]+" · "+n+(n===1 ? " Station" : " Stationen")+" bis "+NET.s[l.to][0], ic:LMSUB, ride:true}, {at:stLL(l.to), text:"Aussteigen: "+NET.s[l.to][0], ic:LMSUB}]}));
+      else if(l.t==="ride"){ var rp0 = ridePath(l), n = l.stops.length - 1, rc = NET.r[l.r][1], rs = l.alt || [l.r];
+        var ri = {lines:rs, hd:l.hd||"", from:NET.s[l.from][0], to:NET.s[l.to][0], n:n, bus:isBus(l.r) || isFerry(l.r)};
+        jobs.push(Promise.resolve({kind:"ride", col:rc, ride:ri, coords:rp0, d:0, secs:l.secs, steps:[{at:stLL(l.from), text:rs.map(lineName).join("/")+" Richtung "+(l.hd||""), lines:rs, dir:l.hd ? "Richtung "+l.hd : "", sub:"Einsteigen an "+NET.s[l.from][0]+" · "+n+(n===1 ? " Station" : " Stationen")+" bis "+NET.s[l.to][0], ic:LMSUB, ride:true}, {at:stLL(l.to), text:"Aussteigen: "+NET.s[l.to][0], ic:LMSUB}]}));
         at = stLL(l.to); }
     });
   } else {
@@ -8119,7 +8133,7 @@ function navBuild(){
   Promise.all(jobs).then(function(segs){
     if(NAV!==N) return;
     var pts = [], steps = [], segInfo = [], secs = 0;
-    segs.forEach(function(sg){ var o = pts.length; sg.coords.forEach(function(q){ pts.push(q); }); segInfo.push({o:o, n:sg.coords.length, kind:sg.kind, col:sg.col}); secs += sg.secs || 0;
+    segs.forEach(function(sg){ var o = pts.length; sg.coords.forEach(function(q){ pts.push(q); }); segInfo.push({o:o, n:sg.coords.length, kind:sg.kind, col:sg.col, ride:sg.ride}); secs += sg.secs || 0;
       sg.steps.forEach(function(st){ var bi = o, bd = 1e9; for(var i = o; i < o + sg.coords.length; i++){ var d = dist(pts[i], st.at); if(d < bd){ bd = d; bi = i; } } st.i = bi; steps.push(st); }); });
     var cum = [0]; for(var i = 1; i < pts.length; i++) cum.push(cum[i-1] + dist(pts[i-1], pts[i]));
     N.pts = pts; N.cum = cum; N.steps = steps; N.segs = segInfo; N.secs = secs; N.total = cum[cum.length-1] || 1; N.pi = 0; N.off = 0; N.rt = Date.now(); N.busy = false;
@@ -8246,14 +8260,14 @@ function navRender(){
     var tx = nx ? navSplit(nx.text) : {a:"Ziel erreicht", s:""}, fd = nx && dn > 8 ? fmtDist(dn) : "Jetzt", k = fd.lastIndexOf(" ");
     var dH = k > 0 ? esc(fd.slice(0, k))+"<span>"+esc(fd.slice(k + 1))+"</span>" : esc(fd);
     var gl = nx ? navGlyph(N, nx) : "";
-    hero = "<div class=\"nh-ic\">"+ring()+"<span class=\"nh-ring"+(dn < 40 ? " soon" : "")+"\">"+(gl || (nx ? nx.ic : NAVFLAG))+"</span></div><div class=\"nh-tx\"><em class=\"nh-d\">"+dH+"</em><b>"+esc(tx.s || tx.a)+"</b>"+((tx.s || (nx && nx.sub)) ? "<small>"+esc(tx.s ? tx.a+(nx && nx.sub ? " · "+nx.sub : "") : nx.sub)+"</small>" : "")+"</div>"; }
+    hero = "<div class=\"nh-ic\">"+ring()+"<span class=\"nh-ring"+(dn < 40 ? " soon" : "")+"\">"+(gl || (nx ? nx.ic : NAVFLAG))+"</span></div><div class=\"nh-tx\"><em class=\"nh-d\">"+dH+"</em><b>"+(nx && nx.lines ? "<span class=\"nh-lines\">"+navBuls(nx.lines)+"</span>"+esc(nx.dir || "") : esc(tx.s || tx.a))+"</b>"+((tx.s || (nx && nx.sub)) ? "<small>"+esc(tx.s ? tx.a+(nx && nx.sub ? " · "+nx.sub : "") : nx.sub)+"</small>" : "")+"</div>"; }
   var enter = N.heroKey!==key; N.heroKey = key;
   // danach: nur der eine folgende Schritt, dezent als kleine Zeile
   var up = (!N.arrived && N.pts && N.next) ? N.steps.filter(function(st){ return st.i > N.next.i && !st.arrive; })[0] : null;
-  var nextH = up ? "<div class=\"nav-then\"><span class=\"nt-l\">Danach</span><span class=\"nt-ic\">"+up.ic+"</span><span class=\"nt-tx\">"+esc(up.text)+"</span></div>" : "";
+  var nextH = up ? "<div class=\"nav-then\"><span class=\"nt-l\">Danach</span><span class=\"nt-ic\">"+up.ic+"</span><span class=\"nt-tx\">"+(up.lines ? navBuls(up.lines)+" "+esc(up.dir || "") : esc(up.text))+"</span></div>" : "";
   var canDone = N.arrived && N.tgt.id && P(N.tgt.id) && dayOf(N.tgt.id) && !T().done[N.tgt.id] && !isRO();
   var offH = N.offD > 45 && !N.arrived && N.pts ? "<div class=\"nav-off\">Vom Weg abgekommen – neuer Weg wird berechnet …</div>" : "";
-  var footH = "<div class=\"nav-foot\"><div class=\"nav-sum\"><span class=\"nav-mode\">"+mi+"</span><span><b>"+(N.arrived ? "Am Ziel" : N.pts ? navMins(secs)+"<span>Min.</span>" : "–")+"</b><small>"+(N.arrived ? esc(mn) : N.pts ? fmtDist(left)+" · Ankunft "+etaS : mn)+"</small></span></div>"+
+  var footH = "<div class=\"nav-foot\">"+navLineRow(N)+"<div class=\"nav-sum\"><span class=\"nav-mode\">"+mi+"</span><span><b>"+(N.arrived ? "Am Ziel" : N.pts ? navMins(secs)+"<span>Min.</span>" : "–")+"</b><small>"+(N.arrived ? esc(mn) : N.pts ? fmtDist(left)+" · Ankunft "+etaS : mn)+"</small></span></div>"+
     (canDone ? "<button type=\"button\" class=\"nav-b go\" data-act=\"navdone\">✓ Abhaken</button>" : "")+
     (!N.follow && !N.arrived ? "<button type=\"button\" class=\"nav-b ic\" data-act=\"navfollow\" aria-label=\"Karte folgt mir\">"+LOCICO+"</button>" : "")+
     (N.arrived ? "" : "<button type=\"button\" class=\"nav-b ic rot"+(navRotOn ? " on" : "")+"\" data-act=\"navrot\" aria-pressed=\""+navRotOn+"\" aria-label=\""+(navRotOn ? "Karte in Gehrichtung – tippen für Norden oben" : "Norden oben – tippen für Gehrichtung")+"\" title=\""+(navRotOn ? "In Gehrichtung" : "Norden oben")+"\">"+(navRotOn ? NAVROTICO : NAVNICO)+"</button>")+
@@ -8274,6 +8288,16 @@ function navRender(){
   put(".nv-then", nextH); put(".nv-off", offH); put(".nv-foot", footH);
   el.querySelector(".nv-foot").style.setProperty("--p", prog.toFixed(3));
   navOrient(); navPlace();
+}
+/* Welche Linie(n): alle Linien, die von der Einstiegs- bis zur Ausstiegsstation fahren, als Liniensymbole */
+function navBuls(rs){ return rs.map(lineBul).join("<span class=\"or\">/</span>"); }
+function navLineRow(N){
+  if(!N || N.arrived || !N.pts || !N.segs) return "";
+  var rides = N.segs.filter(function(sg){ return sg.ride && N.pi <= sg.o + sg.n - 1; }); if(!rides.length) return "";
+  var sg = rides[0], r = sg.ride, on = N.pi >= sg.o;
+  var sub = on ? "Aussteigen an "+r.to : "Einsteigen an "+r.from+" · "+r.n+(r.bus ? (r.n===1 ? " Haltestelle" : " Haltestellen") : (r.n===1 ? " Station" : " Stationen"))+" bis "+r.to;
+  var more = rides.slice(1).map(function(x){ return navBuls(x.ride.lines); }).join(" ");
+  return "<div class=\"nav-line\"><span class=\"nl-b\">"+navBuls(r.lines)+"</span><span class=\"nl-t\"><b>"+(on ? (r.bus ? "Im Bus" : "Im Zug") : r.lines.length > 1 ? "Nimm eine dieser Linien" : "Nimm diese Linie")+(r.hd ? " · Richtung "+esc(r.hd) : "")+"</b><small>"+esc(sub)+(more ? " · danach "+more : "")+"</small></span></div>";
 }
 function navSplit(t){ var i = t.indexOf(" auf "); return i > 0 ? {a:t.slice(0, i), s:t.slice(i + 5)} : {a:t, s:""}; }
 /* Kreuzungsskizze: der echte Wegverlauf ±22 m um die Abbiegestelle, so gedreht, dass man von unten kommt */
@@ -8376,7 +8400,12 @@ function navSvg(){
   });
   // Ein- und Ausstieg als Stationspunkte in Linienfarbe – markieren den Wechsel zwischen Fußweg und Fahrt
   N.segs.forEach(function(sg){ if(sg.kind!=="ride") return; var col = sg.col || "#0A84FF", b = sg.o + sg.n - 1;
-    [sg.o, b].forEach(function(i){ if(i < N.pi) return; var z = pt(P0[i]); s += "<circle class=\"nv-st\" cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"7.5\" fill=\"#fff\" stroke=\""+col+"\" stroke-width=\"4\"/>"; }); });
+    [sg.o, b].forEach(function(i){ if(i < N.pi) return; var z = pt(P0[i]); s += "<circle class=\"nv-st\" cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"7.5\" fill=\"#fff\" stroke=\""+col+"\" stroke-width=\"4\"/>"; });
+    // am Einstieg die Liniensymbole direkt neben der Station
+    if(sg.ride && b >= N.pi && !N.hidden){ var z0 = pt(P0[sg.o]), x = z0[0] + 22;
+      sg.ride.lines.forEach(function(ri){ var rr = NET.r[ri], bus = ri >= NR0, nm = lineName(ri), w = bus ? Math.max(24, nm.length*8 + 10) : 22;
+        s += "<g class=\"nv-bul\">"+(bus ? "<rect x=\""+f1(x - 11)+"\" y=\""+f1(z0[1] - 11)+"\" width=\""+w+"\" height=\"22\" rx=\"6\"" : "<circle cx=\""+f1(x)+"\" cy=\""+f1(z0[1])+"\" r=\"11\"")+" fill=\""+rr[1]+"\" stroke=\"#fff\" stroke-width=\"2.5\"/><text x=\""+f1(bus ? x - 11 + w/2 : x)+"\" y=\""+f1(z0[1] + 4.5)+"\" text-anchor=\"middle\" font-size=\"13\" font-weight=\"700\" font-family=\"-apple-system,system-ui,sans-serif\" fill=\""+rr[2]+"\">"+esc(nm)+"</text></g>";
+        x += w + 4; }); } });
   if(N.next && !N.arrived && !N.hidden){ var z = pt(N.next.at); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"8\" fill=\"#fff\" stroke=\"#0A84FF\" stroke-width=\"3.5\"/>"; }
   var zt = pt(N.tgt); s += "<circle cx=\""+f1(zt[0])+"\" cy=\""+f1(zt[1])+"\" r=\"11\" fill=\"#FF3B30\" stroke=\"#fff\" stroke-width=\"3\"/>";
   return s;
