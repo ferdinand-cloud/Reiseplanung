@@ -505,6 +505,8 @@ body.kb .pop{align-items:flex-end;padding-bottom:6px}
 .lpinfo{display:grid;gap:2px;padding:4px 2px 12px}
 .lpinfo small{color:var(--muted)}
 .lpacts{display:grid;gap:8px}
+.lpacts .lpphoto{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.lpacts .lpphoto svg{width:18px;height:18px}
 .rseg{display:inline-flex;gap:2px;padding:2px;border-radius:9px;background:color-mix(in srgb,var(--ink) 8%,transparent);margin-top:4px}
 .rseg button{border:0;background:none;border-radius:7px;padding:4px 9px;font:inherit;font-size:12px;font-weight:600;color:var(--muted)}
 .rseg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
@@ -4830,6 +4832,7 @@ function srchGo(i){
 }
 
 /* ---------- Langes Drücken (3 s) auf der Karte: Punkt markieren ---------- */
+var LPCAM = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 7h2.6l1.4-2h6l1.4 2H17v8.5H3z\"/><circle cx=\"10\" cy=\"11\" r=\"2.8\"/></svg>";
 var LP_MS = 750, lp = null, lpAt = 0, lpMark = null, lpPt = null;
 function lpInit(){
   var el = $("map");
@@ -4890,6 +4893,15 @@ function mvEnd(cancel){
   if(p.k==="photo"){ var nb = nbOf(p); if(nb && /^Fotospot( |$)/.test(p.n)) p.n = "Fotospot "+nb; }
   save(); dirty(); toast("„"+p.n+"“ verschoben", true); renderAll(); select(m.id);
 }
+/* Fotospot an einem markierten Punkt: heute (bzw. am offenen Tag) als besucht eingeplant */
+function lpPhotoSpot(code){
+  var a = code.slice(4).split(","), la = +a[0], lo = +a[1], nm = decodeURIComponent(a.slice(2).join(",") || ""), t = T(), pid = uid("w"), w = new Date(), tm = w.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
+  var p = {id:pid, k:"photo", own:1, n:"Fotospot", c:"sight", list:(t.lists && t.lists[0] || {}).id || null, note:"", addr:"", la:+la.toFixed(6), lo:+lo.toFixed(6)};
+  var nb = nbOf(p); p.n = nm ? "Fotospot "+nm : nb ? "Fotospot "+nb : "Fotospot"; p.n = p.n.slice(0, 80);
+  t.places[pid] = p; var dk = dayByKey(cur) ? cur : null;
+  if(dk){ ord(dk).push(pid); t.done[pid] = true; doneMove(pid, dk); if(dk===todayKey()){ t.times = t.times || {}; t.times[pid] = tm; } }
+  save(); dirty(); select(pid); renderAll(); return pid;
+}
 function lpCancel(){ if(!lp) return; clearTimeout(lp.t); if(lp.ring) lp.ring.remove(); lp = null; }
 function lpFire(){
   var x = lp.x, y = lp.y; lpCancel(); lpAt = Date.now();
@@ -4916,7 +4928,7 @@ function lpRender(){
   var h = "<div class=\"pop-card lpcard\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Markierter Punkt\"><div class=\"pop-head\"><h4>Markierter Punkt</h4><button type=\"button\" class=\"x\" data-act=\"lpclose\" aria-label=\"Schließen\">×</button></div>";
   h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || "Unbenannter Ort"))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
   if(ro) h += "<p class=\"note\">Als Beobachter kannst du nichts übernehmen.</p>";
-  else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"planpick\" data-lp=\"1\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+(dayByKey(cur) && dayLegs(cur).length ? "<button type=\"button\" class=\"btn g\" data-act=\"lpvia\">Als Wegpunkt für die Gehroute</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button><button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button></div>";
+  else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"planpick\" data-lp=\"1\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+(dayByKey(cur) && dayLegs(cur).length ? "<button type=\"button\" class=\"btn g\" data-act=\"lpvia\">Als Wegpunkt für die Gehroute</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button>"+(dayByKey(cur) ? "<label class=\"btn g lpphoto\" for=\"cphIn\" data-act=\"lpphoto\">"+LPCAM+"Als Fotospot – Fotos hinzufügen</label>" : "")+"<button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button></div>";
   el.innerHTML = h+"</div>"; el.hidden = false;
 }
 function lpClose(){ lpPt = null; if(lpMark){ lpMark.remove(); lpMark = null; } closeCatPop(); }
@@ -7248,7 +7260,8 @@ function camTarget(loc, lib, when){
   return {pid:pid, neu:true, day:D ? tk : ""};
 }
 document.addEventListener("change", function(e){
-  if(e.target.id==="cphIn"){ var cfs = e.target.files ? Array.prototype.slice.call(e.target.files) : [], csel = e.target.getAttribute("data-pid") || sel; if(cfs.length && P(csel) && !isRO()) addPhotos(csel, cfs).then(function(){ try { e.target.value = ""; } catch(_){} renderCard(); scheduleOverlay(); }); return; }
+  if(e.target.id==="cphIn"){ var cfs = e.target.files ? Array.prototype.slice.call(e.target.files) : [], csel = e.target.getAttribute("data-pid") || sel;
+    if(/^new:/.test(csel)){ e.target.removeAttribute("data-pid"); if(!cfs.length || isRO()) return; csel = lpPhotoSpot(csel); } if(cfs.length && P(csel) && !isRO()) addPhotos(csel, cfs).then(function(){ try { e.target.value = ""; } catch(_){} renderCard(); scheduleOverlay(); }); return; }
   var lib = e.target.id==="libIn";
   if((e.target.id!=="camIn" && !lib) || !e.target.files || !e.target.files[0]) return;
   var fs = Array.prototype.slice.call(e.target.files), f = fs[0]; if(lib){ libImport(fs); return; } CAMF.pending = f;
@@ -7824,7 +7837,7 @@ function renderSheet(){
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
-var RO_ACTS = {"placevis":1,"placevispick":1,"itemvis":1,"itemvispick":1,"vis":1,"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
+var RO_ACTS = {"lpphoto":1,"placevis":1,"placevispick":1,"itemvis":1,"itemvispick":1,"vis":1,"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
 function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 var roWas = null;
 function applyRO(){
@@ -8296,6 +8309,7 @@ document.addEventListener("click", function(e){
     case "phview": jp.view = t.getAttribute("data-ph"); renderJPop(); break;
     case "phback": if(jp && !!jp.ret){ closeJPop(); break; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
     case "privp": if(t.closest("#catPop")) closeCatPop(); togglePriv("p", rootPid(jp ? jp.pid : id), function(){ if(jp) renderJPop(); renderSheet(); }); break;
+    case "lpphoto": if(!lpPt || isRO()) break; var lq = lpPt; $("cphIn").setAttribute("data-pid", "new:"+lq.la+","+lq.lo+","+encodeURIComponent(lq.n||"")); setTimeout(lpClose, 60); break;
     case "placevispick": openPlaceVis(t.getAttribute("data-pid"), t); break;
     case "placevis": if(t.classList.contains("dis")){ toast("Veröffentlichen geht, sobald du den Ort besucht hast", false); break; } closeJpMore(); setVis(t.getAttribute("data-pid"), t.getAttribute("data-v")); break;
     case "itemvispick": if(!jp) break; var ivk = t.getAttribute("data-k"), ivkey = t.getAttribute("data-key"); openItemVis(ivk, ivkey, ivk==="ph" ? (phPlace(ivkey) || jp.pid) : jp.pid, t); break;
