@@ -1090,7 +1090,15 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 .ai-top{gap:8px}
 .ai-top .ai-av{margin-right:3px}
 .ai-in .ai-mic{flex:0 0 36px;width:36px;height:36px;border-radius:50%;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;padding:0;transition:color .15s,background .15s,transform .15s}
-.ai-in .ai-mic:active{transform:scale(.92);background:color-mix(in srgb,#7B5CFF 12%,transparent);color:#7B5CFF}
+.ai-in .ai-mic:active{transform:scale(.92)}
+.ai-in .ai-mic.on{color:#fff;background:#FF3B30;animation:aiRec 1.2s ease-in-out infinite}
+@keyframes aiRec{0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,.45)}50%{box-shadow:0 0 0 7px rgba(255,59,48,0)}}
+.ai-in .ai-voice{flex:0 0 36px;width:36px;height:36px;border-radius:50%;border:0;background:var(--ai-g);color:#fff;display:grid;place-items:center;padding:0;transition:transform .15s}
+.ai-in .ai-voice:active{transform:scale(.92)}
+.ai-in .ai-voice svg{width:18px;height:18px}
+.ai-in .ai-send{display:none}
+.ai-in.has-text .ai-send{display:grid}
+.ai-in.has-text .ai-voice{display:none}
 .ai-in .ai-mic svg{width:19px;height:19px}
 .ai-chat.voice .ai-foot{display:none}
 .ai-chat.voice .ai-log{-webkit-mask-image:none;mask-image:none}
@@ -6116,6 +6124,7 @@ var AI_IC_NEW = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\
 var AI_IC_BACK = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.5 4 6.5 10l6 6\"/></svg>";
 var AI_IC_DEL = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 6h12M8 6V4.5h4V6M6 6l.7 10h6.6L14 6\"/></svg>";
 var AI_IC_MIC = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"7\" y=\"2.5\" width=\"6\" height=\"10\" rx=\"3\"/><path d=\"M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5\"/></svg>";
+var AI_IC_WAVE = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M3 8.5v3M6.5 5.5v9M10 3v14M13.5 6.5v7M17 8.5v3\"/></svg>";
 var AI_SUGG = ["Hintergrundinfos zum Flatiron Building", "Zeig mir alle Fährverbindungen", "Wie komme ich zum Hotel?", "Cafés in der Nähe", "Was steht morgen an?"];
 var AI_WELCOME = "<p>Hallo! Ich bin der KI-Assistent für deine Reise. Bald kannst du mir hier sagen, was du auf der Karte sehen willst, oder mich zu Orten fragen:</p>"+
   "<ul><li><b>Verbindungen filtern</b> – „Zeig mir alle Fähren nach Staten Island“, alles andere wird ausgeblendet</li>"+
@@ -6214,8 +6223,26 @@ function aiStream(i){
   step();
 }
 function aiFinish(){ clearTimeout(aiTimer); aiCur.msgs = aiCur.msgs.filter(function(m){ return m.who!=="typing"; }); if(aiCur.msgs.length && aiCur.msgs[aiCur.msgs.length-1].who==="me") aiCur.msgs.push({who:"bot", html:AI_REPLY, done:true}); aiCur.msgs.forEach(function(m){ if(m.who==="bot") m.done = true; }); aiBusy = false; aiSave(); }
-function aiSyncSend(){ var ta = $("aiTa"), sb = $("aiSendBtn"); if(ta && sb) sb.disabled = aiBusy || !ta.value.trim(); }
+function aiSyncSend(){ var ta = $("aiTa"), sb = $("aiSendBtn"), f = $("aiForm"); if(ta && sb){ sb.disabled = aiBusy || !ta.value.trim(); if(f) f.classList.toggle("has-text", !!ta.value.trim()); } }
+/* Diktieren: Spracherkennung des Geräts schreibt das Gesprochene ins Eingabefeld (keine KI nötig) */
+var aiRec = null;
+function aiDictStop(){ if(aiRec){ try { aiRec.stop(); } catch(e){} } }
+function aiDictate(){
+  var ta = $("aiTa"), mic = document.querySelector(".ai-mic"); if(!ta || !mic) return;
+  if(aiRec){ aiDictStop(); return; }
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ ta.placeholder = "Diktieren über das 🎤 der Tastatur"; ta.focus(); setTimeout(function(){ if($("aiTa")) $("aiTa").placeholder = "Frag die KI …"; }, 4000); return; }
+  var base = ta.value.trim() ? ta.value.trim()+" " : "";
+  var rec = new SR(); aiRec = rec;
+  rec.lang = "de-DE"; rec.interimResults = true; rec.continuous = false;
+  var setOn = function(on){ var m = document.querySelector(".ai-mic"); if(m){ m.classList.toggle("on", on); m.setAttribute("aria-pressed", on); } var t = $("aiTa"); if(t) t.placeholder = on ? "Ich höre zu …" : "Frag die KI …"; };
+  rec.onresult = function(ev){ var t = $("aiTa"); if(!t) return; var txt = ""; for(var i = 0; i < ev.results.length; i++) txt += ev.results[i][0].transcript; t.value = base + txt; t.dispatchEvent(new Event("input")); };
+  rec.onerror = function(ev){ if(ev.error==="not-allowed" || ev.error==="service-not-allowed"){ var t = $("aiTa"); if(t){ t.placeholder = "Mikrofon nicht erlaubt – 🎤 der Tastatur nutzen"; t.focus(); } } };
+  rec.onend = function(){ if(aiRec===rec) aiRec = null; setOn(false); var t = $("aiTa"); if(t && t.placeholder==="Ich höre zu …") t.placeholder = "Frag die KI …"; };
+  try { rec.start(); setOn(true); } catch(e){ aiRec = null; setOn(false); ta.focus(); }
+}
 function aiSend(){
+  aiDictStop();
   var ta = $("aiTa"); var t = ta.value.trim(); if(!t || aiBusy) return;
   aiBusy = true;
   aiCur.msgs.push({who:"me", text:t}); aiCur.msgs.push({who:"typing"});
@@ -6231,6 +6258,8 @@ function aiSend(){
   }, aiReduced ? 0 : 750);
 }
 function aiAct(a, id){
+  if(a==="dictate"){ aiDictate(); return; }
+  aiDictStop();
   if(a==="hist"){ aiFinish(); aiView = "hist"; aiRender(); }
   else if(a==="voice"){ aiFinish(); aiView = "voice"; aiRender(); }
   else if(a==="back"){ aiView = "chat"; aiRender(); }
@@ -6245,7 +6274,8 @@ function openAiChat(){
     "<div class=\"ai-log\" id=\"aiLogBox\" aria-live=\"polite\"></div>"+
     "<div class=\"ai-foot\"><div class=\"ai-sugg\">"+AI_SUGG.map(function(q){ return "<button type=\"button\" data-q=\""+esc(q)+"\">"+AI_SPARK+esc(q)+"</button>"; }).join("")+"</div>"+
     "<form class=\"ai-in\" id=\"aiForm\"><textarea id=\"aiTa\" rows=\"1\" placeholder=\"Frag die KI …\" aria-label=\"Nachricht an den KI-Assistenten\" enterkeyhint=\"send\"></textarea>"+
-    "<button type=\"button\" class=\"ai-mic\" data-ai=\"voice\" aria-label=\"Sprachchat\" title=\"Sprachchat\">"+AI_IC_MIC+"</button>"+
+    "<button type=\"button\" class=\"ai-mic\" data-ai=\"dictate\" aria-label=\"Diktieren\" aria-pressed=\"false\" title=\"Diktieren\">"+AI_IC_MIC+"</button>"+
+    "<button type=\"button\" class=\"ai-voice\" data-ai=\"voice\" aria-label=\"Sprachchat mit der KI\" title=\"Sprachchat\">"+AI_IC_WAVE+"</button>"+
     "<button type=\"submit\" class=\"ai-send\" id=\"aiSendBtn\" aria-label=\"Senden\" disabled><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 16V4M5 9l5-5 5 5\"/></svg></button></form></div></div>";
   el.hidden = false;
   aiView = "chat"; aiBusy = false;
@@ -6254,7 +6284,7 @@ function openAiChat(){
   ta.addEventListener("input", function(){ aiSyncSend(); ta.style.height = ""; ta.style.height = Math.min(110, ta.scrollHeight)+"px"; });
   ta.addEventListener("keydown", function(ev){ if(ev.key==="Enter" && !ev.shiftKey){ ev.preventDefault(); aiSend(); } });
   $("aiForm").addEventListener("submit", function(ev){ ev.preventDefault(); aiSend(); });
-  var close = function(){ aiFinish(); el.hidden = true; el.innerHTML = ""; document.removeEventListener("keydown", key, true); $("aiBtn").focus(); };
+  var close = function(){ aiDictStop(); aiFinish(); el.hidden = true; el.innerHTML = ""; document.removeEventListener("keydown", key, true); $("aiBtn").focus(); };
   var key = function(ev){ if(ev.key==="Escape"){ ev.stopPropagation(); if(aiView!=="chat") aiAct("back"); else close(); } };
   document.addEventListener("keydown", key, true);
   el.onclick = function(ev){ ev.stopPropagation(); var q, b;
