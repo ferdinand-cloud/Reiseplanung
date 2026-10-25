@@ -394,12 +394,24 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   await page.evaluate(() => { window.__hero = document.querySelector("#navUi .nav-hero"); });
   for(let i = 0; i < 4; i++){ await rp(`me = {la:40.7215 + ${i}*0.00002, lo:-73.9890, acc:8}; navOnPos();`); await page.waitForTimeout(80); }
   ok(await page.evaluate(() => window.__hero === document.querySelector("#navUi .nav-hero")), "Kacheln werden bei jeder Standortmeldung neu aufgebaut (zucken)");
+  // neues Aussehen: Kreuzungsskizze aus der Weggeometrie, Annäherungsring, fließende Punkte auf dem Weg
+  ok(await page.locator("#navUi .nav-hero .nh-gl").count()===1, "Kreuzungsskizze fehlt in der Hauptkachel");
+  ok(await page.locator("#navUi .nav-hero .nh-ap .fg").count()===1, "Annäherungsring fehlt");
+  ok(await rp(`navSvg().indexOf("nv-flow")>-1`), "Fließende Richtungspunkte auf dem Weg fehlen");
+  // an der Kurve nicht zu früh umspringen: kurz davor und kurz danach bleibt der Hinweis, erst 20 m danach kommt der nächste
+  const at = (k) => `(function(){ var st = NAV.next, c = NAV.pts[st.i], o = NAV.pts[st.i + (${k} < 0 ? -1 : 1)], d = dist(c, o), t = Math.abs(${k})/d; me = {la:c.la + (o.la - c.la)*t, lo:c.lo + (o.lo - c.lo)*t, acc:8}; window.__st = st; navOnPos(); return NAV.next===st; })()`;
+  await rp(`(function(){ var st = NAV.next, c = NAV.pts[st.i - 1]; me = {la:c.la, lo:c.lo, acc:8}; navOnPos(); })()`);
+  ok(await rp(at(-6)), "Hinweis springt schon vor der Kurve um");
+  ok(await rp(`(function(){ var st = window.__st, c = NAV.pts[st.i], o = NAV.pts[st.i + 1], t = 5/dist(c, o); me = {la:c.la + (o.la - c.la)*t, lo:c.lo + (o.lo - c.lo)*t, acc:8}; navOnPos(); return NAV.next===st; })()`), "Hinweis springt direkt in der Kurve um");
+  ok(await rp(`(function(){ var st = window.__st, c = NAV.pts[st.i], o = NAV.pts[st.i + 1], t = 20/dist(c, o); me = {la:c.la + (o.la - c.la)*t, lo:c.lo + (o.lo - c.lo)*t, acc:8}; navOnPos(); return NAV.next!==st; })()`), "Nach der Kurve kommt der nächste Hinweis nicht");
+  await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; NAV.pi = 0; navProgress(); navRender();`);
   // Karte in Soll-Gehrichtung per Knopf, dreht an der Kurve mit
   ok(await page.locator("#navUi [data-act=navrot]").count()===1, "Knopf „Karte in Gehrichtung“ fehlt");
   await click("#navUi [data-act=navrot]"); await page.waitForTimeout(800);
   ok(await rp(`navRotOn`), "Gehrichtung lässt sich nicht einschalten");
   const b1 = await rp(`Math.round(map.getBearing())`);
-  await rp(`(function(){ var q = NAV.pts[14]; me = {la:q.la, lo:q.lo, acc:8}; navOnPos(); })()`); await page.waitForTimeout(900);
+  await rp(`(function(){ var q = NAV.pts[14]; me = {la:q.la, lo:q.lo, acc:8}; navOnPos(); })()`); await page.waitForTimeout(400);
+  ok(Math.abs(await rp(`map.getBearing()`) - b1) < 60, "Karte springt an der Kurve sofort um statt weich zu drehen"); await page.waitForTimeout(1500);
   const b2 = await rp(`Math.round(map.getBearing())`);
   ok(Math.abs(b1) < 10 && Math.abs(Math.abs(b2) - 90) < 15, "Karte dreht sich nicht mit der Kurve mit ("+b1+" → "+b2+")");
   await click("#navUi [data-act=navrot]"); await page.waitForTimeout(800);

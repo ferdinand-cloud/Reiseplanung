@@ -2868,7 +2868,7 @@ input,textarea,select,button{font-family:inherit}
 /* feine Linien-Symbole in der Bedienung (Kartenlinien und Navigationspfeile bleiben kräftig) */
 :is(button,a,label,.tb,.cic,.ai,.jp-tile,.pvi,.rc-x,.nav-mode,.nn-ic,.tic) svg :is(path,circle,rect,line,polyline,ellipse,polygon){stroke-width:1.55}
 :is(.nh-ring,.no-arr,.no-dial,.nav-pi,.dm-mock) svg :is(path,circle,rect,line,polyline,ellipse,polygon){stroke-width:revert-layer}
-.nh-ring svg *{stroke-width:2.4}
+.nh-ring svg:not(.nh-gl) *{stroke-width:2.4}
 /* schwebende Leisten und Knöpfe: Glas mit Haarlinie, sanfter Schatten */
 .tabbar,.ctrl .cg,.toprow .trip,.toprow .menubtn,.rail,.nav-foot,.addmenu,.pop-card,.cf-card,.card,.toast{border:1px solid var(--glass-bd) !important;box-shadow:var(--sh2) !important}
 .sheet{border-top:1px solid var(--glass-bd) !important}
@@ -2882,6 +2882,77 @@ h1,h2,h3,h4,.ag-title,.pf-id b,.dc-title b{font-weight:600;letter-spacing:-.005e
 small,.sub,.note{color:var(--muted)}
 input::placeholder,textarea::placeholder{color:var(--muted);opacity:.85;font-weight:400}
 .btn{font-weight:600;letter-spacing:.01em}
+
+/* ===== Navigation: dunkles Glas, Kreuzungsskizze mit Annäherungsring, leuchtender Weg ===== */
+.nav-ui{gap:0}
+.nav-ui .nav-hero{--ac:#30d158;gap:14px;padding:14px 18px 14px 14px;border-radius:28px;color:#fff;
+  background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--ac) 34%,transparent),transparent 62%),rgba(14,18,24,.86);
+  -webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);
+  border:1px solid rgba(255,255,255,.11);box-shadow:0 18px 44px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.07)}
+.nav-ui .nav-hero::before{display:none}
+.nav-ui .nav-hero.t-bike{--ac:#0a84ff}
+.nav-ui .nav-hero.t-ride{--ac:#0a84ff}
+.nav-ui .nav-hero.t-arr{--ac:#bf5af2}
+.nav-ui .nh-ic{flex:0 0 72px;height:72px}
+.nh-ap{position:absolute;inset:0;width:72px;height:72px;transform:rotate(-90deg);overflow:visible}
+.nh-ap circle{fill:none;stroke-width:2.5;stroke-linecap:round}
+.nh-ap .bg{stroke:rgba(255,255,255,.1)}
+.nh-ap .fg{stroke:var(--ac);stroke-dasharray:100 100;transition:stroke-dashoffset .8s ease;filter:drop-shadow(0 0 3px var(--ac))}
+.nav-ui .nh-ring{inset:8px;border-radius:50%;color:#fff;
+  background:linear-gradient(155deg,color-mix(in srgb,var(--ac) 88%,#fff),color-mix(in srgb,var(--ac) 72%,#000));
+  box-shadow:0 6px 18px color-mix(in srgb,var(--ac) 45%,transparent),inset 0 1px 0 rgba(255,255,255,.35)}
+.nav-ui .nh-ring svg{width:30px;height:30px}
+.nav-ui .nh-ring svg.nh-gl{width:44px;height:44px}
+.nav-ui .nh-ring.soon{animation:nhPulse2 1.3s ease-in-out infinite}
+@keyframes nhPulse2{0%,100%{box-shadow:0 6px 18px color-mix(in srgb,var(--ac) 45%,transparent),0 0 0 0 color-mix(in srgb,var(--ac) 55%,transparent)}50%{box-shadow:0 6px 18px color-mix(in srgb,var(--ac) 45%,transparent),0 0 0 10px transparent}}
+.nav-ui .nh-tx{gap:1px}
+.nav-ui .nh-tx em{font:300 36px/1 var(--f-display);letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#fff}
+.nav-ui .nh-tx em span{font-size:17px;font-weight:500;letter-spacing:0;margin-left:4px;color:rgba(255,255,255,.6)}
+.nav-ui .nh-tx em.nh-w{font-size:28px;font-weight:500;letter-spacing:-.02em}
+.nav-ui .nh-tx b{font:600 18px/1.2 var(--f-body);color:#fff;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nav-ui .nh-tx small{font:500 13px/1.3 var(--f-body);color:rgba(255,255,255,.6);opacity:1}
+.nav-ui .nh-prog{display:none}
+/* „Danach“ als angedockte Leiste unter der Hauptkachel */
+.nav-ui .nv-then{position:relative;z-index:-1}
+.nav-ui .nav-then{max-width:none;margin:-24px 14px 0;padding:30px 14px 9px 14px;border-radius:0 0 20px 20px;gap:8px;
+  background:rgba(14,18,24,.66);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-top:0;
+  color:rgba(255,255,255,.88);font:500 13px/1.2 var(--f-body);box-shadow:0 10px 24px rgba(0,0,0,.22)}
+.nav-ui .nt-l{font:600 10.5px/1 var(--f-body);letter-spacing:.09em;color:rgba(255,255,255,.5);opacity:1}
+/* Ausrichtung */
+.nav-ui .nav-ori{margin-top:8px;border-radius:24px;color:#fff;border:1px solid rgba(255,159,10,.35);
+  background:radial-gradient(120% 140% at 0% 0%,rgba(255,159,10,.38),transparent 62%),rgba(14,18,24,.86);
+  -webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);box-shadow:0 14px 34px rgba(0,0,0,.3)}
+.nav-ui .nav-ori.ok{border-color:rgba(48,209,88,.35);background:radial-gradient(120% 140% at 0% 0%,rgba(48,209,88,.38),transparent 62%),rgba(14,18,24,.86)}
+.nav-ui .nav-ori.ok .no-ic{color:#30d158}
+.nav-ui .no-dial{background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1.5px rgba(255,159,10,.75)}
+.nav-ui .no-dial::before{content:"";position:absolute;inset:4px;border-radius:50%;background:repeating-conic-gradient(rgba(255,255,255,.45) 0 1.2deg,transparent 1.2deg 30deg);-webkit-mask:radial-gradient(circle,transparent 21px,#000 22px);mask:radial-gradient(circle,transparent 21px,#000 22px)}
+.nav-ui .nav-ori.bad .no-dial{animation:oriWob2 1.8s ease-in-out infinite}
+@keyframes oriWob2{0%,100%{box-shadow:inset 0 0 0 1.5px rgba(255,159,10,.75),0 0 0 0 rgba(255,159,10,.45)}50%{box-shadow:inset 0 0 0 1.5px rgba(255,159,10,.75),0 0 0 9px rgba(255,159,10,0)}}
+.nav-ui .no-n{background:#ff9f0a}
+.nav-ui .no-arr{color:#ff9f0a;filter:drop-shadow(0 0 6px rgba(255,159,10,.55))}
+.nav-ui .no-tx b{font:600 19px/1.15 var(--f-body);color:#fff}
+.nav-ui .no-tx small{font:500 13px/1.3 var(--f-body);color:rgba(255,255,255,.62);opacity:1}
+.nav-ui .nav-off{margin-top:8px;border-radius:16px;background:rgba(14,18,24,.86);color:#ffb340;border:1px solid rgba(255,159,10,.35);font-weight:500;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+/* Fußleiste: Restzeit groß, Fortschritt als feine Linie oben */
+.nav-ui .nav-foot{overflow:hidden;padding:10px 8px 10px 12px;gap:6px}
+.nav-ui .nav-foot::before{content:"";position:absolute;left:0;top:0;height:2.5px;width:calc(var(--p,0)*100%);background:linear-gradient(90deg,#30d158,#0a84ff);border-radius:0 2px 2px 0;transition:width .8s ease}
+.nav-ui .nav-sum{gap:10px}
+.nav-ui .nav-sum b{font:300 27px/1 var(--f-display);letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.nav-ui .nav-sum b span{font-size:14px;font-weight:500;letter-spacing:0;margin-left:3px;color:var(--muted)}
+.nav-ui .nav-sum small{margin-top:4px;font-size:12.5px;color:var(--muted)}
+.nav-ui .nav-mode{width:36px;height:36px;flex:0 0 36px;background:transparent;border:1px solid var(--glass-bd);color:var(--ink)}
+.nav-ui .nav-b.ic{width:40px;height:40px;background:transparent;border:1px solid var(--glass-bd)}
+.nav-ui .nav-b.rot.on{background:#0A84FF;border-color:#0A84FF}
+.nav-ui .nav-b.end{width:40px;height:40px;background:rgba(255,59,48,.12);color:#ff3b30;border:1px solid rgba(255,59,48,.35);font-size:15px}
+.nav-ui .nav-b.go{background:#30d158;font-weight:600}
+/* ausgeblendet: kleine dunkle Glasleiste */
+.nav-ui .nav-pill{background:rgba(14,18,24,.86);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.12);font-weight:500;padding:7px 14px 7px 7px}
+.nav-ui .nav-pi{background:#30d158}
+.nav-ui .nav-pe{font-weight:600;color:#30d158;opacity:1}
+/* Weg auf der Karte: fließende Punkte in Gehrichtung */
+.nv-flow{animation:nvFlow 1.4s linear infinite}
+@keyframes nvFlow{to{stroke-dashoffset:-16.1}}
+@media (prefers-reduced-motion: reduce){ .nv-flow{animation:none;display:none} }
 </style>
 </head>
 <body>
@@ -7990,7 +8061,7 @@ function navOsrm(base, pts){
       var rt = j && j.routes && j.routes[0]; if(!rt) throw new Error("kein Weg");
       var coords = rt.geometry.coordinates.map(function(q){ return {la:q[1], lo:q[0]}; }), steps = [];
       (rt.legs||[]).forEach(function(lg){ (lg.steps||[]).forEach(function(st){ var m = st.maneuver || {}; if(!m.location) return;
-        steps.push({at:{la:m.location[1], lo:m.location[0]}, text:navText(m, st.name), ic:m.type==="arrive" ? NAVFLAG : navArrow(m.type==="depart" ? 0 : (NAVANG[m.modifier] || 0)), arrive:m.type==="arrive"}); }); });
+        steps.push({at:{la:m.location[1], lo:m.location[0]}, text:navText(m, st.name), ic:m.type==="arrive" ? NAVFLAG : navArrow(m.type==="depart" ? 0 : (NAVANG[m.modifier] || 0)), arrive:m.type==="arrive", dep:m.type==="depart", turn:m.type!=="depart" && m.type!=="arrive"}); }); });
       return {coords:coords, steps:steps, d:rt.distance, secs:rt.duration};
     });
 }
@@ -8066,9 +8137,19 @@ function navProgress(){
   for(var i = from; i <= to; i++){ var d = dist(me, P0[i]); if(d < bd){ bd = d; bi = i; } }
   if(bd > 120){ for(var j = 0; j < P0.length; j++){ var d2 = dist(me, P0[j]); if(d2 < bd){ bd = d2; bi = j; } } }
   N.pi = Math.max(N.pi, bi); N.offD = bd;
-  N.left = Math.max(0, N.total - N.cum[N.pi]);
-  N.next = N.steps.filter(function(st){ return st.i > N.pi + 1 || (st.i >= N.pi && dist(me, st.at) > 15); })[0] || null;
+  N.s = navAlong(N);
+  N.left = Math.max(0, N.total - N.s);
+  // ein Abbiegehinweis bleibt stehen, bis man die Kurve wirklich hinter sich hat (10 m danach) – nicht schon kurz davor umspringen
+  N.next = N.steps.filter(function(st){ return !st.dep && N.cum[st.i] + 10 > N.s; })[0] || null;
   if(dist(me, N.tgt) < 25 || (N.left < 20 && N.pi >= P0.length - 2)) N.arrived = true;
+}
+// Position entlang des Wegs in Metern: nächster Wegpunkt plus Projektion auf das folgende Wegstück
+function navAlong(N){
+  var P0 = N.pts, i = N.pi, a = P0[i], b = P0[Math.min(P0.length - 1, i + 1)];
+  if(!me || !a || a===b) return N.cum[i] || 0;
+  var kx = 111320*Math.cos(a.la*Math.PI/180), vx = (b.lo - a.lo)*kx, vy = (b.la - a.la)*111320, L = Math.hypot(vx, vy) || 1;
+  var pr = ((me.lo - a.lo)*kx*vx + (me.la - a.la)*111320*vy) / L;
+  return N.cum[i] + Math.max(0, Math.min(L, pr));
 }
 function navOnPos(){
   var N = NAV; if(!N) return;
@@ -8085,13 +8166,13 @@ function navOnPos(){
 }
 /* Karte in Soll-Gehrichtung drehen (per Knopf): Blickrichtung = Richtung des Wegs ca. 35 m voraus, dreht an Kurven mit */
 var navRotOn = lsGet("rp-nav-rot")==="1";
-function navAhead(N, m){ var P0 = N.pts, i = N.pi; while(i < P0.length - 1 && N.cum[i] - N.cum[N.pi] < m) i++; return P0[i]; }
+function navAhead(N, m){ var P0 = N.pts, s0 = N.s!=null ? N.s : N.cum[N.pi], i = N.pi; while(i < P0.length - 1 && N.cum[i] - s0 < m) i++; return P0[i]; }
 function navFollow(zoom){
   if(!NAV || !me || !map) return;
   var o = {center:[me.lo, me.la], zoom: zoom ? Math.max(map.getZoom(), 16.5) : map.getZoom(), duration: reduceMotion ? 0 : 600};
-  if(navRotOn && NAV.pts && !NAV.arrived){ var ah = navAhead(NAV, 35);
+  if(navRotOn && NAV.pts && !NAV.arrived){ var ah = navAhead(NAV, 14); // kurzer Blick voraus: dreht erst in der Kurve, nicht schon davor
     if(ah && dist(me, ah) > 5){ var b = navBear(me, ah), cb = (map.getBearing() + 360) % 360, d = ((b - cb + 540) % 360) - 180;
-      if(Math.abs(d) > 6 || zoom) o.bearing = b; }
+      if(Math.abs(d) > 8 || zoom){ o.bearing = b; if(!reduceMotion) o.duration = Math.min(1600, 700 + Math.abs(d) * 8); } }
     o.offset = [0, Math.round(window.innerHeight * 0.16)]; // eigener Standort etwas unterhalb der Mitte – mehr Sicht nach vorn
   }
   map.easeTo(o);
@@ -8114,37 +8195,80 @@ function navRender(){
     el.className = "nav-ui min"; el.innerHTML = "<button type=\"button\" class=\"nav-pill\" data-act=\"navshow\"><span class=\"nav-pi\">"+mi+"</span><span><b>"+esc(N.tgt.n||"Ziel")+"</b> · "+(N.pts ? navMins(secs)+" Min." : "…")+"</span><span class=\"nav-pe\">Einblenden</span></button>";
     return;
   }
-  var prog = N.pts ? Math.min(1, Math.max(0, 1 - left / N.total)) : 0, hero, key, tone = "walk";
-  if(N.arrived){ key = "arr"; tone = "arr";
-    hero = "<div class=\"nh-ic\"><span class=\"nh-ring\">"+NAVFLAG+"</span></div><div class=\"nh-tx\"><em>Angekommen</em><b>"+esc(N.tgt.n||"Ziel")+"</b><small>Du bist da 🎉</small></div>"; }
+  var prog = N.pts ? Math.min(1, Math.max(0, 1 - left / N.total)) : 0, hero, key, tone = "walk", ap = 0, acc = "";
+  var ring = function(){ return "<svg class=\"nh-ap\" viewBox=\"0 0 72 72\" aria-hidden=\"true\"><circle class=\"bg\" cx=\"36\" cy=\"36\" r=\"33\"/><circle class=\"fg\" cx=\"36\" cy=\"36\" r=\"33\" pathLength=\"100\" style=\"stroke-dashoffset:"+(100 - ap*100).toFixed(1)+"\"/></svg>"; };
+  if(N.arrived){ key = "arr"; tone = "arr"; ap = 1;
+    hero = "<div class=\"nh-ic\">"+ring()+"<span class=\"nh-ring\">"+NAVFLAG+"</span></div><div class=\"nh-tx\"><em class=\"nh-w\">Angekommen</em><b>"+esc(N.tgt.n||"Ziel")+"</b><small>Du bist da 🎉</small></div>"; }
   else if(!N.pts || N.busy){ key = "busy";
-    hero = "<div class=\"nh-ic\"><span class=\"nh-ring spin\">"+mi+"</span></div><div class=\"nh-tx\"><em>"+mn+"</em><b>"+esc(N.err || "Weg wird berechnet …")+"</b><small>zu "+esc(N.tgt.n||"Ziel")+"</small></div>"; }
-  else { var nx = N.next, dn = nx ? Math.max(0, N.cum[nx.i] - N.cum[N.pi]) : left;
+    hero = "<div class=\"nh-ic\">"+ring()+"<span class=\"nh-ring spin\">"+mi+"</span></div><div class=\"nh-tx\"><em class=\"nh-w\">"+mn+"</em><b>"+esc(N.err || "Weg wird berechnet …")+"</b><small>zu "+esc(N.tgt.n||"Ziel")+"</small></div>"; }
+  else { var nx = N.next, dn = nx ? Math.max(0, N.cum[nx.i] - N.s) : left;
     key = nx ? nx.i+"|"+nx.text : "end"; tone = nx && nx.ride ? "ride" : nx && nx.ic===LMBIKE ? "bike" : N.mode==="bike" && N.segs && N.segs.some(function(sg){ return sg.kind==="bike" && N.pi >= sg.o && N.pi < sg.o + sg.n; }) ? "bike" : "walk";
-    hero = "<div class=\"nh-ic\"><span class=\"nh-ring"+(dn < 40 ? " soon" : "")+"\">"+(nx ? nx.ic : NAVFLAG)+"</span></div><div class=\"nh-tx\"><em class=\"nh-d\">"+(nx && dn > 8 ? fmtDist(dn) : "Jetzt")+"</em><b>"+esc(nx ? nx.text : "Ziel erreicht")+"</b>"+(nx && nx.sub ? "<small>"+esc(nx.sub)+"</small>" : "")+"</div>"; }
+    if(tone==="ride" && N.segs) N.segs.forEach(function(sg){ if(sg.kind==="ride" && nx.i >= sg.o - 1 && nx.i < sg.o + sg.n && sg.col) acc = sg.col; });
+    ap = nx ? 1 - Math.min(dn, 200) / 200 : 1;
+    var tx = nx ? navSplit(nx.text) : {a:"Ziel erreicht", s:""}, fd = nx && dn > 8 ? fmtDist(dn) : "Jetzt", k = fd.lastIndexOf(" ");
+    var dH = k > 0 ? esc(fd.slice(0, k))+"<span>"+esc(fd.slice(k + 1))+"</span>" : esc(fd);
+    var gl = nx ? navGlyph(N, nx) : "";
+    hero = "<div class=\"nh-ic\">"+ring()+"<span class=\"nh-ring"+(dn < 40 ? " soon" : "")+"\">"+(gl || (nx ? nx.ic : NAVFLAG))+"</span></div><div class=\"nh-tx\"><em class=\"nh-d\">"+dH+"</em><b>"+esc(tx.s || tx.a)+"</b>"+((tx.s || (nx && nx.sub)) ? "<small>"+esc(tx.s ? tx.a+(nx && nx.sub ? " · "+nx.sub : "") : nx.sub)+"</small>" : "")+"</div>"; }
   var enter = N.heroKey!==key; N.heroKey = key;
   // danach: nur der eine folgende Schritt, dezent als kleine Zeile
   var up = (!N.arrived && N.pts && N.next) ? N.steps.filter(function(st){ return st.i > N.next.i && !st.arrive; })[0] : null;
   var nextH = up ? "<div class=\"nav-then\"><span class=\"nt-l\">Danach</span><span class=\"nt-ic\">"+up.ic+"</span><span class=\"nt-tx\">"+esc(up.text)+"</span></div>" : "";
   var canDone = N.arrived && N.tgt.id && P(N.tgt.id) && dayOf(N.tgt.id) && !T().done[N.tgt.id] && !isRO();
   var offH = N.offD > 45 && !N.arrived && N.pts ? "<div class=\"nav-off\">Vom Weg abgekommen – neuer Weg wird berechnet …</div>" : "";
-  var footH = "<div class=\"nav-foot\"><div class=\"nav-sum\"><span class=\"nav-mode\">"+mi+"</span><span><b>"+(N.pts ? navMins(secs)+" Min." : "–")+"</b><small>"+(N.pts ? fmtDist(left)+" · an "+etaS : mn)+"</small></span></div>"+
+  var footH = "<div class=\"nav-foot\"><div class=\"nav-sum\"><span class=\"nav-mode\">"+mi+"</span><span><b>"+(N.arrived ? "Am Ziel" : N.pts ? navMins(secs)+"<span>Min.</span>" : "–")+"</b><small>"+(N.arrived ? esc(mn) : N.pts ? fmtDist(left)+" · Ankunft "+etaS : mn)+"</small></span></div>"+
     (canDone ? "<button type=\"button\" class=\"nav-b go\" data-act=\"navdone\">✓ Abhaken</button>" : "")+
     (!N.follow && !N.arrived ? "<button type=\"button\" class=\"nav-b ic\" data-act=\"navfollow\" aria-label=\"Karte folgt mir\">"+LOCICO+"</button>" : "")+
-    "<button type=\"button\" class=\"nav-b ic rot"+(navRotOn ? " on" : "")+"\" data-act=\"navrot\" aria-pressed=\""+navRotOn+"\" aria-label=\""+(navRotOn ? "Karte in Gehrichtung – tippen für Norden oben" : "Norden oben – tippen für Gehrichtung")+"\" title=\""+(navRotOn ? "In Gehrichtung" : "Norden oben")+"\">"+(navRotOn ? NAVROTICO : NAVNICO)+"</button>"+
+    (N.arrived ? "" : "<button type=\"button\" class=\"nav-b ic rot"+(navRotOn ? " on" : "")+"\" data-act=\"navrot\" aria-pressed=\""+navRotOn+"\" aria-label=\""+(navRotOn ? "Karte in Gehrichtung – tippen für Norden oben" : "Norden oben – tippen für Gehrichtung")+"\" title=\""+(navRotOn ? "In Gehrichtung" : "Norden oben")+"\">"+(navRotOn ? NAVROTICO : NAVNICO)+"</button>")+
     "<button type=\"button\" class=\"nav-b ic\" data-act=\"navhide\" aria-label=\"Ausblenden\" title=\"Ausblenden\">"+NAVHIDEICO+"</button><button type=\"button\" class=\"nav-b end\" data-act=\"navend\" aria-label=\"Beenden\" title=\"Beenden\">✕</button></div>";
   if(el.className!=="nav-ui" || !el.querySelector(".nv-hero")){
-    el.className = "nav-ui"; el.innerHTML = "<div class=\"nv-hero\"></div><div id=\"navOri\" class=\"nav-ori\" hidden></div><div class=\"nv-then\"></div><div class=\"nv-off\"></div><div class=\"nv-foot\"></div>"; enter = true; }
+    el.className = "nav-ui"; el.innerHTML = "<div class=\"nv-hero\"></div><div class=\"nv-then\"></div><div id=\"navOri\" class=\"nav-ori\" hidden></div><div class=\"nv-off\"></div><div class=\"nv-foot\"></div>"; enter = true; }
   // Hauptkachel: bei neuem Schritt komplett neu (mit Animation), sonst nur Entfernung, Text und Fortschritt anpassen
   var hb = el.querySelector(".nv-hero"), cls = "nav-hero t-"+tone+(enter ? " enter" : "");
-  if(enter || !hb.firstChild){ hb.innerHTML = "<div class=\""+cls+"\">"+hero+"<i class=\"nh-prog\" style=\"--p:"+prog.toFixed(3)+"\"></i></div>"; }
+  if(enter || !hb.firstChild){ hb.innerHTML = "<div class=\""+cls+"\">"+hero+"</div>"; }
   else { var hc = hb.firstChild, tmp = document.createElement("div"); tmp.innerHTML = hero;
     var oldTx = hc.querySelector(".nh-tx"), newTx = tmp.querySelector(".nh-tx"); if(oldTx && newTx && oldTx.innerHTML!==newTx.innerHTML) oldTx.innerHTML = newTx.innerHTML;
     var oldR = hc.querySelector(".nh-ring"), newR = tmp.querySelector(".nh-ring"); if(oldR && newR) oldR.classList.toggle("soon", newR.classList.contains("soon"));
-    hc.className = "nav-hero t-"+tone; var pg = hc.querySelector(".nh-prog"); if(pg) pg.style.setProperty("--p", prog.toFixed(3)); }
+    var fg = hc.querySelector(".nh-ap .fg"); if(fg) fg.style.strokeDashoffset = (100 - ap*100).toFixed(1);
+    hc.className = "nav-hero t-"+tone; }
+  hb.firstChild.style.setProperty("--ac", acc || "");
+  if(!acc) hb.firstChild.style.removeProperty("--ac");
   var put = function(sel, h){ var b = el.querySelector(sel); if(b && b.__h!==h){ b.__h = h; b.innerHTML = h; } };
   put(".nv-then", nextH); put(".nv-off", offH); put(".nv-foot", footH);
+  el.querySelector(".nv-foot").style.setProperty("--p", prog.toFixed(3));
   navOrient();
+}
+function navSplit(t){ var i = t.indexOf(" auf "); return i > 0 ? {a:t.slice(0, i), s:t.slice(i + 5)} : {a:t, s:""}; }
+/* Kreuzungsskizze: der echte Wegverlauf ±22 m um die Abbiegestelle, so gedreht, dass man von unten kommt */
+function navGlyph(N, st){
+  if(st.gl!==undefined) return st.gl; st.gl = "";
+  if(!st.turn) return "";
+  var P0 = N.pts, i = st.i, c = P0[i]; if(!c) return "";
+  // Weg von der Abbiegestelle aus genau 22 m zurück und 22 m voraus (lange Wegstücke werden abgeschnitten)
+  var walk = function(dir){ var out = [], acc = 0, j = i;
+    while(j + dir >= 0 && j + dir < P0.length){ var a = P0[j], b = P0[j + dir], sg = dist(a, b);
+      if(acc + sg >= 22){ var t = sg ? (22 - acc) / sg : 0; out.push({la:a.la + (b.la - a.la)*t, lo:a.lo + (b.lo - a.lo)*t}); return out; }
+      out.push(b); acc += sg; j += dir; }
+    return out; };
+  var bk = walk(-1), fw = walk(1);
+  if(!bk.length || !fw.length) return "";
+  var kx = 111320*Math.cos(c.la*Math.PI/180), loc = function(q){ return [(q.lo - c.lo)*kx, -(q.la - c.la)*111320]; };
+  var pb = loc(bk[bk.length - 1]), th = Math.atan2(pb[0], pb[1]), cs = Math.cos(th), sn = Math.sin(th), sc = 17/22;
+  var tr = function(q){ var z = loc(q); return [24 + (z[0]*cs - z[1]*sn)*sc, 27 + (z[0]*sn + z[1]*cs)*sc]; };
+  var pts = bk.slice().reverse().concat([c], fw).map(tr);
+  var mnx = Math.min.apply(null, pts.map(function(z){ return z[0]; })), mxx = Math.max.apply(null, pts.map(function(z){ return z[0]; })), dx = 24 - (mnx + mxx)/2;
+  pts = pts.map(function(z){ return [z[0] + dx, z[1]]; });
+  var e = pts[pts.length - 1], k = pts.length - 2; while(k > 0 && Math.hypot(e[0] - pts[k][0], e[1] - pts[k][1]) < 4) k--;
+  var q = pts[k], ang = Math.atan2(e[1] - q[1], e[0] - q[0]);
+  // Linie etwas vor der Spitze enden lassen, damit der Pfeilkopf sauber sitzt
+  var tip = [e[0] + Math.cos(ang)*2, e[1] + Math.sin(ang)*2], base = [e[0] - Math.cos(ang)*4, e[1] - Math.sin(ang)*4];
+  pts[pts.length - 1] = base;
+  var d = pts.map(function(z, n){ return (n ? "L" : "M")+z[0].toFixed(1)+" "+z[1].toFixed(1); }).join("");
+  var wing = function(s1){ var a2 = ang + s1*2.45; return (tip[0] + Math.cos(a2)*9).toFixed(1)+" "+(tip[1] + Math.sin(a2)*9).toFixed(1); };
+  st.gl = "<svg class=\"nh-gl\" viewBox=\"0 0 48 48\" fill=\"none\" aria-hidden=\"true\">"+
+    "<path d=\"M"+(24 + dx).toFixed(1)+" 46V6\" stroke=\"currentColor\" style=\"stroke-width:7;opacity:.22\" stroke-linecap=\"round\"/>"+
+    "<path d=\""+d+"\" stroke=\"currentColor\" style=\"stroke-width:4.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"+
+    "<path d=\"M"+tip[0].toFixed(1)+" "+tip[1].toFixed(1)+"L"+wing(1)+"L"+wing(-1)+"Z\" fill=\"currentColor\" stroke=\"currentColor\" style=\"stroke-width:1.6\" stroke-linejoin=\"round\"/></svg>";
+  return st.gl;
 }
 var NAVROTICO = "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"/><path d=\"M12 5.5l4.2 10.2L12 13.4l-4.2 2.3z\" fill=\"currentColor\"/></svg>";
 var NAVNICO = "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"/><path d=\"M12 4.5l3 7.5h-6z\" fill=\"#FF3B30\"/><path d=\"M12 19.5l-3-7.5h6z\" fill=\"currentColor\" opacity=\".45\"/></svg>";
@@ -8199,7 +8323,11 @@ function navSvg(){
     var mk = function(i0, i1){ var d = ""; for(var i = i0; i <= i1; i++){ var z = pt(P0[i]); d += (i===i0 ? "M" : "L")+f1(z[0])+" "+f1(z[1]); } return d; };
     var cut = Math.min(Math.max(N.pi, a), b);
     if(cut > a){ s += "<path d=\""+mk(a, cut)+"\" stroke=\"#8E8E93\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".55\"/>"; }
-    if(cut < b){ var d1 = mk(cut, b); s += "<path d=\""+d1+"\" stroke=\"#fff\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".9\"/><path d=\""+d1+"\" stroke=\""+col+"\" stroke-width=\"6.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(sg.kind==="walk" && N.mode!=="walk" ? " stroke-dasharray=\"1 9\"" : "")+"/>"; }
+    if(cut < b){ var d1 = mk(cut, b), dot = sg.kind==="walk" && N.mode!=="walk";
+      s += "<path d=\""+d1+"\" stroke=\""+col+"\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".14\"/>";
+      s += "<path d=\""+d1+"\" stroke=\"#fff\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".9\"/><path d=\""+d1+"\" stroke=\""+col+"\" stroke-width=\"6.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(dot ? " stroke-dasharray=\"1 9\"" : "")+"/>";
+      // fließende Punkte zeigen die Richtung; Verzögerung aus der Uhrzeit, damit die Bewegung beim Neuzeichnen nicht neu startet
+      if(!dot && !N.hidden) s += "<path class=\"nv-flow\" d=\""+d1+"\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-dasharray=\"0.1 16\" fill=\"none\" opacity=\".85\" style=\"animation-delay:-"+((Date.now() % 1400)/1000).toFixed(2)+"s\"/>"; }
   });
   if(N.next && !N.arrived && !N.hidden){ var z = pt(N.next.at); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"8\" fill=\"#fff\" stroke=\"#0A84FF\" stroke-width=\"3.5\"/>"; }
   var zt = pt(N.tgt); s += "<circle cx=\""+f1(zt[0])+"\" cy=\""+f1(zt[1])+"\" r=\"11\" fill=\"#FF3B30\" stroke=\"#fff\" stroke-width=\"3\"/>";
