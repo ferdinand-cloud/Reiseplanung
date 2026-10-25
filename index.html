@@ -609,7 +609,8 @@ body.kb .pop{align-items:flex-end;padding-bottom:6px}
 .pv-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;background:#000}
 .pv-track::-webkit-scrollbar{display:none}
 .pv-slide{flex:0 0 100%;height:min(56vh,460px);scroll-snap-align:center;scroll-snap-stop:always;overflow:hidden;touch-action:pan-x}
-.pv-slide img{transform-origin:50% 50%;will-change:transform}
+.pv-slide img{transform-origin:50% 50%}
+body.pvfull.rc-on #rc{visibility:hidden}
 #pvLayer{position:fixed;inset:0;z-index:68;background:#000}
 #pvLayer .pv-wrap.full{transform-origin:50% 40%;background:transparent}
 #pvLayer .pv-wrap.full .pv-track{background:transparent}
@@ -7021,12 +7022,12 @@ function renderJPop(){
     if(jp.list && jp.list.length) ph = jp.list.slice();
     if(ph.indexOf(jp.view) < 0) ph = [jp.view];
     var vi = ph.indexOf(jp.view), Lr = pvLayer();
-    Lr.innerHTML = "<div class=\"pv-wrap full\" id=\"pvWrap\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Foto\"><div class=\"pv-track\" id=\"pvTrack\">"+ph.map(function(x){ return "<div class=\"pv-slide\" data-v=\""+x+"\"><img data-ph=\""+x+"\" alt=\"Foto\" draggable=\"false\"></div>"; }).join("")+"</div>"+
+    Lr.innerHTML = "<div class=\"pv-wrap full\" id=\"pvWrap\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Foto\"><div class=\"pv-track\" id=\"pvTrack\">"+ph.map(function(x){ return "<div class=\"pv-slide\" data-v=\""+x+"\"><img data-lz=\""+x+"\" alt=\"Foto\" draggable=\"false\"></div>"; }).join("")+"</div>"+
       (ph.length > 1 ? "<button type=\"button\" class=\"pv-arr l\" data-act=\"phstep\" data-v=\"-1\" aria-label=\"Vorheriges Foto\">‹</button><button type=\"button\" class=\"pv-arr r\" data-act=\"phstep\" data-v=\"1\" aria-label=\"Nächstes Foto\">›</button>" : "")+
       "<div class=\"pv-head\"><span class=\"pv-ttl\" id=\"pvTtl\">"+esc(p.n)+"</span><button type=\"button\" class=\"pv-fs\" data-act=\"phback\" aria-label=\"Vollbild schließen\">"+PVX+"</button></div>"+
       "<span class=\"pv-fsn\" id=\"pvFsN\">"+(ph.length > 1 ? (vi+1)+" / "+ph.length : "")+"</span>"+
       "<div id=\"pvMeta\">"+phMetaHTML(jp.view)+"</div></div>";
-    Lr.hidden = false; document.body.classList.add("pvfull"); fillPhotos(Lr); pvInit(vi); return;
+    Lr.hidden = false; document.body.classList.add("pvfull"); pvWindow(vi); fillPhotos(Lr); pvInit(vi); return;
   }
   pvHide();
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
@@ -7150,11 +7151,20 @@ function phMetaRefresh(){
   if(typing){ var a = $("pvCm"); if(a){ var tmp = document.createElement("div"); tmp.innerHTML = phMetaHTML(jp.view); var nc = tmp.querySelector("#pvCm"), na = tmp.querySelector(".pv-acts"); if(nc) a.innerHTML = nc.innerHTML; var oa = m.querySelector(".pv-acts"); if(oa && na) oa.innerHTML = na.innerHTML; } return; }
   m.innerHTML = phMetaHTML(jp.view);
 }
+/* nur aktuelles Foto ±2 im Speicher halten – bei vielen Fotos (Rückblick) sonst Absturz durch Speichermangel */
+function pvWindow(i){
+  var tr = $("pvTrack"); if(!tr) return;
+  Array.prototype.forEach.call(tr.children, function(sl, j){ var im = sl.querySelector("img"); if(!im) return;
+    if(Math.abs(j - i) <= 2){ var lz = im.getAttribute("data-lz"); if(lz){ im.setAttribute("data-ph", lz); im.removeAttribute("data-lz"); } }
+    else { var d = im.getAttribute("data-ph"); if(d){ im.setAttribute("data-lz", d); im.removeAttribute("data-ph"); im.removeAttribute("src"); } } });
+  fillPhotos(tr);
+}
 function pvInit(vi){
   var tr = $("pvTrack"); if(!tr) return;
   tr.scrollLeft = vi * tr.clientWidth; requestAnimationFrame(function(){ tr.scrollLeft = vi * tr.clientWidth; });
-  var tmr = 0;
+  var tmr = 0, wi = vi;
   tr.addEventListener("scroll", function(){
+    var i0 = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); if(i0!==wi){ wi = i0; pvWindow(i0); }
     clearTimeout(tmr);
     tmr = setTimeout(function(){
       var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)), sl = tr.children[i]; if(!sl || !jp) return;
@@ -9103,6 +9113,23 @@ function openRecap(k){
   if(!el){
     el = document.createElement("div"); el.id = "rc"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "Tagesrückblick"); el.hidden = true; document.body.appendChild(el);
     el.addEventListener("click", rcClick);
+    // seitlich wischen: rechts = Vortag, links = nächster Tag (nicht auf Karte, Foto-Streifen oder Tagesleiste)
+    var dsw = null;
+    el.addEventListener("touchstart", function(e){ dsw = null; if(e.touches.length!==1) return; var tg = e.target;
+      if(tg.closest && tg.closest(".rc-map,.rc-mapw,.rc-strip,.rc-days,.rc-bar,input,textarea")) return;
+      var t = e.touches[0]; if(t.clientX < 20 || t.clientX > window.innerWidth - 20) return; dsw = {x:t.clientX, y:t.clientY, t:Date.now(), h:null}; }, {passive:true});
+    el.addEventListener("touchmove", function(e){ if(!dsw || e.touches.length!==1) return; var t = e.touches[0], dx = t.clientX - dsw.x, dy = t.clientY - dsw.y;
+      if(dsw.h===null){ if(Math.abs(dx) < 10 && Math.abs(dy) < 10) return; dsw.h = Math.abs(dx) > Math.abs(dy)*1.5; if(!dsw.h){ dsw = null; return; } }
+      var ds = days(), D = dayByKey(RC.key), nb = D && ds[D.i + (dx < 0 ? 1 : -1)], k = nb ? 1 : 0.25;
+      el.style.transition = "none"; el.style.transform = "translateX("+(dx*k*0.5)+"px)"; el.style.opacity = String(1 - Math.min(Math.abs(dx), 240)/240*0.35*k); dsw.dx = dx; }, {passive:true});
+    var dend = function(){ if(!dsw || !dsw.h){ dsw = null; return; } var s0 = dsw, dx = s0.dx || 0; dsw = null;
+      var ds = days(), D = dayByKey(RC.key), nb = D && ds[D.i + (dx < 0 ? 1 : -1)];
+      if(nb && (Math.abs(dx) > 80 || (Math.abs(dx) > 40 && Date.now() - s0.t < 250))){
+        el.style.transition = "transform .16s ease, opacity .16s ease"; el.style.transform = "translateX("+(dx < 0 ? -60 : 60)+"px)"; el.style.opacity = "0";
+        setTimeout(function(){ renderRecap(nb.key); el.style.transition = "none"; el.style.transform = "translateX("+(dx < 0 ? 60 : -60)+"px)"; el.style.opacity = "0";
+          requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.style.transition = "transform .24s cubic-bezier(.2,.8,.2,1), opacity .24s ease"; el.style.transform = ""; el.style.opacity = ""; setTimeout(function(){ el.style.transition = ""; }, 260); }); }); }, 160);
+      } else { el.style.transition = "transform .2s ease, opacity .2s ease"; el.style.transform = ""; el.style.opacity = ""; setTimeout(function(){ el.style.transition = ""; }, 220); } };
+    el.addEventListener("touchend", dend); el.addEventListener("touchcancel", dend);
     ["gesturestart","gesturechange","gestureend"].forEach(function(n){ el.addEventListener(n, function(e){ e.preventDefault(); }, {passive:false}); });
     el.addEventListener("touchmove", function(e){ if(e.touches.length > 1 && !(e.target.closest && e.target.closest(".rc-map.moving"))) e.preventDefault(); }, {passive:false});
   }
