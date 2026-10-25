@@ -28,7 +28,7 @@ const URL0 = `http://127.0.0.1:${srv.address().port}/index.html?rptest`;
 const { exe, args } = await chromePath();
 let browser = null;
 const results = [];
-let page, errs = [];
+let page, errs = [], OSRMREQ = [];
 
 async function newPage(){
   // je Test ein frischer Browser (das mitgelieferte Chromium läuft als ein Prozess; mehrere Karten-Seiten nacheinander blockieren sonst)
@@ -44,6 +44,9 @@ async function newPage(){
       {station_id:"S1", num_bikes_available:5, num_ebikes_available:2, num_docks_available:20, is_installed:1, is_renting:1, is_returning:1},
       {station_id:"S2", num_bikes_available:0, num_ebikes_available:0, num_docks_available:7, is_installed:1, is_renting:1, is_returning:1},
       {station_id:"S3", num_bikes_available:2, num_ebikes_available:0, num_docks_available:0, is_installed:1, is_renting:1, is_returning:1}]}}) });
+    if(u.includes("routed-bike/route")){ OSRMREQ.push(u); const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
+      const coords = []; pts.forEach((p, i) => { if(i){ const q = pts[i-1]; coords.push([q[0] + (p[0]-q[0])*0.5 + 0.0008, q[1] + (p[1]-q[1])*0.5]); } coords.push(p); });
+      return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:1800, geometry:{type:"LineString", coordinates:coords}}]}) }); }
     if(u.includes("openfreemap.org/styles")) return rt.fulfill({ contentType: "application/json", body: JSON.stringify({version:8, sources:{}, layers:[{id:"bg", type:"background", paint:{"background-color":"#dde"}}]}) });
     return rt.abort();
   });
@@ -338,6 +341,24 @@ await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad",
   ok(leg.includes("Min.") && leg.includes("Ludlow") && leg.includes("Washington Sq E"), "Rad-Etappe falsch: "+leg.slice(0, 160));
   ok(await page.evaluate(() => document.querySelector(".leg.lbk .tsum").getBoundingClientRect().width > 80), "Zusammenfassung der Rad-Etappe ist nicht sichtbar");
   ok(await rp(`legMode(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1])`)==="bike", "Rad-Modus wird nicht gespeichert");
+});
+
+await test("Citi Bike: Radweg folgt den Wegpunkten, keine Luftlinie", async () => {
+  await seed();
+  await rp(`layers.bike = true; cbLoad(true);`); await page.waitForTimeout(800);
+  const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][0] && L[i][0].id==="p1" && L[i][1] && L[i][1].id==="p2") return i; } return -1; })()`);
+  OSRMREQ.length = 0;
+  await rp(`(function(){ var L = dayLegs(cur)[${li}]; setLegVia(L[0], L[1], [[40.7268, -73.9925]]); setLegMode(L[0], L[1], "bike"); legsList = true; renderSheet(); bikeRoute(L[0], L[1]); })()`);
+  await page.waitForTimeout(900);
+  ok(OSRMREQ.some(u => u.includes("-73.992500,40.726800")), "Radweg wird nicht über den Wegpunkt berechnet");
+  const r = await rp(`(function(){ var L = dayLegs(cur)[${li}], b = bikeRoute(L[0], L[1]); return {exact:b.exact, n:(b.path||[]).length, via:b.via}; })()`);
+  ok(r.exact && r.n > 4 && r.via===1, "Radweg nicht als echte Strecke übernommen: "+JSON.stringify(r));
+  ok(await page.locator(".leg.lbk .viab").count()===1, "Wegpunkte-Knopf fehlt bei der Rad-Etappe");
+  // ohne Antwort vom Routing-Dienst: keine Luftlinie
+  await rp(`(function(){ var L = dayLegs(cur)[${li}]; setLegVia(L[0], L[1], [[40.7290, -73.9900]]); })()`);
+  await page.route(/routed-bike/, rt => rt.abort());
+  const r2 = await rp(`(function(){ var L = dayLegs(cur)[${li}], b = bikeRoute(L[0], L[1]); return {exact:b.exact, path:b.path}; })()`);
+  ok(!r2.exact && r2.path===null, "Ohne berechneten Weg wird trotzdem eine Linie geliefert");
 });
 
 await test("Tagesplan: Privat-Plakette sichtbar", async () => {

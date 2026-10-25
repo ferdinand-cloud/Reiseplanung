@@ -5644,7 +5644,7 @@ function viaAt(q, k){
 function openViaPop(li, vi){
   var lp = dayLegs(cur)[li]; if(!lp) return; var n = legVia(lp[0], lp[1]).length;
   var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Wegpunkt\"><div class=\"pop-head\"><h4>Wegpunkt</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
-    "<p class=\"note\" style=\"margin:0 2px 10px\">Lenkt den Fußweg von „"+esc(lp[0].n || "Hotel")+"“ nach „"+esc(lp[1].n || "Hotel")+"“"+(legMode(lp[0], lp[1])==="walk" ? "" : " (Weg zur bzw. von der Station)")+".</p><div class=\"pop-list addlist\">"+
+    "<p class=\"note\" style=\"margin:0 2px 10px\">Lenkt den "+(legMode(lp[0], lp[1])==="bike" ? "Radweg" : "Fußweg")+" von „"+esc(lp[0].n || "Hotel")+"“ nach „"+esc(lp[1].n || "Hotel")+"“"+(legMode(lp[0], lp[1])==="walk" ? "" : legMode(lp[0], lp[1])==="bike" ? " (zwischen Abhol- und Abgabestation)" : " (Weg zur bzw. von der Station)")+".</p><div class=\"pop-list addlist\">"+
     "<button type=\"button\" data-act=\"viadel\" data-leg=\""+li+"\" data-vi=\""+vi+"\" class=\"del\"><span class=\"ai warn\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/></svg></span><span class=\"dt\"><b>Wegpunkt löschen</b></span></button>"+
     (n > 1 ? "<button type=\"button\" data-act=\"viaclear\" data-leg=\""+li+"\"><span class=\"ai\">"+VIAICO+"</span><span class=\"dt\"><b>Alle "+n+" Wegpunkte dieser Etappe löschen</b></span></button>" : "")+
     "<button type=\"button\" data-act=\"viamovepick\" data-leg=\""+li+"\" data-vi=\""+vi+"\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 7h11l-3-3M16 13H5l3 3\"/></svg></span><span class=\"dt\"><b>Andere Strecke zuordnen …</b><small>Die beiden Punkte aus dem Tagesplan wählen</small></span></button>"+
@@ -6294,7 +6294,7 @@ function drawOverlay(){
             s += "<path d=\""+d0+"\" stroke=\"var(--land)\" stroke-width=\""+(w+3.5)+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\""+(.9*op)+"\"/>";
             s += "<path d=\""+d0+"\" stroke=\""+color+"\" stroke-width=\""+w+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(dash ? " stroke-dasharray=\""+dash+"\"" : "")+" opacity=\""+op+"\"/>"; };
           pth(walkPath(pair[0], br.s1.s, []), "var(--ink)", 3, "1 6");
-          pth(br.path, CBCOL, 5);
+          if(br.path) pth(br.path, CBCOL, 5);
           pth(walkPath(br.s2.s, pair[1], []), "var(--ink)", 3, "1 6");
           [br.s1.s, br.s2.s].forEach(function(st0){ var z = pt(st0); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"6\" fill=\"#fff\" stroke=\""+CBCOL+"\" stroke-width=\"3\" opacity=\""+op+"\"/>"; });
           return;
@@ -7780,27 +7780,33 @@ function cbNear(p, need, maxD){
   CB.st.forEach(function(s){ if(!s.ok || (s.known && need==="bike" && s.b + s.e < 1) || (s.known && need==="dock" && s.d < 1)) return; var d = dist(p, s); if(d < bd){ bd = d; best = s; } });
   return best && bd <= maxD ? {s:best, d:bd} : null;
 }
-/* Fahrradweg zwischen zwei Stationen über OSRM (Fahrrad-Profil), gemerkt wie die Fußwege */
+/* Fahrradweg zwischen zwei Stationen über OSRM (Fahrrad-Profil), über die gesetzten Wegpunkte der Etappe.
+   Solange der Weg nicht berechnet ist, wird keine Luftlinie gezeichnet. */
 var OSRMB = "https://routing.openstreetmap.de/routed-bike/", BIKEC = {};
-function bikePath(a, b){
-  var k = (+a.la).toFixed(5)+","+(+a.lo).toFixed(5)+">"+(+b.la).toFixed(5)+","+(+b.lo).toFixed(5), c = BIKEC[k];
+function bikeKey(a, b, v){ return [a].concat((v||[]).map(function(q){ return {la:q[0], lo:q[1]}; }), [b]).map(function(q){ return (+q.la).toFixed(5)+","+(+q.lo).toFixed(5); }).join(">"); }
+function bikePath(a, b, v){
+  v = v || []; var k = bikeKey(a, b, v), c = BIKEC[k];
   if(c && c.p) return c;
-  if(!c || (c.fail && Date.now() - c.fail > 60000)){
-    BIKEC[k] = {pend:1};
-    fetch(OSRMB+"route/v1/driving/"+(+a.lo).toFixed(6)+","+(+a.la).toFixed(6)+";"+(+b.lo).toFixed(6)+","+(+b.la).toFixed(6)+"?overview=full&geometries=geojson")
-      .then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ var rt = j && j.routes && j.routes[0];
-        if(!rt){ BIKEC[k] = {fail:Date.now()}; return; }
-        BIKEC[k] = {p:rt.geometry.coordinates.map(function(q){ return {la:q[1], lo:q[0]}; }), d:rt.distance}; scheduleOverlay(); renderSheetSoon(); })
-      .catch(function(){ BIKEC[k] = {fail:Date.now()}; });
-  }
+  if(c && c.pend) return null;
+  if(c && c.fail && Date.now() - c.fail < Math.min(60000, 8000 * (c.n || 1))) return null;
+  var n = (c && c.n || 0) + 1; BIKEC[k] = {pend:1, n:n};
+  var pts = [a].concat(v.map(function(q){ return {la:q[0], lo:q[1]}; }), [b]);
+  fetch(OSRMB+"route/v1/driving/"+pts.map(function(q){ return (+q.lo).toFixed(6)+","+(+q.la).toFixed(6); }).join(";")+"?overview=full&geometries=geojson&continue_straight=false")
+    .then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ var rt = j && j.routes && j.routes[0];
+      if(!rt || !rt.geometry || !(rt.geometry.coordinates||[]).length){ BIKEC[k] = {fail:Date.now(), n:n}; setTimeout(function(){ scheduleOverlay(); renderSheetSoon(); }, Math.min(60000, 8000*n) + 50); return; }
+      var gp = rt.geometry.coordinates.map(function(q){ return {la:q[1], lo:q[0]}; });
+      BIKEC[k] = {p:[a].concat(gp, [b]), d:rt.distance + dist(a, gp[0]) + dist(gp[gp.length-1], b)}; scheduleOverlay(); renderSheetSoon(); })
+    .catch(function(){ BIKEC[k] = {fail:Date.now(), n:n}; setTimeout(function(){ scheduleOverlay(); renderSheetSoon(); }, Math.min(60000, 8000*n) + 50); });
   return null;
 }
 function bikeRoute(a, b){
   if(!CB.st.length){ cbLoad(); return {wait:true}; }
   var s1 = cbNear(a, "bike", 900), s2 = cbNear(b, "dock", 900);
   if(!s1 || !s2 || s1.s===s2.s) return {none:true, s1:s1, s2:s2};
-  var bp = bikePath(s1.s, s2.s), rideD = bp ? bp.d : dist(s1.s, s2.s)*1.3;
-  return {s1:s1, s2:s2, rideD:rideD, exact:!!bp, path:bp ? bp.p : [s1.s, s2.s], secs:s1.d/WALK + 90 + rideD/BIKE + 60 + s2.d/WALK};
+  var vv = legVia(a, b), bp = bikePath(s1.s, s2.s, vv), est = 0, q0 = s1.s;
+  vv.forEach(function(q){ var z = {la:q[0], lo:q[1]}; est += dist(q0, z); q0 = z; }); est = (est + dist(q0, s2.s)) * 1.3;
+  var rideD = bp ? bp.d : est;
+  return {s1:s1, s2:s2, rideD:rideD, exact:!!bp, path:bp ? bp.p : null, via:vv.length, secs:s1.d/WALK + 90 + rideD/BIKE + 60 + s2.d/WALK};
 }
 function cbAvail(s){ return s.known ? (s.b + s.e)+(s.b + s.e===1 ? " Rad" : " Räder")+(s.e ? " ("+s.e+" E-Bike"+(s.e===1?"":"s")+")" : "")+" · "+s.d+(s.d===1 ? " freier Platz" : " freie Plätze") : "Verfügbarkeit wird geladen …"; }
 function cbCard(id){
@@ -7844,7 +7850,7 @@ $("tripBtn").addEventListener("click", function(){ var open = $("tripMenu").hidd
 /* ---------- Inhalt: Tagesplan ---------- */
 var legsList = lsGet("rp-legs")!=="0";
 var VIAICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"4.5\" cy=\"15.5\" r=\"2\"/><circle cx=\"15.5\" cy=\"4.5\" r=\"2\"/><circle cx=\"11\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/><path d=\"M6 14c2-1 3.5-1.3 5-2M12.3 10.8c1-1.7 1.8-3.5 2.2-4.6\"/></svg>";
-function viaBtn(i, v){ return isRO() ? "" : "<button type=\"button\" class=\"viab"+(v.length?" on":"")+"\" data-act=\"viaedit\" data-leg=\""+i+"\" title=\"Fußweg über Wegpunkte lenken\" aria-label=\"Wegpunkte setzen"+(v.length ? ", "+v.length+" gesetzt" : "")+"\">"+VIAICO+(v.length ? "<b>"+v.length+"</b>" : "")+"</button>"; }
+function viaBtn(i, v){ return isRO() ? "" : "<button type=\"button\" class=\"viab"+(v.length?" on":"")+"\" data-act=\"viaedit\" data-leg=\""+i+"\" title=\"Weg über Wegpunkte lenken\" aria-label=\"Wegpunkte setzen"+(v.length ? ", "+v.length+" gesetzt" : "")+"\">"+VIAICO+(v.length ? "<b>"+v.length+"</b>" : "")+"</button>"; }
 function renderDay(){
   var D = dayByKey(cur);
   if(!D) return "<p class=\"empty\">Diese Reise hat noch keine gültigen Daten. Trage im Reiter „Reise“ An- und Abreise ein.</p>";
@@ -7891,8 +7897,8 @@ function renderDay(){
     if(m==="bike"){ var br = bikeRoute(a, b), bsum;
       if(br.wait) bsum = "<b>Citi Bike</b> · "+(CB.err ? esc(CB.err) : "Stationen werden geladen …");
       else if(br.none) bsum = "<b>Kein Citi Bike</b> · "+(!br.s1 ? "keine Station mit freien Rädern in der Nähe" : !br.s2 ? "keine Station mit freien Plätzen am Ziel" : "Start und Ziel an derselben Station")+" – besser zu Fuß";
-      else bsum = "<b>"+Math.max(1, Math.round(br.secs/60))+" Min.</b> · "+fmtDist(br.rideD)+(br.exact ? "" : " (ca.)")+" mit dem Rad";
-      return pre+"<li class=\"leg tleg lbk"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+bsum+"</button>"+ev+"</div>"+
+      else bsum = "<b>"+Math.max(1, Math.round(br.secs/60))+" Min.</b> · "+fmtDist(br.rideD)+(br.exact ? " mit dem Rad" : " (ca.) · Radweg wird berechnet …")+(br.via ? " · über "+br.via+(br.via===1 ? " Wegpunkt" : " Wegpunkte") : "");
+      return pre+"<li class=\"leg tleg lbk"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+bsum+"</button>"+viaBtn(i, legVia(a, b))+ev+"</div>"+
         (br.s1 && br.s2 && !br.none ? "<div class=\"cb-leg\"><p><i class=\"cb-dot\"></i><span>Rad holen: <b>"+esc(br.s1.s.n)+"</b> · "+fmtDist(br.s1.d)+" zu Fuß<small>"+cbAvail(br.s1.s)+"</small></span></p><p><i class=\"cb-dot\"></i><span>Rad abgeben: <b>"+esc(br.s2.s.n)+"</b> · dann "+fmtDist(br.s2.d)+" zu Fuß<small>"+cbAvail(br.s2.s)+"</small></span></p></div>" : "")+"</li>"; }
     if(m==="walk"){ var lv = legVia(a, b); walkPath(a, b, lv); var wd = walkDist(a, b, lv) || dist(a, b)*1.25;
       return pre+"<li class=\"leg tleg lw"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><b>"+Math.max(1,Math.round(wd/1.33/60))+" Min.</b> · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+sugBtn(i)+viaBtn(i, lv)+ev+"</div></li>"; }
