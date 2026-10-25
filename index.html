@@ -2141,6 +2141,7 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 #pvLayer .pvi.pv-vis.vlv-pub{background:rgba(10,132,255,.9);color:#fff}
 .privmk{display:inline-flex;align-items:center;gap:3px;margin-left:7px;padding:2px 7px 2px 5px;border-radius:999px;background:#E5A100;color:#1a1300;font:700 11px/1.2 var(--f-body);vertical-align:2px;text-decoration:none;letter-spacing:.01em;white-space:nowrap}
 .privmk .lk{margin:0;width:12px;height:12px;color:#1a1300}
+.notrip .nt-ic{font-size:40px;line-height:1;margin-bottom:8px}
 .pubmk{display:inline-flex;vertical-align:-2px;margin-left:5px;color:#0A84FF}
 .pubmk svg{width:14px;height:14px}
 .jp-strip button{position:relative}
@@ -2508,9 +2509,10 @@ function starterTrip(){
   t.starter = true; return t;
 }
 // Noch keine echte Reise (neues Konto): nur der unsichtbare Platzhalter ist da
+function tripHasContent(t){ if(!t) return false; var J = t.journal || {}; return !!(Object.keys(t.places||{}).length || (t.hotels||[]).length || (t.orte||[]).length || Object.keys(t.photos||{}).length || Object.keys(J).some(function(k){ return J[k] && (J[k].text || J[k].hl); })); }
 function noTrip(){ var ks = S && S.trips ? Object.keys(S.trips).filter(function(k){ return !S.trips[k].arch; }) : []; return !ks.length || ks.every(function(k){ var t = S.trips[k]; return t.starter && t.seed; }); }
 function noTripHTML(){
-  return "<div class=\"notrip\"><h2>Willkommen!</h2><p>Du hast noch keine Reise. Lege deine erste Reise an – mit Reiseziel, Zeitraum und Hotel. Danach füllst du deine Wunschliste und planst die Tage.</p>"+
+  return "<div class=\"notrip\"><div class=\"nt-ic\" aria-hidden=\"true\">🧳</div><h2>Noch keine eigene Reise erstellt</h2><p>Lege deine erste Reise an – mit Reiseziel, Zeitraum und Hotel. Danach füllst du deine Wunschliste und planst die Tage.</p>"+
     "<button type=\"button\" class=\"btn\" data-act=\"tripnew\">Erste Reise anlegen</button>"+
     (INVITES.length ? "<button type=\"button\" class=\"btn g\" data-act=\"opentrips\" data-v=\"req\">"+INVITES.length+(INVITES.length===1?" Einladung":" Einladungen")+" ansehen</button>" : "<p class=\"note\">Hat dich jemand zu einer Reise eingeladen? Die Einladung erscheint unter Menü → Reisen → Anfragen.</p>")+"</div>";
 }
@@ -2606,7 +2608,7 @@ function acctInitSigs(){ lastLocal = {}; Object.keys(S.trips).forEach(function(i
 function acctTrack(){
   if(!S) return;
   var now = Date.now(), changed = false;
-  Object.keys(S.trips).forEach(function(id){ var t = S.trips[id], sg = tripSig(t); if(lastLocal[id]!==sg){ if(t.seed && lastLocal[id]){ delete t.seed; sg = tripSig(t); } lastLocal[id] = sg; t.updatedAt = now; if(!t.seed){ pend[id] = 1; delete delPend[id]; } changed = true; } });
+  Object.keys(S.trips).forEach(function(id){ var t = S.trips[id], sg = tripSig(t); if(lastLocal[id]!==sg){ if(t.seed && tripHasContent(t)){ delete t.seed; sg = tripSig(t); } lastLocal[id] = sg; t.updatedAt = now; if(!t.seed){ pend[id] = 1; delete delPend[id]; } changed = true; } });
   Object.keys(lastLocal).forEach(function(id){ if(!S.trips[id]){ delete lastLocal[id]; if(KNOWN[id]) delPend[id] = now; delete pend[id]; changed = true; } });
   if(changed){ lsSet(KEY, JSON.stringify(S)); lsSet("rp-pend", JSON.stringify({p:pend, d:delPend})); acctPushSoon(); }
 }
@@ -2890,7 +2892,7 @@ function rowTrip(snap){ var v = snap && snap.exists ? snap.data() : null; if(!v)
 var pushing = false;
 function acctPush(){
   if(!fbDb || !acct.user || pushing || !navigator.onLine) return;
-  Object.keys(pend).forEach(function(id){ if(isViewerOf(id)) delete pend[id]; });
+  Object.keys(pend).forEach(function(id){ if(isViewerOf(id) || (S.trips[id] && S.trips[id].seed)) delete pend[id]; }); // Platzhalter nie ins Konto
   var ids = Object.keys(pend), dels = Object.keys(delPend); if(!ids.length && !dels.length) return;
   pushing = true; setAcct("sync");
   var changedLocal = false, Lsnap = {};
@@ -2970,8 +2972,14 @@ function acctApply(rows){
   saveKnown();
   if(first) lsSet(lk, "1");
   cmWatch();
-  if(!Object.keys(S.trips).length){ var f = fresh(); Object.keys(f.trips).forEach(function(id){ S.trips[id] = f.trips[id]; }); acctInitSigs(); }
-  if(!S.trips[S.cur]) S.cur = Object.keys(S.trips)[0];
+  var cleaned = false;
+  Object.keys(S.trips).forEach(function(id){ var t = S.trips[id], mm = META[id];
+    if(!t || !t.starter || t.seed || tripHasContent(t) || t.name!=="Meine Reise") return;
+    if(mm && ((mm.owner && mm.owner!==acct.user.uid) || (mm.members||[]).length > 1 || (mm.viewers||[]).length || (mm.invites||[]).length || (mm.viewInvites||[]).length)) return;
+    delete S.trips[id]; cleaned = true; m.changed = true; });
+  if(!Object.keys(S.trips).length){ var f = fresh(); Object.keys(f.trips).forEach(function(id){ S.trips[id] = f.trips[id]; lastLocal[id] = tripSig(f.trips[id]); }); }
+  if(!S.trips[S.cur]){ var lv = liveIds(true); S.cur = lv.filter(function(k){ return !S.trips[k].seed; })[0] || lv[0] || Object.keys(S.trips)[0]; }
+  if(cleaned) acctTrack();
   lsSet(KEY, JSON.stringify(S));
   if(m.changed){ dirty(); if(!dayByKey(cur)) pickDefaultDay(); renderAll(); }
   else { var ms = JSON.stringify(META); if(ms!==metaSig){ metaSig = ms; renderSheetSoon(); } } // Mitglieder/Rollen geändert
@@ -3221,7 +3229,7 @@ function tripsPageHTML(){
       h += "<button type=\"button\" class=\"ag-row\" data-act=\""+(curT?"tripdetails":"trip")+"\" data-trip=\""+x.id+"\"><span><b>"+esc(x.name)+(curT?" <em class=\"curtag\">Aktiv</em>":"")+"</b><small>"+esc(rangeLabel(x.start,x.end))+(nm2>1?" · mit "+(nm2-1)+(nm2===2?" Person":" Personen"):"")+(isViewerOf(x.id) ? " · du beobachtest" : "")+(mm && (mm.invites||[]).length ? " · "+mm.invites.length+(mm.invites.length===1?" Einladung offen":" Einladungen offen"):"")+(curT?" · Details ansehen":"")+"</small></span><em class=\"chev\">›</em></button>";
     });
     h += "</div>";
-  } else h += "<p class=\"note\">"+(sh ? "Noch keine gemeinsamen Reisen. Öffne eine Reise und lade unter „Mitreisende“ Freunde ein." : "Keine privaten Reisen.")+"</p>";
+  } else h += "<p class=\"note\">"+(sh ? "Noch keine gemeinsamen Reisen. Öffne eine Reise und lade unter „Mitreisende“ Freunde ein." : (liveIds().length ? "Keine privaten Reisen." : "Noch keine eigene Reise erstellt."))+"</p>";
   if(!sh) h += "<div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"tripnew\"><span><b>+ Neue Reise</b></span></button></div>";
   return h+"</div>";
 }
@@ -4433,7 +4441,7 @@ function renderProfile(){
   var list = profTab==="obs" ? obs : mine;
   list.sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); });
   h += "<div class=\"pf-grid\">";
-  if(!list.length) h += "<p class=\"note pf-empty\">"+(profTab==="obs" ? "Du beobachtest noch keine Reise. Wenn dich jemand als Beobachter einlädt, erscheint sie hier." : "Noch keine eigene Reise.")+"</p>";
+  if(!list.length) h += "<p class=\"note pf-empty\">"+(profTab==="obs" ? "Du beobachtest noch keine Reise. Wenn dich jemand als Beobachter einlädt, erscheint sie hier." : "Noch keine eigene Reise erstellt.")+"</p>"+(profTab!=="obs" && !list.length ? "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"tripnew\">Erste Reise anlegen</button></div>" : "");
   list.forEach(function(id){
     var t = S.trips[id], m = META[id], cov = tripCover(id), n = m ? (m.members||[]).length : 1, own = m && acct.user && m.owner===acct.user.uid;
     var role = isViewerOf(id) ? "Beobachter" : own || !m ? (n > 1 ? "mit "+(n-1)+(n===2?" Person":" Personen") : "Privat") : "Mitreisende/r";
@@ -4631,12 +4639,12 @@ function startSync(){
 
 function T(){ return S.trips[S.cur]; }
 /* Archiv: gelöschte Reisen bleiben mit Zeitstempel „arch“ erhalten und lassen sich wiederherstellen */
-function liveIds(){ return Object.keys(S.trips).filter(function(k){ return !S.trips[k].arch; }); }
+function liveIds(all){ return Object.keys(S.trips).filter(function(k){ var t = S.trips[k]; return !t.arch && (all || !(t.starter && t.seed)); }); }
 function archIds(){ return Object.keys(S.trips).filter(function(k){ return !!S.trips[k].arch; }).sort(function(a,b){ return S.trips[b].arch - S.trips[a].arch; }); }
 function canDelTrip(id){ if(acct.user && isViewerOf(id)) return false; var m = META[id]; return !acct.user || !m || !m.owner || m.owner===acct.user.uid; }
 function ensureLive(){
   if(S.trips[S.cur] && !S.trips[S.cur].arch) return false;
-  var l = liveIds().sort(function(a,b){ return S.trips[a].start < S.trips[b].start ? -1 : 1; });
+  var l = liveIds(true).sort(function(a,b){ return S.trips[a].start < S.trips[b].start ? -1 : 1; });
   if(l.length) S.cur = l[0]; else { var f = fresh(); Object.keys(f.trips).forEach(function(id){ S.trips[id] = f.trips[id]; }); S.cur = f.cur; }
   return true;
 }
