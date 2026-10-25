@@ -6045,12 +6045,13 @@ function startLocate(silent){
 $("locBtn").addEventListener("click", function(){ startLocate(); });
 /* KI-Assistent: Chatfenster als Vorschau – die KI-Anbindung folgt in einer späteren Version */
 var aiLog = [];
-var AI_SUGG = ["Zeig mir alle Fährverbindungen", "Wie komme ich zum Hotel?", "Cafés in der Nähe", "Was steht morgen an?"];
+var AI_SUGG = ["Hintergrundinfos zum Flatiron Building", "Zeig mir alle Fährverbindungen", "Wie komme ich zum Hotel?", "Cafés in der Nähe", "Was steht morgen an?"];
 function aiWelcome(){
-  return "<div class=\"ai-msg bot\"><p>Hallo! Ich bin der KI-Assistent für deine Reise. Bald kannst du mir hier sagen, was du auf der Karte sehen willst:</p>"+
+  return "<div class=\"ai-msg bot\"><p>Hallo! Ich bin der KI-Assistent für deine Reise. Bald kannst du mir hier sagen, was du auf der Karte sehen willst, oder mich zu Orten fragen:</p>"+
     "<ul><li><b>Verbindungen filtern</b> – „Zeig mir alle Fähren nach Staten Island“, alles andere wird ausgeblendet</li>"+
     "<li><b>Wege finden</b> – „Wie komme ich am schnellsten zum Hotel?“</li>"+
     "<li><b>Orte entdecken</b> – „Frühstückscafés in der Nähe meines nächsten Stopps“</li>"+
+    "<li><b>Infos zu Orten</b> – „Gib mir Hintergrundinfos zum Flatiron Building“, die Antwort kommt direkt hier in den Chat</li>"+
     "<li><b>Fragen zur Reise</b> – „Was steht morgen auf dem Plan?“</li></ul>"+
     "<p class=\"ai-na\">In der aktuellen Version bin ich noch nicht verfügbar.</p></div>";
 }
