@@ -3660,7 +3660,7 @@ function dcvMeta(){
   h += "<button type=\"button\" class=\"pvi"+(DCV.cm?" on":"")+"\" data-act=\"dcvcm\" aria-expanded=\""+DCV.cm+"\" aria-label=\"Kommentare\">"+dcvSV("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/>")+"<span>"+(cm.length || "")+"</span></button>";
   if(acct.user) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvsend\" aria-label=\"Im Chat schicken\">"+dcvSV("<path d=\"M17.5 2.5 9 11M17.5 2.5l-5 15-3.5-6.5-6.5-3.5z\"/>")+"</button>";
   if(!inT && !isRO()) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvwish\" aria-label=\"Zur Wunschliste\">"+dcvSV("<path d=\"M10 16.5s-6-3.6-6-8a3.3 3.3 0 0 1 6-1.9 3.3 3.3 0 0 1 6 1.9c0 4.4-6 8-6 8z\"/>")+"</button>";
-  if(r.la) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvmap\" aria-label=\"Auf der Karte zeigen\">"+dcvSV("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"</button>";
+  if(r.la) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvmap\" aria-label=\"Auf der Karte zeigen\">"+MAPICO+"</button>";
   h += "</div>";
   if(DCV.cm){
     var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
@@ -4286,6 +4286,7 @@ function renderLs(){
   }
   el.innerHTML = h+"</div>"; fillPhotos(el);
 }
+var MAPICO = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4z\"/><path d=\"M9 4v14M15 6v14\"/></svg>";
 var MAPGO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/></svg>";
 /* Mitteilungen als eigene Seite, nach Art filterbar */
 var ntPage = false, ntKind = "all";
@@ -7088,6 +7089,7 @@ function phMetaHTML(ph){
     h += "<button type=\"button\" class=\"pvi pv-like"+(mine?" on":"")+"\" data-act=\"phlike\" data-ph=\""+ph+"\" aria-pressed=\""+mine+"\" aria-label=\""+(mine?"Gefällt mir nicht mehr":"Gefällt mir")+"\">"+SV("<path d=\"M10 17s-6.5-4-6.5-8.6A3.6 3.6 0 0 1 10 6.3a3.6 3.6 0 0 1 6.5 2.1C16.5 13 10 17 10 17z\"/>", mine ? "currentColor" : "none")+"<span>"+(L.length || "")+"</span></button>";
     h += "<button type=\"button\" class=\"pvi"+(pvCm?" on":"")+"\" data-act=\"pvcm\" aria-expanded=\""+pvCm+"\" aria-label=\"Kommentare\">"+SV("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/>")+"<span>"+(C.length || "")+"</span></button>";
   }
+  var mpid = phPlace(ph) || (jp && jp.pid); if(mpid && P(mpid) && hasLoc(P(mpid))) h += "<button type=\"button\" class=\"pvi\" data-act=\"phmap\" data-pid=\""+mpid+"\" aria-label=\"Auf der Karte zeigen\">"+MAPICO+"</button>";
   if(!isRO()) h += "<button type=\"button\" class=\"pvi\" data-act=\"phmovepop\" data-ph=\""+ph+"\" aria-label=\"Einem anderen Ort zuordnen\">"+SV("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"</button>";
   if(canPriv() && jp){ var phv = itemVis("ph", ph, phPlace(ph) || jp.pid);
     h += "<button type=\"button\" class=\"pvi pv-vis vlv-"+phv+"\" data-act=\"itemvispick\" data-k=\"ph\" data-key=\""+ph+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit des Fotos: "+VISLBL[phv]+"\">"+IEYE+"<em class=\"pvv\">"+VISLBL[phv]+"</em></button>";
@@ -8614,6 +8616,11 @@ document.addEventListener("click", function(e){
     case "pvcm": pvCm = !pvCm; phMetaRefresh(); if(pvCm) setTimeout(function(){ var a = $("pvCm"); if(a) a.scrollTop = a.scrollHeight; }, 0); break;
     case "phstep": phStep(+t.getAttribute("data-v")); break;
     case "phlike": phLike(t.getAttribute("data-ph")); break;
+    case "phmap": var mp = t.getAttribute("data-pid"); if(!P(mp)) break;
+      if(jp) jp.ret = null; closeJPop(); if(typeof closeRecap==="function") closeRecap(); closeLsPage(); closeDcPage(); closeGsPage(); closeChPage(); closeNtPage(); closeProfile(); closeMenus();
+      var mdk = dayOf(mp); if(mdk) cur = mdk; tab = mdk ? "day" : "wish"; renderAll(); select(mp);
+      if(!desktop.matches){ setSheet("min"); setTimeout(function(){ revealPoint(P(mp), 16, true); }, 60); } else revealPoint(P(mp), 16, true);
+      break;
     case "phmovepop": openPhMove(t.getAttribute("data-ph")); break;
     case "phmoveto": phMoveTo(t.getAttribute("data-v")); if(jp && jp.list) RC.dirty = true; break;
     case "phsave": var sph = t.getAttribute("data-ph"); if(CAMF[sph]) CAMF[sph].saved = true; t.classList.remove("hot"); phSaveLib(sph); break;
