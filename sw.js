@@ -1,5 +1,5 @@
 // Reiseplan – Service Worker: App offline verfügbar, besuchte Kartenbereiche zwischengespeichert
-const VERSION = "reiseplan-v180";
+const VERSION = "reiseplan-v181";
 const SHELL = ["./", "./index.html", "./maplibre-gl.js", "./maplibre-gl.css", "./manifest.webmanifest", "./bus.json", "./firebase.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 const TILES = "reiseplan-tiles";
@@ -27,7 +27,8 @@ self.addEventListener("fetch", (e) => {
 
   // App-Seite: zuerst Netz (für Updates), sonst Zwischenspeicher
   if (req.mode === "navigate" || (url.origin === location.origin && url.pathname.endsWith("/index.html"))) {
-    e.respondWith(fetch(req).then((res) => { const copy = res.clone(); caches.open(VERSION).then((c) => c.put("./index.html", copy)); return res; })
+    // ohne Browser-Zwischenspeicher nachfragen: GitHub Pages lässt die Seite sonst bis zu 10 Min. veraltet ausliefern
+    e.respondWith(fetch(new Request(url.href, { cache: "no-cache", credentials: "same-origin" })).then((res) => { const copy = res.clone(); caches.open(VERSION).then((c) => c.put("./index.html", copy)); return res; })
       .catch(() => caches.match("./index.html")));
     return;
   }
