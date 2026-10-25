@@ -2365,6 +2365,7 @@ body.mving #gl{cursor:grabbing}
   <label><input type="checkbox" id="lRoute" checked><span class="sw" style="background:var(--c4)"></span>Tagesroute</label>
   <label><input type="checkbox" id="lWish" checked><span class="sw" style="background:var(--wish)"></span>Wünsche</label>
   <div class="lines lcats" id="wishCats"></div>
+  <label><input type="checkbox" id="lVis" checked><span class="sw" style="background:linear-gradient(135deg,#7d8a96 0 50%,#5E9970 50%)"></span>Besuchte Orte &amp; Fotospots</label>
   <label><input type="checkbox" id="lPoi"><span class="sw" style="background:conic-gradient(#e8710a 0 25%,#8a5a2b 25% 50%,#7b3fbf 50% 75%,#5E9970 75%)"></span>Cafés, Lokale &amp; Sehenswertes</label>
   <div class="lines" id="poiCats" hidden></div>
   <label><input type="checkbox" id="lColor"><span class="sw" style="background:linear-gradient(90deg,#A9D3F2 0 50%,#C9E7C1 50%)"></span>Farbige Karte</label>
@@ -5574,7 +5575,7 @@ function applyLayers(){
     map.setLayoutProperty("nb-line", "visibility", layers.nb ? "visible" : "none");
     ["ferry-line","ferry-term","ferry-lbl"].forEach(function(l){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", layers.ferry && !ro ? "visible" : "none"); });
   }
-  $("lSub").checked = layers.sub; $("lBus").checked = layers.bus; $("lFerry").checked = layers.ferry; $("lWish").checked = layers.wish; $("lNb").checked = layers.nb; $("lRoute").checked = layers.route;
+  $("lSub").checked = layers.sub; $("lBus").checked = layers.bus; $("lFerry").checked = layers.ferry; $("lWish").checked = layers.wish; $("lNb").checked = layers.nb; $("lRoute").checked = layers.route; $("lVis").checked = visOn();
   renderLineMenus();
 }
 var ovPending = false;
@@ -5582,6 +5583,10 @@ function scheduleOverlay(){ if(ovPending) return; ovPending = true; requestAnima
 function routePts(k){ return ord(k).map(P).filter(hasLoc); }
 var hideDone = lsGet("nyc-hide-done")==="1";
 function hid(id){ return hideDone && !!T().done[id]; }
+/* Kartenfilter „Besuchte Orte & Fotospots“: standardmäßig an; Beobachter haben eine eigene Einstellung */
+function visKey(){ return isRO() ? "nyc-l-vis-ro" : "nyc-l-vis"; }
+function visOn(){ return lsGet(visKey())!=="0"; }
+function mapHid(id){ return hid(id) || (!visOn() && !!T().done[id]); }
 function onScreen(q, pad){ return q[0]>-pad && q[0]<W+pad && q[1]>-pad && q[1]<H+pad; }
 function upright(deg){ deg = ((deg%360)+540)%360-180; if(deg>90) deg-=180; if(deg<-90) deg+=180; return deg; }
 function f1(n){ return n.toFixed(1); }
@@ -5737,7 +5742,7 @@ function drawOverlay(){
   var n = 0, ancIds = {}, slabels = "";
   if(D) ord(cur).forEach(function(id){
     var p = P(id); if(p && p.k==="hotel") return; n++;
-    if(!hasLoc(p) || hid(id)) return;
+    if(!hasLoc(p) || mapHid(id)) return;
     var q0 = pt(p); MK.push({x0:q0[0]-15, y0:q0[1]-15, x1:q0[0]+15, y1:q0[1]+15});
     var q = q0, done = !!T().done[id], isSel = sel===id, fill = done ? "#7d8a96" : col, txt = yel(cur) && !done ? "#17212c" : "#fff", th = firstThumb(id), op = done && !isSel ? .82 : 1;
     if(isSel) s += "<circle class=\"halo\" cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"26\" fill=\""+col+"\" opacity=\".18\"/>";
@@ -5757,9 +5762,9 @@ function drawOverlay(){
   });
   // Fotos aller anderen Punkte (andere Tage, ausgeblendete erledigte Stopps): kleine Foto-Marker, damit Erinnerungen immer auf der Karte sind
   PHMK = [];
-  (function(){
+  if(visOn()) (function(){
     var shown = {}, ps = T().photos || {};
-    if(D) ord(cur).forEach(function(id){ if(!hid(id) && !(P(id) && P(id).k==="hotel")) shown[id] = 1; });
+    if(D) ord(cur).forEach(function(id){ if(!mapHid(id) && !(P(id) && P(id).k==="hotel")) shown[id] = 1; });
     if((layers.wish || tab==="wish") && !isRO()) wishes().forEach(function(w){ shown[w.id] = 1; });
     Object.keys(ps).forEach(function(pid){
       var q0p = P(pid); if(shown[pid] || !q0p || !hasLoc(q0p) || !(ps[pid]||[]).length || (isRO() && !dayOf(pid))) return;
@@ -5852,7 +5857,7 @@ $("zin").addEventListener("click", function(){ map.zoomIn(); });
 $("zout").addEventListener("click", function(){ map.zoomOut(); });
 $("zfit").addEventListener("click", fitDay);
 $("compass").addEventListener("click", function(){ map.easeTo({bearing:0, pitch:0, duration: reduceMotion?0:400}); });
-$("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; if(open){ renderWishCats(); renderPoiCats(); } this.setAttribute("aria-expanded", open); placeFloating(); });
+$("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; if(open){ $("lVis").checked = visOn(); renderWishCats(); renderPoiCats(); } this.setAttribute("aria-expanded", open); placeFloating(); });
 ["lSub","lBus","lFerry","lWish","lNb","lRoute"].forEach(function(id){
   $(id).addEventListener("change", function(){
     layers = {sub:$("lSub").checked, bus:$("lBus").checked, ferry:$("lFerry").checked, wish:$("lWish").checked, nb:$("lNb").checked, route:$("lRoute").checked}; lsSet("nyc-l-ferry", layers.ferry?"1":"0"); lsSet("nyc-l-nb", layers.nb?"1":"0"); lsSet("nyc-l-route", layers.route?"1":"0"); if(tab==="day") renderSheet();
@@ -5860,6 +5865,8 @@ $("layersBtn").addEventListener("click", function(){ var open = $("layers").hidd
     applyLayers(); scheduleOverlay(); renderWishCats();
   });
 });
+
+$("lVis").addEventListener("change", function(){ lsSet(visKey(), this.checked ? "1" : "0"); scheduleOverlay(); });
 
 /* ---------- Eigener Standort ---------- */
 var me = null, watchId = null, firstFix = false, meRoute = false;
