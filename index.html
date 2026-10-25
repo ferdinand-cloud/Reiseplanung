@@ -2196,8 +2196,10 @@ body.mving #gl{cursor:grabbing}
 .rc-mk{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;font:800 13px/1 var(--f-body,system-ui);background:var(--dc);border:2px solid #fff;box-shadow:0 0 0 4px color-mix(in srgb,var(--dc) 35%,transparent),0 6px 16px rgba(0,0,0,.5);transform:scale(0);transition:transform .45s cubic-bezier(.3,1.6,.5,1)}
 .rc-mk.ph{width:46px;height:46px;overflow:hidden;padding:0}
 .rc-mk.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.rc-mk.ph{position:relative;overflow:visible}
+.rc-mk.ph img{border-radius:50%}
 .rc-mk.ph em{position:absolute;right:-4px;top:-4px;min-width:20px;height:20px;border-radius:10px;background:var(--dc);border:2px solid #fff;font:800 11px/16px var(--f-body,system-ui);font-style:normal;text-align:center}
-.rc-mkw{position:relative}
+.rc-mkw{width:46px;height:46px;display:grid;place-items:center}
 .rc-mk.in{transform:scale(1)}
 .rc-mk.hot{background:#fff;color:#111;border-color:#111}
 
@@ -2238,9 +2240,11 @@ body.mving #gl{cursor:grabbing}
 .rc-rv.in{opacity:1;transform:none;filter:none}
 
 /* Vollbild-Foto */
-.rc-lb{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.94);display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;animation:rcFade .25s ease}
+.rc-lb{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.94);display:flex;overflow-x:auto;overflow-y:hidden;overscroll-behavior:contain;touch-action:pan-x;scroll-snap-type:x mandatory;scrollbar-width:none;animation:rcFade .25s ease}
+.rc-lb.zoomed{overflow-x:hidden;touch-action:none}
+.rc-lb img{touch-action:none;transform-origin:0 0;will-change:transform;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .rc-lb::-webkit-scrollbar{display:none}
-.rc-lb figure{position:relative;flex:0 0 100%;height:100%;margin:0;display:grid;place-items:center;scroll-snap-align:center;padding:calc(env(safe-area-inset-top,0px) + 60px) 0 calc(env(safe-area-inset-bottom,0px) + 50px)}
+.rc-lb figure{position:relative;overflow:hidden;flex:0 0 100%;height:100%;margin:0;display:grid;place-items:center;scroll-snap-align:center;padding:calc(env(safe-area-inset-top,0px) + 60px) 0 calc(env(safe-area-inset-bottom,0px) + 50px)}
 .rc-lb img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
 .rc-lb figcaption{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);text-align:center;color:rgba(255,255,255,.8);font-weight:600;font-size:14px}
 .rc-lbx{position:fixed;z-index:96;top:calc(env(safe-area-inset-top,0px) + 12px);right:14px}
@@ -8730,7 +8734,7 @@ function rcMap(k){
   var m = RC.map = new maplibregl.Map({container:el, style:STYLE_URL, bounds:b, fitBoundsOptions:{padding:64, maxZoom:15.5}, attributionControl:false, dragPan:false, scrollZoom:false, boxZoom:false, dragRotate:false, keyboard:false, doubleClickZoom:false, touchZoomRotate:false, touchPitch:false, fadeDuration:0});
   // Stationen als Marker: mit Foto, sonst Nummer
   var mkEls = [];
-  if(HT){ var he = document.createElement("div"); he.className = "rc-mk hot"; he.textContent = "H"; mkEls.push({el:he, at:0}); RC.mks.push(new maplibregl.Marker({element:he}).setLngLat([HT.lo, HT.la]).addTo(m)); }
+  if(HT){ var hw = document.createElement("div"); hw.className = "rc-mkw"; var he = document.createElement("div"); he.className = "rc-mk hot"; he.textContent = "H"; hw.appendChild(he); mkEls.push({el:he, at:0}); RC.mks.push(new maplibregl.Marker({element:hw}).setLngLat([HT.lo, HT.la]).addTo(m)); }
   list.forEach(function(id, i){
     var p = P(id), ph = photosOf(id)[0], w = document.createElement("div"); w.className = "rc-mkw";
     var e = document.createElement("div"); e.className = "rc-mk"+(ph?" ph":""); e.style.setProperty("--dc", col);
@@ -8809,6 +8813,40 @@ function rcLb(ph){
   x.addEventListener("click", rcLbClose); lb.addEventListener("click", function(e){ if(e.target===lb || e.target.tagName==="FIGURE") rcLbClose(); });
   document.body.appendChild(lb); document.body.appendChild(x); fillPhotos(lb);
   lb.scrollLeft = i * lb.clientWidth;
+  rcZoom(lb);
+}
+/* Zoomen im Vollbild: zwei Finger zum Zoomen, ein Finger verschiebt das gezoomte Bild, Doppeltipp schaltet um */
+function rcZoom(lb){
+  var Z = null, last = 0;
+  function st(img){ return img._z || (img._z = {s:1, x:0, y:0}); }
+  function paint(img){ var z = st(img); img.style.transform = "translate("+z.x+"px,"+z.y+"px) scale("+z.s+")"; lb.classList.toggle("zoomed", z.s > 1.01); }
+  function clamp(img){ var z = st(img), w = img.offsetWidth, h = img.offsetHeight;
+    if(z.s <= 1.01){ z.s = 1; z.x = 0; z.y = 0; return; }
+    z.x = Math.min(0, Math.max(w - w*z.s, z.x)); z.y = Math.min(0, Math.max(h - h*z.s, z.y)); }
+  function rel(img, cx, cy){ var r = img.getBoundingClientRect(), z = st(img); return [(cx - r.left)/z.s, (cy - r.top)/z.s]; }
+  function zoomAt(img, s, cx, cy){ var z = st(img), r = img.getBoundingClientRect(), base = [r.left - z.x, r.top - z.y], p = rel(img, cx, cy);
+    z.s = Math.max(1, Math.min(5, s)); z.x = cx - base[0] - p[0]*z.s; z.y = cy - base[1] - p[1]*z.s; clamp(img); paint(img); }
+  lb.addEventListener("touchstart", function(e){
+    var img = e.target.closest && e.target.closest(".rc-lb img"); if(!img){ Z = null; return; }
+    var z = st(img);
+    if(e.touches.length===2){ e.preventDefault(); var a = e.touches[0], b = e.touches[1];
+      Z = {img:img, d:Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY) || 1, s:z.s, cx:(a.clientX+b.clientX)/2, cy:(a.clientY+b.clientY)/2}; return; }
+    if(e.touches.length===1){ var t = e.touches[0], now = Date.now();
+      if(now - last < 320){ e.preventDefault(); last = 0; img.style.transition = "transform .25s ease"; if(z.s > 1.01){ z.s = 1; z.x = 0; z.y = 0; paint(img); } else zoomAt(img, 2.6, t.clientX, t.clientY); setTimeout(function(){ img.style.transition = ""; }, 260); Z = null; return; }
+      last = now; Z = z.s > 1.01 ? {img:img, pan:true, x:t.clientX, y:t.clientY, ox:z.x, oy:z.y} : null; }
+  }, {passive:false});
+  lb.addEventListener("touchmove", function(e){
+    if(!Z) return; var z = st(Z.img);
+    if(e.touches.length===2 && Z.d){ e.preventDefault(); var a = e.touches[0], b = e.touches[1], d = Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
+      zoomAt(Z.img, Z.s * d / Z.d, (a.clientX+b.clientX)/2, (a.clientY+b.clientY)/2); return; }
+    if(e.touches.length===1 && Z.pan){ e.preventDefault(); var t = e.touches[0]; z.x = Z.ox + (t.clientX - Z.x); z.y = Z.oy + (t.clientY - Z.y); clamp(Z.img); paint(Z.img); }
+  }, {passive:false});
+  var end = function(e){ if(Z && e.touches.length===0){ clamp(Z.img); paint(Z.img); Z = null; } };
+  lb.addEventListener("touchend", end); lb.addEventListener("touchcancel", end);
+  // Safari-Seitenzoom innerhalb des Vollbilds unterdrücken (verhindert Abstürze bei großen Seiten)
+  ["gesturestart","gesturechange","gestureend"].forEach(function(n){ lb.addEventListener(n, function(e){ e.preventDefault(); }, {passive:false}); });
+  // beim Weiterblättern Zoom des vorigen Bildes zurücksetzen
+  lb.addEventListener("scroll", function(){ lb.querySelectorAll("img").forEach(function(im){ if(im._z && im._z.s > 1 && !lb.classList.contains("zoomed")){ im._z = {s:1,x:0,y:0}; im.style.transform = ""; } }); }, {passive:true});
 }
 function rcLbClose(){ ["rcLb","rcLbX"].forEach(function(id){ var n = $(id); if(n) n.remove(); }); }
 function rcClick(e){
