@@ -377,15 +377,25 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   const t1 = await page.locator("#navUi .nav-hero").innerText();
   ok(t1.includes("Rechts abbiegen") && t1.includes("Bleecker"), "Abbiegehinweis fehlt: "+t1);
   ok(await rp(`document.body.classList.contains("navon")`), "Obere Leiste wird während der Navigation nicht ausgeblendet");
-  // Ausrichtung: Blick nach Süden, Weg geht nach Norden → Kachel „Umdrehen“; Blick nach Osten → „links drehen“; richtig → „Richtung stimmt“
-  await rp(`compass = 180; navOrient();`); await page.waitForTimeout(100);
-  ok(await visible("#navOri") && (await page.locator("#navOri").innerText()).includes("Umdrehen"), "Kachel „Umdrehen“ fehlt");
-  await rp(`compass = 90; navOrient();`);
-  ok((await page.locator("#navOri").innerText()).includes("links"), "Kachel „Nach links drehen“ fehlt");
-  ok(await page.evaluate(() => /rotate\(-9\d/.test(document.querySelector("#navOri .no-arr").style.transform)), "Pfeil dreht sich nicht mit");
-  await rp(`compass = 2; navOrient();`);
-  ok((await page.locator("#navOri").innerText()).includes("Richtung stimmt"), "Bestätigung „Richtung stimmt“ fehlt");
-  ok(await page.locator("#navUi .nn-t").count() >= 0, "");
+  await page.evaluate(() => { window.__hero = document.querySelector("#navUi .nav-hero"); });
+  for(let i = 0; i < 4; i++){ await rp(`me = {la:40.7215 + ${i}*0.00002, lo:-73.9890, acc:8}; navOnPos();`); await page.waitForTimeout(80); }
+  ok(await page.evaluate(() => window.__hero === document.querySelector("#navUi .nav-hero")), "Kacheln werden bei jeder Standortmeldung neu aufgebaut (zucken)");
+  // Ausrichtung: kurzes Wegdrehen des Handys löst nichts aus, dauerhafte Abweichung schon
+  const feed = async (c, ms, extra) => { const n = Math.ceil(ms/200); for(let i = 0; i < n; i++){ await rp(`compass = ${c}; ${extra||""} navOrient();`); await page.waitForTimeout(200); } };
+  await feed(2, 600);
+  await feed(130, 1200);
+  ok(!(await visible("#navOri")), "Kurzes Wegdrehen löst sofort einen Dreh-Hinweis aus");
+  await feed(2, 1000);
+  await feed(180, 4200);
+  ok(await visible("#navOri") && (await page.locator("#navOri").innerText()).includes("Umdrehen"), "Dauerhaft falsche Ausrichtung zeigt keine Kachel „Umdrehen“");
+  ok(await page.evaluate(() => /rotate\(/.test(document.querySelector("#navOri .no-arr").style.transform)), "Pfeil dreht sich nicht mit");
+  await feed(2, 2400);
+  ok(!(await visible("#navOri .no-arr")), "Kachel verschwindet nicht, wenn die Richtung wieder stimmt");
+  // beim Gehen in die richtige Richtung (GPS) zählt nicht, wohin das Handy zeigt
+  await feed(180, 3600, "me.spd = 1.3; me.hd = 0;");
+  ok(!(await visible("#navOri .no-arr")), "Dreh-Hinweis trotz richtiger Gehrichtung");
+  await rp(`me.spd = null; me.hd = null;`);
+  ok(await page.locator("#navUi .nav-then").count() <= 1, "Folgeschritte zu präsent");
   await click("#navUi [data-act=navhide]");
   ok(await visible("#navUi .nav-pill") && !(await visible("#navUi .nav-hero")), "Ausblenden funktioniert nicht");
   ok(await rp(`navSvg()===""`) && !(await rp(`document.body.classList.contains("navon")`)), "Weg/Leisten bleiben beim Ausblenden sichtbar");

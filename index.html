@@ -2315,6 +2315,12 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .nh-tx small{font-size:13px;opacity:.88}
 .nh-prog{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.18)}
 .nh-prog::after{content:"";position:absolute;left:0;top:0;bottom:0;width:calc(var(--p,0)*100%);background:#fff;border-radius:0 2px 2px 0;transition:width .6s ease}
+.nav-then{display:flex;align-items:center;gap:6px;align-self:flex-start;max-width:86%;margin-left:6px;padding:5px 10px 5px 8px;border-radius:12px;background:rgba(20,24,30,.42);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:rgba(255,255,255,.92);font:600 12.5px/1.2 var(--f-body)}
+.nt-l{opacity:.7;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.nav-then .nt-ic{width:16px;height:16px;display:grid;place-items:center;background:none !important;color:rgba(255,255,255,.92) !important;border-radius:0;box-shadow:none}
+.nt-ic svg{width:14px;height:14px}
+.nt-tx{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.nv-then:empty,.nv-off:empty{display:none}
 .nav-next{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 2px}
 .nav-next::-webkit-scrollbar{display:none}
 .nn-t{flex:0 0 auto;display:flex;align-items:center;gap:8px;max-width:72%;padding:8px 12px 8px 8px;border-radius:16px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);border:.5px solid var(--glass-bd,var(--line));box-shadow:0 6px 16px rgba(0,0,0,.14);color:var(--ink);animation:nnIn .4s cubic-bezier(.2,.9,.25,1.2) both;animation-delay:calc(var(--k)*.06s)}
@@ -8050,18 +8056,27 @@ function navRender(){
     key = nx ? nx.i+"|"+nx.text : "end"; tone = nx && nx.ride ? "ride" : nx && nx.ic===LMBIKE ? "bike" : N.mode==="bike" && N.segs && N.segs.some(function(sg){ return sg.kind==="bike" && N.pi >= sg.o && N.pi < sg.o + sg.n; }) ? "bike" : "walk";
     hero = "<div class=\"nh-ic\"><span class=\"nh-ring"+(dn < 40 ? " soon" : "")+"\">"+(nx ? nx.ic : NAVFLAG)+"</span></div><div class=\"nh-tx\"><em class=\"nh-d\">"+(nx && dn > 8 ? fmtDist(dn) : "Jetzt")+"</em><b>"+esc(nx ? nx.text : "Ziel erreicht")+"</b>"+(nx && nx.sub ? "<small>"+esc(nx.sub)+"</small>" : "")+"</div>"; }
   var enter = N.heroKey!==key; N.heroKey = key;
-  var ups = (!N.arrived && N.pts && N.next) ? N.steps.filter(function(st){ return st.i > N.next.i && !st.arrive; }).slice(0, 3) : [];
-  var nextH = ups.length ? "<div class=\"nav-next\">"+ups.map(function(st, k){ var dd = Math.max(0, N.cum[st.i] - N.cum[N.pi]); return "<div class=\"nn-t\" style=\"--k:"+k+"\"><span class=\"nn-ic\">"+st.ic+"</span><span><em>"+fmtDist(dd)+"</em><b>"+esc(st.text)+"</b></span></div>"; }).join("")+"</div>" : "";
+  // danach: nur der eine folgende Schritt, dezent als kleine Zeile
+  var up = (!N.arrived && N.pts && N.next) ? N.steps.filter(function(st){ return st.i > N.next.i && !st.arrive; })[0] : null;
+  var nextH = up ? "<div class=\"nav-then\"><span class=\"nt-l\">Danach</span><span class=\"nt-ic\">"+up.ic+"</span><span class=\"nt-tx\">"+esc(up.text)+"</span></div>" : "";
   var canDone = N.arrived && N.tgt.id && P(N.tgt.id) && dayOf(N.tgt.id) && !T().done[N.tgt.id] && !isRO();
-  el.className = "nav-ui";
-  el.innerHTML = "<div class=\"nav-hero t-"+tone+(enter ? " enter" : "")+"\">"+hero+"<i class=\"nh-prog\" style=\"--p:"+prog.toFixed(3)+"\"></i></div>"+
-    "<div id=\"navOri\" class=\"nav-ori\" hidden></div>"+nextH+
-    (N.offD > 45 && !N.arrived && N.pts ? "<div class=\"nav-off\">Vom Weg abgekommen – neuer Weg wird berechnet …</div>" : "")+
-    "<div class=\"nav-foot\"><div class=\"nav-sum\"><span class=\"nav-mode\">"+mi+"</span><span><b>"+(N.pts ? navMins(secs)+" Min." : "–")+"</b><small>"+(N.pts ? fmtDist(left)+" · an "+etaS : mn)+"</small></span></div>"+
+  var offH = N.offD > 45 && !N.arrived && N.pts ? "<div class=\"nav-off\">Vom Weg abgekommen – neuer Weg wird berechnet …</div>" : "";
+  var footH = "<div class=\"nav-foot\"><div class=\"nav-sum\"><span class=\"nav-mode\">"+mi+"</span><span><b>"+(N.pts ? navMins(secs)+" Min." : "–")+"</b><small>"+(N.pts ? fmtDist(left)+" · an "+etaS : mn)+"</small></span></div>"+
     (canDone ? "<button type=\"button\" class=\"nav-b go\" data-act=\"navdone\">✓ Abhaken</button>" : "")+
     (!N.follow && !N.arrived ? "<button type=\"button\" class=\"nav-b ic\" data-act=\"navfollow\" aria-label=\"Karte folgt mir\">"+LOCICO+"</button>" : "")+
     "<button type=\"button\" class=\"nav-b ic\" data-act=\"navhide\" aria-label=\"Ausblenden\" title=\"Ausblenden\">"+NAVHIDEICO+"</button><button type=\"button\" class=\"nav-b end\" data-act=\"navend\" aria-label=\"Beenden\" title=\"Beenden\">✕</button></div>";
-  N.oriShown = false; navOrient();
+  if(el.className!=="nav-ui" || !el.querySelector(".nv-hero")){
+    el.className = "nav-ui"; el.innerHTML = "<div class=\"nv-hero\"></div><div id=\"navOri\" class=\"nav-ori\" hidden></div><div class=\"nv-then\"></div><div class=\"nv-off\"></div><div class=\"nv-foot\"></div>"; enter = true; }
+  // Hauptkachel: bei neuem Schritt komplett neu (mit Animation), sonst nur Entfernung, Text und Fortschritt anpassen
+  var hb = el.querySelector(".nv-hero"), cls = "nav-hero t-"+tone+(enter ? " enter" : "");
+  if(enter || !hb.firstChild){ hb.innerHTML = "<div class=\""+cls+"\">"+hero+"<i class=\"nh-prog\" style=\"--p:"+prog.toFixed(3)+"\"></i></div>"; }
+  else { var hc = hb.firstChild, tmp = document.createElement("div"); tmp.innerHTML = hero;
+    var oldTx = hc.querySelector(".nh-tx"), newTx = tmp.querySelector(".nh-tx"); if(oldTx && newTx && oldTx.innerHTML!==newTx.innerHTML) oldTx.innerHTML = newTx.innerHTML;
+    var oldR = hc.querySelector(".nh-ring"), newR = tmp.querySelector(".nh-ring"); if(oldR && newR) oldR.classList.toggle("soon", newR.classList.contains("soon"));
+    hc.className = "nav-hero t-"+tone; var pg = hc.querySelector(".nh-prog"); if(pg) pg.style.setProperty("--p", prog.toFixed(3)); }
+  var put = function(sel, h){ var b = el.querySelector(sel); if(b && b.__h!==h){ b.__h = h; b.innerHTML = h; } };
+  put(".nv-then", nextH); put(".nv-off", offH); put(".nv-foot", footH);
+  navOrient();
 }
 var NAVHIDEICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 8l5 5 5-5\"/></svg>";
 /* Ausrichtung: zeigt eine Kachel, wenn man in die falsche Richtung schaut oder geht – der Pfeil dreht sich live mit dem Kompass */
@@ -8072,10 +8087,19 @@ function navLook(N){
 function navBear(a, b){ var dy = (b.la - a.la)*111320, dx = (b.lo - a.lo)*111320*Math.cos(a.la*Math.PI/180); return (Math.atan2(dx, dy)*180/Math.PI + 360) % 360; }
 function navOrient(){
   var N = NAV, box = $("navOri"); if(!N || !box || N.hidden || !N.pts || N.arrived || !me) { if(box) box.hidden = true; return; }
-  var hd = meHeading(), tgt = navLook(N); if(!tgt){ box.hidden = true; return; }
-  var wrong = !!N.wrongWay, delta = null;
-  if(hd!=null){ delta = ((navBear(me, tgt) - hd + 540) % 360) - 180; }
-  var bad = wrong || (delta!=null && Math.abs(delta) > 50);
+  var tgt = navLook(N); if(!tgt){ box.hidden = true; return; }
+  var moving = me.spd!=null && me.spd > 0.8 && me.hd!=null && !isNaN(me.hd);
+  var hd = moving ? me.hd : compass!=null ? compass : meHeading();
+  // Kompass glätten, damit kurzes Wegdrehen des Handys nicht sofort zählt
+  if(hd!=null){ if(N.hdS==null) N.hdS = hd; else { var dh = ((hd - N.hdS + 540) % 360) - 180; N.hdS = (N.hdS + dh * (moving ? .6 : .18) + 360) % 360; } }
+  var wrong = !!N.wrongWay, delta = N.hdS!=null && hd!=null ? ((navBear(me, tgt) - N.hdS + 540) % 360) - 180 : null, now = Date.now();
+  // erst nach 2,5 s dauerhafter Abweichung > 75° melden; wieder ausblenden, sobald < 40°
+  var off = delta!=null && Math.abs(delta) > (N.oriWasBad ? 40 : 75);
+  if(off){ if(!N.offSince) N.offSince = now; } else N.offSince = 0;
+  // läuft man in die richtige Richtung (GPS), keine Dreh-Hinweise
+  if(moving && delta!=null && Math.abs(delta) < 60) { off = false; N.offSince = 0; }
+  var bad = wrong || (off && now - N.offSince > (N.oriWasBad ? 0 : 2500));
+  if(off && !bad){ clearTimeout(N.oriT); N.oriT = setTimeout(function(){ if(NAV===N) navOrient(); }, 2600); }
   if(!bad){
     if(N.oriWasBad && !N.oriOk){ N.oriOk = true; N.oriWasBad = false; box.className = "nav-ori ok"; box.innerHTML = "<span class=\"no-ic\">✓</span><span class=\"no-tx\"><b>Richtung stimmt</b><small>Folge dem Weg</small></span>"; box.hidden = false; setTimeout(function(){ if(NAV===N){ N.oriOk = false; var b2 = $("navOri"); if(b2 && b2.classList.contains("ok")) b2.hidden = true; } }, 1600); }
     else if(!N.oriOk) box.hidden = true;
