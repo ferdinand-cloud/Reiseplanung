@@ -2263,7 +2263,11 @@ body.mving #gl{cursor:grabbing}
 /* Vollbild-Foto */
 .rc-lb{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.94);display:flex;overflow-x:auto;overflow-y:hidden;overscroll-behavior:contain;touch-action:pan-x;scroll-snap-type:x mandatory;scrollbar-width:none;animation:rcFade .25s ease}
 .rc-lb.zoomed{overflow-x:hidden;touch-action:none}
-.rc-lb img{touch-action:none;transform-origin:0 0;will-change:transform;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.rc-lb.zoomed img{touch-action:none}
+.rc-map{touch-action:pan-y}
+.rc-map.moving{touch-action:none}
+body.rc-on #map{visibility:hidden}
+.rc-lb img{touch-action:pan-x;transform-origin:0 0;will-change:transform;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .rc-lb::-webkit-scrollbar{display:none}
 .rc-lb figure{position:relative;overflow:hidden;flex:0 0 100%;height:100%;margin:0;display:grid;place-items:center;scroll-snap-align:center;padding:calc(env(safe-area-inset-top,0px) + 60px) 0 calc(env(safe-area-inset-bottom,0px) + 50px)}
 .rc-lb img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
@@ -8949,7 +8953,7 @@ function rcMap(k){
   if(!pts.length){ el.innerHTML = "<p class=\"rc-empty\" style=\"padding:24px\">Keine Orte mit Lage für diesen Tag.</p>"; return; }
   var col = rcColor(D), b = new maplibregl.LngLatBounds();
   pts.forEach(function(p){ b.extend([p.lo, p.la]); });
-  var m = RC.map = new maplibregl.Map({container:el, style:STYLE_URL, bounds:b, fitBoundsOptions:{padding:64, maxZoom:15.5}, attributionControl:false, dragPan:false, scrollZoom:false, boxZoom:false, dragRotate:false, keyboard:false, doubleClickZoom:false, touchZoomRotate:false, touchPitch:false, fadeDuration:0});
+  var m = RC.map = new maplibregl.Map({container:el, style:STYLE_URL, bounds:b, fitBoundsOptions:{padding:64, maxZoom:15.5}, attributionControl:false, dragPan:false, scrollZoom:false, boxZoom:false, dragRotate:false, keyboard:false, doubleClickZoom:false, touchZoomRotate:false, touchPitch:false, fadeDuration:0, maxZoom:17.5, pixelRatio:Math.min(2, window.devicePixelRatio || 1), maxTileCacheSize:60});
   // Stationen als Marker: mit Foto, sonst Nummer
   var mkEls = [];
   if(HT){ var hw = document.createElement("div"); hw.className = "rc-mkw"; var he = document.createElement("div"); he.className = "rc-mk hot"; he.textContent = "H"; hw.appendChild(he); mkEls.push({el:he, at:0}); RC.mks.push(new maplibregl.Marker({element:hw}).setLngLat([HT.lo, HT.la]).addTo(m)); }
@@ -9014,14 +9018,17 @@ function openRecap(k){
   if(!el){
     el = document.createElement("div"); el.id = "rc"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "Tagesrückblick"); el.hidden = true; document.body.appendChild(el);
     el.addEventListener("click", rcClick);
+    ["gesturestart","gesturechange","gestureend"].forEach(function(n){ el.addEventListener(n, function(e){ e.preventDefault(); }, {passive:false}); });
+    el.addEventListener("touchmove", function(e){ if(e.touches.length > 1 && !(e.target.closest && e.target.closest(".rc-map.moving"))) e.preventDefault(); }, {passive:false});
   }
+  document.body.classList.add("rc-on");
   closeMenus && closeMenus();
   el.hidden = false; renderRecap(k || cur);
   requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.classList.add("on"); }); });
 }
 function closeRecap(){
   var el = $("rc"); if(!el || el.hidden) return; rcLbClose();
-  if(RC.io) RC.io.disconnect(); el.classList.remove("on");
+  if(RC.io) RC.io.disconnect(); el.classList.remove("on"); document.body.classList.remove("rc-on");
   setTimeout(function(){ rcMapStop(); el.hidden = true; el.innerHTML = ""; }, reduceMotion ? 0 : 360);
 }
 function rcLb(ph){
@@ -9035,7 +9042,7 @@ function rcLb(ph){
 }
 /* Zoomen im Vollbild: zwei Finger zum Zoomen, ein Finger verschiebt das gezoomte Bild, Doppeltipp schaltet um */
 function rcZoom(lb){
-  var Z = null, last = 0;
+  var Z = null, last = 0, TP = null;
   function st(img){ return img._z || (img._z = {s:1, x:0, y:0}); }
   function paint(img){ var z = st(img); img.style.transform = "translate("+z.x+"px,"+z.y+"px) scale("+z.s+")"; lb.classList.toggle("zoomed", z.s > 1.01); }
   function clamp(img){ var z = st(img), w = img.offsetWidth, h = img.offsetHeight;
@@ -9049,17 +9056,27 @@ function rcZoom(lb){
     var z = st(img);
     if(e.touches.length===2){ e.preventDefault(); var a = e.touches[0], b = e.touches[1];
       Z = {img:img, d:Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY) || 1, s:z.s, cx:(a.clientX+b.clientX)/2, cy:(a.clientY+b.clientY)/2}; return; }
-    if(e.touches.length===1){ var t = e.touches[0], now = Date.now();
-      if(now - last < 320){ e.preventDefault(); last = 0; img.style.transition = "transform .25s ease"; if(z.s > 1.01){ z.s = 1; z.x = 0; z.y = 0; paint(img); } else zoomAt(img, 2.6, t.clientX, t.clientY); setTimeout(function(){ img.style.transition = ""; }, 260); Z = null; return; }
-      last = now; Z = z.s > 1.01 ? {img:img, pan:true, x:t.clientX, y:t.clientY, ox:z.x, oy:z.y} : null; }
+    if(e.touches.length===1){ var t = e.touches[0];
+      TP = {img:img, x:t.clientX, y:t.clientY, at:Date.now(), moved:false};
+      Z = z.s > 1.01 ? {img:img, pan:true, x:t.clientX, y:t.clientY, ox:z.x, oy:z.y} : null; }
   }, {passive:false});
   lb.addEventListener("touchmove", function(e){
+    if(TP && e.touches.length===1 && Math.hypot(e.touches[0].clientX - TP.x, e.touches[0].clientY - TP.y) > 10) TP.moved = true;
+    if(e.touches.length > 1 && TP) TP.moved = true;
     if(!Z) return; var z = st(Z.img);
     if(e.touches.length===2 && Z.d){ e.preventDefault(); var a = e.touches[0], b = e.touches[1], d = Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
       zoomAt(Z.img, Z.s * d / Z.d, (a.clientX+b.clientX)/2, (a.clientY+b.clientY)/2); return; }
     if(e.touches.length===1 && Z.pan){ e.preventDefault(); var t = e.touches[0]; z.x = Z.ox + (t.clientX - Z.x); z.y = Z.oy + (t.clientY - Z.y); clamp(Z.img); paint(Z.img); }
   }, {passive:false});
-  var end = function(e){ if(Z && e.touches.length===0){ clamp(Z.img); paint(Z.img); Z = null; } };
+  var end = function(e){
+    // Doppeltipp: zwei kurze Tipps ohne Bewegung – schnelles Weiterwischen löst keinen Zoom mehr aus
+    if(e.type==="touchend" && TP && !TP.moved && e.touches.length===0 && Date.now() - TP.at < 300){
+      var now = Date.now(), img = TP.img, z = st(img), c = e.changedTouches[0];
+      if(now - last < 320){ last = 0; e.preventDefault(); img.style.transition = "transform .25s ease"; if(z.s > 1.01){ z.s = 1; z.x = 0; z.y = 0; paint(img); } else zoomAt(img, 2.6, c.clientX, c.clientY); setTimeout(function(){ img.style.transition = ""; }, 260); Z = null; TP = null; return; }
+      last = now;
+    } else if(e.type==="touchend" && TP && TP.moved) last = 0;
+    if(e.touches.length===0) TP = null;
+    if(Z && e.touches.length===0){ clamp(Z.img); paint(Z.img); Z = null; } };
   lb.addEventListener("touchend", end); lb.addEventListener("touchcancel", end);
   // Safari-Seitenzoom innerhalb des Vollbilds unterdrücken (verhindert Abstürze bei großen Seiten)
   ["gesturestart","gesturechange","gestureend"].forEach(function(n){ lb.addEventListener(n, function(e){ e.preventDefault(); }, {passive:false}); });
@@ -9076,6 +9093,8 @@ function rcClick(e){
   else if(a==="mapmove" && RC.map){
     var on = t.getAttribute("aria-pressed")!=="true", m = RC.map;
     ["dragPan","touchZoomRotate","doubleClickZoom","scrollZoom"].forEach(function(h){ if(m[h]) m[h][on ? "enable" : "disable"](); });
+    if(m.touchZoomRotate) m.touchZoomRotate.disableRotation();
+    var mc = $("rcMap"); if(mc) mc.classList.toggle("moving", on);
     t.setAttribute("aria-pressed", on); t.textContent = on ? "Fertig" : "Karte bewegen";
   }
   else if(a==="focus"){
