@@ -2282,6 +2282,7 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .dc-ph img[data-act]{cursor:zoom-in}
 .dcv-by{display:block;font-size:12px;font-weight:500;opacity:.75}
 .dcv-cm p{margin:0 0 8px}
+.rc-flash{outline:2.5px solid var(--dc,#0A84FF);outline-offset:2px;border-radius:12px;transition:outline-color .6s ease}
 .rc-lbx{position:fixed;z-index:96;top:calc(env(safe-area-inset-top,0px) + 12px);right:14px}
 
 /* Einstieg im Tagesplan */
@@ -9105,12 +9106,56 @@ function rcLb(ph){
   var i = Math.max(0, RC.ph.indexOf(ph)), lb = document.createElement("div"); lb.className = "rc-lb"; lb.id = "rcLb";
   lb.innerHTML = RC.ph.map(function(x, j){ return "<figure><img data-ph=\""+x+"\" alt=\"\"><figcaption>"+(j+1)+" / "+RC.ph.length+"</figcaption></figure>"; }).join("");
   var x = document.createElement("button"); x.type = "button"; x.className = "rc-x rc-glass rc-lbx"; x.id = "rcLbX"; x.setAttribute("aria-label", "Foto schließen"); x.textContent = "×";
-  x.addEventListener("click", rcLbClose); lb.addEventListener("click", function(e){ if(e.target===lb || e.target.tagName==="FIGURE") rcLbClose(); });
+  x.addEventListener("click", function(){ var ph0 = rcLbPh(); rcLbClose(); rcGoToPh(ph0); }); lb.addEventListener("click", function(e){ if(e.target===lb || e.target.tagName==="FIGURE") rcLbClose(); });
   var sd = document.createElement("div"); sd.className = "rc-lbside"; sd.id = "rcLbSide";
   document.body.appendChild(lb); document.body.appendChild(x); document.body.appendChild(sd); fillPhotos(lb);
   lb.scrollLeft = i * lb.clientWidth; RC.lbi = i; rcLbSide();
   var lbt = 0; lb.addEventListener("scroll", function(){ clearTimeout(lbt); lbt = setTimeout(function(){ var j = Math.round(lb.scrollLeft / Math.max(1, lb.clientWidth)); if(j!==RC.lbi){ RC.lbi = j; rcLbSide(); } }, 90); }, {passive:true});
-  rcZoom(lb);
+  rcZoom(lb); rcLbSwipe(lb);
+}
+/* Vollbild im Rückblick: von oben nach unten ziehen schließt das Foto und springt zur Stelle dieses Fotos im Rückblick */
+function rcLbSwipe(lb){
+  var sw = null;
+  function parts(){ return [lb, $("rcLbX"), $("rcLbSide")].filter(Boolean); }
+  lb.addEventListener("touchstart", function(e){
+    sw = null; if(e.touches.length!==1 || lb.classList.contains("zoomed")) return;
+    var t = e.touches[0]; sw = {x:t.clientX, y:t.clientY, t:Date.now(), mode:null, dy:0};
+  }, {passive:true});
+  lb.addEventListener("touchmove", function(e){
+    if(!sw) return;
+    if(e.touches.length!==1 || lb.classList.contains("zoomed")){ reset(); sw = null; return; }
+    var t = e.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+    if(!sw.mode){ if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return; sw.mode = (dy > 0 && Math.abs(dy) > Math.abs(dx)*1.2) ? "v" : "h"; }
+    if(sw.mode!=="v") return;
+    e.preventDefault(); sw.dy = Math.max(0, dy);
+    var k = Math.min(sw.dy, 400)/400;
+    lb.style.transition = "none"; lb.style.transform = "translateY("+sw.dy+"px) scale("+(1 - k*0.15)+")"; lb.style.background = "rgba(0,0,0,"+(0.94*(1 - Math.min(sw.dy, 300)/300*0.85))+")";
+    parts().slice(1).forEach(function(n){ n.style.transition = "none"; n.style.opacity = String(1 - Math.min(1, sw.dy/120)); });
+  }, {passive:false});
+  function reset(){ lb.style.transition = "transform .2s ease, background .2s ease"; lb.style.transform = ""; lb.style.background = ""; parts().slice(1).forEach(function(n){ n.style.transition = "opacity .2s ease"; n.style.opacity = ""; }); }
+  function end(){
+    if(!sw) return; var s0 = sw; sw = null; if(s0.mode!=="v") return;
+    if(s0.dy > 110 || (s0.dy > 50 && Date.now() - s0.t < 250)){
+      var ph = rcLbPh();
+      lb.style.transition = "transform .18s ease, opacity .18s ease"; lb.style.transform = "translateY("+window.innerHeight+"px)"; lb.style.opacity = "0";
+      setTimeout(function(){ rcLbClose(); rcGoToPh(ph); }, 170);
+    } else reset();
+  }
+  lb.addEventListener("touchend", end); lb.addEventListener("touchcancel", end);
+}
+/* nach dem Schließen dorthin scrollen, wo das zuletzt angezeigte Foto im Rückblick steht (bevorzugt im selben Abschnitt wie beim Öffnen) */
+function rcGoToPh(ph){
+  var root = $("rc"); if(!root || root.hidden || !ph) return;
+  var from = RC.lbFrom && root.contains(RC.lbFrom) ? RC.lbFrom : null, sec = from && (from.closest(".rc-mo") || from.closest(".rc-card")), el = null;
+  var all = root.querySelectorAll("[data-rc=ph]");
+  if(sec && sec.classList.contains("rc-mo")) el = sec.querySelector("[data-rc=ph][data-ph=\""+ph+"\"]");
+  if(!el) for(var i=0;i<all.length;i++){ if(all[i].getAttribute("data-ph")===ph && (!sec || !sec.classList.contains("rc-mo") || !all[i].closest(".rc-mo"))){ el = all[i]; break; } }
+  if(!el) for(var j=0;j<all.length;j++){ if(all[j].getAttribute("data-ph")===ph){ el = all[j]; break; } }
+  if(!el) return;
+  var r = el.getBoundingClientRect(), rr = root.getBoundingClientRect();
+  root.scrollTop += (r.top - rr.top) - (root.clientHeight - r.height)/2;
+  var strip = el.closest(".rc-strip"); if(strip){ var sr = strip.getBoundingClientRect(); strip.scrollLeft += (r.left - sr.left) - (strip.clientWidth - r.width)/2; }
+  el.classList.add("rc-flash"); setTimeout(function(){ el.classList.remove("rc-flash"); }, 900);
 }
 /* Zoomen im Vollbild: zwei Finger zum Zoomen, ein Finger verschiebt das gezoomte Bild, Doppeltipp schaltet um */
 function rcZoom(lb){
@@ -9171,7 +9216,7 @@ function rcClick(e){
   var a = t.getAttribute("data-rc");
   if(a==="close") closeRecap();
   else if(a==="day"){ var k = t.getAttribute("data-day"); if(k!==RC.key) renderRecap(k); }
-  else if(a==="ph"){ e.stopPropagation(); rcLb(t.getAttribute("data-ph")); }
+  else if(a==="ph"){ e.stopPropagation(); RC.lbFrom = t; rcLb(t.getAttribute("data-ph")); }
   else if(a==="mapmove" && RC.map){
     var on = t.getAttribute("aria-pressed")!=="true", m = RC.map;
     ["dragPan","touchZoomRotate","doubleClickZoom","scrollZoom"].forEach(function(h){ if(m[h]) m[h][on ? "enable" : "disable"](); });
