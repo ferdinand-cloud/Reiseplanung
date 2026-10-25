@@ -2347,6 +2347,8 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .no-tx small{font-size:13px;opacity:.92}
 .nav-b.ic{width:42px;height:42px;padding:0;border-radius:50%}
 .nav-b.ic svg{width:18px;height:18px;color:var(--ink)}
+.nav-b.rot.on{background:#0A84FF}
+.nav-b.rot.on svg{color:#fff}
 .nav-b.end{width:42px;height:42px;padding:0;border-radius:50%;font-size:16px}
 .nav-foot{border-radius:26px}
 .cb-av{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 6px}
@@ -8004,7 +8006,7 @@ function navStart(p, mode, pref){
   navBuild();
 }
 function navEnd(silent){
-  if(!NAV) return; NAV = null; document.body.classList.remove("navon");
+  if(!NAV) return; NAV = null; if(navRotOn && map && map.getBearing()) map.easeTo({bearing:0, duration: reduceMotion ? 0 : 500}); document.body.classList.remove("navon");
   try { if(navWake) navWake.release(); } catch(e){} navWake = null;
   var el = $("navUi"); if(el) el.remove(); scheduleOverlay();
   if(!silent) toast("Navigation beendet", false);
@@ -8033,7 +8035,24 @@ function navOnPos(){
   if(N.follow && !N.hidden) navFollow(false);
   navRender(); scheduleOverlay();
 }
-function navFollow(zoom){ if(!NAV || !me || !map) return; map.easeTo({center:[me.lo, me.la], zoom: zoom ? Math.max(map.getZoom(), 16.5) : map.getZoom(), duration: reduceMotion ? 0 : 600}); }
+/* Karte in Soll-Gehrichtung drehen (per Knopf): Blickrichtung = Richtung des Wegs ca. 35 m voraus, dreht an Kurven mit */
+var navRotOn = lsGet("rp-nav-rot")==="1";
+function navAhead(N, m){ var P0 = N.pts, i = N.pi; while(i < P0.length - 1 && N.cum[i] - N.cum[N.pi] < m) i++; return P0[i]; }
+function navFollow(zoom){
+  if(!NAV || !me || !map) return;
+  var o = {center:[me.lo, me.la], zoom: zoom ? Math.max(map.getZoom(), 16.5) : map.getZoom(), duration: reduceMotion ? 0 : 600};
+  if(navRotOn && NAV.pts && !NAV.arrived){ var ah = navAhead(NAV, 35);
+    if(ah && dist(me, ah) > 5){ var b = navBear(me, ah), cb = (map.getBearing() + 360) % 360, d = ((b - cb + 540) % 360) - 180;
+      if(Math.abs(d) > 6 || zoom) o.bearing = b; }
+    o.offset = [0, Math.round(window.innerHeight * 0.16)]; // eigener Standort etwas unterhalb der Mitte – mehr Sicht nach vorn
+  }
+  map.easeTo(o);
+}
+function navRotToggle(){
+  navRotOn = !navRotOn; lsSet("rp-nav-rot", navRotOn ? "1" : "0");
+  if(NAV){ NAV.follow = true; if(navRotOn) navFollow(true); else map.easeTo({bearing:0, duration: reduceMotion ? 0 : 500}); navRender(); }
+  toast(navRotOn ? "Karte dreht sich in Gehrichtung" : "Norden oben", false);
+}
 function navMins(s){ return Math.max(1, Math.round(s/60)); }
 function navRender(){
   var N = NAV, el = $("navUi");
@@ -8064,6 +8083,7 @@ function navRender(){
   var footH = "<div class=\"nav-foot\"><div class=\"nav-sum\"><span class=\"nav-mode\">"+mi+"</span><span><b>"+(N.pts ? navMins(secs)+" Min." : "–")+"</b><small>"+(N.pts ? fmtDist(left)+" · an "+etaS : mn)+"</small></span></div>"+
     (canDone ? "<button type=\"button\" class=\"nav-b go\" data-act=\"navdone\">✓ Abhaken</button>" : "")+
     (!N.follow && !N.arrived ? "<button type=\"button\" class=\"nav-b ic\" data-act=\"navfollow\" aria-label=\"Karte folgt mir\">"+LOCICO+"</button>" : "")+
+    "<button type=\"button\" class=\"nav-b ic rot"+(navRotOn ? " on" : "")+"\" data-act=\"navrot\" aria-pressed=\""+navRotOn+"\" aria-label=\""+(navRotOn ? "Karte in Gehrichtung – tippen für Norden oben" : "Norden oben – tippen für Gehrichtung")+"\" title=\""+(navRotOn ? "In Gehrichtung" : "Norden oben")+"\">"+(navRotOn ? NAVROTICO : NAVNICO)+"</button>"+
     "<button type=\"button\" class=\"nav-b ic\" data-act=\"navhide\" aria-label=\"Ausblenden\" title=\"Ausblenden\">"+NAVHIDEICO+"</button><button type=\"button\" class=\"nav-b end\" data-act=\"navend\" aria-label=\"Beenden\" title=\"Beenden\">✕</button></div>";
   if(el.className!=="nav-ui" || !el.querySelector(".nv-hero")){
     el.className = "nav-ui"; el.innerHTML = "<div class=\"nv-hero\"></div><div id=\"navOri\" class=\"nav-ori\" hidden></div><div class=\"nv-then\"></div><div class=\"nv-off\"></div><div class=\"nv-foot\"></div>"; enter = true; }
@@ -8078,6 +8098,8 @@ function navRender(){
   put(".nv-then", nextH); put(".nv-off", offH); put(".nv-foot", footH);
   navOrient();
 }
+var NAVROTICO = "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"/><path d=\"M12 5.5l4.2 10.2L12 13.4l-4.2 2.3z\" fill=\"currentColor\"/></svg>";
+var NAVNICO = "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"/><path d=\"M12 4.5l3 7.5h-6z\" fill=\"#FF3B30\"/><path d=\"M12 19.5l-3-7.5h6z\" fill=\"currentColor\" opacity=\".45\"/></svg>";
 var NAVHIDEICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 8l5 5 5-5\"/></svg>";
 /* Ausrichtung: zeigt eine Kachel, wenn man in die falsche Richtung schaut oder geht – der Pfeil dreht sich live mit dem Kompass */
 function navLook(N){
@@ -9880,6 +9902,7 @@ document.addEventListener("click", function(e){
     case "navend": navEnd(); break;
     case "navhide": if(NAV){ NAV.hidden = true; navRender(); scheduleOverlay(); } break;
     case "navshow": if(NAV){ NAV.hidden = false; NAV.follow = true; navRender(); scheduleOverlay(); navFollow(false); } break;
+    case "navrot": navRotToggle(); break;
     case "navfollow": if(NAV){ NAV.follow = true; navRender(); navFollow(true); } break;
     case "navdone": if(NAV && NAV.tgt.id && P(NAV.tgt.id)){ var ndid = NAV.tgt.id; T().done[ndid] = true; doneMove(ndid); save(); renderSheet(); scheduleOverlay(); toast("„"+P(ndid).n+"“ abgehakt", false); } navEnd(true); break;
     case "cbrefresh": cbLoad(true); break;

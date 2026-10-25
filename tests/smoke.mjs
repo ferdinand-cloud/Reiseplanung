@@ -380,6 +380,17 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   await page.evaluate(() => { window.__hero = document.querySelector("#navUi .nav-hero"); });
   for(let i = 0; i < 4; i++){ await rp(`me = {la:40.7215 + ${i}*0.00002, lo:-73.9890, acc:8}; navOnPos();`); await page.waitForTimeout(80); }
   ok(await page.evaluate(() => window.__hero === document.querySelector("#navUi .nav-hero")), "Kacheln werden bei jeder Standortmeldung neu aufgebaut (zucken)");
+  // Karte in Soll-Gehrichtung per Knopf, dreht an der Kurve mit
+  ok(await page.locator("#navUi [data-act=navrot]").count()===1, "Knopf „Karte in Gehrichtung“ fehlt");
+  await click("#navUi [data-act=navrot]"); await page.waitForTimeout(800);
+  ok(await rp(`navRotOn`), "Gehrichtung lässt sich nicht einschalten");
+  const b1 = await rp(`Math.round(map.getBearing())`);
+  await rp(`(function(){ var q = NAV.pts[14]; me = {la:q.la, lo:q.lo, acc:8}; navOnPos(); })()`); await page.waitForTimeout(900);
+  const b2 = await rp(`Math.round(map.getBearing())`);
+  ok(Math.abs(b1) < 10 && Math.abs(Math.abs(b2) - 90) < 15, "Karte dreht sich nicht mit der Kurve mit ("+b1+" → "+b2+")");
+  await click("#navUi [data-act=navrot]"); await page.waitForTimeout(800);
+  ok(Math.abs(await rp(`map.getBearing()`)) < 2, "Norden oben stellt die Karte nicht zurück");
+  await rp(`(function(){ var q = NAV.pts[1]; me = {la:40.7215, lo:-73.9890, acc:8}; NAV.pi = 0; navProgress(); navRender(); })()`);
   // Ausrichtung: kurzes Wegdrehen des Handys löst nichts aus, dauerhafte Abweichung schon
   const feed = async (c, ms, extra) => { const n = Math.ceil(ms/200); for(let i = 0; i < n; i++){ await rp(`compass = ${c}; ${extra||""} navOrient();`); await page.waitForTimeout(200); } };
   await feed(2, 600);
