@@ -1,0 +1,12 @@
+{
+  "name": "reiseplan-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node smoke.mjs"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^153.0.0",
+    "playwright-core": "^1.50.0"
+  }
+}

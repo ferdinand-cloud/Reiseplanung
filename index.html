@@ -7801,7 +7801,7 @@ function pvHide(){ var L = $("pvLayer"); if(window.pvZoomReset) window.pvZoomRes
   document.addEventListener("touchend", end); document.addEventListener("touchcancel", end);
 })();
 function pvOpen(){ var L = $("pvLayer"); return !!(L && !L.hidden); }
-document.addEventListener("keydown", function(e){ if(e.key==="Escape" && pvOpen() && DCV){ e.stopPropagation(); if(DCV.cm){ DCV.cm = false; dcvRefresh(); return; } dcvClose(); return; } if(e.key==="Escape" && pvOpen() && jp){ e.stopPropagation(); if(pvCm){ pvCm = false; phMetaRefresh(); return; } if(!!jp.ret){ closeJPop(); return; } jp.view = null; renderJPop(); } }, true);
+document.addEventListener("keydown", function(e){ if(e.key==="Escape" && pvOpen() && DCV){ e.stopPropagation(); e.preventDefault(); if(DCV.cm){ DCV.cm = false; dcvRefresh(); return; } dcvClose(); return; } if(e.key==="Escape" && pvOpen() && jp){ e.stopPropagation(); e.preventDefault(); if(pvCm){ pvCm = false; phMetaRefresh(); return; } if(!!jp.ret){ closeJPop(); return; } jp.view = null; renderJPop(); } }, true);
 function phStep(dir){ var tr = $("pvTrack"); if(!tr) return; var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)) + dir; if(i < 0 || i >= tr.children.length) return; tr.scrollTo({left:i*tr.clientWidth, behavior:"smooth"}); }
 function phLike(ph){
   if(!phSocial()) return;
@@ -9798,7 +9798,7 @@ function rcClick(e){
     RC.map.flyTo({center:[p.lo, p.la], zoom:16.2, pitch:50, speed:.9, essential:true});
   }
 }
-document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if($("rcLb")){ e.stopPropagation(); rcLbClose(); return; } var el = $("rc"); if(el && !el.hidden){ e.stopPropagation(); closeRecap(); } }, true);
+document.addEventListener("keydown", function(e){ if(e.key!=="Escape" || e.defaultPrevented) return; if(pvOpen() || ($("cfPop") && !$("cfPop").hidden) || $("jpMenu")) return; if($("rcLb")){ e.stopPropagation(); rcLbClose(); return; } var el = $("rc"); if(el && !el.hidden){ e.stopPropagation(); closeRecap(); } }, true);
 /* Tipp-Schutz: Hintergrund-Aktualisierungen (Standort, Sync, Timer) bauen die Oberfläche nicht neu auf,
    während ein Finger liegt oder gerade abgehoben wurde – sonst wird der Knopf unter dem Finger ersetzt und der Tipp geht verloren */
 (function(){
@@ -9824,6 +9824,8 @@ window.addEventListener("online", function(){ if(acct.user){ acctPull(); phFlush
 setNet(navigator.onLine);
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){});
 if("serviceWorker" in navigator) window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
+// Zugang für die automatischen Klicktests (tests/smoke.mjs) – nur mit ?rptest in der Adresse
+if(/[?&]rptest\b/.test(location.search)) window.__rp = function(code){ return eval(code); };
 })();
 </script>
 </body>
