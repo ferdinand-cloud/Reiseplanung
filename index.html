@@ -5995,7 +5995,7 @@ function tap(x, y){
 }
 
 /* ---------- Auswahl-Karte ---------- */
-function select(id){ if(id!==sel) meRoute = false; if(id!=="poi") poiSel = null; sel = id; renderCard(); scheduleOverlay(); }
+function select(id){ if(id!==sel) meRoute = false; if(id!=="poi") poiSel = null; poiRv = ""; sel = id; renderCard(); scheduleOverlay(); }
 /* ---------- Tatsächliche Wege: Fußwege über OSM-Routing, U-Bahn entlang der Gleise ---------- */
 var WALKC = {}, walkQ = [], walkBusy = 0;
 try { WALKC = JSON.parse(lsGet("nyc-walk-cache")||"{}") || {}; } catch(e){ WALKC = {}; }
@@ -6315,21 +6315,43 @@ function poiExisting(q){
   Object.keys(T().places).forEach(function(id){ var p = P(id); if(!hit && hasLoc(p) && dist(p, q) < 80 && p.n.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,8)===q.n.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,8)) hit = id; });
   return hit;
 }
+var poiRv = "";
 function poiCard(){
-  var q = poiSel, D = dayByKey(cur), sub = POISUB[q.sub] || POISUB[q.cls] || (q.sub||q.cls||"").replace(/_/g," ");
-  var c = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button><h3>"+esc(q.n)+"</h3>";
-  c += "<p><span class=\"cat\">"+icon(q.c)+esc(sub ? sub.charAt(0).toUpperCase()+sub.slice(1) : CATNAME[q.c])+"</span>"+(nbOf(q)?" · "+esc(nbOf(q)):"")+"</p>"+gBlock(q)+stationLine(q);
-  c += "<div class=\"row poisel\">";
-  if(D) c += "<button class=\"btn planadd\" type=\"button\" data-act=\"planpick\" data-poi=\"1\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M10 4.5v11M4.5 10h11\"/></svg>Zur Planung hinzufügen</button>";
-  var lists = T().lists, al = (activeList && lists.some(function(l){ return l.id===activeList; })) ? activeList : (lists[0]||{}).id || "";
-  c += "<button class=\"btn g\" type=\"button\" data-act=\"poiadd\" data-to=\"wish\">Zur Wunschliste</button>";
-  if(lists.length > 1) c += "<select id=\"poiList\" aria-label=\"Liste\">"+lists.map(function(l){ return "<option value=\""+l.id+"\""+(l.id===al?" selected":"")+">"+esc(l.name)+"</option>"; }).join("")+"</select>";
-  c += "<a class=\"btn g\" target=\"_blank\" rel=\"noopener\" href=\""+gmInfoUrl(q)+"\">Infos in Google Maps</a>";
+  var q = poiSel, D = dayByKey(cur), sub = POISUB[q.sub] || POISUB[q.cls] || (q.sub||q.cls||"").replace(/_/g," "), cc = catCol(q.c);
+  var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
+  if(gKey && hasLoc(q) && !gInfo[gK(q)]) gLoad(q);
+  var c = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>";
+  c += "<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+cc+"\">"+icon(q.c)+"</span><div class=\"cht\"><h3>"+esc(q.n)+"</h3><p>"+esc([sub ? sub.charAt(0).toUpperCase()+sub.slice(1) : CATNAME[q.c], nbOf(q)].filter(Boolean).join(" · "))+"</p></div></div>";
+  if(q.addr) c += "<p class=\"cnote\">"+esc(q.addr)+"</p>";
+  // unabhängig vom Planungsstand: Bewertungen (Freunde / Öffentlich), ÖPNV, Weg vom Standort
+  if(hasLoc(q)) c += rvChips(q);
+  if(poiRv && hasLoc(q)) c += rvSection(q);
+  if(hasLoc(q)) c += stationLine(q);
+  if(me && hasLoc(q) && dist(me, q) < 40000){
+    var rr = transit(me, q, todayKey());
+    c += "<div class=\"mecard\"><div class=\"tl\"><span class=\"meic\" title=\"Von deinem Standort\" aria-label=\"Von deinem Standort\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M17.5 2.5 2.8 8.6l6.3 2.3 2.3 6.3z\"/></svg></span><button type=\"button\" class=\"tsum\" data-act=\"meroute\">"+transitSummary(rr)+"</button>"+
+         "<button type=\"button\" class=\"tdet\" data-act=\"meroute\" aria-expanded=\""+meRoute+"\">"+(meRoute?"Ausblenden":"Weg")+"</button></div>"+(meRoute && !rr.walk ? transitSteps(rr, me, q, {day: nyNow().key}) : "")+"</div>";
+  }
+  c += "<div class=\"jp-tiles ctiles\">";
+  if(D && !isRO()) c += "<button type=\"button\" class=\"jp-tile pri\" data-act=\"planpick\" data-poi=\"1\">"+I("<path d=\"M10 4.5v11M4.5 10h11\"/>")+"<span>Zur Planung</span></button>";
+  if(!isRO()) c += "<button type=\"button\" class=\"jp-tile\" data-act=\"poiadd\" data-to=\"wish\">"+I("<path d=\"M10 16.5s-6-3.6-6-8a3.3 3.3 0 0 1 6-1.9 3.3 3.3 0 0 1 6 1.9c0 4.4-6 8-6 8z\"/>")+"<span>Wunschliste</span></button>";
+  if(hasLoc(q)) c += "<a class=\"jp-tile\" target=\"_blank\" rel=\"noopener\" href=\"https://www.google.com/maps/dir/?api=1&destination="+q.la+","+q.lo+"&travelmode=transit\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+"<span>Route</span></a>";
+  c += "<button type=\"button\" class=\"jp-tile\" data-act=\"poimore\" aria-haspopup=\"dialog\">"+I("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>")+"<span>Mehr</span></button>";
   c += "</div>";
   return c;
 }
-function poiAdd(to, at, k){
-  var q = poiSel; if(!q) return; k = k || cur;
+/* „Mehr“ für noch nicht gespeicherte Orte: Liste wählen, Google Maps */
+function openPoiMore(btn){
+  var q = poiSel; if(!q) return;
+  var I = function(d){ return "<span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg></span>"; };
+  var row = function(act, ic, t, sub, extra){ return "<button type=\"button\" role=\"menuitem\" data-act=\""+act+"\""+(extra||"")+">"+ic+"<span class=\"cm-t\"><b>"+t+"</b>"+(sub?"<small>"+sub+"</small>":"")+"</span></button>"; };
+  var h = "", lists = T().lists;
+  if(!isRO() && lists.length > 1) lists.forEach(function(l){ h += row("poiadd", I("<path d=\"M4 5h12M4 10h12M4 15h7\"/>"), "In „"+esc(l.name)+"“ speichern", "Zur Wunschliste in dieser Liste", " data-to=\"wish\" data-list=\""+l.id+"\""); });
+  h += row("poigm", I("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>"), "In Google Maps öffnen", "Öffnungszeiten, Bewertungen, Fotos");
+  jpPopover("poi", btn, h, "poimore");
+}
+function poiAdd(to, at, k, lsel){
+  var q = poiSel; if(!q) return; k = k || cur; poiRv = "";
   var ex = poiExisting(q);
   if(ex){
     ex = rootOf(ex);
@@ -6338,7 +6360,7 @@ function poiAdd(to, at, k){
     else toast(q.n+" ist schon "+(dayOf(ex) ? "am "+dayByKey(dayOf(ex)).lbl+" geplant" : "in der Wunschliste"), false);
     poiSel = null; renderAll(); select(ex); return;
   }
-  var ls = $("poiList"), lid = ls ? ls.value : ((activeList && T().lists.some(function(l){ return l.id===activeList; })) ? activeList : (T().lists[0]||{}).id || null);
+  var lid = lsel ? lsel : ((activeList && T().lists.some(function(l){ return l.id===activeList; })) ? activeList : (T().lists[0]||{}).id || null);
   var pid = uid("w"), p = {id:pid, n:q.n.slice(0,80), c:q.c, list:lid||null, note:"", addr:(q.addr||"").slice(0,120), la:q.la, lo:q.lo}, gq = gInfo[gK(q)];
   if(gq && gq.st==="ok"){ p.gid = gq.d.id; gInfo[gK(p)] = gq; }
   T().places[pid] = p;
@@ -6856,7 +6878,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=poimore],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -8377,8 +8399,8 @@ document.addEventListener("click", function(e){
       if(S.trips[gpt] && gpt!==S.cur){ grpSel = ""; S.cur = gpt; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
       if(P(gpp)){ var gdk = dayOf(gpp); if(gdk) cur = gdk; tab = gdk ? "day" : "wish"; renderAll(); select(gpp); revealPoint(P(gpp), 16, true); } break;
     case "gsrec": closeGsPage(); openDcPage(); break;
-    case "rvopen": rvTab = t.getAttribute("data-v"); if(sel && P(sel)){ openJPop(sel, dayOf(sel) || ""); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"start", behavior: reduceMotion ? "auto" : "smooth"}); }, 120); } break;
-    case "rvtab": rvTab = t.getAttribute("data-v"); renderJPop(); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"nearest"}); }, 0); break;
+    case "rvopen": rvTab = t.getAttribute("data-v"); if(sel==="poi" && poiSel){ poiRv = poiRv===rvTab ? "" : rvTab; renderCard(); break; } if(sel && P(sel)){ openJPop(sel, dayOf(sel) || ""); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"start", behavior: reduceMotion ? "auto" : "smooth"}); }, 120); } break;
+    case "rvtab": rvTab = t.getAttribute("data-v"); if(sel==="poi" && poiSel && !(jp && $("jPop") && !$("jPop").hidden)){ poiRv = rvTab; renderCard(); break; } renderJPop(); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"nearest"}); }, 0); break;
     case "navdisc": if(dcPage) closeDcPage(); else openDcPage(); break;
     case "dcsrc": dcSrc = t.getAttribute("data-v"); lsSet("rp-dcsrc", dcSrc); renderDc(); break;
     case "dcscope": dcScope = t.getAttribute("data-v"); renderDc(); break;
@@ -8438,7 +8460,9 @@ document.addEventListener("click", function(e){
     case "unplan": closeCatPop(); unplan(id); renderAll(); break;
     case "go": openGo(id || sel); break;
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
-    case "poiadd": poiAdd(t.getAttribute("data-to")); break;
+    case "poiadd": closeJpMore(); poiAdd(t.getAttribute("data-to"), null, null, t.getAttribute("data-list") || ""); break;
+    case "poimore": openPoiMore(t); break;
+    case "poigm": closeJpMore(); if(poiSel) window.open(gmInfoUrl(poiSel), "_blank", "noopener"); break;
     case "acctclose": closeSettings(); break;
     case "bell": closeMenus(); $("toast").hidden = true; if(ntPage) closeNtPage(); else openNtPage(); break;
     case "ntkind": ntKind = t.getAttribute("data-v"); renderNt(); break;
@@ -8597,7 +8621,7 @@ document.addEventListener("click", function(e){
     case "lbusnone": var qn = busQ.trim().toUpperCase(); BUSNAMES.forEach(function(n){ if(!qn || n.toUpperCase().indexOf(qn)>-1) offBus[n] = 1; }); applyLines(); break;
     case "meroute":
       meRoute = !meRoute; renderCard(); scheduleOverlay();
-      if(meRoute && me && P(sel)){ var mr = transit(me, P(sel), todayKey()), fp = [me, P(sel)]; mr.legs.forEach(function(l){ if(l.t==="ride") l.stops.forEach(function(si){ fp.push(stLL(si)); }); }); fitPoints(fp, 1); }
+      var mtg = P(sel) || (sel==="poi" && poiSel); if(meRoute && me && mtg && hasLoc(mtg)){ var mr = transit(me, mtg, todayKey()), fp = [me, mtg]; mr.legs.forEach(function(l){ if(l.t==="ride") l.stops.forEach(function(si){ fp.push(stLL(si)); }); }); fitPoints(fp, 1); }
       break;
     case "export": exportPlan(); break;
     case "legslist": legsList = !legsList; lsSet("rp-legs", legsList ? "1" : "0"); renderSheet(); break;
