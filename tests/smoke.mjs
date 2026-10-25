@@ -36,6 +36,14 @@ async function newPage(){
   const ctx = await browser.newContext({ viewport: {width:390, height:844}, deviceScaleFactor: 2, isMobile: true, hasTouch: true, serviceWorkers: "block", locale: "de-DE", timezoneId: "America/New_York" });
   await ctx.route(/^https?:\/\/(?!127\.0\.0\.1)/, rt => {
     const u = rt.request().url();
+    if(u.includes("gbfs.lyft.com") && u.includes("station_information")) return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({data:{stations:[
+      {station_id:"S1", name:"Ludlow St & E Houston St", lat:40.7226, lon:-73.9881, capacity:30},
+      {station_id:"S2", name:"Washington Sq E", lat:40.7311, lon:-73.9966, capacity:40},
+      {station_id:"S3", name:"W 53 St & 6 Ave", lat:40.7612, lon:-73.9772, capacity:25}]}}) });
+    if(u.includes("gbfs.lyft.com") && u.includes("station_status")) return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({data:{stations:[
+      {station_id:"S1", num_bikes_available:5, num_ebikes_available:2, num_docks_available:20, is_installed:1, is_renting:1, is_returning:1},
+      {station_id:"S2", num_bikes_available:0, num_ebikes_available:0, num_docks_available:7, is_installed:1, is_renting:1, is_returning:1},
+      {station_id:"S3", num_bikes_available:2, num_ebikes_available:0, num_docks_available:0, is_installed:1, is_renting:1, is_returning:1}]}}) });
     if(u.includes("openfreemap.org/styles")) return rt.fulfill({ contentType: "application/json", body: JSON.stringify({version:8, sources:{}, layers:[{id:"bg", type:"background", paint:{"background-color":"#dde"}}]}) });
     return rt.abort();
   });
@@ -196,7 +204,7 @@ await test("Rückblick: Foto nach unten wegziehen schließt und bleibt im Rückb
     [340, 420, 520].forEach(y => tg.dispatchEvent(new TouchEvent("touchmove", {bubbles:true, cancelable:true, touches:[T(202, y)], changedTouches:[T(202, y)]})));
     tg.dispatchEvent(new TouchEvent("touchend", {bubbles:true, cancelable:true, touches:[], changedTouches:[T(202, 520)]}));
   });
-  await page.waitForTimeout(700);
+  await page.waitForFunction(() => { const L = document.getElementById("pvLayer"); return !L || L.hidden; }, null, {timeout:4000}).catch(() => {});
   ok(await page.evaluate(() => { const L = document.getElementById("pvLayer"); return !L || L.hidden; }), "Wegziehen schließt das Foto nicht");
   ok(await visible("#rc"), "Nach dem Wegziehen nicht im Rückblick");
 });
@@ -305,6 +313,31 @@ await test("Titelbild-Auswahl: viele Fotos als sauberes Raster, nur sichtbare ge
   ok(Math.abs(g.w - g.h) < 2 && g.h > 40, "Kacheln nicht quadratisch ("+Math.round(g.w)+"×"+Math.round(g.h)+")");
   ok(g.row2 >= g.h, "Kacheln überlappen sich");
   ok(g.loaded > 0 && g.loaded < 40, "Vorschaubilder werden nicht gestaffelt geladen ("+g.loaded+")");
+});
+
+await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
+  await seed();
+  await click("#layersBtn");
+  await page.locator("#lBike").check(); await page.waitForTimeout(900);
+  await click("#layersBtn");
+  ok(await rp(`layers.bike && lsGet("nyc-l-bike")==="1"`), "Ebene wird nicht eingeschaltet");
+  ok(await rp(`CB.st.length`)===3, "Stationen nicht geladen ("+await rp(`CB.st.length + " " + CB.err`)+")");
+  ok(await rp(`map.getSource("cb")._data.features.length`)===3, "Stationen nicht auf der Karte");
+  await rp(`select("cb:S1")`); await page.waitForTimeout(150);
+  const card = await page.locator("#card").innerText();
+  ok(card.includes("Ludlow") && card.includes("7") && card.includes("freie Plätze"), "Stations-Karte unvollständig: "+card.slice(0, 120));
+  await rp(`select(null); legsList = true; setSheet("full"); renderSheet();`); await page.waitForTimeout(150);
+  ok(await page.locator("[data-act=lmpick]").count() > 0, "Umschalter für das Verkehrsmittel fehlt");
+  const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][0] && L[i][0].id==="p1" && L[i][1] && L[i][1].id==="p2") return i; } return -1; })()`);
+  ok(li > -1, "Etappe Katz Deli → Washington Square nicht gefunden");
+  await page.locator(`[data-act=lmpick][data-leg="${li}"]`).click(); await page.waitForTimeout(150);
+  ok(await page.locator("#jpMenu [data-act=lmode]").count()===3, "Menü bietet nicht Zu Fuß / U-Bahn / Citi Bike");
+  ok((await page.locator("#jpMenu [data-mode=bike]").innerText()).includes("Min."), "Citi Bike ohne Zeitangabe im Menü");
+  await page.locator("#jpMenu [data-act=lmode][data-mode=bike]").click(); await page.waitForTimeout(250);
+  const leg = await page.locator(".leg.lbk").first().innerText();
+  ok(leg.includes("Min.") && leg.includes("Ludlow") && leg.includes("Washington Sq E"), "Rad-Etappe falsch: "+leg.slice(0, 160));
+  ok(await page.evaluate(() => document.querySelector(".leg.lbk .tsum").getBoundingClientRect().width > 80), "Zusammenfassung der Rad-Etappe ist nicht sichtbar");
+  ok(await rp(`legMode(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1])`)==="bike", "Rad-Modus wird nicht gespeichert");
 });
 
 await test("Tagesplan: Privat-Plakette sichtbar", async () => {

@@ -2247,6 +2247,24 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 .phmv-cur .dt{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
 .phmv-cur .dt small{color:var(--muted)}
 .phmv-cur .ck{color:var(--accent);font-size:16px}
+.plan .leg.tleg.lbk{display:block}
+.leg.tleg.lbk::before{width:4px !important;left:26px !important;background:#0A6CDB;opacity:.85}
+.leg.tleg.lbk > .tl{width:100%}
+.leg.tleg .lm.one button{width:28px;height:28px}
+.leg.tleg .lm.one button svg{width:15px;height:15px}
+.leg.tleg.lbk .lm button[aria-pressed="true"]{background:#0A6CDB !important;color:#fff !important}
+.addmenu.jpmenu .ai.lmi svg{width:17px;height:17px}
+.cb-av{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 6px}
+.cb-av span{display:flex;flex-direction:column;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,#0A6CDB 12%,transparent);font-size:12.5px;color:var(--muted)}
+.cb-av b{font:800 24px/1.1 var(--f-body);color:#0A6CDB}
+.cb-av small{font-size:11.5px}
+.cb-av .zero b{color:#8E8E93}
+.cb-note{margin:4px 2px 8px}
+.leg.lbk .tsum b{color:#0A6CDB}
+.cb-leg{margin:6px 0 2px 4px;display:grid;gap:6px}
+.cb-leg p{display:flex;gap:8px;margin:0;font-size:13px;line-height:1.35}
+.cb-leg small{display:block;color:var(--muted);font-size:12px}
+.cb-dot{flex:0 0 10px;height:10px;margin-top:4px;border-radius:50%;border:2.5px solid #0A6CDB;background:#fff;box-sizing:border-box}
 .notrip .nt-ic{font-size:40px;line-height:1;margin-bottom:8px}
 .pubmk{display:inline-flex;vertical-align:-2px;margin-left:5px;color:#0A84FF}
 .pubmk svg{width:14px;height:14px}
@@ -2785,6 +2803,7 @@ body.rc-on .addmenu.jpmenu{z-index:99}
   <div class="lines" id="subLines" hidden></div>
   <label><input type="checkbox" id="lBus"><span class="sw" style="background:var(--bus)"></span>Buslinien</label>
   <label><input type="checkbox" id="lFerry"><span class="sw" style="background:#0b84b5"></span>Fähren</label>
+  <label><input type="checkbox" id="lBike"><span class="sw" style="background:#0A6CDB;border-radius:50%"></span>Citi Bike Stationen</label>
   <div class="lines" id="busLines" hidden></div>
   <label><input type="checkbox" id="lRoute" checked><span class="sw" style="background:var(--c4)"></span>Tagesroute</label>
   <label><input type="checkbox" id="lWish" checked><span class="sw" style="background:var(--wish)"></span>Wünsche</label>
@@ -5244,7 +5263,7 @@ function catOk(c){ return !Object.keys(catFilter).length || !!catFilter[c]; }
 function catAny(){ return Object.keys(catFilter).length > 0; }
 function catKeys(){ return Object.keys(catFilter).filter(function(k){ return k!=="_none"; }); }
 var sugOpen = lsGet("nyc-sug-open")==="1";
-var layers = {sub: lsGet("nyc-l-sub")==="1", bus: lsGet("nyc-l-bus")==="1", ferry: lsGet("nyc-l-ferry")!=="0", wish: lsGet("nyc-l-wish")!=="0", nb: lsGet("nyc-l-nb")==="1", route: lsGet("nyc-l-route")!=="0"};
+var layers = {sub: lsGet("nyc-l-sub")==="1", bus: lsGet("nyc-l-bus")==="1", ferry: lsGet("nyc-l-ferry")!=="0", wish: lsGet("nyc-l-wish")!=="0", nb: lsGet("nyc-l-nb")==="1", route: lsGet("nyc-l-route")!=="0", bike: lsGet("nyc-l-bike")==="1"};
 var nbHi = {}; try { (JSON.parse(lsGet("nyc-nb-hi"))||[]).forEach(function(n){ nbHi[n] = 1; }); } catch(e){}
 var nbSel = {}; Object.keys(nbHi).forEach(function(n){ nbSel[n] = 1; });
 // Viertel-Filter der Karte in die Wunschliste übernehmen (dort danach frei änderbar)
@@ -5336,6 +5355,7 @@ function addLayers(){
   if(isDark()) darkenStyle();
   if(colorOn) colorStyle();
   var firstSym = (map.getStyle().layers.filter(function(l){ return l.type==="symbol"; })[0] || {}).id;
+  cbAddLayer(); if(cbNeeded()) setTimeout(function(){ cbLoad(); }, 800);
   map.addSource("nb", {type:"geojson", data:GEO.nb});
   map.addSource("bus", {type:"geojson", data:GEO.bus});
   map.addSource("sub", {type:"geojson", data:GEO.sub});
@@ -6144,7 +6164,8 @@ function applyLayers(){
     map.setLayoutProperty("nb-line", "visibility", layers.nb ? "visible" : "none");
     ["ferry-line","ferry-term","ferry-lbl"].forEach(function(l){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", layers.ferry && !ro ? "visible" : "none"); });
   }
-  $("lSub").checked = layers.sub; $("lBus").checked = layers.bus; $("lFerry").checked = layers.ferry; $("lWish").checked = layers.wish; $("lNb").checked = layers.nb; $("lRoute").checked = layers.route; $("lVis").checked = visOn();
+  $("lSub").checked = layers.sub; $("lBus").checked = layers.bus; $("lFerry").checked = layers.ferry; $("lWish").checked = layers.wish; $("lNb").checked = layers.nb; $("lRoute").checked = layers.route; $("lVis").checked = visOn(); $("lBike").checked = !!layers.bike;
+  if(mapReady && map.getLayer("cb")) map.setLayoutProperty("cb", "visibility", layers.bike ? "visible" : "none");
   renderLineMenus();
 }
 var ovPending = false;
@@ -6266,7 +6287,20 @@ function drawOverlay(){
       var vv = legVia(pair[0], pair[1]);
       vv.forEach(function(q, vi){ var z = pt({la:q[0], lo:q[1]}); VIAMK.push({li:li, vi:vi, x:z[0], y:z[1]});
         viaSvg += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"7\" fill=\"#fff\" stroke=\""+col+"\" stroke-width=\"3\" opacity=\""+op+"\"/><circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"2.2\" fill=\""+col+"\" opacity=\""+op+"\"/>"; });
-      if(legMode(pair[0], pair[1])==="walk"){
+      if(legMode(pair[0], pair[1])==="bike"){
+        var br = bikeRoute(pair[0], pair[1]);
+        if(br && br.s1 && br.s2 && !br.none){
+          var pth = function(ps, color, w, dash){ var d0 = ps.map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
+            s += "<path d=\""+d0+"\" stroke=\"var(--land)\" stroke-width=\""+(w+3.5)+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\""+(.9*op)+"\"/>";
+            s += "<path d=\""+d0+"\" stroke=\""+color+"\" stroke-width=\""+w+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(dash ? " stroke-dasharray=\""+dash+"\"" : "")+" opacity=\""+op+"\"/>"; };
+          pth(walkPath(pair[0], br.s1.s, []), "var(--ink)", 3, "1 6");
+          pth(br.path, CBCOL, 5);
+          pth(walkPath(br.s2.s, pair[1], []), "var(--ink)", 3, "1 6");
+          [br.s1.s, br.s2.s].forEach(function(st0){ var z = pt(st0); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"6\" fill=\"#fff\" stroke=\""+CBCOL+"\" stroke-width=\"3\" opacity=\""+op+"\"/>"; });
+          return;
+        }
+      }
+      if(legMode(pair[0], pair[1])==="walk" || legMode(pair[0], pair[1])==="bike"){
         var hotelLeg = HT && (pair[0]===HT || pair[1]===HT);
         var dw = walkPath(pair[0], pair[1], vv).map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
         s += "<path d=\""+dw+"\" stroke=\"var(--land)\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\""+(.9*op)+"\"/>";
@@ -6429,12 +6463,13 @@ $("compass").addEventListener("click", function(){ map.easeTo({bearing:0, pitch:
 $("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; if(open){ $("lVis").checked = visOn(); renderWishCats(); renderPoiCats(); } this.setAttribute("aria-expanded", open); placeFloating(); });
 ["lSub","lBus","lFerry","lWish","lNb","lRoute"].forEach(function(id){
   $(id).addEventListener("change", function(){
-    layers = {sub:$("lSub").checked, bus:$("lBus").checked, ferry:$("lFerry").checked, wish:$("lWish").checked, nb:$("lNb").checked, route:$("lRoute").checked}; lsSet("nyc-l-ferry", layers.ferry?"1":"0"); lsSet("nyc-l-nb", layers.nb?"1":"0"); lsSet("nyc-l-route", layers.route?"1":"0"); if(tab==="day") renderSheet();
+    layers = {sub:$("lSub").checked, bus:$("lBus").checked, ferry:$("lFerry").checked, wish:$("lWish").checked, nb:$("lNb").checked, route:$("lRoute").checked, bike:$("lBike").checked}; lsSet("nyc-l-ferry", layers.ferry?"1":"0"); lsSet("nyc-l-nb", layers.nb?"1":"0"); lsSet("nyc-l-route", layers.route?"1":"0"); if(tab==="day") renderSheet();
     lsSet("nyc-l-sub", layers.sub?"1":"0"); lsSet("nyc-l-bus", layers.bus?"1":"0"); lsSet("nyc-l-wish", layers.wish?"1":"0");
     applyLayers(); scheduleOverlay(); renderWishCats();
   });
 });
 
+$("lBike").addEventListener("change", function(){ layers.bike = this.checked; lsSet("nyc-l-bike", layers.bike ? "1" : "0"); applyLayers(); if(layers.bike){ cbLoad(); if(map.getZoom() < 13.5) map.easeTo({zoom:14, duration: reduceMotion ? 0 : 500}); } });
 $("lVis").addEventListener("change", function(){ lsSet(visKey(), this.checked ? "1" : "0"); scheduleOverlay(); });
 
 /* ---------- Eigener Standort ---------- */
@@ -6925,6 +6960,7 @@ function tap(x, y){
   T().hotels.forEach(function(h){ test(h.id, h, 18); });
   if(!best && (layers.wish || tab==="wish") && !isRO()) wishes().forEach(function(w){ test(w.id, w, 16); });
   if(!best) PHMK.forEach(function(pid){ test(pid, P(pid), 14); });
+  if(!best && layers.bike && map.getLayer("cb")){ var cbf = map.queryRenderedFeatures([[x-12, y-12], [x+12, y+12]], {layers:["cb"]})[0]; if(cbf){ select("cb:"+cbf.properties.id); cbLoad(); return; } }
   if(!best){ var pq = poiAt(x, y); if(pq){ poiSel = pq; sel = null; select("poi"); poiSel = pq; renderCard(); scheduleOverlay(); return; } }
   if(!best && (layers.nb || nbActive().length)){ var a = toW(x, y), n = nbAt(a[0], a[1]); if(n) best = "nb:"+n; }
   select(best);
@@ -7419,6 +7455,7 @@ function renderCard(){
   var el = $("card");
   if(!sel){ el.hidden = true; return; }
   if(sel==="poi" && poiSel){ el.innerHTML = poiCard(); el.hidden = false; placeFloating(); return; }
+  if(sel.indexOf("cb:")===0){ el.innerHTML = cbCard(sel.slice(3)); el.hidden = false; placeFloating(); return; }
   var x = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>";
   if(sel.indexOf("nb:")===0){
     var nn = sel.slice(3), i = nbByName(nn), all = Object.keys(T().places).map(P).filter(function(p){ return !p.of && nbOf(p)===nn; });
@@ -7683,6 +7720,101 @@ var EYE = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stro
 var EYEOFF = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><path d=\"M1.5 10s3-6 8.5-6c1.6 0 3 .5 4.2 1.2M18.5 10s-3 6-8.5 6c-1.6 0-3-.5-4.2-1.2M3 17L17 3\"/></svg>";
 var LMWALK = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"13\" cy=\"4\" r=\"2\"/><path d=\"M10 21l2-6 3 3v3M8 12l2-4 4 1 2 3h3M10 8l-1 5\"/></svg>";
 var LMSUB = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"5\" y=\"3\" width=\"14\" height=\"14\" rx=\"3\"/><path d=\"M5 11h14M9 17l-2 4M15 17l2 4\"/></svg>";
+/* ---------- Citi Bike: Stationen und Verfügbarkeit live aus dem offenen GBFS-Feed (Lyft) ----------
+   Standorte werden eine Woche auf dem Gerät gemerkt, die Verfügbarkeit (Räder/Plätze) wird höchstens jede Minute neu geholt,
+   und nur solange die Ebene an ist oder eine Etappe mit dem Rad geplant ist. */
+var LMNAME = {walk:"Zu Fuß", oepnv:"U-Bahn & Bus", bike:"Citi Bike"};
+/* Wahl des Verkehrsmittels je Etappe: ein Knopf mit dem aktuellen Symbol, darunter ein Menü mit Zeiten */
+function openLegModes(li, btn){
+  var lp = dayLegs(cur)[li]; if(!lp) return; var a = lp[0], b = lp[1], m = legMode(a, b);
+  var wd = walkDist(a, b, legVia(a, b)) || dist(a, b)*1.25, tr = transit(a, b, cur), br = bikeRoute(a, b);
+  var mins = function(x){ return Math.max(1, Math.round(x/60))+" Min."; };
+  var rows = [["walk", LMWALK, mins(wd/1.33)+" · "+fmtDist(wd)], ["oepnv", LMSUB, tr.walk ? "Kein Umstieg sinnvoll – zu Fuß schneller" : mins(tr.secs)], ["bike", LMBIKE, br.wait ? (CB.err ? "Daten nicht erreichbar" : "Stationen werden geladen …") : br.none ? "Keine passende Station in der Nähe" : mins(br.secs)+" · inkl. Wege zur Station"]];
+  jpPopover("lm"+li, btn, "<div class=\"vp-h\">Unterwegs auf dieser Etappe</div>"+rows.map(function(r){ return "<button type=\"button\" role=\"menuitemradio\" data-act=\"lmode\" data-leg=\""+li+"\" data-mode=\""+r[0]+"\" aria-checked=\""+(m===r[0])+"\"><span class=\"ai lmi\">"+r[1]+"</span><span class=\"cm-t\"><b>"+LMNAME[r[0]]+"</b><small>"+r[2]+"</small></span>"+(m===r[0] ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join(""), "lmodes");
+}
+var CB_BASE = "https://gbfs.lyft.com/gbfs/1.1/bkn/en/", CBCOL = "#0A6CDB", BIKE = 4.2; // Fahrgeschwindigkeit in m/s (ca. 15 km/h)
+var CB = {st:[], byId:{}, infoAt:0, statAt:0, busy:false, err:""};
+var LMBIKE = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"5.5\" cy=\"17\" r=\"3.5\"/><circle cx=\"18.5\" cy=\"17\" r=\"3.5\"/><path d=\"M5.5 17L9 9h6l3.5 8M9 9l3 8 3-8M8 6h3\"/></svg>";
+function cbJSON(u){ return fetch(u, {cache:"no-store"}).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }); }
+function cbInfoCached(){ try { var c = JSON.parse(lsGet("rp-cb-info")||"null"); if(c && c.s && Date.now() - c.at < 7*864e5) return c; } catch(e){} return null; }
+function cbLoad(force){
+  if(CB.busy || !navigator.onLine || (!force && CB.errAt && Date.now() - CB.errAt < 45000)) return;
+  var now = Date.now(), needInfo = !CB.st.length || now - CB.infoAt > 7*864e5, needStat = force || needInfo || now - CB.statAt > 60000;
+  if(!needInfo && !needStat) return;
+  CB.busy = true;
+  var c0 = needInfo ? cbInfoCached() : null;
+  var pInfo = !needInfo ? Promise.resolve(null) : c0 ? Promise.resolve(c0) :
+    cbJSON(CB_BASE+"station_information.json").then(function(j){
+      var s = ((j && j.data && j.data.stations) || []).filter(function(x){ return x && x.lat && x.lon; }).map(function(x){ return [String(x.station_id), String(x.name||"Station").slice(0, 60), +(+x.lat).toFixed(6), +(+x.lon).toFixed(6), x.capacity||0]; });
+      var c = {at:Date.now(), s:s}; try { lsSet("rp-cb-info", JSON.stringify(c)); } catch(e){} return c; });
+  pInfo.then(function(info){
+    if(info){ CB.st = info.s.map(function(r){ var o = CB.byId[r[0]] || {}; return {id:r[0], n:r[1], la:r[2], lo:r[3], cap:r[4], b:o.b||0, e:o.e||0, d:o.d||0, ok:o.ok!==false, known:!!o.known}; });
+      CB.byId = {}; CB.st.forEach(function(s){ CB.byId[s.id] = s; }); CB.infoAt = info.at; }
+    return cbJSON(CB_BASE+"station_status.json");
+  }).then(function(j){
+    ((j && j.data && j.data.stations) || []).forEach(function(x){ var s = CB.byId[String(x.station_id)]; if(!s) return;
+      s.b = x.num_bikes_available || 0; s.e = x.num_ebikes_available || 0; s.d = x.num_docks_available || 0;
+      s.ok = x.is_installed!==0 && x.is_renting!==0 && x.is_returning!==0 && x.is_installed!==false && x.is_renting!==false; s.known = true; });
+    CB.statAt = Date.now(); CB.err = ""; CB.errAt = 0;
+  }).catch(function(e){ CB.errAt = Date.now(); CB.err = "Citi-Bike-Daten gerade nicht erreichbar"+(e && e.message ? " ("+e.message+")" : ""); })
+  .then(function(){ CB.busy = false; cbApply(); });
+}
+function cbGeo(){ return {type:"FeatureCollection", features:CB.st.map(function(s){ return {type:"Feature", properties:{id:s.id, b:s.known ? s.b : -1, ok:s.ok ? 1 : 0}, geometry:{type:"Point", coordinates:[s.lo, s.la]}}; })}; }
+function cbApply(){
+  if(mapReady && map.getSource("cb")) map.getSource("cb").setData(cbGeo());
+  if(sel && sel.indexOf("cb:")===0) renderCard();
+  renderSheetSoon(); scheduleOverlay();
+}
+function cbAddLayer(){
+  if(map.getSource("cb")) return;
+  map.addSource("cb", {type:"geojson", data:cbGeo()});
+  map.addLayer({id:"cb", type:"circle", source:"cb", minzoom:12, layout:{visibility:layers.bike ? "visible" : "none"}, paint:{
+    "circle-radius":["interpolate",["linear"],["zoom"],12,2.5,14,5,16,8],
+    "circle-color":["case",["==",["get","ok"],0],"#9aa3ad",["<",["get","b"],0],"#7fa7d9",["==",["get","b"],0],"#9aa3ad",["<",["get","b"],3],"#FF9F0A",CBCOL],
+    "circle-stroke-color":"#ffffff","circle-stroke-width":["interpolate",["linear"],["zoom"],12,.8,16,2]}});
+}
+function cbNeeded(){ if(layers.bike) return true; if(!cur || isRO()) return false; return dayLegs(cur).some(function(p){ return legMode(p[0], p[1])==="bike"; }); }
+setInterval(function(){ if(document.visibilityState==="visible" && cbNeeded()) cbLoad(); }, 30000);
+function cbNear(p, need, maxD){
+  var best = null, bd = 1e9;
+  CB.st.forEach(function(s){ if(!s.ok || (s.known && need==="bike" && s.b + s.e < 1) || (s.known && need==="dock" && s.d < 1)) return; var d = dist(p, s); if(d < bd){ bd = d; best = s; } });
+  return best && bd <= maxD ? {s:best, d:bd} : null;
+}
+/* Fahrradweg zwischen zwei Stationen über OSRM (Fahrrad-Profil), gemerkt wie die Fußwege */
+var OSRMB = "https://routing.openstreetmap.de/routed-bike/", BIKEC = {};
+function bikePath(a, b){
+  var k = (+a.la).toFixed(5)+","+(+a.lo).toFixed(5)+">"+(+b.la).toFixed(5)+","+(+b.lo).toFixed(5), c = BIKEC[k];
+  if(c && c.p) return c;
+  if(!c || (c.fail && Date.now() - c.fail > 60000)){
+    BIKEC[k] = {pend:1};
+    fetch(OSRMB+"route/v1/driving/"+(+a.lo).toFixed(6)+","+(+a.la).toFixed(6)+";"+(+b.lo).toFixed(6)+","+(+b.la).toFixed(6)+"?overview=full&geometries=geojson")
+      .then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ var rt = j && j.routes && j.routes[0];
+        if(!rt){ BIKEC[k] = {fail:Date.now()}; return; }
+        BIKEC[k] = {p:rt.geometry.coordinates.map(function(q){ return {la:q[1], lo:q[0]}; }), d:rt.distance}; scheduleOverlay(); renderSheetSoon(); })
+      .catch(function(){ BIKEC[k] = {fail:Date.now()}; });
+  }
+  return null;
+}
+function bikeRoute(a, b){
+  if(!CB.st.length){ cbLoad(); return {wait:true}; }
+  var s1 = cbNear(a, "bike", 900), s2 = cbNear(b, "dock", 900);
+  if(!s1 || !s2 || s1.s===s2.s) return {none:true, s1:s1, s2:s2};
+  var bp = bikePath(s1.s, s2.s), rideD = bp ? bp.d : dist(s1.s, s2.s)*1.3;
+  return {s1:s1, s2:s2, rideD:rideD, exact:!!bp, path:bp ? bp.p : [s1.s, s2.s], secs:s1.d/WALK + 90 + rideD/BIKE + 60 + s2.d/WALK};
+}
+function cbAvail(s){ return s.known ? (s.b + s.e)+(s.b + s.e===1 ? " Rad" : " Räder")+(s.e ? " ("+s.e+" E-Bike"+(s.e===1?"":"s")+")" : "")+" · "+s.d+(s.d===1 ? " freier Platz" : " freie Plätze") : "Verfügbarkeit wird geladen …"; }
+function cbCard(id){
+  var s = CB.byId[id]; if(!s) return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button><h3>Citi Bike</h3><p class=\"note\">Station nicht gefunden.</p>";
+  var age = CB.statAt ? Math.max(0, Math.round((Date.now() - CB.statAt)/60000)) : null;
+  return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>"+
+    "<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+CBCOL+"\">"+LMBIKE+"</span><div class=\"cht\"><h3>"+esc(s.n)+"</h3><p>Citi Bike Station"+(s.cap ? " · "+s.cap+" Plätze" : "")+"</p></div></div>"+
+    "<div class=\"cb-av\"><span class=\"cb-b"+(s.known && s.b + s.e < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.b + s.e : "–")+"</b>Räder"+(s.known && s.e ? "<small>davon "+s.e+" E-Bike"+(s.e===1?"":"s")+"</small>" : "")+"</span><span class=\"cb-d"+(s.known && s.d < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.d : "–")+"</b>freie Plätze</span></div>"+
+    (!s.ok ? "<p class=\"note\">Diese Station ist gerade außer Betrieb.</p>" : "")+
+    "<p class=\"note cb-note\">"+(CB.err ? esc(CB.err) : age===null ? "Wird geladen …" : "Stand: "+(age < 1 ? "gerade eben" : "vor "+age+" Min."))+" · Daten: Citi Bike (Lyft)</p>"+
+    "<div class=\"jp-tiles ctiles\"><a class=\"jp-tile\" target=\"_blank\" rel=\"noopener\" href=\"https://www.google.com/maps/dir/?api=1&destination="+s.la+","+s.lo+"&travelmode=walking\">"+LMWALK+"<span>Hinlaufen</span></a>"+
+    "<a class=\"jp-tile\" target=\"_blank\" rel=\"noopener\" href=\"https://citibikenyc.com/how-it-works\">"+LMBIKE+"<span>So geht’s</span></a>"+
+    "<button type=\"button\" class=\"jp-tile\" data-act=\"cbrefresh\">"+"<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2\"/></svg><span>Aktualisieren</span></button></div>";
+}
 var CHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 6l4 4 4-4\"/></svg>";
 function renderTop(){
   var t = T();
@@ -7755,7 +7887,13 @@ function renderDay(){
     var pre = a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#007AFF\">●</span><span><b>Mein Standort</b> <span class=\"sub\">Start zum nächsten Ziel</span></span></li>"
             : (a.id && T().done[a.id]) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (zuletzt erledigt)</span></li>" : "";
     var lh = legHidden(a, b), ev = "<button type=\"button\" class=\"leye\" data-act=\"legvis\" data-leg=\""+i+"\" aria-pressed=\""+!lh+"\" title=\""+(lh?"Etappe auf der Karte einblenden":"Etappe auf der Karte ausblenden")+"\" aria-label=\"Etappe auf der Karte zeigen\">"+(lh?EYEOFF:EYE)+"</button>";
-    var sw = "<span class=\"lm\" role=\"group\" aria-label=\"Unterwegs auf dieser Etappe\"><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"walk\" aria-pressed=\""+(m==="walk")+"\" title=\"Zu Fuß\" aria-label=\"Zu Fuß\">"+LMWALK+"</button><button type=\"button\" data-act=\"lmode\" data-leg=\""+i+"\" data-mode=\"oepnv\" aria-pressed=\""+(m==="oepnv")+"\" title=\"U-Bahn\" aria-label=\"U-Bahn\">"+LMSUB+"</button></span>";
+    var sw = "<span class=\"lm one\"><button type=\"button\" data-act=\"lmpick\" data-leg=\""+i+"\" aria-haspopup=\"menu\" aria-pressed=\"true\" title=\"Unterwegs: "+LMNAME[m]+" – tippen zum Wechseln\" aria-label=\"Unterwegs: "+LMNAME[m]+", ändern\">"+(m==="bike" ? LMBIKE : m==="walk" ? LMWALK : LMSUB)+"</button></span>";
+    if(m==="bike"){ var br = bikeRoute(a, b), bsum;
+      if(br.wait) bsum = "<b>Citi Bike</b> · "+(CB.err ? esc(CB.err) : "Stationen werden geladen …");
+      else if(br.none) bsum = "<b>Kein Citi Bike</b> · "+(!br.s1 ? "keine Station mit freien Rädern in der Nähe" : !br.s2 ? "keine Station mit freien Plätzen am Ziel" : "Start und Ziel an derselben Station")+" – besser zu Fuß";
+      else bsum = "<b>"+Math.max(1, Math.round(br.secs/60))+" Min.</b> · "+fmtDist(br.rideD)+(br.exact ? "" : " (ca.)")+" mit dem Rad";
+      return pre+"<li class=\"leg tleg lbk"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+bsum+"</button>"+ev+"</div>"+
+        (br.s1 && br.s2 && !br.none ? "<div class=\"cb-leg\"><p><i class=\"cb-dot\"></i><span>Rad holen: <b>"+esc(br.s1.s.n)+"</b> · "+fmtDist(br.s1.d)+" zu Fuß<small>"+cbAvail(br.s1.s)+"</small></span></p><p><i class=\"cb-dot\"></i><span>Rad abgeben: <b>"+esc(br.s2.s.n)+"</b> · dann "+fmtDist(br.s2.d)+" zu Fuß<small>"+cbAvail(br.s2.s)+"</small></span></p></div>" : "")+"</li>"; }
     if(m==="walk"){ var lv = legVia(a, b); walkPath(a, b, lv); var wd = walkDist(a, b, lv) || dist(a, b)*1.25;
       return pre+"<li class=\"leg tleg lw"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><b>"+Math.max(1,Math.round(wd/1.33/60))+" Min.</b> · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+sugBtn(i)+viaBtn(i, lv)+ev+"</div></li>"; }
     var alts = legAlts(a, b, cur), r = legRoute(a, b, cur), open = !!legOpen[cur+"|"+i], ai = alts.indexOf(r);
@@ -7805,7 +7943,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=lmpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -9383,6 +9521,7 @@ document.addEventListener("click", function(e){
     case "lsday": closeLsPage(); var lsd = t.getAttribute("data-day"); if(dayByKey(lsd)){ cur = lsd; tab = "day"; renderAll(); fitDay(); } break;
     case "lsph": var lpid = t.getAttribute("data-pid"); if(P(lpid)){ openJPop(lpid, dayOf(lpid) || "", t.getAttribute("data-ph")); if(jp) jp.ret = "list"; } break;
     case "navprof": if(profOpen) closeProfile(); else openProfile(); break;
+    case "cbrefresh": cbLoad(true); break;
     case "pfmore": openPfMore(t.getAttribute("data-trip"), t); break;
     case "pfcover": var cvt = t.getAttribute("data-trip"), cvv = t.getAttribute("data-v"); closeJpMore(); if(cvv==="auto") coverSave(cvt, null); else openCoverPick(cvt, cvv); break;
     case "cvmode": if(CVP){ CVP.mode = t.getAttribute("data-v"); renderCoverPick(); } break;
@@ -9608,7 +9747,8 @@ document.addEventListener("click", function(e){
       dayLegs(cur).forEach(function(pr){ var k3 = legKey(pr[0], pr[1]); if(showAll) delete legHid[k3]; else legHid[k3] = 1; });
       layers.route = true; lsSet("nyc-l-route", "1"); saveLegHid(); applyLayers(); renderSheet(); scheduleOverlay(); break;
     case "legalt": var la2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(la2){ legSet("legAlt", la2[1], parseInt(t.getAttribute("data-alt"),10)); renderSheet(); scheduleOverlay(); } break;
-    case "lmode": var lp = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(lp){ setLegMode(lp[0], lp[1], t.getAttribute("data-mode")); renderSheet(); scheduleOverlay(); } break;
+    case "lmpick": openLegModes(parseInt(t.getAttribute("data-leg"), 10), t); break;
+    case "lmode": closeJpMore(); var lp = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(lp){ setLegMode(lp[0], lp[1], t.getAttribute("data-mode")); renderSheet(); scheduleOverlay(); } break;
     case "legvis": var lp = dayLegs(cur)[+t.getAttribute("data-leg")]; if(lp){ var hk = legKey(lp[0], lp[1]); if(!layers.route){ dayLegs(cur).forEach(function(pr){ legHid[legKey(pr[0], pr[1])] = 1; }); layers.route = true; lsSet("nyc-l-route","1"); applyLayers(); }
       if(legHid[hk]) delete legHid[hk]; else legHid[hk] = 1; saveLegHid(); } renderSheet(); scheduleOverlay(); break;
     case "legopen": var lk = cur+"|"+t.getAttribute("data-leg"); legOpen[lk] = !legOpen[lk]; renderSheet(); break;
