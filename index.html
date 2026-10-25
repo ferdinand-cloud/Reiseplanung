@@ -2141,6 +2141,8 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 #pvLayer .pvi.pv-vis.vlv-pub{background:rgba(10,132,255,.9);color:#fff}
 .privmk{display:inline-flex;align-items:center;gap:3px;margin-left:7px;padding:2px 7px 2px 5px;border-radius:999px;background:#E5A100;color:#1a1300;font:700 11px/1.2 var(--f-body);vertical-align:2px;text-decoration:none;letter-spacing:.01em;white-space:nowrap}
 .privmk .lk{margin:0;width:12px;height:12px;color:#1a1300}
+.btn.deltrip{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:#FF3B30 !important;color:#fff !important;border-color:#FF3B30 !important}
+.btn.deltrip svg{width:18px;height:18px;flex:0 0 18px}
 .notrip .nt-ic{font-size:40px;line-height:1;margin-bottom:8px}
 .pubmk{display:inline-flex;vertical-align:-2px;margin-left:5px;color:#0A84FF}
 .pubmk svg{width:14px;height:14px}
@@ -8035,7 +8037,7 @@ function renderTrip(){
   h2 += items("orte", d.mode==="new" ? "Reiseziel" : "Orte", "Ort hinzufügen", "Stadt suchen, z. B. Boston …", "◎");
   if(d.err) h2 += "<p class=\"err\" role=\"alert\">"+esc(d.err)+"</p>";
   h2 += "<div class=\"tf-foot\"><button class=\"btn g\" type=\"button\" data-act=\"tcancel\">Abbrechen</button><button class=\"btn\" type=\"submit\">"+(d.mode==="new"?"Reise anlegen":"Speichern")+"</button></div></form>"+
-    (d.mode==="edit" && canDelTrip(S.cur) ? "<div class=\"row tf-del\"><button type=\"button\" class=\"btn g s warn\" data-act=\"deltrip\">Reise löschen</button></div>" : "");
+    (d.mode==="edit" && canDelTrip(S.cur) ? "<div class=\"row tf-del\"><button type=\"button\" class=\"btn deltrip\" data-act=\"deltrip\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6M8.6 9v4.5M11.4 9v4.5\"/></svg>Reise löschen</button></div>" : "");
   if(d.mode==="edit") h2 += shareBlock();
   return h2;
 }
