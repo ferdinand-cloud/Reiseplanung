@@ -1093,6 +1093,9 @@ li.st{border-radius:var(--r-m)}
 .tline .tic{width:24px;height:24px;flex:0 0 24px;border-radius:8px;display:grid;place-items:center;background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink)}
 .tline .tic svg{width:16px;height:16px}
 .tline .bul{margin:0}
+.tline:has(> .tlx){flex-wrap:nowrap;align-items:flex-start}
+.tline > .tlx{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;min-height:24px}
+.tline > .tlx .tdist{white-space:nowrap}
 .tbadge{position:absolute;top:6px;right:8px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:#fff;font:700 11px/18px var(--f-body);font-style:normal}
 li.st > .stc::before{display:none}
 .ico{background:color-mix(in srgb,var(--cc,var(--ink)) 14%,transparent);color:var(--cc,var(--ink))}
@@ -6182,7 +6185,7 @@ function stationLineFull(p){
   var x = nearStation(p); if(!x) return busLine(p);
   var sis = []; NET.s.forEach(function(s2, i){ if(Math.hypot(s2[1]-x.st[1], s2[2]-x.st[2]) < 150) sis.push(i); });
   var si = sis.join(","), open = !!depOpen[si], bd = sis.length ? 0 : 1e9;
-  return "<p class=\"tline\"><span class=\"tic\" title=\"Nächste U-Bahn\" aria-label=\"Nächste U-Bahn\">"+TICSUB+"</span><b>"+esc(x.st[0])+"</b> "+bullets(x.st[3])+" · "+fmtDist(x.d)+" <button type=\"button\" class=\"tdet\" data-act=\"depopen\" data-st=\""+si+"\" aria-expanded=\""+open+"\">"+(open?"Abfahrten ausblenden":"Abfahrten")+"</button></p>"+(open && sis.length ? stationDeps(sis) : "")+busLine(p);
+  return "<p class=\"tline\"><span class=\"tic\" title=\"Nächste U-Bahn\" aria-label=\"Nächste U-Bahn\">"+TICSUB+"</span><span class=\"tlx\"><b>"+esc(x.st[0])+"</b> "+bullets(x.st[3])+" <span class=\"tdist\">· "+fmtDist(x.d)+"</span> <button type=\"button\" class=\"tdet\" data-act=\"depopen\" data-st=\""+si+"\" aria-expanded=\""+open+"\">"+(open?"Abfahrten ausblenden":"Abfahrten")+"</button></span></p>"+(open && sis.length ? stationDeps(sis) : "")+busLine(p);
 }
 function busLine(p){
   if(!busReady || !hasLoc(p)) return "";
@@ -6194,7 +6197,7 @@ function busLine(p){
   var routes = {}; sis.forEach(function(si){ (NETOUT || (netInit(), NETOUT))[si].forEach(function(ei){ if(ei >= 0) routes[NET.e[ei][2]] = 1; }); });
   var rl = Object.keys(routes).map(Number).sort(function(a, b){ return NET.r[a][0] < NET.r[b][0] ? -1 : 1; });
   if(!rl.length) return "";
-  return "<p class=\"tline\"><span class=\"tic\" title=\"Busse in der Nähe\" aria-label=\"Busse in der Nähe\">"+TICBUS+"</span>"+rl.slice(0, 8).map(lineBul).join(" ")+(rl.length>8?" …":"")+" · "+fmtDist(near[0][1])+" <button type=\"button\" class=\"tdet\" data-act=\"depopen\" data-st=\""+key+"\" aria-expanded=\""+open+"\">"+(open?"Abfahrten ausblenden":"Abfahrten")+"</button></p>"+(open ? stationDeps(sis) : "");
+  return "<p class=\"tline\"><span class=\"tic\" title=\"Busse in der Nähe\" aria-label=\"Busse in der Nähe\">"+TICBUS+"</span><span class=\"tlx\">"+rl.slice(0, 8).map(lineBul).join(" ")+(rl.length>8?" …":"")+" <span class=\"tdist\">· "+fmtDist(near[0][1])+"</span> <button type=\"button\" class=\"tdet\" data-act=\"depopen\" data-st=\""+key+"\" aria-expanded=\""+open+"\">"+(open?"Abfahrten ausblenden":"Abfahrten")+"</button></span></p>"+(open ? stationDeps(sis) : "");
 }
 var depOpen = {};
 function routeUrl(p){
