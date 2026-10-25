@@ -8557,8 +8557,18 @@ document.addEventListener("change", function(e){
     if(!moveToDay(id, to)) t.value = cur;
     renderAll();
   } else if(act==="rename"){ var nn = (t.value||"").trim().slice(0,80); if(nn && P(id) && nn!==P(id).n){ P(id).n = nn; save(); renderSheet(); renderCard(); toast("Umbenannt in „"+nn+"“", false); } else if(!nn && P(id)) t.value = P(id).n;
-  } else if(act==="time"){ if(t.value) T().times[id] = t.value; else delete T().times[id]; save(); renderSheet(); if(jp && jp.pid===id && !$("jPop").hidden) renderJPop(); }
+  } else if(act==="time"){
+    // iOS meldet beim Drehen des Uhrzeit-Rads jede Änderung; neu zeichnen würde das Rad schließen – erst beim Verlassen übernehmen
+    if(document.activeElement===t){ if(!t._tb){ t._tb = 1; t.addEventListener("blur", function(){ t._tb = 0; timeSave(t, id); }, {once:true}); } return; }
+    timeSave(t, id);
+  }
 });
+function timeSave(t, id){
+  if(!P(id)) return; var v = t.value || "", old = T().times[id] || "";
+  if(v===old) return;
+  if(v) T().times[id] = v; else delete T().times[id];
+  save(); renderSheet(); if(jp && jp.pid===id && !$("jPop").hidden) renderJPop();
+}
 document.addEventListener("input", function(e){
   if(e.target && e.target.getAttribute && e.target.getAttribute("data-act")==="time" && e.target.closest("#jPop")){ var tsp = e.target.parentNode.querySelector("span"); if(tsp) tsp.textContent = e.target.value || "Uhrzeit"; e.target.parentNode.classList.toggle("set", !!e.target.value); }
   var t = e.target;
