@@ -2693,6 +2693,10 @@ function setItemVis(kind, key, pid, v){
 function pubPrompt(ro, cur0, apply){
   var t = T(), phs = photosAll(ro).filter(function(x){ return !(t.privPh||{})[x]; }), note = noteOf(ro) && !(t.privN||{})[ro];
   var sel0 = {}; phs.forEach(function(x){ if((t.pubItem||{})["ph:"+x]) sel0[x] = 1; }); var noteOn = !!(t.pubItem||{})["n:"+ro];
+  // eigene Kommentare zum Ort (alle Besuche); Kommentare von Mitreisenden bleiben in der Reise
+  var me0 = acct.user && acct.user.uid, vids = [ro].concat(Object.keys(t.places).filter(function(k){ return t.places[k] && t.places[k].of===ro; }));
+  var cms = [].concat.apply([], vids.map(function(k){ return CMTS[k] || []; })).filter(function(c){ return c.by===me0 && (c.text||"").trim() && cmCol(c.pid)==="comments"; });
+  var cmSel = {}, prevCm = ((t.pubCm||{})[ro] || []); prevCm.forEach(function(c){ cmSel[c.id] = 1; });
   var el = $("pubPop"); if(!el){ el = document.createElement("div"); el.id = "pubPop"; el.className = "cfpop"; document.body.appendChild(el); }
   var draw = function(){
     var n = Object.keys(sel0).length, all = phs.length && n===phs.length;
@@ -2702,6 +2706,9 @@ function pubPrompt(ro, cur0, apply){
         phs.map(function(x){ var on = !!sel0[x]; return "<button type=\"button\" data-pubph=\""+x+"\" aria-pressed=\""+on+"\" class=\""+(on?"on":"")+"\"><img data-ph=\""+x+"\" alt=\"\"><i>"+(on ? "✓" : "")+"</i></button>"; }).join("")+"</div>"+
         "<small class=\"pub-n\">"+(n ? n+" von "+phs.length+" Fotos ausgewählt" : "Keine Fotos ausgewählt – Freunde sehen nur Ort und Bewertung")+(photosAll(ro).length > phs.length ? " · private Fotos sind ausgeblendet" : "")+"</small>" : "")+
       (note ? "<button type=\"button\" class=\"pub-note"+(noteOn?" on":"")+"\" data-pub=\"note\" aria-pressed=\""+noteOn+"\"><i>"+(noteOn ? "✓" : "")+"</i><span><b>Notiz auch zeigen</b><small>"+esc(noteOf(ro).slice(0, 80))+(noteOf(ro).length > 80 ? " …" : "")+"</small></span></button>" : "")+
+      (cms.length ? "<div class=\"pub-h\"><span>Welche Kommentare sollen Freunde sehen?</span>"+(cms.length > 1 ? "<button type=\"button\" data-pub=\"cmall\">"+(cms.every(function(c){ return cmSel[c.id]; }) ? "Keine" : "Alle")+"</button>" : "")+"</div>"+
+        cms.map(function(c){ var on = !!cmSel[c.id]; return "<button type=\"button\" class=\"pub-note pub-cm"+(on?" on":"")+"\" data-pubcm=\""+esc(c.id)+"\" aria-pressed=\""+on+"\"><i>"+(on ? "✓" : "")+"</i><span><b>"+esc(c.text.slice(0, 120))+(c.text.length > 120 ? " …" : "")+"</b><small>"+(c.at ? new Date(c.at).toLocaleDateString("de-DE", {day:"numeric", month:"short"}) : "")+"</small></span></button>"; }).join("")+
+        "<small class=\"pub-n\">Nur deine eigenen Kommentare; Kommentare von Mitreisenden bleiben in der Reise.</small>" : "")+
       "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\">Abbrechen</button><button type=\"button\" class=\"cf-ok pub-ok\">Veröffentlichen</button></div></div>";
     fillPhotos(el);
   };
@@ -2711,11 +2718,16 @@ function pubPrompt(ro, cur0, apply){
     if(ph){ var k = ph.getAttribute("data-pubph"); if(sel0[k]) delete sel0[k]; else sel0[k] = 1; draw(); return; }
     if(pb && pb.getAttribute("data-pub")==="all"){ if(Object.keys(sel0).length===phs.length) sel0 = {}; else phs.forEach(function(x){ sel0[x] = 1; }); draw(); return; }
     if(pb && pb.getAttribute("data-pub")==="note"){ noteOn = !noteOn; draw(); return; }
+    var pc = ev.target.closest("[data-pubcm]"); if(pc){ var ck = pc.getAttribute("data-pubcm"); if(cmSel[ck]) delete cmSel[ck]; else cmSel[ck] = 1; draw(); return; }
+    if(pb && pb.getAttribute("data-pub")==="cmall"){ var allOn = cms.every(function(c){ return cmSel[c.id]; }); cmSel = {}; if(!allOn) cms.forEach(function(c){ cmSel[c.id] = 1; }); draw(); return; }
     if(ev.target===el || ev.target.closest(".cf-no")){ close(); return; }
     if(ev.target.closest(".pub-ok")){
       t.pubItem = t.pubItem || {};
       phs.forEach(function(x){ if(sel0[x]) t.pubItem["ph:"+x] = 1; else delete t.pubItem["ph:"+x]; });
       if(note){ if(noteOn) t.pubItem["n:"+ro] = 1; else delete t.pubItem["n:"+ro]; }
+      // geteilte Kommentare als Kopie am Ort merken (Freunde haben keinen Zugriff auf die Kommentare der Reise)
+      var keepCm = cms.filter(function(c){ return cmSel[c.id]; }).map(function(c){ return {id:c.id, text:String(c.text).slice(0, 1000), at:c.at||0}; });
+      t.pubCm = t.pubCm || {}; if(keepCm.length) t.pubCm[ro] = keepCm; else delete t.pubCm[ro];
       close(); apply();
     }
   };
@@ -3482,12 +3494,14 @@ function recCollect(){
       var note = (!(t.privN||{})[pid] && (t.pubItem||{})["n:"+pid]) ? ((t.notes||{})[pid] || "") : "";
       var phs = [].concat.apply([], vs.map(function(k){ return (t.photos||{})[k] || []; })).filter(function(x){ return !(t.privPh||{})[x] && (t.pubItem||{})["ph:"+x]; }).slice(-12);
       var key = tid.replace(/[^A-Za-z0-9_-]/g, "")+"_"+pid;
-      out[key] = {by:me, n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", rating:r, hl:isHl, note:note.slice(0, 3000), trip:t.name||"", ph:phs, at:(t.updatedAt||Date.now())};
+      var cm = ((t.pubCm||{})[pid] || []).map(function(c){ return {text:c.text, at:c.at||0}; }).slice(0, 20);
+      out[key] = {by:me, n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", rating:r, hl:isHl, note:note.slice(0, 3000), cm:cm, trip:t.name||"", ph:phs, at:(t.updatedAt||Date.now())};
     });
   });
   return out;
 }
-function recSig(r){ return JSON.stringify([r.n, r.c, r.la, r.lo, r.rating, r.hl, r.note, r.trip, r.ph]); }
+function recCmHTML(r, cls){ return (r.cm||[]).map(function(c){ return "<p"+(cls ? " class=\""+cls+"\"" : "")+">💬 "+esc(c.text)+"</p>"; }).join(""); }
+function recSig(r){ return JSON.stringify([r.n, r.c, r.la, r.lo, r.rating, r.hl, r.note, r.cm, r.trip, r.ph]); }
 function recSync(){
   if(!recShare || recBusy || !fbDb || !acct.user || !navigator.onLine) return;
   recBusy = true;
@@ -3498,7 +3512,7 @@ function recSync(){
     jobs.push(Promise.all(r.ph.map(recThumb)).then(function(th){
       // Dokumentgröße begrenzen: so viele Fotos wie hineinpassen (neueste zuerst behalten)
       th = th.filter(Boolean); var tot = th.reduce(function(a, x){ return a + x.length; }, 0); while(th.length > 1 && tot > 850000){ tot -= th.shift().length; }
-      var doc = {by:me, n:r.n, c:r.c, la:r.la, lo:r.lo, addr:r.addr, rating:r.rating, hl:r.hl, note:r.note, trip:r.trip, photos:th.filter(Boolean), at:Date.now(), name:(PROF && PROF.name)||""};
+      var doc = {by:me, n:r.n, c:r.c, la:r.la, lo:r.lo, addr:r.addr, rating:r.rating, hl:r.hl, note:r.note, cm:r.cm||[], trip:r.trip, photos:th.filter(Boolean), at:Date.now(), name:(PROF && PROF.name)||""};
       return recCol(me).doc(k).set(doc);
     }).catch(function(){ delete next[k]; }));
   });
@@ -3547,7 +3561,7 @@ function renderDc(){
       (r.photos && r.photos.length ? "<div class=\"dc-ph\">"+r.photos.map(function(u){ return "<img src=\""+u+"\" alt=\"\" loading=\"lazy\">"; }).join("")+"</div>" : "")+
       "<div class=\"dc-body\"><div class=\"dc-name\"><span class=\"cic\" style=\"--cc:"+catCol(r.c)+"\">"+icon(r.c)+"</span><b>"+esc(r.n)+"</b></div>"+
         "<small class=\"dc-sub\">"+esc([CATNAME[r.c], r.addr, dd!=null && dcScope==="all" ? fmtDist(dd)+" vom Reiseziel" : ""].filter(Boolean).join(" · "))+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"</small>"+
-        (r.note ? "<p class=\"dc-note\">„"+esc(r.note)+"“</p>" : "")+
+        (r.note ? "<p class=\"dc-note\">„"+esc(r.note)+"“</p>" : "")+recCmHTML(r, "dc-note")+
         "<div class=\"dc-acts\">"+(inT ? "<span class=\"dc-in\">✓ In deiner Reise</span>" : (isRO() ? "" : "<button type=\"button\" class=\"btn g s\" data-act=\"dcwish\" data-k=\""+esc(r.key)+"\">＋ Wunschliste</button><button type=\"button\" class=\"btn s\" data-act=\"dcplan\" data-k=\""+esc(r.key)+"\">Einplanen …</button>"))+
           "<button type=\"button\" class=\"dc-map\" data-act=\"dcmap\" data-k=\""+esc(r.key)+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button></div></div></article>";
   });
@@ -4065,7 +4079,7 @@ function rvSection(p){
     else if(!fr.length) h += "<p class=\"note\">"+(DC.busy ? "Lädt …" : FR.friends.length ? "Keiner deiner Freunde hat diesen Ort bisher bewertet." : "Füge Freunde hinzu, um ihre Bewertungen zu sehen.")+"</p>";
     fr.forEach(function(r){ var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
       h += "<div class=\"rvrow\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><div class=\"rvt\"><b>@"+esc(r.fname||"Freund")+"</b>"+(RR ? " <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+(r.hl ? " <span class=\"rvhl\">★ Highlight</span>" : "")+
-        "<small>"+esc([r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+(r.note ? "<p>„"+esc(r.note)+"“</p>" : "")+
+        "<small>"+esc([r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+(r.note ? "<p>„"+esc(r.note)+"“</p>" : "")+recCmHTML(r, "")+
         (r.photos && r.photos.length ? "<div class=\"rvph\">"+r.photos.map(function(u){ return "<img src=\""+u+"\" alt=\"\" loading=\"lazy\">"; }).join("")+"</div>" : "")+"</div></div>"; });
   } else {
     var gb = gBlock(p);
