@@ -1027,28 +1027,69 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 @media (hover:none) and (pointer:coarse){ .cg-zoom{display:none} }
 /* KI-Assistent: Chatfenster (Vorschau, noch ohne KI-Anbindung) */
 #aiBtn .ai-lbl{font:800 14px/1 var(--f-display);letter-spacing:.02em;background:linear-gradient(135deg,#007AFF,#AF52DE);-webkit-background-clip:text;background-clip:text;color:transparent}
-.ai-chat{display:flex;flex-direction:column;height:min(78vh,calc(var(--vvh,100vh) - 24px));overflow:hidden !important;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px)) !important}
-.ai-chat .pop-head{flex:0 0 auto;gap:10px}
-.ai-chat .pop-head h4{display:flex;align-items:center;gap:9px}
-.ai-av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#007AFF,#AF52DE);color:#fff;font:800 12px/1 var(--f-display)}
-.ai-badge{font:700 10.5px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--chip);border-radius:999px;padding:5px 8px}
-.ai-log{flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:8px 2px 10px;-webkit-overflow-scrolling:touch}
-.ai-msg{max-width:86%;padding:9px 12px;border-radius:16px;font-size:15px;line-height:1.38;word-wrap:break-word}
-.ai-msg.bot{align-self:flex-start;background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink);border-bottom-left-radius:5px}
-.ai-msg.me{align-self:flex-end;background:var(--accent,#007AFF);color:#fff;border-bottom-right-radius:5px}
-.ai-chat .ai-msg p{margin:0;color:inherit;opacity:1}
-.ai-chat .ai-msg p + p,.ai-chat .ai-msg p + ul,.ai-chat .ai-msg ul + p{margin-top:7px}
-.ai-msg ul{margin:0;padding-left:18px;display:grid;gap:3px}
-.ai-chat .ai-msg .ai-na{color:var(--muted);font-size:13.5px}
-.ai-sugg{flex:0 0 auto;display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+.pop-card.ai-chat{--ai-g:linear-gradient(135deg,#2F7BFF 0%,#7B5CFF 55%,#C04FE0 100%);position:relative;display:flex;flex-direction:column;height:min(80vh,calc(var(--vvh,100vh) - 24px));overflow:hidden;padding:0;background:radial-gradient(90% 45% at 0% 0%,rgba(47,123,255,.13),transparent 70%),radial-gradient(90% 45% at 100% 0%,rgba(192,79,224,.11),transparent 70%),var(--glass-hi,var(--sheet))}
+.pop-card.ai-chat::before{display:none}
+.ai-chat::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--ai-g);opacity:.85}
+.ai-top{flex:0 0 auto;display:flex;align-items:center;gap:11px;padding:16px 16px 12px}
+.ai-av{flex:0 0 auto;width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--ai-g);color:#fff;box-shadow:0 4px 14px rgba(123,92,255,.35)}
+.ai-av svg{width:19px;height:19px}
+.ai-av.sm{width:24px;height:24px;border-radius:8px;box-shadow:none}
+.ai-av.sm svg{width:13px;height:13px}
+.ai-tt{flex:1 1 auto;min-width:0}
+.ai-tt b{display:block;font:700 17px/1.15 var(--f-display);color:var(--ink)}
+.ai-tt small{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin-top:2px}
+.ai-tt small::before{content:"";width:7px;height:7px;border-radius:50%;background:#FF9F0A;box-shadow:0 0 0 3px color-mix(in srgb,#FF9F0A 22%,transparent)}
+.ai-log{flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding:6px 16px 14px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14px);mask-image:linear-gradient(to bottom,transparent 0,#000 14px)}
+.ai-row{display:flex;gap:9px;align-items:flex-start;animation:aiIn .28s cubic-bezier(.2,.8,.2,1)}
+.ai-row.me{justify-content:flex-end}
+@keyframes aiIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.ai-bot{flex:1 1 auto;min-width:0;color:var(--ink);font-size:15.5px;line-height:1.45;padding-top:2px}
+.ai-bot p{margin:0}
+.ai-bot p + p,.ai-bot p + ul,.ai-bot ul + p{margin-top:9px}
+.ai-bot ul{margin:0;padding:0;list-style:none;display:grid;gap:7px}
+.ai-bot li{position:relative;padding-left:16px}
+.ai-bot li::before{content:"";position:absolute;left:2px;top:.62em;width:6px;height:6px;border-radius:2px;background:var(--ai-g)}
+.ai-bot .ai-na{font-size:13.5px;color:var(--muted)}
+.ai-bot.streaming > :last-child::after,.ai-bot.streaming:empty::after{content:"";display:inline-block;width:8px;height:8px;margin-left:4px;border-radius:50%;background:var(--ai-g);vertical-align:1px;animation:aiPulse .8s ease-in-out infinite}
+@keyframes aiPulse{50%{opacity:.35;transform:scale(.75)}}
+.ai-me{max-width:82%;padding:9px 14px;border-radius:20px 20px 6px 20px;background:var(--ai-g);color:#fff;font-size:15.5px;line-height:1.4;word-wrap:break-word;box-shadow:0 4px 14px rgba(123,92,255,.25)}
+.ai-typing{display:inline-flex;gap:4px;padding:9px 2px}
+.ai-typing i{width:7px;height:7px;border-radius:50%;background:color-mix(in srgb,var(--ink) 40%,transparent);animation:aiDot 1s ease-in-out infinite}
+.ai-typing i:nth-child(2){animation-delay:.15s}
+.ai-typing i:nth-child(3){animation-delay:.3s}
+@keyframes aiDot{0%,60%,100%{transform:none;opacity:.45}30%{transform:translateY(-4px);opacity:1}}
+.ai-foot{flex:0 0 auto;padding:4px 12px calc(12px + env(safe-area-inset-bottom,0px))}
+.ai-sugg{display:flex;gap:7px;overflow-x:auto;padding:2px 4px 10px;scrollbar-width:none}
 .ai-sugg::-webkit-scrollbar{display:none}
-.ai-sugg button{flex:0 0 auto;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:7px 11px;font:inherit;font-size:13px;font-weight:600;white-space:nowrap}
-.ai-in{flex:0 0 auto;display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--line);padding-top:10px}
-.ai-in textarea{flex:1 1 auto;min-width:0;resize:none;border:1px solid var(--line);border-radius:20px;background:var(--sheet);color:var(--ink);font:inherit;font-size:16px;line-height:1.3;padding:9px 14px;max-height:110px;outline:none}
-.ai-in textarea:focus{border-color:color-mix(in srgb,var(--accent,#007AFF) 60%,var(--line))}
-.ai-in .ai-send{flex:0 0 40px;width:40px;height:40px;border-radius:50%;border:0;background:var(--accent,#007AFF);color:#fff;display:grid;place-items:center;padding:0}
-.ai-in .ai-send:disabled{opacity:.35}
-.ai-in .ai-send svg{width:18px;height:18px}
+.ai-sugg button{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;border:1px solid color-mix(in srgb,#7B5CFF 28%,var(--line));background:color-mix(in srgb,#7B5CFF 7%,transparent);color:var(--ink);border-radius:999px;padding:7px 12px;font:inherit;font-size:13px;font-weight:600;white-space:nowrap}
+.ai-sugg button svg{width:12px;height:12px;color:#7B5CFF}
+.ai-in{display:flex;gap:6px;align-items:flex-end;background:var(--sheet);border:1px solid var(--line);border-radius:24px;padding:5px 5px 5px 14px;box-shadow:0 2px 10px var(--scrim);transition:border-color .15s,box-shadow .15s}
+.ai-in:focus-within{border-color:color-mix(in srgb,#7B5CFF 55%,var(--line));box-shadow:0 0 0 4px color-mix(in srgb,#7B5CFF 14%,transparent)}
+.ai-in textarea{flex:1 1 auto;min-width:0;resize:none;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;line-height:1.3;padding:7px 0;max-height:110px;outline:none}
+.ai-in .ai-send{flex:0 0 36px;width:36px;height:36px;border-radius:50%;border:0;background:var(--ai-g);color:#fff;display:grid;place-items:center;padding:0;transition:opacity .15s,transform .15s}
+.ai-in .ai-send:disabled{opacity:.3}
+.ai-in .ai-send:not(:disabled):active{transform:scale(.92)}
+.ai-in .ai-send svg{width:17px;height:17px}
+.ai-ib{flex:0 0 auto;width:34px;height:34px;border:0;border-radius:50%;background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink);font-size:15px;display:grid;place-items:center;padding:0;transition:background .15s,transform .15s}
+.ai-ib:active{transform:scale(.92)}
+.ai-ib svg{width:18px;height:18px}
+.ai-ib.sm{width:32px;height:32px;background:transparent;color:var(--muted)}
+.ai-ib.sm svg{width:17px;height:17px}
+.ai-tt small.plain::before{display:none}
+.ai-chat.hist .ai-foot{display:none}
+.ai-chat.hist .ai-log{-webkit-mask-image:none;mask-image:none;padding-top:2px}
+.ai-hl{display:grid;gap:6px}
+.ai-hi{display:flex;align-items:center;gap:4px;border-radius:16px;background:color-mix(in srgb,var(--ink) 5%,transparent);padding:2px 4px 2px 2px;animation:aiIn .25s cubic-bezier(.2,.8,.2,1)}
+.ai-hi.cur{background:color-mix(in srgb,#7B5CFF 10%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,#7B5CFF 30%,transparent)}
+.ai-ho{flex:1 1 auto;min-width:0;border:0;background:none;text-align:left;padding:10px 12px;color:var(--ink);font:inherit}
+.ai-ho b{display:block;font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-ho small{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.ai-empty{margin:auto;text-align:center;color:var(--muted);display:grid;justify-items:center;gap:12px;padding:30px 10px}
+.ai-empty p{margin:0;font-size:14.5px;line-height:1.45}
+.ai-top .ai-tt{margin-right:2px}
+.ai-top{gap:8px}
+.ai-top .ai-av{margin-right:3px}
+@media (prefers-reduced-motion:reduce){.ai-row{animation:none}.ai-typing i,.ai-bot.streaming > :last-child::after{animation:none}}
 #layersBtn[aria-expanded="true"]{background:var(--ink);color:var(--sheet)}
 .attr{font-size:10px;padding:2px 8px;border-radius:999px;opacity:1;box-shadow:none}
 
@@ -2358,6 +2399,13 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .pop-card::before{display:none !important}
 @keyframes popzoom{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion: reduce){ .pop-card{animation:none !important} }
+/* KI-Chat: eigenes Layout, die allgemeinen Pop-up-Abstände gelten hier nicht */
+.pop-card.ai-chat{padding:0 !important;overflow:hidden !important;color:var(--ink);width:min(440px,100%) !important;height:min(80vh,calc(var(--vvh,100vh) - 40px));max-height:min(80vh,calc(var(--vvh,100vh) - 40px)) !important}
+.ai-chat .ai-bot p,.ai-chat .ai-bot li{color:var(--ink)}
+.ai-chat .ai-bot p.ai-na{color:var(--muted)}
+.ai-tt b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-tt small{white-space:nowrap}
+.ai-hi{min-width:0}
 </style>
 </head>
 <body>
@@ -6044,49 +6092,143 @@ function startLocate(silent){
 }
 $("locBtn").addEventListener("click", function(){ startLocate(); });
 /* KI-Assistent: Chatfenster als Vorschau – die KI-Anbindung folgt in einer späteren Version */
-var aiLog = [];
+var AI_SPARK = "<svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M10 1.5c.4 3.9 2.6 6.1 6.5 6.5-3.9.4-6.1 2.6-6.5 6.5-.4-3.9-2.6-6.1-6.5-6.5 3.9-.4 6.1-2.6 6.5-6.5z\"/><path d=\"M15.5 12.5c.2 1.7 1.1 2.6 2.8 2.8-1.7.2-2.6 1.1-2.8 2.8-.2-1.7-1.1-2.6-2.8-2.8 1.7-.2 2.6-1.1 2.8-2.8z\" opacity=\".75\"/></svg>";
+var AI_IC_HIST = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3.2 10a6.8 6.8 0 1 0 2-4.8\"/><path d=\"M3 3.2v3h3\"/><path d=\"M10 6.5V10l2.4 1.6\"/></svg>";
+var AI_IC_NEW = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 3.5H5.5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V11\"/><path d=\"M14.6 2.9a1.6 1.6 0 0 1 2.3 2.3L10.5 11.6 7.5 12.5l.9-3z\"/></svg>";
+var AI_IC_BACK = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.5 4 6.5 10l6 6\"/></svg>";
+var AI_IC_DEL = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 6h12M8 6V4.5h4V6M6 6l.7 10h6.6L14 6\"/></svg>";
 var AI_SUGG = ["Hintergrundinfos zum Flatiron Building", "Zeig mir alle Fährverbindungen", "Wie komme ich zum Hotel?", "Cafés in der Nähe", "Was steht morgen an?"];
-function aiWelcome(){
-  return "<div class=\"ai-msg bot\"><p>Hallo! Ich bin der KI-Assistent für deine Reise. Bald kannst du mir hier sagen, was du auf der Karte sehen willst, oder mich zu Orten fragen:</p>"+
-    "<ul><li><b>Verbindungen filtern</b> – „Zeig mir alle Fähren nach Staten Island“, alles andere wird ausgeblendet</li>"+
-    "<li><b>Wege finden</b> – „Wie komme ich am schnellsten zum Hotel?“</li>"+
-    "<li><b>Orte entdecken</b> – „Frühstückscafés in der Nähe meines nächsten Stopps“</li>"+
-    "<li><b>Infos zu Orten</b> – „Gib mir Hintergrundinfos zum Flatiron Building“, die Antwort kommt direkt hier in den Chat</li>"+
-    "<li><b>Fragen zur Reise</b> – „Was steht morgen auf dem Plan?“</li></ul>"+
-    "<p class=\"ai-na\">In der aktuellen Version bin ich noch nicht verfügbar.</p></div>";
+var AI_WELCOME = "<p>Hallo! Ich bin der KI-Assistent für deine Reise. Bald kannst du mir hier sagen, was du auf der Karte sehen willst, oder mich zu Orten fragen:</p>"+
+  "<ul><li><b>Verbindungen filtern</b> – „Zeig mir alle Fähren nach Staten Island“, alles andere wird ausgeblendet</li>"+
+  "<li><b>Wege finden</b> – „Wie komme ich am schnellsten zum Hotel?“</li>"+
+  "<li><b>Orte entdecken</b> – „Frühstückscafés in der Nähe meines nächsten Stopps“</li>"+
+  "<li><b>Infos zu Orten</b> – „Gib mir Hintergrundinfos zum Flatiron Building“, die Antwort kommt direkt hier in den Chat</li>"+
+  "<li><b>Fragen zur Reise</b> – „Was steht morgen auf dem Plan?“</li></ul>"+
+  "<p class=\"ai-na\">In der aktuellen Version bin ich noch nicht verfügbar.</p>";
+var AI_REPLY = "<p>Das kann ich in dieser Version leider noch nicht beantworten. Der KI-Assistent kommt mit einem der nächsten Updates – dann bekommst du hier direkt deine Antwort.</p>";
+var AI_KEY = "reiseplan-ki-chats";
+var aiTimer = null, aiBusy = false, aiView = "chat";
+var aiReduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+/* Chats liegen vorerst nur auf diesem Gerät (localStorage); jeder Chat: id, Zeitpunkt, Nachrichten */
+var aiChats = (function(){ try { var a = JSON.parse(localStorage.getItem(AI_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch(e){ return []; } })();
+var aiCur = aiNewChatObj();
+function aiNewChatObj(){ return {id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ts:Date.now(), msgs:[{who:"bot", html:AI_WELCOME, done:false}]}; }
+function aiHasUser(c){ return c.msgs.some(function(m){ return m.who==="me"; }); }
+function aiTitle(c){ var u = c.msgs.find(function(m){ return m.who==="me"; }); var t = u ? u.text : "Neuer Chat"; return t.length > 46 ? t.slice(0,45)+"…" : t; }
+function aiSave(){
+  if(aiHasUser(aiCur)){
+    aiCur.ts = Date.now();
+    aiChats = aiChats.filter(function(c){ return c.id!==aiCur.id; });
+    aiChats.unshift({id:aiCur.id, ts:aiCur.ts, msgs:aiCur.msgs.filter(function(m){ return m.who!=="typing"; }).map(function(m){ return m.who==="me" ? {who:"me", text:m.text} : {who:"bot", html:m.html, done:true}; })});
+    aiChats = aiChats.slice(0, 50);
+  }
+  try { localStorage.setItem(AI_KEY, JSON.stringify(aiChats)); } catch(e){}
 }
-function aiRenderLog(){
+function aiWhen(ts){
+  var d = new Date(ts), now = new Date(), y = new Date(now); y.setDate(now.getDate()-1);
+  var hm = d.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
+  if(d.toDateString()===now.toDateString()) return "Heute, "+hm;
+  if(d.toDateString()===y.toDateString()) return "Gestern, "+hm;
+  return d.toLocaleDateString("de-DE", {day:"numeric", month:"short"})+", "+hm;
+}
+function aiRowHtml(m, i){
+  if(m.who==="me") return "<div class=\"ai-row me\"><div class=\"ai-me\">"+esc(m.text)+"</div></div>";
+  if(m.who==="typing") return "<div class=\"ai-row\"><span class=\"ai-av sm\">"+AI_SPARK+"</span><span class=\"ai-typing\" aria-label=\"KI schreibt\"><i></i><i></i><i></i></span></div>";
+  return "<div class=\"ai-row\"><span class=\"ai-av sm\">"+AI_SPARK+"</span><div class=\"ai-bot\" data-i=\""+i+"\">"+(m.done ? m.html : "")+"</div></div>";
+}
+function aiRenderHead(){
+  var h = $("aiHead"); if(!h) return;
+  if(aiView==="hist") h.innerHTML = "<button type=\"button\" class=\"ai-ib\" data-ai=\"back\" aria-label=\"Zurück zum Chat\">"+AI_IC_BACK+"</button>"+
+    "<div class=\"ai-tt\"><b id=\"aiT\">Verlauf</b><small class=\"plain\">"+(aiChats.length ? aiChats.length+(aiChats.length===1?" Chat":" Chats")+" auf diesem Gerät" : "Noch keine Chats")+"</small></div>"+
+    "<button type=\"button\" class=\"ai-ib\" data-ai=\"new\" aria-label=\"Neuer Chat\" title=\"Neuer Chat\">"+AI_IC_NEW+"</button>"+
+    "<button type=\"button\" class=\"ai-ib\" data-ai=\"close\" aria-label=\"Schließen\">✕</button>";
+  else h.innerHTML = "<span class=\"ai-av\">"+AI_SPARK+"</span><div class=\"ai-tt\"><b id=\"aiT\">KI-Assistent</b><small>Vorschau</small></div>"+
+    "<button type=\"button\" class=\"ai-ib\" data-ai=\"hist\" aria-label=\"Chat-Verlauf\" title=\"Verlauf\">"+AI_IC_HIST+"</button>"+
+    "<button type=\"button\" class=\"ai-ib\" data-ai=\"new\" aria-label=\"Neuer Chat\" title=\"Neuer Chat\">"+AI_IC_NEW+"</button>"+
+    "<button type=\"button\" class=\"ai-ib\" data-ai=\"close\" aria-label=\"Schließen\">✕</button>";
+}
+function aiRender(){
+  aiRenderHead();
+  var card = document.querySelector(".ai-chat"); if(card) card.classList.toggle("hist", aiView==="hist");
   var log = $("aiLogBox"); if(!log) return;
-  log.innerHTML = aiWelcome() + aiLog.map(function(m){ return "<div class=\"ai-msg "+m.who+"\"><p>"+esc(m.text)+"</p></div>"; }).join("");
+  if(aiView==="hist"){
+    log.innerHTML = aiChats.length ? "<div class=\"ai-hl\">"+aiChats.map(function(c){
+      var cur = c.id===aiCur.id;
+      return "<div class=\"ai-hi"+(cur?" cur":"")+"\"><button type=\"button\" class=\"ai-ho\" data-ai=\"open\" data-id=\""+c.id+"\"><b>"+esc(aiTitle(c))+"</b><small>"+aiWhen(c.ts)+(cur ? " · geöffnet" : "")+"</small></button>"+
+        "<button type=\"button\" class=\"ai-ib sm\" data-ai=\"del\" data-id=\""+c.id+"\" aria-label=\"Chat löschen\">"+AI_IC_DEL+"</button></div>";
+    }).join("")+"</div>" : "<div class=\"ai-empty\"><span class=\"ai-av\">"+AI_SPARK+"</span><p>Noch keine Chats.<br>Deine Unterhaltungen mit der KI erscheinen hier.</p></div>";
+    log.scrollTop = 0; return;
+  }
+  log.innerHTML = aiCur.msgs.map(aiRowHtml).join("");
   log.scrollTop = log.scrollHeight;
+  var i = aiCur.msgs.findIndex(function(m){ return m.who==="bot" && !m.done; });
+  if(i >= 0) aiStream(i);
 }
+/* Text Wort für Wort aufbauen: HTML in Tags und Wörter zerlegen, schrittweise einsetzen */
+function aiStream(i){
+  var chat = aiCur, m = chat.msgs[i], box = document.querySelector(".ai-bot[data-i=\""+i+"\"]"), log = $("aiLogBox");
+  if(!box) return;
+  aiBusy = true; aiSyncSend();
+  if(aiReduced){ m.done = true; box.innerHTML = m.html; aiBusy = false; aiSyncSend(); aiSave(); return; }
+  var toks = m.html.match(/<[^>]+>|[^<\s]+\s*|\s+/g) || [], n = 0, out = "";
+  box.classList.add("streaming"); clearTimeout(aiTimer);
+  var step = function(){
+    if(!document.body.contains(box) || chat!==aiCur){ m.done = true; aiBusy = false; return; }
+    var words = 0;
+    while(n < toks.length && words < 2){ var t = toks[n++]; out += t; if(t.charAt(0)!=="<" && t.trim()) words++; }
+    box.innerHTML = out;
+    if(log.scrollHeight - log.scrollTop - log.clientHeight < 80) log.scrollTop = log.scrollHeight;
+    if(n < toks.length) aiTimer = setTimeout(step, 28);
+    else { m.done = true; box.classList.remove("streaming"); aiBusy = false; aiSyncSend(); aiSave(); }
+  };
+  step();
+}
+function aiFinish(){ clearTimeout(aiTimer); aiCur.msgs = aiCur.msgs.filter(function(m){ return m.who!=="typing"; }); if(aiCur.msgs.length && aiCur.msgs[aiCur.msgs.length-1].who==="me") aiCur.msgs.push({who:"bot", html:AI_REPLY, done:true}); aiCur.msgs.forEach(function(m){ if(m.who==="bot") m.done = true; }); aiBusy = false; aiSave(); }
+function aiSyncSend(){ var ta = $("aiTa"), sb = $("aiSendBtn"); if(ta && sb) sb.disabled = aiBusy || !ta.value.trim(); }
 function aiSend(){
-  var ta = $("aiTa"); var t = ta.value.trim(); if(!t) return;
-  aiLog.push({who:"me", text:t});
-  aiLog.push({who:"bot", text:"Das kann ich in dieser Version leider noch nicht beantworten – der KI-Assistent kommt mit einem der nächsten Updates."});
-  ta.value = ""; ta.style.height = ""; $("aiSendBtn").disabled = true;
-  aiRenderLog();
+  var ta = $("aiTa"); var t = ta.value.trim(); if(!t || aiBusy) return;
+  aiBusy = true;
+  aiCur.msgs.push({who:"me", text:t}); aiCur.msgs.push({who:"typing"});
+  aiSave();
+  ta.value = ""; ta.style.height = ""; aiSyncSend();
+  aiRender();
+  var chat = aiCur; clearTimeout(aiTimer);
+  aiTimer = setTimeout(function(){
+    if(chat!==aiCur) return;
+    aiCur.msgs = aiCur.msgs.filter(function(m){ return m.who!=="typing"; });
+    aiCur.msgs.push({who:"bot", html:AI_REPLY, done:false});
+    aiRender();
+  }, aiReduced ? 0 : 750);
+}
+function aiAct(a, id){
+  if(a==="hist"){ aiFinish(); aiView = "hist"; aiRender(); }
+  else if(a==="back"){ aiView = "chat"; aiRender(); }
+  else if(a==="new"){ aiFinish(); aiView = "chat"; if(aiHasUser(aiCur)) aiCur = aiNewChatObj(); else aiCur.msgs[0].done = false; aiRender(); var ta = $("aiTa"); if(ta) ta.focus(); }
+  else if(a==="open"){ var c = aiChats.find(function(x){ return x.id===id; }); if(c){ aiCur = {id:c.id, ts:c.ts, msgs:c.msgs.map(function(m){ return Object.assign({}, m, {done:true}); })}; aiView = "chat"; aiRender(); } }
+  else if(a==="del"){ aiChats = aiChats.filter(function(c){ return c.id!==id; }); if(aiCur.id===id) aiCur = aiNewChatObj(); try { localStorage.setItem(AI_KEY, JSON.stringify(aiChats)); } catch(e){} aiRender(); }
 }
 function openAiChat(){
   var el = $("aiPop"); if(!el){ el = document.createElement("div"); el.id = "aiPop"; el.className = "pop"; document.body.appendChild(el); }
   el.innerHTML = "<div class=\"pop-card ai-chat\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"aiT\">"+
-    "<div class=\"pop-head\"><h4 id=\"aiT\"><span class=\"ai-av\" aria-hidden=\"true\">KI</span>KI-Assistent <span class=\"ai-badge\">Vorschau</span></h4><button type=\"button\" class=\"x\" aria-label=\"Schließen\">✕</button></div>"+
+    "<div class=\"ai-top\" id=\"aiHead\"></div>"+
     "<div class=\"ai-log\" id=\"aiLogBox\" aria-live=\"polite\"></div>"+
-    "<div class=\"ai-sugg\">"+AI_SUGG.map(function(q){ return "<button type=\"button\" data-q=\""+esc(q)+"\">"+esc(q)+"</button>"; }).join("")+"</div>"+
+    "<div class=\"ai-foot\"><div class=\"ai-sugg\">"+AI_SUGG.map(function(q){ return "<button type=\"button\" data-q=\""+esc(q)+"\">"+AI_SPARK+esc(q)+"</button>"; }).join("")+"</div>"+
     "<form class=\"ai-in\" id=\"aiForm\"><textarea id=\"aiTa\" rows=\"1\" placeholder=\"Frag die KI …\" aria-label=\"Nachricht an den KI-Assistenten\" enterkeyhint=\"send\"></textarea>"+
-    "<button type=\"submit\" class=\"ai-send\" id=\"aiSendBtn\" aria-label=\"Senden\" disabled><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 16V4M5 9l5-5 5 5\"/></svg></button></form></div>";
+    "<button type=\"submit\" class=\"ai-send\" id=\"aiSendBtn\" aria-label=\"Senden\" disabled><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 16V4M5 9l5-5 5 5\"/></svg></button></form></div></div>";
   el.hidden = false;
-  aiRenderLog();
-  var ta = $("aiTa"), sb = $("aiSendBtn");
-  ta.addEventListener("input", function(){ sb.disabled = !ta.value.trim(); ta.style.height = ""; ta.style.height = Math.min(110, ta.scrollHeight)+"px"; });
+  aiView = "chat"; aiBusy = false;
+  aiRender();
+  var ta = $("aiTa");
+  ta.addEventListener("input", function(){ aiSyncSend(); ta.style.height = ""; ta.style.height = Math.min(110, ta.scrollHeight)+"px"; });
   ta.addEventListener("keydown", function(ev){ if(ev.key==="Enter" && !ev.shiftKey){ ev.preventDefault(); aiSend(); } });
   $("aiForm").addEventListener("submit", function(ev){ ev.preventDefault(); aiSend(); });
-  var close = function(){ el.hidden = true; el.innerHTML = ""; document.removeEventListener("keydown", key, true); $("aiBtn").focus(); };
-  var key = function(ev){ if(ev.key==="Escape"){ ev.stopPropagation(); close(); } };
+  var close = function(){ aiFinish(); el.hidden = true; el.innerHTML = ""; document.removeEventListener("keydown", key, true); $("aiBtn").focus(); };
+  var key = function(ev){ if(ev.key==="Escape"){ ev.stopPropagation(); if(aiView==="hist") aiAct("back"); else close(); } };
   document.addEventListener("keydown", key, true);
-  el.onclick = function(ev){ ev.stopPropagation(); var q;
-    if(ev.target===el || ev.target.closest(".x")) close();
-    else if((q = ev.target.closest(".ai-sugg button"))){ ta.value = q.getAttribute("data-q"); sb.disabled = false; ta.focus(); }
+  el.onclick = function(ev){ ev.stopPropagation(); var q, b;
+    if(ev.target===el) close();
+    else if((b = ev.target.closest("[data-ai]"))){ if(b.getAttribute("data-ai")==="close") close(); else aiAct(b.getAttribute("data-ai"), b.getAttribute("data-id")); }
+    else if((q = ev.target.closest(".ai-sugg button"))){ ta.value = q.getAttribute("data-q"); aiSyncSend(); ta.focus(); }
   };
 }
 $("aiBtn").addEventListener("click", openAiChat);
