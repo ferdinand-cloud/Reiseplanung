@@ -2078,6 +2078,11 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 .vis-seg .vs-pub[aria-checked="true"]{color:#0A84FF}
 .vis-seg button.off{opacity:.5}
 .vis-hint{margin:6px 2px 0;font-size:12px}
+.cmsh{display:inline-block;margin-top:4px;border:0;border-radius:8px;padding:3px 7px;font:600 11.5px/1.2 var(--f-body);background:var(--fill);color:var(--muted)}
+.cmsh.on{background:color-mix(in srgb,#0A84FF 18%,transparent);color:#0A84FF}
+.cmshrow{display:flex;gap:6px;margin-top:6px}
+.cmshrow button{flex:1;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:10px;padding:7px 8px;font:600 12.5px/1.2 var(--f-body)}
+.cmshrow button[aria-checked="true"]{border-color:#0A84FF;color:#0A84FF;background:color-mix(in srgb,#0A84FF 12%,transparent)}
 .plan-days{display:flex;gap:6px;overflow-x:auto;margin:4px -4px 10px;padding:2px 4px 4px;scrollbar-width:none}
 .plan-days::-webkit-scrollbar{display:none}
 .plan-days .pd{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:74px;padding:8px 8px 7px;border:1.5px solid var(--line);border-radius:14px;background:transparent;color:var(--ink)}
@@ -2704,8 +2709,8 @@ function pubPrompt(ro, cur0, apply){
   var sel0 = {}; phs.forEach(function(x){ if((t.pubItem||{})["ph:"+x]) sel0[x] = 1; }); var noteOn = !!(t.pubItem||{})["n:"+ro];
   // eigene Kommentare zum Ort (alle Besuche); Kommentare von Mitreisenden bleiben in der Reise
   var me0 = acct.user && acct.user.uid, vids = [ro].concat(Object.keys(t.places).filter(function(k){ return t.places[k] && t.places[k].of===ro; }));
-  var cms = [].concat.apply([], vids.map(function(k){ return CMTS[k] || []; })).filter(function(c){ return c.by===me0 && (c.text||"").trim() && cmCol(c.pid)==="comments"; });
-  var cmSel = {}, prevCm = ((t.pubCm||{})[ro] || []); prevCm.forEach(function(c){ cmSel[c.id] = 1; });
+  var cms = [].concat.apply([], vids.map(function(k){ return CMTS[k] || []; })).filter(function(c){ return c.by===me0 && (c.text||"").trim() && c.col==="comments"; });
+  var cmSel = {}; cms.forEach(function(c){ if(c.share===true) cmSel[c.id] = 1; });
   var el = $("pubPop"); if(!el){ el = document.createElement("div"); el.id = "pubPop"; el.className = "cfpop"; document.body.appendChild(el); }
   var draw = function(){
     var n = Object.keys(sel0).length, all = phs.length && n===phs.length;
@@ -2717,7 +2722,7 @@ function pubPrompt(ro, cur0, apply){
       (note ? "<button type=\"button\" class=\"pub-note"+(noteOn?" on":"")+"\" data-pub=\"note\" aria-pressed=\""+noteOn+"\"><i>"+(noteOn ? "✓" : "")+"</i><span><b>Notiz auch zeigen</b><small>"+esc(noteOf(ro).slice(0, 80))+(noteOf(ro).length > 80 ? " …" : "")+"</small></span></button>" : "")+
       (cms.length ? "<div class=\"pub-h\"><span>Welche Kommentare sollen Freunde sehen?</span>"+(cms.length > 1 ? "<button type=\"button\" data-pub=\"cmall\">"+(cms.every(function(c){ return cmSel[c.id]; }) ? "Keine" : "Alle")+"</button>" : "")+"</div>"+
         cms.map(function(c){ var on = !!cmSel[c.id]; return "<button type=\"button\" class=\"pub-note pub-cm"+(on?" on":"")+"\" data-pubcm=\""+esc(c.id)+"\" aria-pressed=\""+on+"\"><i>"+(on ? "✓" : "")+"</i><span><b>"+esc(c.text.slice(0, 120))+(c.text.length > 120 ? " …" : "")+"</b><small>"+(c.at ? new Date(c.at).toLocaleDateString("de-DE", {day:"numeric", month:"short"}) : "")+"</small></span></button>"; }).join("")+
-        "<small class=\"pub-n\">Nur deine eigenen Kommentare; Kommentare von Mitreisenden bleiben in der Reise.</small>" : "")+
+        "<small class=\"pub-n\">Deine eigenen Kommentare. Wer sonst schon kommentiert hat, wird beim nächsten Öffnen der Reise selbst gefragt.</small>" : "")+
       "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\">Abbrechen</button><button type=\"button\" class=\"cf-ok pub-ok\">Veröffentlichen</button></div></div>";
     fillPhotos(el);
   };
@@ -2734,9 +2739,9 @@ function pubPrompt(ro, cur0, apply){
       t.pubItem = t.pubItem || {};
       phs.forEach(function(x){ if(sel0[x]) t.pubItem["ph:"+x] = 1; else delete t.pubItem["ph:"+x]; });
       if(note){ if(noteOn) t.pubItem["n:"+ro] = 1; else delete t.pubItem["n:"+ro]; }
-      // geteilte Kommentare als Kopie am Ort merken (Freunde haben keinen Zugriff auf die Kommentare der Reise)
-      var keepCm = cms.filter(function(c){ return cmSel[c.id]; }).map(function(c){ return {id:c.id, text:String(c.text).slice(0, 1000), at:c.at||0}; });
-      t.pubCm = t.pubCm || {}; if(keepCm.length) t.pubCm[ro] = keepCm; else delete t.pubCm[ro];
+      // eigene Kommentare: Auswahl am Kommentar speichern (die Kopie für Freunde entsteht daraus); andere werden selbst gefragt
+      var shOn = cms.filter(function(c){ return cmSel[c.id] && c.share!==true; }), shOff = cms.filter(function(c){ return !cmSel[c.id] && c.share!==false; });
+      if(shOn.length) cmSetShare(shOn, true); if(shOff.length) cmSetShare(shOff, false);
       close(); apply();
     }
   };
@@ -2764,7 +2769,7 @@ function setVis(pid, v){
     t.privP = t.privP || {}; t.pubP = t.pubP || {};
     visitIds(ro).forEach(function(k){ delete t.privP[k]; delete t.pubP[k]; });
     if(v==="priv") t.privP[ro] = 1; else if(v==="pub") t.pubP[ro] = 1;
-    save(); phPrivSync(photosAll(ro)); cmResync();
+    save(); phPrivSync(photosAll(ro)); cmResync(); pubCmSyncSoon();
     toast(v==="priv" ? "Privat – nur Mitreisende sehen den Ort" : v==="pub" ? "Veröffentlicht – deine Freunde sehen den Ort mit Bewertung" : "Nur für diese Reise sichtbar (Mitreisende und Beobachter)", false);
     if(jp && !$("jPop").hidden) renderJPop(); renderSheet(); if(sel) renderCard(); if(lsPage) renderLs();
   };
@@ -3297,10 +3302,10 @@ function cmWatch(){
   if(!KNOWN[cmTrip]) return;
   var RAW = {comments:[], pcomments:[]}, uns = [];
   var onQs = function(col){ return function(qs){
-    RAW[col] = qs.docs.map(function(d){ var v = d.data(); return {id:d.id, pid:v.pid, text:v.text, by:v.by, email:v.email, at:v.at, col:col, mentions:v.mentions||[], replyTo:v.replyTo||"", replyToUid:v.replyToUid||""}; });
+    RAW[col] = qs.docs.map(function(d){ var v = d.data(); return {id:d.id, pid:v.pid, text:v.text, by:v.by, email:v.email, at:v.at, col:col, mentions:v.mentions||[], replyTo:v.replyTo||"", replyToUid:v.replyToUid||"", share:(v.share===true || v.share===false) ? v.share : undefined}; });
     CMTS = {};
     RAW.comments.concat(RAW.pcomments).sort(function(a, b){ return (a.at||0) - (b.at||0); }).forEach(function(c){ (CMTS[c.pid] = CMTS[c.pid] || []).push(c); });
-    cmResyncSoon();
+    cmResyncSoon(); pubCmSyncSoon(); cmShareAskSoon();
     if(jp && jp.view && pvOpen()) phMetaRefresh();
     else if(jp && !$("jPop").hidden && !(document.activeElement && document.activeElement.id==="cmIn")) renderJPop(); else if(jp && !$("jPop").hidden) { var cl = $("cmList"); if(cl) cl.innerHTML = cmListHTML(jp.pid); }
     if(tab==="day" || tab==="trip") renderSheet();
@@ -3321,7 +3326,7 @@ function cmResync(){
   Object.keys(CMTS).forEach(function(pid){ (CMTS[pid]||[]).forEach(function(c){
     var want = cmCol(c.pid); if(!c.col || c.col===want || c.moving) return; c.moving = true;
     var from = tripRef(S.cur).collection(c.col).doc(c.id), to = tripRef(S.cur).collection(want).doc(c.id);
-    to.set({pid:c.pid, text:c.text||"", by:c.by||"", email:c.email||"", at:c.at||Date.now(), mentions:c.mentions||[], replyTo:c.replyTo||"", replyToUid:c.replyToUid||""}).then(function(){ return from.delete(); }).catch(function(){ c.moving = false; });
+    to.set({pid:c.pid, text:c.text||"", by:c.by||"", email:c.email||"", at:c.at||Date.now(), mentions:c.mentions||[], replyTo:c.replyTo||"", replyToUid:c.replyToUid||"", share:c.share===undefined ? null : c.share}).then(function(){ return from.delete(); }).catch(function(){ c.moving = false; });
   }); });
 }
 /* ---------- Kommentare: @Erwähnungen von Mitreisenden, Antworten ---------- */
@@ -3345,6 +3350,49 @@ function mentionUids(text){
   return out;
 }
 function cmText(t){ return esc(t||"").replace(/@([A-Za-z0-9._-]{2,20})/g, "<b class=\"mn\">@$1</b>"); }
+/* ---------- Kommentare zu für Freunde veröffentlichten Orten: jede/r entscheidet selbst, ob der eigene Kommentar mit veröffentlicht wird ---------- */
+var CMSHARE = false, SHASK = {}, shAskT = null, pubCmT = null;
+function isROc(){ return !acct.user; }
+function cmShareable(c){ return !!c && c.col==="comments" && !/^(ph|lk):/.test(c.pid||"") && isPubP(c.pid); }
+function cmById(cid){ var f = null; Object.keys(CMTS).some(function(k){ f = (CMTS[k]||[]).filter(function(c){ return c.id===cid; })[0] || null; return !!f; }); return f; }
+function cmSetShare(list, v){
+  if(!fbDb || !acct.user || cmTrip!==S.cur) return Promise.resolve();
+  return Promise.all(list.map(function(c){ c.share = v; return tripRef(S.cur).collection(c.col||"comments").doc(c.id).update({share:v}); }))
+    .then(function(){ pubCmSyncSoon(); }, function(e){ toast("Konnte nicht gespeichert werden: "+(e && e.message || e), false); })
+    .then(function(){ if(jp && !$("jPop").hidden){ var cl = $("cmList"); if(cl) cl.innerHTML = cmListHTML(jp.pid); } });
+}
+// freigegebene Kommentare als Kopie am Ort ablegen – Freunde haben keinen Zugriff auf die Kommentare der Reise
+function pubCmSyncSoon(){ clearTimeout(pubCmT); pubCmT = setTimeout(pubCmSync, 1200); }
+function pubCmSync(){
+  if(!acct.user || cmTrip!==S.cur || isRO() || !KNOWN[S.cur]) return;
+  var t = T(), want = {};
+  Object.keys(CMTS).forEach(function(pid){ (CMTS[pid]||[]).forEach(function(c){
+    if(c.share!==true || !cmShareable(c)) return; var r = rootOf(pid);
+    (want[r] = want[r] || []).push({id:c.id, text:String(c.text||"").slice(0, 1000), at:c.at||0, by:c.by||"", name:personName(c.by)||""}); }); });
+  Object.keys(want).forEach(function(r){ want[r].sort(function(a, b){ return a.at - b.at; }); });
+  if(JSON.stringify(want)===JSON.stringify(t.pubCm||{})) return;
+  t.pubCm = want; save();
+}
+// Meldung an alle, die zu einem inzwischen veröffentlichten Ort schon kommentiert haben und noch nicht gefragt wurden
+function cmShareAskSoon(){ clearTimeout(shAskT); shAskT = setTimeout(cmShareAsk, 1500); }
+function cmShareAsk(){
+  if(!acct.user || cmTrip!==S.cur) return; var el0 = $("shAskPop"); if(el0 && !el0.hidden) return;
+  var me0 = acct.user.uid, by = {};
+  Object.keys(CMTS).forEach(function(pid){ (CMTS[pid]||[]).forEach(function(c){ if(c.by===me0 && c.share===undefined && cmShareable(c)){ var r = rootOf(pid); if(!SHASK[S.cur+"|"+r]) (by[r] = by[r] || []).push(c); } }); });
+  var r = Object.keys(by)[0]; if(!r) return; var list = by[r], p = P(r);
+  SHASK[S.cur+"|"+r] = 1;
+  var el = el0; if(!el){ el = document.createElement("div"); el.id = "shAskPop"; el.className = "cfpop"; document.body.appendChild(el); }
+  el.innerHTML = "<div class=\"cf-card pub-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"shT\"><b id=\"shT\">Kommentare für Freunde freigeben?</b>"+
+    "<p>„"+esc(p ? p.n : "Ort")+"“ ist jetzt für Freunde veröffentlicht. Dürfen "+(list.length > 1 ? "deine "+list.length+" Kommentare" : "dein Kommentar")+" dort auch für Freunde sichtbar sein?</p>"+
+    list.map(function(c){ return "<div class=\"pub-note on\" style=\"padding-left:12px\"><span><b>"+esc(String(c.text).slice(0, 160))+(String(c.text).length > 160 ? " …" : "")+"</b><small>"+(c.at ? new Date(c.at).toLocaleDateString("de-DE", {day:"numeric", month:"short"}) : "")+"</small></span></div>"; }).join("")+
+    "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\" data-sh=\"0\">Nur Reise</button><button type=\"button\" class=\"cf-ok pub-ok\" data-sh=\"1\">Freigeben</button></div>"+
+    "<button type=\"button\" class=\"btn g s\" data-sh=\"later\" style=\"margin:8px auto 0;display:block\">Später entscheiden</button></div>";
+  el.onclick = function(ev){ ev.stopPropagation(); var b = ev.target.closest("[data-sh]"); if(!b) return; var v = b.getAttribute("data-sh");
+    el.hidden = true; el.innerHTML = "";
+    if(v!=="later") cmSetShare(list, v==="1").then(function(){ toast(v==="1" ? "Für Freunde freigegeben" : "Bleibt nur in der Reise", false); });
+    setTimeout(cmShareAsk, 600); };
+  el.hidden = false;
+}
 var REPLY = null;
 function cmListHTML(pid){
   var list = CMTS[pid] || [];
@@ -3353,6 +3401,7 @@ function cmListHTML(pid){
     var to = c.replyTo ? (list.filter(function(x){ return x.id===c.replyTo; })[0]) : null;
     return "<div class=\"cm"+(mine?" mine":"")+(c.replyTo?" re":"")+"\"><b>"+esc(who)+"</b> <small>"+(c.at?new Date(c.at).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"")+(to ? " · Antwort" : "")+"</small>"+
       (mine?"<button type=\"button\" class=\"cmdel\" data-act=\"cmdel\" data-cid=\""+c.id+"\" aria-label=\"Kommentar löschen\">×</button>":"")+"<p>"+cmText(c.text)+"</p>"+
+      (cmShareable(c) ? (mine && !isROc() ? "<button type=\"button\" class=\"cmsh"+(c.share===true?" on":"")+"\" data-act=\"cmsharetog\" data-cid=\""+c.id+"\" aria-pressed=\""+(c.share===true)+"\">"+(c.share===true ? "🌐 Auch für Freunde" : "🔒 Nur Reise")+"</button>" : (c.share===true ? "<span class=\"cmsh on\">🌐 Auch für Freunde</span>" : "")) : "")+
       (!mine && acct.user && !(c.pid||"").match(/^lk:/) ? "<button type=\"button\" class=\"cmrep\" data-act=\"cmreply\" data-cid=\""+c.id+"\" data-by=\""+esc(c.by||"")+"\" data-name=\""+esc(nm)+"\">Antworten</button>" : "")+"</div>"; }).join("");
 }
 // Vorschlagsliste beim Tippen von @
@@ -3503,13 +3552,13 @@ function recCollect(){
       var note = (!(t.privN||{})[pid] && (t.pubItem||{})["n:"+pid]) ? ((t.notes||{})[pid] || "") : "";
       var phs = [].concat.apply([], vs.map(function(k){ return (t.photos||{})[k] || []; })).filter(function(x){ return !(t.privPh||{})[x] && (t.pubItem||{})["ph:"+x]; }).slice(-12);
       var key = tid.replace(/[^A-Za-z0-9_-]/g, "")+"_"+pid;
-      var cm = ((t.pubCm||{})[pid] || []).map(function(c){ return {text:c.text, at:c.at||0}; }).slice(0, 20);
+      var cm = ((t.pubCm||{})[pid] || []).map(function(c){ return {text:c.text, at:c.at||0, name:c.name||""}; }).slice(0, 20);
       out[key] = {by:me, n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", rating:r, hl:isHl, note:note.slice(0, 3000), cm:cm, trip:t.name||"", ph:phs, at:(t.updatedAt||Date.now())};
     });
   });
   return out;
 }
-function recCmHTML(r, cls){ return (r.cm||[]).map(function(c){ return "<p"+(cls ? " class=\""+cls+"\"" : "")+">💬 "+esc(c.text)+"</p>"; }).join(""); }
+function recCmHTML(r, cls){ return (r.cm||[]).map(function(c){ return "<p"+(cls ? " class=\""+cls+"\"" : "")+">💬 "+(c.name ? "<b>@"+esc(c.name)+"</b> " : "")+esc(c.text)+"</p>"; }).join(""); }
 function recSig(r){ return JSON.stringify([r.n, r.c, r.la, r.lo, r.rating, r.hl, r.note, r.cm, r.trip, r.ph]); }
 function recSync(){
   if(!recShare || recBusy || !fbDb || !acct.user || !navigator.onLine) return;
@@ -6920,7 +6969,8 @@ function renderJPop(){
        "<p class=\"note pherr\" id=\"jpPhErr\" hidden><span></span> <button type=\"button\" class=\"tf-link\" data-act=\"phretry\">Erneut laden</button></p></div>";
   if(hasLoc(p)) h += rvSection(p);
   if(acct.user && KNOWN[S.cur] && shared){
-    h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Kommentare</div><div id=\"cmList\" class=\"cmlist\">"+cmListHTML(jp.pid)+"</div><form class=\"gnew\" id=\"cmForm\"><input type=\"text\" id=\"cmIn\" maxlength=\"1000\" placeholder=\"Kommentieren · @ erwähnt Mitreisende\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form></div>";
+    h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Kommentare</div><div id=\"cmList\" class=\"cmlist\">"+cmListHTML(jp.pid)+"</div><form class=\"gnew\" id=\"cmForm\"><input type=\"text\" id=\"cmIn\" maxlength=\"1000\" placeholder=\"Kommentieren · @ erwähnt Mitreisende\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Senden</button></form>"+
+      (isPubP(jp.pid) && !/^(ph|lk):/.test(jp.pid) ? "<div class=\"cmshrow\" role=\"radiogroup\" aria-label=\"Sichtbarkeit des Kommentars\"><button type=\"button\" role=\"radio\" data-act=\"cmshare\" data-v=\"0\" aria-checked=\""+!CMSHARE+"\">🔒 Nur Reise</button><button type=\"button\" role=\"radio\" data-act=\"cmshare\" data-v=\"1\" aria-checked=\""+CMSHARE+"\">🌐 Auch für Freunde</button></div>" : "")+"</div>";
   }
   h += "<p class=\"note\" id=\"jpNote\" hidden></p></div>";
   el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el);
@@ -7974,7 +8024,7 @@ function doneOrderFix(){
     if(n.join("|")!==o.join("|")){ t.order[k] = n; ch = true; } });
   t.doneOrd = 1; save(); if(ch) dirty();
 }
-function renderAll(){ if(ensureLive()){ save(); pickDefaultDay(); } doneOrderFix(); if(acct.user && cmTrip!==S.cur) cmWatch(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); navAv(); if(profOpen) renderProfile(); if(lsPage) renderLs(); if(dcPage) renderDc(); }
+function renderAll(){ if(ensureLive()){ save(); pickDefaultDay(); } doneOrderFix(); if(acct.user && cmTrip!==S.cur) cmWatch(); else if(acct.user) cmShareAskSoon(); dirty(); applyNoTrip(); applyRO(); renderTop(); renderSheet(); renderCard(); scheduleOverlay(); placeFloating(); navAv(); if(profOpen) renderProfile(); if(lsPage) renderLs(); if(dcPage) renderDc(); }
 function pickDefaultDay(){
   var ds = days(), tk = todayKey();
   cur = ds.length ? ((dayByKey(tk) && tk) || ds[0].key) : "";
@@ -8402,6 +8452,8 @@ document.addEventListener("click", function(e){
     case "minvdel": tripRef(S.cur).update({invites:window.firebase.firestore.FieldValue.arrayRemove(t.getAttribute("data-mail")), viewInvites:window.firebase.firestore.FieldValue.arrayRemove(t.getAttribute("data-mail"))}).then(function(){ var m = META[S.cur]; if(m) m.invites = m.invites.filter(function(x){ return x!==t.getAttribute("data-mail"); }); renderSheet(); }); break;
     case "mremove": var ru2 = t.getAttribute("data-uid"), FV2 = window.firebase.firestore.FieldValue, up2 = {members:FV2.arrayRemove(ru2), viewers:FV2.arrayRemove(ru2)}; up2["memberEmails."+ru2] = FV2.delete(); tripRef(S.cur).update(up2).then(function(){ toast("Entfernt", false); }); break;
     case "mleave": var lt = S.cur; delete S.trips[lt]; S.cur = Object.keys(S.trips)[0] || S.cur; save(); if(!Object.keys(S.trips).length){ S = fresh(); acctInitSigs(); } pickDefaultDay(); renderAll(); toast("Reise verlassen", false); break;
+    case "cmshare": CMSHARE = t.getAttribute("data-v")==="1"; t.parentNode.querySelectorAll("[data-act=cmshare]").forEach(function(b){ b.setAttribute("aria-checked", String(b===t)); }); break;
+    case "cmsharetog": var shc = cmById(t.getAttribute("data-cid")); if(shc) cmSetShare([shc], shc.share!==true); break;
     case "cmreply": var rcid = t.getAttribute("data-cid"), rby = t.getAttribute("data-by"), rnm = t.getAttribute("data-name") || personName(rby);
       var rin = $(jp && jp.view ? "phcIn" : "cmIn"); if(!rin) break;
       var rpid = ""; Object.keys(CMTS).forEach(function(k){ (CMTS[k]||[]).forEach(function(c){ if(c.id===rcid) rpid = c.pid; }); });
@@ -8692,6 +8744,7 @@ document.addEventListener("submit", function(e){
     var ct = ($("cmIn").value||"").trim(); if(!ct || !jp) return;
     $("cmIn").value = "";
     var cdoc = {pid:jp.pid, text:ct.slice(0,1000), by:acct.user.uid, email:myMail(), at:Date.now(), mentions:mentionUids(ct)};
+    if(isPubP(jp.pid) && !/^(ph|lk):/.test(jp.pid)) cdoc.share = !!CMSHARE;
     if(REPLY && REPLY.pid===jp.pid && ct.indexOf("@"+REPLY.name)>-1){ cdoc.replyTo = REPLY.cid; cdoc.replyToUid = REPLY.uid; } REPLY = null;
     cmRef(jp.pid).add(cdoc).catch(function(e2){ toast("Kommentar nicht gespeichert: "+(e2 && e2.message), false); });
     return;
