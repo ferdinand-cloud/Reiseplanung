@@ -2135,7 +2135,8 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 .addmenu.jpmenu .vp-h{padding:6px 10px 4px;font:700 11px/1.2 var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .addmenu.jpmenu > button.dis{opacity:.45}
 .addmenu.jpmenu .ai svg{width:16px;height:16px;margin:0}
-#pvLayer .pvi.pv-vis{width:auto;padding:0 12px;gap:6px;display:inline-flex;align-items:center;border-radius:999px}
+#pvLayer .pvi.pv-vis svg{width:21px;height:21px;margin:0;vertical-align:0;color:currentColor}
+#pvLayer .pvi.pv-vis.vlv-trip{background:rgba(52,199,89,.88);color:#fff}
 #pvLayer .pvi.pv-vis .pvv{font:600 13px/1 var(--f-body);font-style:normal}
 #pvLayer .pvi.pv-vis.vlv-priv{background:rgba(229,161,0,.9);color:#111}
 #pvLayer .pvi.pv-vis.vlv-pub{background:rgba(10,132,255,.9);color:#fff}
@@ -7105,7 +7106,7 @@ function phMetaHTML(ph){
   var mpid = phPlace(ph) || (jp && jp.pid); if(mpid && P(mpid) && hasLoc(P(mpid))) h += "<button type=\"button\" class=\"pvi\" data-act=\"phmap\" data-pid=\""+mpid+"\" aria-label=\"Auf der Karte zeigen\">"+MAPICO+"</button>";
   if(!isRO()) h += "<button type=\"button\" class=\"pvi\" data-act=\"phmovepop\" data-ph=\""+ph+"\" aria-label=\"Einem anderen Ort zuordnen\">"+SV("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"</button>";
   if(canPriv() && jp){ var phv = itemVis("ph", ph, phPlace(ph) || jp.pid);
-    h += "<button type=\"button\" class=\"pvi pv-vis vlv-"+phv+"\" data-act=\"itemvispick\" data-k=\"ph\" data-key=\""+ph+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit des Fotos: "+VISLBL[phv]+"\">"+IEYE+"<em class=\"pvv\">"+VISLBL[phv]+"</em></button>";
+    h += "<button type=\"button\" class=\"pvi pv-vis vlv-"+phv+"\" data-act=\"itemvispick\" data-k=\"ph\" data-key=\""+ph+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit des Fotos: "+VISLBL[phv]+"\" title=\""+VISLBL[phv]+"\">"+visIco(phv)+"</button>";
   }
   if(acct.user) h += "<button type=\"button\" class=\"pvi\" data-act=\"phsend\" data-ph=\""+ph+"\" aria-label=\"Im Chat schicken\">"+SV("<path d=\"M17.5 2.5 9 11M17.5 2.5l-5 15-3.5-6.5-6.5-3.5z\"/>")+"</button>";
   if(!isRO()) h += "<button type=\"button\" class=\"pvi pv-save"+(CAMF[ph] && !CAMF[ph].saved ? " hot" : "")+"\" data-act=\"phsave\" data-ph=\""+ph+"\" aria-label=\"In Fotos sichern\">"+SV("<path d=\"M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4 15.5h12\"/>")+"</button>";
