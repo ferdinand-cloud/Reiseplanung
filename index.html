@@ -2278,6 +2278,8 @@ body.rc-on #map{visibility:hidden}
 .rc-lbside .pvi span{position:absolute;right:-4px;bottom:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#fff;color:#111;font:700 11px/18px var(--f-body);text-align:center}
 .rc-lbside .pvi span:empty{display:none}
 body.rc-on #pvLayer{z-index:97}
+body.rc-on #catPop,body.rc-on .cfpop{z-index:98}
+body.rc-on .toast{z-index:100}
 body.rc-on .addmenu.jpmenu{z-index:99}
 .dc-ph img[data-act]{cursor:zoom-in}
 .dcv-by{display:block;font-size:12px;font-weight:500;opacity:.75}
@@ -7015,11 +7017,12 @@ function renderJPop(){
   var p = P(jp.pid), J = (T().journal||{})[jp.dk] || {}, isHl = J.hl===p.n, ph = photosAll(jp.pid), D = dayByKey(jp.dk);
   var h = "<div class=\"ag-card jp\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+esc(p.n)+"\" data-id=\""+jp.pid+"\"><button type=\"button\" class=\"ag-x\" data-act=\"jclose\" aria-label=\"Schließen\">×</button>";
   if(jp.view){
+    if(jp.list && jp.list.length) ph = jp.list.slice();
     if(ph.indexOf(jp.view) < 0) ph = [jp.view];
     var vi = ph.indexOf(jp.view), Lr = pvLayer();
     Lr.innerHTML = "<div class=\"pv-wrap full\" id=\"pvWrap\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Foto\"><div class=\"pv-track\" id=\"pvTrack\">"+ph.map(function(x){ return "<div class=\"pv-slide\" data-v=\""+x+"\"><img data-ph=\""+x+"\" alt=\"Foto\" draggable=\"false\"></div>"; }).join("")+"</div>"+
       (ph.length > 1 ? "<button type=\"button\" class=\"pv-arr l\" data-act=\"phstep\" data-v=\"-1\" aria-label=\"Vorheriges Foto\">‹</button><button type=\"button\" class=\"pv-arr r\" data-act=\"phstep\" data-v=\"1\" aria-label=\"Nächstes Foto\">›</button>" : "")+
-      "<div class=\"pv-head\"><span class=\"pv-ttl\">"+esc(p.n)+"</span><button type=\"button\" class=\"pv-fs\" data-act=\"phback\" aria-label=\"Vollbild schließen\">"+PVX+"</button></div>"+
+      "<div class=\"pv-head\"><span class=\"pv-ttl\" id=\"pvTtl\">"+esc(p.n)+"</span><button type=\"button\" class=\"pv-fs\" data-act=\"phback\" aria-label=\"Vollbild schließen\">"+PVX+"</button></div>"+
       "<span class=\"pv-fsn\" id=\"pvFsN\">"+(ph.length > 1 ? (vi+1)+" / "+ph.length : "")+"</span>"+
       "<div id=\"pvMeta\">"+phMetaHTML(jp.view)+"</div></div>";
     Lr.hidden = false; document.body.classList.add("pvfull"); fillPhotos(Lr); pvInit(vi); return;
@@ -7134,7 +7137,9 @@ function phMoveTo(toPid){
   }
   save(); closeCatPop(); phMv = null;
   var dk = dayOf(toPid); if(dk) cur = dk;
+  var keepL = jp && jp.list ? {list:jp.list, ret:jp.ret} : null;
   renderAll(); select(toPid); openJPop(toPid, dk || "", ph);
+  if(keepL && jp){ jp.list = keepL.list; jp.ret = keepL.ret; RC.dirty = true; renderJPop(); }
   toast("Foto zu „"+tp.n+"“ verschoben"+(removed ? ", Fotospot entfernt" : ""), true);
 }
 function phMetaRefresh(){
@@ -7153,6 +7158,7 @@ function pvInit(vi){
       var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)), sl = tr.children[i]; if(!sl || !jp) return;
       var v = sl.getAttribute("data-v"); if(v===jp.view) return;
       jp.view = v; var n = tr.children.length;
+      if(jp.list){ var npid = phPlace(v); if(npid && P(npid)){ jp.pid = npid; var tt = $("pvTtl"); if(tt) tt.textContent = P(npid).n; } }
       var pf = $("pvFsN"); if(pf && n > 1) pf.textContent = (i+1)+" / "+n;
       var d = $("pvDots"); if(d) Array.prototype.forEach.call(d.children, function(x, j){ x.classList.toggle("on", j===i); });
       if(document.activeElement && document.activeElement.id==="phcIn") document.activeElement.blur();
@@ -7269,7 +7275,8 @@ function phLike(ph){
   phMetaRefresh();
   (mine ? ref.delete() : ref.set({pid:"lk:"+ph, text:"❤", by:me, email:myMail(), at:Date.now()})).catch(function(e){ toast("Gefällt mir nicht gespeichert: "+(e && e.message), false); });
 }
-function closeJPop(){ closeJpMore(); pvHide(); jp = null; $("jPop").hidden = true; document.body.classList.remove("glass"); renderSheet(); }
+function closeJPop(){ var rcph = jp && jp.ret==="recap" ? jp.view : null; closeJpMore(); pvHide(); jp = null; $("jPop").hidden = true; document.body.classList.remove("glass"); renderSheet();
+  if(rcph && $("rc") && !$("rc").hidden){ if(RC.dirty){ RC.dirty = false; var rlf = RC.lbFrom; renderRecap(RC.key); RC.lbFrom = rlf; } rcGoToPh(rcph); } }
 
 /* ---------- Fotos: verkleinert, lokal in IndexedDB, mit Konto in Firestore ---------- */
 var PHC = {}, phDB = null;
@@ -8608,7 +8615,7 @@ document.addEventListener("click", function(e){
     case "phstep": phStep(+t.getAttribute("data-v")); break;
     case "phlike": phLike(t.getAttribute("data-ph")); break;
     case "phmovepop": openPhMove(t.getAttribute("data-ph")); break;
-    case "phmoveto": phMoveTo(t.getAttribute("data-v")); break;
+    case "phmoveto": phMoveTo(t.getAttribute("data-v")); if(jp && jp.list) RC.dirty = true; break;
     case "phsave": var sph = t.getAttribute("data-ph"); if(CAMF[sph]) CAMF[sph].saved = true; t.classList.remove("hot"); phSaveLib(sph); break;
     case "camshot": closeAddMenu(); closeCatPop(); camShot(); break;
     case "libpick": closeAddMenu(); closeCatPop(); libPick(); break;
@@ -8621,8 +8628,8 @@ document.addEventListener("click", function(e){
     case "gmopen": if(P(sel)) window.open(gmInfoUrl(P(sel)), "_blank", "noopener"); break;
     case "moredel": var mdId = sel; askConfirm("Ort löschen?", "„"+((P(mdId)||{}).n||"Ort")+"“ wird aus der Reise entfernt.", "Löschen", function(){ if(sel!==mdId) select(mdId); var tb = document.createElement("button"); tb.type = "button"; tb.setAttribute("data-act", "delplace"); tb.hidden = true; document.body.appendChild(tb); tb.click(); tb.remove(); }); break;
     case "locset": locStart(); break;
-    case "phdel": var dph = t.getAttribute("data-ph"), rest = photosAll(jp.pid).filter(function(x){ return x!==dph; }), di = photosAll(jp.pid).indexOf(dph);
-      delPhoto(phPlace(dph) || jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; if(lsPage) renderLs(); if(!jp.view && !!jp.ret){ closeJPop(); break; } renderJPop(); break;
+    case "phdel": var dph = t.getAttribute("data-ph"), dsrc = jp.list || photosAll(jp.pid), rest = dsrc.filter(function(x){ return x!==dph; }), di = dsrc.indexOf(dph); if(jp.list){ jp.list = rest; RC.dirty = true; }
+      delPhoto(phPlace(dph) || jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; if(jp.list && jp.view && phPlace(jp.view)) jp.pid = phPlace(jp.view); if(lsPage) renderLs(); if(!jp.view && !!jp.ret){ closeJPop(); break; } renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
     case "jpmore": openJpMore(jp ? jp.pid : id, t); break;
     case "ratepick": openRatePick(t.closest("#jPop") && jp ? jp.pid : id, t); break;
@@ -9216,7 +9223,8 @@ function rcClick(e){
   var a = t.getAttribute("data-rc");
   if(a==="close") closeRecap();
   else if(a==="day"){ var k = t.getAttribute("data-day"); if(k!==RC.key) renderRecap(k); }
-  else if(a==="ph"){ e.stopPropagation(); RC.lbFrom = t; rcLb(t.getAttribute("data-ph")); }
+  else if(a==="ph"){ e.stopPropagation(); RC.lbFrom = t; var rph = t.getAttribute("data-ph"), rpid = phPlace(rph) || (t.closest("[data-pid]") && t.closest("[data-pid]").getAttribute("data-pid"));
+    if(!rpid || !P(rpid)) return; pvCm = false; jp = {pid:rpid, dk:dayOf(rpid) || RC.key, view:rph, list:RC.ph.slice(), ret:"recap"}; renderJPop(); }
   else if(a==="mapmove" && RC.map){
     var on = t.getAttribute("aria-pressed")!=="true", m = RC.map;
     ["dragPan","touchZoomRotate","doubleClickZoom","scrollZoom"].forEach(function(h){ if(m[h]) m[h][on ? "enable" : "disable"](); });
