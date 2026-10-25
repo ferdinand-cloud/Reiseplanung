@@ -8363,11 +8363,20 @@ function navSvg(){
     var cut = Math.min(Math.max(N.pi, a), b);
     if(cut > a){ s += "<path d=\""+mk(a, cut)+"\" stroke=\"#8E8E93\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".55\"/>"; }
     if(cut < b){ var d1 = mk(cut, b), dot = sg.kind==="walk" && N.mode!=="walk";
-      s += "<path d=\""+d1+"\" stroke=\""+col+"\" stroke-width=\"20\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".14\"/>";
-      s += "<path d=\""+d1+"\" stroke=\"#fff\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".9\"/><path d=\""+d1+"\" stroke=\""+col+"\" stroke-width=\"6.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(dot ? " stroke-dasharray=\"1 9\"" : "")+"/>";
+      if(dot){
+        // Fußweg zur/von der Station: einzelne Punkte mit eigenem weißen Rand – kein durchgehendes Band, damit er sich klar von der Fahrt abhebt
+        s += "<path class=\"nv-walk\" d=\""+d1+"\" stroke=\"#fff\" stroke-width=\"10.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"0.1 13\" fill=\"none\"/><path d=\""+d1+"\" stroke=\"#0A84FF\" stroke-width=\"6.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-dasharray=\"0.1 13\" fill=\"none\"/>";
+      } else {
+        var ride = sg.kind==="ride";
+        s += "<path d=\""+d1+"\" stroke=\""+col+"\" stroke-width=\""+(ride ? 24 : 20)+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".16\"/>";
+        s += "<path"+(ride ? " class=\"nv-ride\"" : "")+" d=\""+d1+"\" stroke=\"#fff\" stroke-width=\""+(ride ? 13 : 10)+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".95\"/><path d=\""+d1+"\" stroke=\""+col+"\" stroke-width=\""+(ride ? 9 : 6.5)+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/>";
+      }
       // fließende Punkte zeigen die Richtung; Verzögerung aus der Uhrzeit, damit die Bewegung beim Neuzeichnen nicht neu startet
       if(!dot && !N.hidden) s += "<path class=\"nv-flow\" d=\""+d1+"\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-dasharray=\"0.1 16\" fill=\"none\" opacity=\".85\" style=\"animation-delay:-"+((Date.now() % 1400)/1000).toFixed(2)+"s\"/>"; }
   });
+  // Ein- und Ausstieg als Stationspunkte in Linienfarbe – markieren den Wechsel zwischen Fußweg und Fahrt
+  N.segs.forEach(function(sg){ if(sg.kind!=="ride") return; var col = sg.col || "#0A84FF", b = sg.o + sg.n - 1;
+    [sg.o, b].forEach(function(i){ if(i < N.pi) return; var z = pt(P0[i]); s += "<circle class=\"nv-st\" cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"7.5\" fill=\"#fff\" stroke=\""+col+"\" stroke-width=\"4\"/>"; }); });
   if(N.next && !N.arrived && !N.hidden){ var z = pt(N.next.at); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"8\" fill=\"#fff\" stroke=\"#0A84FF\" stroke-width=\"3.5\"/>"; }
   var zt = pt(N.tgt); s += "<circle cx=\""+f1(zt[0])+"\" cy=\""+f1(zt[1])+"\" r=\"11\" fill=\"#FF3B30\" stroke=\"#fff\" stroke-width=\"3\"/>";
   return s;

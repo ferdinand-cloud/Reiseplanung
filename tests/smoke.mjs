@@ -435,6 +435,12 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   ok(await page.locator("#navUi .nav-hero .nh-gl").count()===1, "Kreuzungsskizze fehlt in der Hauptkachel");
   ok(await page.locator("#navUi .nav-hero .nh-ap .fg").count()===1, "Annäherungsring fehlt");
   ok(await rp(`navSvg().indexOf("nv-flow")>-1`), "Fließende Richtungspunkte auf dem Weg fehlen");
+  // ÖPNV-Navigation: Fußweg (Punkte ohne durchgehendes Band) klar unterscheidbar von der Fahrt (durchgehende Linie in Linienfarbe) mit Stationspunkten
+  ok(await rp(`(function(){ var N0 = NAV, P = [{la:40.750,lo:-73.993},{la:40.752,lo:-73.992},{la:40.754,lo:-73.991},{la:40.760,lo:-73.988},{la:40.762,lo:-73.987}];
+    NAV = {tgt:P[4], pts:P, pi:0, mode:"oepnv", segs:[{o:0,n:2,kind:"walk"},{o:2,n:2,kind:"ride",col:"#0062cf"},{o:4,n:1,kind:"walk"}], hidden:false};
+    var sv = navSvg(); NAV = N0;
+    var walkBand = /stroke="#fff" stroke-width="10"[^>]*opacity/.test(sv.split("nv-ride")[0]);
+    return sv.indexOf("nv-walk")>-1 && sv.indexOf("nv-ride")>-1 && (sv.match(/nv-st/g)||[]).length===2 && !walkBand && sv.indexOf('stroke="#0062cf" stroke-width="9"')>-1; })()`), "Fußweg und U-Bahn-Fahrt sind in der Navigation nicht klar unterscheidbar");
   // an der Kurve nicht zu früh umspringen: kurz davor und kurz danach bleibt der Hinweis, erst 20 m danach kommt der nächste
   const at = (k) => `(function(){ var st = NAV.next, c = NAV.pts[st.i], o = NAV.pts[st.i + (${k} < 0 ? -1 : 1)], d = dist(c, o), t = Math.abs(${k})/d; me = {la:c.la + (o.la - c.la)*t, lo:c.lo + (o.lo - c.lo)*t, acc:8}; window.__st = st; navOnPos(); return NAV.next===st; })()`;
   await rp(`(function(){ var st = NAV.next, c = NAV.pts[st.i - 1]; me = {la:c.la, lo:c.lo, acc:8}; navOnPos(); })()`);
