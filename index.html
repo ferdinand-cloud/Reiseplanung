@@ -2290,6 +2290,8 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .gp-nav button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;border:0;border-radius:14px;background:#0b8a4b;color:#fff;font:inherit;cursor:pointer}
 .gp-nav button svg{width:20px;height:20px}
 .gp-nav button b{font-size:12.5px}
+.tdet.tnav{display:inline-flex;align-items:center;gap:3px}
+.tdet.tnav svg{width:12px;height:12px}
 .cb-av{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 6px}
 .cb-av span{display:flex;flex-direction:column;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,#0A6CDB 12%,transparent);font-size:12.5px;color:var(--muted)}
 .cb-av b{font:800 24px/1.1 var(--f-body);color:#0A6CDB}
@@ -6997,6 +6999,7 @@ function tap(x, y){
   T().hotels.forEach(function(h){ test(h.id, h, 18); });
   if(!best && (layers.wish || tab==="wish") && !isRO()) wishes().forEach(function(w){ test(w.id, w, 16); });
   if(!best) PHMK.forEach(function(pid){ test(pid, P(pid), 14); });
+  if(!best && layers.sub && !isRO()){ var sb = -1, sd = 16; TRANSIT.stations.forEach(function(st, si){ if(!stationOn(st)) return; var q = toS(st[1], st[2]), d = Math.hypot(q[0]-x, q[1]-y); if(d < sd){ sd = d; sb = si; } }); if(sb > -1){ select("sub:"+sb); return; } }
   if(!best && layers.bike && map.getLayer("cb")){ var cbf = map.queryRenderedFeatures([[x-12, y-12], [x+12, y+12]], {layers:["cb"]})[0]; if(cbf){ select("cb:"+cbf.properties.id); cbLoad(); return; } }
   if(!best){ var pq = poiAt(x, y); if(pq){ poiSel = pq; sel = null; select("poi"); poiSel = pq; renderCard(); scheduleOverlay(); return; } }
   if(!best && (layers.nb || nbActive().length)){ var a = toW(x, y), n = nbAt(a[0], a[1]); if(n) best = "nb:"+n; }
@@ -7191,8 +7194,8 @@ function stationLine(p){
 function stationLineFull(p){
   var x = nearStation(p); if(!x) return busLine(p);
   var sis = []; NET.s.forEach(function(s2, i){ if(Math.hypot(s2[1]-x.st[1], s2[2]-x.st[2]) < 150) sis.push(i); });
-  var si = sis.join(","), open = !!depOpen[si], bd = sis.length ? 0 : 1e9;
-  return "<p class=\"tline\"><span class=\"tic\" title=\"Nächste U-Bahn\" aria-label=\"Nächste U-Bahn\">"+TICSUB+"</span><span class=\"tlx\"><b>"+esc(x.st[0])+"</b> "+bullets(x.st[3])+" <span class=\"tdist\">· "+fmtDist(x.d)+"</span> <button type=\"button\" class=\"tdet\" data-act=\"depopen\" data-st=\""+si+"\" aria-expanded=\""+open+"\">"+(open?"Abfahrten ausblenden":"Abfahrten")+"</button></span></p>"+(open && sis.length ? stationDeps(sis) : "")+busLine(p);
+  var si = sis.join(","), open = !!depOpen[si], bd = sis.length ? 0 : 1e9, sti = TRANSIT.stations.indexOf(x.st);
+  return "<p class=\"tline\"><span class=\"tic\" title=\"Nächste U-Bahn\" aria-label=\"Nächste U-Bahn\">"+TICSUB+"</span><span class=\"tlx\"><b>"+esc(x.st[0])+"</b> "+bullets(x.st[3])+" <span class=\"tdist\">· "+fmtDist(x.d)+"</span> <button type=\"button\" class=\"tdet\" data-act=\"depopen\" data-st=\""+si+"\" aria-expanded=\""+open+"\">"+(open?"Abfahrten ausblenden":"Abfahrten")+"</button>"+(sti > -1 ? " <button type=\"button\" class=\"tdet tnav\" data-act=\"navsub\" data-sub=\""+sti+"\">"+NAVGOICO+"Hinlaufen</button>" : "")+"</span></p>"+(open && sis.length ? stationDeps(sis) : "")+busLine(p);
 }
 function busLine(p){
   if(!busReady || !hasLoc(p)) return "";
@@ -7340,7 +7343,7 @@ function poiCard(){
   c += "<div class=\"jp-tiles ctiles\">";
   if(D && !isRO()) c += "<button type=\"button\" class=\"jp-tile pri\" data-act=\"planpick\" data-poi=\"1\">"+I("<path d=\"M10 4.5v11M4.5 10h11\"/>")+"<span>Zur Planung</span></button>";
   if(!isRO()) c += "<button type=\"button\" class=\"jp-tile\" data-act=\"poiadd\" data-to=\"wish\">"+I("<path d=\"M10 16.5s-6-3.6-6-8a3.3 3.3 0 0 1 6-1.9 3.3 3.3 0 0 1 6 1.9c0 4.4-6 8-6 8z\"/>")+"<span>Wunschliste</span></button>";
-  if(hasLoc(q)) c += "<a class=\"jp-tile\" target=\"_blank\" rel=\"noopener\" href=\"https://www.google.com/maps/dir/?api=1&destination="+q.la+","+q.lo+"&travelmode=transit\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+"<span>Route</span></a>";
+  if(hasLoc(q)) c += "<button type=\"button\" class=\"jp-tile\" data-act=\"navpick\" data-poi=\"1\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+"<span>Route</span></button>";
   c += "<button type=\"button\" class=\"jp-tile\" data-act=\"poimore\" aria-haspopup=\"dialog\">"+I("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>")+"<span>Mehr</span></button>";
   c += "</div>";
   return c;
@@ -7495,6 +7498,7 @@ function renderCard(){
   if(!sel){ el.hidden = true; return; }
   if(sel==="poi" && poiSel){ el.innerHTML = poiCard(); el.hidden = false; placeFloating(); return; }
   if(sel.indexOf("cb:")===0){ el.innerHTML = cbCard(sel.slice(3)); el.hidden = false; placeFloating(); return; }
+  if(sel.indexOf("sub:")===0){ el.innerHTML = subCard(+sel.slice(4)); el.hidden = false; placeFloating(); return; }
   var x = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>";
   if(sel.indexOf("nb:")===0){
     var nn = sel.slice(3), i = nbByName(nn), all = Object.keys(T().places).map(P).filter(function(p){ return !p.of && nbOf(p)===nn; });
@@ -7508,7 +7512,7 @@ function renderCard(){
   }
   var h = hotelById(sel);
   if(h){
-    el.innerHTML = x+"<h3>"+esc(h.n)+"</h3><p>Hotel · "+shortD(h.from)+"–"+shortD(h.to)+"</p>"+stationLine(h);
+    el.innerHTML = x+"<h3>"+esc(h.n)+"</h3><p>Hotel · "+shortD(h.from)+"–"+shortD(h.to)+"</p>"+stationLine(h)+(hasLoc(h) && !isRO() ? "<div class=\"jp-tiles ctiles\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"navpick\" data-hotel=\""+esc(h.id)+"\">"+NAVGOICO+"<span>Navigieren</span></button></div>" : "");
     el.hidden = false; placeFloating(); return;
   }
   var p = P(sel); if(!p){ sel = null; el.hidden = true; return; }
@@ -7912,6 +7916,19 @@ function navBuild(){
     if(N.first){ N.first = false; fitPoints(pts.concat([p]), 1); setTimeout(function(){ if(NAV===N && N.follow) navFollow(true); }, 1600); }
   }, function(e){ if(NAV!==N) return; N.busy = false; N.err = "Weg konnte nicht berechnet werden"+(e && e.message ? " ("+e.message+")" : "")+". Neuer Versuch …"; navRender(); setTimeout(function(){ if(NAV===N) navBuild(); }, 8000); });
 }
+/* Navigation zu beliebigen Zielen (U-Bahn-Station, Citi-Bike-Station, Ort aus der Karte, Hotel): Menü mit Verkehrsmitteln */
+var NAVPICK = null;
+function navPick(tg, btn, ext){
+  if(!tg || !hasLoc(tg)) return; NAVPICK = {la:+tg.la, lo:+tg.lo, n:tg.n || "Ziel", id:tg.id || null};
+  var row = function(m, ic, tx, sub){ return "<button type=\"button\" role=\"menuitem\" data-act=\"navgo\" data-mode=\""+m+"\"><span class=\"ai lmi\">"+ic+"</span><span class=\"cm-t\"><b>"+tx+"</b>"+(sub ? "<small>"+sub+"</small>" : "")+"</span></button>"; };
+  var d = me ? dist(me, NAVPICK) : null;
+  var h = "<div class=\"vp-h\">Navigieren zu „"+esc(NAVPICK.n)+"“</div>"+
+    row("walk", LMWALK, "Zu Fuß", d!=null ? "ca. "+navMins(d*1.25/1.33)+" Min. · "+fmtDist(d*1.25) : "")+
+    row("bike", LMBIKE, "Citi Bike", "Station holen, fahren, abgeben")+
+    (ext==="nosub" ? "" : row("oepnv", LMSUB, "U-Bahn & Bus", ""));
+  if(ext!=="noext") h += "<a role=\"menuitem\" target=\"_blank\" rel=\"noopener\" href=\"https://www.google.com/maps/dir/?api=1&destination="+NAVPICK.la+","+NAVPICK.lo+"&travelmode=walking\"><span class=\"ai lmi\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M11 4h5v5M16 4l-7 7M14 11v5H4V6h5\"/></svg></span><span class=\"cm-t\"><b>In Google Maps öffnen</b></span></a>";
+  jpPopover("nav", btn, h, "navpick");
+}
 function navStart(p, mode, pref){
   if(!p || !hasLoc(p)) return;
   navEnd(true);
@@ -7991,6 +8008,19 @@ function navSvg(){
   var zt = pt(N.tgt); s += "<circle cx=\""+f1(zt[0])+"\" cy=\""+f1(zt[1])+"\" r=\"11\" fill=\"#FF3B30\" stroke=\"#fff\" stroke-width=\"3\"/>";
   return s;
 }
+function subLL(st){ return {la: LAT0 - st[2]/KM, lo: st[1]/(COS*KM) - 74}; }
+function subCard(i){
+  var st = TRANSIT.stations[i]; if(!st) return "";
+  var sis = []; NET.s.forEach(function(s2, k){ if(Math.hypot(s2[1]-st[1], s2[2]-st[2]) < 150) sis.push(k); });
+  var key = sis.join(","), open = !!depOpen[key], q = subLL(st), d = me ? dist(me, q) : null;
+  return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>"+
+    "<div class=\"ch\"><span class=\"cic\" style=\"--cc:#17212c\">"+TICSUB+"</span><div class=\"cht\"><h3>"+esc(st[0])+"</h3><p>U-Bahn-Station"+(d!=null ? " · "+fmtDist(d)+" entfernt" : "")+"</p></div></div>"+
+    "<p class=\"tline\"><span class=\"tlx\">"+bullets(st[3])+"</span></p>"+
+    (open && sis.length ? stationDeps(sis) : "")+
+    "<div class=\"jp-tiles ctiles\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"navpick\" data-sub=\""+i+"\">"+NAVGOICO+"<span>Navigieren</span></button>"+
+    (sis.length ? "<button type=\"button\" class=\"jp-tile\" data-act=\"depopen\" data-st=\""+key+"\" aria-expanded=\""+open+"\">"+"<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/></svg><span>"+(open ? "Ausblenden" : "Abfahrten")+"</span></button>" : "")+"</div>";
+}
+var NAVGOICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/></svg>";
 function cbAvail(s){ return s.known ? (s.b + s.e)+(s.b + s.e===1 ? " Rad" : " Räder")+(s.e ? " ("+s.e+" E-Bike"+(s.e===1?"":"s")+")" : "")+" · "+s.d+(s.d===1 ? " freier Platz" : " freie Plätze") : "Verfügbarkeit wird geladen …"; }
 function cbCard(id){
   var s = CB.byId[id]; if(!s) return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button><h3>Citi Bike</h3><p class=\"note\">Station nicht gefunden.</p>";
@@ -8000,7 +8030,7 @@ function cbCard(id){
     "<div class=\"cb-av\"><span class=\"cb-b"+(s.known && s.b + s.e < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.b + s.e : "–")+"</b>Räder"+(s.known && s.e ? "<small>davon "+s.e+" E-Bike"+(s.e===1?"":"s")+"</small>" : "")+"</span><span class=\"cb-d"+(s.known && s.d < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.d : "–")+"</b>freie Plätze</span></div>"+
     (!s.ok ? "<p class=\"note\">Diese Station ist gerade außer Betrieb.</p>" : "")+
     "<p class=\"note cb-note\">"+(CB.err ? esc(CB.err) : age===null ? "Wird geladen …" : "Stand: "+(age < 1 ? "gerade eben" : "vor "+age+" Min."))+" · Daten: Citi Bike (Lyft)</p>"+
-    "<div class=\"jp-tiles ctiles\"><a class=\"jp-tile\" target=\"_blank\" rel=\"noopener\" href=\"https://www.google.com/maps/dir/?api=1&destination="+s.la+","+s.lo+"&travelmode=walking\">"+LMWALK+"<span>Hinlaufen</span></a>"+
+    "<div class=\"jp-tiles ctiles\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"navpick\" data-cb=\""+esc(s.id)+"\">"+NAVGOICO+"<span>Navigieren</span></button>"+
     "<a class=\"jp-tile\" target=\"_blank\" rel=\"noopener\" href=\"https://citibikenyc.com/how-it-works\">"+LMBIKE+"<span>So geht’s</span></a>"+
     "<button type=\"button\" class=\"jp-tile\" data-act=\"cbrefresh\">"+"<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2\"/></svg><span>Aktualisieren</span></button></div>";
 }
@@ -8132,7 +8162,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=lmpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -9710,6 +9740,15 @@ document.addEventListener("click", function(e){
     case "lsday": closeLsPage(); var lsd = t.getAttribute("data-day"); if(dayByKey(lsd)){ cur = lsd; tab = "day"; renderAll(); fitDay(); } break;
     case "lsph": var lpid = t.getAttribute("data-pid"); if(P(lpid)){ openJPop(lpid, dayOf(lpid) || "", t.getAttribute("data-ph")); if(jp) jp.ret = "list"; } break;
     case "navprof": if(profOpen) closeProfile(); else openProfile(); break;
+    case "navpick":
+      var npT = null, npX = "";
+      if(t.hasAttribute("data-sub")){ var nst = TRANSIT.stations[+t.getAttribute("data-sub")]; if(nst){ npT = subLL(nst); npT.n = nst[0]; npX = "nosub"; } }
+      else if(t.hasAttribute("data-cb")){ var ncb = CB.byId[t.getAttribute("data-cb")]; if(ncb) npT = {la:ncb.la, lo:ncb.lo, n:"Citi Bike · "+ncb.n}; }
+      else if(t.hasAttribute("data-poi")){ if(poiSel) npT = {la:poiSel.la, lo:poiSel.lo, n:poiSel.n}; }
+      else if(t.hasAttribute("data-hotel")){ var nh = hotelById(t.getAttribute("data-hotel")); if(nh) npT = {la:nh.la, lo:nh.lo, n:nh.n}; }
+      if(npT) navPick(npT, t, npX); break;
+    case "navgo": closeJpMore(); if(NAVPICK) navStart(NAVPICK, t.getAttribute("data-mode")); break;
+    case "navsub": var nsb = TRANSIT.stations[+t.getAttribute("data-sub")]; if(nsb){ var nq = subLL(nsb); nq.n = nsb[0]; navStart(nq, "walk"); } break;
     case "navstart": if(goSt && P(goSt.id)) navStart(P(goSt.id), t.getAttribute("data-mode")); break;
     case "navend": navEnd(); break;
     case "navhide": if(NAV){ NAV.hidden = true; navRender(); scheduleOverlay(); } break;

@@ -388,6 +388,27 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   ok(await rp(`!!T().done.p2 && NAV===null`), "Abhaken bei Ankunft funktioniert nicht");
 });
 
+await test("Navigation zu U-Bahn- und Citi-Bike-Stationen", async () => {
+  await seed();
+  await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; layers.sub = true; layers.bike = true; cbLoad(true);`); await page.waitForTimeout(800);
+  const si = await rp(`TRANSIT.stations.findIndex(function(st){ return /Bleecker/.test(st[0]); })`);
+  ok(si > -1, "Teststation nicht gefunden");
+  await rp(`select("sub:${si}")`); await page.waitForTimeout(150);
+  ok((await page.locator("#card").innerText()).includes("U-Bahn-Station"), "Stations-Pop-up fehlt");
+  await click("#card [data-act=navpick]");
+  ok(await page.locator("#jpMenu [data-act=navgo]").count()===2, "Menü zur Station sollte Zu Fuß und Citi Bike bieten");
+  await click("#jpMenu [data-act=navgo][data-mode=walk]");
+  await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts)"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`NAV && /Bleecker/.test(NAV.tgt.n) && !!NAV.pts`), "Navigation zur U-Bahn-Station startet nicht");
+  await rp(`navEnd(true); select("cb:S2")`); await page.waitForTimeout(150);
+  await click("#card [data-act=navpick]");
+  await click("#jpMenu [data-act=navgo][data-mode=walk]");
+  await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts)"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`NAV && /Washington Sq E/.test(NAV.tgt.n)`), "Navigation zur Citi-Bike-Station startet nicht");
+  await rp(`navEnd(true); select("p1"); trOpen = true; renderCard();`); await page.waitForTimeout(150);
+  ok(await page.locator("#card [data-act=navsub]").count()===1, "„Hinlaufen“ zur nächsten U-Bahn fehlt im Orts-Pop-up");
+});
+
 await test("Tagesplan: Privat-Plakette sichtbar", async () => {
   await seed();
   await rp(`T().privP = {p2:1}; renderSheet();`);
