@@ -4868,15 +4868,20 @@ function movableAt(x, y){
   if(D) ord(cur).forEach(test);
   if(layers.wish || tab==="wish") wishes().forEach(function(w){ test(w.id); });
   PHMK.forEach(test);
+  // Wegpunkte der Route (liegen über den Stopps nur, wenn sie näher sind)
+  if(layers.route && D) VIAMK.forEach(function(m){ var d = Math.hypot(m.x-x, m.y-y); if(d < Math.min(bd, 22)){ best = "via:"+m.li+":"+m.vi; bd = d; } });
   return best;
 }
+function viaOfMv(id){ var a = String(id).split(":"), li = +a[1], vi = +a[2], lp2 = dayLegs(cur)[li], q = lp2 && legVia(lp2[0], lp2[1])[vi]; return q ? {li:li, vi:vi, lp:lp2, q:q} : null; }
 function mvStart(id){
   var x = lp.x, y = lp.y; lpCancel(); lpAt = Date.now();
-  var p = P(id); if(!canMove(p)) return;
+  var isVia = /^via:/.test(id), vo = isVia && viaOfMv(id), p = isVia ? null : P(id);
+  if(isVia ? !vo || isRO() : !canMove(p)) return;
   try { navigator.vibrate && navigator.vibrate(25); } catch(e){}
   var g = document.createElement("div"); g.className = "mvghost";
-  var ph = photosOf(id)[0];
-  g.innerHTML = "<span class=\"mvpin\" style=\"--cc:"+catCol(p.c)+"\">"+(ph ? "<img data-ph=\""+ph+"\" alt=\"\">" : icon(p.c))+"</span><b>"+esc(p.n)+"</b><i class=\"mvdot\"></i>";
+  var ph = isVia ? null : photosOf(id)[0];
+  g.innerHTML = isVia ? "<span class=\"mvpin\" style=\"--cc:"+dayColor(cur)+"\">"+VIAICO+"</span><b>Wegpunkt</b><i class=\"mvdot\"></i>"
+    : "<span class=\"mvpin\" style=\"--cc:"+catCol(p.c)+"\">"+(ph ? "<img data-ph=\""+ph+"\" alt=\"\">" : icon(p.c))+"</span><b>"+esc(p.n)+"</b><i class=\"mvdot\"></i>";
   document.body.appendChild(g); fillPhotos(g);
   mv = {id:id, g:g, x:x, y:y};
   ["dragPan","touchZoomRotate","dragRotate","doubleClickZoom"].forEach(function(h){ try { map[h].disable(); } catch(e){} });
@@ -4891,7 +4896,11 @@ function mvEnd(cancel){
   document.body.classList.remove("mving");
   m.g.classList.add("drop"); setTimeout(function(){ m.g.remove(); }, 220);
   if(cancel) return;
-  var gr = $("gl").getBoundingClientRect(), ll = map.unproject([m.x - gr.left, m.y - gr.top]), p = P(m.id); if(!p) return;
+  var gr = $("gl").getBoundingClientRect(), ll = map.unproject([m.x - gr.left, m.y - gr.top]);
+  if(/^via:/.test(m.id)){ var vo = viaOfMv(m.id); if(!vo) return; undoSnap = snapshot();
+    var vv = legVia(vo.lp[0], vo.lp[1]).slice(); vv.splice(vo.vi, 1); setLegVia(vo.lp[0], vo.lp[1], vv);
+    addVia(vo.lp[0], vo.lp[1], {la:ll.lat, lo:ll.lng}); layers.route = true; dirty(); toast("Wegpunkt verschoben", true); renderAll(); return; }
+  var p = P(m.id); if(!p) return;
   var la = +ll.lat.toFixed(6), lo = +ll.lng.toFixed(6); if(Math.abs(la - p.la) < 1e-6 && Math.abs(lo - p.lo) < 1e-6) return;
   undoSnap = snapshot();
   Object.keys(T().places).forEach(function(k){ var q = T().places[k]; if(k===m.id || q.of===m.id){ q.la = la; q.lo = lo; } });
