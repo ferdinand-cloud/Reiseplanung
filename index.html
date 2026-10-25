@@ -2461,7 +2461,8 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .dm-dots i.on{width:20px;background:var(--accent,#007AFF)}
 /* Mini-Bildschirm */
 .dm-mock{position:relative;width:224px;height:316px;flex:0 0 auto;border-radius:30px;overflow:hidden;background:var(--land,#eceeec);box-shadow:0 0 0 7px #15191e,0 0 0 8px rgba(255,255,255,.1),0 14px 34px rgba(0,0,0,.25);font-family:var(--f-body);color:var(--ink)}
-@media (max-height:700px){.dm-mock{width:190px;height:262px;border-radius:26px}.dm-txt{min-height:104px}.dm-txt h3{font-size:19px}.dm-txt p{font-size:14px}}
+@media (max-height:740px){.dm-stage{height:276px;padding-top:8px}.dm-mock{transform:scale(.84);transform-origin:top center;margin-bottom:-50px}.dm-txt{min-height:104px}.dm-txt h3{font-size:19px}.dm-txt p{font-size:14px}}
+@media (max-height:640px){.dm-stage{height:236px}.dm-mock{transform:scale(.72);margin-bottom:-88px}}
 .dm-mock .mk{position:absolute;transition:opacity .3s,transform .3s,box-shadow .3s}
 .dm-mock::after{content:"";position:absolute;inset:0;z-index:2;background:color-mix(in srgb,var(--land,#eceeec) 62%,transparent);opacity:0;transition:opacity .3s;pointer-events:none}
 .dm-mock.focus::after{opacity:1}
@@ -2480,7 +2481,7 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .m-btn{width:20px;height:20px;border-radius:50%;background:var(--glass,var(--sheet));display:grid;place-items:center;font-size:12px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.08)}
 .m-srch{top:40px;right:33px}
 .m-add{top:40px;right:9px}
-.m-srch::before{content:"";width:6px;height:6px;border:1.5px solid currentColor;border-radius:50%;margin:-2px 0 0 -2px}
+.m-srch svg{width:10px;height:10px}
 .m-rail{top:68px;left:9px;width:26px;height:38px;border-radius:9px;background:var(--glass,var(--sheet));display:grid;justify-items:center;align-content:center;gap:2px;font-size:6.5px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.08)}
 .m-rail b{width:14px;height:14px;border-radius:50%;background:#5E9970;color:#fff;font-size:8px;display:grid;place-items:center}
 .m-cb{right:9px;width:20px;height:20px;border-radius:7px;background:var(--glass,var(--sheet));display:grid;place-items:center;font-size:7.5px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.08)}
@@ -2518,6 +2519,144 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .m-bubble{left:50%;transform:translateX(-50%);padding:6px 9px;border-radius:10px;background:var(--sheet);font-size:8px;font-weight:600;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.18);opacity:0;z-index:5}
 .m-bubble{transition:opacity .3s}
 .m-bubble.show{opacity:1}
+.dm-cnt{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.dm-top::before{content:""}
+.dm-dots{gap:4px;min-width:0;overflow:hidden}
+.dm-dots i{flex:0 0 auto;width:5px;height:5px}
+.dm-dots i.on{width:14px}
+.dm-nav{gap:10px}
+.dm-nav:has(.go) .dm-dots{gap:3px}
+.dm-nav:has(.go) .dm-dots i{width:4px;height:4px}
+.dm-nav:has(.go) .dm-dots i.on{width:10px}
+.dm-mock[data-a="done"] .m-plan .m-row:nth-child(-n+2) .n{font-size:0}
+.dm-mock[data-a="done"] .m-plan .m-row:nth-child(-n+2) .n::after{content:"✓";font-size:7.5px}
+.dm-mock[data-r="obs"] .m-tabs .tw{visibility:hidden}
+
+/* Demo: Rollenwahl oben */
+.dm-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.dm-top .dm-skip{justify-self:end}
+.dm-role{display:inline-flex;padding:3px;border-radius:999px;background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.dm-role button{border:0;background:none;color:var(--muted);font:600 13px/1 var(--f-body);padding:7px 12px;border-radius:999px;cursor:pointer}
+.dm-role button[aria-selected="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+/* Demo: echte Symbole in der Leiste */
+.m-bar .bi{width:15px;height:15px;display:grid;place-items:center;border-radius:5px;color:var(--ink);opacity:.8}
+.m-bar .bi svg{width:10.5px;height:10.5px}
+.m-bar .bi.a{background:color-mix(in srgb,var(--ink) 12%,transparent);opacity:1}
+.m-bar .bi.av{width:14px;height:14px;border-radius:50%;background:#6E8FD8;color:#fff;font:800 7px/14px var(--f-body);opacity:1;text-align:center}
+.dm-mock .mk.ring{box-shadow:0 0 0 2px var(--sheet),0 0 0 4.5px var(--accent,#007AFF);animation:dmRing 1.6s ease-in-out infinite}
+.dm-mock .m-bar .bi.av.ring{z-index:4}
+.dm-mock[data-r="obs"] .mx-own{display:none !important}
+.dm-mock[data-r="obs"] .m-row .g{visibility:hidden}
+.dm-mock[data-a="done"] .m-plan .m-row:nth-child(-n+2) .n{background:#7d8a96}
+.dm-mock[data-a="done"] .m-plan .m-row:nth-child(-n+2) .t{text-decoration:line-through;opacity:.6}
+.dm-mock[data-f="swipe"] .m-fing{opacity:1;animation:dmSwipe 1.9s ease-in-out infinite}
+@keyframes dmSwipe{0%{transform:translateX(26px) scale(1);opacity:0}15%{opacity:1;transform:translateX(26px) scale(.82)}70%{transform:translateX(-46px) scale(.82);opacity:1}85%,100%{transform:translateX(-46px) scale(1);opacity:0}}
+/* Demo: Bildschirme im Mini-Handy */
+.dm-mock .ms{position:absolute;inset:0;z-index:4;display:none;font-family:var(--f-body)}
+.dm-mock[data-s="card"] .ms-card,.dm-mock[data-s="chat"] .ms-chat,.dm-mock[data-s="recap"] .ms-rc,.dm-mock[data-s="disc"] .ms-dc,.dm-mock[data-s="notif"] .ms-nt,.dm-mock[data-s="share"] .ms-sh{display:block}
+.dm-mock[data-s="photo"] .ms-ph,.dm-mock[data-s="comment"] .ms-ph,.dm-mock[data-s="vis"] .ms-ph,.dm-mock[data-s="send"] .ms-ph{display:block}
+.dm-mock[data-s="card"] .m-sheet{display:none}
+.ms-card{inset:auto 8px 10px 8px !important;padding:10px 10px 8px;border-radius:14px;background:var(--sheet);box-shadow:0 8px 24px rgba(0,0,0,.22);font-size:8px}
+.ms-card > b{display:block;font-size:11px;margin-bottom:1px}
+.ms-card > small{color:var(--muted);font-size:7.5px}
+.mc-ch{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:6px 0 4px}
+.mc-ch span,.mc-op{padding:4px 6px;border-radius:6px;background:color-mix(in srgb,var(--ink) 6%,transparent);font-weight:600;font-size:7px}
+.mc-t{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:5px}
+.mc-t span{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px;border-radius:7px;background:color-mix(in srgb,var(--ink) 6%,transparent);font-size:6.5px;font-weight:700}
+.mc-t svg{width:10px;height:10px}
+.dm-mock .mc-t .mc-plan{position:relative}
+.dm-mock .ms-side .ms-b{position:relative}
+.mc-t .mc-plan{background:color-mix(in srgb,var(--accent,#007AFF) 22%,transparent);color:var(--accent,#007AFF)}
+.ms-ph{background:#000;color:#fff}
+.ms-img{position:absolute;left:0;right:0;top:66px;height:150px;background:linear-gradient(#5f9bd6,#a8cdf0 52%,#7c8d77 53%,#4f6150);overflow:hidden}
+.ms-img .sun{position:absolute;right:38px;top:22px;width:26px;height:26px;border-radius:50%;background:radial-gradient(#ffe8a8,#ffc35c 60%,transparent 62%)}
+.ms-img .br{position:absolute;inset:0;width:100%;height:100%}
+.ms-ttl{position:absolute;left:12px;top:14px;font-size:9px;font-weight:700}
+.ms-x{position:absolute;right:10px;top:9px;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:8px}
+.ms-side{display:grid;gap:5px;left:8px;top:61px;padding:2px;border-radius:12px}
+.ms-b{position:relative;width:20px;height:20px;border-radius:50%;background:rgba(40,40,40,.62);display:grid;place-items:center;color:#fff}
+.ms-b svg{width:10.5px;height:10.5px;margin:0}
+.ms-b .lk{margin:0;width:10.5px;height:10.5px;color:currentColor}
+.ms-b em{position:absolute;right:-3px;bottom:-3px;min-width:9px;height:9px;border-radius:5px;background:#fff;color:#111;font:700 6px/9px var(--f-body);font-style:normal;text-align:center;padding:0 2px}
+.ms-b.ms-like.on{color:#ff4d6d}
+.ms-b.ms-vis{background:rgba(52,199,89,.9)}
+.ms-cap{position:absolute;left:50%;transform:translateX(-50%);bottom:30px;padding:4px 9px;border-radius:9px;background:rgba(255,255,255,.14);font-size:7px;white-space:nowrap}
+.ms-cnt{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-size:7.5px;font-weight:700;opacity:.8}
+.ms-obsnote{display:none;position:absolute;left:34px;right:8px;top:226px;padding:6px 8px;border-radius:8px;background:rgba(229,161,0,.92);color:#1a1300;font-size:7px;font-weight:700;line-height:1.35}
+.dm-mock.obsnote .ms-obsnote{display:block}
+.dm-mock.obsnote .ms-cap{display:none}
+.ms-panel{display:none;position:absolute;left:0;right:0;bottom:0;height:46%;padding:9px 10px;border-radius:14px 14px 0 0;background:var(--sheet);color:var(--ink);font-size:7.5px;box-sizing:border-box}
+.dm-mock[data-s="comment"] .ms-panel{display:block}
+.dm-mock[data-s="comment"] .ms-cap,.dm-mock[data-s="comment"] .ms-cnt{display:none}
+.ms-panel > b{display:block;font-size:8.5px;margin-bottom:6px}
+.ms-panel p,.ms-pick p,.ms-nt p,.ms-sh p{display:flex;align-items:center;gap:6px;margin:0 0 6px}
+.ms-panel i,.ms-pick i,.mh-h i,.dw i,.ms-nt i,.ms-sh p i{flex:0 0 auto;width:14px;height:14px;border-radius:50%;color:#fff;font:800 7px/14px var(--f-body);font-style:normal;text-align:center}
+.ms-in,.mh-in,.ms-q{display:block;padding:6px 8px;border-radius:8px;background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--muted);font-size:7px}
+.ms-vispop,.ms-pick{display:none;position:absolute;width:132px;padding:7px;border-radius:12px;background:var(--sheet);color:var(--ink);box-shadow:0 10px 26px rgba(0,0,0,.4);font-size:7.5px;z-index:2}
+.ms-vispop{left:34px;top:120px}
+.ms-pick{left:44px;top:92px;width:136px}
+.dm-mock[data-s="vis"] .ms-vispop,.dm-mock[data-s="send"] .ms-pick{display:block}
+.ms-vispop .vh,.ms-pick .vh,.ms-sh .vh{font:700 6.5px/1.2 var(--f-body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:1px 2px 5px}
+.ms-vispop p{display:flex;align-items:center;gap:6px;margin:0;padding:4px;border-radius:7px}
+.ms-vispop p.sel{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.ms-vispop p span{display:flex;flex-direction:column;flex:1}
+.ms-vispop small{color:var(--muted);font-size:6.5px}
+.ms-vispop p i{width:16px;height:16px;border-radius:5px;display:grid;place-items:center}
+.ms-vispop p i svg{width:10px;height:10px;margin:0}
+.ms-vispop i.pr{color:#C98E00;background:rgba(229,161,0,.16)}.ms-vispop i.tr{color:#2a9d4b;background:rgba(52,199,89,.16)}.ms-vispop i.pu{color:#0A84FF;background:rgba(10,132,255,.14)}
+.ms-vispop em{font-style:normal;font-weight:800}
+.ms-pick .ms-q{margin-bottom:6px;border:1px solid color-mix(in srgb,var(--accent,#007AFF) 55%,transparent)}
+.ms-pick p{margin:0;padding:4px 3px;font-weight:600}
+.ms-chat{background:var(--sheet);color:var(--ink);padding:10px 10px 0;box-sizing:border-box;font-size:7.5px}
+.mh-h{display:flex;align-items:center;gap:6px;padding-bottom:8px;margin-bottom:8px;border-bottom:.5px solid var(--line);font-size:9px}
+.ms-chat > p{max-width:70%;margin:0 0 6px;padding:5px 8px;border-radius:10px;line-height:1.3}
+.ms-chat > p.l{background:color-mix(in srgb,var(--ink) 8%,transparent);border-bottom-left-radius:3px}
+.ms-chat > p.r{margin-left:auto;background:var(--accent,#007AFF);color:#fff;border-bottom-right-radius:3px}
+.mh-card{position:relative !important;display:flex;align-items:center;gap:6px;width:118px;margin:0 0 6px auto;padding:5px;border-radius:10px;background:color-mix(in srgb,var(--accent,#007AFF) 12%,var(--sheet))}
+.mh-card .th{width:26px;height:26px;border-radius:6px;background:linear-gradient(#5f9bd6,#a8cdf0 52%,#7c8d77 53%)}
+.mh-card span{display:flex;flex-direction:column;gap:1px;font-size:7px}
+.mh-card small{color:var(--muted);font-size:6.5px}
+.mh-in{position:absolute;left:10px;right:10px;bottom:12px}
+.ms-rc{background:radial-gradient(120% 60% at 80% 20%,#4a2a6b,transparent),#07080c;color:#f3f5f9;padding:10px 12px;box-sizing:border-box}
+.ms-rc .rd{display:flex;gap:4px;padding:3px;border-radius:999px;background:rgba(255,255,255,.08);width:max-content;margin:0 auto 70px}
+.ms-rc .rd span{padding:3px 8px;border-radius:999px;font-size:7.5px;font-weight:700;opacity:.6}
+.ms-rc .rd span.a{background:#9b7fd4;opacity:1}
+.ms-rc .rk{font-size:6.5px;font-weight:800;letter-spacing:.16em;opacity:.85}
+.ms-rc .rb{font:800 34px/1 var(--f-display);margin:5px 0 2px}
+.ms-rc .rt{font-size:9px;font-weight:700}
+.ms-rc .rs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:12px}
+.ms-rc .rs span{padding:6px;border-radius:9px;background:rgba(255,255,255,.08);font-size:6.5px;opacity:.9}
+.ms-rc .rs b{display:block;font-size:12px}
+.ms-rc .rm{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:10px}
+.ms-rc .rm i{height:30px;border-radius:6px;background:linear-gradient(#5f9bd6,#a8cdf0 52%,#7c8d77 53%)}
+.ms-rc .rm i:nth-child(2){background:linear-gradient(135deg,#c86b3c,#f3c27a)}
+.ms-rc .rm i:nth-child(3){background:linear-gradient(135deg,#3c7a4f,#a8d08d)}
+.ms-rc .rw{margin-top:9px;text-align:center;font-size:6.5px;opacity:.6}
+.ms-dc,.ms-nt,.ms-sh{background:var(--sheet);color:var(--ink);padding:12px 10px;box-sizing:border-box;font-size:7.5px}
+.ms-dc .dh,.ms-nt .dh,.ms-sh .dh{font:800 14px/1.1 var(--f-display);margin:2px 0 8px}
+.dseg{display:grid;grid-template-columns:1fr 1fr;padding:2px;border-radius:7px;background:color-mix(in srgb,var(--ink) 7%,transparent);margin-bottom:8px;text-align:center;font-weight:700;font-size:7px}
+.dseg span,.mx-seg span{padding:4px 0;border-radius:5px}
+.dseg span.a,.mx-seg span.a{background:var(--sheet);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.dcard{border-radius:11px;overflow:hidden;background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.dw{display:flex;align-items:center;gap:6px;padding:7px}
+.dw span{display:flex;flex-direction:column}
+.dw small,.ds{color:var(--muted);font-size:6.5px}
+.dp{height:120px;background:linear-gradient(160deg,#e7c38f,#b56a3b 55%,#7b3b23)}
+.dn{display:block;padding:6px 7px 0;font-size:9px}
+.ds{display:block;padding:1px 7px 0}
+.ds em{color:#C9A227;font-style:normal;font-weight:700}
+.da{display:flex;gap:5px;padding:7px}
+.da span{padding:4px 7px;border-radius:999px;font-weight:700;font-size:6.5px;background:color-mix(in srgb,var(--ink) 9%,transparent)}
+.da .pl{background:var(--ink);color:var(--sheet)}
+.da .md-add{position:relative !important}
+.ms-nt p,.ms-sh p{padding:6px;border-radius:9px;background:color-mix(in srgb,var(--ink) 5%,transparent);margin-bottom:6px}
+.ms-nt p span,.ms-sh p span{display:flex;flex-direction:column;gap:1px;line-height:1.3}
+.ms-nt small,.ms-sh small{color:var(--muted);font-size:6.5px}
+.ms-nt .mn-first{position:relative !important}
+.ms-sh .vh{margin-top:10px}
+.mx-seg{position:relative !important;display:grid;grid-template-columns:1fr 1fr;padding:2px;border-radius:7px;background:color-mix(in srgb,var(--ink) 7%,transparent);text-align:center;font-weight:700;font-size:7px;width:130px}
+.ms-sh .sx{margin-top:6px;color:var(--muted);font-size:6.5px;line-height:1.35}
+
 .dm-arrow:focus{outline:none}
 .dm-arrow:focus-visible{box-shadow:0 0 0 3px var(--sheet),0 0 0 5px var(--accent,#007AFF)}
 /* Blatt verschieben */
@@ -6226,29 +6365,82 @@ $("locBtn").addEventListener("click", function(){ startLocate(); });
 /* ---------- App-Demo: Einführung zum Durchklicken ----------
    Eigene Ebene über der App mit gezeichneten Mini-Bildschirmen. Sie liest und ändert keine Reisedaten;
    gemerkt wird nur, dass ein neues Konto die Demo auf diesem Gerät schon gesehen hat. */
-var DM_STEPS = [
-  {t:"Willkommen bei Reiseplan", p:"In ein paar Schritten zeigen wir dir, wie du Reisen planst, unterwegs nutzt und mit Freunden teilst. Mit den Pfeilen unten geht es vor und zurück."},
-  {t:"Deine Reise", p:"Oben steht deine aktuelle Reise. Tippe darauf, um eine neue Reise anzulegen, zwischen Reisen zu wechseln oder Zeitraum und Hotel zu ändern.", on:".m-trip", ring:".m-trip", f:[42,50]},
-  {t:"Orte sammeln", p:"Über die Lupe findest du Cafés, Sehenswürdigkeiten und mehr. Alles, was dich interessiert, landet auf deiner Wunschliste. Mit dem ＋ neben einem Ort planst du ihn für einen Tag ein.", on:".m-srch,.m-sheet", ring:".m-srch", v:"wish", f:[199,232]},
-  {t:"Tag für Tag planen", p:"Links wählst du den Reisetag. Unten im Tagesplan stehen deine Stopps in der richtigen Reihenfolge, auf der Karte siehst du die Route mit Fußwegen und U-Bahn.", on:".m-rail,.m-sheet,.m-route,.m-pin,.m-hotel", ring:".m-rail", f:[22,87]},
-  {t:"Reihenfolge ändern", p:"Halte einen Stopp am Griff ganz links gedrückt und zieh ihn an die gewünschte Stelle. Die Route auf der Karte passt sich automatisch an.", on:".m-sheet", a:"sort"},
-  {t:"Tagesplan verschieben", p:"Den Tagesplan ziehst du am Griff oben nach oben, um alles zu sehen, oder nach unten, damit die Karte frei ist. Mit dem Knopf rechts klappst du ihn ganz ein und wieder aus.", on:".m-sheet,.m-side", ring:".m-side", a:"sheet"},
-  {t:"Karte erkunden", p:"Tippe auf einen Punkt für Details und den Weg dorthin. Über die Ebenen blendest du U-Bahn, Busse und Fähren ein. Langes Drücken auf die Karte markiert einen eigenen Punkt.", on:".m-route,.m-pin,.m-hotel,.m-dot,.m-lay,.m-bubble", ring:".m-lay", a:"map", f:[140,135], b:"Ralph's Coffee · 6 Min. zu Fuß"},
-  {t:"Unterwegs", p:"Der Pfeil zeigt deinen Standort. Mit ＋ hältst du Fotos und Orte fest, erledigte Stopps hakst du ab – daraus entsteht dein Tagesrückblick.", on:".m-loc,.m-add,.m-sheet", ring:".m-loc", f:[205,156]},
-  {t:"Gemeinsam reisen", p:"Im Profil lädst du Freunde als Mitreisende oder Beobachter ein. In den Chats stimmt ihr euch ab, Änderungen am Plan sehen alle sofort.", on:".m-bar", ring:".m-bar", f:[204,21]},
-  {t:"KI-Assistent", p:"Über den KI-Knopf kannst du bald Fragen zu Orten stellen, Verbindungen auf der Karte filtern oder per Sprache planen. Diese Einführung findest du jederzeit wieder in deinem Profil.", on:".m-ki", ring:".m-ki", f:[205,78]}
-];
-var dmI = 0;
+/* Schritte je Rolle. s = Bildschirm im Mini-Handy, on = hervorgehobene Teile, ring = pulsierender Ring,
+   f = Fingerposition [x, y] im Mini-Handy (224 × 316), fm = "swipe" für Wischbewegung, v = Reiter im Tagesplan, a = Animation, b = Infoblase */
+var DM_ROLES = {
+  trav: [
+    {t:"Willkommen bei Reiseplan", p:"In ein paar Schritten zeigen wir dir, wie du Reisen planst, unterwegs festhältst und mit Freunden teilst. Wischen oder die Pfeile unten bringen dich weiter."},
+    {t:"Die Leiste oben", p:"Karte, Liste deiner Orte, Entdecken, Suche, Chats, Mitteilungen und dein Profil – von hier erreichst du alles mit einem Tipp.", on:".m-bar", ring:".m-bar", f:[112,21]},
+    {t:"Deine Reise", p:"Darunter steht deine aktuelle Reise. Tippe darauf, um eine neue Reise anzulegen, zwischen Reisen zu wechseln oder Zeitraum und Hotel zu ändern.", on:".m-trip", ring:".m-trip", f:[42,50]},
+    {t:"Orte sammeln", p:"Über die Lupe findest du Cafés, Sehenswürdigkeiten und mehr. Alles, was dich interessiert, landet auf deiner Wunschliste. Mit dem ＋ planst du einen Ort für einen Tag ein.", on:".m-srch,.m-sheet", ring:".m-srch", v:"wish", f:[199,232]},
+    {t:"Tag für Tag planen", p:"Links wählst du den Reisetag. Im Tagesplan stehen deine Stopps in der richtigen Reihenfolge, auf der Karte siehst du die Route mit Fußwegen und U-Bahn.", on:".m-rail,.m-sheet,.m-route,.m-pin,.m-hotel", ring:".m-rail", f:[22,87]},
+    {t:"Reihenfolge ändern", p:"Halte einen Stopp am Griff links gedrückt und zieh ihn an die gewünschte Stelle. Die Route passt sich automatisch an.", on:".m-sheet", a:"sort"},
+    {t:"Ort antippen", p:"Ein Tipp auf einen Punkt öffnet die Karte zum Ort: Empfehlungen von Freunden, die nächste U-Bahn, und darunter Zur Planung, Route, Details und Mehr.", s:"card", ring:".mc-plan", f:[38,262]},
+    {t:"Unterwegs festhalten", p:"Mit ＋ hältst du Fotos und neue Orte fest, erledigte Stopps hakst du ab. Der Pfeil zeigt deinen Standort.", on:".m-loc,.m-add,.m-sheet", ring:".m-add", f:[205,50]},
+    {t:"Fotos ansehen", p:"Tippe auf ein Foto für das Vollbild. Nach links und rechts wischen zeigt die weiteren Fotos, nach unten ziehen schließt. Links stehen immer die Optionen zum Foto.", s:"photo", ring:".ms-side", f:[150,145], fm:"swipe"},
+    {t:"Gefällt mir & kommentieren", p:"Mit dem Herz zeigst du, dass dir ein Foto gefällt. Über die Sprechblase kommentierst du – mit @Name erwähnst du Mitreisende.", s:"comment", ring:".ms-cm", f:[18,95]},
+    {t:"Wer sieht was?", p:"Über das Symbol links legst du fest, wer ein Foto sieht: Privat nur Mitreisende, Reise auch Beobachter, Freunde zusätzlich deine Freunde. Die Farbe zeigt die Wahl.", s:"vis", ring:".ms-vis", f:[18,145]},
+    {t:"Foto oder Ort versenden", p:"Mit dem Papierflieger schickst du ein Foto oder einen Ort direkt in einen Chat. Oben suchst du den passenden Freund.", s:"send", ring:".ms-pick", f:[110,128]},
+    {t:"Chatten", p:"In den Chats stimmt ihr euch ab. Geteilte Orte und Fotos erscheinen als Karte – ein Tipp öffnet sie auf deiner Karte.", s:"chat", ring:".mh-card", f:[160,68]},
+    {t:"Tagesrückblick", p:"Aus deinen Stopps, Fotos und Notizen entsteht für jeden Tag ein Rückblick mit animierter Route. Seitlich wischen springt zum Vortag oder nächsten Tag.", s:"recap", f:[150,200], fm:"swipe"},
+    {t:"Entdecken", p:"Unter Entdecken siehst du, was deine Freunde empfehlen – mit Fotos und Bewertung. Mit einem Tipp landet ein Ort auf deiner Wunschliste.", s:"disc", ring:".md-add", f:[58,271]},
+    {t:"Gemeinsam reisen", p:"Lade Freunde als Mitreisende ein – sie planen mit. Beobachter sehen die Reise mit Fotos und Rückblick, können aber nichts ändern.", s:"share", ring:".mx-seg", f:[75,193]},
+    {t:"KI-Assistent", p:"Über den KI-Knopf kannst du bald Fragen zu Orten stellen und per Sprache planen. Diese Einführung findest du jederzeit wieder in deinem Profil.", on:".m-ki", ring:".m-ki", f:[205,78]}
+  ],
+  obs: [
+    {t:"Willkommen als Beobachter", p:"Jemand hat dich eingeladen, eine Reise mitzuverfolgen. Du siehst Plan, Karte, Fotos und Rückblicke – und kannst liken, kommentieren und chatten. Ändern kannst du nichts."},
+    {t:"Die Leiste oben", p:"Karte, Liste, Entdecken, Suche, Chats, Mitteilungen und dein Profil. Über die Glocke erfährst du, wenn es Neues von der Reise gibt.", on:".m-bar", ring:".m-bar", f:[170,21]},
+    {t:"Beobachtete Reisen", p:"Oben steht die Reise, die du gerade ansiehst. Tippe darauf, um zwischen beobachteten Reisen zu wechseln. Im Profil findest du sie unter „Beobachtet“.", on:".m-trip", ring:".m-trip", f:[42,50]},
+    {t:"Den Tag verfolgen", p:"Links wählst du den Reisetag. Im Tagesplan siehst du alle Stopps, abgehakte sind schon besucht. Auf der Karte erscheinen die Orte mit ihren Fotos.", on:".m-rail,.m-sheet,.m-pin,.m-hotel", ring:".m-rail", f:[22,87], a:"done"},
+    {t:"Neues mitbekommen", p:"Neue Fotos, Kommentare und abgeschlossene Tage meldet dir die Glocke oben. Ein Tipp bringt dich direkt dorthin.", s:"notif", ring:".mn-first", f:[150,62]},
+    {t:"Fotos ansehen", p:"Tippe auf ein Foto für das Vollbild und wische durch alle Fotos des Tages. Nach unten ziehen schließt die Ansicht wieder.", s:"photo", ring:".ms-img", f:[150,145], fm:"swipe"},
+    {t:"Gefällt mir & kommentieren", p:"Zeig mit dem Herz, was dir gefällt, und schreib Kommentare zu Fotos. Die Reisenden sehen sie sofort.", s:"comment", ring:".ms-like,.ms-cm", f:[18,70]},
+    {t:"Tagesrückblick", p:"Für jeden Tag gibt es einen Rückblick mit Route, Stationen und Momenten. Seitlich wischen springt zum Vortag oder nächsten Tag.", s:"recap", f:[150,200], fm:"swipe"},
+    {t:"Chatten & teilen", p:"Schick ein Foto oder einen Ort mit dem Papierflieger an Freunde und schreib den Reisenden direkt im Chat.", s:"chat", ring:".mh-card", f:[160,68]},
+    {t:"Was Beobachter nicht sehen", p:"Als privat markierte Orte, Notizen und Fotos bleiben nur für die Mitreisenden. Fotos herunterladen und den Plan ändern können nur Mitreisende.", s:"photo", ring:".ms-side", obsNote:true},
+    {t:"Viel Spaß beim Mitreisen!", p:"Diese Einführung findest du jederzeit wieder in deinem Profil.", on:".m-bar", ring:".m-bar .av", f:[200,21]}
+  ]
+};
+var dmRole = "trav", dmI = 0;
+function DM_STEPS_NOW(){ return DM_ROLES[dmRole]; }
+function dmSv(d, vb, sw){ return "<svg viewBox=\"0 0 "+(vb||24)+" "+(vb||24)+"\" fill=\"none\" stroke=\"currentColor\" stroke-width=\""+(sw||2)+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; }
+var DMI = {
+  map:"<path d=\"M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4z\"/><path d=\"M9 4v14M15 6v14\"/>",
+  list:"<path d=\"M9 6h11M9 12h11M9 18h11\"/><circle cx=\"4.5\" cy=\"6\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"4.5\" cy=\"12\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"4.5\" cy=\"18\" r=\"1.3\" fill=\"currentColor\"/>",
+  disc:"<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8z\"/>",
+  srch:"<circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\"/><path d=\"m20 20-4.8-4.8\"/>",
+  chat:"<path d=\"M20.5 11.6c0 4.3-3.8 7.6-8.5 7.6-1.2 0-2.3-.2-3.3-.6L4 20l1.2-3.6C4.1 15 3.5 13.4 3.5 11.6 3.5 7.4 7.3 4 12 4s8.5 3.4 8.5 7.6z\"/>",
+  bell:"<path d=\"M6 9.8a6 6 0 0 1 12 0c0 4.3 1.7 6 2.3 6.7H3.7C4.3 15.8 6 14.1 6 9.8z\"/><path d=\"M9.8 19.6a2.3 2.3 0 0 0 4.4 0\"/>",
+  heart:"<path d=\"M10 17s-6.5-4-6.5-8.6A3.6 3.6 0 0 1 10 6.3a3.6 3.6 0 0 1 6.5 2.1C16.5 13 10 17 10 17z\"/>",
+  cm:"<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/>",
+  send:"<path d=\"M17.5 2.5 9 11M17.5 2.5l-5 15-3.5-6.5-6.5-3.5z\"/>",
+  more:"<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>",
+  route:"<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>",
+  plus:"<path d=\"M10 4.5v11M4.5 10h11\"/>"
+};
+function dmPhotoHTML(){
+  var b = function(cls, ic, extra){ return "<span class=\"mk ms-b "+cls+"\">"+ic+(extra||"")+"</span>"; };
+  return "<div class=\"ms ms-ph\"><div class=\"mk ms-img\"><i class=\"sun\"></i><svg class=\"br\" viewBox=\"0 0 224 150\" aria-hidden=\"true\"><path d=\"M0 92 Q60 40 78 22 M78 22 Q110 70 146 22 M146 22 Q170 50 224 70\" stroke=\"#e8e1d6\" stroke-width=\"1.4\" fill=\"none\" opacity=\".9\"/><path d=\"M0 104 H224\" stroke=\"#6b5a4a\" stroke-width=\"5\"/><g fill=\"#b9a68e\"><path d=\"M68 18 h20 v92 h-20z\"/><path d=\"M136 18 h20 v92 h-20z\"/></g><g fill=\"#7a8fa3\"><path d=\"M72 46 h4 v-8 a2 2 0 0 1 4 0 v8 h4 v20 h-12z\"/><path d=\"M140 46 h4 v-8 a2 2 0 0 1 4 0 v8 h4 v20 h-12z\"/></g><path d=\"M78 22 L40 104 M78 22 L110 104 M146 22 L118 104 M146 22 L190 104\" stroke=\"#e8e1d6\" stroke-width=\".7\" opacity=\".7\"/></svg></div>"+
+    "<div class=\"ms-ttl\">Brooklyn Bridge</div><span class=\"ms-x\">✕</span>"+
+    "<div class=\"mk ms-side\">"+b("ms-like on", dmSv(DMI.heart, 20, 1.8), "<em>4</em>")+b("ms-cm", dmSv(DMI.cm, 20, 1.8), "<em>2</em>")+b("ms-map", dmSv(DMI.map, 24, 2))+
+      b("ms-vis", VISTRIP)+b("ms-send", dmSv(DMI.send, 20, 1.8))+b("ms-more mx-own", dmSv(DMI.more, 20, 1.8))+"</div>"+
+    "<div class=\"ms-cap\">Abendlicht über dem East River</div><div class=\"ms-cnt\">3 / 12</div>"+
+    "<div class=\"ms-obsnote\">🔒 Private Fotos und Notizen siehst du nicht · Herunterladen nur für Mitreisende</div>"+
+    "<div class=\"ms-panel\"><b>Kommentare · 2</b><p><i style=\"background:#E5A100\">A</i><span><b>@anna</b> Traumhaft! 😍</span></p><p><i style=\"background:#5E9970\">L</i><span><b>@Ludwig</b> Da müssen wir auch hin</span></p><span class=\"ms-in\">Kommentieren · @ erwähnt</span></div>"+
+    "<div class=\"mk ms-vispop\"><div class=\"vh\">Foto sichtbar für</div><p><i class=\"pr\">"+ILOCK+"</i><span><b>Privat</b><small>nur Mitreisende</small></span></p><p class=\"sel\"><i class=\"tr\">"+VISTRIP+"</i><span><b>Reise</b><small>+ Beobachter</small></span><em>✓</em></p><p><i class=\"pu\">"+VISPUB+"</i><span><b>Freunde</b><small>+ Freunde</small></span></p></div>"+
+    "<div class=\"mk ms-pick\"><div class=\"vh\">Foto im Chat schicken an …</div><span class=\"ms-q\">Freunde suchen</span><p><i style=\"background:#E5A100\">A</i>@anna</p><p><i style=\"background:#5E9970\">L</i>@Ludwig</p><p><i style=\"background:#8C78AE\">C</i>@Clara</p></div></div>";
+}
 function dmMockHTML(){
+  var bar = ["map","list","disc","srch","chat","bell"].map(function(k, i){ return "<span class=\"bi"+(i===0?" a":"")+"\">"+dmSv(DMI[k])+"</span>"; }).join("")+"<span class=\"bi av\">F</span>";
   return "<div class=\"m-water\"></div><div class=\"m-park\"></div><div class=\"m-streets\"></div>"+
     "<div class=\"mk m-route\"><svg viewBox=\"0 0 224 316\" aria-hidden=\"true\"><path d=\"M150 78 L138 92\" stroke=\"#17212c\" stroke-width=\"2\" stroke-dasharray=\"2 3\" fill=\"none\"/><path d=\"M138 92 L128 110 L140 135 L112 158\" stroke=\"#F5C431\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/></svg></div>"+
     "<div class=\"mk m-hotel\" style=\"left:142px;top:70px\">⌂</div>"+
     "<div class=\"mk m-pin\" style=\"left:120px;top:102px\">1</div><div class=\"mk m-pin\" style=\"left:132px;top:127px\">2</div><div class=\"mk m-pin\" style=\"left:104px;top:150px\">3</div>"+
     "<div class=\"mk m-dot\" style=\"left:64px;top:126px;background:#C98A4B\"></div><div class=\"mk m-dot\" style=\"left:170px;top:116px;background:#5E97B5\"></div>"+
     "<div class=\"m-bubble\" style=\"top:104px\">Ralph's Coffee · 6 Min. zu Fuß</div>"+
-    "<div class=\"mk m-bar\"><i></i><i></i><i></i><i></i><i class=\"c\"></i><i class=\"av\"></i></div>"+
+    "<div class=\"mk m-bar\">"+bar+"</div>"+
     "<div class=\"mk m-trip\">New York <small>24.–28. Okt. ⌄</small></div>"+
-    "<div class=\"mk m-btn m-srch\"></div><div class=\"mk m-btn m-add\">＋</div>"+
+    "<div class=\"mk m-btn m-srch\">"+dmSv(DMI.srch, 24, 2.4)+"</div><div class=\"mk m-btn m-add mx-own\">＋</div>"+
     "<div class=\"mk m-rail\"><b>2</b>So 25.</div>"+
     "<div class=\"mk m-cb m-ki\"><span>KI</span></div><div class=\"mk m-cb m-lay\"></div><div class=\"mk m-cb m-side\"></div><div class=\"mk m-cb m-loc\"></div>"+
     "<div class=\"mk m-sheet\"><span class=\"m-handle\"></span><div class=\"m-hf\"></div>"+
@@ -6263,25 +6455,48 @@ function dmMockHTML(){
         "<div class=\"m-row\" style=\"padding-left:6px\"><span class=\"c\" style=\"background:#C98A4B\"></span><span class=\"t\">Joe's Pizza</span><span class=\"p\">+</span></div>"+
         "<div class=\"m-row\" style=\"padding-left:6px\"><span class=\"c\" style=\"background:#8C78AE\"></span><span class=\"t\">The Met</span><span class=\"p\">+</span></div></div>"+
     "</div>"+
+    // Ort-Karte
+    "<div class=\"ms ms-card\"><b>Joe's Pizza</b><small>Restaurant · Greenwich Village</small><div class=\"mc-ch\"><span>👥 Freunde · 2</span><span>🌐 Öffentlich</span></div><div class=\"mc-op\">🚇 ÖPNV · Christopher St · 150 m</div>"+
+      "<div class=\"mc-t\"><span class=\"mk mc-plan\">"+dmSv(DMI.plus, 20, 2)+"Zur Planung</span><span>"+dmSv(DMI.route, 20, 1.8)+"Route</span><span>"+dmSv(DMI.cm, 20, 1.8)+"Details</span><span>"+dmSv(DMI.more, 20, 1.8)+"Mehr</span></div></div>"+
+    dmPhotoHTML()+
+    // Chat
+    "<div class=\"ms ms-chat\"><div class=\"mh-h\"><span>‹</span><i style=\"background:#E5A100\">A</i><b>@anna</b></div>"+
+      "<p class=\"l\">Wie war die Brücke?</p><div class=\"mk mh-card r\"><span class=\"th\"></span><span><b>Brooklyn Bridge</b><small>Foto · Tag 3</small></span></div><p class=\"r\">Unglaublich, schau mal 📸</p><p class=\"l\">Wow! Da will ich auch hin 😍</p>"+
+      "<span class=\"mh-in\">Nachricht …</span></div>"+
+    // Rückblick
+    "<div class=\"ms ms-rc\"><div class=\"rd\"><span>2</span><span class=\"a\">3</span><span>4</span><span>5</span></div><div class=\"rk\">● RÜCKBLICK · NEW YORK</div><div class=\"rb\">Tag 3</div><div class=\"rt\">Samstag, 24. Oktober</div>"+
+      "<div class=\"rs\"><span><b>6</b>besuchte Orte</span><span><b>9,4</b>km</span><span><b>12</b>Fotos</span></div><div class=\"rm\"><i></i><i></i><i></i></div><div class=\"rw\">‹ Vortag · wischen · nächster Tag ›</div></div>"+
+    // Entdecken
+    "<div class=\"ms ms-dc\"><div class=\"dh\">Entdecken</div><div class=\"dseg\"><span class=\"a\">🌐 Alle</span><span>👥 Nur Freunde</span></div>"+
+      "<div class=\"dcard\"><div class=\"dw\"><i style=\"background:#E5A100\">A</i><span><b>@anna</b><small>New York · Okt. 2026</small></span></div><div class=\"dp\"></div><b class=\"dn\">Katz's Delicatessen</b><small class=\"ds\">Restaurant · <em>Outstanding</em></small><div class=\"da\"><span class=\"mk md-add\">＋ Wunschliste</span><span class=\"pl\">Einplanen …</span></div></div></div>"+
+    // Mitteilungen
+    "<div class=\"ms ms-nt\"><div class=\"dh\">Mitteilungen</div><p class=\"mk mn-first\"><i style=\"background:#007AFF\">F</i><span><b>@Ferdinand</b> hat 4 neue Fotos hinzugefügt<small>vor 5 Min.</small></span></p><p><i style=\"background:#E5A100\">A</i><span><b>@anna</b> hat dein Foto kommentiert<small>vor 1 Std.</small></span></p><p><i style=\"background:#5E9970\">✓</i><span>Tag 3 ist abgeschlossen – Rückblick ansehen<small>gestern</small></span></p></div>"+
+    // Mitreisende einladen
+    "<div class=\"ms ms-sh\"><div class=\"dh\">Mitreisende & Beobachter</div><p><i style=\"background:#007AFF\">F</i><span><b>@Ferdinand</b> (du)<small>Besitzer</small></span></p><p><i style=\"background:#E5A100\">A</i><span><b>@anna</b><small>Mitreisende</small></span></p><p><i style=\"background:#8C78AE\">M</i><span><b>@Mama</b><small>Beobachterin</small></span></p>"+
+      "<div class=\"vh\">Einladen als</div><div class=\"mk mx-seg\"><span class=\"a\">Mitreisende</span><span>Beobachter</span></div><div class=\"sx\">Mitreisende planen mit: Stopps, Wunschliste, Tagebuch, Fotos und Kommentare.</div></div>"+
     "<div class=\"m-fing\"></div>";
 }
 var DM_ARR_L = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M19 12H5M11 6l-6 6 6 6\"/></svg>";
 var DM_ARR_R = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg>";
-function dmShow(i, dir){
+function dmShow(i){
   var el = $("demo"); if(!el) return;
-  dmI = Math.max(0, Math.min(DM_STEPS.length-1, i));
-  var st = DM_STEPS[dmI], mock = el.querySelector(".dm-mock"), last = dmI===DM_STEPS.length-1;
-  mock.classList.toggle("focus", !!st.on);
-  mock.setAttribute("data-v", st.v || "plan"); mock.setAttribute("data-a", st.a || ""); mock.setAttribute("data-f", st.f ? "tap" : "");
+  var L = DM_STEPS_NOW();
+  dmI = Math.max(0, Math.min(L.length-1, i));
+  var st = L[dmI], mock = el.querySelector(".dm-mock"), last = dmI===L.length-1;
+  mock.classList.toggle("focus", !!st.on && !st.s);
+  mock.setAttribute("data-r", dmRole); mock.setAttribute("data-s", st.s || "");
+  mock.setAttribute("data-v", st.v || "plan"); mock.setAttribute("data-a", st.a || ""); mock.setAttribute("data-f", st.f ? (st.fm || "tap") : "");
+  mock.classList.toggle("obsnote", !!st.obsNote);
   if(st.f){ mock.style.setProperty("--fx", st.f[0]+"px"); mock.style.setProperty("--fy", st.f[1]+"px"); }
-  mock.querySelectorAll(".mk").forEach(function(m){ m.classList.remove("on", "ring"); });
+  mock.querySelectorAll(".mk, .ring, .on").forEach(function(m){ m.classList.remove("on", "ring"); });
   if(st.on) mock.querySelectorAll(st.on).forEach(function(m){ m.classList.add("on"); });
   if(st.ring) mock.querySelectorAll(st.ring).forEach(function(m){ m.classList.add("ring"); });
   mock.querySelector(".m-bubble").classList.toggle("show", !!st.b);
   var tp = mock.querySelector(".tp"), tw = mock.querySelector(".tw"); tp.classList.toggle("a", st.v!=="wish"); tw.classList.toggle("a", st.v==="wish");
   var tx = el.querySelector(".dm-txt"); tx.innerHTML = "<h3 id=\"dmT\">"+esc(st.t)+"</h3><p>"+esc(st.p)+"</p>"; tx.classList.remove("fade"); void tx.offsetWidth; tx.classList.add("fade");
-  el.querySelector(".dm-cnt").textContent = (dmI+1)+" / "+DM_STEPS.length;
-  el.querySelector(".dm-dots").innerHTML = DM_STEPS.map(function(_, k){ return "<i"+(k===dmI?" class=\"on\"":"")+"></i>"; }).join("");
+  el.querySelector(".dm-cnt").textContent = (dmI+1)+" / "+L.length;
+  el.querySelector(".dm-dots").innerHTML = L.map(function(_, k){ return "<i"+(k===dmI?" class=\"on\"":"")+"></i>"; }).join("");
+  el.querySelectorAll(".dm-role button").forEach(function(b){ b.setAttribute("aria-selected", b.getAttribute("data-r")===dmRole); });
   el.querySelector(".dm-prev").disabled = dmI===0;
   var nx = el.querySelector(".dm-next");
   nx.classList.toggle("go", last);
@@ -6292,26 +6507,29 @@ function dmShow(i, dir){
 function closeDemo(){ var el = $("demo"); if(el) el.remove(); document.removeEventListener("keydown", dmKey, true); }
 function dmKey(e){
   if(!$("demo")) return;
-  if(e.key==="ArrowRight"){ e.preventDefault(); e.stopPropagation(); if(dmI < DM_STEPS.length-1) dmShow(dmI+1); }
+  if(e.key==="ArrowRight"){ e.preventDefault(); e.stopPropagation(); if(dmI < DM_STEPS_NOW().length-1) dmShow(dmI+1); }
   else if(e.key==="ArrowLeft"){ e.preventDefault(); e.stopPropagation(); dmShow(dmI-1); }
   else if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); closeDemo(); }
 }
-function openDemo(){
+function openDemo(role){
   closeDemo();
+  dmRole = role==="obs" || role==="trav" ? role : (acct.user && S && S.trips[S.cur] && isViewerOf(S.cur) ? "obs" : "trav");
   var el = document.createElement("div"); el.id = "demo"; el.className = "dm";
   el.innerHTML = "<div class=\"dm-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"dmT\">"+
-    "<div class=\"dm-top\"><span class=\"dm-cnt\"></span><button type=\"button\" class=\"dm-skip\" data-dm=\"close\">Überspringen</button></div>"+
+    "<div class=\"dm-top\"><span class=\"dm-cnt\"></span><div class=\"dm-role\" role=\"tablist\" aria-label=\"Demo für\"><button type=\"button\" role=\"tab\" data-dm=\"role\" data-r=\"trav\">Reisende</button><button type=\"button\" role=\"tab\" data-dm=\"role\" data-r=\"obs\">Beobachter</button></div><button type=\"button\" class=\"dm-skip\" data-dm=\"close\">Überspringen</button></div>"+
     "<div class=\"dm-stage\"><div class=\"dm-mock\" aria-hidden=\"true\">"+dmMockHTML()+"</div></div>"+
     "<div class=\"dm-txt\" aria-live=\"polite\"></div>"+
     "<div class=\"dm-nav\"><button type=\"button\" class=\"dm-arrow dm-prev\" data-dm=\"prev\" aria-label=\"Zurück\">"+DM_ARR_L+"</button><div class=\"dm-dots\" aria-hidden=\"true\"></div><button type=\"button\" class=\"dm-arrow dm-next\" data-dm=\"next\"></button></div></div>";
   // Eingaben bleiben in der Demo und erreichen die App darunter nicht
   ["pointerdown", "touchstart", "mousedown", "touchend"].forEach(function(t){ el.addEventListener(t, function(e){ e.stopPropagation(); }, {passive:true}); });
   var sx = null, sy = null;
-  el.addEventListener("touchstart", function(e){ if(e.touches.length===1){ sx = e.touches[0].clientX; sy = e.touches[0].clientY; } }, {passive:true});
+  el.addEventListener("touchstart", function(e){ if(e.touches.length===1 && !(e.target.closest && e.target.closest(".dm-role"))){ sx = e.touches[0].clientX; sy = e.touches[0].clientY; } }, {passive:true});
   el.addEventListener("touchend", function(e){ if(sx===null) return; var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
-    if(Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)*1.5){ if(dx < 0 && dmI < DM_STEPS.length-1) dmShow(dmI+1); else if(dx > 0) dmShow(dmI-1); } }, {passive:true});
+    if(Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)*1.5){ if(dx < 0 && dmI < DM_STEPS_NOW().length-1) dmShow(dmI+1); else if(dx > 0) dmShow(dmI-1); } }, {passive:true});
   el.addEventListener("click", function(e){ e.stopPropagation(); var b = e.target.closest("[data-dm]"); if(!b) return; var a = b.getAttribute("data-dm");
-    if(a==="close") closeDemo(); else if(a==="prev") dmShow(dmI-1); else if(a==="next"){ if(dmI===DM_STEPS.length-1) closeDemo(); else dmShow(dmI+1); } });
+    if(a==="close") closeDemo(); else if(a==="prev") dmShow(dmI-1);
+    else if(a==="role"){ var r = b.getAttribute("data-r"); if(r!==dmRole){ dmRole = r; dmShow(0); } }
+    else if(a==="next"){ if(dmI===DM_STEPS_NOW().length-1) closeDemo(); else dmShow(dmI+1); } });
   document.body.appendChild(el);
   document.addEventListener("keydown", dmKey, true);
   dmShow(0);

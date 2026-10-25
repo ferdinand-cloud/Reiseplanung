@@ -241,6 +241,26 @@ await test("Entdecken: Foto öffnet Vollbild mit allen Fotos, ohne Sichern", asy
   ok(await page.evaluate(() => { const L = document.getElementById("pvLayer"); return !L || L.hidden; }), "Vollbild schließt nicht");
 });
 
+await test("App-Demo: Auswahl Reisende/Beobachter, alle Schritte durchklickbar", async () => {
+  await seed();
+  await rp(`openDemo("trav")`); await page.waitForTimeout(200);
+  ok(await visible("#demo .dm-role"), "Rollenauswahl oben fehlt");
+  ok(await page.locator("#demo .m-bar .bi svg").count() >= 6, "Symbole in der Leiste fehlen");
+  const nT = await rp(`DM_STEPS_NOW().length`), seen = new Set();
+  for(let i = 0; i < nT - 1; i++){ seen.add(await page.locator("#demo .dm-mock").getAttribute("data-s")); await page.locator("#demo .dm-next").click(); await page.waitForTimeout(60); }
+  ["card","photo","comment","vis","send","chat","recap","disc","share"].forEach(x => ok(seen.has(x), "Reisende-Demo zeigt Bildschirm nicht: "+x));
+  ok((await page.locator("#demo .dm-next").innerText()).includes("Los"), "Letzter Schritt ohne „Los geht’s“");
+  await page.locator("#demo .dm-role [data-r=obs]").click(); await page.waitForTimeout(150);
+  const nO = await rp(`DM_STEPS_NOW().length`);
+  ok(nO !== nT && await rp(`dmI`)===0, "Beobachter-Demo startet nicht von vorn");
+  ok(await page.locator("#demo .dm-role [data-r=obs][aria-selected=true]").count()===1, "Rollenauswahl nicht markiert");
+  for(let i = 0; i < nO - 1; i++){ await page.locator("#demo .dm-next").click(); await page.waitForTimeout(60); }
+  await rp(`dmShow(DM_STEPS_NOW().findIndex(function(s){ return s.s==="photo"; }))`);
+  ok(!(await visible("#demo .ms-more")), "Beobachter-Demo zeigt ⋯ (Herunterladen/Löschen)");
+  await rp(`dmShow(DM_STEPS_NOW().length-1)`); await page.locator("#demo .dm-next").click(); await page.waitForTimeout(150);
+  ok(await page.locator("#demo").count()===0, "Demo schließt am Ende nicht");
+});
+
 await test("Tagesplan: Privat-Plakette sichtbar", async () => {
   await seed();
   await rp(`T().privP = {p2:1}; renderSheet();`);
