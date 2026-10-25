@@ -5961,14 +5961,34 @@ function walkPump(){
       var u = "https://routing.openstreetmap.de/routed-foot/route/v1/driving/"+[[job.a.la, job.a.lo]].concat(job.v||[], [[job.b.la, job.b.lo]]).map(function(q){ return (+q[1]).toFixed(6)+","+(+q[0]).toFixed(6); }).join(";")+"?overview=full&geometries=geojson";
       fetch(u).then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(function(j){
         var rt = j.routes && j.routes[0];
+        // unsinniger Umweg ohne Wegpunkte: Start/Ziel wurde auf einen ungünstigen Weg eingerastet (z. B. Parkweg) – andere Einrastpunkte probieren
+        if(rt && !(job.v && job.v.length) && walkAbsurd(job.a, job.b, rt.distance)) return walkResnap(job.a, job.b).then(function(r2){ return r2 && r2.distance < rt.distance ? r2 : rt; });
+        return rt;
+      }).then(function(rt){
         if(rt && rt.geometry){ var c = rt.geometry.coordinates, out = [];
           for(var i=0;i<c.length;i++) out.push([+c[i][1].toFixed(5), +c[i][0].toFixed(5)]);
-          WALKC[job.k] = {p:out, d:Math.round(rt.distance), live:!!job.live}; if(!job.live) walkSave(); }
+          WALKC[job.k] = {p:out, d:Math.round(rt.distance), live:!!job.live, sv:1}; if(!job.live) walkSave(); }
         else WALKC[job.k] = {p:null};
       }).catch(function(){ WALKC[job.k] = {fail:Date.now()}; })
         .then(function(){ walkBusy--; scheduleOverlay(); if(tab==="day") renderSheetSoon(); walkPump(); });
     })(job);
   }
+}
+function walkAbsurd(a, b, d){ var s = dist(a, b); return d > 1.8*s + 300; }
+var OSRMF = "https://routing.openstreetmap.de/routed-foot/";
+function walkResnap(a, b){
+  function near(q){ return fetch(OSRMF+"nearest/v1/driving/"+(+q.lo).toFixed(6)+","+(+q.la).toFixed(6)+"?number=4").then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){ var w = (j && j.waypoints || []).filter(function(x){ return x.distance < 120; }).map(function(x){ return x.location; }); return w.length ? w : [[q.lo, q.la]]; }).catch(function(){ return [[q.lo, q.la]]; }); }
+  return Promise.all([near(a), near(b)]).then(function(ns){
+    var jobs = [];
+    ns[0].slice(0, 3).forEach(function(A){ ns[1].slice(0, 3).forEach(function(B){
+      jobs.push(fetch(OSRMF+"route/v1/driving/"+A[0].toFixed(6)+","+A[1].toFixed(6)+";"+B[0].toFixed(6)+","+B[1].toFixed(6)+"?overview=full&geometries=geojson")
+        .then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ var rt = j && j.routes && j.routes[0]; if(!rt) return null;
+          // Abstand vom eigentlichen Punkt zum Einrastpunkt mitzählen
+          rt.distance += dist(a, {la:A[1], lo:A[0]}) + dist({la:B[1], lo:B[0]}, b); return rt; }).catch(function(){ return null; }));
+    }); });
+    return Promise.all(jobs);
+  }).then(function(rs){ return rs.filter(Boolean).sort(function(x, y){ return x.distance - y.distance; })[0] || null; });
 }
 var rsTimer = null;
 function renderSheetSoon(){ clearTimeout(rsTimer); rsTimer = setTimeout(function(){ var ae = document.activeElement; if(ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) return; var y = document.querySelector(".body"), st = y ? y.scrollTop : 0; renderSheet(); if(y){ var y2 = document.querySelector(".body"); if(y2) y2.scrollTop = st; } }, 400); }
@@ -5976,6 +5996,8 @@ function walkPath(a, b, v){
   v = v || []; var direct = [a].concat(v.map(function(q){ return {la:q[0], lo:q[1]}; }), [b]);
   if(!v.length && dist(a, b) < 40) return [a, b];
   var k = wKey(a, b, v), c = WALKC[k];
+  // ältere gespeicherte Wege mit unsinnigem Umweg einmal neu berechnen (mit besserem Einrasten)
+  if(c && c.p && !c.sv && !v.length && walkAbsurd(a, b, c.d || 0)){ c.sv = 1; walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
   if(c && c.p){ var pts = c.p.map(function(q){ return {la:q[0], lo:q[1]}; }); pts.unshift(a); pts.push(b); return pts; }
   if(c && (c.p===null || (c.fail && Date.now()-c.fail < 60000))) return direct;
   if(!c || c.fail){ WALKC[k] = {pend:1}; walkQ.push({k:k, a:a, b:b, v:v, live:a.id==="me" || b.id==="me" || a===me}); setTimeout(walkPump, 0); }
