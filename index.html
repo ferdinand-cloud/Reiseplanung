@@ -2272,6 +2272,16 @@ body.rc-on #map{visibility:hidden}
 .rc-lb figure{position:relative;overflow:hidden;flex:0 0 100%;height:100%;margin:0;display:grid;place-items:center;scroll-snap-align:center;padding:calc(env(safe-area-inset-top,0px) + 60px) 0 calc(env(safe-area-inset-bottom,0px) + 50px)}
 .rc-lb img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
 .rc-lb figcaption{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);text-align:center;color:rgba(255,255,255,.8);font-weight:600;font-size:14px}
+.rc-lbside{position:fixed;z-index:96;left:calc(env(safe-area-inset-left,0px) + 12px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:12px}
+.rc-lbside .pvi{position:relative;width:44px;height:44px;margin:0;border:0;border-radius:50%;padding:0;display:grid;place-items:center;background:rgba(30,30,30,.45);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.rc-lbside .pvi svg{width:21px;height:21px}
+.rc-lbside .pvi span{position:absolute;right:-4px;bottom:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#fff;color:#111;font:700 11px/18px var(--f-body);text-align:center}
+.rc-lbside .pvi span:empty{display:none}
+body.rc-on #pvLayer{z-index:97}
+body.rc-on .addmenu.jpmenu{z-index:99}
+.dc-ph img[data-act]{cursor:zoom-in}
+.dcv-by{display:block;font-size:12px;font-weight:500;opacity:.75}
+.dcv-cm p{margin:0 0 8px}
 .rc-lbx{position:fixed;z-index:96;top:calc(env(safe-area-inset-top,0px) + 12px);right:14px}
 
 /* Einstieg im Tagesplan */
@@ -3628,7 +3638,7 @@ function renderDc(){
     h += "<article class=\"dc-card\">"+
       "<div class=\"dc-top\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><span class=\"dc-who\"><b>@"+esc(r.fname||"Freund")+"</b><small>"+esc([r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small></span>"+
         (r.hl ? "<span class=\"dc-hl\">★ Highlight</span>" : "")+"</div>"+
-      (r.photos && r.photos.length ? "<div class=\"dc-ph\">"+r.photos.map(function(u){ return "<img src=\""+u+"\" alt=\"\" loading=\"lazy\">"; }).join("")+"</div>" : "")+
+      (r.photos && r.photos.length ? "<div class=\"dc-ph\">"+r.photos.map(function(u, i){ return "<img src=\""+u+"\" alt=\"\" loading=\"lazy\" data-act=\"dcfull\" data-k=\""+esc(r.key)+"\" data-i=\""+i+"\" role=\"button\" aria-label=\"Foto im Vollbild\">"; }).join("")+"</div>" : "")+
       "<div class=\"dc-body\"><div class=\"dc-name\"><span class=\"cic\" style=\"--cc:"+catCol(r.c)+"\">"+icon(r.c)+"</span><b>"+esc(r.n)+"</b></div>"+
         "<small class=\"dc-sub\">"+esc([CATNAME[r.c], r.addr, dd!=null && dcScope==="all" ? fmtDist(dd)+" vom Reiseziel" : ""].filter(Boolean).join(" · "))+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"</small>"+
         (r.note ? "<p class=\"dc-note\">„"+esc(r.note)+"“</p>" : "")+recCmHTML(r, "dc-note")+
@@ -3637,6 +3647,62 @@ function renderDc(){
   });
   if(DC.items.length) h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"dcreload\">Aktualisieren</button></div>";
   el.innerHTML = h+"</div>";
+}
+/* ---------- Vollbild für Fotos aus „Entdecken“: wischen durch alle Fotos des Spots, Optionen links ---------- */
+var DCV = null;
+function dcvSV(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; }
+function dcvMeta(){
+  var r = DCV && DC.byKey[DCV.key]; if(!r) return "";
+  var cm = r.cm || [], inT = dcInTrip(r), h = "<div class=\"pv-side\">";
+  h += "<button type=\"button\" class=\"pvi"+(DCV.cm?" on":"")+"\" data-act=\"dcvcm\" aria-expanded=\""+DCV.cm+"\" aria-label=\"Kommentare\">"+dcvSV("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/>")+"<span>"+(cm.length || "")+"</span></button>";
+  if(acct.user) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvsend\" aria-label=\"Im Chat schicken\">"+dcvSV("<path d=\"M17.5 2.5 9 11M17.5 2.5l-5 15-3.5-6.5-6.5-3.5z\"/>")+"</button>";
+  if(!inT && !isRO()) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvwish\" aria-label=\"Zur Wunschliste\">"+dcvSV("<path d=\"M10 16.5s-6-3.6-6-8a3.3 3.3 0 0 1 6-1.9 3.3 3.3 0 0 1 6 1.9c0 4.4-6 8-6 8z\"/>")+"</button>";
+  if(r.la) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvmap\" aria-label=\"Auf der Karte zeigen\">"+dcvSV("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>")+"</button>";
+  h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvsave\" aria-label=\"In Fotos sichern\">"+dcvSV("<path d=\"M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4 15.5h12\"/>")+"</button>";
+  h += "</div>";
+  if(DCV.cm){
+    var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
+    h += "<div class=\"pv-panel\"><div class=\"pv-ph\"><b>Kommentare"+(cm.length ? " · "+cm.length : "")+"</b><button type=\"button\" class=\"x\" data-act=\"dcvcm\" aria-label=\"Kommentare schließen\">"+PVX+"</button></div>"+
+      "<div class=\"cmlist dcv-cm\">"+(r.note ? "<p><b>@"+esc(r.fname||"Freund")+"</b>"+(RR ? " <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"<br>„"+esc(r.note)+"“</p>" : "")+
+      (cm.length ? recCmHTML(r, "") : (r.note ? "" : "<p class=\"note\">Noch keine Kommentare zu diesem Ort.</p>"))+"</div>"+
+      (acct.user && r.by && r.by!==acct.user.uid ? "<button type=\"button\" class=\"btn s\" data-act=\"dcvreply\">@"+esc(r.fname||"Freund")+" im Chat antworten</button>" : "")+"</div>";
+  }
+  return h;
+}
+function dcvRefresh(){ var m = $("dcvMeta"); if(m) m.innerHTML = dcvMeta(); }
+function dcFull(key, i){
+  var r = DC.byKey[key]; if(!r || !(r.photos||[]).length) return;
+  i = Math.max(0, Math.min(r.photos.length-1, +i || 0)); DCV = {key:key, i:i, cm:false};
+  var n = r.photos.length, L = pvLayer();
+  L.innerHTML = "<div class=\"pv-wrap full\" id=\"pvWrap\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Foto\"><div class=\"pv-track\" id=\"pvTrack\">"+
+    r.photos.map(function(u){ return "<div class=\"pv-slide\"><img src=\""+u+"\" alt=\"Foto\" draggable=\"false\"></div>"; }).join("")+"</div>"+
+    (n > 1 ? "<button type=\"button\" class=\"pv-arr l\" data-act=\"phstep\" data-v=\"-1\" aria-label=\"Vorheriges Foto\">‹</button><button type=\"button\" class=\"pv-arr r\" data-act=\"phstep\" data-v=\"1\" aria-label=\"Nächstes Foto\">›</button>" : "")+
+    "<div class=\"pv-head\"><span class=\"pv-ttl\">"+esc(r.n)+"<small class=\"dcv-by\">@"+esc(r.fname||"Freund")+"</small></span><button type=\"button\" class=\"pv-fs\" data-act=\"dcvclose\" aria-label=\"Vollbild schließen\">"+PVX+"</button></div>"+
+    "<span class=\"pv-fsn\" id=\"pvFsN\">"+(n > 1 ? (i+1)+" / "+n : "")+"</span><div id=\"dcvMeta\">"+dcvMeta()+"</div></div>";
+  L.hidden = false; document.body.classList.add("pvfull");
+  var tr = $("pvTrack"), tmr = 0;
+  tr.scrollLeft = i * tr.clientWidth; requestAnimationFrame(function(){ tr.scrollLeft = i * tr.clientWidth; });
+  tr.addEventListener("scroll", function(){ clearTimeout(tmr); tmr = setTimeout(function(){ if(!DCV) return; var j = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); if(j===DCV.i) return; DCV.i = j; var f = $("pvFsN"); if(f && n > 1) f.textContent = (j+1)+" / "+n; }, 90); }, {passive:true});
+}
+function dcvClose(){ DCV = null; closeJpMore(); pvHide(); }
+function dcvSendMenu(btn){
+  var r = DCV && DC.byKey[DCV.key]; if(!r) return;
+  if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
+  var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
+  jpPopover("dcv", btn, "<div class=\"dc-dh\">Im Chat schicken an …</div>"+fr.map(function(f){ return "<button type=\"button\" data-act=\"dcvto\" data-uid=\""+esc(f.uid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "dcvsend");
+}
+function dcvSendTo(u){
+  var r = DCV && DC.byKey[DCV.key]; closeJpMore(); if(!r) return; var cid = chWith(u); if(!cid) return;
+  var pl = {n:r.n, c:r.c, la:+r.la, lo:+r.lo, addr:r.addr||"", trip:r.trip||""}; if(r.rating) pl.rating = r.rating; var u0 = (r.photos||[])[DCV.i]; if(u0) pl.ph = u0;
+  dcvClose(); closeDcPage(); openChPage(cid); chDraft = pl; renderChDraft(); setTimeout(function(){ var i = $("chIn"); if(i) i.focus(); }, 80);
+}
+function dcvSave(){
+  var r = DCV && DC.byKey[DCV.key], u = r && (r.photos||[])[DCV.i]; if(!u) return;
+  fetch(u).then(function(x){ return x.blob(); }).then(function(b){
+    var file = new File([b], (r.n||"Foto").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-")+"-"+(DCV.i+1)+".jpg", {type:b.type || "image/jpeg"});
+    if(navigator.canShare && navigator.canShare({files:[file]})) return navigator.share({files:[file]}).catch(function(){});
+    var a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }).catch(function(e){ toast("Sichern nicht möglich: "+(e && e.message || e), false); });
 }
 function dcAdd(key, dk){
   closeJpMore();
@@ -6882,7 +6948,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=poimore],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -7168,7 +7234,7 @@ function pvHide(){ var L = $("pvLayer"); if(window.pvZoomReset) window.pvZoomRes
 /* Vollbild: nach unten wischen schließt das Foto (nicht im Zoom, nicht im Kommentarfeld) */
 (function(){
   var sw = null;
-  function closeView(){ if(!jp) return; if(!!jp.ret){ closeJPop(); return; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); }
+  function closeView(){ if(DCV){ dcvClose(); return; } if(!jp) return; if(!!jp.ret){ closeJPop(); return; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); }
   document.addEventListener("touchstart", function(e){
     var L = $("pvLayer"); sw = null;
     if(!L || L.hidden || e.touches.length!==1 || !L.contains(e.target)) return;
@@ -7201,7 +7267,7 @@ function pvHide(){ var L = $("pvLayer"); if(window.pvZoomReset) window.pvZoomRes
   document.addEventListener("touchend", end); document.addEventListener("touchcancel", end);
 })();
 function pvOpen(){ var L = $("pvLayer"); return !!(L && !L.hidden); }
-document.addEventListener("keydown", function(e){ if(e.key==="Escape" && pvOpen() && jp){ e.stopPropagation(); if(pvCm){ pvCm = false; phMetaRefresh(); return; } if(!!jp.ret){ closeJPop(); return; } jp.view = null; renderJPop(); } }, true);
+document.addEventListener("keydown", function(e){ if(e.key==="Escape" && pvOpen() && DCV){ e.stopPropagation(); if(DCV.cm){ DCV.cm = false; dcvRefresh(); return; } dcvClose(); return; } if(e.key==="Escape" && pvOpen() && jp){ e.stopPropagation(); if(pvCm){ pvCm = false; phMetaRefresh(); return; } if(!!jp.ret){ closeJPop(); return; } jp.view = null; renderJPop(); } }, true);
 function phStep(dir){ var tr = $("pvTrack"); if(!tr) return; var i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)) + dir; if(i < 0 || i >= tr.children.length) return; tr.scrollTo({left:i*tr.clientWidth, behavior:"smooth"}); }
 function phLike(ph){
   if(!phSocial()) return;
@@ -8409,6 +8475,19 @@ document.addEventListener("click", function(e){
     case "dcsrc": dcSrc = t.getAttribute("data-v"); lsSet("rp-dcsrc", dcSrc); renderDc(); break;
     case "dcscope": dcScope = t.getAttribute("data-v"); renderDc(); break;
     case "dcwish": dcAdd(t.getAttribute("data-k"), null); break;
+    case "dcfull": dcFull(t.getAttribute("data-k"), t.getAttribute("data-i")); break;
+    case "dcvclose": dcvClose(); break;
+    case "dcvcm": if(DCV){ DCV.cm = !DCV.cm; dcvRefresh(); } break;
+    case "dcvsend": dcvSendMenu(t); break;
+    case "dcvto": dcvSendTo(t.getAttribute("data-uid")); break;
+    case "dcvsave": dcvSave(); break;
+    case "rclbcm": rcLbFull(true); break;
+    case "rclbopen": rcLbFull(false); break;
+    case "rclbsend": var rph = rcLbPh(); if(rph) chPhSendMenu(rph, t); break;
+    case "rclbsave": var rph2 = rcLbPh(); if(rph2) phSaveLib(rph2); break;
+    case "dcvwish": if(DCV){ dcAdd(DCV.key, null); dcvRefresh(); } break;
+    case "dcvmap": if(DCV){ var dvk = DCV.key; dcvClose(); var dvb = document.createElement("button"); dvb.type = "button"; dvb.hidden = true; dvb.setAttribute("data-act", "dcmap"); dvb.setAttribute("data-k", dvk); document.body.appendChild(dvb); dvb.click(); dvb.remove(); } break;
+    case "dcvreply": var dvr = DCV && DC.byKey[DCV.key]; if(dvr && dvr.by){ dcvSendTo(dvr.by); } break;
     case "dcplan": var dk0 = t.getAttribute("data-k"); jpPopover("dc", t, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"dcday\" data-k=\""+esc(dk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "dcplan"); break;
     case "dcday": dcAdd(t.getAttribute("data-k"), t.getAttribute("data-day")); break;
     case "dcmap": var dcr = DC.byKey[t.getAttribute("data-k")]; if(dcr){ closeDcPage(); poiSel = {n:dcr.n, cls:"", sub:"", c:dcr.c || "sight", la:dcr.la, lo:dcr.lo, addr:dcr.addr || ""}; sel = null; select("poi"); renderCard(); revealPoint({la:dcr.la, lo:dcr.lo}, 16, true); } break;
@@ -9036,8 +9115,10 @@ function rcLb(ph){
   lb.innerHTML = RC.ph.map(function(x, j){ return "<figure><img data-ph=\""+x+"\" alt=\"\"><figcaption>"+(j+1)+" / "+RC.ph.length+"</figcaption></figure>"; }).join("");
   var x = document.createElement("button"); x.type = "button"; x.className = "rc-x rc-glass rc-lbx"; x.id = "rcLbX"; x.setAttribute("aria-label", "Foto schließen"); x.textContent = "×";
   x.addEventListener("click", rcLbClose); lb.addEventListener("click", function(e){ if(e.target===lb || e.target.tagName==="FIGURE") rcLbClose(); });
-  document.body.appendChild(lb); document.body.appendChild(x); fillPhotos(lb);
-  lb.scrollLeft = i * lb.clientWidth;
+  var sd = document.createElement("div"); sd.className = "rc-lbside"; sd.id = "rcLbSide";
+  document.body.appendChild(lb); document.body.appendChild(x); document.body.appendChild(sd); fillPhotos(lb);
+  lb.scrollLeft = i * lb.clientWidth; RC.lbi = i; rcLbSide();
+  var lbt = 0; lb.addEventListener("scroll", function(){ clearTimeout(lbt); lbt = setTimeout(function(){ var j = Math.round(lb.scrollLeft / Math.max(1, lb.clientWidth)); if(j!==RC.lbi){ RC.lbi = j; rcLbSide(); } }, 90); }, {passive:true});
   rcZoom(lb);
 }
 /* Zoomen im Vollbild: zwei Finger zum Zoomen, ein Finger verschiebt das gezoomte Bild, Doppeltipp schaltet um */
@@ -9083,7 +9164,17 @@ function rcZoom(lb){
   // beim Weiterblättern Zoom des vorigen Bildes zurücksetzen
   lb.addEventListener("scroll", function(){ lb.querySelectorAll("img").forEach(function(im){ if(im._z && im._z.s > 1 && !lb.classList.contains("zoomed")){ im._z = {s:1,x:0,y:0}; im.style.transform = ""; } }); }, {passive:true});
 }
-function rcLbClose(){ ["rcLb","rcLbX"].forEach(function(id){ var n = $(id); if(n) n.remove(); }); }
+function rcLbPh(){ return RC.ph[RC.lbi || 0]; }
+function rcLbSide(){
+  var sd = $("rcLbSide"), ph = rcLbPh(); if(!sd || !ph) return;
+  var nc = (CMTS["ph:"+ph] || []).length, SV = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
+  sd.innerHTML = (phSocial() ? "<button type=\"button\" class=\"pvi\" data-act=\"rclbcm\" aria-label=\"Kommentare und Gefällt mir\">"+SV("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/>")+"<span>"+(nc || "")+"</span></button>" : "")+
+    (acct.user ? "<button type=\"button\" class=\"pvi\" data-act=\"rclbsend\" aria-label=\"Im Chat schicken\">"+SV("<path d=\"M17.5 2.5 9 11M17.5 2.5l-5 15-3.5-6.5-6.5-3.5z\"/>")+"</button>" : "")+
+    "<button type=\"button\" class=\"pvi\" data-act=\"rclbsave\" aria-label=\"In Fotos sichern\">"+SV("<path d=\"M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4 15.5h12\"/>")+"</button>"+
+    (phPlace(ph) ? "<button type=\"button\" class=\"pvi\" data-act=\"rclbopen\" aria-label=\"Alle Optionen zum Foto\">"+SV("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>")+"</button>" : "");
+}
+function rcLbFull(cm){ var ph = rcLbPh(), pid = ph && phPlace(ph); if(!pid || !P(pid)) return; openJPop(pid, dayOf(pid) || "", ph); if(jp) jp.ret = "recap"; if(cm){ pvCm = true; phMetaRefresh(); } }
+function rcLbClose(){ ["rcLb","rcLbX","rcLbSide"].forEach(function(id){ var n = $(id); if(n) n.remove(); }); }
 function rcClick(e){
   var t = e.target.closest("[data-rc]"); if(!t) return;
   var a = t.getAttribute("data-rc");
