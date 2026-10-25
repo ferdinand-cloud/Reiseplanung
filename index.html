@@ -6323,15 +6323,10 @@ function poiCard(){
   var c = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>";
   c += "<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+cc+"\">"+icon(q.c)+"</span><div class=\"cht\"><h3>"+esc(q.n)+"</h3><p>"+esc([sub ? sub.charAt(0).toUpperCase()+sub.slice(1) : CATNAME[q.c], nbOf(q)].filter(Boolean).join(" · "))+"</p></div></div>";
   if(q.addr) c += "<p class=\"cnote\">"+esc(q.addr)+"</p>";
-  // unabhängig vom Planungsstand: Bewertungen (Freunde / Öffentlich), ÖPNV, Weg vom Standort
+  // unabhängig vom Planungsstand: Bewertungen (Freunde / Öffentlich), ÖPNV
   if(hasLoc(q)) c += rvChips(q);
   if(poiRv && hasLoc(q)) c += rvSection(q);
   if(hasLoc(q)) c += stationLine(q);
-  if(me && hasLoc(q) && dist(me, q) < 40000){
-    var rr = transit(me, q, todayKey());
-    c += "<div class=\"mecard\"><div class=\"tl\"><span class=\"meic\" title=\"Von deinem Standort\" aria-label=\"Von deinem Standort\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M17.5 2.5 2.8 8.6l6.3 2.3 2.3 6.3z\"/></svg></span><button type=\"button\" class=\"tsum\" data-act=\"meroute\">"+transitSummary(rr)+"</button>"+
-         "<button type=\"button\" class=\"tdet\" data-act=\"meroute\" aria-expanded=\""+meRoute+"\">"+(meRoute?"Ausblenden":"Weg")+"</button></div>"+(meRoute && !rr.walk ? transitSteps(rr, me, q, {day: nyNow().key}) : "")+"</div>";
-  }
   c += "<div class=\"jp-tiles ctiles\">";
   if(D && !isRO()) c += "<button type=\"button\" class=\"jp-tile pri\" data-act=\"planpick\" data-poi=\"1\">"+I("<path d=\"M10 4.5v11M4.5 10h11\"/>")+"<span>Zur Planung</span></button>";
   if(!isRO()) c += "<button type=\"button\" class=\"jp-tile\" data-act=\"poiadd\" data-to=\"wish\">"+I("<path d=\"M10 16.5s-6-3.6-6-8a3.3 3.3 0 0 1 6-1.9 3.3 3.3 0 0 1 6 1.9c0 4.4-6 8-6 8z\"/>")+"<span>Wunschliste</span></button>";
@@ -6514,11 +6509,6 @@ function renderCard(){
   if(p.addr || p.note || noteOf(sel)) c += "<p class=\"cnote\">"+[p.addr ? esc(p.addr) : "", p.note ? esc(p.note) : "", noteOf(sel) ? "<span class=\"cmine\">"+esc(noteOf(sel).length > 140 ? noteOf(sel).slice(0,138)+" …" : noteOf(sel))+"</span>" : ""].filter(Boolean).join("<br>")+"</p>";
   if(hasLoc(p)) c += rvChips(p);
   if(hasLoc(p)) c += stationLine(p);
-  if(me && hasLoc(p) && dist(me, p) < 40000){
-    var rr = meRouteFor(p);
-    c += "<div class=\"mecard\"><div class=\"tl\"><span class=\"meic\" title=\"Von deinem Standort\" aria-label=\"Von deinem Standort\"><svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M17.5 2.5 2.8 8.6l6.3 2.3 2.3 6.3z\"/></svg></span><button type=\"button\" class=\"tsum\" data-act=\"meroute\">"+transitSummary(rr)+"</button>"+
-         "<button type=\"button\" class=\"tdet\" data-act=\"meroute\" aria-expanded=\""+meRoute+"\">"+(meRoute?"Ausblenden":"Weg")+"</button></div>"+(meRoute && !rr.walk ? transitSteps(rr, me, p, {day: nyNow().key}) : "")+"</div>";
-  }
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   var dn = !!T().done[sel], ph = photosAll(sel).length, nc = (CMTS[sel]||[]).length;
   c += "<div class=\"jp-tiles ctiles\" data-id=\""+sel+"\">";
