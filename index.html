@@ -1768,6 +1768,12 @@ form.gnew{position:relative}
 .dc-in{color:var(--ok);font:600 13.5px/1.2 var(--f-body)}
 .dc-map{margin-left:auto;width:36px;height:36px;border:0;border-radius:50%;background:var(--sheet);color:var(--accent);display:grid;place-items:center;cursor:pointer}
 .dc-map svg{width:18px;height:18px}
+.addmenu.jpmenu:has(.frp-h){max-height:min(58vh,440px);overflow-y:auto;overscroll-behavior:contain;padding-top:0;min-width:250px}
+.frp-h{position:sticky;top:0;z-index:2;margin:0 -6px 2px;padding:6px 6px 6px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border-bottom:.5px solid var(--glass-bd,var(--line))}
+.frp-q{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:var(--fill);color:var(--ink);font:500 16px/1.2 var(--f-body);-webkit-appearance:none;appearance:none}
+.frp-q:focus{outline:none;border-color:var(--accent)}
+.addmenu.jpmenu [data-frn][hidden]{display:none}
+.frp-none{margin:8px 10px;color:var(--muted);font-size:13px}
 .dc-dh{padding:6px 10px 4px;font:600 12px/1.2 var(--f-body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .sw-mini{flex:0 0 auto;position:relative;width:42px;height:25px;border-radius:999px;background:var(--line);transition:background .15s}
 .sw-mini::after{content:"";position:absolute;top:2px;left:2px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
@@ -3711,7 +3717,7 @@ function dcvSendMenu(btn){
   var r = DCV && DC.byKey[DCV.key]; if(!r) return;
   if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
   var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
-  jpPopover("dcv", btn, "<div class=\"dc-dh\">Im Chat schicken an …</div>"+fr.map(function(f){ return "<button type=\"button\" data-act=\"dcvto\" data-uid=\""+esc(f.uid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "dcvsend");
+  jpPopover("dcv", btn, frPickHead("Im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"dcvto\" data-uid=\""+esc(f.uid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "dcvsend");
 }
 function dcvSendTo(u){
   var r = DCV && DC.byKey[DCV.key]; closeJpMore(); if(!r) return; var cid = chWith(u); if(!cid) return;
@@ -4059,11 +4065,17 @@ function chPhotoFrom(ph){
   var o = {ph:ph, pid:pid, gid:gidFor(tid), n:p.n, c:p.c, trip:t.name||""};
   return recThumb(ph).then(function(th){ if(th) o.th = th; return o; }, function(){ return o; });
 }
+/* Freunde-Auswahl im Pop-up: Suchzeile oben, bleibt beim Scrollen sichtbar */
+function frPickHead(title){ return "<div class=\"frp-h\"><div class=\"dc-dh\">"+title+"</div><input type=\"search\" class=\"frp-q\" placeholder=\"Freunde suchen\" aria-label=\"Freunde suchen\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\"></div>"; }
+document.addEventListener("input", function(e){ var q = e.target; if(!q.classList || !q.classList.contains("frp-q")) return;
+  var m = q.closest(".jpmenu"), v = q.value.trim().replace(/^@/, "").toLowerCase(), n = 0; if(!m) return;
+  m.querySelectorAll("[data-frn]").forEach(function(b){ var on = !v || b.getAttribute("data-frn").indexOf(v) > -1; b.hidden = !on; if(on) n++; });
+  var e0 = m.querySelector(".frp-none"); if(!n){ if(!e0){ e0 = document.createElement("p"); e0.className = "frp-none"; e0.textContent = "Keine Freunde gefunden"; m.appendChild(e0); } } else if(e0) e0.remove(); });
 function chPhSendMenu(ph, btn){
   if(!acct.user){ toast("Melde dich an, um Fotos zu schicken", false); return; }
   if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
   var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
-  jpPopover("ph", btn, "<div class=\"dc-dh\">Foto im Chat schicken an …</div>"+fr.map(function(f){ return "<button type=\"button\" data-act=\"chphto\" data-uid=\""+esc(f.uid)+"\" data-ph=\""+esc(ph)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "chph");
+  jpPopover("ph", btn, frPickHead("Foto im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"chphto\" data-uid=\""+esc(f.uid)+"\" data-ph=\""+esc(ph)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "chph");
 }
 function chPhSendTo(u, ph){
   closeJpMore(); var cid = chWith(u); if(!cid) return;
@@ -4191,7 +4203,7 @@ function chShareMenu(pid, btn){
   if(!acct.user){ toast("Melde dich an, um Orte zu teilen", false); return; }
   if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
   var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
-  jpPopover(pid, btn, "<div class=\"dc-dh\">Im Chat teilen mit …</div>"+fr.map(function(f){ return "<button type=\"button\" data-act=\"chshareto\" data-uid=\""+esc(f.uid)+"\" data-pid=\""+esc(pid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "chshare");
+  jpPopover(pid, btn, frPickHead("Im Chat teilen mit …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"chshareto\" data-uid=\""+esc(f.uid)+"\" data-pid=\""+esc(pid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "chshare");
 }
 function chShareTo(u, pid){
   closeJpMore(); var cid = chWith(u); if(!cid) return;
@@ -6963,7 +6975,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
