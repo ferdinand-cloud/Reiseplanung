@@ -6373,7 +6373,7 @@ function drawOverlay(){
   }
   // Route des Tages: Hotel → Stopps → Hotel (Fußweg oder ÖPNV)
   var HT = D && D.hotel, pts = D ? routePts(cur) : [], col = dayColor(cur), viaSvg = ""; VIAMK = [];
-  if(!layers.route || isRO() || (NAV && !NAV.hidden && NAV.pts)){ /* Route ausgeblendet; Beobachter sehen keine Routen; während der Navigation nur deren Weg */ }
+  if(!layers.route || isRO() || (NAV && NAV.pts)){ /* Route ausgeblendet; Beobachter sehen keine Routen; während der Navigation (auch ausgeblendet) nur deren Weg */ }
   else if(pts.length){
     var labels = "";
     if(vmPick){ var vmz = pt({la:vmPick.q[0], lo:vmPick.q[1]}); viaSvg += "<circle class=\"vmring\" cx=\""+f1(vmz[0])+"\" cy=\""+f1(vmz[1])+"\" r=\"13\" fill=\"none\" stroke=\"#FF9F0A\" stroke-width=\"3\"/>";
@@ -8144,7 +8144,7 @@ var navOriRaf = 0;
 function navOrientSoon(){ if(!NAV || navOriRaf) return; navOriRaf = requestAnimationFrame(function(){ navOriRaf = 0; navOrient(); }); }
 var LOCICO = "<svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M17.6 2.4 2.9 8.7c-.6.3-.5 1.1.1 1.3l5.6 1.6 1.6 5.6c.2.6 1 .7 1.3.1l6.3-14.7c.2-.5-.3-1-.8-.8z\"/></svg>";
 function navSvg(){
-  var N = NAV; if(!N || N.hidden || !N.pts) return "";
+  var N = NAV; if(!N || !N.pts) return ""; // auch ausgeblendet bleibt der Navigationsweg auf der Karte – nur die Leisten verschwinden
   var s = "", P0 = N.pts;
   N.segs.forEach(function(sg){
     var a = sg.o, b = sg.o + sg.n - 1, col = sg.kind==="bike" ? CBCOL : sg.kind==="ride" ? (sg.col || "#0A84FF") : "#0A84FF";
@@ -8153,7 +8153,7 @@ function navSvg(){
     if(cut > a){ s += "<path d=\""+mk(a, cut)+"\" stroke=\"#8E8E93\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".55\"/>"; }
     if(cut < b){ var d1 = mk(cut, b); s += "<path d=\""+d1+"\" stroke=\"#fff\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".9\"/><path d=\""+d1+"\" stroke=\""+col+"\" stroke-width=\"6.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(sg.kind==="walk" && N.mode!=="walk" ? " stroke-dasharray=\"1 9\"" : "")+"/>"; }
   });
-  if(N.next && !N.arrived){ var z = pt(N.next.at); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"8\" fill=\"#fff\" stroke=\"#0A84FF\" stroke-width=\"3.5\"/>"; }
+  if(N.next && !N.arrived && !N.hidden){ var z = pt(N.next.at); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"8\" fill=\"#fff\" stroke=\"#0A84FF\" stroke-width=\"3.5\"/>"; }
   var zt = pt(N.tgt); s += "<circle cx=\""+f1(zt[0])+"\" cy=\""+f1(zt[1])+"\" r=\"11\" fill=\"#FF3B30\" stroke=\"#fff\" stroke-width=\"3\"/>";
   return s;
 }

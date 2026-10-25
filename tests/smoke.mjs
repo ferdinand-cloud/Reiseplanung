@@ -409,7 +409,8 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   ok(await page.locator("#navUi .nav-then").count() <= 1, "Folgeschritte zu präsent");
   await click("#navUi [data-act=navhide]");
   ok(await visible("#navUi .nav-pill") && !(await visible("#navUi .nav-hero")), "Ausblenden funktioniert nicht");
-  ok(await rp(`navSvg()===""`) && !(await rp(`document.body.classList.contains("navon")`)), "Weg/Leisten bleiben beim Ausblenden sichtbar");
+  ok(!(await rp(`document.body.classList.contains("navon")`)), "Leisten bleiben beim Ausblenden sichtbar");
+  ok(await rp(`navSvg().indexOf("<path")>-1`), "Beim Ausblenden verschwindet der Navigationsweg (stattdessen anderer Weg)");
   await click("#navUi [data-act=navshow]");
   ok(await visible("#navUi .nav-hero"), "Einblenden funktioniert nicht");
   await rp(`me = {la:NAV.tgt.la, lo:NAV.tgt.lo, acc:8}; navOnPos();`); await page.waitForTimeout(150);
