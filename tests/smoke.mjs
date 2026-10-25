@@ -292,6 +292,21 @@ await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kac
   ok(await rp(`!S.trips.t_test.cover`), "Automatisch setzt nicht zurück");
 });
 
+await test("Titelbild-Auswahl: viele Fotos als sauberes Raster, nur sichtbare geladen", async () => {
+  await seed();
+  await rp(`(function(){ var t = S.trips.t_test, ids = []; for(var i = 0; i < 90; i++){ var id = "phx"+i; ids.push(id); PHC[id] = PHC["ph_"+["a","b","c"][i%3]]; } t.photos.p4 = t.photos.p4.concat(ids); PROF = {name:"tester"}; openProfile(); })()`);
+  await page.waitForTimeout(300);
+  await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
+  await click("#jpMenu [data-act=pfcover][data-v=photo]");
+  await page.waitForTimeout(900);
+  const g = await page.evaluate(() => { const b = [...document.querySelectorAll("#cvPop .cv-grid button")].slice(0, 6).map(x => x.getBoundingClientRect());
+    return {n: document.querySelectorAll("#cvPop .cv-grid button").length, w: b[0].width, h: b[0].height, row2: b[3].top - b[0].top, loaded: document.querySelectorAll("#cvPop .cv-grid img[src]").length}; });
+  ok(g.n >= 90, "Nicht alle Fotos im Raster ("+g.n+")");
+  ok(Math.abs(g.w - g.h) < 2 && g.h > 40, "Kacheln nicht quadratisch ("+Math.round(g.w)+"×"+Math.round(g.h)+")");
+  ok(g.row2 >= g.h, "Kacheln überlappen sich");
+  ok(g.loaded > 0 && g.loaded < 40, "Vorschaubilder werden nicht gestaffelt geladen ("+g.loaded+")");
+});
+
 await test("Tagesplan: Privat-Plakette sichtbar", async () => {
   await seed();
   await rp(`T().privP = {p2:1}; renderSheet();`);
