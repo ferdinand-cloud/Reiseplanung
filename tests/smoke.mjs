@@ -350,6 +350,27 @@ await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad",
   ok(await rp(`legMode(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1])`)==="bike", "Rad-Modus wird nicht gespeichert");
 });
 
+await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
+  await seed();
+  await rp(`select("p6")`); await page.waitForTimeout(200);
+  await click("#card [data-act=cardmore]");
+  await click("#jpMenu [data-act=wpark]"); await page.waitForTimeout(200);
+  ok(await rp(`T().places.p6.park===1 && wishes().every(function(w){ return w.id!=="p6"; })`), "Wunsch wird nicht zurückgestellt");
+  ok(await rp(`!!T().places.p6`), "Zurückstellen hat den Wunsch gelöscht");
+  await rp(`select(null); tab = "wish"; setSheet("full"); renderSheet();`); await page.waitForTimeout(300);
+  ok(!(await visible("#wishRes li[data-id=p6]")), "Zurückgestellter Wunsch steht noch in der Wunschliste");
+  ok((await page.locator("#wishRes .wpark").innerText()).includes("Zurückgestellt · 1"), "Abschnitt „Zurückgestellt“ fehlt");
+  await click("#wishRes [data-act=wparked]"); await page.waitForTimeout(150);
+  ok(await visible("#wishRes li.parked[data-id=p6]"), "Zurückgestellte lassen sich nicht einblenden");
+  await click("#wishRes li[data-id=p6] [data-act=wunpark]"); await page.waitForTimeout(200);
+  ok(await rp(`!T().places.p6.park && wishes().some(function(w){ return w.id==="p6"; })`), "Zurückholen funktioniert nicht");
+  await rp(`setPark("p6", true); setSheet("mid"); select("p6");`); await page.waitForTimeout(300);
+  await click("#card [data-act=cardmore]");
+  ok(await page.locator("#jpMenu [data-act=moredel]").count()===1 && await page.locator("#jpMenu [data-act=wunpark]").count()===1, "Zurückgestellter Wunsch lässt sich nicht löschen oder zurückholen");
+  await rp(`closeJpMore(); wParkedOpen = false; renderSheet();`);
+  ok(!(await visible("#wishRes li[data-id=p6]")), "Ausblenden der Zurückgestellten funktioniert nicht");
+});
+
 await test("Dunkler Modus: Texte bleiben hell und lesbar", async () => {
   await page.emulateMedia({colorScheme: "dark"});
   await seed();
@@ -398,11 +419,19 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   // Kartenknöpfe liegen unter den Navi-Kacheln und über der Fußleiste, nichts wird verdeckt
   const noCover = async () => page.evaluate(() => {
     const boxes = [...document.querySelectorAll("#navUi .nav-hero, #navUi .nav-then, #navOri:not([hidden]), #navUi .nav-foot")].map(e => e.getBoundingClientRect()).filter(r => r.height > 0);
-    const btns = [...document.querySelectorAll("#ctrl button")].filter(b => b.offsetParent).map(b => b.getBoundingClientRect());
-    return btns.length > 2 && btns.every(b => boxes.every(r => b.bottom <= r.top || b.top >= r.bottom || b.right <= r.left || b.left >= r.right));
+    const btns = [...document.querySelectorAll("#ctrl button, #navTools button")].filter(b => b.offsetParent).map(b => b.getBoundingClientRect());
+    return btns.length > 5 && btns.every(b => boxes.every(r => b.bottom <= r.top || b.top >= r.bottom || b.right <= r.left || b.left >= r.right));
   });
   await page.waitForTimeout(400);
   ok(await noCover(), "Navi-Kacheln verdecken Kartenknöpfe");
+  // Suche, Hinzufügen und KI bleiben während der Navigation erreichbar (linke Leiste)
+  ok(await page.locator("#navTools button:visible").count()===3, "Suche, Plus und KI fehlen im Navigationsmodus");
+  await click("#navAdd"); await page.waitForTimeout(150);
+  ok(await visible("#addMenu") && await page.evaluate(() => { const m = document.querySelector("#addMenu").getBoundingClientRect(), h = document.querySelector("#navUi .nav-hero").getBoundingClientRect(); return m.top >= h.bottom && m.left > 50; }), "Plus-Menü erscheint nicht neben der linken Leiste");
+  await click("#navAdd"); await page.waitForTimeout(100);
+  await click("#navTools [data-act=srchopen]"); await page.waitForTimeout(200);
+  ok(await visible("#srchPop"), "Suche lässt sich während der Navigation nicht öffnen");
+  await rp(`closeSearch()`);
   ok(await page.locator("#navUi .nav-hero .nh-gl").count()===1, "Kreuzungsskizze fehlt in der Hauptkachel");
   ok(await page.locator("#navUi .nav-hero .nh-ap .fg").count()===1, "Annäherungsring fehlt");
   ok(await rp(`navSvg().indexOf("nv-flow")>-1`), "Fließende Richtungspunkte auf dem Weg fehlen");

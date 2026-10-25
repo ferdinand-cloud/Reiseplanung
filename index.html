@@ -319,7 +319,7 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .ndep > span{display:block}
 .ndep b{color:var(--ink);font-weight:700}
 .ndep small{color:#5E9970;font-weight:600;font-size:11.5px}
-body.ro [data-act="done"],body.ro [data-act="plan"],body.ro [data-act="unplan"],body.ro [data-act="swdel"],body.ro [data-act="delplace"],body.ro [data-act="revisit"],body.ro [data-act="revpick"],body.ro [data-act="movepop"],body.ro [data-act="movepick"],body.ro [data-act="grppick"],body.ro [data-act="grpset"],body.ro [data-act="grpmanage"],body.ro [data-act="grpdel"],body.ro [data-act="grpedit"],body.ro [data-act="newwish"],body.ro [data-act="newlist"],body.ro [data-act="dellist"],body.ro [data-act="lmode"],body.ro [data-act="legalt"],body.ro [data-act="rate"],body.ro [data-act="jphl"],body.ro [data-act="jhl"],body.ro [data-act="jins"],body.ro [data-act="phdel"],body.ro .pv-del,body.ro [data-act="tripedit"],body.ro [data-act="deltrip"],body.ro [data-act="reset"],body.ro [data-act="lpday"],body.ro [data-act="lpwish"],body.ro [data-act="lphotel"],body.ro [data-act="poiadd"],body.ro [data-act="undo"],body.ro [data-act="tadd"],body.ro [data-act="tdel"],body.ro [data-act="pick"],body.ro [data-act="arm"],body.ro [data-act="move"],body.ro [data-act="time"],body.ro [data-act="jpedit"]{display:none !important}
+body.ro [data-act="done"],body.ro [data-act="plan"],body.ro [data-act="unplan"],body.ro [data-act="swdel"],body.ro [data-act="wpark"],body.ro [data-act="wunpark"],body.ro [data-act="delplace"],body.ro [data-act="revisit"],body.ro [data-act="revpick"],body.ro [data-act="movepop"],body.ro [data-act="movepick"],body.ro [data-act="grppick"],body.ro [data-act="grpset"],body.ro [data-act="grpmanage"],body.ro [data-act="grpdel"],body.ro [data-act="grpedit"],body.ro [data-act="newwish"],body.ro [data-act="newlist"],body.ro [data-act="dellist"],body.ro [data-act="lmode"],body.ro [data-act="legalt"],body.ro [data-act="rate"],body.ro [data-act="jphl"],body.ro [data-act="jhl"],body.ro [data-act="jins"],body.ro [data-act="phdel"],body.ro .pv-del,body.ro [data-act="tripedit"],body.ro [data-act="deltrip"],body.ro [data-act="reset"],body.ro [data-act="lpday"],body.ro [data-act="lpwish"],body.ro [data-act="lphotel"],body.ro [data-act="poiadd"],body.ro [data-act="undo"],body.ro [data-act="tadd"],body.ro [data-act="tdel"],body.ro [data-act="pick"],body.ro [data-act="arm"],body.ro [data-act="move"],body.ro [data-act="time"],body.ro [data-act="jpedit"]{display:none !important}
 body.ro .lcol .grip,body.ro .jp-add,body.ro .jp-grp:not(.on),body.ro .lm,body.ro .alts2,body.ro #lpPick{display:none !important}
 body.ro .jp-grp{pointer-events:none}
 body.ro .jp-day.none{display:none}
@@ -1028,7 +1028,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 .cg svg{width:20px;height:20px}
 @media (hover:none) and (pointer:coarse){ .cg-zoom{display:none} }
 /* KI-Assistent: Chatfenster (Vorschau, noch ohne KI-Anbindung) */
-#aiBtn .ai-lbl{font:800 14px/1 var(--f-display);letter-spacing:.02em;background:linear-gradient(135deg,#007AFF,#AF52DE);-webkit-background-clip:text;background-clip:text;color:transparent}
+#aiBtn .ai-lbl,.navtools .ai-lbl{font:800 14px/1 var(--f-display);letter-spacing:.02em;background:linear-gradient(135deg,#007AFF,#AF52DE);-webkit-background-clip:text;background-clip:text;color:transparent}
 .pop-card.ai-chat{--ai-g:linear-gradient(135deg,#2F7BFF 0%,#7B5CFF 55%,#C04FE0 100%);position:relative;display:flex;flex-direction:column;height:min(80vh,calc(var(--vvh,100vh) - 24px));overflow:hidden;padding:0;background:radial-gradient(90% 45% at 0% 0%,rgba(47,123,255,.13),transparent 70%),radial-gradient(90% 45% at 100% 0%,rgba(192,79,224,.11),transparent 70%),var(--glass-hi,var(--sheet))}
 .pop-card.ai-chat::before{display:none}
 .ai-chat::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--ai-g);opacity:.85}
@@ -2885,6 +2885,16 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.85;font-wei
 
 body.navon .ctrl{transition:top .3s ease}
 body.navon .ctrl .cg-ai{display:none}
+.navtools{display:none;left:max(12px,env(safe-area-inset-left,0px));right:auto}
+body.navon .navtools{display:grid;transition:top .3s ease}
+body.ro .navtools [data-act="addpop"]{display:none}
+@media (min-width:900px){ body.navon .navtools{display:none} }
+/* zurückgestellte Wünsche: gedämpft, mit Knopf zum Zurückholen */
+.wi.parked .wic,.wi.parked .m{opacity:.6}
+.wpk{font-weight:600;color:var(--muted)}
+.wunpark{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--glass-bd,var(--line));border-radius:12px;background:transparent;color:var(--accent);padding:6px 9px;cursor:pointer;font:inherit}
+.wunpark svg{width:16px;height:16px}
+.wunpark small{font-size:10.5px;font-weight:600}
 /* ===== Navigation: dunkles Glas, Kreuzungsskizze mit Annäherungsring, leuchtender Weg ===== */
 .nav-ui{gap:0}
 .nav-ui .nav-hero{--ac:#30d158;gap:14px;padding:14px 18px 14px 14px;border-radius:28px;color:#fff;
@@ -3013,6 +3023,10 @@ body.navon .ctrl .cg-ai{display:none}
   <button type="button" id="ghostBtn" aria-pressed="false" aria-label="Privatsphäre-Modus" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17.5V9a5 5 0 0 1 10 0v8.5l-1.7-1.3-1.6 1.3-1.7-1.3-1.7 1.3-1.6-1.3z"/><circle cx="8" cy="9" r=".9" fill="currentColor"/><circle cx="12" cy="9" r=".9" fill="currentColor"/></svg></button>
   <button type="button" id="zfit" aria-label="Tagesroute zeigen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="6"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3"/></svg></button></div>
 </div>
+<div class="ctrl navtools" id="navTools" aria-label="Suche, Hinzufügen und KI während der Navigation"><div class="cg">
+  <button type="button" data-act="srchopen" aria-label="Orte suchen" title="Orte suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button>
+  <button type="button" id="navAdd" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>
+  <button type="button" data-act="navai" aria-haspopup="dialog" aria-label="KI-Assistent" title="KI-Assistent"><span class="ai-lbl">KI</span></button></div></div>
 <div class="layers" id="layers" hidden>
   <h4>Auf der Karte</h4>
   <label><input type="checkbox" id="lSub"><span class="sw" style="background:linear-gradient(90deg,#ee352e 0 25%,#00933c 25% 50%,#0062cf 50% 75%,#fccc0a 75%)"></span>U-Bahn (Subway)</label>
@@ -5410,7 +5424,16 @@ function dayOf(id){ var ds = days(); for(var i=0;i<ds.length;i++){ if((T().order
 function listName(id){ var ls = T().lists; for(var i=0;i<ls.length;i++){ if(ls[i].id===id) return ls[i].name; } return "Ohne Liste"; }
 function timeOf(id){ return T().times[id] || ""; }
 function P(id){ return T().places[id]; }
-function wishes(){ var t = T(); return Object.keys(t.places).filter(function(id){ return !t.places[id].of && !dayOf(id); }).map(function(id){ return t.places[id]; }); }
+function wishes(){ var t = T(); return Object.keys(t.places).filter(function(id){ return !t.places[id].of && !t.places[id].park && !dayOf(id); }).map(function(id){ return t.places[id]; }); }
+/* Zurückgestellte Wünsche: nicht gelöscht, aber aus Wunschliste, Karte und Vorschlägen heraus; lassen sich ein- und ausblenden */
+function parkedWishes(){ var t = T(); return Object.keys(t.places).filter(function(id){ return !t.places[id].of && t.places[id].park && !dayOf(id); }).map(function(id){ return t.places[id]; }); }
+var wParkedOpen = lsGet("rp-wpark")==="1";
+function setPark(id, on){
+  var p = T().places[id]; if(!p || isRO()) return;
+  undoSnap = snapshot();
+  if(on){ p.park = 1; if(sel===id) sel = null; } else delete p.park;
+  save(); toast(on ? "„"+p.n+"“ zurückgestellt" : "„"+p.n+"“ ist wieder auf der Wunschliste", true); renderAll();
+}
 /* Mehrfach besuchen: weitere Besuche sind Kopien mit Verweis „of“ auf den Ursprungsort */
 function rootOf(id){ var p = P(id); return p && p.of && P(p.of) ? p.of : id; }
 function visitsOf(id){ var r = rootOf(id), t = T(), out = []; days().forEach(function(d){ (t.order[d.key]||[]).forEach(function(x){ if(x===r || (t.places[x] && t.places[x].of===r)) out.push({id:x, k:d.key}); }); }); return out; }
@@ -7739,6 +7762,8 @@ function openCardMore(btn){
   if(dk && dk!==cur) h += row("gotoday", I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14\"/>"), "Tag "+dayByKey(dk).n+" öffnen", esc(dayByKey(dk).lbl), " data-day=\""+dk+"\"");
   if(dk && !dn && !isRO() && p.k!=="hotel" && hasLoc(p)) h += row("tovia", "<span class=\"ai\">"+VIAICO+"</span>", "Nur als Wegpunkt", "Aus dem Tagesplan nehmen, Gehroute führt hier vorbei", " data-pid=\""+sel+"\"");
   if(dk===cur && !dn) h += row("unplan", I("<path d=\"M12 5l-5 5 5 5\"/>"), isHs ? "Zwischenstopp entfernen" : p.of ? "Diesen Besuch entfernen" : "Zurück in die Wunschliste", "Aus dem Tagesplan nehmen");
+  if(!dk && !isHs && !p.of && !isRO()) h += p.park ? row("wunpark", I("<path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/>"), "Wieder auf die Wunschliste", "Zurückstellen aufheben", " data-pid=\""+sel+"\"")
+    : row("wpark", I("<rect x=\"3\" y=\"4\" width=\"14\" height=\"4\" rx=\"1\"/><path d=\"M4.5 8v7.5h11V8M8 11h4\"/>"), "Zurückstellen", "Aus der Wunschliste nehmen, ohne zu löschen", " data-pid=\""+sel+"\"");
   h += row("gmopen", I("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>"), "In Google Maps öffnen", "Öffnungszeiten, Bewertungen, Fotos");
   h += row("moredel", I("<path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/>", "warn"), "Löschen", "Punkt aus der Reise entfernen", " class=\"del\"");
   jpPopover(sel, btn || document.querySelector("#card [data-act=cardmore]"), h, "cardmore");
@@ -8192,6 +8217,7 @@ function navPlace(){
     var r = x.getBoundingClientRect(); if(r.height > 0) b = Math.max(b, r.bottom); });
   if(!b) return;
   var t = Math.round(b + 10)+"px"; if(c.style.top!==t) c.style.top = t;
+  var nt = $("navTools"); if(nt && nt.style.top!==t) nt.style.top = t;
 }
 function navMins(s){ return Math.max(1, Math.round(s/60)); }
 function navRender(){
@@ -9113,8 +9139,10 @@ var ILIB = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" str
 var IPIN = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/></svg>";
 function closeAddMenu(){ var m = $("addMenu"); if(m && !m.hidden){ m.hidden = true; locSt = null; } var b = $("camBtn"); if(b) b.setAttribute("aria-expanded", "false"); }
 function placeAddMenu(){
-  var m = $("addMenu"), b = $("camBtn").getBoundingClientRect();
-  m.style.top = Math.round(b.bottom + 8)+"px"; m.style.right = Math.max(12, Math.round(window.innerWidth - b.right))+"px";
+  var nv = document.body.classList.contains("navon") && $("navAdd") && $("navAdd").offsetParent, m = $("addMenu"), b = (nv ? $("navAdd") : $("camBtn")).getBoundingClientRect();
+  // während der Navigation klappt das Menü neben der linken Leiste auf
+  if(nv){ m.style.top = Math.round(b.top)+"px"; m.style.left = Math.round(b.right + 8)+"px"; m.style.right = "auto"; return; }
+  m.style.left = ""; m.style.top = Math.round(b.bottom + 8)+"px"; m.style.right = Math.max(12, Math.round(window.innerWidth - b.right))+"px";
 }
 function openAddPop(){
   if(isViewerOf(S.cur)){ toast("Als Beobachter kannst du nichts hinzufügen.", false); return; }
@@ -9208,7 +9236,7 @@ var jTimer = null;
 function openCount(lid){ return wishes().filter(function(w){ return (w.list||"none")===lid; }).length; }
 function nbKeys(){ return Object.keys(nbSel); }
 function nbMatch(p){ var k = nbKeys(); return !k.length || !!nbSel[nbOf(p)]; }
-function listPool(){ var t = T(); return activeList==="open" ? wishes() : Object.keys(t.places).map(P).filter(function(p){ return !p.of && (p.list||"none")===activeList; }); }
+function listPool(){ var t = T(); return activeList==="open" ? wishes() : Object.keys(t.places).map(P).filter(function(p){ return !p.of && !(p.park && !dayOf(p.id)) && (p.list||"none")===activeList; }); }
 function renderWish(){
   var t = T();
   var pool = listPool();
@@ -9358,6 +9386,12 @@ function wishResults(){
       h += "</div>";
     }
   }
+  var pk = parkedWishes().filter(function(p){ return (activeList==="open" || (p.list||"none")===activeList) && fc(p); });
+  if(pk.length){
+    h += "<div class=\"sec wpark\"><button type=\"button\" class=\"fold\" data-act=\"wparked\" aria-expanded=\""+wParkedOpen+"\"><h4>Zurückgestellt · "+pk.length+"</h4><span class=\"cnt\">"+(wParkedOpen ? "ausblenden" : "einblenden")+"</span>"+CHEV+"</button>";
+    if(wParkedOpen) h += "<ul class=\"wl\">"+pk.map(wishRow).join("")+"</ul>";
+    h += "</div>";
+  }
   if(activeList!=="open"){
     var planned = pool.filter(function(p){ return !p.of && dayOf(p.id) && fc(p); });
     if(planned.length) h += "<div class=\"sec\"><h4>Schon eingeplant · "+planned.length+"</h4><ul class=\"wl\">"+planned.map(wishRow).join("")+"</ul></div>";
@@ -9446,9 +9480,10 @@ function wishRow(p){
   var vs = dk ? visitsOf(p.id) : [];
   var right = dd ? "<span class=\"vpills\">"+vs.map(function(v){ var d2 = dayByKey(v.k); return "<button type=\"button\" class=\"pill"+yel(d2)+"\" style=\"background:"+dayColor(d2)+"\" data-act=\"gotoday\" data-day=\""+v.k+"\">Tag "+d2.n+"</button>"; }).join("")+"<button type=\"button\" class=\"pill add\" data-act=\"revisit\" data-pid=\""+p.id+"\" aria-label=\"An einem weiteren Tag einplanen\">+ Tag</button></span>"
                  : (D ? "<button type=\"button\" class=\"wplan\" data-act=\"plan\" aria-label=\"Zu "+esc(D.lbl)+" hinzufügen\" title=\"Zu "+esc(D.lbl)+" hinzufügen\"><b>+</b><small>"+D.wd+"</small></button>" : "");
+  if(p.park && !dk) right = "<button type=\"button\" class=\"wunpark\" data-act=\"wunpark\" aria-label=\"Wieder auf die Wunschliste\" title=\"Wieder auf die Wunschliste\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/></svg><small>Zurück</small></button>";
   var rf = distRef(), dm = rf && hasLoc(p) ? dist(rf.p, p) : null;
-  var meta = [dm!=null ? "<b class=\"wdist\">"+fmtDist(dm)+"</b>" : "", nbOf(p) && nbKeys().length!==1 ? esc(nbOf(p)) : "", p.addr ? esc(p.addr) : "", grpName(p.g) ? "▦ "+esc(grpName(p.g)) : "", hasLoc(p) ? "" : "<b>ohne Ort</b>"].filter(Boolean).join(" · ");
-  return "<li class=\"wi sw"+(dk?" planned":"")+"\" data-id=\""+p.id+"\"><button type=\"button\" class=\"swdel\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"swc\" data-act=\"wopen\"><span class=\"wic\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span><div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"wopen\">"+hl(p.n)+"</button>"+(meta ? "<div class=\"wmeta\">"+meta+"</div>" : "")+(p.note ? "<div class=\"wnote\">"+esc(p.note)+"</div>" : "")+"</div>"+right+"</div></li>";
+  var meta = [p.park && !dk ? "<b class=\"wpk\">zurückgestellt</b>" : "", dm!=null ? "<b class=\"wdist\">"+fmtDist(dm)+"</b>" : "", nbOf(p) && nbKeys().length!==1 ? esc(nbOf(p)) : "", p.addr ? esc(p.addr) : "", grpName(p.g) ? "▦ "+esc(grpName(p.g)) : "", hasLoc(p) ? "" : "<b>ohne Ort</b>"].filter(Boolean).join(" · ");
+  return "<li class=\"wi sw"+(dk?" planned":"")+(p.park && !dk ? " parked" : "")+"\" data-id=\""+p.id+"\"><button type=\"button\" class=\"swdel\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"swc\" data-act=\"wopen\"><span class=\"wic\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span><div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"wopen\">"+hl(p.n)+"</button>"+(meta ? "<div class=\"wmeta\">"+meta+"</div>" : "")+(p.note ? "<div class=\"wnote\">"+esc(p.note)+"</div>" : "")+"</div>"+right+"</div></li>";
 }
 function wishForm(){
   var lists = "<option value=\"\">Ohne Liste</option>" + T().lists.map(function(l){ return "<option value=\""+l.id+"\""+(draft.list===l.id?" selected":"")+">"+esc(l.name)+"</option>"; }).join("");
@@ -9667,7 +9702,7 @@ function renderSheet(){
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop();
 }
-var RO_ACTS = {"lpphoto":1,"placevis":1,"placevispick":1,"itemvis":1,"itemvispick":1,"vis":1,"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
+var RO_ACTS = {"lpphoto":1,"placevis":1,"placevispick":1,"itemvis":1,"itemvispick":1,"vis":1,"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"wpark":1,"wunpark":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
 function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 var roWas = null;
 function applyRO(){
@@ -9820,7 +9855,7 @@ function toast(msg, undo){
 }
 function plan(id, k, at){
   var p = P(id); if(!p || dayOf(id) || !dayByKey(k)) return;
-  undoSnap = snapshot();
+  undoSnap = snapshot(); if(T().places[id]) delete T().places[id].park;
   var idx = at!=null && at >= 0 && at <= ord(k).length ? at : insertIdx(k, p);
   ord(k).splice(idx, 0, id);
   save(); toast(p.n+" ist jetzt Stopp "+stopNo(id, k)+" am "+dayByKey(k).lbl, true);
@@ -10013,6 +10048,10 @@ document.addEventListener("click", function(e){
     case "hotelafter": var hpid = t.getAttribute("data-pid") || id; closeCatPop(); hotelStop(dayOf(hpid), hpid); renderAll(); break;
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
+    case "navai": openAiChat(); break;
+    case "wparked": wParkedOpen = !wParkedOpen; lsSet("rp-wpark", wParkedOpen ? "1" : "0"); renderSheet(); break;
+    case "wpark": setPark(t.getAttribute("data-pid") || id || sel, true); break;
+    case "wunpark": setPark(t.getAttribute("data-pid") || id || sel, false); break;
     case "srchopen": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); openSearch(); break;
     case "navmap": closeChPage(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); closeMenus(); break;
     case "navchat": if(chPage && !chOpen) closeChPage(); else openChPage(); break;
