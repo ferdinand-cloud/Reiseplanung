@@ -2432,6 +2432,110 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .ai-tt b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ai-tt small{white-space:nowrap}
 .ai-hi{min-width:0}
+.pf-demo{display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;border:0;border-radius:16px;padding:12px 14px;background:color-mix(in srgb,var(--accent,#007AFF) 9%,transparent);color:var(--ink);text-align:left;font:inherit}
+.pf-demo-ic{flex:0 0 36px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--accent,#007AFF);color:#fff;font-size:13px;padding-left:2px;box-sizing:border-box}
+.pf-demo b{display:block;font-size:15px}
+.pf-demo small{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+/* ---------- App-Demo: Einführung zum Durchklicken (liest und ändert keine Reisedaten) ---------- */
+.dm{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px));box-sizing:border-box;background:rgba(8,12,18,.42);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:popfade .2s ease}
+.dm-card{position:relative;width:min(400px,100%);max-height:100%;display:flex;flex-direction:column;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:.5px solid var(--glass-bd,var(--line));border-radius:28px;box-shadow:0 24px 70px rgba(0,0,0,.35);overflow:hidden;animation:popzoom .24s cubic-bezier(.2,.9,.3,1.15)}
+.dm-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0}
+.dm-cnt{font:700 12px/1 var(--f-body);letter-spacing:.06em;color:var(--muted)}
+.dm-skip{border:0;background:none;color:var(--muted);font:inherit;font-size:14px;font-weight:600;padding:6px 4px}
+.dm-stage{display:grid;place-items:center;padding:12px 16px 4px;flex:0 1 auto;min-height:0}
+.dm-txt{padding:10px 24px 4px;text-align:center;min-height:118px}
+.dm-txt h3{margin:0 0 7px;font:700 21px/1.2 var(--f-display);color:var(--ink)}
+.dm-txt p{margin:0;font-size:15px;line-height:1.45;color:var(--ink);opacity:.82}
+.dm-txt.fade{animation:dmFade .28s ease}
+@keyframes dmFade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.dm-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px 18px}
+.dm-arrow{flex:0 0 48px;width:48px;height:48px;border-radius:50%;border:0;display:grid;place-items:center;padding:0;background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink);transition:transform .15s,opacity .15s}
+.dm-arrow svg{width:22px;height:22px}
+.dm-arrow:active{transform:scale(.92)}
+.dm-arrow:disabled{opacity:.25}
+.dm-next{background:var(--accent,#007AFF);color:#fff;box-shadow:0 6px 18px color-mix(in srgb,var(--accent,#007AFF) 35%,transparent)}
+.dm-next.go{flex:0 0 auto;width:auto;border-radius:999px;padding:0 20px;font:inherit;font-weight:700;font-size:15px;gap:6px;display:inline-flex;align-items:center}
+.dm-next.go svg{width:18px;height:18px}
+.dm-dots{display:flex;gap:6px;justify-content:center;flex:1 1 auto}
+.dm-dots i{width:7px;height:7px;border-radius:4px;background:color-mix(in srgb,var(--ink) 20%,transparent);transition:width .25s,background .25s}
+.dm-dots i.on{width:20px;background:var(--accent,#007AFF)}
+/* Mini-Bildschirm */
+.dm-mock{position:relative;width:224px;height:316px;flex:0 0 auto;border-radius:30px;overflow:hidden;background:var(--land,#eceeec);box-shadow:0 0 0 7px #15191e,0 0 0 8px rgba(255,255,255,.1),0 14px 34px rgba(0,0,0,.25);font-family:var(--f-body);color:var(--ink)}
+@media (max-height:700px){.dm-mock{width:190px;height:262px;border-radius:26px}.dm-txt{min-height:104px}.dm-txt h3{font-size:19px}.dm-txt p{font-size:14px}}
+.dm-mock .mk{position:absolute;transition:opacity .3s,transform .3s,box-shadow .3s}
+.dm-mock::after{content:"";position:absolute;inset:0;z-index:2;background:color-mix(in srgb,var(--land,#eceeec) 62%,transparent);opacity:0;transition:opacity .3s;pointer-events:none}
+.dm-mock.focus::after{opacity:1}
+.dm-mock .mk.on{z-index:3}
+.dm-mock .mk.on.ring{box-shadow:0 0 0 2px var(--sheet),0 0 0 4.5px var(--accent,#007AFF);animation:dmRing 1.6s ease-in-out infinite}
+@keyframes dmRing{50%{box-shadow:0 0 0 2px var(--sheet),0 0 0 8px color-mix(in srgb,var(--accent,#007AFF) 25%,transparent)}}
+.m-water{position:absolute;left:-20%;right:55%;top:30%;height:120%;background:var(--water,#c3d6e2);transform:rotate(18deg);border-radius:40%}
+.m-park{position:absolute;left:58%;top:24%;width:30%;height:16%;background:var(--park,#cfe2c4);border-radius:8px;transform:rotate(-8deg)}
+.m-streets{position:absolute;inset:0;background:repeating-linear-gradient(28deg,transparent 0 26px,color-mix(in srgb,var(--sheet) 70%,transparent) 26px 28px),repeating-linear-gradient(118deg,transparent 0 34px,color-mix(in srgb,var(--sheet) 60%,transparent) 34px 36px)}
+.m-bar{top:9px;left:9px;right:9px;height:24px;border-radius:12px;background:var(--glass,var(--sheet));display:flex;align-items:center;justify-content:space-around;padding:0 6px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.m-bar i{width:9px;height:9px;border-radius:3px;border:1.6px solid currentColor;opacity:.7;box-sizing:border-box}
+.m-bar i.av{border-radius:50%}
+.m-bar i.c{border-radius:50% 50% 50% 2px}
+.m-trip{top:40px;left:9px;height:20px;padding:0 9px;border-radius:10px;background:var(--glass,var(--sheet));display:flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.m-trip small{font-weight:600;opacity:.55;font-size:8px}
+.m-btn{width:20px;height:20px;border-radius:50%;background:var(--glass,var(--sheet));display:grid;place-items:center;font-size:12px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.m-srch{top:40px;right:33px}
+.m-add{top:40px;right:9px}
+.m-srch::before{content:"";width:6px;height:6px;border:1.5px solid currentColor;border-radius:50%;margin:-2px 0 0 -2px}
+.m-rail{top:68px;left:9px;width:26px;height:38px;border-radius:9px;background:var(--glass,var(--sheet));display:grid;justify-items:center;align-content:center;gap:2px;font-size:6.5px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.m-rail b{width:14px;height:14px;border-radius:50%;background:#5E9970;color:#fff;font-size:8px;display:grid;place-items:center}
+.m-cb{right:9px;width:20px;height:20px;border-radius:7px;background:var(--glass,var(--sheet));display:grid;place-items:center;font-size:7.5px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.m-ki{top:68px;background:var(--glass,var(--sheet))}
+.m-ki span{background:linear-gradient(135deg,#007AFF,#AF52DE);-webkit-background-clip:text;background-clip:text;color:transparent}
+.m-lay{top:94px}
+.m-lay::before{content:"";width:8px;height:8px;border:1.5px solid currentColor;transform:rotate(45deg) scaleY(.6);box-sizing:border-box}
+.m-side{top:120px}
+.m-side::before{content:"";width:9px;height:8px;border:1.5px solid currentColor;border-radius:2px;box-sizing:border-box;background:linear-gradient(90deg,transparent 3px,currentColor 3px 4.5px,transparent 4.5px)}
+.m-loc{top:146px}
+.m-loc::before{content:"";width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:9px solid currentColor;transform:rotate(40deg)}
+.m-route{left:0;top:0;width:100%;height:100%;pointer-events:none}
+.m-route svg{position:absolute;inset:0;width:100%;height:100%}
+.m-pin{width:15px;height:15px;border-radius:50%;background:#5E9970;color:#fff;font-size:8px;font-weight:800;display:grid;place-items:center;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.m-hotel{width:15px;height:15px;border-radius:4px;background:#17212c;color:#fff;font-size:8px;display:grid;place-items:center;border:1.5px solid #fff}
+.m-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.m-sheet{left:0;right:0;bottom:0;height:42%;border-radius:16px 16px 0 0;background:var(--sheet);box-shadow:0 -4px 14px rgba(0,0,0,.12);padding:6px 10px 0;box-sizing:border-box}
+.m-handle{display:block;width:26px;height:3.5px;border-radius:2px;background:color-mix(in srgb,var(--ink) 25%,transparent);margin:0 auto 6px}
+.m-tabs{display:grid;grid-template-columns:1fr 1fr;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:7px;padding:2px;font-size:7.5px;font-weight:700;text-align:center;margin-bottom:7px}
+.m-tabs span{padding:3px 0;border-radius:5px}
+.m-tabs span.a{background:var(--sheet);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.m-rows{position:relative;display:grid;gap:4px}
+.m-row{position:relative;height:24px;border-radius:7px;background:color-mix(in srgb,var(--ink) 5%,transparent);display:flex;align-items:center;gap:6px;padding-right:6px;font-size:7.5px;font-weight:600;overflow:hidden;transition:none}
+.m-row .g{width:10px;align-self:stretch;display:grid;place-items:center;border-right:.5px solid color-mix(in srgb,var(--ink) 12%,transparent);font-size:7px;letter-spacing:-1px;opacity:.55}
+.m-row .n{width:13px;height:13px;border-radius:50%;background:#5E9970;color:#fff;display:grid;place-items:center;font-size:7px;font-weight:800;flex:0 0 auto}
+.m-row .t{flex:1 1 auto;white-space:nowrap;overflow:hidden}
+.m-row .p{width:16px;height:16px;border-radius:50%;background:color-mix(in srgb,var(--accent,#007AFF) 14%,transparent);color:var(--accent,#007AFF);display:grid;place-items:center;font-size:10px;font-weight:700}
+.m-row .c{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+.m-wish,.m-plan{display:none}
+.dm-mock[data-v="wish"] .m-wish,.dm-mock:not([data-v="wish"]) .m-plan{display:grid}
+.m-fing,.m-hf,.m-sf,.m-bubble{position:absolute;pointer-events:none}
+.m-fing{left:var(--fx,50%);top:var(--fy,50%);width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(255,255,255,.55);border:2px solid rgba(23,33,44,.55);box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:6;opacity:0;pointer-events:none}
+.dm-mock[data-f="tap"] .m-fing{opacity:1;animation:dmTap 1.6s ease-in-out infinite}
+@keyframes dmTap{0%,100%{transform:scale(1)}40%{transform:scale(.78)}55%{transform:scale(.78);box-shadow:0 0 0 8px rgba(0,122,255,.25)}70%{transform:scale(1)}}
+.m-bubble{left:50%;transform:translateX(-50%);padding:6px 9px;border-radius:10px;background:var(--sheet);font-size:8px;font-weight:600;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.18);opacity:0;z-index:5}
+.m-bubble{transition:opacity .3s}
+.m-bubble.show{opacity:1}
+.dm-arrow:focus{outline:none}
+.dm-arrow:focus-visible{box-shadow:0 0 0 3px var(--sheet),0 0 0 5px var(--accent,#007AFF)}
+/* Blatt verschieben */
+.dm-mock[data-a="sheet"] .m-sheet{animation:dmSheet 5s cubic-bezier(.45,.05,.3,1) infinite}
+@keyframes dmSheet{0%,12%{height:42%}35%,52%{height:82%}75%,88%{height:16%}100%{height:42%}}
+.m-hf{left:50%;top:-4px;width:22px;height:22px;margin-left:-11px;border-radius:50%;background:rgba(255,255,255,.6);border:2px solid rgba(23,33,44,.55);box-shadow:0 3px 10px rgba(0,0,0,.25);opacity:0;z-index:6}
+.dm-mock[data-a="sheet"] .m-hf{opacity:1}
+/* Reihenfolge ändern */
+.dm-mock[data-a="sort"] .m-plan .m-row:nth-child(3){z-index:2;animation:dmSortA 3.6s ease-in-out infinite}
+.dm-mock[data-a="sort"] .m-plan .m-row:nth-child(1),.dm-mock[data-a="sort"] .m-plan .m-row:nth-child(2){animation:dmSortB 3.6s ease-in-out infinite}
+@keyframes dmSortA{0%,15%{transform:none;box-shadow:none}25%{transform:scale(1.03);box-shadow:0 6px 14px rgba(0,0,0,.2)}60%,75%{transform:translateY(-56px) scale(1.03);box-shadow:0 6px 14px rgba(0,0,0,.2)}85%,100%{transform:translateY(-56px)}}
+@keyframes dmSortB{0%,30%{transform:none}60%,100%{transform:translateY(28px)}}
+.dm-mock[data-a="sort"] .m-sf{opacity:1;animation:dmSortF 3.6s ease-in-out infinite}
+.m-sf{left:14px;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:rgba(255,255,255,.6);border:2px solid rgba(23,33,44,.55);box-shadow:0 3px 10px rgba(0,0,0,.25);opacity:0;z-index:6;top:var(--sy,0)}
+@keyframes dmSortF{0%,15%{transform:none;opacity:1}25%{transform:scale(.85)}60%,75%{transform:translateY(-56px) scale(.85)}85%{transform:translateY(-56px);opacity:0}100%{opacity:0}}
+/* Plan eingeklappt beim Kartenschritt */
+.dm-mock[data-a="map"] .m-sheet{height:16%}
+@media (prefers-reduced-motion:reduce){.dm-mock *,.dm-mock{animation:none !important}}
 </style>
 </head>
 <body>
@@ -3208,6 +3312,7 @@ function authApply(u){
     (function(){
       var was = acct.user && acct.user.uid;
       acct.user = u ? {uid:u.uid, id:u.uid, email:u.email} : null;
+      if(u && was!==u.uid) demoMaybe(u);
       if(u && was!==u.uid){ acctMigrate().then(function(){ acctLive(); setTimeout(phFlush, 1500); cmWatch(); frWatch(); ntStart(); }); }
       if(!u){ pvStopAll(); if(fbUnsub){ fbUnsub(); fbUnsub = null; } if(invUnsub){ invUnsub(); invUnsub = null; } if(cmUnsub){ cmUnsub(); cmUnsub = null; } frStop(); ntStop(); acct.state = "off"; INVITES = []; invBadge(); }
       acct.ready = true; renderGate(); refreshSettings();
@@ -4575,6 +4680,7 @@ function renderProfile(){
   if(FR.inc.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"openfriends\">👋 "+FR.inc.length+(FR.inc.length===1 ? " Freundschaftsanfrage" : " Freundschaftsanfragen")+" ›</button>";
   h += "<div class=\"pf-acts\">"+(profTab==="mine" ? "<button type=\"button\" class=\"btn g\" data-act=\"pfnew\">＋ Neue Reise</button>" : "")+
        "</div>";
+  h += "<button type=\"button\" class=\"pf-demo\" data-act=\"demo\"><span class=\"pf-demo-ic\" aria-hidden=\"true\">▶</span><span><b>App-Demo ansehen</b><small>Kurze Einführung, ändert nichts an deinen Reisen</small></span></button>";
   h += "</div>";
   el.innerHTML = h; fillPhotos(el);
 }
@@ -6117,6 +6223,108 @@ function startLocate(silent){
   setLocBtn();
 }
 $("locBtn").addEventListener("click", function(){ startLocate(); });
+/* ---------- App-Demo: Einführung zum Durchklicken ----------
+   Eigene Ebene über der App mit gezeichneten Mini-Bildschirmen. Sie liest und ändert keine Reisedaten;
+   gemerkt wird nur, dass ein neues Konto die Demo auf diesem Gerät schon gesehen hat. */
+var DM_STEPS = [
+  {t:"Willkommen bei Reiseplan", p:"In ein paar Schritten zeigen wir dir, wie du Reisen planst, unterwegs nutzt und mit Freunden teilst. Mit den Pfeilen unten geht es vor und zurück."},
+  {t:"Deine Reise", p:"Oben steht deine aktuelle Reise. Tippe darauf, um eine neue Reise anzulegen, zwischen Reisen zu wechseln oder Zeitraum und Hotel zu ändern.", on:".m-trip", ring:".m-trip", f:[42,50]},
+  {t:"Orte sammeln", p:"Über die Lupe findest du Cafés, Sehenswürdigkeiten und mehr. Alles, was dich interessiert, landet auf deiner Wunschliste. Mit dem ＋ neben einem Ort planst du ihn für einen Tag ein.", on:".m-srch,.m-sheet", ring:".m-srch", v:"wish", f:[199,232]},
+  {t:"Tag für Tag planen", p:"Links wählst du den Reisetag. Unten im Tagesplan stehen deine Stopps in der richtigen Reihenfolge, auf der Karte siehst du die Route mit Fußwegen und U-Bahn.", on:".m-rail,.m-sheet,.m-route,.m-pin,.m-hotel", ring:".m-rail", f:[22,87]},
+  {t:"Reihenfolge ändern", p:"Halte einen Stopp am Griff ganz links gedrückt und zieh ihn an die gewünschte Stelle. Die Route auf der Karte passt sich automatisch an.", on:".m-sheet", a:"sort"},
+  {t:"Tagesplan verschieben", p:"Den Tagesplan ziehst du am Griff oben nach oben, um alles zu sehen, oder nach unten, damit die Karte frei ist. Mit dem Knopf rechts klappst du ihn ganz ein und wieder aus.", on:".m-sheet,.m-side", ring:".m-side", a:"sheet"},
+  {t:"Karte erkunden", p:"Tippe auf einen Punkt für Details und den Weg dorthin. Über die Ebenen blendest du U-Bahn, Busse und Fähren ein. Langes Drücken auf die Karte markiert einen eigenen Punkt.", on:".m-route,.m-pin,.m-hotel,.m-dot,.m-lay,.m-bubble", ring:".m-lay", a:"map", f:[140,135], b:"Ralph's Coffee · 6 Min. zu Fuß"},
+  {t:"Unterwegs", p:"Der Pfeil zeigt deinen Standort. Mit ＋ hältst du Fotos und Orte fest, erledigte Stopps hakst du ab – daraus entsteht dein Tagesrückblick.", on:".m-loc,.m-add,.m-sheet", ring:".m-loc", f:[205,156]},
+  {t:"Gemeinsam reisen", p:"Im Profil lädst du Freunde als Mitreisende oder Beobachter ein. In den Chats stimmt ihr euch ab, Änderungen am Plan sehen alle sofort.", on:".m-bar", ring:".m-bar", f:[204,21]},
+  {t:"KI-Assistent", p:"Über den KI-Knopf kannst du bald Fragen zu Orten stellen, Verbindungen auf der Karte filtern oder per Sprache planen. Diese Einführung findest du jederzeit wieder in deinem Profil.", on:".m-ki", ring:".m-ki", f:[205,78]}
+];
+var dmI = 0;
+function dmMockHTML(){
+  return "<div class=\"m-water\"></div><div class=\"m-park\"></div><div class=\"m-streets\"></div>"+
+    "<div class=\"mk m-route\"><svg viewBox=\"0 0 224 316\" aria-hidden=\"true\"><path d=\"M150 78 L138 92\" stroke=\"#17212c\" stroke-width=\"2\" stroke-dasharray=\"2 3\" fill=\"none\"/><path d=\"M138 92 L128 110 L140 135 L112 158\" stroke=\"#F5C431\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/></svg></div>"+
+    "<div class=\"mk m-hotel\" style=\"left:142px;top:70px\">⌂</div>"+
+    "<div class=\"mk m-pin\" style=\"left:120px;top:102px\">1</div><div class=\"mk m-pin\" style=\"left:132px;top:127px\">2</div><div class=\"mk m-pin\" style=\"left:104px;top:150px\">3</div>"+
+    "<div class=\"mk m-dot\" style=\"left:64px;top:126px;background:#C98A4B\"></div><div class=\"mk m-dot\" style=\"left:170px;top:116px;background:#5E97B5\"></div>"+
+    "<div class=\"m-bubble\" style=\"top:104px\">Ralph's Coffee · 6 Min. zu Fuß</div>"+
+    "<div class=\"mk m-bar\"><i></i><i></i><i></i><i></i><i class=\"c\"></i><i class=\"av\"></i></div>"+
+    "<div class=\"mk m-trip\">New York <small>24.–28. Okt. ⌄</small></div>"+
+    "<div class=\"mk m-btn m-srch\"></div><div class=\"mk m-btn m-add\">＋</div>"+
+    "<div class=\"mk m-rail\"><b>2</b>So 25.</div>"+
+    "<div class=\"mk m-cb m-ki\"><span>KI</span></div><div class=\"mk m-cb m-lay\"></div><div class=\"mk m-cb m-side\"></div><div class=\"mk m-cb m-loc\"></div>"+
+    "<div class=\"mk m-sheet\"><span class=\"m-handle\"></span><div class=\"m-hf\"></div>"+
+      "<div class=\"m-tabs\"><span class=\"tp\">Tagesplan</span><span class=\"tw\">Wunschliste</span></div>"+
+      "<div class=\"m-rows m-plan\">"+
+        "<div class=\"m-row\"><span class=\"g\">⋮⋮</span><span class=\"n\">1</span><span class=\"t\">Flatiron Building</span></div>"+
+        "<div class=\"m-row\"><span class=\"g\">⋮⋮</span><span class=\"n\">2</span><span class=\"t\">Ralph's Coffee</span></div>"+
+        "<div class=\"m-row\"><span class=\"g\">⋮⋮</span><span class=\"n\">3</span><span class=\"t\">Madison Square Park</span></div>"+
+        "<div class=\"m-sf\" style=\"top:68px\"></div></div>"+
+      "<div class=\"m-rows m-wish\">"+
+        "<div class=\"m-row\" style=\"padding-left:6px\"><span class=\"c\" style=\"background:#5E97B5\"></span><span class=\"t\">Top of the Rock</span><span class=\"p\">+</span></div>"+
+        "<div class=\"m-row\" style=\"padding-left:6px\"><span class=\"c\" style=\"background:#C98A4B\"></span><span class=\"t\">Joe's Pizza</span><span class=\"p\">+</span></div>"+
+        "<div class=\"m-row\" style=\"padding-left:6px\"><span class=\"c\" style=\"background:#8C78AE\"></span><span class=\"t\">The Met</span><span class=\"p\">+</span></div></div>"+
+    "</div>"+
+    "<div class=\"m-fing\"></div>";
+}
+var DM_ARR_L = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M19 12H5M11 6l-6 6 6 6\"/></svg>";
+var DM_ARR_R = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg>";
+function dmShow(i, dir){
+  var el = $("demo"); if(!el) return;
+  dmI = Math.max(0, Math.min(DM_STEPS.length-1, i));
+  var st = DM_STEPS[dmI], mock = el.querySelector(".dm-mock"), last = dmI===DM_STEPS.length-1;
+  mock.classList.toggle("focus", !!st.on);
+  mock.setAttribute("data-v", st.v || "plan"); mock.setAttribute("data-a", st.a || ""); mock.setAttribute("data-f", st.f ? "tap" : "");
+  if(st.f){ mock.style.setProperty("--fx", st.f[0]+"px"); mock.style.setProperty("--fy", st.f[1]+"px"); }
+  mock.querySelectorAll(".mk").forEach(function(m){ m.classList.remove("on", "ring"); });
+  if(st.on) mock.querySelectorAll(st.on).forEach(function(m){ m.classList.add("on"); });
+  if(st.ring) mock.querySelectorAll(st.ring).forEach(function(m){ m.classList.add("ring"); });
+  mock.querySelector(".m-bubble").classList.toggle("show", !!st.b);
+  var tp = mock.querySelector(".tp"), tw = mock.querySelector(".tw"); tp.classList.toggle("a", st.v!=="wish"); tw.classList.toggle("a", st.v==="wish");
+  var tx = el.querySelector(".dm-txt"); tx.innerHTML = "<h3 id=\"dmT\">"+esc(st.t)+"</h3><p>"+esc(st.p)+"</p>"; tx.classList.remove("fade"); void tx.offsetWidth; tx.classList.add("fade");
+  el.querySelector(".dm-cnt").textContent = (dmI+1)+" / "+DM_STEPS.length;
+  el.querySelector(".dm-dots").innerHTML = DM_STEPS.map(function(_, k){ return "<i"+(k===dmI?" class=\"on\"":"")+"></i>"; }).join("");
+  el.querySelector(".dm-prev").disabled = dmI===0;
+  var nx = el.querySelector(".dm-next");
+  nx.classList.toggle("go", last);
+  nx.innerHTML = last ? "Los geht’s" : DM_ARR_R;
+  nx.setAttribute("aria-label", last ? "Einführung beenden" : "Weiter");
+  el.querySelector(".dm-skip").style.visibility = last ? "hidden" : "";
+}
+function closeDemo(){ var el = $("demo"); if(el) el.remove(); document.removeEventListener("keydown", dmKey, true); }
+function dmKey(e){
+  if(!$("demo")) return;
+  if(e.key==="ArrowRight"){ e.preventDefault(); e.stopPropagation(); if(dmI < DM_STEPS.length-1) dmShow(dmI+1); }
+  else if(e.key==="ArrowLeft"){ e.preventDefault(); e.stopPropagation(); dmShow(dmI-1); }
+  else if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); closeDemo(); }
+}
+function openDemo(){
+  closeDemo();
+  var el = document.createElement("div"); el.id = "demo"; el.className = "dm";
+  el.innerHTML = "<div class=\"dm-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"dmT\">"+
+    "<div class=\"dm-top\"><span class=\"dm-cnt\"></span><button type=\"button\" class=\"dm-skip\" data-dm=\"close\">Überspringen</button></div>"+
+    "<div class=\"dm-stage\"><div class=\"dm-mock\" aria-hidden=\"true\">"+dmMockHTML()+"</div></div>"+
+    "<div class=\"dm-txt\" aria-live=\"polite\"></div>"+
+    "<div class=\"dm-nav\"><button type=\"button\" class=\"dm-arrow dm-prev\" data-dm=\"prev\" aria-label=\"Zurück\">"+DM_ARR_L+"</button><div class=\"dm-dots\" aria-hidden=\"true\"></div><button type=\"button\" class=\"dm-arrow dm-next\" data-dm=\"next\"></button></div></div>";
+  // Eingaben bleiben in der Demo und erreichen die App darunter nicht
+  ["pointerdown", "touchstart", "mousedown", "touchend"].forEach(function(t){ el.addEventListener(t, function(e){ e.stopPropagation(); }, {passive:true}); });
+  var sx = null, sy = null;
+  el.addEventListener("touchstart", function(e){ if(e.touches.length===1){ sx = e.touches[0].clientX; sy = e.touches[0].clientY; } }, {passive:true});
+  el.addEventListener("touchend", function(e){ if(sx===null) return; var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
+    if(Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)*1.5){ if(dx < 0 && dmI < DM_STEPS.length-1) dmShow(dmI+1); else if(dx > 0) dmShow(dmI-1); } }, {passive:true});
+  el.addEventListener("click", function(e){ e.stopPropagation(); var b = e.target.closest("[data-dm]"); if(!b) return; var a = b.getAttribute("data-dm");
+    if(a==="close") closeDemo(); else if(a==="prev") dmShow(dmI-1); else if(a==="next"){ if(dmI===DM_STEPS.length-1) closeDemo(); else dmShow(dmI+1); } });
+  document.body.appendChild(el);
+  document.addEventListener("keydown", dmKey, true);
+  dmShow(0);
+}
+// Neues Konto (höchstens 7 Tage alt): Demo einmal nach dem ersten Öffnen der App zeigen
+function demoMaybe(u){
+  if(!u || !u.uid) return;
+  var k = "reiseplan-demo-"+u.uid; if(lsGet(k)) return;
+  var ct = u.metadata && Date.parse(u.metadata.creationTime);
+  if(!ct || Date.now() - ct > 7*864e5) return;
+  lsSet(k, "1");
+  setTimeout(function(){ if(!document.body.classList.contains("gated")) openDemo(); }, 1200);
+}
 /* KI-Assistent: Chatfenster als Vorschau – die KI-Anbindung folgt in einer späteren Version */
 var AI_SPARK = "<svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M10 1.5c.4 3.9 2.6 6.1 6.5 6.5-3.9.4-6.1 2.6-6.5 6.5-.4-3.9-2.6-6.1-6.5-6.5 3.9-.4 6.1-2.6 6.5-6.5z\"/><path d=\"M15.5 12.5c.2 1.7 1.1 2.6 2.8 2.8-1.7.2-2.6 1.1-2.8 2.8-.2-1.7-1.1-2.6-2.8-2.8 1.7-.2 2.6-1.1 2.8-2.8z\" opacity=\".75\"/></svg>";
 var AI_IC_HIST = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3.2 10a6.8 6.8 0 1 0 2-4.8\"/><path d=\"M3 3.2v3h3\"/><path d=\"M10 6.5V10l2.4 1.6\"/></svg>";
@@ -8831,6 +9039,7 @@ document.addEventListener("click", function(e){
     case "navprof": if(profOpen) closeProfile(); else openProfile(); break;
     case "pftab": profTab = t.getAttribute("data-v"); renderProfile(); break;
     case "pfopen": closeProfile(); var pft = t.getAttribute("data-trip"); if(S.trips[pft]){ closeSettings(); grpSel = ""; S.cur = pft; save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
+    case "demo": openDemo(); break;
     case "pfnew": closeProfile(); var tnb = document.createElement("button"); tnb.setAttribute("data-act", "tripnew"); tnb.hidden = true; document.body.appendChild(tnb); tnb.click(); tnb.remove(); break;
     case "avpick": var avi = $("avIn"); if(avi) avi.click(); break;
     case "avdel": if(acct.user && fbDb) fbDb.collection("profiles").doc(acct.user.uid).set({photo:window.firebase.firestore.FieldValue.delete()}, {merge:true}).then(function(){ if(PROF) delete PROF.photo; navAv(); refreshSettings(); if(profOpen) renderProfile(); toast("Profilbild entfernt", false); }, function(e){ toast("Entfernen fehlgeschlagen: "+(e && e.message), false); }); break;
