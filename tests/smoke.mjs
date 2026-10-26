@@ -810,6 +810,27 @@ await test("Citi Bike: Radweg folgt den Wegpunkten, keine Luftlinie", async () =
   ok(!r2.exact && r2.path===null, "Ohne berechneten Weg wird trotzdem eine Linie geliefert");
 });
 
+await test("ÖPNV-Navigation: in der Bahn bleibt die Verbindung samt Ausstieg, neu nur bei echtem Abweichen", async () => {
+  await seed();
+  await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; navStart({la:40.7680, lo:-73.9819, n:"Columbus Circle"}, "oepnv");`);
+  await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts && !NAV.busy)"), null, {timeout:8000}).catch(() => {});
+  ok(await rp(`!!(NAV && NAV.segs && NAV.segs.some(function(sg){ return sg.kind==="ride"; }))`), "ÖPNV-Navigation ohne Fahrt");
+  await rp(`window.__pts = NAV.pts; window.__sg = NAV.segs.filter(function(sg){ return sg.kind==="ride"; })[0]; NAV.rt = 0;`);
+  // in der Bahn: Standorte neben der Linie (ungenaue Ortung unterirdisch, 150 m daneben), schnell unterwegs
+  for(const f of [0.2, 0.4, 0.6]){
+    await rp(`(function(){ var sg = window.__sg, k = sg.o + Math.floor((sg.n - 1) * ${f}), q = NAV.pts[k]; me = {la:q.la, lo:q.lo + 0.0018, acc:30, spd:9}; navOnPos(); })()`);
+    await page.waitForTimeout(60);
+  }
+  ok(await rp(`NAV.pts===window.__pts && !NAV.busy`), "Route wird während der Fahrt neu berechnet");
+  ok(await rp(`NAV.pi >= window.__sg.o && NAV.pi < window.__sg.o + window.__sg.n && !!NAV.inRide`), "Fortschritt folgt nicht der Linie");
+  const row = await page.locator("#navUi .nav-line").innerText().catch(() => "");
+  ok(row.includes("Aussteigen an"), "Ausstiegshaltestelle fehlt während der Fahrt: " + row);
+  ok(!(await page.locator("#navUi .nav-off").count()) && !(await rp(`NAV.wrongWay`)), "In der Bahn erscheint „Vom Weg abgekommen“/„Falsche Richtung“");
+  // echtes Abweichen (2 km weg von der Linie): nach mehreren klaren Meldungen neuer Weg
+  for(let i = 0; i < 5; i++){ await rp(`me = {la:40.7000, lo:-73.9500, acc:10, spd:1}; navOnPos();`); await page.waitForTimeout(40); }
+  ok(await rp(`NAV.pts!==window.__pts || NAV.busy`), "Bei echtem Abweichen wird nicht neu berechnet");
+  await rp(`navEnd(true)`);
+});
 await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abhaken", async () => {
   await seed();
   await rp(`nav3d = false; me = {la:40.7215, lo:-73.9890, acc:8}; openGo("p2");`); await page.waitForTimeout(200); // prüft die flache 2D-Ansicht

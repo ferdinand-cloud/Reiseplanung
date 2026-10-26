@@ -8775,12 +8775,27 @@ function navProgress(){
   var P0 = N.pts, from = Math.max(0, N.pi - 3), to = Math.min(P0.length - 1, N.pi + 400), bi = N.pi, bd = 1e9;
   for(var i = from; i <= to; i++){ var d = dist(me, P0[i]); if(d < bd){ bd = d; bi = i; } }
   if(bd > 120){ for(var j = 0; j < P0.length; j++){ var d2 = dist(me, P0[j]); if(d2 < bd){ bd = d2; bi = j; } } }
+  // U-Bahn, Bus, Fähre: wer an der Einstiegsstation ist (oder schnell fährt) und nahe der Linie bleibt, sitzt drin – der Fortschritt
+  // folgt der Linie und es wird nicht neu berechnet (unterirdisch ist die Ortung ungenau, sonst gingen Verbindung und Ausstieg verloren)
+  N.inRide = null;
+  (N.segs||[]).some(function(sg){ var e = sg.o + sg.n - 1;
+    if(sg.kind!=="ride" || N.pi > e) return false;
+    if(!(N.pi >= sg.o - 1 || N.cum[sg.o] - (N.cum[N.pi]||0) < 150 || (me.spd!=null && me.spd > 6))) return true;
+    var rb = -1, rd = 1e9; for(var k = Math.max(sg.o, N.pi - 1); k <= e; k++){ var dk = navSegD(P0[k], P0[Math.min(e, k + 1)]); if(dk < rd){ rd = dk; rb = k; } }
+    if(rb >= 0 && rd < 400 + 2*(me.acc||0)){ N.inRide = sg; if(bd > 45){ bi = rb; bd = rd; } }
+    return true;
+  });
   N.pi = Math.max(N.pi, bi); N.offD = bd;
   N.s = navAlong(N);
   N.left = Math.max(0, N.total - N.s);
   // ein Abbiegehinweis bleibt stehen, bis man die Kurve wirklich hinter sich hat (10 m danach) – nicht schon kurz davor umspringen
   N.next = N.steps.filter(function(st){ return !st.dep && N.cum[st.i] + 10 > N.s; })[0] || null;
   if(dist(me, N.tgt) < 25 || (N.left < 20 && N.pi >= P0.length - 2)) N.arrived = true;
+}
+// Abstand des eigenen Standorts zum Wegstück a–b in Metern
+function navSegD(a, b){
+  var kx = 111320*Math.cos(a.la*Math.PI/180), vx = (b.lo - a.lo)*kx, vy = (b.la - a.la)*111320, wx = (me.lo - a.lo)*kx, wy = (me.la - a.la)*111320, L = vx*vx + vy*vy;
+  var t = L ? Math.max(0, Math.min(1, (wx*vx + wy*vy) / L)) : 0; return Math.hypot(wx - t*vx, wy - t*vy);
 }
 // Position entlang des Wegs in Metern: nächster Wegpunkt plus Projektion auf das folgende Wegstück
 function navAlong(N){
@@ -8796,11 +8811,13 @@ function navAlong(N){
 function navOnPos(){
   var N = NAV; if(!N) return;
   if(!N.pts){ if(!N.busy && me) navBuild(); return; }
-  navProgress();
+  navProgress(); if(N.inRide) N.rideT = Date.now();
   // vom Weg abgekommen: zweimal hintereinander > 45 m (bei brauchbarer Genauigkeit) → neu berechnen
-  if(!N.arrived && N.offD > 45 && (!me.acc || me.acc < 50)){ N.off = (N.off||0) + 1; if(N.off >= 2 && Date.now() - N.rt > 15000 && !N.busy){ N.off = 0; N.pi = 0; navBuild(); toast("Neuer Weg wird berechnet", false); } } else N.off = 0;
+  // nach der Fahrt (Bahn eben noch erkannt) erst nach vier klaren Meldungen neu berechnen
+  if(!N.arrived && N.offD > 45 && !N.inRide && (!me.acc || me.acc < 50)){ N.off = (N.off||0) + 1; if(N.off >= (N.rideT && Date.now() - N.rideT < 120000 ? 4 : 2) && Date.now() - N.rt > 15000 && !N.busy){ N.off = 0; N.pi = 0; navBuild(); toast("Neuer Weg wird berechnet", false); } } else N.off = 0;
   // Bewegung vom nächsten Wegstück weg (bei Gehtempo, drei Meldungen hintereinander) → „Falsche Richtung“
-  if(N.pts && !N.arrived && (me.spd==null || me.spd > 0.5)){ var lk = navLook(N), dl = lk ? dist(me, lk) : null;
+  if(N.inRide){ N.awayN = 0; N.wrongWay = false; N.lastLook = null; }
+  else if(N.pts && !N.arrived && (me.spd==null || me.spd > 0.5)){ var lk = navLook(N), dl = lk ? dist(me, lk) : null;
     if(dl!=null && N.lastLook!=null && N.lastPi===N.pi && dl > N.lastLook + 2){ N.awayN = (N.awayN||0) + 1; } else if(dl!=null && N.lastLook!=null && dl < N.lastLook - 2){ N.awayN = 0; }
     N.wrongWay = (N.awayN||0) >= 3; N.lastLook = dl; N.lastPi = N.pi; }
   if(N.follow && !N.hidden) navFollow(false);
@@ -8938,7 +8955,7 @@ function navRender(){
   var up = (!N.arrived && N.pts && N.next) ? N.steps.filter(function(st){ return st.i > N.next.i && !st.arrive; })[0] : null;
   var nextH = up ? "<div class=\"nav-then\"><span class=\"nt-l\">Danach</span><span class=\"nt-ic\">"+up.ic+"</span><span class=\"nt-tx\">"+(up.lines ? navBuls(up.lines)+" "+esc(up.dir || "") : esc(up.text))+"</span></div>" : "";
   var canDone = N.arrived && N.tgt.id && P(N.tgt.id) && dayOf(N.tgt.id) && !T().done[N.tgt.id] && !isRO();
-  var offH = N.offD > 45 && !N.arrived && N.pts ? "<div class=\"nav-off\">Vom Weg abgekommen – neuer Weg wird berechnet …</div>" : "";
+  var offH = N.offD > 45 && !N.inRide && !N.arrived && N.pts ? "<div class=\"nav-off\">Vom Weg abgekommen – neuer Weg wird berechnet …</div>" : "";
   var footH = "<div class=\"nav-foot\">"+navLineRow(N)+"<div class=\"nav-sum\"><span class=\"nav-mode\">"+mi+"</span><span><b>"+(N.arrived ? "Am Ziel" : N.pts ? navMins(secs)+"<span>Min.</span>" : "–")+"</b><small>"+(N.arrived ? esc(mn) : N.pts ? fmtDist(left)+" · Ankunft "+etaS : mn)+"</small></span></div>"+
     (canDone ? "<button type=\"button\" class=\"nav-b go\" data-act=\"navdone\">✓ Abhaken</button>" : "")+
     (!N.follow && !N.arrived ? "<button type=\"button\" class=\"nav-b ic\" data-act=\"navfollow\" aria-label=\"Karte folgt mir\">"+LOCICO+"</button>" : "")+
