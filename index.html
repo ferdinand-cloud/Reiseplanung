@@ -1752,6 +1752,13 @@ form.gnew{position:relative}
 .ls-go{width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--accent)}
 .ls-go svg{width:16px;height:16px}
 .ls-filt{margin-bottom:4px}
+.ls-vfilt{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:2px 0 6px;padding-bottom:2px}
+.ls-vfilt::-webkit-scrollbar{display:none}
+.ls-vfilt button{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 11px;border-radius:16px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 13px/1 var(--f-body);cursor:pointer}
+.ls-vfilt button svg{width:14px;height:14px}
+.ls-vfilt button small{font-weight:500;color:var(--muted)}
+.ls-vfilt button[aria-pressed="true"]{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
+.ls-vfilt button[aria-pressed="true"] small{color:inherit;opacity:.7}
 .ls-wrap{display:flex;align-items:center}
 .ls-list .ls-wrap + .ls-wrap{border-top:.5px solid var(--sep,var(--line))}
 .ls-wrap .ls-row{flex:1;min-width:0;border-top:0 !important}
@@ -4907,7 +4914,7 @@ function rvSection(p){
   return h+"</div>";
 }
 /* ---------- Listenansicht: besuchte Orte, Highlights und Fotos einer Reise ---------- */
-var lsPage = false, lsTab = "places", lsFilter = "all";
+var lsPage = false, lsTab = "places", lsFilter = "all", lsVis = "all";
 function openLsPage(){ closeMenus(); closeChPage(); closeGsPage(); closeProfile(); closeNtPage(); closeDcPage(); lsPage = true; renderLs(); $("lsView").hidden = false; navActive(); }
 function closeLsPage(){ if(!lsPage) return; lsPage = false; $("lsView").hidden = true; navActive(); }
 function lsGoMap(pid){
@@ -4940,6 +4947,10 @@ function renderLs(){
   var unr0 = visited.filter(function(v){ return !rateOf(v.id); });
   if(lsTab==="places" && visited.length) h += "<div class=\"nt-kinds ls-filt\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"all\" aria-selected=\""+(lsFilter==="all")+"\">Alle besuchten</button>"+
       "<button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"unrated\" aria-selected=\""+(lsFilter==="unrated")+"\">Noch nicht bewertet"+(unr0.length ? " <b>"+unr0.length+"</b>" : "")+"</button></div>";
+  // zusätzlich nach Sichtbarkeit filtern (kombinierbar mit „Noch nicht bewertet“)
+  if(lsTab==="places" && visited.length && canPriv()){ var vc = {priv:0, trip:0, pub:0}; (lsFilter==="unrated" ? unr0 : visited).forEach(function(v){ vc[visOf(v.id)]++; });
+    h += "<div class=\"ls-vfilt\" role=\"group\" aria-label=\"Nach Sichtbarkeit filtern\"><button type=\"button\" data-act=\"lsvis\" data-v=\"all\" aria-pressed=\""+(lsVis==="all")+"\">Alle</button>"+
+      ["priv","trip","pub"].map(function(v){ return "<button type=\"button\" class=\"vlv-"+v+"\" data-act=\"lsvis\" data-v=\""+v+"\" aria-pressed=\""+(lsVis===v)+"\" title=\"Sichtbarkeit: "+VISLBL[v]+"\">"+visIco(v)+"<span>"+VISLBL[v]+"</span><small>"+vc[v]+"</small></button>"; }).join("")+"</div>"; }
   h += "</div>";
   var row = function(id, sub){ var p = P(id), r = rateDef(rateOf(id)), ph = photosAll(id);
     return "<button type=\"button\" class=\"ls-row\" data-act=\"lsopen\" data-pid=\""+id+"\">"+(ph.length ? "<img class=\"ls-th\" data-ph=\""+ph[ph.length-1]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span>")+
@@ -4947,8 +4958,10 @@ function renderLs(){
       visBtn(id, "ls-vis")+"<span class=\"ls-go\" role=\"button\" data-act=\"lsgo\" data-pid=\""+id+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</span></button>"; };
   if(lsTab==="places"){
     var unr = unr0;
-    var shownV = lsFilter==="unrated" ? unr : visited;
+    var shownV = lsFilter==="unrated" ? unr : visited, vOn = canPriv() && lsVis!=="all";
+    if(vOn) shownV = shownV.filter(function(v){ return visOf(v.id)===lsVis; });
     if(!visited.length) h += "<p class=\"note nt-empty\">Noch keine besuchten Orte. Abgehakte Stopps erscheinen hier.</p>";
+    else if(vOn && !shownV.length) h += "<p class=\"note nt-empty\">Keine "+(lsFilter==="unrated" ? "unbewerteten " : "")+"Orte mit Sichtbarkeit „"+VISLBL[lsVis]+"“.</p>";
     else if(!shownV.length) h += "<p class=\"note nt-empty\">Alle besuchten Orte sind bewertet. 🎉</p>";
     var lastD = null;
     shownV.forEach(function(v){
@@ -10177,6 +10190,7 @@ document.addEventListener("click", function(e){
     case "navlist": if(lsPage) closeLsPage(); else openLsPage(); break;
     case "lstrip": var lst = t.getAttribute("data-trip"); if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
     case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;
+    case "lsvis": lsVis = t.getAttribute("data-v"); renderLs(); break;
     case "lsfilt": lsFilter = t.getAttribute("data-v"); renderLs(); break;
     case "lsgo": lsGoMap(t.getAttribute("data-pid")); break;
     case "lsopen": var lop = t.getAttribute("data-pid"); if(P(lop)) openJPop(lop, dayOf(lop) || ""); break;

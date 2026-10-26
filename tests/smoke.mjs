@@ -561,6 +561,28 @@ await test("Tagesplan: alles erledigt und ausgeblendet – Weg zum Hotel bleibt 
   ok(await rp(`(function(){ var el = document.querySelector("li.tleg"), hd = document.querySelector("[data-act=hidedone]"); return !!(el && hd && (hd.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)); })()`), "Weg zum Hotel steht nicht nach dem Hinweis auf die ausgeblendeten Stopps");
 });
 
+await test("Liste: besuchte Orte nach Sichtbarkeit filtern", async () => {
+  await seed();
+  // gestern besucht: p4, p5; p4 privat, p5 für Freunde; dazu heute p1 besucht (Reise)
+  await rp(`T().done.p1 = 1; T().privP = {p4:1}; T().pubP = {p5:1}; openLsPage();`); await page.waitForTimeout(250);
+  const rows = async () => page.evaluate(() => [...document.querySelectorAll(".ls-row[data-pid]")].map(e => e.getAttribute("data-pid")).join(","));
+  ok(await page.locator(".ls-vfilt button").count()===4, "Sichtbarkeitsfilter fehlt in der Orte-Liste");
+  ok((await rows()).split(",").length===3, "Ohne Filter nicht alle besuchten Orte: "+await rows());
+  await click(".ls-vfilt [data-v=priv]"); await page.waitForTimeout(150);
+  await shot("liste-sichtbarkeit");
+  ok(await rows()==="p4", "Filter Privat zeigt falsche Orte: "+await rows());
+  await click(".ls-vfilt [data-v=pub]"); await page.waitForTimeout(150);
+  ok(await rows()==="p5", "Filter Freunde zeigt falsche Orte: "+await rows());
+  await click(".ls-vfilt [data-v=trip]"); await page.waitForTimeout(150);
+  ok(await rows()==="p1", "Filter Reise zeigt falsche Orte: "+await rows());
+  // kombinierbar mit „Noch nicht bewertet“
+  await rp(`T().rating = {p1:3}; renderLs();`); await page.waitForTimeout(100);
+  await click("[data-act=lsfilt][data-v=unrated]"); await page.waitForTimeout(150);
+  ok(await rows()==="" && (await page.locator(".nt-empty").first().innerText()).includes("Reise"), "Kombination mit „Noch nicht bewertet“ falsch");
+  await click(".ls-vfilt [data-v=all]"); await page.waitForTimeout(150);
+  ok((await rows()).split(",").sort().join(",")==="p4,p5", "Filter Alle setzt nicht zurück: "+await rows());
+});
+
 await test("Navigation zu U-Bahn- und Citi-Bike-Stationen", async () => {
   await seed();
   await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; layers.sub = true; layers.bike = true; cbLoad(true);`); await page.waitForTimeout(800);
