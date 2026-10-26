@@ -741,6 +741,11 @@ await test("Fußweg mit Wegpunkten: echter Weg auch wenn ein Teilstück fehlt, b
     await page.waitForFunction(() => window.__rp(`!!(WALKC[wKey(__fa, __fb, [])] || {}).p`), null, {timeout:5000}).catch(() => {});
     const fp = await rp(`(function(){ var c = WALKC[wKey(__fa, __fb, [])] || {}; return {p:!!c.p, south:(c.p||[]).some(function(q){ return q[0] < 40.75; }), lo:c.p && c.p[0] && c.p[0][1]}; })()`);
     ok(fp.p && !fp.south && Math.abs(fp.lo + 74.0096) < 1e-4, "Fußweg vom Anleger fährt mit der Fähre: "+JSON.stringify(fp));
+    // auf dem Gerät gemerkter alter Fährumweg wird einmal neu berechnet
+    await rp(`(function(){ var k = wKey(__fa, __fb, []); SEGW = {}; WALKC[k] = {p:[[40.7600,-74.0100],[40.7200,-74.0200],[40.7561,-73.9930]], d:9500, sv:1}; walkPath(__fa, __fb, []); })()`);
+    await page.waitForFunction(() => window.__rp(`!((WALKC[wKey(__fa, __fb, [])] || {}).p || [[0]]).some(function(q){ return q[0] < 40.75; })`), null, {timeout:5000}).catch(() => {});
+    const fo = await rp(`(function(){ var c = WALKC[wKey(__fa, __fb, [])] || {}; return !!c.p && !c.p.some(function(q){ return q[0] < 40.75; }); })()`);
+    ok(fo, "Gemerkter Fährumweg wird nicht neu berechnet");
     // anderer, weit entfernter Start zum selben Ziel (z. B. neuer Stopp davor): nicht den alten Weg von dort zeigen
     const far = await rp(`(function(){ var a3 = {la:40.7600, lo:-74.0035}, p = walkPath(a3, __wt.b, __wt.v); return {n:p.length, la:p[1].la}; })()`);
     ok(far.n === 4 && Math.abs(far.la - 40.7240) < 1e-6, "Weg von entferntem Start übernimmt alten Weg eines anderen Starts ("+far.n+" Punkte)");

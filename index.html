@@ -7740,7 +7740,7 @@ function walkPump(){
         });
         if(!ok && !err){ WALKC[job.k] = {p:null}; return; }
         if(!ok){ WALKC[job.k] = {fail:Date.now()}; return; }
-        WALKC[job.k] = {p:out, d:Math.round(d), live:!!job.live, sv:1}; if(err) WALKC[job.k].retry = Date.now();
+        WALKC[job.k] = {p:out, d:Math.round(d), live:!!job.live, sv:2}; if(err) WALKC[job.k].retry = Date.now();
         LASTW[walkLastKey(job.b, job.v)] = {k:job.k, a:{la:+job.a.la, lo:+job.a.lo}};
         if(!job.live && !err) walkSave();
       }).catch(function(){ WALKC[job.k] = {fail:Date.now()}; })
@@ -7823,7 +7823,8 @@ function walkPath(a, b, v){
   if(!v.length && dist(a, b) < 40) return [a, b];
   var k = wKey(a, b, v), c = WALKC[k];
   // ältere gespeicherte Wege mit unsinnigem Umweg einmal neu berechnen (mit besserem Einrasten)
-  if(c && c.p && !c.sv && (v.length || walkAbsurd(a, b, c.d || 0))){ c.sv = 1; walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
+  // (sv 2: auch gemerkte Umwege über eine Fährlinie, s. walkUnferry)
+  if(c && c.p && (c.sv||0) < 2 && ((!c.sv && v.length) || walkAbsurd(a, b, c.d || 0))){ c.sv = 2; walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
   if(c && c.p && c.retry && Date.now() - c.retry > 45000){ c.retry = Date.now(); walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
   if(c && c.p){ var pts = c.p.map(function(q){ return {la:q[0], lo:q[1]}; }); pts.unshift(a); pts.push(b); return pts; }
   // wird gerade neu berechnet (z. B. eigener Standort hat sich bewegt): letzten Weg zum selben Ziel zeigen statt Luftlinie –
