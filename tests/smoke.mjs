@@ -323,9 +323,35 @@ await test("Titelbild-Auswahl: viele Fotos als sauberes Raster, nur sichtbare ge
   ok(g.loaded > 0 && g.loaded < 40, "Vorschaubilder werden nicht gestaffelt geladen ("+g.loaded+")");
 });
 
+await test("Ebenen: ÖPNV-Gruppe aufklappbar, farbige Karte und 3D ohne Schalter", async () => {
+  await seed();
+  await rp(`["lSub","lBus","lFerry","lBike"].forEach(function(id){ $(id).checked = false; $(id).dispatchEvent(new Event("change")); });`);
+  await click("#layersBtn"); await page.waitForTimeout(150);
+  ok(await page.locator("#lColor").count()===0 && await page.locator("#l3d").count()===0, "Farbige Karte / 3D-Gebäude noch als Schalter im Menü");
+  ok(await rp(`colorOn && b3dOn`), "Farbige Karte oder 3D-Gebäude nicht standardmäßig an");
+  ok(await visible("#lTr") || await page.locator("label:has(#lTr)").isVisible(), "ÖPNV-Schalter fehlt");
+  ok(!(await page.locator("#lTrGrp").isVisible()), "ÖPNV-Auswahl ist nicht eingeklappt");
+  ok((await page.locator("#layers").innerText()).indexOf("Citi Bike")===-1, "Bike Share heißt noch Citi Bike");
+  await click("#lTrBtn"); await page.waitForTimeout(100);
+  ok(await page.locator("#lTrGrp").isVisible() && (await page.locator("#lTrGrp").innerText()).includes("Bike Share"), "ÖPNV-Auswahl klappt nicht auf");
+  // Hauptschalter an: zuletzt gewählte (Standard U-Bahn) Verkehrsmittel an
+  await page.locator("label:has(#lTr)").click(); await page.waitForTimeout(150);
+  ok(await rp(`layers.sub && !layers.bus && $("lTr").checked && $("lTr").indeterminate`), "ÖPNV-Hauptschalter schaltet die U-Bahn nicht ein");
+  await page.locator("#lBus").check(); await page.waitForTimeout(100);
+  await shot("ebenen-oepnv");
+  ok(await rp(`layers.sub && layers.bus`), "Einzelnes Verkehrsmittel lässt sich nicht zuschalten");
+  // aus und wieder an: Auswahl bleibt
+  await page.locator("label:has(#lTr)").click(); await page.waitForTimeout(100);
+  ok(await rp(`!layers.sub && !layers.bus && !layers.ferry && !layers.bike && !$("lTr").checked`), "ÖPNV-Hauptschalter schaltet nicht alles aus");
+  await page.locator("label:has(#lTr)").click(); await page.waitForTimeout(100);
+  ok(await rp(`layers.sub && layers.bus && !layers.ferry`), "Auswahl geht beim Aus- und Einschalten verloren");
+  await click("#lTrBtn"); await page.waitForTimeout(100);
+  ok(!(await page.locator("#lTrGrp").isVisible()), "ÖPNV-Auswahl klappt nicht wieder zu");
+});
+
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
   await seed();
-  await click("#layersBtn");
+  await click("#layersBtn"); await click("#lTrBtn");
   await page.locator("#lBike").check(); await page.waitForTimeout(900);
   await click("#layersBtn");
   ok(await rp(`layers.bike && lsGet("nyc-l-bike")==="1"`), "Ebene wird nicht eingeschaltet");
