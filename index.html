@@ -9195,7 +9195,8 @@ function jpPopover(id, btn, html, kind){
 function openJpMore(id, btn){
   var p = P(id); if(!p) return; var g = grpName(p.g), pv = isPrivP(id);
   jpPopover(id, btn, "<button type=\"button\" data-act=\"grppick\" role=\"menuitem\"><span class=\"ai\">▦</span><span>"+(g ? "Gruppe: "+esc(g) : "Zu Gruppe hinzufügen")+"</span></button>"+
-    (canPriv() ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : "")+
+    // Privat/Reise/Freunde stellt man unter „Sichtbarkeit“ im Fenster ein – hier nur, wo es dieses Feld nicht gibt (Hotel)
+    (canPriv() && p.k==="hotel" ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : "")+
     (hasLoc(p) && p.k!=="hotel" && acct.user ? "<button type=\"button\" data-act=\"chshare\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">💬</span><span>Im Chat teilen</span></button>" : "")+
     (dayOf(id) && !T().done[id] && !isRO() && p.k!=="hotel" && hasLoc(p) ? "<button type=\"button\" data-act=\"tovia\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+VIAICO+"</span><span>Nur als Wegpunkt</span></button>" : ""), "more");
 }
@@ -9280,8 +9281,9 @@ function renderJPop(){
        "<svg viewBox=\"0 0 20 20\" fill=\""+(rr ? "currentColor" : "none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 3.2l2 4.2 4.6.6-3.4 3.2.9 4.5L10 13.5l-4.1 2.2.9-4.5L3.4 8l4.6-.6z\"/></svg></button>";
   if(!isRO() && (hasLoc(p) || p.addr)) h += "<button type=\"button\" class=\"jq\" data-act=\"go\" aria-label=\"Route\" title=\"Route\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+"</button>";
   h += "<a class=\"jq\" target=\"_blank\" rel=\"noopener\" aria-label=\"Infos in Google Maps\" title=\"Infos in Google Maps\" href=\""+gmInfoUrl(p)+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 9.2v4.6\"/><circle cx=\"10\" cy=\"6.4\" r=\".6\" fill=\"currentColor\"/>")+"</a>";
-  if(!isRO()) h += "<button type=\"button\" class=\"jq"+(pv0?" pv":"")+(grpName(p.g)?" grp":"")+"\" data-act=\"jpmore\" aria-haspopup=\"dialog\" aria-label=\"Mehr: Gruppe"+(canPriv() ? ", Privat" : "")+"\" title=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Gruppe")+(pv0 ? " · privat" : "")+"\">"+
-       (pv0 ? ILOCK : I("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>"))+"</button>";
+  // „⋯“: Gruppe, im Chat teilen, Wegpunkt – die Sichtbarkeit steht im Fenster darunter
+  if(!isRO()) h += "<button type=\"button\" class=\"jq"+(grpName(p.g)?" grp":"")+"\" data-act=\"jpmore\" aria-haspopup=\"dialog\" aria-label=\"Mehr: Gruppe, im Chat teilen\" title=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Mehr")+"\">"+
+       (p.k==="hotel" && pv0 ? ILOCK : I("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>"))+"</button>";
   h += "</div>";
   if(canPriv() && p.k!=="hotel"){ var vv = visOf(jp.pid), vis1 = wasVisited(jp.pid);
     h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Sichtbarkeit</div><div class=\"vis-seg\" role=\"radiogroup\" aria-label=\"Sichtbarkeit\">"+

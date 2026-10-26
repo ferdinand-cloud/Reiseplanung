@@ -674,6 +674,10 @@ await test("Privat, aber für einzelne Beobachter freigegeben", async () => {
   await shot("privat-freigabe-fenster");
   await page.locator("#jPop .pt-c[data-uid=u_ludwig]").click(); await page.waitForTimeout(200);
   ok(await rp(`JSON.stringify(T().privTo["p:p1"])`)==='["u_anna"]', "Freigabe lässt sich nicht zurücknehmen");
+  // ⋯-Menü: kein doppelter Privat-Schalter mehr (Sichtbarkeit steht im Fenster)
+  await click("#jPop [data-act=jpmore]");
+  ok(await page.locator("#jpMenu [data-act=privp]").count()===0 && await page.locator("#jpMenu [data-act=grppick]").count()===1, "⋯-Menü sollte Gruppe, aber keinen Privat-Schalter zeigen");
+  await rp(`closeJpMore()`);
   await rp(`closeJPop ? closeJPop() : ($("jPop").hidden = true)`);
   // Notiz-Freigabe auf öffentlichem Ort
   await rp(`closeJpMore(); setPrivTo("n", "p2", "u_ludwig", true);`);
