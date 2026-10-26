@@ -2306,10 +2306,10 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .nav-pi{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;flex:0 0 28px}
 .nav-pi svg{width:16px;height:16px}
 .nav-pe{font-weight:800;opacity:.9;padding-left:4px}
-.gp-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+.gp-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
 .gp-nav button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;border:0;border-radius:14px;background:#0b8a4b;color:#fff;font:inherit;cursor:pointer}
 .gp-nav button svg{width:20px;height:20px}
-.gp-nav button b{font-size:12.5px}
+.gp-nav button b{font-size:12px;line-height:1.15;text-align:center}
 .tdet.tnav{display:inline-flex;align-items:center;gap:3px}
 .tdet.tnav svg{width:12px;height:12px}
 /* Navigation: Kacheln */
@@ -6059,8 +6059,8 @@ function dayMask(k){ var d = parseD(k); if(!d) return 1; var w = d.getUTCDay(); 
 var TRCACHE = {};
 function transit(a, b, k){ return transitCore(a, b, k, null); }
 function transitCore(a, b, k, opt){
-  var ban = opt && opt.ban || {}, xp = opt && opt.xp || 0, pf = !!(opt && opt.pf), force = !!(opt && opt.force);
-  var mask = dayMask(k), key = [a.la,a.lo,b.la,b.lo,mask, Object.keys(ban).join("."), xp, pf?1:0, force?1:0].join(",");
+  var ban = opt && opt.ban || {}, xp = opt && opt.xp || 0, pf = opt && opt.pf || 0, force = !!(opt && opt.force);
+  var mask = dayMask(k), key = [a.la,a.lo,b.la,b.lo,mask, Object.keys(ban).join("."), xp, pf, force?1:0].join(",");
   if(TRCACHE[key]) return TRCACHE[key];
   netInit();
   var direct = dist(a,b), walkT = direct/WALK;
@@ -6083,7 +6083,7 @@ function transitCore(a, b, k, opt){
     if(n < N){
       if(exits[n]!==undefined){ var ce = c + exits[n]/WALK; if(ce < endBest){ endBest = ce; endPrev = [n, ["walk", exits[n]]]; } }
       NETOUT[n].forEach(function(ei){
-        if(ei >= 0){ var e = NET.e[ei]; if(!(e[5] & mask)) return; relax(ride(n, e[2], e[3]), c + (pf ? (isFerry(e[2]) ? 240 : waitOf(e[2]) + 900) : waitOf(e[2])) + (ban[e[2]] ? 1800 : 0) + xp, n, ["board"]); }
+        if(ei >= 0){ var e = NET.e[ei]; if(!(e[5] & mask)) return; relax(ride(n, e[2], e[3]), c + (pf ? (isFerry(e[2]) ? 240 : waitOf(e[2]) + (pf > 1 ? 2400 : 900)) : waitOf(e[2])) + (ban[e[2]] ? 1800 : 0) + xp, n, ["board"]); }
         else { var t = NET.t[-1-ei]; relax(t[1], c + t[2], n, ["xfer", t[2]]); }
       });
     } else {
@@ -6128,6 +6128,25 @@ function parallelLines(l, mask){
   Object.keys(cnt).map(Number).filter(function(r){ return cnt[r] >= 6; }).sort(function(x, y){ return cnt[y]-cnt[x]; }).forEach(function(r){ var nm = lineName(r); if(names[nm]) return; names[nm] = 1; out.push(r); });
   return out;
 }
+function hasFerry(r){ return !!(r && !r.walk && r.legs.some(function(l){ return l.t==="ride" && isFerry(l.r); })); }
+/* Verbindungen mit Fähre (Verkehrsmittel „Fähre“ einer Etappe): null, solange die Fahrpläne laden, [] wenn keine Fähre sinnvoll ist */
+function ferryAlts(a, b, k){
+  if(!busReady){ loadBus(); return null; }
+  var key = "ferry|"+[a.la,a.lo,b.la,b.lo,dayMask(k)].join(",");
+  if(ALTCACHE[key]) return ALTCACHE[key];
+  // Fähre nur, wenn sie nicht unsinnig länger dauert als U-Bahn & Bus (z. B. Umweg über eine andere Fährlinie)
+  var base = transitCore(a, b, k, {force:true}), lim = base.secs*1.6 + 600;
+  var r1 = transitCore(a, b, k, {pf:2, force:true}), out = [];
+  if(hasFerry(r1) && r1.secs <= lim){
+    out.push(r1);
+    var ban = {}; r1.legs.forEach(function(l){ if(l.t==="ride" && isFerry(l.r)) ban[l.r] = 1; });
+    var r2 = transitCore(a, b, k, {pf:2, force:true, ban:ban});
+    var sig = function(r){ return r.legs.filter(function(l){ return l.t==="ride"; }).map(function(l){ return l.r+"@"+l.from+">"+l.to; }).join("|"); };
+    if(hasFerry(r2) && sig(r2)!==sig(r1) && r2.secs < r1.secs + 1800 && r2.secs <= lim) out.push(r2);
+    out.sort(function(x, y){ return x.secs - y.secs; });
+  }
+  return (ALTCACHE[key] = out);
+}
 /* bis zu drei sinnvolle Verbindungen: schnellste, andere Linien, weniger Umstiege */
 var ALTCACHE = {};
 function transitAlts(a, b, k, force){
@@ -6138,7 +6157,7 @@ function transitAlts(a, b, k, force){
   if(best.walk) return (ALTCACHE[key] = [best]);
   var used = {}; best.legs.forEach(function(l){ if(l.t==="ride") (l.alt||[l.r]).forEach(function(r){ used[r] = 1; }); });
   var cands = [best, transitCore(a, b, k, fo2({ban:used})), transitCore(a, b, k, fo2({xp:600}))];
-  var fr = busReady ? transitCore(a, b, k, fo2({pf:true})) : null, hasF = function(r){ return r && !r.walk && r.legs.some(function(l){ return l.t==="ride" && isFerry(l.r); }); };
+  var fr = busReady ? transitCore(a, b, k, fo2({pf:1})) : null, hasF = hasFerry;
   if(hasF(fr) && !cands.some(hasF)) cands.push(fr);
   var sigs = {}, out = [];
   cands.forEach(function(r){
@@ -6158,9 +6177,11 @@ function transitAlts(a, b, k, force){
 /* Verbindungen einer Etappe. Mit Wegpunkten: die Wegpunkte werden zu Fuß abgelaufen, die Fahrt beginnt
    bzw. endet an der günstigsten Stelle der Wegpunktkette (sonst liegen Wegpunkte entlang der Fahrt ins Leere) */
 function legAlts(a, b, k){
-  var force = legGet("legMode", b)==="oepnv", v = legVia(a, b);
-  if(!v.length) return transitAlts(a, b, k, force);
-  var key = "via|"+[a.la,a.lo,b.la,b.lo,dayMask(k),force?1:0].join(",")+"|"+v.map(function(q){ return q[0]+","+q[1]; }).join(";");
+  var lm = legGet("legMode", b), force = lm==="oepnv" || lm==="ferry", v = legVia(a, b);
+  // Fähre: Verbindungen mit Fähre, sonst (noch nicht geladen / keine sinnvoll) die üblichen Verbindungen
+  var alts = function(S, E){ if(lm==="ferry"){ var f = ferryAlts(S, E, k); if(f && f.length) return f; } return transitAlts(S, E, k, force); };
+  if(!v.length) return alts(a, b);
+  var key = "via|"+[a.la,a.lo,b.la,b.lo,dayMask(k),lm==="ferry"?2:force?1:0,busReady?1:0].join(",")+"|"+v.map(function(q){ return q[0]+","+q[1]; }).join(";");
   if(ALTCACHE[key]) return ALTCACHE[key];
   var P2 = v.map(function(q){ return {la:q[0], lo:q[1]}; }), n = P2.length;
   function chain(ps){ var d = 0; for(var j = 1; j < ps.length; j++) d += dist(ps[j-1], ps[j]); return d; }
@@ -6168,13 +6189,13 @@ function legAlts(a, b, k){
   for(var s = 0; s <= n; s++){
     var S = s ? P2[s-1] : a, E = s < n ? P2[s] : b;
     var hd = chain([a].concat(P2.slice(0, s))), tl = chain(P2.slice(s).concat([b]));
-    var c = (hd + tl)/WALK + transitAlts(S, E, k, force)[0].secs;
+    var c = (hd + tl)/WALK + alts(S, E)[0].secs;
     if(c < bc - 1){ bc = c; bestS = s; }
   }
   var S0 = bestS ? P2[bestS-1] : a, E0 = bestS < n ? P2[bestS] : b;
   var head = v.slice(0, bestS), tail = v.slice(bestS);
   var hd0 = chain([a].concat(P2.slice(0, bestS))), tl0 = chain(P2.slice(bestS).concat([b]));
-  var out = transitAlts(S0, E0, k, force).map(function(r){
+  var out = alts(S0, E0).map(function(r){
     var legs = r.legs.map(function(l){ var c2 = {}; for(var x in l) c2[x] = l[x]; return c2; });
     var ws = legs.filter(function(l){ return l.t==="walk"; });
     if(ws.length===1 && legs.length===1){ ws[0].vv = v; ws[0].d = hd0 + tl0 + ws[0].d; ws[0].secs = ws[0].d/WALK; }
@@ -7747,7 +7768,7 @@ function renderGo(live){
   h += "<div class=\"gp-lbl\">Start</div><div class=\"gp-from\" role=\"group\" aria-label=\"Start\"><button type=\"button\" data-act=\"gofrom\" data-from=\"me\" aria-pressed=\""+(goSt.from==="me")+"\">Mein Standort</button>";
   if(prev) h += "<button type=\"button\" data-act=\"gofrom\" data-from=\"prev\" aria-pressed=\""+(goSt.from==="prev")+"\">"+(D && prev===D.hotel ? "Hotel" : "Vorheriger Stopp")+": "+esc(prev.n)+"</button>";
   h += "</div><div class=\"gp-lbl\">In der App navigieren</div><div class=\"gp-nav\" role=\"group\" aria-label=\"In der App navigieren\">"+
-    [["walk", LMWALK, "Zu Fuß"], ["bike", LMBIKE, "Citi Bike"], ["oepnv", LMSUB, "U-Bahn & Bus"]].map(function(m){ return "<button type=\"button\" data-act=\"navstart\" data-mode=\""+m[0]+"\">"+m[1]+"<b>"+m[2]+"</b></button>"; }).join("")+"</div>";
+    [["walk", LMWALK, "Zu Fuß"], ["bike", LMBIKE, "Citi Bike"], ["oepnv", LMSUB, "U-Bahn & Bus"], ["ferry", LMFERRY, "Fähre"]].map(function(m){ return "<button type=\"button\" data-act=\"navstart\" data-mode=\""+m[0]+"\">"+m[1]+"<b>"+m[2]+"</b></button>"; }).join("")+"</div>";
   // andere Karten-App: ein Knopf, dann Auswahl Apple Karten / Google Maps – das Verkehrsmittel wählt man dort
   h += "<button type=\"button\" class=\"btn g gp-ext\" data-act=\"goext\" aria-haspopup=\"dialog\" aria-expanded=\""+!!goSt.ext+"\">"+NAVGOICO+"In anderer App navigieren</button>";
   if(from==="me" && !me) h += "<p class=\"gp-note\">Dein Standort wird in der Karten-App bestimmt.</p>";
@@ -8037,13 +8058,17 @@ var LMSUB = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" st
 /* ---------- Citi Bike: Stationen und Verfügbarkeit live aus dem offenen GBFS-Feed (Lyft) ----------
    Standorte werden eine Woche auf dem Gerät gemerkt, die Verfügbarkeit (Räder/Plätze) wird höchstens jede Minute neu geholt,
    und nur solange die Ebene an ist oder eine Etappe mit dem Rad geplant ist. */
-var LMNAME = {walk:"Zu Fuß", oepnv:"U-Bahn & Bus", bike:"Citi Bike"};
+var LMNAME = {walk:"Zu Fuß", oepnv:"U-Bahn & Bus", ferry:"Fähre", bike:"Citi Bike"};
+var LMFERRY = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 14l1.6 4h12.8L20 14H4zM7 14v-4h10v4M10 10V6h4v4\"/><path d=\"M2.5 21c1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1\"/></svg>";
+var FERRYNAME = {ER:"East River", RS:"Rockaway-Soundview", SG:"St. George", AS:"Astoria", SB:"South Brooklyn", SIF:"Staten Island Ferry"};
+function ferryLabel(r){ var l = r.legs.filter(function(x){ return x.t==="ride" && isFerry(x.r); })[0]; if(!l) return ""; var n = lineName(l.r); return (FERRYNAME[n] || n)+" ab "+NET.s[l.from][0].replace(/\s*\(Fähre\)$/, ""); }
 /* Wahl des Verkehrsmittels je Etappe: ein Knopf mit dem aktuellen Symbol, darunter ein Menü mit Zeiten */
 function openLegModes(li, btn){
   var lp = dayLegs(cur)[li]; if(!lp) return; var a = lp[0], b = lp[1], m = legMode(a, b);
   var wd = walkDist(a, b, legVia(a, b)) || dist(a, b)*1.25, tr = transit(a, b, cur), br = bikeRoute(a, b);
   var mins = function(x){ return Math.max(1, Math.round(x/60))+" Min."; };
-  var rows = [["walk", LMWALK, mins(wd/1.33)+" · "+fmtDist(wd)], ["oepnv", LMSUB, tr.walk ? "Kein Umstieg sinnvoll – zu Fuß schneller" : mins(tr.secs)], ["bike", LMBIKE, br.wait ? (CB.err ? "Daten nicht erreichbar" : "Stationen werden geladen …") : br.none ? "Keine passende Station in der Nähe" : mins(br.secs)+" · inkl. Wege zur Station"]];
+  var fa = ferryAlts(a, b, cur), fsub = fa===null ? "Fahrpläne werden geladen …" : !fa.length ? "Keine sinnvolle Fährverbindung" : mins(fa[0].secs)+" · "+esc(ferryLabel(fa[0]));
+  var rows = [["walk", LMWALK, mins(wd/1.33)+" · "+fmtDist(wd)], ["oepnv", LMSUB, tr.walk ? "Kein Umstieg sinnvoll – zu Fuß schneller" : mins(tr.secs)], ["ferry", LMFERRY, fsub], ["bike", LMBIKE, br.wait ? (CB.err ? "Daten nicht erreichbar" : "Stationen werden geladen …") : br.none ? "Keine passende Station in der Nähe" : mins(br.secs)+" · inkl. Wege zur Station"]];
   jpPopover("lm"+li, btn, "<div class=\"vp-h\">Unterwegs auf dieser Etappe</div>"+rows.map(function(r){ return "<button type=\"button\" role=\"menuitemradio\" data-act=\"lmode\" data-leg=\""+li+"\" data-mode=\""+r[0]+"\" aria-checked=\""+(m===r[0])+"\"><span class=\"ai lmi\">"+r[1]+"</span><span class=\"cm-t\"><b>"+LMNAME[r[0]]+"</b><small>"+r[2]+"</small></span>"+(m===r[0] ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join(""), "lmodes");
 }
 var CB_BASE = "https://gbfs.lyft.com/gbfs/1.1/bkn/en/", CBCOL = "#0A6CDB", BIKE = 4.2; // Fahrgeschwindigkeit in m/s (ca. 15 km/h)
@@ -8154,6 +8179,7 @@ function navOsrm(base, pts){
       return {coords:coords, steps:steps, d:rt.distance, secs:rt.duration};
     });
 }
+function navTransit(from, p, mode){ var k = todayKey(); if(mode==="ferry"){ var f = ferryAlts(from, p, k); if(f && f.length) return f[0]; } return transit(from, p, k); }
 function navLegVia(p){ var hit = null; if(cur) dayLegs(cur).forEach(function(lg){ if(lg[1]===p) hit = lg; }); return hit ? legVia(hit[0], hit[1]) : []; }
 function navBuild(){
   var N = NAV; if(!N || !me) return;
@@ -8166,8 +8192,8 @@ function navBuild(){
     jobs = [navOsrm(OSRMF, [from, s1.s]).then(function(r){ r.kind = "walk"; r.steps = r.steps.filter(function(x){ return !x.arrive; }); r.steps.push({at:s1.s, text:"Rad an „"+s1.s.n+"“ ausleihen", sub:cbAvail(s1.s), ic:LMBIKE}); return r; }),
             navOsrm(OSRMB, [s1.s].concat(vv, [s2.s])).then(function(r){ r.kind = "bike"; r.steps = r.steps.filter(function(x){ return !x.arrive && x.text.indexOf("Los")!==0; }); r.steps.push({at:s2.s, text:"Rad an „"+s2.s.n+"“ abgeben", sub:cbAvail(s2.s), ic:LMBIKE}); return r; }),
             navOsrm(OSRMF, [s2.s, p]).then(function(r){ r.kind = "walk"; r.steps = r.steps.filter(function(x){ return x.text.indexOf("Los")!==0; }); return r; })];
-  } else if(mode==="oepnv" && !transit(from, p, todayKey()).walk){
-    var tr = transit(from, p, todayKey()), at = from; jobs = [];
+  } else if((mode==="oepnv" || mode==="ferry") && !navTransit(from, p, mode).walk){
+    var tr = navTransit(from, p, mode), at = from; jobs = [];
     tr.legs.forEach(function(l, i){
       if(l.t==="walk"){ var to = l.to==="Ziel" ? p : stLL(l.st), a0 = at; jobs.push(navOsrm(OSRMF, [a0, to]).then(function(r){ r.kind = "walk"; if(i) r.steps = r.steps.filter(function(x){ return x.text.indexOf("Los")!==0; }); if(l.to!=="Ziel") r.steps = r.steps.filter(function(x){ return !x.arrive; }); return r; })); at = to; }
       else if(l.t==="xfer"){ var tx = stLL(l.to); jobs.push(Promise.resolve({kind:"walk", coords:[at, tx], d:dist(at, tx), secs:l.secs||60, steps:[{at:at, text:"Umsteigen in "+NET.s[l.to][0], ic:LMWALK}]})); at = tx; }
@@ -8199,7 +8225,7 @@ function navPick(tg, btn, ext){
   var h = "<div class=\"vp-h\">Navigieren zu „"+esc(NAVPICK.n)+"“</div>"+
     row("walk", LMWALK, "Zu Fuß", d!=null ? "ca. "+navMins(d*1.25/1.33)+" Min. · "+fmtDist(d*1.25) : "")+
     row("bike", LMBIKE, "Citi Bike", "Station holen, fahren, abgeben")+
-    (ext==="nosub" ? "" : row("oepnv", LMSUB, "U-Bahn & Bus", ""));
+    (ext==="nosub" ? "" : row("oepnv", LMSUB, "U-Bahn & Bus", "")+row("ferry", LMFERRY, "Fähre", "NYC Ferry, Staten Island Ferry …"));
   if(ext!=="noext") h += "<a role=\"menuitem\" target=\"_blank\" rel=\"noopener\" href=\"https://www.google.com/maps/dir/?api=1&destination="+NAVPICK.la+","+NAVPICK.lo+"&travelmode=walking\"><span class=\"ai lmi\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M11 4h5v5M16 4l-7 7M14 11v5H4V6h5\"/></svg></span><span class=\"cm-t\"><b>In Google Maps öffnen</b></span></a>";
   jpPopover("nav", btn, h, "navpick");
 }
@@ -8290,7 +8316,7 @@ function navRender(){
   if(!el){ el = document.createElement("div"); el.id = "navUi"; document.body.appendChild(el); }
   var left = N.left!=null ? N.left : N.total, secs = N.secs && N.total ? N.secs * (left / N.total) : left / WALK;
   var eta = new Date(Date.now() + secs*1000), etaS = String(eta.getHours()).padStart(2, "0")+":"+String(eta.getMinutes()).padStart(2, "0");
-  var mi = {walk:LMWALK, bike:LMBIKE, oepnv:LMSUB}[N.mode], mn = {walk:"Zu Fuß", bike:"Citi Bike", oepnv:"U-Bahn & Bus"}[N.mode];
+  var mi = {walk:LMWALK, bike:LMBIKE, oepnv:LMSUB, ferry:LMFERRY}[N.mode], mn = LMNAME[N.mode];
   if(N.hidden){
     if(el.className!=="nav-ui min") setTimeout(placeFloating, 0);
     el.className = "nav-ui min"; el.innerHTML = "<button type=\"button\" class=\"nav-pill\" data-act=\"navshow\"><span class=\"nav-pi\">"+mi+"</span><span><b>"+esc(N.tgt.n||"Ziel")+"</b> · "+(N.pts ? navMins(secs)+" Min." : "…")+"</span><span class=\"nav-pe\">Einblenden</span></button>";
@@ -8557,7 +8583,7 @@ function renderDay(){
     var pre = a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#007AFF\">●</span><span><b>Mein Standort</b> <span class=\"sub\">Start zum nächsten Ziel</span></span></li>"
             : (a.id && T().done[a.id]) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (zuletzt erledigt)</span></li>" : "";
     var lh = legHidden(a, b), ev = "<button type=\"button\" class=\"leye\" data-act=\"legvis\" data-leg=\""+i+"\" aria-pressed=\""+!lh+"\" title=\""+(lh?"Etappe auf der Karte einblenden":"Etappe auf der Karte ausblenden")+"\" aria-label=\"Etappe auf der Karte zeigen\">"+(lh?EYEOFF:EYE)+"</button>";
-    var sw = "<span class=\"lm one\"><button type=\"button\" data-act=\"lmpick\" data-leg=\""+i+"\" aria-haspopup=\"menu\" aria-pressed=\"true\" title=\"Unterwegs: "+LMNAME[m]+" – tippen zum Wechseln\" aria-label=\"Unterwegs: "+LMNAME[m]+", ändern\">"+(m==="bike" ? LMBIKE : m==="walk" ? LMWALK : LMSUB)+"</button></span>";
+    var sw = "<span class=\"lm one\"><button type=\"button\" data-act=\"lmpick\" data-leg=\""+i+"\" aria-haspopup=\"menu\" aria-pressed=\"true\" title=\"Unterwegs: "+LMNAME[m]+" – tippen zum Wechseln\" aria-label=\"Unterwegs: "+LMNAME[m]+", ändern\">"+(m==="bike" ? LMBIKE : m==="walk" ? LMWALK : m==="ferry" ? LMFERRY : LMSUB)+"</button></span>";
     if(m==="bike"){ var br = bikeRoute(a, b), bsum;
       if(br.wait) bsum = "<b>Citi Bike</b> · "+(CB.err ? esc(CB.err) : "Stationen werden geladen …");
       else if(br.none) bsum = "<b>Kein Citi Bike</b> · "+(!br.s1 ? "keine Station mit freien Rädern in der Nähe" : !br.s2 ? "keine Station mit freien Plätzen am Ziel" : "Start und Ziel an derselben Station")+" – besser zu Fuß";
@@ -8568,7 +8594,7 @@ function renderDay(){
       return pre+"<li class=\"leg tleg lw"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><b>"+Math.max(1,Math.round(wd/1.33/60))+" Min.</b> · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+sugBtn(i)+viaBtn(i, lv)+ev+"</div></li>"; }
     var alts = legAlts(a, b, cur), r = legRoute(a, b, cur), open = !!legOpen[cur+"|"+i], ai = alts.indexOf(r);
     var fr = !r.walk && r.legs.filter(function(l){ return l.t==="ride"; })[0], lc = fr ? NET.r[fr.r][1] : "";
-    return pre+"<li class=\"leg tleg "+(r.walk ? "lw" : "lt")+(legSel===i?" sel":"")+"\""+(lc ? " style=\"--lc:"+lc+"\"" : "")+"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+transitSummary(r, true)+"</button>"+
+    return pre+"<li class=\"leg tleg "+(r.walk ? "lw" : "lt")+(legSel===i?" sel":"")+"\""+(lc ? " style=\"--lc:"+lc+"\"" : "")+"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+(m==="ferry" && !hasFerry(r) ? "<span class=\"tw\">"+(busReady ? "Keine Fähre" : "Fähre lädt …")+"</span> · " : "")+transitSummary(r, true)+"</button>"+
       (r.walk ? legDeps(r, a) : "<button type=\"button\" class=\"ldet\" data-act=\"legopen\" data-leg=\""+i+"\" aria-expanded=\""+open+"\" aria-label=\""+(open?"Wegbeschreibung zuklappen":"Wegbeschreibung zeigen")+"\">"+legDeps(r, a)+CHEV+"</button>")+viaBtn(i, legVia(a, b))+ev+"</div>"+
       (open && alts.length > 1 ? "<div class=\"alts2\" role=\"group\" aria-label=\"Andere Verbindungen\"><span class=\"alts-l\">Verbindung</span>"+alts.map(function(x, j){ return "<button type=\"button\" data-act=\"legalt\" data-leg=\""+i+"\" data-alt=\""+j+"\" aria-pressed=\""+(j===ai)+"\">"+transitSummary(x)+"</button>"; }).join("")+"</div>" : "")+
       (open && !r.walk ? transitSteps(r, a, b, legCtx(a)) : "")+"</li>";

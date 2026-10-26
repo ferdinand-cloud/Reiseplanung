@@ -382,13 +382,40 @@ await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad",
   const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][0] && L[i][0].id==="p1" && L[i][1] && L[i][1].id==="p2") return i; } return -1; })()`);
   ok(li > -1, "Etappe Katz Deli → Washington Square nicht gefunden");
   await page.locator(`[data-act=lmpick][data-leg="${li}"]`).click(); await page.waitForTimeout(150);
-  ok(await page.locator("#jpMenu [data-act=lmode]").count()===3, "Menü bietet nicht Zu Fuß / U-Bahn / Citi Bike");
+  ok(await page.locator("#jpMenu [data-act=lmode]").count()===4, "Menü bietet nicht Zu Fuß / U-Bahn / Fähre / Citi Bike");
   ok((await page.locator("#jpMenu [data-mode=bike]").innerText()).includes("Min."), "Citi Bike ohne Zeitangabe im Menü");
   await page.locator("#jpMenu [data-act=lmode][data-mode=bike]").click(); await page.waitForTimeout(250);
   const leg = await page.locator(".leg.lbk").first().innerText();
   ok(leg.includes("Min.") && leg.includes("Ludlow") && leg.includes("Washington Sq E"), "Rad-Etappe falsch: "+leg.slice(0, 160));
   ok(await page.evaluate(() => document.querySelector(".leg.lbk .tsum").getBoundingClientRect().width > 80), "Zusammenfassung der Rad-Etappe ist nicht sichtbar");
   ok(await rp(`legMode(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1])`)==="bike", "Rad-Modus wird nicht gespeichert");
+});
+
+await test("Fähre als Verkehrsmittel einer Etappe (Menü, Tagesplan, Navigation)", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  ok(await rp(`busReady`), "Fahrpläne (bus.json) nicht geladen");
+  // Etappe Kips Bay → Domino Park (Williamsburg): Fähre über den East River sinnvoll
+  await rp(`(function(){ var t = T(); t.places.p8 = {id:"p8", n:"Domino Park", c:"park", la:40.7144, lo:-73.9680, list:"l_main", note:"", addr:"River St"}; t.places.p9 = {id:"p9", n:"Kips Bay", c:"sight", la:40.7470, lo:-73.9760, list:"l_main", note:"", addr:"2nd Ave"}; t.order[cur] = ["p9","p8","p3"]; legsList = true; select(null); setSheet("full"); renderSheet(); })()`);
+  await page.waitForTimeout(200);
+  const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][0] && L[i][0].id==="p9" && L[i][1] && L[i][1].id==="p8") return i; } return -1; })()`);
+  ok(li > -1, "Etappe Kips Bay → Domino Park nicht gefunden");
+  ok(await rp(`(function(){ var L = dayLegs(cur)[${li}], f = ferryAlts(L[0], L[1], cur); return !!(f && f.length && hasFerry(f[0])); })()`), "Keine Fährverbindung gefunden");
+  await page.locator(`[data-act=lmpick][data-leg="${li}"]`).click(); await page.waitForTimeout(150);
+  const fm = await page.locator("#jpMenu [data-mode=ferry]").innerText();
+  ok(fm.includes("Fähre") && fm.includes("Min.") && fm.includes("East River"), "Fähre im Menü ohne Zeit/Linie: "+fm);
+  // unsinniger Umweg (Katz Deli → Domino Park: Fähre wäre dreimal so lang) wird nicht angeboten
+  ok(await rp(`(ferryAlts(P("p1"), P("p8"), cur)||[1]).length===0`), "Unsinnige Fährverbindung wird angeboten");
+  await page.locator("#jpMenu [data-act=lmode][data-mode=ferry]").click(); await page.waitForTimeout(250);
+  ok(await rp(`legMode(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1])`)==="ferry", "Fähren-Modus wird nicht gespeichert");
+  ok(await rp(`hasFerry(legRoute(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1], cur))`), "Etappe nutzt keine Fähre");
+  ok(await page.locator(`li.tleg [data-act=lmpick][data-leg="${li}"] svg`).count()===1, "Symbol der Etappe fehlt");
+  ok(await page.locator("li.tleg .bul.ferry").count() > 0, "Etappe zeigt die Fährlinie nicht");
+  await shot("etappe-faehre");
+  // Navigation mit der Fähre
+  await rp(`me = {la:40.7470, lo:-73.9760, acc:8}; navStart(P("p8"), "ferry");`);
+  await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts && !NAV.busy)"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`!!(NAV && NAV.segs && NAV.segs.some(function(sg){ return sg.kind==="ride" && sg.ride.bus; }))`), "Navigation nutzt keine Fähre");
 });
 
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
@@ -445,7 +472,7 @@ await test("Citi Bike: Radweg folgt den Wegpunkten, keine Luftlinie", async () =
 await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abhaken", async () => {
   await seed();
   await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; openGo("p2");`); await page.waitForTimeout(200);
-  ok(await page.locator("#catPop .gp-nav [data-act=navstart]").count()===3, "Navigation in der App fehlt im Routen-Pop-up");
+  ok(await page.locator("#catPop .gp-nav [data-act=navstart]").count()===4, "Navigation in der App fehlt im Routen-Pop-up");
   await click("#catPop [data-act=navstart][data-mode=walk]");
   await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts)"), null, {timeout:5000}).catch(() => {});
   ok(await rp(`!!(NAV && NAV.pts && NAV.pts.length > 5)`), "Weg für die Navigation nicht berechnet");
@@ -587,7 +614,7 @@ await test("Routen-Pop-up: ein Knopf „In anderer App navigieren“ mit Auswahl
   await seed();
   await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; openGo("p2");`); await page.waitForTimeout(200);
   ok(await page.locator("#catPop .gp-modes, #catPop .gp-app, #catPop [data-act=goin]").count()===0, "Alte Verkehrsmittel-Kacheln / App-Wahl / U-Bahn-Weg-Knopf noch da");
-  ok(await page.locator("#catPop [data-act=navstart]").count()===3, "In-App-Navigation fehlt");
+  ok(await page.locator("#catPop [data-act=navstart]").count()===4, "In-App-Navigation fehlt");
   ok(await visible("#catPop [data-act=goext]"), "Knopf „In anderer App navigieren“ fehlt");
   await click("#catPop [data-act=goext]"); await page.waitForTimeout(250);
   await shot("route-andere-app");
