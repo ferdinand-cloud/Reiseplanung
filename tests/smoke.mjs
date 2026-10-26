@@ -1112,6 +1112,43 @@ await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise u
   ok(await rp(`zielIds().length===0 && !!S.trips.t_test`), "Ziel nicht gelöscht oder Reise betroffen");
 });
 
+await test("Ziele: Ort über Google-Maps-Link, Instagram-Link oder Namen merken", async () => {
+  await noTripUser();
+  await rp(`var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); save(); openZiele(z); true`); await page.waitForTimeout(200);
+  ok(await page.locator("#profView #zLink").count()===1, "Feld für Link/Name fehlt im Ziel");
+  await page.locator("#zLink").fill("https://www.google.com/maps/place/Trevi+Fountain/@41.9009,12.4833,17z/data=!3m1!4b1!4m6!3m5!1s0x0:0x0!8m2!3d41.900932!4d12.483313"); await page.waitForTimeout(600);
+  ok((await page.locator("#profView .zlres").innerText()).includes("Trevi Fountain"), "Ort aus Google-Link nicht erkannt");
+  await click("#profView [data-act=zlkadd]"); await page.waitForTimeout(200);
+  ok(await rp(`var z = S.trips[zielIds()[0]], p = Object.keys(z.places).map(function(k){ return z.places[k]; })[0]; !!p && p.n==="Trevi Fountain" && Math.abs(p.la-41.900932) < 1e-5 && /google/.test(p.src)`), "Ort aus Link nicht mit Lage und Quelle gemerkt");
+  ok(await page.locator("#profView .zrow a.zsrc").count()===1, "Quelle lässt sich nicht öffnen");
+  await page.locator("#zLink").fill("https://www.instagram.com/p/C0abc123/ On Store"); await page.waitForTimeout(800);
+  ok((await page.locator("#profView .zlres").innerText()).includes("Instagram"), "Hinweis zu Instagram fehlt");
+  ok(await page.locator("#profView [data-act=zlkadd]").count() >= 1, "Namenssuche nach Instagram-Link liefert nichts");
+  await shot("ziel-link");
+  await page.locator("#profView [data-act=zlkadd]").first().click(); await page.waitForTimeout(200);
+  ok(await rp(`var z = S.trips[zielIds()[0]]; Object.keys(z.places).some(function(k){ return /instagram/.test(z.places[k].src||""); })`), "Instagram-Link nicht als Quelle gespeichert");
+  ok(await rp(`var a = zLinkParse("https://maps.apple.com/?ll=48.8584,2.2945&q=Eiffelturm"), b = zLinkParse("https://maps.app.goo.gl/xyz"); a.n==="Eiffelturm" && Math.abs(a.la-48.8584) < 1e-6 && !!b.msg`), "Apple-Maps-Link oder Kurzlink falsch erkannt");
+});
+await test("Ziele: mit Freunden teilen, Tipps von Freunden erkennbar", async () => {
+  await seed();
+  await rp(`window.__zup = null; tripRef = function(){ return {update:function(u){ window.__zup = u; return Promise.resolve(); }}; };
+    if(!(window.firebase && window.firebase.firestore && window.firebase.firestore.FieldValue)){ window.firebase = window.firebase || {}; window.firebase.firestore = window.firebase.firestore || {}; window.firebase.firestore.FieldValue = {arrayUnion:function(x){ return {u:x}; }, arrayRemove:function(x){ return {r:x}; }, delete:function(){ return {d:1}; }}; }
+    FR.friends[1].email = "ludwig@test.de";
+    var z = zielNew("Japan", {id:"o1", n:"Tokio", la:35.68, lo:139.76, r:60000});
+    S.trips[z].places.w1 = {id:"w1", n:"Ichiran", c:"essen", la:35.66, lo:139.70, list:"l_main", by:"u_anna", byn:"anna"};
+    META[z] = {owner:"u_me", members:["u_me","u_anna"], memberEmails:{u_anna:"anna@test.de"}, invites:[], viewers:[], viewInvites:[]};
+    save(); openZiele(z); true`); await page.waitForTimeout(200);
+  const txt = await page.locator("#profView .zl").innerText();
+  ok(/mit freunden teilen/i.test(txt) && txt.includes("@anna"), "Teilen-Bereich oder Mitglied fehlt");
+  ok(txt.includes("Tipp von @anna"), "Tipp eines Freundes nicht erkennbar");
+  await click("#profView [data-act=zinv][data-name=Ludwig]"); await page.waitForTimeout(200);
+  ok(await rp(`!!(window.__zup && window.__zup.invites)`), "Einladung nicht gespeichert");
+  ok((await page.locator("#profView .zl").innerText()).includes("eingeladen"), "Einladung nicht angezeigt");
+  await shot("ziel-teilen");
+  await rp(`META[zielIds()[0]].owner = "u_anna"; zEdit = zEditFrom(zielIds()[0]); renderProfile();`); await page.waitForTimeout(150);
+  ok((await page.locator("#profView [data-act=zdel]").innerText()).includes("verlassen"), "Geteiltes fremdes Ziel bietet Löschen statt Verlassen");
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 const bad = results.filter(r => !r.ok);
