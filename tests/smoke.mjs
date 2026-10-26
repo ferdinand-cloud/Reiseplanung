@@ -655,6 +655,11 @@ await test("Chat: geteiltes Foto öffnet Ort und Foto, auch wenn Reise-Kennung n
   await rp(`chPhOpen("k1", true)`); await page.waitForTimeout(300);
   ok(await rp(`!!($("chPvImg") && $("chPvImg").src.indexOf("data:image") === 0)`), "Foto öffnet nicht");
   ok(!(await page.locator("#chPhView").innerText()).includes("nicht mit dir geteilt"), "Falscher Hinweis „nicht geteilt“");
+  // als Foto gespeicherter Ort (Vorschaubild in .ph, ältere Version): wird als Ort angezeigt, kein Fehler
+  const fx = await rp(`(function(){ var m = chNorm({id:"m9", photo:{ph:"data:image/jpeg;base64,AAA//BBB", n:"Katz Deli", c:"essen", la:40.7223, lo:-73.9874, trip:"Testreise"}});
+    var h = (m.photo ? chPhotoCard(m.photo, "m9") : "")+(m.place ? chPlaceCard(m.place, "m9") : "");
+    return {place:!!m.place, photo:!!m.photo, img:h.indexOf("data-ph=") < 0, isPh:chIsPhoto({ph:"ph_a", pid:"p4"}), draftPl:chIsPhoto({ph:"data:image/png;base64,x", n:"A"})}; })()`);
+  ok(fx.place && !fx.photo && fx.img && fx.isPh && !fx.draftPl, "Ort mit Vorschaubild wird als Foto behandelt: "+JSON.stringify(fx));
   // Vorschau ohne Daumennagel lädt das Foto nach
   const h = await rp(`chPhotoCard({ph:"ph_b", n:"Brooklyn Bridge", c:"sight"}, "k3")`);
   ok(h.includes('data-ph="ph_b"'), "Foto ohne Vorschaubild wird nicht nachgeladen");
@@ -907,20 +912,24 @@ await test("Liste: besuchte Orte nach Sichtbarkeit filtern", async () => {
   // gestern besucht: p4, p5; p4 privat, p5 für Freunde; dazu heute p1 besucht (Reise)
   await rp(`T().done.p1 = 1; T().privP = {p4:1}; T().pubP = {p5:1}; openLsPage();`); await page.waitForTimeout(250);
   const rows = async () => page.evaluate(() => [...document.querySelectorAll(".ls-row[data-pid]")].map(e => e.getAttribute("data-pid")).join(","));
-  ok(await page.locator(".ls-vfilt button").count()===4, "Sichtbarkeitsfilter fehlt in der Orte-Liste");
+  ok(await page.locator(".ls-dds .ls-dd").count()===2 && await page.locator(".ls-vfilt, .ls-filt").count()===0, "Filter sollen zwei Dropdowns in einer Zeile sein");
+  const box = await page.evaluate(() => { var a = document.querySelectorAll(".ls-dds .ls-dd"); return Math.abs(a[0].getBoundingClientRect().top - a[1].getBoundingClientRect().top); });
+  ok(box < 4, "Dropdowns nicht in einer Zeile");
+  const vis = async (v) => { await click("[data-act=lsvispick]"); await click("#jpMenu [data-act=lsvis][data-v="+v+"]"); await page.waitForTimeout(150); };
   ok((await rows()).split(",").length===3, "Ohne Filter nicht alle besuchten Orte: "+await rows());
-  await click(".ls-vfilt [data-v=priv]"); await page.waitForTimeout(150);
-  await shot("liste-sichtbarkeit");
+  await click("[data-act=lsvispick]"); ok(await page.locator("#jpMenu [data-act=lsvis]").count()===4, "Sichtbarkeits-Dropdown unvollständig"); await shot("liste-sichtbarkeit");
+  await click("#jpMenu [data-act=lsvis][data-v=priv]"); await page.waitForTimeout(150);
+  ok((await page.locator("[data-act=lsvispick]").innerText()).includes("Privat"), "Dropdown zeigt Auswahl nicht");
   ok(await rows()==="p4", "Filter Privat zeigt falsche Orte: "+await rows());
-  await click(".ls-vfilt [data-v=pub]"); await page.waitForTimeout(150);
+  await vis("pub");
   ok(await rows()==="p5", "Filter Freunde zeigt falsche Orte: "+await rows());
-  await click(".ls-vfilt [data-v=trip]"); await page.waitForTimeout(150);
+  await vis("trip");
   ok(await rows()==="p1", "Filter Reise zeigt falsche Orte: "+await rows());
   // kombinierbar mit „Noch nicht bewertet“
   await rp(`T().rating = {p1:3}; renderLs();`); await page.waitForTimeout(100);
-  await click("[data-act=lsfilt][data-v=unrated]"); await page.waitForTimeout(150);
+  await click("[data-act=lsfiltpick]"); await click("#jpMenu [data-act=lsfilt][data-v=unrated]"); await page.waitForTimeout(150);
   ok(await rows()==="" && (await page.locator(".nt-empty").first().innerText()).includes("Reise"), "Kombination mit „Noch nicht bewertet“ falsch");
-  await click(".ls-vfilt [data-v=all]"); await page.waitForTimeout(150);
+  await vis("all");
   ok((await rows()).split(",").sort().join(",")==="p4,p5", "Filter Alle setzt nicht zurück: "+await rows());
 });
 

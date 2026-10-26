@@ -2362,6 +2362,13 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .vp-share [aria-checked="true"] .pt-cb{background:#0A84FF;border-color:#0A84FF}
 .pt-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vp-note{margin:4px 10px 6px;font-size:12px;color:var(--muted);line-height:1.35}
+.ls-dds{display:flex;gap:8px;margin:10px 0 4px}
+.ls-dd{display:inline-flex;align-items:center;gap:6px;min-width:0;border:1px solid var(--line);border-radius:999px;padding:7px 10px 7px 13px;background:none;color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.ls-dd.on{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
+.ls-dd svg{width:14px;height:14px;flex:0 0 auto}
+.ls-dd > svg:last-child{opacity:.6}
+.ls-badge{background:#d9534f;color:#fff;border-radius:999px;padding:1px 7px;font-size:12px}
+.ls-n{margin-left:auto;padding-left:14px;color:var(--muted);font-weight:600}
 .ln-h{font-size:12px;font-weight:700;color:var(--muted);padding:8px 14px 2px;text-transform:none}
 .ln-buls{display:inline-flex;gap:3px;flex:0 0 auto;min-width:78px}
 .ln-buls .bul{margin:0}
@@ -4880,7 +4887,7 @@ function chOpenConv(cid){
   chOpen = cid; chMsgs = []; chMsgErr = false; chPickOn = false; renderCh(true);
   var me = acct.user && acct.user.uid; if(!me || !fbDb) return;
   chMsgUnsub = fbDb.collection("chats").doc(cid).collection("msgs").orderBy("at").limitToLast(300).onSnapshot(function(qs){
-    chMsgs = qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); chMsgs.forEach(function(m){ if(m.place) CHPL[m.id] = m.place; if(m.photo) CHPH[m.id] = m.photo; });
+    chMsgs = qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); chMsgs.forEach(function(m){ if(m.place) CHPL[m.id] = m.place; chNorm(m); if(m.photo) CHPH[m.id] = m.photo; if(m.place) CHPL[m.id] = m.place; });
     if(chOpen===cid){ renderChMsgs(true); if(chUnread(CH.byId[cid] || {})) chMarkRead(cid); }
   }, function(){ chMsgs = []; chMsgErr = true; if(chOpen===cid) renderChMsgs(); });
 }
@@ -5020,7 +5027,11 @@ function renderChNew(){
     return "<button type=\"button\" class=\"ls-row\" data-act=\"chnew\" data-uid=\""+esc(f.uid)+"\">"+chAv(f.uid, "ch-av sm")+"<span class=\"ls-t\"><b>@"+esc(chName(f.uid))+"</b><small>"+(ex ? "Chat öffnen" : "Neuer Chat")+"</small></span></button>"; }).join("")+"</div>"
     : "<p class=\"note ch-newnote\">Kein Freund mit diesem Namen. Chatten kannst du nur mit Freunden.</p>";
 }
-function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; b.innerHTML = chDraft ? "<div class=\"ch-dr\">"+(chDraft.ph ? chPhotoCard(chDraft, "", true) : chPlaceCard(chDraft, "", true))+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; }
+function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; b.innerHTML = chDraft ? "<div class=\"ch-dr\">"+(chIsPhoto(chDraft) ? chPhotoCard(chDraft, "", true) : chPlaceCard(chDraft, "", true))+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; }
+/* Foto-Nachricht = geteiltes Foto (Kennung + Reise + Ort); ein Ort mit Vorschaubild hat in .ph Bilddaten und ist KEIN Foto */
+// ältere Nachrichten: als Foto gespeicherte Orte (mit Vorschaubild) wieder als Ort behandeln
+function chNorm(m){ if(m && m.photo && !chIsPhoto(m.photo)){ m.place = m.place || m.photo; delete m.photo; } return m; }
+function chIsPhoto(o){ return !!(o && o.ph && typeof o.ph==="string" && o.ph.indexOf("data:")!==0 && o.ph.indexOf("http")!==0 && o.ph.indexOf("/")<0 && o.pid); }
 function chPlaceFrom(tid, pid){
   var t = S.trips[tid], p = t && t.places[pid]; if(!p) return Promise.resolve(null);
   var pl = {n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", trip:t.name||""}, r = (t.rating||{})[(p.of && t.places[p.of]) ? p.of : pid] || (t.rating||{})[pid]; if(r) pl.rating = r;
@@ -5031,11 +5042,11 @@ function chSend(){
   var me = acct.user && acct.user.uid, inp = $("chIn"), txt = inp ? inp.value.trim().slice(0, 4000) : "";
   if(!me || !chOpen || chSending || (!txt && !chDraft)) return;
   var c = CH.byId[chOpen], u = c ? chOther(c) : chOpen.split("_").filter(function(x){ return x!==me; })[0];
-  var now = Date.now(), msg = {from:me, t:txt, at:now}, pl = chDraft; if(pl){ if(pl.ph) msg.photo = pl; else msg.place = pl; }
+  var now = Date.now(), msg = {from:me, t:txt, at:now}, pl = chDraft, isPh = chIsPhoto(pl); if(pl){ if(isPh) msg.photo = pl; else msg.place = pl; }
   var names = {}; names[me] = (PROF && PROF.name) || ""; names[u] = chName(u);
   var read = {}; read[me] = now;
   var cref = fbDb.collection("chats").doc(chOpen), b = fbDb.batch();
-  b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:pl ? (pl.ph ? "Foto · "+pl.n : pl.n) : "", ph:!!(pl && pl.ph)}, read:read}, {merge:true});
+  b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:pl ? (isPh ? "Foto · "+pl.n : pl.n) : "", ph:isPh}, read:read}, {merge:true});
   b.set(cref.collection("msgs").doc(), msg);
   chSending = true; var keepT = txt, keepP = chDraft; if(inp){ inp.value = ""; chGrow(); } chDraft = null; renderChDraft();
   b.commit().then(function(){ chSending = false; if(chMsgErr && chOpen){ var dr = chDraft; chOpenConv(chOpen); chDraft = dr; renderChDraft(); } }, function(e){ chSending = false; if(inp && !inp.value) inp.value = keepT; chDraft = keepP; renderChDraft(); toast("Senden fehlgeschlagen: "+((e && e.code)==="permission-denied" ? "keine Berechtigung (Firestore-Regeln für Chats ergänzen?)" : (e && e.message) || ""), false); });
@@ -5129,12 +5140,13 @@ function renderLs(){
   h += "<div class=\"pf-seg\" role=\"tablist\">"+[["places","Orte · "+visited.length],["hl","Highlights · "+(hls.length+tops.length)],["photos","Fotos · "+phs.length]].map(function(x){
     return "<button type=\"button\" role=\"tab\" data-act=\"lstab\" data-v=\""+x[0]+"\" aria-selected=\""+(lsTab===x[0])+"\">"+x[1]+"</button>"; }).join("")+"</div>";
   var unr0 = visited.filter(function(v){ return !rateOf(v.id); });
-  if(lsTab==="places" && visited.length) h += "<div class=\"nt-kinds ls-filt\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"all\" aria-selected=\""+(lsFilter==="all")+"\">Alle besuchten</button>"+
-      "<button type=\"button\" role=\"tab\" data-act=\"lsfilt\" data-v=\"unrated\" aria-selected=\""+(lsFilter==="unrated")+"\">Noch nicht bewertet"+(unr0.length ? " <b>"+unr0.length+"</b>" : "")+"</button></div>";
-  // zusätzlich nach Sichtbarkeit filtern (kombinierbar mit „Noch nicht bewertet“)
-  if(lsTab==="places" && visited.length && canPriv()){ var vc = {priv:0, trip:0, pub:0}; (lsFilter==="unrated" ? unr0 : visited).forEach(function(v){ vc[visOf(v.id)]++; });
-    h += "<div class=\"ls-vfilt\" role=\"group\" aria-label=\"Nach Sichtbarkeit filtern\"><button type=\"button\" data-act=\"lsvis\" data-v=\"all\" aria-pressed=\""+(lsVis==="all")+"\">Alle</button>"+
-      ["priv","trip","pub"].map(function(v){ return "<button type=\"button\" class=\"vlv-"+v+"\" data-act=\"lsvis\" data-v=\""+v+"\" aria-pressed=\""+(lsVis===v)+"\" title=\"Sichtbarkeit: "+VISLBL[v]+"\">"+visIco(v)+"<span>"+VISLBL[v]+"</span><small>"+vc[v]+"</small></button>"; }).join("")+"</div>"; }
+  // Filter in einer Zeile als zwei Dropdowns: Status (alle / noch nicht bewertet) und Sichtbarkeit
+  if(lsTab==="places" && visited.length){
+    var vc = {priv:0, trip:0, pub:0}; (lsFilter==="unrated" ? unr0 : visited).forEach(function(v){ vc[visOf(v.id)]++; });
+    LSCNT = {all:visited.length, unrated:unr0.length, vis:vc};
+    h += "<div class=\"ls-dds\"><button type=\"button\" class=\"ls-dd"+(lsFilter==="unrated" ? " on" : "")+"\" data-act=\"lsfiltpick\" aria-haspopup=\"menu\">"+(lsFilter==="unrated" ? "Noch nicht bewertet" : "Alle besuchten")+(lsFilter!=="unrated" && unr0.length ? " <b class=\"ls-badge\">"+unr0.length+"</b>" : "")+CHEV+"</button>"+
+      (canPriv() ? "<button type=\"button\" class=\"ls-dd"+(lsVis!=="all" ? " on" : "")+"\" data-act=\"lsvispick\" aria-haspopup=\"menu\">"+(lsVis==="all" ? "Sichtbarkeit: Alle" : visIco(lsVis)+VISLBL[lsVis])+CHEV+"</button>" : "")+"</div>";
+  }
   h += "</div>";
   var row = function(id, sub){ var p = P(id), r = rateDef(rateOf(id)), ph = photosAll(id);
     return "<button type=\"button\" class=\"ls-row\" data-act=\"lsopen\" data-pid=\""+id+"\">"+(ph.length ? "<img class=\"ls-th\" data-ph=\""+ph[ph.length-1]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span>")+
@@ -9198,7 +9210,7 @@ function renderDay(){
   h += journalBlock(D);
   return h;
 }
-var jOpen = lsGet("nyc-j-open")!=="0";
+var jOpen = lsGet("nyc-j-open")!=="0", LSCNT = {all:0, unrated:0, vis:{priv:0, trip:0, pub:0}};
 /* Bewertung besuchter Orte */
 // Gespeicherte Werte bleiben stabil (1–5 wie bisher); neue Stufen haben neue Werte und werden über die Reihenfolge einsortiert
 var RATES = [[1,"Outstanding","#b8860b"],[2,"Must Have","#5E9970"],[6,"Very Good","#2E9E9A"],[3,"Nice","#007AFF"],[4,"Okay","#6b7785"],[7,"Not So Good","#E8853A"],[8,"Bad","#FF3B30"]];
@@ -9209,7 +9221,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lsvispick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -10796,8 +10808,12 @@ document.addEventListener("click", function(e){
     case "navlist": if(lsPage) closeLsPage(); else openLsPage(); break;
     case "lstrip": var lst = t.getAttribute("data-trip"); if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
     case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;
-    case "lsvis": lsVis = t.getAttribute("data-v"); renderLs(); break;
-    case "lsfilt": lsFilter = t.getAttribute("data-v"); renderLs(); break;
+    case "lsvis": closeJpMore(); lsVis = t.getAttribute("data-v"); renderLs(); break;
+    case "lsfilt": closeJpMore(); lsFilter = t.getAttribute("data-v"); renderLs(); break;
+    case "lsfiltpick": jpPopover("lsf", t, "<div class=\"vp-h\">Anzeigen</div>"+[["all","Alle besuchten", LSCNT.all],["unrated","Noch nicht bewertet", LSCNT.unrated]].map(function(o){ var on = lsFilter===o[0];
+        return "<button type=\"button\" role=\"menuitemradio\" data-act=\"lsfilt\" data-v=\""+o[0]+"\" aria-checked=\""+on+"\"><span class=\"cm-t\"><b>"+o[1]+"</b></span><small class=\"ls-n\">"+o[2]+"</small>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join(""), "lsf"); break;
+    case "lsvispick": jpPopover("lsv", t, "<div class=\"vp-h\">Sichtbarkeit</div><button type=\"button\" role=\"menuitemradio\" data-act=\"lsvis\" data-v=\"all\" aria-checked=\""+(lsVis==="all")+"\"><span class=\"cm-t\"><b>Alle</b></span>"+(lsVis==="all" ? "<b class=\"ck\">✓</b>" : "")+"</button>"+
+        ["priv","trip","pub"].map(function(v){ var on = lsVis===v; return "<button type=\"button\" role=\"menuitemradio\" data-act=\"lsvis\" data-v=\""+v+"\" aria-checked=\""+on+"\"><span class=\"ai vlc-"+v+"\">"+visIco(v)+"</span><span class=\"cm-t\"><b>"+VISLBL[v]+"</b></span><small class=\"ls-n\">"+LSCNT.vis[v]+"</small>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join(""), "lsv"); break;
     case "lsgo": lsGoMap(t.getAttribute("data-pid")); break;
     case "lsopen": var lop = t.getAttribute("data-pid"); if(P(lop)) openJPop(lop, dayOf(lop) || ""); break;
     case "lsday": closeLsPage(); var lsd = t.getAttribute("data-day"); if(dayByKey(lsd)){ cur = lsd; tab = "day"; renderAll(); fitDay(); } break;
