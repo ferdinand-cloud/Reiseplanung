@@ -476,6 +476,33 @@ await test("Routenoptionen je Etappe: Zeit (Abfahrt/Ankunft) und bevorzugte Verk
   ok(await rp(`legGet("legOpt", dayLegs(cur)[${li}][1])===undefined`), "Zurücksetzen löscht die Optionen nicht");
 });
 
+await test("Linie wählen: bei mehreren möglichen Linien (z. B. A/C/E) eine bestimmte festlegen", async () => {
+  await seed();
+  await rp(`(function(){ T().order[cur] = ["p2"]; legsList = true; select(null); setSheet("full"); renderSheet(); })()`);
+  await page.waitForTimeout(200);
+  const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][1] && L[i][1].id==="p2") return i; } return -1; })()`);
+  ok(li > -1, "Etappe Hotel → Washington Square nicht gefunden");
+  ok(await rp(`legHasChoice(legRoute(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1], cur))`), "Testetappe hat keine Fahrt mit mehreren Linien");
+  await rp(`legOpen[cur+"|${li}"] = true; renderSheet();`); await page.waitForTimeout(150);
+  // gewählte Verbindung nochmals antippen (oder die Linien in der Wegbeschreibung)
+  const sel = await page.locator(`[data-act=legalt][data-leg="${li}"][aria-pressed=true]`).count() ? `[data-act=legalt][data-leg="${li}"][aria-pressed=true]` : `[data-act=lnpick][data-leg="${li}"]`;
+  await click(sel);
+  const n = await page.locator("#jpMenu [data-act=lnset]").count();
+  ok(n >= 3, "Linienauswahl fehlt ("+n+")");
+  await shot("linie-waehlen");
+  const nm = await page.locator("#jpMenu [data-act=lnset]").nth(2).getAttribute("data-v");
+  await page.locator("#jpMenu [data-act=lnset]").nth(2).click(); await page.waitForTimeout(250);
+  const r = await rp(`(function(){ var L = dayLegs(cur)[${li}], r = legRoute(L[0], L[1], cur), l = r.legs.filter(function(x){ return x.t==="ride" && x.lines0; })[0]; return l ? {n:lineName(l.r), alt:l.alt.length, all:l.lines0.length} : null; })()`);
+  ok(r && r.n===nm && r.alt===1 && r.all > 1, "Linie nicht übernommen: "+JSON.stringify(r)+" erwartet "+nm);
+  const sum = await page.locator(`li.tleg [data-act=legsel][data-leg="${li}"] .bul`).allInnerTexts();
+  ok(sum.length===1 && sum[0]===nm, "Zusammenfassung zeigt nicht nur die gewählte Linie: "+sum.join(","));
+  ok(await rp(`(function(){ var L = dayLegs(cur)[${li}], l = legRoute(L[0], L[1], cur).legs.filter(function(x){ return x.t==="ride" && x.lines0; })[0]; drawOverlay(); return ov.innerHTML.indexOf(NET.r[l.r][1]) > -1; })()`), "Karte zeigt die gewählte Linie nicht in ihrer Farbe");
+  // zurück auf „Jede dieser Linien“
+  await click(`[data-act=lnpick][data-leg="${li}"]`);
+  await page.locator("#jpMenu [data-act=lnset][data-v='']").click(); await page.waitForTimeout(200);
+  ok(await rp(`legGet("legLine", dayLegs(cur)[${li}][1])===undefined`), "Auswahl lässt sich nicht zurücksetzen");
+});
+
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
   await seed();
   await rp(`select("p6")`); await page.waitForTimeout(200);

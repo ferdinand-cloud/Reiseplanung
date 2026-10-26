@@ -2329,6 +2329,11 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .lo-list [aria-checked="true"] .sw2::after{transform:translateX(18px)}
 .lo-note{font-size:12.5px;color:var(--muted);margin:8px 4px 14px}
 .lo-reset{width:100%;border:0;border-radius:14px;padding:13px;font:inherit;font-size:16px;font-weight:600;color:#0a84ff;background:color-mix(in srgb,var(--ink) 7%,transparent);cursor:pointer}
+.ln-h{font-size:12px;font-weight:700;color:var(--muted);padding:8px 14px 2px;text-transform:none}
+.ln-buls{display:inline-flex;gap:3px;flex:0 0 auto;min-width:78px}
+.ln-buls .bul{margin:0}
+.rt-lpick{border:0;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:999px;padding:3px 10px 3px 4px;align-items:center;cursor:pointer;font:inherit;color:var(--ink)}
+.rt-lw{font-size:12.5px;font-weight:600;margin-left:5px;color:var(--muted)}
 .lo-chip{display:flex;align-items:center;gap:6px;margin:6px 0 2px;border:0;border-radius:999px;padding:6px 11px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);background:color-mix(in srgb,var(--ink) 7%,transparent);cursor:pointer;max-width:100%}
 .lo-chip svg{width:15px;height:15px;flex:0 0 auto}
 .lo-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -3351,7 +3356,7 @@ function renameLocal(){
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["places","done","times","journal","order","legMode","legAlt","legOpt","via","rating","notes","photos","groups","privP","privN","privPh","capt"];
+var MAPK = ["places","done","times","journal","order","legMode","legAlt","legOpt","legLine","via","rating","notes","photos","groups","privP","privN","privPh","capt"];
 /* ---------- Privat: Orte, Notizen und Fotos, die Beobachter nicht bekommen ----------
    Mitreisende lesen und schreiben die vollständige Reise in trips/{id}/priv/data;
    das Reise-Dokument selbst (für Beobachter lesbar) enthält nur den öffentlichen Teil. */
@@ -3369,7 +3374,7 @@ function pubOf(M){
       delete c.places[pid];
       ["done","times","rating","notes","photos"].forEach(function(k){ if(c[k]) delete c[k][pid]; });
       Object.keys(c.order||{}).forEach(function(dk){ c.order[dk] = c.order[dk].filter(function(x){ return x!==pid; }); });
-      ["legMode","legAlt","legOpt","via"].forEach(function(k){ Object.keys(c[k]||{}).forEach(function(lk){ if(lk.indexOf(pid)>-1) delete c[k][lk]; }); });
+      ["legMode","legAlt","legOpt","legLine","via"].forEach(function(k){ Object.keys(c[k]||{}).forEach(function(lk){ if(lk.indexOf(pid)>-1) delete c[k][lk]; }); });
       if(nm) Object.keys(c.journal||{}).forEach(function(dk){ var J = c.journal[dk]; if(!J) return; if(J.hl===nm) delete J.hl;
         if(typeof J.text==="string") J.text = J.text.split("\n").filter(function(l){ return l.indexOf("• "+nm)!==0; }).join("\n"); });
     });
@@ -6246,7 +6251,37 @@ function legAlts(a, b, k){
 }
 function legRoute(a, b, k){
   var alts = legAlts(a, b, k), i = legGet("legAlt", b) || 0;
-  return alts[Math.min(i, alts.length-1)];
+  return pickLines(alts[Math.min(i, alts.length-1)], b);
+}
+/* Gewählte Linie je Fahrt (z. B. nur die E statt A/C/E): gespeichert je Etappe nach Ein- und Ausstiegsstation */
+function legLineKey(l){ return NET.s[l.from][0]+">"+NET.s[l.to][0]; }
+function pickLines(r, b){
+  var ch = legGet("legLine", b); if(!r || r.walk || !ch) return r;
+  var used = false, legs = r.legs.map(function(l){
+    if(l.t!=="ride" || !l.alt || l.alt.length < 2) return l;
+    var nm = ch[legLineKey(l)], hit = nm ? l.alt.filter(function(x){ return lineName(x)===nm; })[0] : undefined; if(hit===undefined) return l;
+    var c = {}; for(var k in l) c[k] = l[k]; c.lines0 = l.alt; c.r = hit; c.alt = [hit]; used = true; return c; });
+  if(!used) return r;
+  var o = {}; for(var y in r) o[y] = r[y]; o.legs = legs; return o;
+}
+function legHasChoice(r){ return !!(r && !r.walk && r.legs.some(function(l){ return l.t==="ride" && (l.lines0 || l.alt || []).length > 1; })); }
+/* Auswahl der Linie: je Fahrt mit mehreren möglichen Linien, mit der nächsten Abfahrt je Linie */
+function openLinePick(li, btn){
+  var lp = dayLegs(cur)[li]; if(!lp) return; var a = lp[0], b = lp[1], r = legRoute(a, b, cur); if(!legHasChoice(r)) return;
+  var ch = legGet("legLine", b) || {}, ctx = legCtx(a, b, r), now = nyNow(), t = ctx.base!=null ? ctx.base : (cur===now.key ? now.secs : null), h = "<div class=\"vp-h\">Linie wählen</div>";
+  r.legs.forEach(function(l){
+    if(l.t!=="ride"){ if(t!=null) t += l.secs||0; return; }
+    var all = l.lines0 || l.alt || [l.r], key = legLineKey(l);
+    if(all.length > 1){
+      var cho = ch[key] || "";
+      h += "<div class=\"ln-h\">"+esc(NET.s[l.from][0])+" → "+esc(NET.s[l.to][0])+"</div>";
+      h += "<button type=\"button\" role=\"menuitemradio\" data-act=\"lnset\" data-leg=\""+li+"\" data-k=\""+esc(key)+"\" data-v=\"\" aria-checked=\""+!cho+"\"><span class=\"ln-buls\">"+all.map(lineBul).join("")+"</span><span class=\"cm-t\"><b>Jede dieser Linien</b><small>die nächste, die kommt</small></span>"+(!cho ? "<b class=\"ck\">✓</b>" : "")+"</button>";
+      all.forEach(function(x){ var nm = lineName(x), on = cho===nm, d = t!=null ? departures(l.from, cur, t, 1, [x], l.to) : [];
+        h += "<button type=\"button\" role=\"menuitemradio\" data-act=\"lnset\" data-leg=\""+li+"\" data-k=\""+esc(key)+"\" data-v=\""+esc(nm)+"\" aria-checked=\""+on+"\"><span class=\"ln-buls\">"+lineBul(x)+"</span><span class=\"cm-t\"><b>Nur "+esc(nm)+"</b><small>"+(d.length ? "nächste Abfahrt "+hhmm(d[0].t) : t!=null ? "keine Abfahrt mehr" : "Richtung "+esc(l.hd||""))+"</small></span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>"; });
+    }
+    if(t!=null){ var dd = departures(l.from, cur, t, 1, l.alt || [l.r], l.to); t = (dd.length ? dd[0].t : t) + l.secs; }
+  });
+  jpPopover("ln"+li, btn, h, "linepick");
 }
 function mins(s){ return Math.max(1, Math.round(s/60)); }
 function gmapsTransit(a, b){ return "https://www.google.com/maps/dir/?api=1&origin="+a.la+","+a.lo+"&destination="+b.la+","+b.lo+"&travelmode=transit"; }
@@ -6358,7 +6393,7 @@ function transitSteps(r, a, b, ctx){
       var kind = isFerry(l.r) ? "Fähre" : isBus(l.r) ? "Bus" : "";
       var nLbl = n+(isFerry(l.r) ? " Anleger" : isBus(l.r) ? (n===1?" Haltestelle":" Haltestellen") : (n===1?" Station":" Stationen"));
       h += "<li class=\"rt-pt\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\">"+T0(dep!=null ? dep : t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(NET.s[l.from][0])+"</b><small>einsteigen</small></span></li>";
-      h += "<li class=\"rt-ride\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\"><span class=\"rt-lines\">"+rs.map(lineBul).join("")+"</span>"+
+      h += "<li class=\"rt-ride\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\">"+((l.lines0 || rs).length > 1 && ctx && ctx.li!=null ? "<button type=\"button\" class=\"rt-lines rt-lpick\" data-act=\"lnpick\" data-leg=\""+ctx.li+"\" aria-label=\"Linie wählen\">"+rs.map(lineBul).join("")+"<span class=\"rt-lw\">"+(l.lines0 ? "Linie ändern" : "Linie wählen")+"</span></button>" : "<span class=\"rt-lines\">"+rs.map(lineBul).join("")+"</span>")+
            "<span class=\"rt-dir\">"+(kind ? kind+" " : "")+"Richtung "+esc(l.hd)+"</span>"+
            (mid.length ? "<details class=\"rt-mid\"><summary>"+nLbl+" · "+mins(l.secs)+" Min.</summary><span>"+mid.map(esc).join("<br>")+"</span></details>" : "<small>"+nLbl+" · "+mins(l.secs)+" Min.</small>")+"</span></li>";
       h += "<li class=\"rt-pt\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\">"+T0(arr)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(NET.s[l.to][0])+"</b><small>aussteigen</small></span></li>";
@@ -8741,12 +8776,12 @@ function renderDay(){
         (br.s1 && br.s2 && !br.none ? "<div class=\"cb-leg\"><p><i class=\"cb-dot\"></i><span>Rad holen: <b>"+esc(br.s1.s.n)+"</b> · "+fmtDist(br.s1.d)+" zu Fuß<small>"+cbAvail(br.s1.s)+"</small></span></p><p><i class=\"cb-dot\"></i><span>Rad abgeben: <b>"+esc(br.s2.s.n)+"</b> · dann "+fmtDist(br.s2.d)+" zu Fuß<small>"+cbAvail(br.s2.s)+"</small></span></p></div>" : "")+"</li>"; }
     if(m==="walk"){ var lv = legVia(a, b); walkPath(a, b, lv); var wd = walkDist(a, b, lv) || dist(a, b)*1.25;
       return pre+"<li class=\"leg tleg lw"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><b>"+Math.max(1,Math.round(wd/1.33/60))+" Min.</b> · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+sugBtn(i)+viaBtn(i, lv)+ev+"</div></li>"; }
-    var alts = legAlts(a, b, cur), r = legRoute(a, b, cur), open = !!legOpen[cur+"|"+i], ai = alts.indexOf(r);
+    var alts = legAlts(a, b, cur), r = legRoute(a, b, cur), open = !!legOpen[cur+"|"+i], ai = Math.min(legGet("legAlt", b) || 0, alts.length-1);
     var fr = !r.walk && r.legs.filter(function(l){ return l.t==="ride"; })[0], lc = fr ? NET.r[fr.r][1] : "";
     return pre+"<li class=\"leg tleg "+(r.walk ? "lw" : "lt")+(legSel===i?" sel":"")+"\""+(lc ? " style=\"--lc:"+lc+"\"" : "")+"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+(m==="ferry" && !hasFerry(r) ? "<span class=\"tw\">"+(busReady ? "Keine Fähre" : "Fähre lädt …")+"</span> · " : "")+transitSummary(r, true)+"</button>"+
       (r.walk ? legDeps(r, a, b) : "<button type=\"button\" class=\"ldet\" data-act=\"legopen\" data-leg=\""+i+"\" aria-expanded=\""+open+"\" aria-label=\""+(open?"Wegbeschreibung zuklappen":"Wegbeschreibung zeigen")+"\">"+legDeps(r, a, b)+CHEV+"</button>")+viaBtn(i, legVia(a, b))+ev+"</div>"+
-      (open && alts.length > 1 ? "<div class=\"alts2\" role=\"group\" aria-label=\"Andere Verbindungen\"><span class=\"alts-l\">Verbindung</span>"+alts.map(function(x, j){ return "<button type=\"button\" data-act=\"legalt\" data-leg=\""+i+"\" data-alt=\""+j+"\" aria-pressed=\""+(j===ai)+"\">"+transitSummary(x)+"</button>"; }).join("")+"</div>" : "")+
-      (open ? "<button type=\"button\" class=\"lo-chip\" data-act=\"loptopen\" data-leg=\""+i+"\">"+LOICO+"<span>"+esc(loptSum(legOptOf(b)))+"</span></button>" : "")+(open && !r.walk ? transitSteps(r, a, b, legCtx(a, b, r)) : "")+"</li>";
+      (open && alts.length > 1 ? "<div class=\"alts2\" role=\"group\" aria-label=\"Andere Verbindungen\"><span class=\"alts-l\">Verbindung</span>"+alts.map(function(x, j){ return "<button type=\"button\" data-act=\"legalt\" data-leg=\""+i+"\" data-alt=\""+j+"\" aria-pressed=\""+(j===ai)+"\""+(j===ai && legHasChoice(r) ? " title=\"Nochmals tippen: Linie wählen\"" : "")+">"+transitSummary(j===ai ? r : x)+"</button>"; }).join("")+"</div>" : "")+
+      (open ? "<button type=\"button\" class=\"lo-chip\" data-act=\"loptopen\" data-leg=\""+i+"\">"+LOICO+"<span>"+esc(loptSum(legOptOf(b)))+"</span></button>" : "")+(open && !r.walk ? transitSteps(r, a, b, (function(c){ c.li = i; return c; })(legCtx(a, b, r))) : "")+"</li>";
   };
   // Wege zwischen den Stopps im Tagesplan ausgeblendet: nur die Stopps zeigen (Startzeile „Mein Standort“ bleibt)
   var legLi = function(a, b, i){ if(legsList) return legLi0(a, b, i); return a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#007AFF\">●</span><span><b>Mein Standort</b></span></li>" : ""; };
@@ -8791,7 +8826,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -10219,7 +10254,7 @@ function unplan(id){
   delete T().done[id];
   var p = P(id);
   if(p && p.of){ // weiterer Besuch: Kopie ganz entfernen
-    var t = T(); delete t.places[id]; ["times","rating","notes","photos","legMode","legAlt","legOpt"].forEach(function(f){ if(t[f]) delete t[f][id]; });
+    var t = T(); delete t.places[id]; ["times","rating","notes","photos","legMode","legAlt","legOpt","legLine"].forEach(function(f){ if(t[f]) delete t[f][id]; });
     save(); toast(p.k==="hotel" ? "Zwischenstopp im Hotel entfernt" : "Weiterer Besuch von "+p.n+" entfernt", true); return;
   }
   save(); toast(P(id).n+" liegt wieder in der Wunschliste", true);
@@ -10625,7 +10660,12 @@ document.addEventListener("click", function(e){
       var showAll = !routeAnyVisible();
       dayLegs(cur).forEach(function(pr){ var k3 = legKey(pr[0], pr[1]); if(showAll) delete legHid[k3]; else legHid[k3] = 1; });
       layers.route = true; lsSet("nyc-l-route", "1"); saveLegHid(); applyLayers(); renderSheet(); scheduleOverlay(); break;
-    case "legalt": var la2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(la2){ legSet("legAlt", la2[1], parseInt(t.getAttribute("data-alt"),10)); renderSheet(); scheduleOverlay(); } break;
+    case "lnpick": openLinePick(parseInt(t.getAttribute("data-leg"),10), t); break;
+    case "lnset": closeJpMore(); var ln2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(ln2){ var lc2 = {}, lo2 = legGet("legLine", ln2[1]) || {}; for(var lk in lo2) lc2[lk] = lo2[lk]; var lv2 = t.getAttribute("data-v"); if(lv2) lc2[t.getAttribute("data-k")] = lv2; else delete lc2[t.getAttribute("data-k")]; legSet("legLine", ln2[1], Object.keys(lc2).length ? lc2 : null); renderSheet(); scheduleOverlay(); } break;
+    case "legalt": var la2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)];
+      // nochmals auf die gewählte Verbindung tippen: Linie auswählen
+      if(la2 && t.getAttribute("aria-pressed")==="true" && legHasChoice(legRoute(la2[0], la2[1], cur))){ openLinePick(parseInt(t.getAttribute("data-leg"),10), t); break; }
+      if(la2){ legSet("legAlt", la2[1], parseInt(t.getAttribute("data-alt"),10)); renderSheet(); scheduleOverlay(); } break;
     case "lmpick": openLegModes(parseInt(t.getAttribute("data-leg"), 10), t); break;
     case "loptopen": closeJpMore(); openLopt(parseInt(t.getAttribute("data-leg"),10)); break;
     case "loptclose": LOPT = null; closeCatPop(); break;
