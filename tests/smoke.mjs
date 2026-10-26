@@ -564,6 +564,24 @@ await test("Suche: Ort und Umkreis einstellbar, weit entfernte Treffer ausgeblen
   await rp(`lsSet("rp-sr-loc", ""); lsSet("rp-sr-rad", "")`);
 });
 
+await test("Wegpunkte lenken auch U-Bahn & Bus: Route führt durch den Wegpunkt", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][0] && L[i][0].id==="p2" && L[i][1] && L[i][1].id==="p3") return i; } return -1; })()`);
+  ok(li > -1, "Etappe Washington Square → MoMA nicht gefunden");
+  // Wegpunkt am Barclays Center (Brooklyn): die Fahrt muss dorthin und wieder zurück
+  const r = await rp(`(function(){ var L = dayLegs(cur)[${li}]; setLegMode(L[0], L[1], "oepnv"); var r0 = legRoute(L[0], L[1], cur);
+    setLegVia(L[0], L[1], [[40.6826, -73.9754]]); ALTCACHE = {}; var r = legRoute(L[0], L[1], cur), W = {la:40.6826, lo:-73.9754};
+    var wp = r.legs.filter(function(l){ return l.wp===1; })[0], rides = r.legs.filter(function(l){ return l.t==="ride"; });
+    var near = rides.some(function(l){ return dist(stLL(l.to), W) < 800; }) && rides.some(function(l){ return dist(stLL(l.from), W) < 800; });
+    legsList = true; legOpen[cur+"|${li}"] = true; renderSheet(); drawOverlay();
+    return {walk:r.walk, wp:!!(wp && wp.pt), near:near, rides:rides.length, s0:r0.secs, s1:r.secs}; })()`);
+  ok(!r.walk && r.wp && r.near && r.rides >= 2, "Route führt nicht durch den Wegpunkt: "+JSON.stringify(r));
+  ok(r.s1 > r.s0 + 600, "Umweg über den Wegpunkt fehlt in der Dauer: "+JSON.stringify(r));
+  ok((await page.locator(".rt .rt-wp").first().innerText()).includes("Wegpunkt 1"), "Wegpunkt fehlt in der Wegbeschreibung");
+  await shot("oepnv-wegpunkt");
+});
+
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
   await seed();
   await rp(`select("p6")`); await page.waitForTimeout(200);

@@ -6032,7 +6032,7 @@ function viaAt(q, k){
 function openViaPop(li, vi){
   var lp = dayLegs(cur)[li]; if(!lp) return; var n = legVia(lp[0], lp[1]).length;
   var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Wegpunkt\"><div class=\"pop-head\"><h4>Wegpunkt</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
-    "<p class=\"note\" style=\"margin:0 2px 10px\">Lenkt den "+(legMode(lp[0], lp[1])==="bike" ? "Radweg" : "Fußweg")+" von „"+esc(lp[0].n || "Hotel")+"“ nach „"+esc(lp[1].n || "Hotel")+"“"+(legMode(lp[0], lp[1])==="walk" ? "" : legMode(lp[0], lp[1])==="bike" ? " (zwischen Abhol- und Abgabestation)" : " (Weg zur bzw. von der Station)")+".</p><div class=\"pop-list addlist\">"+
+    "<p class=\"note\" style=\"margin:0 2px 10px\">Lenkt die Route ("+esc(LMNAME[legMode(lp[0], lp[1])] || "Zu Fuß")+") von „"+esc(lp[0].n || "Hotel")+"“ nach „"+esc(lp[1].n || "Hotel")+"“"+(legMode(lp[0], lp[1])==="bike" ? " (Radweg zwischen Abhol- und Abgabestation)" : legMode(lp[0], lp[1])==="walk" ? "" : " – sie führt durch jeden Wegpunkt, mit eigener Verbindung je Abschnitt")+".</p><div class=\"pop-list addlist\">"+
     "<button type=\"button\" data-act=\"viadel\" data-leg=\""+li+"\" data-vi=\""+vi+"\" class=\"del\"><span class=\"ai warn\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/></svg></span><span class=\"dt\"><b>Wegpunkt löschen</b></span></button>"+
     (n > 1 ? "<button type=\"button\" data-act=\"viaclear\" data-leg=\""+li+"\"><span class=\"ai\">"+VIAICO+"</span><span class=\"dt\"><b>Alle "+n+" Wegpunkte dieser Etappe löschen</b></span></button>" : "")+
     "<button type=\"button\" data-act=\"viamovepick\" data-leg=\""+li+"\" data-vi=\""+vi+"\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 7h11l-3-3M16 13H5l3 3\"/></svg></span><span class=\"dt\"><b>Andere Strecke zuordnen …</b><small>Die beiden Punkte aus dem Tagesplan wählen</small></span></button>"+
@@ -6288,8 +6288,7 @@ function transitAlts(a, b, k, force, pref){
   if(fo && top.indexOf(fo) < 0) top = out.slice(0, 2).concat([fo]); // Fähre als Option behalten
   return (ALTCACHE[key] = top);
 }
-/* Verbindungen einer Etappe. Mit Wegpunkten: die Wegpunkte werden zu Fuß abgelaufen, die Fahrt beginnt
-   bzw. endet an der günstigsten Stelle der Wegpunktkette (sonst liegen Wegpunkte entlang der Fahrt ins Leere) */
+/* Verbindungen einer Etappe. Mit Wegpunkten: die Route führt durch alle Wegpunkte (je Abschnitt eigene Verbindung) */
 function legAlts(a, b, k){
   var lm = legGet("legMode", b), force = lm==="oepnv" || lm==="ferry", v = legVia(a, b), pref = legPref(b);
   // Fähre: Verbindungen mit Fähre, sonst (noch nicht geladen / keine sinnvoll) die üblichen Verbindungen
@@ -6297,32 +6296,28 @@ function legAlts(a, b, k){
   if(!v.length) return alts(a, b);
   var key = "via|"+[a.la,a.lo,b.la,b.lo,dayMask(k),lm==="ferry"?2:force?1:0,busReady?1:0,pref].join(",")+"|"+v.map(function(q){ return q[0]+","+q[1]; }).join(";");
   if(ALTCACHE[key]) return ALTCACHE[key];
-  var P2 = v.map(function(q){ return {la:q[0], lo:q[1]}; }), n = P2.length;
-  function chain(ps){ var d = 0; for(var j = 1; j < ps.length; j++) d += dist(ps[j-1], ps[j]); return d; }
-  var bestS = n, bc = Infinity;
-  for(var s = 0; s <= n; s++){
-    var S = s ? P2[s-1] : a, E = s < n ? P2[s] : b;
-    var hd = chain([a].concat(P2.slice(0, s))), tl = chain(P2.slice(s).concat([b]));
-    var c = (hd + tl)/WALK + alts(S, E)[0].secs;
-    if(c < bc - 1){ bc = c; bestS = s; }
+  // Die Route führt durch jeden Wegpunkt: je Abschnitt (Start → Wegpunkt 1 → … → Ziel) die passende Verbindung
+  // mit dem gewählten Verkehrsmittel; so lassen sich auch U-Bahn, Bus und Fähre über Wegpunkte steuern.
+  var pts = [a].concat(v.map(function(q){ return {la:q[0], lo:q[1]}; }), [b]), segs = [];
+  for(var s0 = 0; s0 < pts.length - 1; s0++) segs.push(alts(pts[s0], pts[s0+1]));
+  function build(pick){
+    var legs = [], secs = 0, d = 0, any = false, ws = 0;
+    segs.forEach(function(al, si){
+      var r = al[Math.min(pick[si]||0, al.length-1)];
+      r.legs.forEach(function(l){ var c = {}; for(var x in l) c[x] = l[x];
+        if(c.t==="walk"){ c.vv = []; if(c.to==="Ziel" && si < segs.length - 1){ c.to = "Wegpunkt "+(si+1); c.wp = si + 1; c.pt = pts[si+1]; } }
+        legs.push(c); });
+      secs += r.secs; d += r.walk ? r.d : 0; if(!r.walk) any = true; ws += r.walk ? r.secs : (r.walkSecs || 0);
+    });
+    if(!any) return {walk:true, secs:secs, d:d, legs:[{t:"walk", secs:secs, d:d, to:"Ziel", vv:v}]};
+    return {walk:false, secs:secs, d:dist(a, b), legs:legs, via:true};
   }
-  var S0 = bestS ? P2[bestS-1] : a, E0 = bestS < n ? P2[bestS] : b;
-  var head = v.slice(0, bestS), tail = v.slice(bestS);
-  var hd0 = chain([a].concat(P2.slice(0, bestS))), tl0 = chain(P2.slice(bestS).concat([b]));
-  var out = alts(S0, E0).map(function(r){
-    var legs = r.legs.map(function(l){ var c2 = {}; for(var x in l) c2[x] = l[x]; return c2; });
-    var ws = legs.filter(function(l){ return l.t==="walk"; });
-    if(ws.length===1 && legs.length===1){ ws[0].vv = v; ws[0].d = hd0 + tl0 + ws[0].d; ws[0].secs = ws[0].d/WALK; }
-    else {
-      var w0 = legs[0].t==="walk" ? legs[0] : null, w1 = legs[legs.length-1].t==="walk" ? legs[legs.length-1] : null;
-      if(w0){ w0.vv = head; w0.d += hd0; w0.secs += hd0/WALK; }
-      if(w1 && w1!==w0){ w1.vv = tail; w1.d += tl0; w1.secs += tl0/WALK; }
-    }
-    var o = {}; for(var y in r) o[y] = r[y]; o.legs = legs; o.secs = r.secs + (hd0 + tl0)/WALK;
-    if(r.walk) o.d = legs[0].d; if(o.walkSecs) o.walkSecs += (hd0 + tl0)/WALK;
-    return o;
-  });
-  return (ALTCACHE[key] = out);
+  var cands = [build([])];
+  segs.forEach(function(al, si){ for(var q = 1; q < al.length && q < 3; q++){ var pk = []; pk[si] = q; cands.push(build(pk)); } });
+  var sig = {}, out = [];
+  cands.forEach(function(r){ var g = r.walk ? "walk" : r.legs.filter(function(l){ return l.t==="ride"; }).map(function(l){ return (l.alt||[l.r]).slice().sort().join("/")+"@"+l.from+">"+l.to; }).join("|"); if(sig[g]) return; sig[g] = 1; out.push(r); });
+  out.sort(function(x, y){ return x.secs - y.secs; });
+  return (ALTCACHE[key] = out.slice(0, 3));
 }
 function legRoute(a, b, k){
   var alts = legAlts(a, b, k), i = legGet("legAlt", b) || 0;
@@ -6512,6 +6507,7 @@ function transitSteps(r, a, b, ctx){
       var lbl = l.t==="xfer" ? "Umsteigen" : "Gehen";
       h += "<li class=\"rt-walk\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\"><span class=\"rt-ic\">"+WI+"</span>"+lbl+" · "+mins(l.secs)+" Min."+(l.d ? "<small>"+fmtDist(l.d)+"</small>" : "")+"</span></li>";
       if(t!=null) t += l.secs||0;
+      if(l.wp) h += "<li class=\"rt-pt rt-wp\"><span class=\"rt-t\">"+T0(t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>Wegpunkt "+l.wp+"</b></span></li>";
     } else if(l.t==="ride"){
       var rs = l.alt||[l.r], n = l.stops.length-1, mid = l.stops.slice(1,-1).map(function(s2){ return NET.s[s2][0]; });
       var dep = null; if(t!=null){ var dd = departures(l.from, day, t, 1, rs, l.to); if(dd.length) dep = dd[0].t; }
@@ -6878,10 +6874,10 @@ function drawOverlay(){
         s += "<path d=\""+dd+"\" stroke=\""+color+"\" stroke-width=\""+w+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(dash?" stroke-dasharray=\""+dash+"\"":"")+" opacity=\""+op+"\"/>";
       }
       var wsegs = [], at0 = pair[0];
-      r.legs.forEach(function(l){ if(l.t==="walk"){ var to0 = l.to==="Ziel" ? pair[1] : stLL(l.st); wsegs.push([at0, to0]); at0 = to0; } else if(l.t==="xfer") at0 = stLL(l.to); else if(l.t==="ride"){ var l0 = l.stops.map(stLL); at0 = l0[l0.length-1]; } });
+      r.legs.forEach(function(l){ if(l.t==="walk"){ var to0 = l.pt ? l.pt : l.to==="Ziel" ? pair[1] : stLL(l.st); wsegs.push([at0, to0]); at0 = to0; } else if(l.t==="xfer") at0 = stLL(l.to); else if(l.t==="ride"){ var l0 = l.stops.map(stLL); at0 = l0[l0.length-1]; } });
       var segVia = viaForSegs(wsegs, vv), wi = 0;
       r.legs.forEach(function(l){
-        if(l.t==="walk"){ var to = l.to==="Ziel" ? pair[1] : stLL(l.st); seg(walkPath(at, to, l.vv || segVia[wi] || []), "var(--ink)", "1 6", 3); wi++; at = to; }
+        if(l.t==="walk"){ var to = l.pt ? l.pt : l.to==="Ziel" ? pair[1] : stLL(l.st); seg(walkPath(at, to, l.vv || segVia[wi] || []), "var(--ink)", "1 6", 3); wi++; at = to; }
         else if(l.t==="xfer"){ var tx = stLL(l.to); seg([at, tx], "var(--ink)", "1 6", 3); at = tx; }
         else if(l.t==="ride"){
           var ll = l.stops.map(stLL); seg(ridePath(l), NET.r[l.r][1], "", 5.5); at = ll[ll.length-1];
