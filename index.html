@@ -2350,6 +2350,12 @@ body.navon .top,body.navon #rail{visibility:hidden}
 #ov .lvl.k{font-weight:700;font-size:12.5px}
 .ch-phc img.ch-phlz{min-height:120px;background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .ch-phc img.ch-phlz.missing{min-height:120px}
+.vp-share{border-top:1px solid var(--line);margin-top:6px;padding-top:2px}
+.vp-share > button{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;border-radius:11px;padding:8px 10px;font:600 15px/1.2 var(--f-body);color:var(--ink);text-align:left;cursor:pointer}
+.vp-share > button:active{background:var(--fill)}
+.vp-share > button small{display:block;margin-top:2px;font:500 12.5px/1.3 var(--f-body);color:var(--muted)}
+.vp-share .ck{margin-left:auto;min-width:14px}
+.vp-note{margin:4px 10px 6px;font-size:12px;color:var(--muted);line-height:1.35}
 .ln-h{font-size:12px;font-weight:700;color:var(--muted);padding:8px 14px 2px;text-transform:none}
 .ln-buls{display:inline-flex;gap:3px;flex:0 0 auto;min-width:78px}
 .ln-buls .bul{margin:0}
@@ -3379,7 +3385,7 @@ function renameLocal(){
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["places","done","times","journal","order","legMode","legAlt","legOpt","legLine","via","rating","notes","photos","groups","privP","privN","privPh","capt"];
+var MAPK = ["places","done","times","journal","order","legMode","legAlt","legOpt","legLine","via","rating","notes","photos","groups","privP","privN","privPh","privTo","capt"];
 /* ---------- Privat: Orte, Notizen und Fotos, die Beobachter nicht bekommen ----------
    Mitreisende lesen und schreiben die vollständige Reise in trips/{id}/priv/data;
    das Reise-Dokument selbst (für Beobachter lesbar) enthält nur den öffentlichen Teil. */
@@ -3404,14 +3410,14 @@ function pubOf(M){
     Object.keys(N0).forEach(function(pid){ if(c.notes) delete c.notes[pid]; });
     Object.keys(c.photos||{}).forEach(function(pid){ c.photos[pid] = (c.photos[pid]||[]).filter(function(x){ return !H0[x]; }); if(!c.photos[pid].length) delete c.photos[pid]; });
   }
-  delete c.privP; delete c.privN; delete c.privPh;
+  delete c.privP; delete c.privN; delete c.privPh; delete c.privTo;
   return c;
 }
 // private Teile aus „full“ in einen öffentlichen Stand zurückholen (falls jemand nur den öffentlichen Teil geschrieben hat)
 function privReadd(pub, full){
   var r = jclone(pub);
   if(!full || !privOf(full)) return r;
-  ["privP","privN","privPh"].forEach(function(k){ if(full[k]) r[k] = Object.assign({}, full[k], r[k]||{}); });
+  ["privP","privN","privPh","privTo"].forEach(function(k){ if(full[k]) r[k] = Object.assign({}, full[k], r[k]||{}); });
   r.places = r.places || {}; r.order = r.order || {};
   privSet(full).forEach(function(pid){
     if(!full.places[pid] || r.places[pid]) return;
@@ -3521,19 +3527,19 @@ function pubPrompt(ro, cur0, apply){
   el.hidden = false; draw();
 }
 function visBtn(pid, cls, label){ if(!canPriv() || !P(pid) || P(pid).k==="hotel") return ""; var v = visOf(pid);
-  return "<"+(cls==="ls-vis" ? "span role=\"button\" tabindex=\"0\"" : "button type=\"button\"")+" class=\""+cls+" vlv-"+v+"\" data-act=\"placevispick\" data-pid=\""+pid+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit: "+VISLBL[v]+"\" title=\"Sichtbarkeit: "+VISLBL[v]+"\">"+visIco(v)+(label ? "<span>"+VISLBL[v]+"</span>" : "")+"</"+(cls==="ls-vis" ? "span" : "button")+">"; }
+  return "<"+(cls==="ls-vis" ? "span role=\"button\" tabindex=\"0\"" : "button type=\"button\"")+" class=\""+cls+" vlv-"+v+"\" data-act=\"placevispick\" data-pid=\""+pid+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit: "+VISLBL[v]+"\" title=\"Sichtbarkeit: "+VISLBL[v]+"\">"+visIco(v)+(label ? "<span>"+VISLBL[v]+(v==="priv" && privToOf("p", pid).length ? " · "+privToOf("p", pid).length+" Beob." : "")+"</span>" : "")+"</"+(cls==="ls-vis" ? "span" : "button")+">"; }
 function openPlaceVis(pid, btn){
   var cur0 = visOf(pid), vis1 = wasVisited(pid);
   var h = "<div class=\"vp-h\">Ort sichtbar für</div>"+["priv","trip","pub"].map(function(v){
     var dis = v==="pub" && !vis1, sub = v==="priv" ? "nur Mitreisende" : v==="trip" ? "Mitreisende + Beobachter" : (dis ? "erst nach dem Besuch" : "+ Freunde, als Vorschlag");
-    return "<button type=\"button\" role=\"menuitemradio\" data-act=\"placevis\" data-pid=\""+pid+"\" data-v=\""+v+"\" aria-checked=\""+(cur0===v)+"\""+(dis ? " class=\"dis\"" : "")+"><span class=\"ai vlc-"+v+"\">"+visIco(v)+"</span><span class=\"cm-t\"><b>"+VISLBL[v]+"</b><small>"+sub+"</small></span>"+(cur0===v ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("");
+    return "<button type=\"button\" role=\"menuitemradio\" data-act=\"placevis\" data-pid=\""+pid+"\" data-v=\""+v+"\" aria-checked=\""+(cur0===v)+"\""+(dis ? " class=\"dis\"" : "")+"><span class=\"ai vlc-"+v+"\">"+visIco(v)+"</span><span class=\"cm-t\"><b>"+VISLBL[v]+"</b><small>"+sub+"</small></span>"+(cur0===v ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("")+(cur0==="priv" ? privToHTML("p", pid) : "");
   jpPopover(pid, btn, h, "vis-place");
 }
 function openItemVis(kind, key, pid, btn){
   var cur0 = itemVis(kind, key, pid), top = visOf(pid);
   var h = "<div class=\"vp-h\">"+(kind==="n" ? "Notiz" : "Foto")+" sichtbar für</div>"+["priv","trip","pub"].map(function(v){
     var dis = VRANK[v] > VRANK[top], sub = v==="priv" ? "nur Mitreisende" : v==="trip" ? "Mitreisende + Beobachter" : (dis ? "Ort ist nicht veröffentlicht" : "+ Freunde");
-    return "<button type=\"button\" role=\"menuitemradio\" data-act=\"itemvis\" data-k=\""+kind+"\" data-key=\""+esc(key)+"\" data-v=\""+v+"\" aria-checked=\""+(cur0===v)+"\""+(dis ? " class=\"dis\"" : "")+"><span class=\"ai\">"+visIco(v)+"</span><span class=\"cm-t\"><b>"+VISLBL[v]+"</b><small>"+sub+"</small></span>"+(cur0===v ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("");
+    return "<button type=\"button\" role=\"menuitemradio\" data-act=\"itemvis\" data-k=\""+kind+"\" data-key=\""+esc(key)+"\" data-v=\""+v+"\" aria-checked=\""+(cur0===v)+"\""+(dis ? " class=\"dis\"" : "")+"><span class=\"ai\">"+visIco(v)+"</span><span class=\"cm-t\"><b>"+VISLBL[v]+"</b><small>"+sub+"</small></span>"+(cur0===v ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("")+(itemVisRaw(kind, key)==="priv" && !isPrivP(pid) ? privToHTML(kind, key) : "");
   jpPopover(pid, btn, h, "vis-"+kind);
 }
 function setVis(pid, v){
@@ -3557,7 +3563,7 @@ function setVis(pid, v){
 // Sichtbarkeit bereits hochgeladener Fotos im Konto nachziehen
 function phPrivSync(ids){
   if(!fbDb || !acct.user) return; var q = phQueue(), tid = gidFor(S.cur); if(!KNOWN[tid]) return;
-  ids.forEach(function(ph){ if(q.up.indexOf(ph)>-1) return; phCol(tid).doc(ph).set({priv:isPrivPh(ph)}, {merge:true}).catch(function(){}); });
+  ids.forEach(function(ph){ if(q.up.indexOf(ph)>-1) return; phCol(tid).doc(ph).set({priv:isPrivPh(ph), shareTo:phShareTo(ph)}, {merge:true}).catch(function(){}); });
 }
 function togglePriv(kind, key, after){
   var t0 = T(), k0 = kind==="p" ? "privP" : kind==="n" ? "privN" : "privPh";
@@ -3579,6 +3585,84 @@ function togglePrivDo(kind, key){
            : (kind==="p" ? "Ort ist wieder für die Reise sichtbar" : kind==="n" ? "Notiz ist wieder für die Reise sichtbar" : "Foto ist wieder für die Reise sichtbar"), false);
 }
 function privRef(id){ return tripRef(id).collection("priv").doc("data"); }
+/* ---------- Private Inhalte für einzelne Beobachter freigeben ----------
+   T().privTo = {"p:<Ort>":[uid…], "n:<Ort>":[uid…], "ph:<Foto>":[uid…]} (nur im privaten Stand).
+   Für jeden Beobachter schreiben Besitzer/Mitreisende ein eigenes Dokument trips/{id}/share/{uid} mit genau den
+   freigegebenen Inhalten; laut Regeln liest jeder Beobachter nur sein eigenes. Fotos erhalten die Liste shareTo. */
+function shareRef(id, u){ return tripRef(id).collection("share").doc(u); }
+function privToKey(kind, key){ return (kind==="p" ? "p:"+rootOf(key) : kind==="n" ? "n:"+key : "ph:"+key); }
+function privToOf(kind, key){ var a = (T().privTo||{})[privToKey(kind, key)]; return Array.isArray(a) ? a : []; }
+function tripViewers(){ var m = META[gidFor(S.cur)] || META[S.cur]; return (m && m.viewers || []).filter(function(u){ return !acct.user || u!==acct.user.uid; }); }
+function viewerName(u){ var m = META[gidFor(S.cur)] || META[S.cur] || {}, f = FR.friends.filter(function(x){ return x.uid===u; })[0], e = (m.memberEmails||{})[u];
+  return (CHPROF[u] && CHPROF[u].name) ? "@"+CHPROF[u].name : f && f.name ? "@"+f.name : e ? e.split("@")[0] : "Beobachter"; }
+function setPrivTo(kind, key, u, on){
+  var t = T(), k = privToKey(kind, key); t.privTo = t.privTo || {}; var a = (t.privTo[k]||[]).filter(function(x){ return x!==u; });
+  if(on) a.push(u); if(a.length) t.privTo[k] = a; else delete t.privTo[k];
+  save(); phPrivSync(kind==="p" ? photosAll(rootOf(key)) : kind==="ph" ? [key] : []);
+}
+function phShareTo(ph){ var t = T(), pt = t.privTo || {}, pid = phPlace(ph);
+  if((t.privPh||{})[ph]) return (pt["ph:"+ph] || []).slice();
+  if(pid && isPrivP(pid)) return (pt["p:"+rootPid(pid)] || []).slice();
+  return []; }
+function privToHTML(kind, key){
+  var vs = tripViewers(); if(!vs.length || isRO() || !canPriv()) return "";
+  var on = privToOf(kind, key);
+  return "<div class=\"frp-h vp-share\"><div class=\"vp-h\">Trotzdem freigeben für</div>"+vs.map(function(u){ var c = on.indexOf(u) > -1;
+    return "<button type=\"button\" role=\"menuitemcheckbox\" data-act=\"privto\" data-k=\""+kind+"\" data-key=\""+esc(key)+"\" data-uid=\""+esc(u)+"\" aria-checked=\""+c+"\"><span class=\"ai\">"+chAv(u, "ch-av xs")+"</span><span class=\"cm-t\"><b>"+esc(viewerName(u))+"</b><small>Beobachter</small></span><b class=\"ck\">"+(c ? "✓" : "")+"</b></button>"; }).join("")+
+    "<p class=\"vp-note\">Nur die Ausgewählten sehen "+(kind==="p" ? "den Ort mit Notiz und Fotos" : kind==="n" ? "die Notiz" : "das Foto")+". Für alle anderen Beobachter bleibt es privat.</p></div>";
+}
+// Ausschnitt für einen Beobachter: freigegebene private Orte (mit Notiz, Fotos, Bewertung), Notizen und Fotos
+function shareFor(M, u){
+  var PT = M.privTo || {}, has = function(k){ return (PT[k]||[]).indexOf(u) > -1; }, H = M.privPh || {}, NN = M.privN || {}, n = 0;
+  var out = {places:{}, notes:{}, photos:{}, capt:{}, done:{}, times:{}, rating:{}, order:{}};
+  var rootM = function(pid){ var q = M.places[pid]; return q && q.of && M.places[q.of] ? q.of : pid; };
+  privSet(M).forEach(function(pid){ var ro = rootM(pid); if(!has("p:"+ro)) return;
+    out.places[pid] = jclone(M.places[pid]); n++;
+    ["done","times","rating"].forEach(function(k){ if(M[k] && M[k][pid]!=null) out[k][pid] = jclone(M[k][pid]); });
+    if(M.notes && M.notes[pid]!=null && (!(NN[pid] || NN[ro]) || has("n:"+ro) || has("n:"+pid))) out.notes[pid] = M.notes[pid];
+    var ph = ((M.photos||{})[pid]||[]).filter(function(x){ return !H[x] || has("ph:"+x); }); if(ph.length) out.photos[pid] = ph;
+  });
+  Object.keys(NN).forEach(function(k){ if(!has("n:"+k) || !M.notes) return; [k].concat(Object.keys(M.places||{}).filter(function(x){ return M.places[x] && M.places[x].of===k; })).forEach(function(pid){
+    if(out.places[pid] || M.notes[pid]==null || (M.privP||{})[rootM(pid)]) return; out.notes[pid] = M.notes[pid]; n++; }); });
+  Object.keys(H).forEach(function(x){ if(!has("ph:"+x)) return; var pid = ""; Object.keys(M.photos||{}).forEach(function(k){ if(!pid && (M.photos[k]||[]).indexOf(x) > -1) pid = k; });
+    if(!pid || out.places[pid] || (M.privP||{})[rootM(pid)]) return; (out.photos[pid] = out.photos[pid] || []).push(x); n++; });
+  Object.keys(out.photos).forEach(function(pid){ out.photos[pid].forEach(function(x){ if(M.capt && M.capt[x]) out.capt[x] = M.capt[x]; }); });
+  if(!n) return null;
+  var pub = pubOf(M);
+  Object.keys(M.order||{}).forEach(function(dk){ var o = M.order[dk] || []; if(!o.some(function(id){ return out.places[id]; })) return;
+    out.order[dk] = o.filter(function(id){ return out.places[id] || (pub.places && pub.places[id]); }); });
+  return out;
+}
+function shareMerge(pub, sh){
+  if(!pub || !sh) return pub; var r = jclone(pub);
+  ["places","notes","capt","done","times","rating"].forEach(function(k){ Object.keys(sh[k]||{}).forEach(function(x){ r[k] = r[k] || {}; if(r[k][x]==null) r[k][x] = jclone(sh[k][x]); }); });
+  Object.keys(sh.photos||{}).forEach(function(pid){ if(!r.places || !r.places[pid]) return; r.photos = r.photos || {}; var a = r.photos[pid] = (r.photos[pid]||[]).slice(); sh.photos[pid].forEach(function(x){ if(a.indexOf(x) < 0) a.push(x); }); });
+  Object.keys(sh.order||{}).forEach(function(dk){ r.order = r.order || {}; var o = sh.order[dk].filter(function(id){ return r.places[id]; }); (r.order[dk]||[]).forEach(function(id){ if(o.indexOf(id) < 0) o.push(id); }); r.order[dk] = o; });
+  r.sharedMe = Object.keys(sh.places||{}).concat(Object.keys(sh.notes||{}));
+  return r;
+}
+var SHW = (function(){ try { return JSON.parse(lsGet("rp-shw")||"{}") || {}; } catch(e){ return {}; } })();
+function shareSync(id, M){
+  if(!fbDb || !acct.user || !M) return; var m = META[id]; if(!m || isViewerOf(id)) return;
+  (m.viewers||[]).forEach(function(u){
+    var sh = shareFor(M, u), js = sh ? JSON.stringify(sh) : "", k = id+"|"+u;
+    if(SHW[k]===js || (SHW[k]===undefined && !js)) return;
+    shareRef(id, u).set({json:js, updatedAt:Date.now()}).then(function(){ SHW[k] = js; try { lsSet("rp-shw", JSON.stringify(SHW)); } catch(e){} }, function(){});
+  });
+}
+var SHD = {}, shUnsub = {}, shWait = {};
+function shWatch(id){
+  if(shWait[id]) return shWait[id];
+  shWait[id] = new Promise(function(res){
+    var first = true, done = function(){ if(first){ first = false; res(); } else if(pvLastQs) pvApply(pvLastQs); };
+    setTimeout(function(){ if(first){ first = false; res(); } }, 6000);
+    try {
+      shUnsub[id] = shareRef(id, acct.user.uid).onSnapshot(function(sn){ var v = sn.exists ? sn.data() : null, d = null; try { d = v && v.json ? JSON.parse(v.json) : null; } catch(e){} SHD[id] = d; done(); },
+        function(){ SHD[id] = null; if(first){ first = false; res(); } });
+    } catch(e){ SHD[id] = null; first = false; res(); }
+  });
+  return shWait[id];
+}
 var PVD = {}, pvUnsub = {}, pvWait = {}, pvLastQs = null, pvSeq = 0;
 function pvRow(snap){ var v = snap && snap.exists ? snap.data() : null, d = null; try { d = v && v.json ? JSON.parse(v.json) : null; } catch(e){} return {exists:!!(v && d), data:d, updatedAt:(v && v.updatedAt)||0, ready:true}; }
 function pvWatch(id){
@@ -3593,12 +3677,15 @@ function pvWatch(id){
   });
   return pvWait[id];
 }
-function pvStopAll(){ Object.keys(pvUnsub).forEach(function(k){ try { pvUnsub[k](); } catch(e){} }); pvUnsub = {}; pvWait = {}; PVD = {}; pvLastQs = null; }
+function pvStopAll(){ Object.keys(pvUnsub).forEach(function(k){ try { pvUnsub[k](); } catch(e){} }); pvUnsub = {}; pvWait = {}; PVD = {}; pvLastQs = null;
+  Object.keys(shUnsub).forEach(function(k){ try { shUnsub[k](); } catch(e){} }); shUnsub = {}; shWait = {}; SHD = {}; }
 // vor dem Übernehmen eines Server-Stands die privaten Teile aller Reisen abwarten, in denen ich mitplane
 function pvGate(qs){
   var me = acct.user && acct.user.uid;
   var ids = qs.docs.filter(function(d){ var v = d.data()||{}; return me && (v.members||[]).indexOf(me)>-1 && (v.viewers||[]).indexOf(me)<0 && !v.deleted; }).map(function(d){ return d.id; });
-  return Promise.all(ids.map(pvWatch));
+  // Beobachter: das eigene Freigabe-Dokument abwarten
+  var vids = qs.docs.filter(function(d){ var v = d.data()||{}; return me && (v.viewers||[]).indexOf(me)>-1 && !v.deleted; }).map(function(d){ return d.id; });
+  return Promise.all(ids.map(pvWatch).concat(vids.map(shWatch)));
 }
 function pvApply(qs){ pvLastQs = qs; var seq = ++pvSeq; pvGate(qs).then(function(){ if(seq===pvSeq) acctApply(fbRows(qs)); }); }
 function jeq(a, b){ return JSON.stringify(a===undefined?null:a) === JSON.stringify(b===undefined?null:b); }
@@ -3662,6 +3749,7 @@ function acctPush(){
     }).then(function(M){
       if(!M) return;
       if(usePv) PVD[id] = {exists:true, data:jclone(M), updatedAt:M.updatedAt, ready:true};
+      shareSync(id, M);
       KNOWN[id] = 1; saveKnown();
       var C = S.trips[id], Ls = Lsnap[id];
       setBase(id, M);
@@ -3699,6 +3787,7 @@ function acctPush(){
 function fbRows(qs){ setTimeout(function(){ lsSet("rp-meta", JSON.stringify(META)); if(ntUid){ ntMembers(); ntSyncTrips(); } }, 0); return qs.docs.map(function(d){ var v = d.data()||{}, data = null; try { data = v.json ? JSON.parse(v.json) : null; } catch(e){}
   META[d.id] = {owner:v.owner, members:v.members||[], memberEmails:v.memberEmails||{}, invites:v.invites||[], viewers:v.viewers||[], viewInvites:v.viewInvites||[]};
   if(data && !v.deleted && !isViewerOf(d.id)) data = pvCombine(data, v.updatedAt||0, PVD[d.id], S.trips[d.id]);
+  else if(data && !v.deleted && SHD[d.id]) data = shareMerge(data, SHD[d.id]);
   return {id:d.id, data:data, deleted:!!v.deleted || !data, updated_at:new Date(v.updatedAt||0).toISOString()}; }); }
 var metaSig = "";
 function acctApply(rows){
@@ -9767,7 +9856,7 @@ function phFlush(){
   var q = phQueue(); if(!q.up.length && !q.del.length) return;
   phBusy = true;
   var ups = q.up.slice(), dels = q.del.slice();
-  Promise.all(ups.map(function(id){ return idbDo("readonly", function(st){ return st.get(id); }).catch(function(){ return null; }).then(function(r){ r = r || PHMEM[id]; if(!r) return; var tid = gidFor(r.trip||S.cur); if(!KNOWN[tid]) throw new Error("Reise noch nicht im Konto"); return phCol(tid).doc(id).set({data:r.data, place:r.place||"", trip:tid, by:acct.user.uid, at:Date.now(), priv:isPrivPh(id, r.place)}); }).then(function(){ var q2 = phQueue(); q2.up = q2.up.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })
+  Promise.all(ups.map(function(id){ return idbDo("readonly", function(st){ return st.get(id); }).catch(function(){ return null; }).then(function(r){ r = r || PHMEM[id]; if(!r) return; var tid = gidFor(r.trip||S.cur); if(!KNOWN[tid]) throw new Error("Reise noch nicht im Konto"); return phCol(tid).doc(id).set({data:r.data, place:r.place||"", trip:tid, by:acct.user.uid, at:Date.now(), shareTo:phShareTo(id), priv:isPrivPh(id, r.place)}); }).then(function(){ var q2 = phQueue(); q2.up = q2.up.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })
     .concat(dels.map(function(id){ return phCol(S.cur).doc(id).delete().then(function(){ var q2 = phQueue(); q2.del = q2.del.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })))
     .then(function(){ phBusy = false; }, function(){ phBusy = false; setTimeout(phFlush, 20000); });
 }
@@ -10794,6 +10883,10 @@ document.addEventListener("click", function(e){
     case "phback": if(jp && !!jp.ret){ closeJPop(); break; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
     case "privp": if(t.closest("#catPop")) closeCatPop(); togglePriv("p", rootPid(jp ? jp.pid : id), function(){ if(jp) renderJPop(); renderSheet(); }); break;
     case "lpphoto": if(!lpPt || isRO()) break; var lq = lpPt; $("cphIn").setAttribute("data-pid", "new:"+lq.la+","+lq.lo+","+encodeURIComponent(lq.n||"")); setTimeout(lpClose, 60); break;
+    case "privto": var ptOn = t.getAttribute("aria-checked")!=="true"; setPrivTo(t.getAttribute("data-k"), t.getAttribute("data-key"), t.getAttribute("data-uid"), ptOn);
+      t.setAttribute("aria-checked", String(ptOn)); var ptc = t.querySelector(".ck"); if(ptc) ptc.textContent = ptOn ? "✓" : "";
+      toast(ptOn ? "Freigegeben für "+viewerName(t.getAttribute("data-uid")) : "Freigabe für "+viewerName(t.getAttribute("data-uid"))+" zurückgenommen", false);
+      if(jp && !$("jPop").hidden) renderJPop(); renderSheetSoon(); break;
     case "placevispick": openPlaceVis(t.getAttribute("data-pid"), t); break;
     case "placevis": if(t.classList.contains("dis")){ toast("Veröffentlichen geht, sobald du den Ort besucht hast", false); break; } closeJpMore(); setVis(t.getAttribute("data-pid"), t.getAttribute("data-v")); break;
     case "itemvispick": if(!jp) break; var ivk = t.getAttribute("data-k"), ivkey = t.getAttribute("data-key"); openItemVis(ivk, ivkey, ivk==="ph" ? (phPlace(ivkey) || jp.pid) : jp.pid, t); break;

@@ -653,6 +653,31 @@ await test("Chat: geteiltes Foto öffnet Ort und Foto, auch wenn Reise-Kennung n
   ok(h.includes('data-ph="ph_b"'), "Foto ohne Vorschaubild wird nicht nachgeladen");
 });
 
+await test("Privat, aber für einzelne Beobachter freigegeben", async () => {
+  await seed();
+  await rp(`(function(){ META.t_test = {owner:"u_me", members:["u_me","u_anna","u_ludwig"], memberEmails:{u_anna:"anna@test.de", u_ludwig:"ludwig@test.de"}, invites:[], viewers:["u_anna","u_ludwig"], viewInvites:[]};
+    var t = T(); t.privP = {p1:1}; t.photos.p1 = ["ph_c1"]; t.notes = t.notes || {}; t.notes.p1 = "Geheimtipp"; t.notes.p2 = "Nur für Anna"; t.privN = {p2:1}; save(); })()`);
+  // Menü am privaten Ort: Liste der Beobachter
+  await rp(`openPlaceVis("p1", document.querySelector("#sheet") || document.body)`); await page.waitForTimeout(150);
+  ok(await page.locator("#jpMenu [data-act=privto]").count()===2, "Beobachter-Auswahl fehlt im Sichtbarkeits-Menü");
+  await shot("privat-freigabe");
+  await page.locator("#jpMenu [data-act=privto][data-uid=u_anna]").click(); await page.waitForTimeout(150);
+  ok(await page.locator("#jpMenu").count()===1, "Menü schließt beim Ankreuzen");
+  ok(await rp(`JSON.stringify(T().privTo)`)==='{"p:p1":["u_anna"]}', "Freigabe nicht gespeichert: "+await rp(`JSON.stringify(T().privTo)`));
+  ok(await rp(`JSON.stringify(phShareTo("ph_c1"))`)==='["u_anna"]', "Foto des freigegebenen Orts nicht für Anna lesbar");
+  // Notiz-Freigabe auf öffentlichem Ort
+  await rp(`closeJpMore(); setPrivTo("n", "p2", "u_ludwig", true);`);
+  const r = await rp(`(function(){ var M = T(), pub = pubOf(M), a = shareFor(M, "u_anna"), l = shareFor(M, "u_ludwig"), x = shareFor(M, "u_x");
+    var ma = shareMerge(pub, a), ml = shareMerge(pub, l), dk = Object.keys(M.order).filter(function(k){ return (M.order[k]||[]).indexOf("p1") > -1; })[0];
+    return {pubHas:!!pub.places.p1, pubTo:!!pub.privTo, pubNote:pub.notes && pub.notes.p2!=null,
+      annaP1:!!ma.places.p1, annaNote:ma.notes.p1, annaPh:(ma.photos.p1||[]).length, annaOrder:(ma.order[dk]||[]).indexOf("p1") > -1, annaP2note:ma.notes.p2!=null,
+      ludP1:!!ml.places.p1, ludNote:ml.notes.p2, none:x===null}; })()`);
+  ok(!r.pubHas && !r.pubTo && !r.pubNote, "Privates gelangt in den öffentlichen Stand: "+JSON.stringify(r));
+  ok(r.annaP1 && r.annaNote==="Geheimtipp" && r.annaPh===1 && r.annaOrder && !r.annaP2note, "Anna bekommt den Ort nicht richtig: "+JSON.stringify(r));
+  ok(!r.ludP1 && r.ludNote==="Nur für Anna", "Ludwig bekommt falsche Inhalte: "+JSON.stringify(r));
+  ok(r.none, "Nicht freigegebener Beobachter bekommt etwas");
+});
+
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
   await seed();
   await rp(`select("p6")`); await page.waitForTimeout(200);
@@ -873,7 +898,8 @@ await test("Navigation zu U-Bahn- und Citi-Bike-Stationen", async () => {
   await click("#jpMenu [data-act=navgo][data-mode=walk]");
   await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts)"), null, {timeout:5000}).catch(() => {});
   ok(await rp(`NAV && /Bleecker/.test(NAV.tgt.n) && !!NAV.pts`), "Navigation zur U-Bahn-Station startet nicht");
-  await rp(`navEnd(true); select("cb:S2")`); await page.waitForTimeout(150);
+  await rp(`navEnd(true)`); await page.waitForFunction(() => window.__rp("!map.isMoving()"), null, {timeout:5000}).catch(() => {});
+  await rp(`select("cb:S2")`); await page.waitForTimeout(150);
   await click("#card [data-act=navpick]");
   await click("#jpMenu [data-act=navgo][data-mode=walk]");
   await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts)"), null, {timeout:5000}).catch(() => {});
