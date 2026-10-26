@@ -8545,8 +8545,11 @@ function renderDay(){
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/></svg><select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
       "</div></li>";
   });
-  var lastL = LG[LG.length-1]; if(shown && HT && lastL && lastL[1]===HT) h += legLi(lastL[0], HT, LG.length-1);
-  if(nHid) h += "<li class=\"leg\"><button type=\"button\" class=\"tdet\" data-act=\"hidedone\">"+nHid+(nHid===1?" erledigter Stopp":" erledigte Stopps")+" ausgeblendet · Einblenden</button></li>";
+  var lastL = LG[LG.length-1], homeLeg = HT && lastL && lastL[1]===HT && lastL[0]!==HT;
+  var hidLi = nHid ? "<li class=\"leg\"><button type=\"button\" class=\"tdet\" data-act=\"hidedone\">"+nHid+(nHid===1?" erledigter Stopp":" erledigte Stopps")+" ausgeblendet · Einblenden</button></li>" : "";
+  // Weg zum Hotel auch dann mit Details (Linien, Verkehrsmittel), wenn alle Stopps erledigt und ausgeblendet sind
+  if(shown){ if(homeLeg) h += legLi(lastL[0], HT, LG.length-1); h += hidLi; }
+  else { h += hidLi; if(homeLeg) h += legLi(lastL[0], HT, LG.length-1); }
   if(!ids.length) h += "<li class=\"leg\">Noch keine Stopps. Übernimm einen Vorschlag oder tippe auf der Karte auf einen Wunsch.</li>";
   if(HT) h += "<li class=\"ht\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">Ziel</span></span></li>";
   h += "</ol></div>";

@@ -509,6 +509,17 @@ await test("ÖPNV-Navigation: Linie(n) zum Einsteigen sichtbar (Kachel, Fußleis
   ok((await page.locator("#navUi .nav-line").innerText()).includes("Aussteigen an"), "Während der Fahrt fehlt der Ausstiegshinweis");
 });
 
+await test("Tagesplan: alles erledigt und ausgeblendet – Weg zum Hotel bleibt mit Details", async () => {
+  await seed();
+  await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; meA = null; T().done.p1 = 1; T().done.p2 = 1; T().done.p3 = 1; hideDone = true; cur = todayKey(); tab = "day"; renderSheet();`); await page.waitForTimeout(200);
+  ok(await rp(`dayLegs(todayKey()).length===1`), "Weg zum Hotel fehlt in der Route");
+  ok(await page.locator("li.tleg").count()===1, "Weg zum Hotel fehlt im Tagesplan, wenn alle Stopps erledigt und ausgeblendet sind");
+  ok(await page.locator("li.tleg [data-act=lmpick]").count()===1, "Verkehrsmittel-Wahl fehlt beim Weg zum Hotel");
+  const det = page.locator("li.tleg [data-act=legopen]");
+  if(await det.count()){ await det.first().click(); await page.waitForTimeout(200); ok(await page.locator("li.tleg .rt").count()===1, "Wegbeschreibung zum Hotel lässt sich nicht aufklappen"); }
+  ok(await rp(`(function(){ var el = document.querySelector("li.tleg"), hd = document.querySelector("[data-act=hidedone]"); return !!(el && hd && (hd.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)); })()`), "Weg zum Hotel steht nicht nach dem Hinweis auf die ausgeblendeten Stopps");
+});
+
 await test("Navigation zu U-Bahn- und Citi-Bike-Stationen", async () => {
   await seed();
   await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; layers.sub = true; layers.bike = true; cbLoad(true);`); await page.waitForTimeout(800);
