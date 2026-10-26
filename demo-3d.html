@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e1218">
+<title>3D-Navigation · Demo</title>
+<link rel="stylesheet" href="maplibre-gl.css">
+<style>
+:root{--ink:#fff;--muted:rgba(255,255,255,.62);--glass:rgba(16,20,27,.86);--bd:rgba(255,255,255,.12);--blue:#0A84FF;--green:#30d158;--f:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0e1218;color:var(--ink);font-family:var(--f);overflow:hidden;-webkit-font-smoothing:antialiased}
+#map{position:fixed;inset:0}
+.hud{position:fixed;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));z-index:5;pointer-events:none}
+.top{top:calc(env(safe-area-inset-top) + 10px)}
+.hero{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:24px;background:linear-gradient(135deg,rgba(28,60,38,.95),rgba(16,20,27,.92) 60%);border:1px solid var(--bd);box-shadow:0 10px 30px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);transition:transform .3s ease}
+.hero.pop{animation:pop .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:scale(.94);opacity:.4}}
+.hi{width:64px;height:64px;flex:0 0 64px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#5be27f,#1f9d45);display:grid;place-items:center;box-shadow:0 0 0 4px rgba(48,209,88,.18)}
+.hi svg{width:38px;height:38px;transition:transform .4s ease}
+.ht b{display:block;font:300 40px/1 var(--f);letter-spacing:-.03em}
+.ht b span{font-size:17px;font-weight:500;margin-left:3px;color:var(--muted)}
+.ht em{display:block;font-style:normal;font:600 19px/1.2 var(--f);margin-top:4px}
+.ht small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.badge{display:inline-block;margin:8px 0 0 6px;padding:5px 10px;border-radius:12px;background:rgba(16,20,27,.6);border:1px solid var(--bd);font:600 11.5px/1 var(--f);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.bot{bottom:calc(env(safe-area-inset-bottom) + 12px)}
+.foot{display:flex;align-items:center;gap:8px;padding:10px 10px 10px 16px;border-radius:24px;background:var(--glass);border:1px solid var(--bd);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);pointer-events:auto;position:relative;overflow:hidden}
+.foot::before{content:"";position:absolute;left:0;top:0;height:3px;width:calc(var(--p,0)*100%);background:linear-gradient(90deg,var(--green),var(--blue))}
+.sum{flex:1;min-width:0}
+.sum b{font:300 28px/1 var(--f);letter-spacing:-.03em}
+.sum b span{font-size:14px;font-weight:500;margin-left:3px;color:var(--muted)}
+.sum small{display:block;color:var(--muted);font-size:12.5px;margin-top:4px}
+.fb{height:44px;min-width:44px;border-radius:22px;border:1px solid var(--bd);background:transparent;color:var(--ink);font:700 15px/1 var(--f);padding:0 12px;cursor:pointer;display:grid;place-items:center}
+.fb.on{background:var(--blue);border-color:var(--blue)}
+.fb.sp{font-weight:600;font-size:13px;color:var(--muted)}
+.mode{display:flex;gap:6px;margin-top:8px;pointer-events:auto}
+.mode button{flex:1;height:38px;border-radius:19px;border:1px solid var(--bd);background:var(--glass);color:var(--muted);font:600 13px/1 var(--f);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.mode button[aria-pressed="true"]{color:#fff;border-color:rgba(255,255,255,.4)}
+.mode button:disabled{opacity:.45}
+.note{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 136px);transform:translateX(-50%);z-index:6;padding:8px 14px;border-radius:16px;background:var(--glass);border:1px solid var(--bd);font:600 13px/1.2 var(--f);opacity:0;transition:opacity .35s;pointer-events:none;white-space:nowrap}
+.note.show{opacity:1}
+.tap{position:fixed;z-index:7;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;border:3px solid rgba(255,255,255,.9);opacity:0;pointer-events:none}
+.tap.go{animation:tap .7s ease-out}
+@keyframes tap{0%{opacity:1;transform:scale(.4)}100%{opacity:0;transform:scale(1.3)}}
+.maplibregl-ctrl-attrib{font-size:10px;opacity:.6}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="hud top"><div class="hero" id="hero"><div class="hi"><svg id="hArr" viewBox="0 0 40 40" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path id="hPath" d="M20 33V8M11 16l9-9 9 9"/></svg></div><div class="ht"><b id="hDist">–</b><em id="hTxt">Route wird geladen …</em><small id="hSub"></small></div></div><span class="badge" id="badge">Demo · Zeitraffer</span></div>
+<div class="hud bot">
+  <div class="foot" id="foot"><div class="sum"><b id="fMin">–</b><small id="fSub"></small></div><button class="fb sp" id="bSpeed" type="button">10×</button><button class="fb on" id="b3d" type="button" aria-pressed="true">3D</button><button class="fb" id="bRe" type="button" aria-label="Neu starten">↺</button></div>
+  <div class="mode" role="group" aria-label="Verkehrsmittel"><button type="button" data-m="walk" aria-pressed="true">Zu Fuß</button><button type="button" data-m="bike" aria-pressed="false">Rad</button><button type="button" data-m="car" aria-pressed="false">Auto</button><button type="button" data-m="transit" aria-pressed="false">ÖPNV · ohne 3D</button></div>
+</div>
+<div class="note" id="note"></div>
+<div class="tap" id="tap"></div>
+<script src="maplibre-gl.js"></script>
+<script>
+"use strict";
+/* Demo der geplanten 3D-Navigation: Kamera folgt in Gehrichtung, Weg liegt auf der Straße, 3D-Pfeile an Kurven.
+   ?synth – nachgebaute Stadt ohne Netz (für die Videoaufnahme), ?rec – Bilder werden von außen weitergeschaltet. */
+var Q = new URLSearchParams(location.search), SYN = Q.has("synth"), REC = Q.has("rec");
+var D2R = Math.PI/180;
+var O = SYN ? {la:40.7500, lo:-73.9880} : {la:40.7484, lo:-73.9857};
+function kx(la){ return 111320*Math.cos(la*D2R); }
+function toM(p){ return [(p[0]-O.lo)*kx(O.la), (p[1]-O.la)*110540]; }
+function toLL(m){ return [O.lo + m[0]/kx(O.la), O.la + m[1]/110540]; }
+function brg(a, b){ var dx = b[0]-a[0], dy = b[1]-a[1]; return (Math.atan2(dx, dy)/D2R + 360) % 360; }
+function adiff(a, b){ return ((b - a + 540) % 360) - 180; }
+
+/* ---------- nachgebaute Manhattan-Blöcke (Raster 29° gedreht wie Manhattan) ---------- */
+var AV = 180, ST = 80, ROT = 29*D2R;
+function g2m(u, v){ return [u*Math.sin(ROT) + v*Math.cos(ROT), u*Math.cos(ROT) - v*Math.sin(ROT)]; } // u: entlang der Avenues (Nord-Nordost), v: quer (Ost-Südost)
+function rnd(s){ var x = Math.sin(s*9301 + 49297) * 233280; return x - Math.floor(x); }
+function synthData(){
+  var b = [], streets = [], parks = [], k = 0;
+  for(var i = -3; i <= 4; i++){ streets.push({type:"Feature", properties:{w:30}, geometry:{type:"LineString", coordinates:[g2m(-400, i*AV), g2m(1100, i*AV)].map(toLL)}}); }
+  for(var j = -5; j <= 14; j++){ streets.push({type:"Feature", properties:{w:18}, geometry:{type:"LineString", coordinates:[g2m(j*ST, -3*AV - 60), g2m(j*ST, 4*AV + 60)].map(toLL)}}); }
+  for(var i2 = -3; i2 < 4; i2++) for(var j2 = -5; j2 < 14; j2++){
+    var u0 = j2*ST + 9, u1 = (j2+1)*ST - 9, v0 = i2*AV + 15, v1 = (i2+1)*AV - 15;
+    if(i2===2 && (j2===7 || j2===8)){ parks.push({type:"Feature", properties:{}, geometry:{type:"Polygon", coordinates:[[g2m(u0,v0),g2m(u1,v0),g2m(u1,v1),g2m(u0,v1),g2m(u0,v0)].map(toLL)]}}); continue; }
+    [[u0, (u0+u1)/2], [(u0+u1)/2, u1]].forEach(function(r){
+      var v = v0; while(v < v1 - 6){ var w = 14 + rnd(++k)*30; if(v + w > v1 - 6) w = v1 - v; var tall = rnd(k*3) > .86;
+        var h = tall ? 120 + rnd(k*7)*160 : 14 + rnd(k*5)*55;
+        b.push({type:"Feature", properties:{h:h}, geometry:{type:"Polygon", coordinates:[[g2m(r[0]+.6,v+.6),g2m(r[1]-.6,v+.6),g2m(r[1]-.6,v+w-.6),g2m(r[0]+.6,v+w-.6),g2m(r[0]+.6,v+.6)].map(toLL)]}});
+        v += w; }
+    });
+  }
+  return {b:b, s:streets, p:parks};
+}
+function synthStyle(){
+  var d = synthData();
+  return {version:8, sources:{st:{type:"geojson", data:{type:"FeatureCollection", features:d.s}}, bd:{type:"geojson", data:{type:"FeatureCollection", features:d.b}}, pk:{type:"geojson", data:{type:"FeatureCollection", features:d.p}}},
+    layers:[{id:"bg", type:"background", paint:{"background-color":"#1b2129"}},
+      {id:"pk", type:"fill", source:"pk", paint:{"fill-color":"#1f3a2a"}},
+      {id:"st", type:"line", source:"st", paint:{"line-color":"#2c343f", "line-width":["interpolate",["exponential",2],["zoom"],15,["/",["get","w"],5],19,["*",["get","w"],3.2]]}},
+      {id:"b3d", type:"fill-extrusion", source:"bd", paint:{"fill-extrusion-color":["interpolate",["linear"],["get","h"],10,"#2a3540",200,"#3a4858"], "fill-extrusion-height":["get","h"], "fill-extrusion-opacity":.62, "fill-extrusion-vertical-gradient":true}}]};
+}
+function synthRoute(){
+  // Start mitten im Block, 2 Blöcke nach Norden, rechts quer, links 2 Blöcke, links ein halber Block bis zum Ziel
+  var pts = [[150,0],[320,0],[320,AV],[480,AV],[480,AV-95]].map(function(q){ return toLL(g2m(q[0], q[1])); });
+  return {coords:pts, names:["37th Street","Madison Avenue","39th Street"], dest:"Bryant Park Café"};
+}
+
+/* ---------- Weg: Abschnitte, Länge, Punkt bei Strecke s ---------- */
+var R = null; // {m:[[x,y]], cum:[], len, turns:[]}
+function buildRoute(coords, names){
+  var m = coords.map(toM), cum = [0];
+  for(var i = 1; i < m.length; i++) cum.push(cum[i-1] + Math.hypot(m[i][0]-m[i-1][0], m[i][1]-m[i-1][1]));
+  R = {ll:coords, m:m, cum:cum, len:cum[cum.length-1], turns:[]};
+  // Abbiegungen aus der Geometrie: Richtung 12 m davor vs. 12 m danach
+  var cand = [];
+  for(var k = 1; k < m.length-1; k++){ var s = cum[k], b0 = brg(at(s-12), at(s)), b1 = brg(at(s), at(s+12)), d = adiff(b0, b1); if(Math.abs(d) > 35 && s > 15) cand.push({s:s, d:d}); }
+  cand.forEach(function(c){ var last = R.turns[R.turns.length-1]; if(last && c.s - last.s < 25){ if(Math.abs(c.d) > Math.abs(last.d)) R.turns[R.turns.length-1] = c; } else R.turns.push(c); });
+  R.turns.forEach(function(t, i){ t.name = (names && names[i]) || ""; t.txt = Math.abs(t.d) > 120 ? "Wenden" : Math.abs(t.d) < 60 ? (t.d > 0 ? "Leicht rechts" : "Leicht links") : (t.d > 0 ? "Rechts abbiegen" : "Links abbiegen"); });
+}
+function at(s){ s = Math.max(0, Math.min(R.len, s)); var i = 1; while(i < R.cum.length-1 && R.cum[i] < s) i++;
+  var a = R.m[i-1], b = R.m[i], seg = R.cum[i] - R.cum[i-1] || 1, t = (s - R.cum[i-1]) / seg; return [a[0] + (b[0]-a[0])*t, a[1] + (b[1]-a[1])*t]; }
+function slice(s0, s1){ var out = [at(s0)]; for(var i = 0; i < R.cum.length; i++) if(R.cum[i] > s0 && R.cum[i] < s1) out.push(R.m[i]); out.push(at(s1)); return out; }
+
+/* ---------- 3D-Pfeil: Weg um die Kurve, Kurve abgerundet, mit Pfeilspitze, als flacher Körper ---------- */
+function arrowPoly(t){
+  var a = at(t.s - 16), c = at(t.s), e = at(t.s + 13), p0 = at(t.s - 7), p1 = at(t.s + 7), pts = [];
+  for(var i = 0; i <= 6; i++){ var f = i/6; pts.push([a[0] + (p0[0]-a[0])*f, a[1] + (p0[1]-a[1])*f]); }
+  for(var j = 1; j < 12; j++){ var g = j/12, h = 1-g; pts.push([h*h*p0[0] + 2*h*g*c[0] + g*g*p1[0], h*h*p0[1] + 2*h*g*c[1] + g*g*p1[1]]); }
+  for(var k = 0; k <= 4; k++){ var f2 = k/4; pts.push([p1[0] + (e[0]-p1[0])*f2, p1[1] + (e[1]-p1[1])*f2]); }
+  var W = 1.5, L = [], Rt = [];
+  pts.forEach(function(q, i){ var pa = pts[Math.max(0, i-1)], pb = pts[Math.min(pts.length-1, i+1)], dx = pb[0]-pa[0], dy = pb[1]-pa[1], n = Math.hypot(dx, dy) || 1;
+    L.push([q[0] - dy/n*W, q[1] + dx/n*W]); Rt.push([q[0] + dy/n*W, q[1] - dx/n*W]); });
+  var z = pts[pts.length-1], y = pts[pts.length-2], dx = z[0]-y[0], dy = z[1]-y[1], n = Math.hypot(dx, dy) || 1, ux = dx/n, uy = dy/n, HW = 3.6, HL = 5.5;
+  var ring = L.concat([[z[0] - uy*HW, z[1] + ux*HW], [z[0] + ux*HL, z[1] + uy*HL], [z[0] + uy*HW, z[1] - ux*HW]], Rt.reverse());
+  ring.push(ring[0]);
+  return {type:"Feature", properties:{}, geometry:{type:"Polygon", coordinates:[ring.map(toLL)]}};
+}
+
+/* ---------- Zustand ---------- */
+var map, S = {s:0, speed:10, v:1.4, is3d:true, k3:1, bear:0, run:false, t:0, mode:"walk", arrowFor:-1, arrowT:0, intro:REC ? 0 : 1, pitchNow:0, script:REC};
+var SPEEDS = [1, 5, 10], MODEV = {walk:1.4, bike:4.5, car:9};
+function ease(x){ return x < .5 ? 2*x*x : 1 - Math.pow(-2*x + 2, 2)/2; }
+function fmtD(m){ return m < 1000 ? [Math.max(0, Math.round(m/5)*5), "m"] : [(m/1000).toFixed(1).replace(".", ","), "km"]; }
+function note(t, ms){ var n = document.getElementById("note"); n.textContent = t; n.classList.add("show"); clearTimeout(note.t); note.t = setTimeout(function(){ n.classList.remove("show"); }, ms || 1800); }
+function tap(el){ var r = el.getBoundingClientRect(), t = document.getElementById("tap"); t.style.left = (r.left + r.width/2)+"px"; t.style.top = (r.top + r.height/2)+"px"; t.classList.remove("go"); void t.offsetWidth; t.classList.add("go"); }
+
+function setup(){
+  map.addSource("rt-done", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
+  map.addSource("rt", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
+  map.addSource("arrow", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
+  map.addSource("me", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
+  map.addSource("cone", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
+  map.addSource("dest", {type:"geojson", data:{type:"Feature", properties:{}, geometry:{type:"Point", coordinates:R.ll[R.ll.length-1]}}});
+  var below = map.getLayer("b3d") ? "b3d" : undefined;
+  var lw = function(w){ return ["interpolate",["exponential",2],["zoom"],15,w/4,18,w,20,w*3]; };
+  map.addLayer({id:"rt-done", type:"line", source:"rt-done", layout:{"line-cap":"round","line-join":"round"}, paint:{"line-color":"#8E8E93", "line-width":lw(7), "line-opacity":.5}}, below);
+  map.addLayer({id:"rt-case", type:"line", source:"rt", layout:{"line-cap":"round","line-join":"round"}, paint:{"line-color":"#ffffff", "line-width":lw(12), "line-opacity":.9}}, below);
+  map.addLayer({id:"rt-line", type:"line", source:"rt", layout:{"line-cap":"round","line-join":"round"}, paint:{"line-color":"#0A84FF", "line-width":lw(8.5)}}, below);
+  // Pfeilspitzen auf der Linie zeigen die Richtung
+  var c = document.createElement("canvas"); c.width = c.height = 48; var g = c.getContext("2d"); g.strokeStyle = "#fff"; g.lineWidth = 7; g.lineCap = "round"; g.lineJoin = "round"; g.beginPath(); g.moveTo(16, 12); g.moveTo(17, 10); g.lineTo(31, 24); g.lineTo(17, 38); g.stroke();
+  map.addImage("chev", {width:48, height:48, data:g.getImageData(0, 0, 48, 48).data}, {pixelRatio:2});
+  map.addLayer({id:"rt-chev", type:"symbol", source:"rt", layout:{"symbol-placement":"line", "symbol-spacing":["interpolate",["linear"],["zoom"],16,40,19,70], "icon-image":"chev", "icon-size":["interpolate",["linear"],["zoom"],16,.45,19,.9], "icon-rotation-alignment":"map", "icon-pitch-alignment":"map", "icon-allow-overlap":true, "icon-ignore-placement":true}, paint:{"icon-opacity":.9}}, below);
+  map.addLayer({id:"cone", type:"fill", source:"cone", paint:{"fill-color":"#0A84FF", "fill-opacity":.22}}, below);
+  map.addLayer({id:"me-halo", type:"circle", source:"me", paint:{"circle-radius":["interpolate",["exponential",2],["zoom"],15,8,19,26], "circle-color":"#0A84FF", "circle-opacity":.18, "circle-pitch-alignment":"map"}});
+  map.addLayer({id:"me", type:"circle", source:"me", paint:{"circle-radius":["interpolate",["exponential",2],["zoom"],15,5,19,11], "circle-color":"#0A84FF", "circle-stroke-color":"#fff", "circle-stroke-width":3, "circle-pitch-alignment":"map"}});
+  map.addLayer({id:"dest", type:"circle", source:"dest", paint:{"circle-radius":["interpolate",["exponential",2],["zoom"],15,6,19,13], "circle-color":"#FF3B30", "circle-stroke-color":"#fff", "circle-stroke-width":3, "circle-pitch-alignment":"map"}});
+  // 3D-Pfeil: schwebt knapp über der Straße, wächst animiert heraus
+  map.addLayer({id:"arrow-shadow", type:"fill", source:"arrow", paint:{"fill-color":"#000", "fill-opacity":.28, "fill-translate":[2, 3]}});
+  map.addLayer({id:"arrow", type:"fill-extrusion", source:"arrow", paint:{"fill-extrusion-color":"#eaf6ff", "fill-extrusion-base":0, "fill-extrusion-height":0, "fill-extrusion-opacity":.96, "fill-extrusion-vertical-gradient":true}});
+}
+
+function heroIcon(d){ var p = document.getElementById("hPath");
+  p.setAttribute("d", d==null ? "M20 33V8M11 16l9-9 9 9" : Math.abs(d) > 120 ? "M26 33V16a8 8 0 0 0-16 0v4M5 15l5 6 5-6" : d > 0 ? (d < 60 ? "M14 33V20L26 9M18 8h9v9" : "M13 33V19a6 6 0 0 1 6-6h12M25 7l6 6-6 6") : (d > -60 ? "M26 33V20L14 9M22 8h-9v9" : "M27 33V19a6 6 0 0 0-6-6H9M15 7l-6 6 6 6")); }
+
+var lastHero = "";
+function frame(dt){
+  if(!R) return;
+  S.t += dt;
+  // Ablauf fürs Video: kurz Übersicht, dann 3D; zwischendurch einmal 2D/3D umschalten
+  if(S.script){
+    if(S.t < 2.2) S.intro = 0; else if(S.intro < 1) S.intro = Math.min(1, S.intro + dt/1.6);
+    if(!S.tg1 && S.s > R.len*.62){ S.tg1 = 1; toggle3d(); }
+    if(S.tg1===1 && S.t > S.tgT + 3.2){ S.tg1 = 2; toggle3d(); }
+  }
+  var walking = S.intro >= 1 && S.s < R.len;
+  if(walking) S.s = Math.min(R.len, S.s + MODEV[S.mode]*S.speed*dt);
+  S.k3 += ((S.is3d ? 1 : 0) - S.k3) * Math.min(1, dt*2.6);
+  var pos = at(S.s), ahead = at(S.s + 14), tb = S.s < R.len - 2 ? brg(pos, ahead) : S.bear;
+  // weich mitdrehen: nach der Kurve schwenkt die Kamera in die neue Richtung
+  S.bear = (S.bear + adiff(S.bear, tb) * Math.min(1, dt*2.2) + 360) % 360;
+  var ov = 1 - ease(S.intro), z = 18.35*S.k3 + 17.2*(1-S.k3), pitch = 57*S.k3;
+  var cam = {center:toLL(pos), zoom:z, pitch:pitch, bearing:S.bear};
+  if(ov > 0.001){ var b = S.ovCam; cam = {center:[b.center.lng + (cam.center[0]-b.center.lng)*(1-ov), b.center.lat + (cam.center[1]-b.center.lat)*(1-ov)], zoom:b.zoom + (cam.zoom-b.zoom)*(1-ov), pitch:pitch*(1-ov), bearing:b.bearing + adiff(b.bearing, S.bear)*(1-ov)}; }
+  map.setPadding({top:Math.round(window.innerHeight*(.40*S.k3 + .12)*(1-ov)), bottom:0, left:0, right:0});
+  map.jumpTo(cam);
+  // Weg vorn / zurückgelegt
+  map.getSource("rt").setData({type:"Feature", properties:{}, geometry:{type:"LineString", coordinates:slice(S.s, R.len).map(toLL)}});
+  map.getSource("rt-done").setData(S.s > 1 ? {type:"Feature", properties:{}, geometry:{type:"LineString", coordinates:slice(0, S.s).map(toLL)}} : {type:"FeatureCollection", features:[]});
+  map.getSource("me").setData({type:"Feature", properties:{}, geometry:{type:"Point", coordinates:toLL(pos)}});
+  var cr = [pos]; for(var a = -28; a <= 28; a += 7){ var r = (S.bear + a)*D2R; cr.push([pos[0] + Math.sin(r)*24, pos[1] + Math.cos(r)*24]); } cr.push(pos);
+  map.getSource("cone").setData({type:"Feature", properties:{}, geometry:{type:"Polygon", coordinates:[cr.map(toLL)]}});
+  // nächste Abbiegung; 3D-Pfeil ab 60 m davor, wächst heraus, nach der Kurve weg
+  var nx = -1; for(var i = 0; i < R.turns.length; i++) if(R.turns[i].s > S.s - 6){ nx = i; break; }
+  var show = nx > -1 && R.turns[nx].s - S.s < 60 && S.k3 > .5;
+  if(show && S.arrowFor!==nx){ S.arrowFor = nx; S.arrowT = 0; map.getSource("arrow").setData(arrowPoly(R.turns[nx])); }
+  if(!show && S.arrowFor > -1){ S.arrowT = Math.min(S.arrowT, 1); S.arrowOut = (S.arrowOut || 0) + dt*3; if(S.arrowOut >= 1){ S.arrowFor = -1; S.arrowOut = 0; map.getSource("arrow").setData({type:"FeatureCollection", features:[]}); } }
+  else S.arrowOut = 0;
+  if(S.arrowFor > -1){ S.arrowT += dt; var gr = Math.min(1, S.arrowT/0.7), bounce = gr < 1 ? 1 - Math.pow(1-gr, 3) * Math.cos(gr*6) : 1, pulse = 1 + Math.sin(S.t*5)*.06, fade = 1 - (S.arrowOut || 0);
+    map.setPaintProperty("arrow", "fill-extrusion-base", 0.4*fade);
+    map.setPaintProperty("arrow", "fill-extrusion-height", Math.max(0.01, (0.4 + 2.2*bounce*pulse)*fade));
+    map.setPaintProperty("arrow", "fill-extrusion-opacity", .96*fade); }
+  // Anzeigen
+  var t = nx > -1 ? R.turns[nx] : null, dn = t ? Math.max(0, t.s - S.s) : R.len - S.s, fd = fmtD(dn), left = R.len - S.s, secs = left / MODEV[S.mode];
+  var arrived = S.s >= R.len - .5;
+  var key = arrived ? "arr" : t ? "t"+nx : "end";
+  if(key!==lastHero){ lastHero = key; var h = document.getElementById("hero"); h.classList.remove("pop"); void h.offsetWidth; h.classList.add("pop"); heroIcon(arrived || !t ? null : t.d); }
+  document.getElementById("hDist").innerHTML = arrived ? "Angekommen" : fd[0]+"<span>"+fd[1]+"</span>";
+  document.getElementById("hTxt").textContent = arrived ? R.dest : t ? t.txt+(t.name ? " auf "+t.name : "") : "Ziel: "+R.dest;
+  document.getElementById("hSub").textContent = arrived ? "Du bist da 🎉" : nx > -1 && R.turns[nx+1] ? "Danach: "+R.turns[nx+1].txt.toLowerCase() : "";
+  document.getElementById("fMin").innerHTML = arrived ? "Am Ziel" : Math.max(1, Math.round(secs/60))+"<span>Min.</span>";
+  document.getElementById("fSub").textContent = arrived ? "" : fmtD(left).join(" ")+" · "+(S.is3d ? "3D-Ansicht" : "2D-Ansicht");
+  document.getElementById("foot").style.setProperty("--p", (S.s/R.len).toFixed(3));
+}
+
+function toggle3d(){
+  if(S.mode==="transit"){ note("Bei U-Bahn & Bus bleibt die Karte flach"); return; }
+  S.is3d = !S.is3d; S.tgT = S.t; var b = document.getElementById("b3d"); b.classList.toggle("on", S.is3d); b.setAttribute("aria-pressed", S.is3d); tap(b);
+  note(S.is3d ? "3D-Ansicht an" : "3D aus – flache Karte in Gehrichtung");
+}
+function setMode(m){
+  S.mode = m; document.querySelectorAll(".mode button").forEach(function(x){ x.setAttribute("aria-pressed", x.getAttribute("data-m")===m); });
+  var b3 = document.getElementById("b3d");
+  if(m==="transit"){ S.was3d = S.is3d; S.is3d = false; b3.disabled = true; b3.classList.remove("on"); note("ÖPNV: Karte bleibt flach (2D)", 2200); }
+  else { b3.disabled = false; if(S.was3d!=null){ S.is3d = S.was3d; S.was3d = null; } b3.classList.toggle("on", S.is3d); note(m==="walk" ? "Zu Fuß · 3D möglich" : m==="bike" ? "Rad · 3D möglich" : "Auto · 3D möglich"); }
+}
+function restart(){ S.s = 0; S.t = 0; S.arrowFor = -1; S.tg1 = 0; if(!REC){ S.intro = 1; } lastHero = ""; }
+
+function start(route){
+  buildRoute(route.coords, route.names); R.dest = route.dest;
+  S.bear = brg(R.m[0], at(14));
+  var bb = new maplibregl.LngLatBounds(); R.ll.forEach(function(q){ bb.extend(q); });
+  map.fitBounds(bb, {padding:{top:190, bottom:180, left:50, right:50}, bearing:S.bear, duration:0});
+  S.ovCam = {center:map.getCenter(), zoom:map.getZoom(), bearing:map.getBearing()};
+  setup(); frame(0);
+  if(!REC){ var last = performance.now(); (function loop(now){ var dt = Math.min(.05, (now - last)/1000); last = now; frame(dt); requestAnimationFrame(loop); })(last); }
+  window.__ready = true;
+}
+
+/* Echte Karte: Fußweg über den Routing-Dienst der App; ohne Netz die nachgebaute Stadt */
+function realRoute(){
+  var A = [-73.9857, 40.7484], B = [-73.9822, 40.7539];
+  return fetch("https://routing.openstreetmap.de/routed-foot/route/v1/driving/"+A.join(",")+";"+B.join(",")+"?overview=full&geometries=geojson&steps=true")
+    .then(function(r){ return r.json(); }).then(function(j){
+      var rt = j.routes[0], names = []; rt.legs[0].steps.forEach(function(st){ if(st.maneuver.type!=="depart" && st.maneuver.type!=="arrive" && st.maneuver.modifier!=="straight") names.push(st.name || ""); });
+      return {coords:rt.geometry.coordinates, names:names, dest:"Bryant Park"}; });
+}
+function addBuildings(){
+  var st = map.getStyle(), src = null; Object.keys(st.sources).forEach(function(k){ if(!src && st.sources[k].type==="vector") src = k; });
+  st.layers.forEach(function(l){ if(l["source-layer"]==="building" && l.type!=="fill-extrusion") try { map.setLayoutProperty(l.id, "visibility", "none"); } catch(e){} });
+  var firstSym = (st.layers.filter(function(l){ return l.type==="symbol"; })[0] || {}).id;
+  if(src && !map.getLayer("b3d")) map.addLayer({id:"b3d", type:"fill-extrusion", source:src, "source-layer":"building", minzoom:14,
+    paint:{"fill-extrusion-color":LIGHT ? "#dedcd6" : "#2a3540", "fill-extrusion-height":["coalesce",["get","render_height"],["get","height"],8], "fill-extrusion-base":["coalesce",["get","render_min_height"],["get","min_height"],0], "fill-extrusion-opacity":.62, "fill-extrusion-vertical-gradient":true}}, firstSym);
+}
+map = new maplibregl.Map({container:"map", style:SYN ? synthStyle() : "https://tiles.openfreemap.org/styles/dark", center:[O.lo, O.la], zoom:16, maxPitch:75, attributionControl:!SYN, fadeDuration:0, preserveDrawingBuffer:REC});
+var LIGHT = false, loaded = false;
+map.on("error", function(){ if(!SYN && !loaded && !LIGHT){ LIGHT = true; map.setStyle("https://tiles.openfreemap.org/styles/positron"); } });
+map.on("load", function(){ loaded = true;
+  if(SYN) return start(synthRoute());
+  addBuildings();
+  realRoute().then(start, function(){ note("Routing nicht erreichbar – vereinfachter Weg", 2500); var A = [-73.9857, 40.7484]; start({coords:[A, [-73.9837, 40.7511], [-73.9812, 40.7500], [-73.9792, 40.7527]], names:["W 37th St","Madison Ave","E 39th St"], dest:"Ziel"}); });
+});
+document.getElementById("b3d").onclick = toggle3d;
+document.getElementById("bRe").onclick = restart;
+document.getElementById("bSpeed").onclick = function(){ var i = (SPEEDS.indexOf(S.speed) + 1) % SPEEDS.length; S.speed = SPEEDS[i]; this.textContent = S.speed+"×"; document.getElementById("badge").textContent = S.speed===1 ? "Demo · Echtzeit" : "Demo · Zeitraffer "+S.speed+"×"; };
+document.querySelectorAll(".mode button").forEach(function(b){ b.onclick = function(){ setMode(b.getAttribute("data-m")); }; });
+document.getElementById("badge").textContent = "Demo · Zeitraffer 10×";
+// Aufnahme: Bild für Bild von außen weiterschalten
+window.__frame = function(dt){ frame(dt); return new Promise(function(res){ var done = false, fin = function(){ if(!done){ done = true; requestAnimationFrame(function(){ res(); }); } }; map.once("render", fin); setTimeout(fin, 150); map.triggerRepaint(); }); };
+</script>
+</body>
+</html>
