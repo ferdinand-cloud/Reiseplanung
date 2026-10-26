@@ -475,10 +475,12 @@ await test("Routenoptionen je Etappe: Zeit (Abfahrt/Ankunft) und bevorzugte Verk
   await rp(`legSet("legOpt", dayLegs(cur)[${li}][1], {t:"arr", tm:"12:00"}); ALTCACHE = {}; renderSheet();`);
   const ar = await rp(`(function(){ var L = dayLegs(cur)[${li}], r = legRoute(L[0], L[1], cur), c = legCtx(L[0], L[1], r); return {b:c.base, s:r.secs}; })()`);
   ok(ar.b < 43200 && ar.b > 43200 - ar.s - 3600, "Abfahrt für Ankunft 12:00 unplausibel: "+JSON.stringify(ar));
-  // Hinweis in der aufgeklappten Etappe, Zurücksetzen
+  // keine Optionen-Zeile in der aufgeklappten Etappe; Zusammenfassung im Verkehrsmittel-Menü, Zurücksetzen
   await rp(`legOpen[cur+"|${li}"] = true; renderSheet();`); await page.waitForTimeout(100);
-  ok((await page.locator(".lo-chip").first().innerText()).includes("Ankunft bis 12:00"), "Optionen in der Etappe nicht sichtbar");
-  await click(".lo-chip"); await click("#catPop [data-act=loptreset]"); await click("#catPop [data-act=loptsave]");
+  ok(await page.locator(".lo-chip").count()===0, "Optionen-Knopf sollte nicht in der Etappe stehen");
+  await page.locator(`[data-act=lmpick][data-leg="${li}"]`).click(); await page.waitForTimeout(150);
+  ok((await page.locator("#jpMenu [data-act=loptopen]").innerText()).includes("Ankunft bis 12:00"), "Optionen im Menü nicht sichtbar");
+  await click("#jpMenu [data-act=loptopen]"); await click("#catPop [data-act=loptreset]"); await click("#catPop [data-act=loptsave]");
   ok(await rp(`legGet("legOpt", dayLegs(cur)[${li}][1])===undefined`), "Zurücksetzen löscht die Optionen nicht");
 });
 
