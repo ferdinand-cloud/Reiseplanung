@@ -665,6 +665,16 @@ await test("Privat, aber für einzelne Beobachter freigegeben", async () => {
   ok(await page.locator("#jpMenu").count()===1, "Menü schließt beim Ankreuzen");
   ok(await rp(`JSON.stringify(T().privTo)`)==='{"p:p1":["u_anna"]}', "Freigabe nicht gespeichert: "+await rp(`JSON.stringify(T().privTo)`));
   ok(await rp(`JSON.stringify(phShareTo("ph_c1"))`)==='["u_anna"]', "Foto des freigegebenen Orts nicht für Anna lesbar");
+  // im Orts-Fenster direkt unter „Sichtbarkeit“
+  await rp(`closeJpMore(); openJPop("p1", cur);`); await page.waitForTimeout(250);
+  ok(await page.locator("#jPop .pt-c").count()===2, "Beobachter-Schalter fehlen im Orts-Fenster");
+  ok(await page.locator('#jPop .pt-c[data-uid=u_anna][aria-checked=true]').count()===1, "Bestehende Freigabe nicht markiert");
+  await page.locator("#jPop .pt-c[data-uid=u_ludwig]").click(); await page.waitForTimeout(200);
+  ok(await rp(`JSON.stringify(T().privTo["p:p1"])`)==='["u_anna","u_ludwig"]', "Freigabe im Orts-Fenster wirkt nicht");
+  await shot("privat-freigabe-fenster");
+  await page.locator("#jPop .pt-c[data-uid=u_ludwig]").click(); await page.waitForTimeout(200);
+  ok(await rp(`JSON.stringify(T().privTo["p:p1"])`)==='["u_anna"]', "Freigabe lässt sich nicht zurücknehmen");
+  await rp(`closeJPop ? closeJPop() : ($("jPop").hidden = true)`);
   // Notiz-Freigabe auf öffentlichem Ort
   await rp(`closeJpMore(); setPrivTo("n", "p2", "u_ludwig", true);`);
   const r = await rp(`(function(){ var M = T(), pub = pubOf(M), a = shareFor(M, "u_anna"), l = shareFor(M, "u_ludwig"), x = shareFor(M, "u_x");

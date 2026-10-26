@@ -2350,6 +2350,13 @@ body.navon .top,body.navon #rail{visibility:hidden}
 #ov .lvl.k{font-weight:700;font-size:12.5px}
 .ch-phc img.ch-phlz{min-height:120px;background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .ch-phc img.ch-phlz.missing{min-height:120px}
+.pt-in{margin-top:10px}
+.pt-l{font-size:12.5px;font-weight:700;color:var(--muted);margin:0 2px 6px}
+.pt-row{display:flex;flex-wrap:wrap;gap:6px}
+.pt-c{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:4px 11px 4px 4px;background:none;color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.pt-c[aria-checked="true"]{background:color-mix(in srgb,#0A84FF 16%,transparent);border-color:#0A84FF}
+.pt-c .ck{color:#0A84FF;min-width:0}
+.pt-c .ck:empty{display:none}
 .vp-share{border-top:1px solid var(--line);margin-top:6px;padding-top:2px}
 .vp-share > button{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;border-radius:11px;padding:8px 10px;font:600 15px/1.2 var(--f-body);color:var(--ink);text-align:left;cursor:pointer}
 .vp-share > button:active{background:var(--fill)}
@@ -3610,6 +3617,15 @@ function privToHTML(kind, key){
   return "<div class=\"frp-h vp-share\"><div class=\"vp-h\">Trotzdem freigeben für</div>"+vs.map(function(u){ var c = on.indexOf(u) > -1;
     return "<button type=\"button\" role=\"menuitemcheckbox\" data-act=\"privto\" data-k=\""+kind+"\" data-key=\""+esc(key)+"\" data-uid=\""+esc(u)+"\" aria-checked=\""+c+"\"><span class=\"ai\">"+chAv(u, "ch-av xs")+"</span><span class=\"cm-t\"><b>"+esc(viewerName(u))+"</b><small>Beobachter</small></span><b class=\"ck\">"+(c ? "✓" : "")+"</b></button>"; }).join("")+
     "<p class=\"vp-note\">Nur die Ausgewählten sehen "+(kind==="p" ? "den Ort mit Notiz und Fotos" : kind==="n" ? "die Notiz" : "das Foto")+". Für alle anderen Beobachter bleibt es privat.</p></div>";
+}
+// im Orts-Fenster: Beobachter als Schalter direkt unter „Sichtbarkeit“
+function privToInline(kind, key){
+  if(isRO() || !canPriv()) return "";
+  var vs = tripViewers(), on = privToOf(kind, key);
+  if(!vs.length) return "<p class=\"note vis-hint\">Für einzelne Beobachter freigeben: Diese Reise hat noch keine Beobachter.</p>";
+  return "<div class=\"pt-in\"><div class=\"pt-l\">Trotzdem freigeben für</div><div class=\"pt-row\">"+vs.map(function(u){ var c = on.indexOf(u) > -1;
+    return "<button type=\"button\" class=\"pt-c\" role=\"switch\" data-act=\"privto\" data-k=\""+kind+"\" data-key=\""+esc(key)+"\" data-uid=\""+esc(u)+"\" aria-checked=\""+c+"\">"+chAv(u, "ch-av xs")+"<span>"+esc(viewerName(u))+"</span><b class=\"ck\">"+(c ? "✓" : "")+"</b></button>"; }).join("")+
+    "</div><p class=\"note vis-hint\">"+(on.length ? "Nur die ausgewählten Beobachter sehen den Ort mit Notiz und Fotos." : "Tippe Beobachter an, die den Ort trotzdem sehen dürfen.")+"</p></div>";
 }
 // Ausschnitt für einen Beobachter: freigegebene private Orte (mit Notiz, Fotos, Bewertung), Notizen und Fotos
 function shareFor(M, u){
@@ -9271,6 +9287,7 @@ function renderJPop(){
     h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Sichtbarkeit</div><div class=\"vis-seg\" role=\"radiogroup\" aria-label=\"Sichtbarkeit\">"+
       [["priv", ILOCK+"Privat", "nur Mitreisende"], ["trip", VISTRIP+"Reise", "+ Beobachter"], ["pub", VISPUB+"Freunde", vis1 ? "veröffentlicht" : "nach Besuch"]].map(function(o){
         return "<button type=\"button\" role=\"radio\" data-act=\"vis\" data-v=\""+o[0]+"\" aria-checked=\""+(vv===o[0])+"\" class=\"vs-"+o[0]+(o[0]==="pub" && !vis1 ? " off" : "")+"\"><b>"+o[1]+"</b><small>"+o[2]+"</small></button>"; }).join("")+"</div>"+
+      (vv==="priv" ? privToInline("p", jp.pid) : "")+
       (vv!=="priv" ? "<p class=\"note vis-hint\">"+(vv==="pub" ? "Freunde sehen Ort und Bewertung. Notiz und Fotos gibst du über das Auge einzeln für Freunde frei." : "Notiz und Fotos stellst du über das Auge einzeln auf Privat oder Reise.")+"</p>" : "")+
       (vv==="pub" && !recShare ? "<p class=\"note\" style=\"margin:6px 2px 0\">Teilen mit Freunden ist in den Einstellungen ausgeschaltet – der Ort wird erst geteilt, wenn du es wieder einschaltest.</p>" : "")+"</div>"; }
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : (function(){ var nv = itemVis("n", rootOf(jp.pid), jp.pid); return "<button type=\"button\" class=\"jp-pv vlv-"+nv+"\" data-act=\"itemvispick\" data-k=\"n\" data-key=\""+rootOf(jp.pid)+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit der Notiz: "+VISLBL[nv]+"\">"+IEYE+VISLBL[nv]+"</button>"; })()) : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+rootOf(jp.pid)+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
