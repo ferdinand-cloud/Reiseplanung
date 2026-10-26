@@ -7758,12 +7758,33 @@ function segGet(a, b){
 /* ein Teilstück zu Fuß; bei unsinnigem Umweg (ungünstig eingerastet, z. B. auf einem Parkweg ohne Zugang) andere Einrastpunkte probieren */
 function walkRoute(a, b){
   if(dist(a, b) < 15) return Promise.resolve({geometry:{coordinates:[]}, distance:dist(a, b)});
-  var u = OSRMF+"route/v1/driving/"+(+a.lo).toFixed(6)+","+(+a.la).toFixed(6)+";"+(+b.lo).toFixed(6)+","+(+b.la).toFixed(6)+"?overview=full&geometries=geojson";
+  var u = OSRMF+"route/v1/driving/"+(+a.lo).toFixed(6)+","+(+a.la).toFixed(6)+";"+(+b.lo).toFixed(6)+","+(+b.la).toFixed(6)+"?overview=full&geometries=geojson&steps=true";
   return fetch(u).then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(function(j){
     var rt = j.routes && j.routes[0]; if(!rt || !rt.geometry) return null;
+    // Punkt an einem Anleger rastet auf der Fährlinie ein: der „Fußweg“ fährt dann erst mit der Fähre (z. B. Pier 79 → Battery Park City)
+    var fe = ferryEnd(rt);
+    if(fe) return walkUnferry(a, b, fe).then(function(r2){ return r2 || null; });
     if(walkAbsurd(a, b, rt.distance)) return walkResnap(a, b).then(function(r2){ return r2 && r2.distance < rt.distance ? r2 : rt; });
     return rt;
   });
+}
+// Fährabschnitt am Anfang (1) oder Ende (2) eines Fußwegs; mitten im Weg (echte Überfahrt) zählt nicht
+function ferryEnd(rt){
+  var st = []; (rt.legs||[]).forEach(function(l){ st = st.concat(l.steps||[]); });
+  st = st.filter(function(x){ return x.distance > 0; }); if(!st.length) return 0;
+  return st[0].mode==="ferry" ? 1 : st[st.length-1].mode==="ferry" ? 2 : 0;
+}
+function walkUnferry(a, b, fe){
+  var q = fe===1 ? a : b;
+  return fetch(OSRMF+"nearest/v1/driving/"+(+q.lo).toFixed(6)+","+(+q.la).toFixed(6)+"?number=10").then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+    var ws = (j && j.waypoints || []).filter(function(x){ return x.distance < 150; }).map(function(x){ return x.location; }).slice(0, 8);
+    return Promise.all(ws.map(function(L){
+      var A = fe===1 ? L : [+a.lo, +a.la], B = fe===1 ? [+b.lo, +b.la] : L;
+      return fetch(OSRMF+"route/v1/driving/"+A[0].toFixed(6)+","+A[1].toFixed(6)+";"+B[0].toFixed(6)+","+B[1].toFixed(6)+"?overview=full&geometries=geojson&steps=true")
+        .then(function(r){ return r.ok ? r.json() : null; }).then(function(j2){ var rt = j2 && j2.routes && j2.routes[0]; if(!rt || ferryEnd(rt)) return null;
+          rt.distance += dist(q, {la:L[1], lo:L[0]}); return rt; }).catch(function(){ return null; });
+    }));
+  }).then(function(rs){ return rs.filter(Boolean).sort(function(x, y){ return x.distance - y.distance; })[0] || null; }).catch(function(){ return null; });
 }
 function walkAbsurd(a, b, d){ var s = dist(a, b); return d > 1.8*s + 300; }
 var OSRMF = "https://routing.openstreetmap.de/routed-foot/";

@@ -47,14 +47,22 @@ async function newPage(){
     if(u.includes("routed-bike/route") || (u.includes("routed-car/route") && !u.includes("steps=true"))){ OSRMREQ.push(u); const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
       const coords = []; pts.forEach((p, i) => { if(i){ const q = pts[i-1]; coords.push([q[0] + (p[0]-q[0])*0.5 + 0.0008, q[1] + (p[1]-q[1])*0.5]); } coords.push(p); });
       return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:1800, duration:u.includes("routed-car") ? 420 : undefined, geometry:{type:"LineString", coordinates:coords}}]}) }); }
-    if(u.includes("routed-foot/route") && !u.includes("steps=true") && globalThis.FOOTMOCK){ OSRMREQ.push(u);
+    if(u.includes("routed-foot/nearest") && globalThis.FOOTMOCK){ const p = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(",").map(Number);
+      // „Anleger“ (Längengrad -74.0100): die vier nächsten Punkte liegen auf Fährlinien, erst der fünfte an Land
+      const ws = Math.abs(p[0] + 74.01) < 0.0002 ? [0, 1, 2, 3].map(i => ({location:[p[0] + 0.00003*i, p[1] + 0.00003*i], distance:3*i})).concat([{location:[p[0] + 0.0004, p[1]], distance:34}]) : [{location:p, distance:0}];
+      return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", waypoints:ws}) }); }
+    if(u.includes("routed-foot/route") && !u.includes("continue_straight") && globalThis.FOOTMOCK){ OSRMREQ.push(u);
       const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
+      // vom „Anleger“ aus: OSRM rastet auf der Fährlinie ein und fährt erst weit mit der Fähre
+      if(Math.abs(pts[0][0] + 74.01) < 0.0002){ const A = pts[0], B = pts[pts.length-1], F = [A[0] - 0.01, A[1] - 0.04];
+        return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:9500, geometry:{type:"LineString", coordinates:[A, F, B]},
+          legs:[{steps:[{mode:"ferry", distance:4500}, {mode:"walking", distance:5000}, {mode:"walking", distance:0}]}]}]}) }); }
       // „Wasser“-Punkt (Längengrad -73.9690): kein Weg
       if(pts.some(p => Math.abs(p[0] + 73.969) < 0.0002)) return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"NoRoute", routes:[]}) });
       const A = pts[0], B = pts[pts.length-1], M = [A[0], B[1]], co = [A, [(A[0]+M[0])/2, (A[1]+M[1])/2], M, B];
       const dm = Math.abs(A[0]-B[0])*84000 + Math.abs(A[1]-B[1])*111000;
       return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:dm, geometry:{type:"LineString", coordinates:co}}]}) }); }
-    if((u.includes("routed-foot/route") || u.includes("routed-car/route")) && u.includes("steps=true")){ OSRMREQ.push(u); const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
+    if((u.includes("routed-foot/route") || u.includes("routed-car/route")) && u.includes("steps=true") && (u.includes("continue_straight") || u.includes("routed-car"))){ OSRMREQ.push(u); const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
       const A = pts[0], B = pts[pts.length-1], M = [A[0], B[1]], co = [];
       for(let i = 0; i <= 10; i++) co.push([A[0], A[1] + (M[1]-A[1])*i/10]); for(let i = 1; i <= 10; i++) co.push([M[0] + (B[0]-M[0])*i/10, M[1]]);
       return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:1200, duration:900, geometry:{type:"LineString", coordinates:co},
@@ -728,6 +736,11 @@ await test("Fußweg mit Wegpunkten: echter Weg auch wenn ein Teilstück fehlt, b
     ok(n2 > 6, "Nach Bewegung des Standorts wieder Luftlinie ("+n2+" Punkte)");
     await page.waitForTimeout(800);
     ok(OSRMREQ.length - before === 1, "Es sollten nicht alle Teilstücke neu berechnet werden ("+(OSRMREQ.length - before)+" Anfragen)");
+    // Start am Fähranleger: kein „Fußweg“ über die Fährlinie, sondern ab dem nächsten Punkt an Land
+    const fy = await rp(`(function(){ WALKC = {}; SEGW = {}; LASTW = {}; window.__fa = {la:40.7600, lo:-74.0100}; window.__fb = {la:40.7561, lo:-73.9930}; return walkPath(__fa, __fb, []).length; })()`);
+    await page.waitForFunction(() => window.__rp(`!!(WALKC[wKey(__fa, __fb, [])] || {}).p`), null, {timeout:5000}).catch(() => {});
+    const fp = await rp(`(function(){ var c = WALKC[wKey(__fa, __fb, [])] || {}; return {p:!!c.p, south:(c.p||[]).some(function(q){ return q[0] < 40.75; }), lo:c.p && c.p[0] && c.p[0][1]}; })()`);
+    ok(fp.p && !fp.south && Math.abs(fp.lo + 74.0096) < 1e-4, "Fußweg vom Anleger fährt mit der Fähre: "+JSON.stringify(fp));
     // anderer, weit entfernter Start zum selben Ziel (z. B. neuer Stopp davor): nicht den alten Weg von dort zeigen
     const far = await rp(`(function(){ var a3 = {la:40.7600, lo:-74.0035}, p = walkPath(a3, __wt.b, __wt.v); return {n:p.length, la:p[1].la}; })()`);
     ok(far.n === 4 && Math.abs(far.la - 40.7240) < 1e-6, "Weg von entferntem Start übernimmt alten Weg eines anderen Starts ("+far.n+" Punkte)");
