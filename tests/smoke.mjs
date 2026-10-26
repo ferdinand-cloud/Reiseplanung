@@ -49,7 +49,8 @@ async function newPage(){
       return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:1800, duration:u.includes("routed-car") ? 420 : undefined, geometry:{type:"LineString", coordinates:coords}}]}) }); }
     if(u.includes("routed-foot/nearest") && globalThis.FOOTMOCK){ const p = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(",").map(Number);
       // „Anleger“ (Längengrad -74.0100): die vier nächsten Punkte liegen auf Fährlinien, erst der fünfte an Land
-      const ws = Math.abs(p[0] + 74.01) < 0.0002 ? [0, 1, 2, 3].map(i => ({location:[p[0] + 0.00003*i, p[1] + 0.00003*i], distance:3*i})).concat([{location:[p[0] + 0.0004, p[1]], distance:34}]) : [{location:p, distance:0}];
+      // (wie Pier 79: alle Punkte in der Nähe liegen auf der Anleger-Plattform, erst weiter Richtung Ziel geht es an Land)
+      const ws = Math.abs(p[0] + 74.01) < 0.0002 ? [0, 1, 2, 3, 4].map(i => ({location:[p[0] + 0.00003*i, p[1] + 0.00003*i], distance:3*i})) : [{location:p, distance:0}];
       return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", waypoints:ws}) }); }
     if(u.includes("routed-foot/route") && !u.includes("continue_straight") && globalThis.FOOTMOCK){ OSRMREQ.push(u);
       const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
@@ -740,7 +741,7 @@ await test("Fußweg mit Wegpunkten: echter Weg auch wenn ein Teilstück fehlt, b
     const fy = await rp(`(function(){ WALKC = {}; SEGW = {}; LASTW = {}; window.__fa = {la:40.7600, lo:-74.0100}; window.__fb = {la:40.7561, lo:-73.9930}; return walkPath(__fa, __fb, []).length; })()`);
     await page.waitForFunction(() => window.__rp(`!!(WALKC[wKey(__fa, __fb, [])] || {}).p`), null, {timeout:5000}).catch(() => {});
     const fp = await rp(`(function(){ var c = WALKC[wKey(__fa, __fb, [])] || {}; return {p:!!c.p, south:(c.p||[]).some(function(q){ return q[0] < 40.75; }), lo:c.p && c.p[0] && c.p[0][1]}; })()`);
-    ok(fp.p && !fp.south && Math.abs(fp.lo + 74.0096) < 1e-4, "Fußweg vom Anleger fährt mit der Fähre: "+JSON.stringify(fp));
+    ok(fp.p && !fp.south && fp.lo > -74.0099 && fp.lo < -74.0080, "Fußweg vom Anleger fährt mit der Fähre: "+JSON.stringify(fp));
     // auf dem Gerät gemerkter alter Fährumweg wird einmal neu berechnet
     await rp(`(function(){ var k = wKey(__fa, __fb, []); SEGW = {}; WALKC[k] = {p:[[40.7600,-74.0100],[40.7200,-74.0200],[40.7561,-73.9930]], d:9500, sv:2}; walkPath(__fa, __fb, []); })()`);
     await page.waitForFunction(() => window.__rp(`!((WALKC[wKey(__fa, __fb, [])] || {}).p || [[0]]).some(function(q){ return q[0] < 40.75; })`), null, {timeout:5000}).catch(() => {});

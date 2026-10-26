@@ -7778,8 +7778,11 @@ function walkUnferry(a, b){
         rt.distance += dist(a, {la:A[1], lo:A[0]}) + dist({la:B[1], lo:B[0]}, b); return rt; }).catch(function(){ return null; });
   }
   var A0 = [+a.lo, +a.la], B0 = [+b.lo, +b.la];
+  // Anleger-Plattformen hängen oft nur über die Fähre am Wegenetz: auch Punkte 80/160 m Richtung Ziel probieren
+  function toward(p, q, m){ var d = dist(p, q); if(d < m*1.5) return []; var t = m/d; return [[+p.lo + (q.lo - p.lo)*t, +p.la + (q.la - p.la)*t]]; }
   return Promise.all([near(a), near(b)]).then(function(ns){
-    return Promise.all(ns[0].map(function(L){ return route(L, B0); }).concat(ns[1].map(function(L){ return route(A0, L); })));
+    var ca = ns[0].concat(toward(a, b, 80), toward(a, b, 160)), cb = ns[1].concat(toward(b, a, 80), toward(b, a, 160));
+    return Promise.all(ca.map(function(L){ return route(L, B0); }).concat(cb.map(function(L){ return route(A0, L); })));
   }).then(function(rs){ return rs.filter(Boolean).sort(function(x, y){ return x.distance - y.distance; })[0] || null; }).catch(function(){ return null; });
 }
 function walkAbsurd(a, b, d){ var s = dist(a, b); return d > 1.8*s + 300; }
