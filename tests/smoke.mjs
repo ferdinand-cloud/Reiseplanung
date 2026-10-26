@@ -44,10 +44,10 @@ async function newPage(){
       {station_id:"S1", num_bikes_available:5, num_ebikes_available:2, num_docks_available:20, is_installed:1, is_renting:1, is_returning:1},
       {station_id:"S2", num_bikes_available:0, num_ebikes_available:0, num_docks_available:7, is_installed:1, is_renting:1, is_returning:1},
       {station_id:"S3", num_bikes_available:2, num_ebikes_available:0, num_docks_available:0, is_installed:1, is_renting:1, is_returning:1}]}}) });
-    if(u.includes("routed-bike/route")){ OSRMREQ.push(u); const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
+    if(u.includes("routed-bike/route") || (u.includes("routed-car/route") && !u.includes("steps=true"))){ OSRMREQ.push(u); const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
       const coords = []; pts.forEach((p, i) => { if(i){ const q = pts[i-1]; coords.push([q[0] + (p[0]-q[0])*0.5 + 0.0008, q[1] + (p[1]-q[1])*0.5]); } coords.push(p); });
-      return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:1800, geometry:{type:"LineString", coordinates:coords}}]}) }); }
-    if(u.includes("routed-foot/route") && u.includes("steps=true")){ const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
+      return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:1800, duration:u.includes("routed-car") ? 420 : undefined, geometry:{type:"LineString", coordinates:coords}}]}) }); }
+    if((u.includes("routed-foot/route") || u.includes("routed-car/route")) && u.includes("steps=true")){ OSRMREQ.push(u); const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
       const A = pts[0], B = pts[pts.length-1], M = [A[0], B[1]], co = [];
       for(let i = 0; i <= 10; i++) co.push([A[0], A[1] + (M[1]-A[1])*i/10]); for(let i = 1; i <= 10; i++) co.push([M[0] + (B[0]-M[0])*i/10, M[1]]);
       return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:1200, duration:900, geometry:{type:"LineString", coordinates:co},
@@ -388,7 +388,7 @@ await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad",
   const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][0] && L[i][0].id==="p1" && L[i][1] && L[i][1].id==="p2") return i; } return -1; })()`);
   ok(li > -1, "Etappe Katz Deli → Washington Square nicht gefunden");
   await page.locator(`[data-act=lmpick][data-leg="${li}"]`).click(); await page.waitForTimeout(150);
-  ok(await page.locator("#jpMenu [data-act=lmode]").count()===4, "Menü bietet nicht Zu Fuß / U-Bahn / Fähre / Citi Bike");
+  ok(await page.locator("#jpMenu [data-act=lmode]").count()===5, "Menü bietet nicht Zu Fuß / U-Bahn / Fähre / Auto / Citi Bike");
   ok((await page.locator("#jpMenu [data-mode=bike]").innerText()).includes("Min."), "Citi Bike ohne Zeitangabe im Menü");
   await page.locator("#jpMenu [data-act=lmode][data-mode=bike]").click(); await page.waitForTimeout(250);
   const leg = await page.locator(".leg.lbk").first().innerText();
@@ -582,6 +582,59 @@ await test("Wegpunkte lenken auch U-Bahn & Bus: Route führt durch den Wegpunkt"
   await shot("oepnv-wegpunkt");
 });
 
+await test("Auto als Verkehrsmittel: Etappe mit Fahrweg, Karte, Navigation", async () => {
+  await seed();
+  OSRMREQ.length = 0;
+  const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][0] && L[i][0].id==="p2" && L[i][1] && L[i][1].id==="p3") return i; } return -1; })()`);
+  ok(li > -1, "Etappe nicht gefunden");
+  await rp(`legsList = true; select(null); setSheet("full"); renderSheet();`); await page.waitForTimeout(150);
+  await page.locator(`[data-act=lmpick][data-leg="${li}"]`).click(); await page.waitForTimeout(150);
+  ok(await page.locator("#jpMenu [data-act=lmode][data-mode=car]").count()===1, "Auto fehlt im Menü");
+  await page.locator("#jpMenu [data-act=lmode][data-mode=car]").click(); await page.waitForTimeout(900);
+  ok(await rp(`legMode(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1])`)==="car", "Auto-Modus nicht gespeichert");
+  ok(OSRMREQ.some(u => u.includes("routed-car/route")), "Fahrweg wird nicht berechnet");
+  const leg = await page.locator(".leg.lcar").first().innerText();
+  ok(leg.includes("7 Min.") && leg.includes("mit dem Auto"), "Auto-Etappe falsch: "+leg);
+  ok(await rp(`(drawOverlay(), ov.innerHTML.length > 0) && !!carPath(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1], [])`), "Fahrweg nicht übernommen");
+  await rp(`me = {la:40.7308, lo:-73.9973, acc:8}; navStart(P("p3"), "car");`);
+  await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts && !NAV.busy)"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`!!(NAV && NAV.segs && NAV.segs[0].kind==="car")`), "Navigation mit dem Auto fehlt");
+  ok(OSRMREQ.some(u => u.includes("routed-car/route") && u.includes("steps=true")), "Navigation nutzt nicht den Auto-Router");
+});
+
+await test("3D-Navigation: geneigte Karte, Weg unter den Gebäuden, 3D-Pfeil, Schalter 2D/3D, ÖPNV flach", async () => {
+  await seed();
+  await rp(`lsSet("rp-nav-3d", "1"); nav3d = true; me = {la:40.7215, lo:-73.9890, acc:8}; navStart({la:40.7280, lo:-73.9960, n:"Bleecker"}, "walk");`);
+  await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts && !NAV.busy)"), null, {timeout:6000}).catch(() => {});
+  await rp(`NAV.follow = true; navFollow(true);`); await page.waitForFunction(() => window.__rp("map.getPitch() > 40 && !map.isMoving()"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`nav3dOn()`), "3D nicht aktiv beim Gehen");
+  ok(await rp(`map.getPitch()`) > 40, "Karte nicht geneigt: "+await rp(`map.getPitch()`));
+  ok(await rp(`map.getSource("nv3-rt") && map.getSource("nv3-rt")._data.geometry.coordinates.length > 2`), "Weg nicht als Kartenebene");
+  ok(await rp(`navSvg()===""`), "Flacher Weg wird im 3D-Modus zusätzlich gezeichnet");
+  // nah an der Abbiegung: 3D-Pfeil erscheint
+  await rp(`(function(){ var t = NAV.steps.filter(function(x){ return x.turn; })[0]; var q = navAt(NAV, NAV.cum[t.i] - 30); me = {la:q.la, lo:q.lo, acc:5}; navOnPos(); })()`);
+  await page.waitForTimeout(800);
+  ok(await rp(`NAV.arrowFor!=null && map.getSource("nv3-arrow")._data.geometry.type==="Polygon"`), "3D-Pfeil fehlt vor der Abbiegung");
+  await page.waitForFunction(() => window.__rp(`map.getPaintProperty("nv3-arrow", "fill-extrusion-height") > 1`), null, {timeout:4000}).catch(() => {});
+  ok(await rp(`map.getPaintProperty("nv3-arrow", "fill-extrusion-height") > 1`), "3D-Pfeil wächst nicht heraus");
+  const sd = await rp(`(function(){ var t = NAV.steps.filter(function(x){ return x.turn; })[0]; return NAV.cum[t.i] - NAV.s; })()`);
+  ok(sd > 20 && sd < 40, "Position entlang des Wegs ungenau ("+sd+" m vor der Kurve, erwartet ca. 30)");
+  await shot("nav-3d");
+  // Schalter: 2D
+  ok(await page.locator("#navUi [data-act=nav3d]").count()===1, "2D/3D-Schalter fehlt");
+  await click("#navUi [data-act=nav3d]");
+  await page.waitForFunction(() => window.__rp("map.getPitch() < 5 && !map.isMoving()"), null, {timeout:5000}).catch(() => {});
+  ok(!(await rp(`nav3dOn()`)) && await rp(`map.getPitch()`) < 5, "2D schaltet nicht zurück");
+  ok(await rp(`lsGet("rp-nav-3d")`)==="0", "Wahl wird nicht gemerkt");
+  await click("#navUi [data-act=nav3d]"); await page.waitForTimeout(300);
+  // ÖPNV: kein 3D
+  await rp(`navStart({la:40.7680, lo:-73.9819, n:"Columbus Circle"}, "oepnv");`);
+  await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts && !NAV.busy)"), null, {timeout:6000}).catch(() => {});
+  ok(!(await rp(`nav3dOn()`)) && await page.locator("#navUi [data-act=nav3d]").count()===0, "ÖPNV sollte flach bleiben");
+  await rp(`navEnd(true)`); await page.waitForFunction(() => window.__rp("map.getPitch() < 5 && !map.isMoving()"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`map.getPitch()`) < 5, "Nach dem Ende bleibt die Karte geneigt");
+});
+
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
   await seed();
   await rp(`select("p6")`); await page.waitForTimeout(200);
@@ -635,8 +688,8 @@ await test("Citi Bike: Radweg folgt den Wegpunkten, keine Luftlinie", async () =
 
 await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abhaken", async () => {
   await seed();
-  await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; openGo("p2");`); await page.waitForTimeout(200);
-  ok(await page.locator("#catPop .gp-nav [data-act=navstart]").count()===4, "Navigation in der App fehlt im Routen-Pop-up");
+  await rp(`nav3d = false; me = {la:40.7215, lo:-73.9890, acc:8}; openGo("p2");`); await page.waitForTimeout(200); // prüft die flache 2D-Ansicht
+  ok(await page.locator("#catPop .gp-nav [data-act=navstart]").count()===5, "Navigation in der App fehlt im Routen-Pop-up");
   await click("#catPop [data-act=navstart][data-mode=walk]");
   await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts)"), null, {timeout:5000}).catch(() => {});
   ok(await rp(`!!(NAV && NAV.pts && NAV.pts.length > 5)`), "Weg für die Navigation nicht berechnet");
@@ -689,7 +742,7 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   ok(Math.abs(await rp(`map.getBearing()`) - b1) < 60, "Karte springt an der Kurve sofort um statt weich zu drehen"); await page.waitForTimeout(1500);
   const b2 = await rp(`Math.round(map.getBearing())`);
   ok(Math.abs(b1) < 10 && Math.abs(Math.abs(b2) - 90) < 15, "Karte dreht sich nicht mit der Kurve mit ("+b1+" → "+b2+")");
-  await click("#navUi [data-act=navrot]"); await page.waitForTimeout(800);
+  await click("#navUi [data-act=navrot]"); await page.waitForFunction(() => window.__rp("Math.abs(map.getBearing()) < 2 && !map.isMoving()"), null, {timeout:4000}).catch(() => {});
   ok(Math.abs(await rp(`map.getBearing()`)) < 2, "Norden oben stellt die Karte nicht zurück");
   await rp(`(function(){ var q = NAV.pts[1]; me = {la:40.7215, lo:-73.9890, acc:8}; NAV.pi = 0; navProgress(); navRender(); })()`);
   // Ausrichtung: kurzes Wegdrehen des Handys löst nichts aus, dauerhafte Abweichung schon
@@ -778,7 +831,7 @@ await test("Routen-Pop-up: ein Knopf „In anderer App navigieren“ mit Auswahl
   await seed();
   await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; openGo("p2");`); await page.waitForTimeout(200);
   ok(await page.locator("#catPop .gp-modes, #catPop .gp-app, #catPop [data-act=goin]").count()===0, "Alte Verkehrsmittel-Kacheln / App-Wahl / U-Bahn-Weg-Knopf noch da");
-  ok(await page.locator("#catPop [data-act=navstart]").count()===4, "In-App-Navigation fehlt");
+  ok(await page.locator("#catPop [data-act=navstart]").count()===5, "In-App-Navigation fehlt");
   ok(await visible("#catPop [data-act=goext]"), "Knopf „In anderer App navigieren“ fehlt");
   await click("#catPop [data-act=goext]"); await page.waitForTimeout(250);
   await shot("route-andere-app");
@@ -798,7 +851,7 @@ await test("Navigation zu U-Bahn- und Citi-Bike-Stationen", async () => {
   await rp(`select("sub:${si}")`); await page.waitForTimeout(150);
   ok((await page.locator("#card").innerText()).includes("U-Bahn-Station"), "Stations-Pop-up fehlt");
   await click("#card [data-act=navpick]");
-  ok(await page.locator("#jpMenu [data-act=navgo]").count()===2, "Menü zur Station sollte Zu Fuß und Citi Bike bieten");
+  ok(await page.locator("#jpMenu [data-act=navgo]").count()===3, "Menü zur Station sollte Zu Fuß, Citi Bike und Auto bieten");
   await click("#jpMenu [data-act=navgo][data-mode=walk]");
   await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts)"), null, {timeout:5000}).catch(() => {});
   ok(await rp(`NAV && /Bleecker/.test(NAV.tgt.n) && !!NAV.pts`), "Navigation zur U-Bahn-Station startet nicht");

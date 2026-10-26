@@ -2356,7 +2356,9 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .lo-chip{display:flex;align-items:center;gap:6px;margin:6px 0 2px;border:0;border-radius:999px;padding:6px 11px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);background:color-mix(in srgb,var(--ink) 7%,transparent);cursor:pointer;max-width:100%}
 .lo-chip svg{width:15px;height:15px;flex:0 0 auto}
 .lo-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gp-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
+.nav-b.n3d{min-width:44px;font:800 14px/1 var(--f-body);letter-spacing:.02em}
+.nav-b.n3d.on{background:#0A84FF;color:#fff}
+.gp-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:6px}
 .gp-nav button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;border:0;border-radius:14px;background:#0b8a4b;color:#fff;font:inherit;cursor:pointer}
 .gp-nav button svg{width:20px;height:20px}
 .gp-nav button b{font-size:12px;line-height:1.15;text-align:center}
@@ -6032,7 +6034,7 @@ function viaAt(q, k){
 function openViaPop(li, vi){
   var lp = dayLegs(cur)[li]; if(!lp) return; var n = legVia(lp[0], lp[1]).length;
   var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Wegpunkt\"><div class=\"pop-head\"><h4>Wegpunkt</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
-    "<p class=\"note\" style=\"margin:0 2px 10px\">Lenkt die Route ("+esc(LMNAME[legMode(lp[0], lp[1])] || "Zu Fuß")+") von „"+esc(lp[0].n || "Hotel")+"“ nach „"+esc(lp[1].n || "Hotel")+"“"+(legMode(lp[0], lp[1])==="bike" ? " (Radweg zwischen Abhol- und Abgabestation)" : legMode(lp[0], lp[1])==="walk" ? "" : " – sie führt durch jeden Wegpunkt, mit eigener Verbindung je Abschnitt")+".</p><div class=\"pop-list addlist\">"+
+    "<p class=\"note\" style=\"margin:0 2px 10px\">Lenkt die Route ("+esc(LMNAME[legMode(lp[0], lp[1])] || "Zu Fuß")+") von „"+esc(lp[0].n || "Hotel")+"“ nach „"+esc(lp[1].n || "Hotel")+"“"+(legMode(lp[0], lp[1])==="bike" ? " (Radweg zwischen Abhol- und Abgabestation)" : legMode(lp[0], lp[1])==="walk" || legMode(lp[0], lp[1])==="car" ? "" : " – sie führt durch jeden Wegpunkt, mit eigener Verbindung je Abschnitt")+".</p><div class=\"pop-list addlist\">"+
     "<button type=\"button\" data-act=\"viadel\" data-leg=\""+li+"\" data-vi=\""+vi+"\" class=\"del\"><span class=\"ai warn\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/></svg></span><span class=\"dt\"><b>Wegpunkt löschen</b></span></button>"+
     (n > 1 ? "<button type=\"button\" data-act=\"viaclear\" data-leg=\""+li+"\"><span class=\"ai\">"+VIAICO+"</span><span class=\"dt\"><b>Alle "+n+" Wegpunkte dieser Etappe löschen</b></span></button>" : "")+
     "<button type=\"button\" data-act=\"viamovepick\" data-leg=\""+li+"\" data-vi=\""+vi+"\"><span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 7h11l-3-3M16 13H5l3 3\"/></svg></span><span class=\"dt\"><b>Andere Strecke zuordnen …</b><small>Die beiden Punkte aus dem Tagesplan wählen</small></span></button>"+
@@ -6858,6 +6860,13 @@ function drawOverlay(){
           [br.s1.s, br.s2.s].forEach(function(st0){ var z = pt(st0); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"6\" fill=\"#fff\" stroke=\""+CBCOL+"\" stroke-width=\"3\" opacity=\""+op+"\"/>"; });
           return;
         }
+      }
+      if(legMode(pair[0], pair[1])==="car"){
+        var cpp = carPath(pair[0], pair[1], vv), cps = cpp ? cpp.p : [pair[0]].concat(vv.map(function(q){ return {la:q[0], lo:q[1]}; }), [pair[1]]);
+        var dc = cps.map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
+        s += "<path d=\""+dc+"\" stroke=\"var(--land)\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\""+(.9*op)+"\"/>";
+        s += "<path d=\""+dc+"\" stroke=\""+col+"\" stroke-width=\"4.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(cpp ? "" : " stroke-dasharray=\"6 6\"")+" opacity=\""+op+"\"/>";
+        return;
       }
       if(legMode(pair[0], pair[1])==="walk" || legMode(pair[0], pair[1])==="bike"){
         var hotelLeg = HT && (pair[0]===HT || pair[1]===HT);
@@ -8073,7 +8082,7 @@ function renderGo(live){
   h += "<div class=\"gp-lbl\">Start</div><div class=\"gp-from\" role=\"group\" aria-label=\"Start\"><button type=\"button\" data-act=\"gofrom\" data-from=\"me\" aria-pressed=\""+(goSt.from==="me")+"\">Mein Standort</button>";
   if(prev) h += "<button type=\"button\" data-act=\"gofrom\" data-from=\"prev\" aria-pressed=\""+(goSt.from==="prev")+"\">"+(D && prev===D.hotel ? "Hotel" : "Vorheriger Stopp")+": "+esc(prev.n)+"</button>";
   h += "</div><div class=\"gp-lbl\">In der App navigieren</div><div class=\"gp-nav\" role=\"group\" aria-label=\"In der App navigieren\">"+
-    [["walk", LMWALK, "Zu Fuß"], ["bike", LMBIKE, "Citi Bike"], ["oepnv", LMSUB, "U-Bahn & Bus"], ["ferry", LMFERRY, "Fähre"]].map(function(m){ return "<button type=\"button\" data-act=\"navstart\" data-mode=\""+m[0]+"\">"+m[1]+"<b>"+m[2]+"</b></button>"; }).join("")+"</div>";
+    [["walk", LMWALK, "Zu Fuß"], ["bike", LMBIKE, "Citi Bike"], ["oepnv", LMSUB, "U-Bahn & Bus"], ["ferry", LMFERRY, "Fähre"], ["car", LMCAR, "Auto"]].map(function(m){ return "<button type=\"button\" data-act=\"navstart\" data-mode=\""+m[0]+"\">"+m[1]+"<b>"+m[2]+"</b></button>"; }).join("")+"</div>";
   // andere Karten-App: ein Knopf, dann Auswahl Apple Karten / Google Maps – das Verkehrsmittel wählt man dort
   h += "<button type=\"button\" class=\"btn g gp-ext\" data-act=\"goext\" aria-haspopup=\"dialog\" aria-expanded=\""+!!goSt.ext+"\">"+NAVGOICO+"In anderer App navigieren</button>";
   if(from==="me" && !me) h += "<p class=\"gp-note\">Dein Standort wird in der Karten-App bestimmt.</p>";
@@ -8363,7 +8372,8 @@ var LMSUB = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" st
 /* ---------- Citi Bike: Stationen und Verfügbarkeit live aus dem offenen GBFS-Feed (Lyft) ----------
    Standorte werden eine Woche auf dem Gerät gemerkt, die Verfügbarkeit (Räder/Plätze) wird höchstens jede Minute neu geholt,
    und nur solange die Ebene an ist oder eine Etappe mit dem Rad geplant ist. */
-var LMNAME = {walk:"Zu Fuß", oepnv:"U-Bahn & Bus", ferry:"Fähre", bike:"Citi Bike"};
+var LMNAME = {walk:"Zu Fuß", oepnv:"U-Bahn & Bus", ferry:"Fähre", bike:"Citi Bike", car:"Auto"};
+var LMCAR = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 16V12l2-5.2A2 2 0 0 1 8.9 5.5h6.2A2 2 0 0 1 17 6.8L19 12v4H5z\"/><path d=\"M5 12h14M6 16v2.5M18 16v2.5\"/><circle cx=\"8.3\" cy=\"14\" r=\".7\" fill=\"currentColor\"/><circle cx=\"15.7\" cy=\"14\" r=\".7\" fill=\"currentColor\"/></svg>";
 var LMFERRY = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 14l1.6 4h12.8L20 14H4zM7 14v-4h10v4M10 10V6h4v4\"/><path d=\"M2.5 21c1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1\"/></svg>";
 var FERRYNAME = {ER:"East River", RS:"Rockaway-Soundview", SG:"St. George", AS:"Astoria", SB:"South Brooklyn", SIF:"Staten Island Ferry"};
 function ferryLabel(r){ var l = r.legs.filter(function(x){ return x.t==="ride" && isFerry(x.r); })[0]; if(!l) return ""; var n = lineName(l.r); return (FERRYNAME[n] || n)+" ab "+NET.s[l.from][0].replace(/\s*\(Fähre\)$/, ""); }
@@ -8373,7 +8383,7 @@ function openLegModes(li, btn){
   var wd = walkDist(a, b, legVia(a, b)) || dist(a, b)*1.25, tr = transit(a, b, cur), br = bikeRoute(a, b);
   var mins = function(x){ return Math.max(1, Math.round(x/60))+" Min."; };
   var fa = ferryAlts(a, b, cur), fsub = fa===null ? "Fahrpläne werden geladen …" : !fa.length ? "Keine sinnvolle Fährverbindung" : mins(fa[0].secs)+" · "+esc(ferryLabel(fa[0]));
-  var rows = [["walk", LMWALK, mins(wd/1.33)+" · "+fmtDist(wd)], ["oepnv", LMSUB, tr.walk ? "Kein Umstieg sinnvoll – zu Fuß schneller" : mins(tr.secs)], ["ferry", LMFERRY, fsub], ["bike", LMBIKE, br.wait ? (CB.err ? "Daten nicht erreichbar" : "Stationen werden geladen …") : br.none ? "Keine passende Station in der Nähe" : mins(br.secs)+" · inkl. Wege zur Station"]];
+  var rows = [["walk", LMWALK, mins(wd/1.33)+" · "+fmtDist(wd)], ["oepnv", LMSUB, tr.walk ? "Kein Umstieg sinnvoll – zu Fuß schneller" : mins(tr.secs)], ["ferry", LMFERRY, fsub], ["car", LMCAR, (function(){ var cp = carPath(a, b, legVia(a, b)), ce = cp || carEst(a, b, legVia(a, b)); return (cp ? "" : "ca. ")+mins(ce.secs)+" · "+fmtDist(ce.d)+" · ohne Verkehr"; })()], ["bike", LMBIKE, br.wait ? (CB.err ? "Daten nicht erreichbar" : "Stationen werden geladen …") : br.none ? "Keine passende Station in der Nähe" : mins(br.secs)+" · inkl. Wege zur Station"]];
   jpPopover("lm"+li, btn, "<div class=\"vp-h\">Unterwegs auf dieser Etappe</div>"+rows.map(function(r){ return "<button type=\"button\" role=\"menuitemradio\" data-act=\"lmode\" data-leg=\""+li+"\" data-mode=\""+r[0]+"\" aria-checked=\""+(m===r[0])+"\"><span class=\"ai lmi\">"+r[1]+"</span><span class=\"cm-t\"><b>"+LMNAME[r[0]]+"</b><small>"+r[2]+"</small></span>"+(m===r[0] ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("")+
     "<button type=\"button\" role=\"menuitem\" class=\"lm-opt\" data-act=\"loptopen\" data-leg=\""+li+"\"><span class=\"ai lmi\">"+LOICO+"</span><span class=\"cm-t\"><b>Routenoptionen</b><small>"+esc(loptSum(legOptOf(b)).replace(/^Optionen: /, ""))+"</small></span></button>", "lmodes");
 }
@@ -8430,6 +8440,25 @@ function cbNear(p, need, maxD){
 /* Fahrradweg zwischen zwei Stationen über OSRM (Fahrrad-Profil), über die gesetzten Wegpunkte der Etappe.
    Solange der Weg nicht berechnet ist, wird keine Luftlinie gezeichnet. */
 var OSRMB = "https://routing.openstreetmap.de/routed-bike/", BIKEC = {};
+/* Auto: Weg und Fahrzeit (ohne Verkehr) über OSRM, mit Wegpunkten; Ergebnis je Strecke gemerkt */
+var OSRMC = "https://routing.openstreetmap.de/routed-car/", CARC = {};
+function carPath(a, b, v){
+  v = v || []; var k = bikeKey(a, b, v), c = CARC[k];
+  if(c && c.p) return c;
+  if(c && c.pend) return null;
+  if(c && c.fail && Date.now() - c.fail < Math.min(60000, 8000 * (c.n || 1))) return null;
+  var n = (c && c.n || 0) + 1; CARC[k] = {pend:1, n:n};
+  var pts = [a].concat(v.map(function(q){ return {la:q[0], lo:q[1]}; }), [b]);
+  var retry = function(){ CARC[k] = {fail:Date.now(), n:n}; setTimeout(function(){ scheduleOverlay(); renderSheetSoon(); }, Math.min(60000, 8000*n) + 50); };
+  fetch(OSRMC+"route/v1/driving/"+pts.map(function(q){ return (+q.lo).toFixed(6)+","+(+q.la).toFixed(6); }).join(";")+"?overview=full&geometries=geojson&continue_straight=false")
+    .then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ var rt = j && j.routes && j.routes[0];
+      if(!rt || !rt.geometry || !(rt.geometry.coordinates||[]).length){ retry(); return; }
+      var gp = rt.geometry.coordinates.map(function(q){ return {la:q[1], lo:q[0]}; }), d = rt.distance + dist(a, gp[0]) + dist(gp[gp.length-1], b);
+      CARC[k] = {p:[a].concat(gp, [b]), d:d, secs:(rt.duration || d/8) + (dist(a, gp[0]) + dist(gp[gp.length-1], b))/WALK}; scheduleOverlay(); renderSheetSoon(); })
+    .catch(retry);
+  return null;
+}
+function carEst(a, b, v){ var q0 = a, d = 0; (v||[]).forEach(function(q){ var z = {la:q[0], lo:q[1]}; d += dist(q0, z); q0 = z; }); d = (d + dist(q0, b)) * 1.35; return {d:d, secs:d/7}; }
 function bikeKey(a, b, v){ return [a].concat((v||[]).map(function(q){ return {la:q[0], lo:q[1]}; }), [b]).map(function(q){ return (+q.la).toFixed(5)+","+(+q.lo).toFixed(5); }).join(">"); }
 function bikePath(a, b, v){
   v = v || []; var k = bikeKey(a, b, v), c = BIKEC[k];
@@ -8509,7 +8538,7 @@ function navBuild(){
         at = stLL(l.to); }
     });
   } else {
-    jobs = [navOsrm(OSRMF, [from].concat(vv, [p])).then(function(r){ r.kind = "walk"; return r; })];
+    jobs = [navOsrm(mode==="car" ? OSRMC : OSRMF, [from].concat(vv, [p])).then(function(r){ r.kind = mode==="car" ? "car" : "walk"; return r; })];
   }
   Promise.all(jobs).then(function(segs){
     if(NAV!==N) return;
@@ -8531,6 +8560,7 @@ function navPick(tg, btn, ext){
   var h = "<div class=\"vp-h\">Navigieren zu „"+esc(NAVPICK.n)+"“</div>"+
     row("walk", LMWALK, "Zu Fuß", d!=null ? "ca. "+navMins(d*1.25/1.33)+" Min. · "+fmtDist(d*1.25) : "")+
     row("bike", LMBIKE, "Citi Bike", "Station holen, fahren, abgeben")+
+    row("car", LMCAR, "Auto", "Fahrweg mit Abbiegehinweisen")+
     (ext==="nosub" ? "" : row("oepnv", LMSUB, "U-Bahn & Bus", "")+row("ferry", LMFERRY, "Fähre", "NYC Ferry, Staten Island Ferry …"));
   if(ext!=="noext") h += "<a role=\"menuitem\" target=\"_blank\" rel=\"noopener\" href=\"https://www.google.com/maps/dir/?api=1&destination="+NAVPICK.la+","+NAVPICK.lo+"&travelmode=walking\"><span class=\"ai lmi\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M11 4h5v5M16 4l-7 7M14 11v5H4V6h5\"/></svg></span><span class=\"cm-t\"><b>In Google Maps öffnen</b></span></a>";
   jpPopover("nav", btn, h, "navpick");
@@ -8547,7 +8577,8 @@ function navStart(p, mode, pref){
   navBuild();
 }
 function navEnd(silent){
-  if(!NAV) return; NAV = null; if(navRotOn && map && map.getBearing()) map.easeTo({bearing:0, duration: reduceMotion ? 0 : 500}); document.body.classList.remove("navon");
+  if(!NAV) return; NAV = null; cancelAnimationFrame(nav3dArrowRaf); nav3dUpdate();
+  if(map && (map.getPitch() > 1 || (navRotOn || nav3d) && map.getBearing())) map.easeTo({bearing:0, pitch:0, duration: reduceMotion ? 0 : 500}); document.body.classList.remove("navon");
   try { if(navWake) navWake.release(); } catch(e){} navWake = null;
   var el = $("navUi"); if(el) el.remove(); scheduleOverlay(); placeFloating();
   if(!silent) toast("Navigation beendet", false);
@@ -8571,6 +8602,9 @@ function navAlong(N){
   if(!me || !a || a===b) return N.cum[i] || 0;
   var kx = 111320*Math.cos(a.la*Math.PI/180), vx = (b.lo - a.lo)*kx, vy = (b.la - a.la)*111320, L = Math.hypot(vx, vy) || 1;
   var pr = ((me.lo - a.lo)*kx*vx + (me.la - a.la)*111320*vy) / L;
+  // liegt man noch vor dem nächsten Wegknoten: auf das vorige Wegstück projizieren (sonst springt die Position nach vorn)
+  if(pr <= 0 && i > 0){ var z = P0[i-1], ux = (a.lo - z.lo)*kx, uy = (a.la - z.la)*111320, L2 = Math.hypot(ux, uy) || 1;
+    var p2 = ((me.lo - z.lo)*kx*ux + (me.la - z.la)*111320*uy) / L2; return N.cum[i-1] + Math.max(0, Math.min(L2, p2)); }
   return N.cum[i] + Math.max(0, Math.min(L, pr));
 }
 function navOnPos(){
@@ -8592,12 +8626,83 @@ function navAhead(N, m){ var P0 = N.pts, s0 = N.s!=null ? N.s : N.cum[N.pi], i =
 function navFollow(zoom){
   if(!NAV || !me || !map) return;
   var o = {center:[me.lo, me.la], zoom: zoom ? Math.max(map.getZoom(), 16.5) : map.getZoom(), duration: reduceMotion ? 0 : 600};
+  // 3D: geneigte Kamera hinter dem eigenen Standort, Blick in Weg-Richtung, Zoom je Verkehrsmittel
+  if(nav3dOn() && !NAV.arrived){
+    var ah3 = navAhead(NAV, NAV.mode==="car" ? 45 : 20); o.pitch = 57; o.zoom = NAV3DZ[NAV.mode] || 18;
+    if(ah3 && dist(me, ah3) > 3){ var b3 = navBear(me, ah3), cb3 = (map.getBearing() + 360) % 360, d3 = ((b3 - cb3 + 540) % 360) - 180; if(Math.abs(d3) > 4 || zoom) o.bearing = b3; if(!reduceMotion) o.duration = Math.min(1500, 650 + Math.abs(d3) * 6); }
+    o.offset = [0, Math.round(window.innerHeight * 0.26)];
+    map.easeTo(o); return;
+  }
+  if(map.getPitch() > 1) o.pitch = 0;
   if(navRotOn && NAV.pts && !NAV.arrived){ var ah = navAhead(NAV, 14); // kurzer Blick voraus: dreht erst in der Kurve, nicht schon davor
     if(ah && dist(me, ah) > 5){ var b = navBear(me, ah), cb = (map.getBearing() + 360) % 360, d = ((b - cb + 540) % 360) - 180;
       if(Math.abs(d) > 8 || zoom){ o.bearing = b; if(!reduceMotion) o.duration = Math.min(1600, 700 + Math.abs(d) * 8); } }
     o.offset = [0, Math.round(window.innerHeight * 0.16)]; // eigener Standort etwas unterhalb der Mitte – mehr Sicht nach vorn
   }
   map.easeTo(o);
+}
+/* ---------- 3D-Navigation (Zu Fuß, Citi Bike, Auto): geneigte Karte, Weg auf der Straße unter den Gebäuden,
+   3D-Abbiegepfeil ab 60 m vor der Kurve; U-Bahn, Bus und Fähre bleiben flach. Schalter 2D/3D, gemerkt auf dem Gerät. */
+var nav3d = lsGet("rp-nav-3d")!=="0", NAV3DZ = {walk:18.2, bike:17.6, car:16.8}, nav3dArrowRaf = 0;
+function nav3dCan(N){ return !!(N && (N.mode==="walk" || N.mode==="bike" || N.mode==="car")); }
+function nav3dOn(){ var N = NAV; return !!(nav3d && nav3dCan(N) && N.pts && !N.hidden && map); }
+function navAt(N, sm){ var P0 = N.pts, C = N.cum; if(sm <= 0) return P0[0]; var i = 1; while(i < C.length - 1 && C[i] < sm) i++;
+  var a = P0[i-1], b = P0[i], L = C[i] - C[i-1] || 1, t = Math.max(0, Math.min(1, (sm - C[i-1]) / L)); return {la:a.la + (b.la - a.la)*t, lo:a.lo + (b.lo - a.lo)*t}; }
+function nav3dArrow(N, ts){
+  // flacher Körper: Weg um die Kurve, Kurve abgerundet, mit Pfeilspitze (Meter um die Abbiegestelle)
+  var c0 = navAt(N, ts), kx = 111320*Math.cos(c0.la*Math.PI/180);
+  var M = function(q){ return [(q.lo - c0.lo)*kx, (q.la - c0.la)*110540]; }, LL = function(m){ return [c0.lo + m[0]/kx, c0.la + m[1]/110540]; };
+  var A = function(x){ return M(navAt(N, x)); }, a = A(ts - 16), c = A(ts), e = A(ts + 13), p0 = A(ts - 7), p1 = A(ts + 7), pts = [];
+  for(var i = 0; i <= 6; i++){ var f = i/6; pts.push([a[0] + (p0[0]-a[0])*f, a[1] + (p0[1]-a[1])*f]); }
+  for(var j = 1; j < 12; j++){ var g = j/12, h = 1-g; pts.push([h*h*p0[0] + 2*h*g*c[0] + g*g*p1[0], h*h*p0[1] + 2*h*g*c[1] + g*g*p1[1]]); }
+  for(var k = 0; k <= 4; k++){ var f2 = k/4; pts.push([p1[0] + (e[0]-p1[0])*f2, p1[1] + (e[1]-p1[1])*f2]); }
+  var W = N.mode==="car" ? 2.6 : 1.5, Lf = [], Rt = [];
+  pts.forEach(function(q, i2){ var pa = pts[Math.max(0, i2-1)], pb = pts[Math.min(pts.length-1, i2+1)], dx = pb[0]-pa[0], dy = pb[1]-pa[1], n = Math.hypot(dx, dy) || 1;
+    Lf.push([q[0] - dy/n*W, q[1] + dx/n*W]); Rt.push([q[0] + dy/n*W, q[1] - dx/n*W]); });
+  var z = pts[pts.length-1], y = pts[pts.length-2], dx = z[0]-y[0], dy = z[1]-y[1], n = Math.hypot(dx, dy) || 1, ux = dx/n, uy = dy/n, HW = W*2.4, HL = W*3.7;
+  var ring = Lf.concat([[z[0] - uy*HW, z[1] + ux*HW], [z[0] + ux*HL, z[1] + uy*HL], [z[0] + uy*HW, z[1] - ux*HW]], Rt.reverse()); ring.push(ring[0]);
+  return {type:"Feature", properties:{}, geometry:{type:"Polygon", coordinates:[ring.map(LL)]}};
+}
+function nav3dLayers(){
+  if(map.getSource("nv3-rt")) return true;
+  try {
+    var E = {type:"FeatureCollection", features:[]}, below = map.getLayer("b3d") ? "b3d" : undefined;
+    ["nv3-rt", "nv3-done", "nv3-arrow", "nv3-tgt"].forEach(function(id){ map.addSource(id, {type:"geojson", data:E}); });
+    var lw = function(w){ return ["interpolate",["exponential",2],["zoom"],15,w/4,18,w,20,w*3]; };
+    map.addLayer({id:"nv3-done", type:"line", source:"nv3-done", layout:{"line-cap":"round","line-join":"round"}, paint:{"line-color":"#8E8E93", "line-width":lw(7), "line-opacity":.5}}, below);
+    map.addLayer({id:"nv3-case", type:"line", source:"nv3-rt", layout:{"line-cap":"round","line-join":"round"}, paint:{"line-color":"#ffffff", "line-width":lw(12), "line-opacity":.9}}, below);
+    map.addLayer({id:"nv3-line", type:"line", source:"nv3-rt", layout:{"line-cap":"round","line-join":"round"}, paint:{"line-color":"#0A84FF", "line-width":lw(8.5)}}, below);
+    if(!map.hasImage("nv3-chev")){ var cv = document.createElement("canvas"); cv.width = cv.height = 48; var g = cv.getContext("2d"); g.strokeStyle = "#fff"; g.lineWidth = 7; g.lineCap = "round"; g.lineJoin = "round"; g.beginPath(); g.moveTo(17, 10); g.lineTo(31, 24); g.lineTo(17, 38); g.stroke();
+      map.addImage("nv3-chev", {width:48, height:48, data:g.getImageData(0, 0, 48, 48).data}, {pixelRatio:2}); }
+    map.addLayer({id:"nv3-chev", type:"symbol", source:"nv3-rt", layout:{"symbol-placement":"line", "symbol-spacing":["interpolate",["linear"],["zoom"],16,40,19,70], "icon-image":"nv3-chev", "icon-size":["interpolate",["linear"],["zoom"],16,.45,19,.9], "icon-rotation-alignment":"map", "icon-pitch-alignment":"map", "icon-allow-overlap":true, "icon-ignore-placement":true}, paint:{"icon-opacity":.9}}, below);
+    map.addLayer({id:"nv3-tgt", type:"circle", source:"nv3-tgt", paint:{"circle-radius":["interpolate",["exponential",2],["zoom"],15,6,19,13], "circle-color":"#FF3B30", "circle-stroke-color":"#fff", "circle-stroke-width":3, "circle-pitch-alignment":"map"}});
+    map.addLayer({id:"nv3-arrow-sh", type:"fill", source:"nv3-arrow", paint:{"fill-color":"#000", "fill-opacity":.28, "fill-translate":[2, 3]}});
+    map.addLayer({id:"nv3-arrow", type:"fill-extrusion", source:"nv3-arrow", paint:{"fill-extrusion-color":"#eaf6ff", "fill-extrusion-base":0.4, "fill-extrusion-height":0.4, "fill-extrusion-opacity":.96, "fill-extrusion-vertical-gradient":true}});
+    return true;
+  } catch(e){ return false; }
+}
+function nav3dUpdate(){
+  if(!map || !map.getStyle) return;
+  var E = {type:"FeatureCollection", features:[]}, on = nav3dOn() && nav3dLayers(), N = NAV;
+  if(!on){ if(map.getSource("nv3-rt")) ["nv3-rt", "nv3-done", "nv3-arrow", "nv3-tgt"].forEach(function(id){ try { map.getSource(id).setData(E); } catch(e){} }); if(N) N.arrowFor = null; return; }
+  var s0 = N.s!=null ? N.s : (N.cum[N.pi] || 0), here = navAt(N, s0), ll = function(q){ return [q.lo, q.la]; };
+  var ahead = [here].concat(N.pts.filter(function(q, i){ return N.cum[i] > s0; })), done = N.pts.filter(function(q, i){ return N.cum[i] < s0; }).concat([here]);
+  map.getSource("nv3-rt").setData(ahead.length > 1 && !N.arrived ? {type:"Feature", properties:{}, geometry:{type:"LineString", coordinates:ahead.map(ll)}} : E);
+  map.getSource("nv3-done").setData(done.length > 1 ? {type:"Feature", properties:{}, geometry:{type:"LineString", coordinates:done.map(ll)}} : E);
+  map.getSource("nv3-tgt").setData({type:"Feature", properties:{}, geometry:{type:"Point", coordinates:[N.tgt.lo, N.tgt.la]}});
+  // 3D-Pfeil an der nächsten Abbiegung: ab 60 m davor, wächst heraus, nach der Kurve weg
+  var nx = N.next, dn = nx ? N.cum[nx.i] - s0 : 1e9, show = nx && nx.turn && !N.arrived && dn < 60 && dn > -8;
+  if(show && N.arrowFor!==nx.i){ N.arrowFor = nx.i; map.getSource("nv3-arrow").setData(nav3dArrow(N, N.cum[nx.i]));
+    var t0 = performance.now(); cancelAnimationFrame(nav3dArrowRaf);
+    (function grow(now){ var gr = Math.min(1, (now - t0)/700), bc = 1 - Math.pow(1-gr, 3) * Math.cos(gr*6);
+      try { map.setPaintProperty("nv3-arrow", "fill-extrusion-height", 0.4 + 2.2*(reduceMotion ? 1 : bc)); } catch(e){}
+      if(gr < 1 && !reduceMotion) nav3dArrowRaf = requestAnimationFrame(grow); })(t0); }
+  if(!show && N.arrowFor!=null){ N.arrowFor = null; map.getSource("nv3-arrow").setData(E); }
+}
+function nav3dToggle(){
+  nav3d = !nav3d; lsSet("rp-nav-3d", nav3d ? "1" : "0");
+  if(NAV){ NAV.follow = true; if(!nav3d) map.easeTo({pitch:0, bearing:navRotOn ? map.getBearing() : 0, duration: reduceMotion ? 0 : 600}); else navFollow(true); navRender(); scheduleOverlay(); }
+  toast(nav3d ? "3D-Ansicht an" : "2D – flache Karte", false);
 }
 function navRotToggle(){
   navRotOn = !navRotOn; lsSet("rp-nav-rot", navRotOn ? "1" : "0");
@@ -8622,7 +8727,7 @@ function navRender(){
   if(!el){ el = document.createElement("div"); el.id = "navUi"; document.body.appendChild(el); }
   var left = N.left!=null ? N.left : N.total, secs = N.secs && N.total ? N.secs * (left / N.total) : left / WALK;
   var eta = new Date(Date.now() + secs*1000), etaS = String(eta.getHours()).padStart(2, "0")+":"+String(eta.getMinutes()).padStart(2, "0");
-  var mi = {walk:LMWALK, bike:LMBIKE, oepnv:LMSUB, ferry:LMFERRY}[N.mode], mn = LMNAME[N.mode];
+  var mi = {walk:LMWALK, bike:LMBIKE, oepnv:LMSUB, ferry:LMFERRY, car:LMCAR}[N.mode], mn = LMNAME[N.mode];
   if(N.hidden){
     if(el.className!=="nav-ui min") setTimeout(placeFloating, 0);
     el.className = "nav-ui min"; el.innerHTML = "<button type=\"button\" class=\"nav-pill\" data-act=\"navshow\"><span class=\"nav-pi\">"+mi+"</span><span><b>"+esc(N.tgt.n||"Ziel")+"</b> · "+(N.pts ? navMins(secs)+" Min." : "…")+"</span><span class=\"nav-pe\">Einblenden</span></button>";
@@ -8651,7 +8756,8 @@ function navRender(){
   var footH = "<div class=\"nav-foot\">"+navLineRow(N)+"<div class=\"nav-sum\"><span class=\"nav-mode\">"+mi+"</span><span><b>"+(N.arrived ? "Am Ziel" : N.pts ? navMins(secs)+"<span>Min.</span>" : "–")+"</b><small>"+(N.arrived ? esc(mn) : N.pts ? fmtDist(left)+" · Ankunft "+etaS : mn)+"</small></span></div>"+
     (canDone ? "<button type=\"button\" class=\"nav-b go\" data-act=\"navdone\">✓ Abhaken</button>" : "")+
     (!N.follow && !N.arrived ? "<button type=\"button\" class=\"nav-b ic\" data-act=\"navfollow\" aria-label=\"Karte folgt mir\">"+LOCICO+"</button>" : "")+
-    (N.arrived ? "" : "<button type=\"button\" class=\"nav-b ic rot"+(navRotOn ? " on" : "")+"\" data-act=\"navrot\" aria-pressed=\""+navRotOn+"\" aria-label=\""+(navRotOn ? "Karte in Gehrichtung – tippen für Norden oben" : "Norden oben – tippen für Gehrichtung")+"\" title=\""+(navRotOn ? "In Gehrichtung" : "Norden oben")+"\">"+(navRotOn ? NAVROTICO : NAVNICO)+"</button>")+
+    (N.arrived || !nav3dCan(N) ? "" : "<button type=\"button\" class=\"nav-b n3d"+(nav3d ? " on" : "")+"\" data-act=\"nav3d\" aria-pressed=\""+nav3d+"\" aria-label=\""+(nav3d ? "3D-Ansicht – tippen für 2D" : "2D-Ansicht – tippen für 3D")+"\" title=\""+(nav3d ? "3D" : "2D")+"\">"+(nav3d ? "3D" : "2D")+"</button>")+
+    (nav3dCan(N) && nav3d ? "" : (N.arrived ? "" : "<button type=\"button\" class=\"nav-b ic rot"+(navRotOn ? " on" : "")+"\" data-act=\"navrot\" aria-pressed=\""+navRotOn+"\" aria-label=\""+(navRotOn ? "Karte in Gehrichtung – tippen für Norden oben" : "Norden oben – tippen für Gehrichtung")+"\" title=\""+(navRotOn ? "In Gehrichtung" : "Norden oben")+"\">"+(navRotOn ? NAVROTICO : NAVNICO)+"</button>"))+
     "<button type=\"button\" class=\"nav-b ic\" data-act=\"navhide\" aria-label=\"Ausblenden\" title=\"Ausblenden\">"+NAVHIDEICO+"</button><button type=\"button\" class=\"nav-b end\" data-act=\"navend\" aria-label=\"Beenden\" title=\"Beenden\">✕</button></div>";
   if(el.className!=="nav-ui" || !el.querySelector(".nv-hero")){
     el.className = "nav-ui"; el.innerHTML = "<div class=\"nv-hero\"></div><div class=\"nv-then\"></div><div id=\"navOri\" class=\"nav-ori\" hidden></div><div class=\"nv-off\"></div><div class=\"nv-foot\"></div>"; enter = true; }
@@ -8668,7 +8774,7 @@ function navRender(){
   var put = function(sel, h){ var b = el.querySelector(sel); if(b && b.__h!==h){ b.__h = h; b.innerHTML = h; } };
   put(".nv-then", nextH); put(".nv-off", offH); put(".nv-foot", footH);
   el.querySelector(".nv-foot").style.setProperty("--p", prog.toFixed(3));
-  navOrient(); navPlace();
+  navOrient(); navPlace(); nav3dUpdate();
 }
 /* Welche Linie(n): alle Linien, die von der Einstiegs- bis zur Ausstiegsstation fahren, als Liniensymbole */
 function navBuls(rs){ return rs.map(lineBul).join("<span class=\"or\">/</span>"); }
@@ -8761,6 +8867,7 @@ function navOrientSoon(){ if(!NAV || navOriRaf) return; navOriRaf = requestAnima
 var LOCICO = "<svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M17.6 2.4 2.9 8.7c-.6.3-.5 1.1.1 1.3l5.6 1.6 1.6 5.6c.2.6 1 .7 1.3.1l6.3-14.7c.2-.5-.3-1-.8-.8z\"/></svg>";
 function navSvg(){
   var N = NAV; if(!N || !N.pts) return ""; // auch ausgeblendet bleibt der Navigationsweg auf der Karte – nur die Leisten verschwinden
+  if(nav3dOn()) return "";
   var s = "", P0 = N.pts;
   N.segs.forEach(function(sg){
     var a = sg.o, b = sg.o + sg.n - 1, col = sg.kind==="bike" ? CBCOL : sg.kind==="ride" ? (sg.col || "#0A84FF") : "#0A84FF";
@@ -8889,13 +8996,15 @@ function renderDay(){
     var pre = a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#007AFF\">●</span><span><b>Mein Standort</b> <span class=\"sub\">Start zum nächsten Ziel</span></span></li>"
             : (a.id && T().done[a.id]) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (zuletzt erledigt)</span></li>" : "";
     var lh = legHidden(a, b), ev = "<button type=\"button\" class=\"leye\" data-act=\"legvis\" data-leg=\""+i+"\" aria-pressed=\""+!lh+"\" title=\""+(lh?"Etappe auf der Karte einblenden":"Etappe auf der Karte ausblenden")+"\" aria-label=\"Etappe auf der Karte zeigen\">"+(lh?EYEOFF:EYE)+"</button>";
-    var sw = "<span class=\"lm one\"><button type=\"button\" data-act=\"lmpick\" data-leg=\""+i+"\" aria-haspopup=\"menu\" aria-pressed=\"true\" title=\"Unterwegs: "+LMNAME[m]+" – tippen zum Wechseln\" aria-label=\"Unterwegs: "+LMNAME[m]+", ändern\">"+(m==="bike" ? LMBIKE : m==="walk" ? LMWALK : m==="ferry" ? LMFERRY : LMSUB)+"</button></span>";
+    var sw = "<span class=\"lm one\"><button type=\"button\" data-act=\"lmpick\" data-leg=\""+i+"\" aria-haspopup=\"menu\" aria-pressed=\"true\" title=\"Unterwegs: "+LMNAME[m]+" – tippen zum Wechseln\" aria-label=\"Unterwegs: "+LMNAME[m]+", ändern\">"+(m==="bike" ? LMBIKE : m==="walk" ? LMWALK : m==="ferry" ? LMFERRY : m==="car" ? LMCAR : LMSUB)+"</button></span>";
     if(m==="bike"){ var br = bikeRoute(a, b), bsum;
       if(br.wait) bsum = "<b>Citi Bike</b> · "+(CB.err ? esc(CB.err) : "Stationen werden geladen …");
       else if(br.none) bsum = "<b>Kein Citi Bike</b> · "+(!br.s1 ? "keine Station mit freien Rädern in der Nähe" : !br.s2 ? "keine Station mit freien Plätzen am Ziel" : "Start und Ziel an derselben Station")+" – besser zu Fuß";
       else bsum = "<b>"+Math.max(1, Math.round(br.secs/60))+" Min.</b> · "+fmtDist(br.rideD)+(br.exact ? " mit dem Rad" : " (ca.) · Radweg wird berechnet …")+(br.via ? " · über "+br.via+(br.via===1 ? " Wegpunkt" : " Wegpunkte") : "");
       return pre+"<li class=\"leg tleg lbk"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+bsum+"</button>"+viaBtn(i, legVia(a, b))+ev+"</div>"+
         (br.s1 && br.s2 && !br.none ? "<div class=\"cb-leg\"><p><i class=\"cb-dot\"></i><span>Rad holen: <b>"+esc(br.s1.s.n)+"</b> · "+fmtDist(br.s1.d)+" zu Fuß<small>"+cbAvail(br.s1.s)+"</small></span></p><p><i class=\"cb-dot\"></i><span>Rad abgeben: <b>"+esc(br.s2.s.n)+"</b> · dann "+fmtDist(br.s2.d)+" zu Fuß<small>"+cbAvail(br.s2.s)+"</small></span></p></div>" : "")+"</li>"; }
+    if(m==="car"){ var lvc = legVia(a, b), cp = carPath(a, b, lvc), ce = cp || carEst(a, b, lvc);
+      return pre+"<li class=\"leg tleg lw lcar"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><b>"+(cp ? "" : "ca. ")+mins(ce.secs)+" Min.</b> · "+fmtDist(ce.d)+(cp ? " mit dem Auto" : " · Weg wird berechnet …")+"</button>"+viaBtn(i, lvc)+ev+"</div></li>"; }
     if(m==="walk"){ var lv = legVia(a, b); walkPath(a, b, lv); var wd = walkDist(a, b, lv) || dist(a, b)*1.25;
       return pre+"<li class=\"leg tleg lw"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\"><b>"+Math.max(1,Math.round(wd/1.33/60))+" Min.</b> · "+fmtDist(wd)+(walkDist(a, b)?"":" (ca.)")+"</button>"+sugBtn(i)+viaBtn(i, lv)+ev+"</div></li>"; }
     var alts = legAlts(a, b, cur), r = legRoute(a, b, cur), open = !!legOpen[cur+"|"+i], ai = Math.min(legGet("legAlt", b) || 0, alts.length-1);
@@ -10553,6 +10662,7 @@ document.addEventListener("click", function(e){
     case "navhide": if(NAV){ NAV.hidden = true; navRender(); scheduleOverlay(); } break;
     case "navshow": if(NAV){ NAV.hidden = false; NAV.follow = true; navRender(); scheduleOverlay(); navFollow(false); } break;
     case "navrot": navRotToggle(); break;
+    case "nav3d": nav3dToggle(); break;
     case "navfollow": if(NAV){ NAV.follow = true; navRender(); navFollow(true); } break;
     case "navdone": if(NAV && NAV.tgt.id && P(NAV.tgt.id)){ var ndid = NAV.tgt.id; T().done[ndid] = true; doneMove(ndid); save(); renderSheet(); scheduleOverlay(); toast("„"+P(ndid).n+"“ abgehakt", false); } navEnd(true); break;
     case "cbrefresh": cbLoad(true); break;
