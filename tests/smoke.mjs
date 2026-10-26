@@ -635,6 +635,24 @@ await test("3D-Navigation: geneigte Karte, Weg unter den Gebäuden, 3D-Pfeil, Sc
   ok(await rp(`map.getPitch()`) < 5, "Nach dem Ende bleibt die Karte geneigt");
 });
 
+await test("Chat: geteiltes Foto öffnet Ort und Foto, auch wenn Reise-Kennung nicht passt", async () => {
+  await seed();
+  // Nachricht mit fremder Reise-Kennung und veralteter Orts-Kennung, Foto liegt aber in der Reise
+  const r = await rp(`(function(){ CHPH.k1 = {ph:"ph_a", pid:"pX", gid:"t_alt_123", n:"Brooklyn Bridge", trip:"Testreise"};
+    CHPH.k2 = {ph:"ph_zz", pid:"pY", gid:gidFor("t_test"), n:"MoMA", trip:"Testreise"};
+    var a = chFindPh(CHPH.k1), b = chFindPh(CHPH.k2), c = chFindPh({ph:"nix", pid:"nix", gid:"x", n:"Gibt es nicht"});
+    return {a:a && a.pid, b:b && b.pid, c:c}; })()`);
+  ok(r.a==="p4" && r.b==="p3" && r.c===null, "Zuordnung falsch: "+JSON.stringify(r));
+  await rp(`chPhOpen("k1")`); await page.waitForTimeout(250);
+  ok(await rp(`sel`)==="p4", "Ort öffnet nicht auf der Karte");
+  await rp(`chPhOpen("k1", true)`); await page.waitForTimeout(300);
+  ok(await rp(`!!($("chPvImg") && $("chPvImg").src.indexOf("data:image") === 0)`), "Foto öffnet nicht");
+  ok(!(await page.locator("#chPhView").innerText()).includes("nicht mit dir geteilt"), "Falscher Hinweis „nicht geteilt“");
+  // Vorschau ohne Daumennagel lädt das Foto nach
+  const h = await rp(`chPhotoCard({ph:"ph_b", n:"Brooklyn Bridge", c:"sight"}, "k3")`);
+  ok(h.includes('data-ph="ph_b"'), "Foto ohne Vorschaubild wird nicht nachgeladen");
+});
+
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
   await seed();
   await rp(`select("p6")`); await page.waitForTimeout(200);

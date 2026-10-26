@@ -2348,6 +2348,8 @@ body.navon .top,body.navon #rail{visibility:hidden}
 #lineV button{width:30px;height:30px;padding:0;font-size:18px;line-height:1;flex:0 0 auto}
 #ov .lvl{font:600 11.5px var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-width:3.5px}
 #ov .lvl.k{font-weight:700;font-size:12.5px}
+.ch-phc img.ch-phlz{min-height:120px;background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.ch-phc img.ch-phlz.missing{min-height:120px}
 .ln-h{font-size:12px;font-weight:700;color:var(--muted);padding:8px 14px 2px;text-transform:none}
 .ln-buls{display:inline-flex;gap:3px;flex:0 0 auto;min-width:78px}
 .ln-buls .bul{margin:0}
@@ -4784,7 +4786,7 @@ function chWith(u){ var me = acct.user && acct.user.uid; if(!me || !u) return nu
 function chMatch(pl){ var out = null; Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; return Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = {tid:tid, pid:pid}; return true; } return false; }); }); return out; }
 function chPhotoCard(ph, key, draft){
   var A = function(act){ return draft ? "" : " data-act=\""+act+"\" data-k=\""+key+"\" role=\"button\" tabindex=\"0\""; };
-  return "<div class=\"ch-phc"+(draft?" dr":"")+"\">"+(ph.th ? "<img src=\""+ph.th+"\" alt=\"Foto ansehen\""+A("chphfull")+">" : "<div class=\"ch-phph\""+A("chphfull")+">📷</div>")+
+  return "<div class=\"ch-phc"+(draft?" dr":"")+"\">"+(ph.th ? "<img src=\""+ph.th+"\" alt=\"Foto ansehen\""+A("chphfull")+">" : ph.ph && !draft ? "<img class=\"ch-phlz\" data-ph=\""+esc(ph.ph)+"\" alt=\"Foto ansehen\""+A("chphfull")+">" : "<div class=\"ch-phph\""+A("chphfull")+">📷</div>")+
     "<div class=\"ch-phcap\""+A("chphopen")+"><span class=\"cic\" style=\"--cc:"+catCol(ph.c)+"\">"+icon(ph.c)+"</span><span><b>"+esc(ph.n||"Foto")+"</b><small>"+esc(ph.trip||"")+"</small></span>"+(draft ? "" : "<span class=\"ch-phgo\">"+MAPGO+"</span>")+"</div></div>";
 }
 function chPhotoFrom(ph){
@@ -4809,26 +4811,41 @@ function chPhSendTo(u, ph){
   chPhotoFrom(ph).then(function(o){ if(!o){ toast("Foto nicht gefunden", false); return; } pvHide(); openChPage(cid); chDraft = o; renderChDraft(); setTimeout(function(){ var i = $("chIn"); if(i) i.focus(); }, 80); });
 }
 function chPhFull(key){ chPhOpen(key, true); }
+/* Geteiltes Foto einer Reise zuordnen: zuerst die Reise aus der Nachricht, dann alle eigenen und geteilten Reisen;
+   Ort über seine Kennung, über das Foto oder (zuletzt) über den Namen */
+function chFindPh(o){
+  var ids = Object.keys(S.trips), seen = {}, order = ids.filter(function(id){ return id===o.gid || gidFor(id)===o.gid; }).concat([S.cur], ids).filter(function(id){ if(!id || seen[id]) return false; seen[id] = 1; return true; });
+  for(var i = 0; i < order.length; i++){
+    var id = order[i], t = S.trips[id]; if(!t || !t.places) continue;
+    var pid = o.pid && t.places[o.pid] ? o.pid : "";
+    if(!pid && o.ph) Object.keys(t.photos||{}).forEach(function(k){ if(!pid && (t.photos[k]||[]).indexOf(o.ph) > -1 && t.places[k]) pid = k; });
+    if(!pid && o.n && (id===o.gid || gidFor(id)===o.gid)) Object.keys(t.places).forEach(function(k){ var p = t.places[k]; if(!pid && p && !p.of && norm(p.n||"")===norm(o.n)) pid = k; });
+    if(pid) return {tid:id, pid:pid};
+  }
+  return null;
+}
 function chPhOpen(key, full){
   var o = CHPH[key]; if(!o) return;
-  var tid = Object.keys(S.trips).filter(function(id){ return id===o.gid || gidFor(id)===o.gid; })[0], t = tid && S.trips[tid];
-  var acc = !!(t && t.places[o.pid] && ((t.photos||{})[o.pid]||[]).indexOf(o.ph) > -1);
+  var f = chFindPh(o), tid = f && f.tid, acc = !!f;
+  if(f) o = Object.assign({}, o, {pid:f.pid});
   if(acc && !full){
     closeChPage();
     if(tid!==S.cur){ grpSel = ""; S.cur = tid; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
     var dk = dayOf(o.pid); if(dk) cur = dk; tab = dk ? "day" : "wish"; renderAll(); select(o.pid); revealPoint(P(o.pid), 16, true);
     return;
   }
-  if(!full){ toast("Diese Reise ist nicht mit dir geteilt – den Ort kannst du nicht auf deiner Karte öffnen.", false); return; }
+  if(!full){ toast("Den Ort gibt es in keiner deiner Reisen (mehr) – das Foto kannst du trotzdem ansehen.", false); return; }
   var el = $("chPhView"); if(!el){ el = document.createElement("div"); el.id = "chPhView"; el.className = "chphview"; document.body.appendChild(el); var shut = function(){ el.hidden = true; el.innerHTML = ""; el.style.transform = ""; el.style.opacity = ""; };
     el.addEventListener("click", function(){ if(Date.now() - (el._sw||0) < 400) return; shut(); });
     var y0 = null; el.addEventListener("touchstart", function(e){ y0 = e.touches.length===1 ? e.touches[0].clientY : null; el.style.transition = "none"; }, {passive:true});
     el.addEventListener("touchmove", function(e){ if(y0==null) return; var dy = Math.max(0, e.touches[0].clientY - y0); el.style.transform = "translateY("+dy+"px)"; el.style.opacity = String(Math.max(.3, 1 - dy/500)); }, {passive:true});
     el.addEventListener("touchend", function(e){ if(y0==null) return; var dy = (e.changedTouches[0].clientY - y0); y0 = null; el.style.transition = "transform .2s, opacity .2s"; el._sw = Date.now();
       if(dy > 110){ el.style.transform = "translateY(100%)"; el.style.opacity = "0"; setTimeout(shut, 200); } else { el.style.transform = ""; el.style.opacity = ""; if(Math.abs(dy) < 8) el._sw = 0; } }); }
-  el.innerHTML = "<button type=\"button\" class=\"chpv-x\" aria-label=\"Schließen\">✕</button>"+(o.th ? "<img id=\"chPvImg\" src=\""+o.th+"\" alt=\"\">" : "")+"<div class=\"chpv-cap\"><b>"+esc(o.n||"Foto")+"</b><small>"+esc(o.trip||"")+(acc ? "" : " · Diese Reise ist nicht mit dir geteilt")+"</small></div>";
+  el.innerHTML = "<button type=\"button\" class=\"chpv-x\" aria-label=\"Schließen\">✕</button>"+(o.th ? "<img id=\"chPvImg\" src=\""+o.th+"\" alt=\"\">" : "")+"<div class=\"chpv-cap\"><b>"+esc(o.n||"Foto")+"</b><small>"+esc(o.trip||"")+"</small></div>";
   el.style.transform = ""; el.style.opacity = ""; el.hidden = false;
-  if(acc) phGet(o.ph).then(function(d){ var im = $("chPvImg"); if(d && im && !el.hidden) im.src = d; }, function(){});
+  // Foto in voller Größe laden (auch ohne passende Reise: liegt es im Konto oder auf dem Gerät, wird es gezeigt)
+  if(!o.th){ var im0 = document.createElement("img"); im0.id = "chPvImg"; im0.alt = ""; el.insertBefore(im0, el.querySelector(".chpv-cap")); }
+  phGet(o.ph).then(function(d){ var im = $("chPvImg"); if(d && im && !el.hidden) im.src = d; else if(!d && !o.th && !el.hidden){ var cp = el.querySelector(".chpv-cap small"); if(cp) cp.textContent = (o.trip ? o.trip+" · " : "")+(PHERR[o.ph] || "Foto nicht verfügbar"); } }, function(){});
 }
 function chPlaceCard(pl, key, draft){
   var RR = RATES.filter(function(x){ return x[0]===pl.rating; })[0], inT = chMatch(pl);
@@ -4854,6 +4871,7 @@ function chMsgsHTML(){
 function renderChMsgs(stick){
   var box = $("chMsgs"); if(!box) return; var atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   box.innerHTML = chMsgsHTML(); if(stick !== false && (atEnd || stick)) box.scrollTop = box.scrollHeight;
+  fillPhotos(box);
 }
 function chPickHTML(){
   var t = T(), q = norm(chPickQ.trim()), all = [];
