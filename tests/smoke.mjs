@@ -485,8 +485,8 @@ await test("Linie wählen: bei mehreren möglichen Linien (z. B. A/C/E) eine bes
   ok(await rp(`legHasChoice(legRoute(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1], cur))`), "Testetappe hat keine Fahrt mit mehreren Linien");
   await rp(`legOpen[cur+"|${li}"] = true; renderSheet();`); await page.waitForTimeout(150);
   // gewählte Verbindung nochmals antippen (oder die Linien in der Wegbeschreibung)
-  const sel = await page.locator(`[data-act=legalt][data-leg="${li}"][aria-pressed=true]`).count() ? `[data-act=legalt][data-leg="${li}"][aria-pressed=true]` : `[data-act=lnpick][data-leg="${li}"]`;
-  await click(sel);
+  if(await page.locator(`[data-act=legalt][data-leg="${li}"][aria-pressed=true]`).count()) await click(`[data-act=legalt][data-leg="${li}"][aria-pressed=true]`);
+  else { await click(`[data-act=lnmenu][data-leg="${li}"]`); await click("#jpMenu [data-act=lnpick]"); await page.waitForTimeout(100); }
   const n = await page.locator("#jpMenu [data-act=lnset]").count();
   ok(n >= 3, "Linienauswahl fehlt ("+n+")");
   await shot("linie-waehlen");
@@ -498,9 +498,31 @@ await test("Linie wählen: bei mehreren möglichen Linien (z. B. A/C/E) eine bes
   ok(sum.length===1 && sum[0]===nm, "Zusammenfassung zeigt nicht nur die gewählte Linie: "+sum.join(","));
   ok(await rp(`(function(){ var L = dayLegs(cur)[${li}], l = legRoute(L[0], L[1], cur).legs.filter(function(x){ return x.t==="ride" && x.lines0; })[0]; drawOverlay(); return ov.innerHTML.indexOf(NET.r[l.r][1]) > -1; })()`), "Karte zeigt die gewählte Linie nicht in ihrer Farbe");
   // zurück auf „Jede dieser Linien“
-  await click(`[data-act=lnpick][data-leg="${li}"]`);
+  await click(`[data-act=lnmenu][data-leg="${li}"]`); await click("#jpMenu [data-act=lnpick]"); await page.waitForTimeout(100);
+  ok(await page.locator("#jpMenu [data-act=lnset]").count() >= 3, "Linie ändern aus dem Linien-Menü öffnet die Auswahl nicht");
   await page.locator("#jpMenu [data-act=lnset][data-v='']").click(); await page.waitForTimeout(200);
   ok(await rp(`legGet("legLine", dayLegs(cur)[${li}][1])===undefined`), "Auswahl lässt sich nicht zurücksetzen");
+});
+
+await test("Ganze Linie zeigen: Linie in der Wegbeschreibung antippen, Strecke von Endstation zu Endstation", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  await rp(`(function(){ T().order[cur] = ["p2"]; legsList = true; select(null); setSheet("full"); renderSheet(); })()`);
+  await page.waitForTimeout(200);
+  const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][1] && L[i][1].id==="p2") return i; } return -1; })()`);
+  ok(li > -1, "Etappe nicht gefunden");
+  await rp(`legOpen[cur+"|${li}"] = true; renderSheet();`); await page.waitForTimeout(150);
+  await click(`[data-act=lnmenu][data-leg="${li}"]`);
+  ok(await page.locator("#jpMenu [data-act=lineVshow]").count() >= 1, "Menüpunkt „Ganze Linie zeigen“ fehlt");
+  await click("#jpMenu [data-act=lineVshow]");
+  const v = await rp(`(function(){ var r = legRoute(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1], cur), l = r.legs.filter(function(x){ return x.t==="ride"; })[0]; return LINEV ? {n:LINEV.st.length, ride:l.stops.length, inc:LINEV.st.indexOf(l.from) > -1 && LINEV.st.indexOf(l.to) > LINEV.st.indexOf(l.from)} : null; })()`);
+  ok(v && v.inc && v.n > v.ride + 5, "Nicht die ganze Linie: "+JSON.stringify(v));
+  ok(await visible("#lineV"), "Hinweis „Ganze Linie“ fehlt");
+  ok((await page.locator("#lineV").innerText()).includes("Ganze Linie"), "Hinweistext fehlt");
+  ok(await rp(`(drawOverlay(), ov.querySelectorAll(".lv circle").length > 3)`), "Stationen der Linie nicht auf der Karte");
+  await shot("ganze-linie");
+  await click("#lineV [data-act=lineVclose]");
+  ok(await rp(`LINEV===null && !document.getElementById("lineV")`), "Ganze Linie lässt sich nicht ausblenden");
 });
 
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {

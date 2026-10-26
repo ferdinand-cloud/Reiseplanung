@@ -2329,6 +2329,14 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .lo-list [aria-checked="true"] .sw2::after{transform:translateX(18px)}
 .lo-note{font-size:12.5px;color:var(--muted);margin:8px 4px 14px}
 .lo-reset{width:100%;border:0;border-radius:14px;padding:13px;font:inherit;font-size:16px;font-weight:600;color:#0a84ff;background:color-mix(in srgb,var(--ink) 7%,transparent);cursor:pointer}
+#lineV{top:calc(env(safe-area-inset-top,0px) + 124px);max-width:calc(100% - 150px);padding:7px 7px 7px 9px;gap:8px;z-index:26}
+#lineV .bul{margin:0;flex:0 0 auto}
+#lineV .lv-t{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+#lineV .lv-t b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lineV .lv-t small{font-size:11.5px;font-weight:500;opacity:.75}
+#lineV button{width:30px;height:30px;padding:0;font-size:18px;line-height:1;flex:0 0 auto}
+#ov .lvl{font:600 11.5px var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-width:3.5px}
+#ov .lvl.k{font-weight:700;font-size:12.5px}
 .ln-h{font-size:12px;font-weight:700;color:var(--muted);padding:8px 14px 2px;text-transform:none}
 .ln-buls{display:inline-flex;gap:3px;flex:0 0 auto;min-width:78px}
 .ln-buls .bul{margin:0}
@@ -6264,6 +6272,57 @@ function pickLines(r, b){
   if(!used) return r;
   var o = {}; for(var y in r) o[y] = r[y]; o.legs = legs; return o;
 }
+/* ---------- Ganze Linie auf der Karte: von Endstation zu Endstation, mit allen Stationen ---------- */
+var LINEV = null;
+function fullLine(l, ri){
+  var S2 = schInit(), c = [];
+  (S2.by[l.from]||[]).forEach(function(e){ var p = S2.p[e[0]]; if(p.r!==ri || p.st.indexOf(l.to, e[1]+1) < 0) return;
+    c.push({p:p, n:p.days[0].length + p.days[1].length + p.days[2].length}); });
+  if(!c.length) return null;
+  // längstes Fahrmuster, das regelmäßig fährt (seltene Sonderfahrten nicht)
+  var mx = Math.max.apply(null, c.map(function(x){ return x.n; }));
+  c = c.filter(function(x){ return x.n >= mx*0.2; }).sort(function(x, y){ return y.p.st.length - x.p.st.length || y.n - x.n; });
+  return {r:ri, st:c[0].p.st, h:c[0].p.h};
+}
+function showLine(l, ri){
+  var f = fullLine(l, ri);
+  if(!f) f = {r:ri, st:l.stops, h:l.hd};
+  LINEV = {r:ri, st:f.st, h:f.h || l.hd || "", from:l.from, to:l.to};
+  renderLineBanner(); closeJpMore();
+  if(!desktop.matches) setSheet("min");
+  fitPoints(ridePath({r:ri, stops:f.st}), 1); scheduleOverlay();
+}
+function endLine(){ LINEV = null; var b = $("lineV"); if(b) b.remove(); scheduleOverlay(); }
+function renderLineBanner(){
+  var b = $("lineV"); if(!LINEV){ if(b) b.remove(); return; }
+  if(!b){ b = document.createElement("div"); b.id = "lineV"; b.className = "banner"; b.setAttribute("role", "status"); document.body.appendChild(b); }
+  var st = LINEV.st, n = st.length, fe = isFerry(LINEV.r), nm = function(si){ return NET.s[si][0].replace(/\s*\(Fähre\)$/, ""); };
+  b.innerHTML = lineBul(LINEV.r)+"<span class=\"lv-t\"><b>"+esc(nm(st[0]))+" → "+esc(nm(st[n-1]))+"</b><small>Ganze Linie · "+n+(fe ? " Anleger" : isBus(LINEV.r) ? " Haltestellen" : " Stationen")+"</small></span><button type=\"button\" data-act=\"lineVclose\" aria-label=\"Ganze Linie ausblenden\">×</button>";
+}
+function lineVSvg(){
+  if(!LINEV) return "";
+  var c = NET.r[LINEV.r][1], st = LINEV.st, P = ridePath({r:LINEV.r, stops:st}), i0 = st.indexOf(LINEV.from), i1 = st.indexOf(LINEV.to, i0 + 1);
+  var d = function(ps){ return ps.map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join(""); };
+  var o = "<g class=\"lv\"><path d=\""+d(P)+"\" stroke=\"var(--land)\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".9\"/>"+
+          "<path d=\""+d(P)+"\" stroke=\""+c+"\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\".55\"/>";
+  if(i0 > -1 && i1 > i0) o += "<path d=\""+d(ridePath({r:LINEV.r, stops:st.slice(i0, i1 + 1)}))+"\" stroke=\""+c+"\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/>";
+  var lbl = st.length <= 14 || V.m < 1.2;
+  st.forEach(function(si, k){
+    var z = pt(stLL(si)), key = k===0 || k===st.length-1 || k===i0 || k===i1, nm = NET.s[si][0].replace(/\s*\(Fähre\)$/, "");
+    if(!onScreen(z, 40)) return;
+    o += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\""+(key ? 6.5 : 4)+"\" fill=\"#fff\" stroke=\""+c+"\" stroke-width=\""+(key ? 3.5 : 2.5)+"\"/>";
+    if(key || lbl) o += "<text class=\"lvl"+(key ? " k" : "")+"\" x=\""+f1(z[0] + 10)+"\" y=\""+f1(z[1] + 4)+"\">"+esc(nm)+"</text>";
+  });
+  return o+"</g>";
+}
+/* Menü an den Linien einer Fahrt: ganze Linie zeigen, ggf. Linie wählen */
+function openLineMenu(li, rix, btn){
+  var lp = dayLegs(cur)[li]; if(!lp) return; var r = legRoute(lp[0], lp[1], cur), l = r && r.legs[rix]; if(!l || l.t!=="ride") return;
+  var rs = l.alt || [l.r], h = "<div class=\"vp-h\">"+esc(NET.s[l.from][0])+" → "+esc(NET.s[l.to][0])+"</div>";
+  rs.forEach(function(x){ h += "<button type=\"button\" role=\"menuitem\" data-act=\"lineVshow\" data-leg=\""+li+"\" data-ri=\""+rix+"\" data-r=\""+x+"\"><span class=\"ln-buls\">"+lineBul(x)+"</span><span class=\"cm-t\"><b>Ganze Linie "+esc(isFerry(x) ? (FERRYNAME[lineName(x)] || lineName(x)) : lineName(x))+" zeigen</b><small>von Endstation zu Endstation auf der Karte</small></span></button>"; });
+  if((l.lines0 || rs).length > 1) h += "<button type=\"button\" role=\"menuitem\" data-act=\"lnpick\" data-leg=\""+li+"\"><span class=\"ln-buls\">"+(l.lines0 || rs).map(lineBul).join("")+"</span><span class=\"cm-t\"><b>"+(l.lines0 ? "Linie ändern" : "Linie wählen")+"</b><small>bestimmte Linie für diese Fahrt festlegen</small></span></button>";
+  jpPopover("lm"+li+"_"+rix, btn, h, "linemenu");
+}
 function legHasChoice(r){ return !!(r && !r.walk && r.legs.some(function(l){ return l.t==="ride" && (l.lines0 || l.alt || []).length > 1; })); }
 /* Auswahl der Linie: je Fahrt mit mehreren möglichen Linien, mit der nächsten Abfahrt je Linie */
 function openLinePick(li, btn){
@@ -6381,7 +6440,7 @@ function transitSteps(r, a, b, ctx){
   var nm = function(p){ return p && p.n ? p.n : (p && p.id==="me" ? "Mein Standort" : "Start"); };
   var h = "<ol class=\"rt\">";
   h += "<li class=\"rt-pt end\"><span class=\"rt-t\">"+T0(t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(nm(a))+"</b></span></li>";
-  r.legs.forEach(function(l){
+  r.legs.forEach(function(l, lix){
     if(l.t==="walk" || l.t==="xfer"){
       var lbl = l.t==="xfer" ? "Umsteigen" : "Gehen";
       h += "<li class=\"rt-walk\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\"><span class=\"rt-ic\">"+WI+"</span>"+lbl+" · "+mins(l.secs)+" Min."+(l.d ? "<small>"+fmtDist(l.d)+"</small>" : "")+"</span></li>";
@@ -6393,7 +6452,7 @@ function transitSteps(r, a, b, ctx){
       var kind = isFerry(l.r) ? "Fähre" : isBus(l.r) ? "Bus" : "";
       var nLbl = n+(isFerry(l.r) ? " Anleger" : isBus(l.r) ? (n===1?" Haltestelle":" Haltestellen") : (n===1?" Station":" Stationen"));
       h += "<li class=\"rt-pt\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\">"+T0(dep!=null ? dep : t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(NET.s[l.from][0])+"</b><small>einsteigen</small></span></li>";
-      h += "<li class=\"rt-ride\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\">"+((l.lines0 || rs).length > 1 && ctx && ctx.li!=null ? "<button type=\"button\" class=\"rt-lines rt-lpick\" data-act=\"lnpick\" data-leg=\""+ctx.li+"\" aria-label=\"Linie wählen\">"+rs.map(lineBul).join("")+"<span class=\"rt-lw\">"+(l.lines0 ? "Linie ändern" : "Linie wählen")+"</span></button>" : "<span class=\"rt-lines\">"+rs.map(lineBul).join("")+"</span>")+
+      h += "<li class=\"rt-ride\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\">"+(ctx && ctx.li!=null ? "<button type=\"button\" class=\"rt-lines rt-lpick\" data-act=\"lnmenu\" data-leg=\""+ctx.li+"\" data-ri=\""+lix+"\" aria-haspopup=\"menu\" aria-label=\"Linie: ganze Strecke zeigen"+((l.lines0 || rs).length > 1 ? " oder Linie wählen" : "")+"\">"+rs.map(lineBul).join("")+"<span class=\"rt-lw\">"+((l.lines0 || rs).length > 1 ? (l.lines0 ? "Linie ändern" : "Linie wählen") : "Ganze Linie")+"</span></button>" : "<span class=\"rt-lines\">"+rs.map(lineBul).join("")+"</span>")+
            "<span class=\"rt-dir\">"+(kind ? kind+" " : "")+"Richtung "+esc(l.hd)+"</span>"+
            (mid.length ? "<details class=\"rt-mid\"><summary>"+nLbl+" · "+mins(l.secs)+" Min.</summary><span>"+mid.map(esc).join("<br>")+"</span></details>" : "<small>"+nLbl+" · "+mins(l.secs)+" Min.</small>")+"</span></li>";
       h += "<li class=\"rt-pt\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\">"+T0(arr)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(NET.s[l.to][0])+"</b><small>aussteigen</small></span></li>";
@@ -6820,7 +6879,7 @@ function drawOverlay(){
   s += flushLabels(MK);
   var dl = draft.open ? parseLoc(draft.loc) : null;
   if(dl){ var pq = pt(dl); s += "<circle cx=\""+f1(pq[0])+"\" cy=\""+f1(pq[1])+"\" r=\"7\" fill=\"var(--land)\" stroke=\"var(--ink)\" stroke-width=\"2.5\" stroke-dasharray=\"3 3\"/>"; }
-  s += drawMeRoute() + navSvg() + drawMe();
+  s += lineVSvg() + drawMeRoute() + navSvg() + drawMe();
   if(sel==="poi" && poiSel){ var pq2 = pt(poiSel); s += "<circle cx=\""+f1(pq2[0])+"\" cy=\""+f1(pq2[1])+"\" r=\"11\" fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"2.5\"/>"; }
   ov.setAttribute("viewBox","0 0 "+W+" "+H);
   ov.innerHTML = s;
@@ -8826,7 +8885,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -10660,7 +10719,14 @@ document.addEventListener("click", function(e){
       var showAll = !routeAnyVisible();
       dayLegs(cur).forEach(function(pr){ var k3 = legKey(pr[0], pr[1]); if(showAll) delete legHid[k3]; else legHid[k3] = 1; });
       layers.route = true; lsSet("nyc-l-route", "1"); saveLegHid(); applyLayers(); renderSheet(); scheduleOverlay(); break;
-    case "lnpick": openLinePick(parseInt(t.getAttribute("data-leg"),10), t); break;
+    case "lnpick": var lpl = parseInt(t.getAttribute("data-leg"),10);
+      // aus dem Linien-Menü: erst nach dessen Schließen öffnen
+      if(t.closest("#jpMenu")){ var lpb = document.querySelector("[data-act=lnmenu][data-leg=\""+lpl+"\"]"); setTimeout(function(){ openLinePick(lpl, lpb || document.body); }, 30); }
+      else openLinePick(lpl, t);
+      break;
+    case "lnmenu": openLineMenu(parseInt(t.getAttribute("data-leg"),10), parseInt(t.getAttribute("data-ri"),10), t); break;
+    case "lineVshow": var lv3 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(lv3){ var r3 = legRoute(lv3[0], lv3[1], cur), l3 = r3 && r3.legs[parseInt(t.getAttribute("data-ri"),10)]; if(l3) showLine(l3, parseInt(t.getAttribute("data-r"),10)); } break;
+    case "lineVclose": endLine(); break;
     case "lnset": closeJpMore(); var ln2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(ln2){ var lc2 = {}, lo2 = legGet("legLine", ln2[1]) || {}; for(var lk in lo2) lc2[lk] = lo2[lk]; var lv2 = t.getAttribute("data-v"); if(lv2) lc2[t.getAttribute("data-k")] = lv2; else delete lc2[t.getAttribute("data-k")]; legSet("legLine", ln2[1], Object.keys(lc2).length ? lc2 : null); renderSheet(); scheduleOverlay(); } break;
     case "legalt": var la2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)];
       // nochmals auf die gewählte Verbindung tippen: Linie auswählen
