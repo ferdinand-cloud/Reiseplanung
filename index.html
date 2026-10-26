@@ -1491,7 +1491,7 @@ li.st .sub{margin-top:1px}
 .cf-row button{flex:1;border:0;border-radius:12px;padding:11px 10px;font:600 15px/1.2 var(--f-body);cursor:pointer}
 .cf-no{background:var(--fill);color:var(--ink)}
 .cf-ok{background:#D9534F;color:#fff}
-body.ro label:has(#lRoute),body.ro label:has(#lWish),body.ro label:has(#lSub),body.ro label:has(#lBus),body.ro label:has(#lFerry),body.ro #subLines,body.ro #busLines,body.ro #tabWish{display:none}
+body.ro .lrow:has(#lSub),body.ro .lrow:has(#lBus),body.ro label:has(#lWish),body.ro label:has(#lSub),body.ro label:has(#lBus),body.ro label:has(#lFerry),body.ro #subLines,body.ro #busLines,body.ro #tabWish{display:none}
 /* Ort-Fenster: Datum, Gruppe, Privat in einer Zeile; Aktionen als schmale Leiste */
 .ag-card.jp .jp-chips{flex-wrap:nowrap;gap:6px;min-width:0}
 .ag-card.jp .jp-chips > *{flex:0 0 auto}
@@ -3049,14 +3049,14 @@ body.ro .navtools [data-act="addpop"]{display:none}
   <h4>Auf der Karte</h4>
   <div class="lrow"><label><input type="checkbox" id="lTr"><span class="sw" style="background:linear-gradient(90deg,#ee352e 0 25%,var(--bus) 25% 50%,#0b84b5 50% 75%,#0A6CDB 75%)"></span>ÖPNV <small class="ltr-n" id="lTrN"></small></label><button type="button" class="lfbtn lchev" id="lTrBtn" data-act="trgrp" aria-expanded="false" aria-controls="lTrGrp" aria-label="Verkehrsmittel auswählen" title="Verkehrsmittel auswählen"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></div>
   <div class="lgrp" id="lTrGrp" hidden>
-  <label><input type="checkbox" id="lSub"><span class="sw" style="background:linear-gradient(90deg,#ee352e 0 25%,#00933c 25% 50%,#0062cf 50% 75%,#fccc0a 75%)"></span>U-Bahn (Subway)</label>
+  <div class="lrow"><label><input type="checkbox" id="lSub"><span class="sw" style="background:linear-gradient(90deg,#ee352e 0 25%,#00933c 25% 50%,#0062cf 50% 75%,#fccc0a 75%)"></span>U-Bahn (Subway) <small class="ltr-n" id="lnN-sub"></small></label><button type="button" class="lfbtn lchev" id="lnBtn-sub" data-act="lnfold" data-k="sub" aria-expanded="false" aria-controls="subLines" aria-label="U-Bahn-Linien auswählen" title="U-Bahn-Linien auswählen" hidden><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></div>
   <div class="lines" id="subLines" hidden></div>
-  <label><input type="checkbox" id="lBus"><span class="sw" style="background:var(--bus)"></span>Buslinien</label>
+  <div class="lrow"><label><input type="checkbox" id="lBus"><span class="sw" style="background:var(--bus)"></span>Buslinien <small class="ltr-n" id="lnN-bus"></small></label><button type="button" class="lfbtn lchev" id="lnBtn-bus" data-act="lnfold" data-k="bus" aria-expanded="false" aria-controls="busLines" aria-label="Buslinien auswählen" title="Buslinien auswählen" hidden><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></div>
   <div class="lines" id="busLines" hidden></div>
   <label><input type="checkbox" id="lFerry"><span class="sw" style="background:#0b84b5"></span>Fähren</label>
   <label><input type="checkbox" id="lBike"><span class="sw" style="background:#0A6CDB;border-radius:50%"></span>Bike Share</label>
   </div>
-  <label><input type="checkbox" id="lRoute" checked><span class="sw" style="background:var(--c4)"></span>Tagesroute</label>
+  <input type="checkbox" id="lRoute" checked hidden aria-hidden="true" tabindex="-1">
   <label><input type="checkbox" id="lWish" checked><span class="sw" style="background:var(--wish)"></span>Wünsche</label>
   <div class="lines lcats" id="wishCats"></div>
   <label><input type="checkbox" id="lVis" checked><span class="sw" style="background:linear-gradient(135deg,#7d8a96 0 50%,#5E9970 50%)"></span>Besuchte Orte &amp; Fotospots</label>
@@ -6395,9 +6395,15 @@ function applyLines(){
   lsSet("nyc-off-sub", JSON.stringify(Object.keys(offSub))); lsSet("nyc-off-bus", JSON.stringify(Object.keys(offBus)));
   renderLineMenus(); scheduleOverlay();
 }
+var lnOpen = {sub:false, bus:false};
 function renderLineMenus(){
   var sl = $("subLines"), bl = $("busLines");
-  sl.hidden = !layers.sub; bl.hidden = !layers.bus;
+  sl.hidden = !layers.sub || !lnOpen.sub; bl.hidden = !layers.bus || !lnOpen.bus;
+  // Linienauswahl je Verkehrsmittel auf- und zuklappbar; zugeklappt zeigt die Zeile, ob ein Teil ausgeblendet ist
+  [["sub", SUBNAMES.filter(lineOn).length, SUBNAMES.length], ["bus", BUSNAMES.filter(function(n){ return !offBus[n]; }).length, BUSNAMES.length]].forEach(function(x){
+    var k = x[0], on = !!layers[k], b = $("lnBtn-"+k), n = $("lnN-"+k);
+    b.hidden = !on; b.classList.toggle("open", on && lnOpen[k]); b.classList.toggle("act", on && x[1] < x[2]); b.setAttribute("aria-expanded", on && lnOpen[k]);
+    n.textContent = on && x[1] < x[2] ? x[1]+" von "+x[2] : ""; });
   if(layers.sub){
     var on = SUBNAMES.filter(lineOn).length;
     sl.innerHTML = "<div class=\"lb\" role=\"group\" aria-label=\"U-Bahn-Linien\">"+SUBNAMES.map(function(n){ var c = LINECOL[n] || ["#808183","#fff"]; return "<button type=\"button\" data-act=\"lsub\" data-line=\""+esc(n)+"\" aria-pressed=\""+lineOn(n)+"\" aria-label=\"Linie "+esc(n)+"\"><span class=\"bul\" style=\"background:"+c[0]+";color:"+c[1]+"\">"+esc(n)+"</span></button>"; }).join("")+"</div>"+
@@ -10431,6 +10437,7 @@ document.addEventListener("click", function(e){
       else fitDay();
       renderSheet(); scheduleOverlay(); break;
     case "sclear": wishQuery = ""; renderSheet(); scheduleOverlay(); var ws = $("wSearch"); if(ws) ws.focus(); break;
+    case "lnfold": var lnk = t.getAttribute("data-k"); lnOpen[lnk] = !lnOpen[lnk]; renderLineMenus(); placeFloating(); break;
     case "trgrp": trOpen0 = !trOpen0; trSync(); placeFloating(); break;
     case "lcattog": var lk = t.getAttribute("data-k"); lcatOpen[lk] = !lcatOpen[lk]; if(lk==="poi") renderPoiCats(); else renderWishCats(); break;
     case "lwcat": var lw = t.getAttribute("data-cat"); if(!lw) catFilter = {}; else { delete catFilter._none; if(catFilter[lw]){ delete catFilter[lw]; if(!catKeys().length) catFilter = {_none:1}; } else catFilter[lw] = 1; } renderWishCats(); dirty(); renderSheet(); scheduleOverlay(); break;

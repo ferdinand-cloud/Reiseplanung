@@ -345,6 +345,21 @@ await test("Ebenen: ÖPNV-Gruppe aufklappbar, farbige Karte und 3D ohne Schalter
   ok(await rp(`!layers.sub && !layers.bus && !layers.ferry && !layers.bike && !$("lTr").checked`), "ÖPNV-Hauptschalter schaltet nicht alles aus");
   await page.locator("label:has(#lTr)").click(); await page.waitForTimeout(100);
   ok(await rp(`layers.sub && layers.bus && !layers.ferry`), "Auswahl geht beim Aus- und Einschalten verloren");
+  // Linienauswahl von U-Bahn und Bus je für sich auf- und zuklappbar, jeweils mit Alle/Keine
+  ok(!(await page.locator("#subLines").isVisible()) && !(await page.locator("#busLines").isVisible()), "Linienauswahl ist nicht eingeklappt");
+  ok(await page.locator("#lnBtn-sub").isVisible() && await page.locator("#lnBtn-bus").isVisible() && !(await page.locator("#lnBtn-ferry").count()), "Aufklappknöpfe bei U-Bahn/Bus fehlen");
+  await click("#lnBtn-sub"); await page.waitForTimeout(100);
+  ok(await page.locator("#subLines").isVisible() && await page.locator("#subLines [data-act=lsuball]").isVisible() && await page.locator("#subLines [data-act=lsubnone]").isVisible(), "U-Bahn-Linien klappen nicht mit Alle/Keine auf");
+  await click("#subLines [data-act=lsubnone]"); await page.waitForTimeout(100);
+  await click("#lnBtn-sub"); await page.waitForTimeout(100);
+  ok(!(await page.locator("#subLines").isVisible()) && /0 von/.test(await page.locator("#lnN-sub").innerText()), "U-Bahn-Linien klappen nicht zu oder Zähler fehlt");
+  await rp(`(function(){ offSub = {}; applyLines(); })()`);
+  await click("#lnBtn-bus"); await page.waitForTimeout(100);
+  ok(await page.locator("#busLines").isVisible() && await page.locator("#busLines [data-act=lbusall]").isVisible() && await page.locator("#busLines [data-act=lbusnone]").isVisible(), "Buslinien klappen nicht mit Alle/Keine auf");
+  await click("#lnBtn-bus"); await page.waitForTimeout(100);
+  ok(!(await page.locator("#busLines").isVisible()), "Buslinien klappen nicht zu");
+  await click("#lnBtn-bus"); await page.waitForTimeout(100); await shot("ebenen-linien"); await click("#lnBtn-bus"); await page.waitForTimeout(100);
+  ok((await page.locator("#layers").innerText()).indexOf("Tagesroute")===-1, "Tagesroute steht noch im Ebenen-Menü");
   await click("#lTrBtn"); await page.waitForTimeout(100);
   ok(!(await page.locator("#lTrGrp").isVisible()), "ÖPNV-Auswahl klappt nicht wieder zu");
 });
