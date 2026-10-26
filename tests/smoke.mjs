@@ -56,7 +56,7 @@ async function newPage(){
       // vom „Anleger“ aus: OSRM rastet auf der Fährlinie ein und fährt erst weit mit der Fähre
       if(Math.abs(pts[0][0] + 74.01) < 0.0002){ const A = pts[0], B = pts[pts.length-1], F = [A[0] - 0.01, A[1] - 0.04];
         return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:9500, geometry:{type:"LineString", coordinates:[A, F, B]},
-          legs:[{steps:[{mode:"ferry", distance:4500}, {mode:"walking", distance:5000}, {mode:"walking", distance:0}]}]}]}) }); }
+          legs:[{steps:[{mode:"walking", distance:20}, {mode:"ferry", distance:4500}, {mode:"walking", distance:5000}, {mode:"walking", distance:0}]}]}]}) }); }
       // „Wasser“-Punkt (Längengrad -73.9690): kein Weg
       if(pts.some(p => Math.abs(p[0] + 73.969) < 0.0002)) return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"NoRoute", routes:[]}) });
       const A = pts[0], B = pts[pts.length-1], M = [A[0], B[1]], co = [A, [(A[0]+M[0])/2, (A[1]+M[1])/2], M, B];
@@ -742,7 +742,7 @@ await test("Fußweg mit Wegpunkten: echter Weg auch wenn ein Teilstück fehlt, b
     const fp = await rp(`(function(){ var c = WALKC[wKey(__fa, __fb, [])] || {}; return {p:!!c.p, south:(c.p||[]).some(function(q){ return q[0] < 40.75; }), lo:c.p && c.p[0] && c.p[0][1]}; })()`);
     ok(fp.p && !fp.south && Math.abs(fp.lo + 74.0096) < 1e-4, "Fußweg vom Anleger fährt mit der Fähre: "+JSON.stringify(fp));
     // auf dem Gerät gemerkter alter Fährumweg wird einmal neu berechnet
-    await rp(`(function(){ var k = wKey(__fa, __fb, []); SEGW = {}; WALKC[k] = {p:[[40.7600,-74.0100],[40.7200,-74.0200],[40.7561,-73.9930]], d:9500, sv:1}; walkPath(__fa, __fb, []); })()`);
+    await rp(`(function(){ var k = wKey(__fa, __fb, []); SEGW = {}; WALKC[k] = {p:[[40.7600,-74.0100],[40.7200,-74.0200],[40.7561,-73.9930]], d:9500, sv:2}; walkPath(__fa, __fb, []); })()`);
     await page.waitForFunction(() => window.__rp(`!((WALKC[wKey(__fa, __fb, [])] || {}).p || [[0]]).some(function(q){ return q[0] < 40.75; })`), null, {timeout:5000}).catch(() => {});
     const fo = await rp(`(function(){ var c = WALKC[wKey(__fa, __fb, [])] || {}; return !!c.p && !c.p.some(function(q){ return q[0] < 40.75; }); })()`);
     ok(fo, "Gemerkter Fährumweg wird nicht neu berechnet");

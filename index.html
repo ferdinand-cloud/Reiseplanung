@@ -7740,7 +7740,7 @@ function walkPump(){
         });
         if(!ok && !err){ WALKC[job.k] = {p:null}; return; }
         if(!ok){ WALKC[job.k] = {fail:Date.now()}; return; }
-        WALKC[job.k] = {p:out, d:Math.round(d), live:!!job.live, sv:2}; if(err) WALKC[job.k].retry = Date.now();
+        WALKC[job.k] = {p:out, d:Math.round(d), live:!!job.live, sv:3}; if(err) WALKC[job.k].retry = Date.now();
         LASTW[walkLastKey(job.b, job.v)] = {k:job.k, a:{la:+job.a.la, lo:+job.a.lo}};
         if(!job.live && !err) walkSave();
       }).catch(function(){ WALKC[job.k] = {fail:Date.now()}; })
@@ -7761,29 +7761,25 @@ function walkRoute(a, b){
   var u = OSRMF+"route/v1/driving/"+(+a.lo).toFixed(6)+","+(+a.la).toFixed(6)+";"+(+b.lo).toFixed(6)+","+(+b.la).toFixed(6)+"?overview=full&geometries=geojson&steps=true";
   return fetch(u).then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(function(j){
     var rt = j.routes && j.routes[0]; if(!rt || !rt.geometry) return null;
-    // Punkt an einem Anleger rastet auf der Fährlinie ein: der „Fußweg“ fährt dann erst mit der Fähre (z. B. Pier 79 → Battery Park City)
-    var fe = ferryEnd(rt);
-    if(fe) return walkUnferry(a, b, fe).then(function(r2){ return r2 || null; });
+    // Punkt an einem Anleger rastet auf einer Fährlinie ein: der „Fußweg“ fährt dann mit der Fähre (z. B. Pier 79 → Battery Park City)
+    if(ferryIn(rt)) return walkUnferry(a, b);
     if(walkAbsurd(a, b, rt.distance)) return walkResnap(a, b).then(function(r2){ return r2 && r2.distance < rt.distance ? r2 : rt; });
     return rt;
   });
 }
-// Fährabschnitt am Anfang (1) oder Ende (2) eines Fußwegs; mitten im Weg (echte Überfahrt) zählt nicht
-function ferryEnd(rt){
-  var st = []; (rt.legs||[]).forEach(function(l){ st = st.concat(l.steps||[]); });
-  st = st.filter(function(x){ return x.distance > 0; }); if(!st.length) return 0;
-  return st[0].mode==="ferry" ? 1 : st[st.length-1].mode==="ferry" ? 2 : 0;
-}
-function walkUnferry(a, b, fe){
-  var q = fe===1 ? a : b;
-  return fetch(OSRMF+"nearest/v1/driving/"+(+q.lo).toFixed(6)+","+(+q.la).toFixed(6)+"?number=10").then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
-    var ws = (j && j.waypoints || []).filter(function(x){ return x.distance < 150; }).map(function(x){ return x.location; }).slice(0, 8);
-    return Promise.all(ws.map(function(L){
-      var A = fe===1 ? L : [+a.lo, +a.la], B = fe===1 ? [+b.lo, +b.la] : L;
-      return fetch(OSRMF+"route/v1/driving/"+A[0].toFixed(6)+","+A[1].toFixed(6)+";"+B[0].toFixed(6)+","+B[1].toFixed(6)+"?overview=full&geometries=geojson&steps=true")
-        .then(function(r){ return r.ok ? r.json() : null; }).then(function(j2){ var rt = j2 && j2.routes && j2.routes[0]; if(!rt || ferryEnd(rt)) return null;
-          rt.distance += dist(q, {la:L[1], lo:L[0]}); return rt; }).catch(function(){ return null; });
-    }));
+function ferryIn(rt){ return (rt.legs||[]).some(function(l){ return (l.steps||[]).some(function(x){ return x.mode==="ferry" && x.distance > 0; }); }); }
+// andere Einrastpunkte an beiden Enden probieren, kürzesten Weg ohne Fähre nehmen (keiner: gerade Linie statt Fährumweg)
+function walkUnferry(a, b){
+  function near(q){ return fetch(OSRMF+"nearest/v1/driving/"+(+q.lo).toFixed(6)+","+(+q.la).toFixed(6)+"?number=10").then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){ return (j && j.waypoints || []).filter(function(x){ return x.distance < 150; }).map(function(x){ return x.location; }).slice(1, 8); }).catch(function(){ return []; }); }
+  function route(A, B){
+    return fetch(OSRMF+"route/v1/driving/"+A[0].toFixed(6)+","+A[1].toFixed(6)+";"+B[0].toFixed(6)+","+B[1].toFixed(6)+"?overview=full&geometries=geojson&steps=true")
+      .then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ var rt = j && j.routes && j.routes[0]; if(!rt || ferryIn(rt)) return null;
+        rt.distance += dist(a, {la:A[1], lo:A[0]}) + dist({la:B[1], lo:B[0]}, b); return rt; }).catch(function(){ return null; });
+  }
+  var A0 = [+a.lo, +a.la], B0 = [+b.lo, +b.la];
+  return Promise.all([near(a), near(b)]).then(function(ns){
+    return Promise.all(ns[0].map(function(L){ return route(L, B0); }).concat(ns[1].map(function(L){ return route(A0, L); })));
   }).then(function(rs){ return rs.filter(Boolean).sort(function(x, y){ return x.distance - y.distance; })[0] || null; }).catch(function(){ return null; });
 }
 function walkAbsurd(a, b, d){ var s = dist(a, b); return d > 1.8*s + 300; }
@@ -7823,8 +7819,8 @@ function walkPath(a, b, v){
   if(!v.length && dist(a, b) < 40) return [a, b];
   var k = wKey(a, b, v), c = WALKC[k];
   // ältere gespeicherte Wege mit unsinnigem Umweg einmal neu berechnen (mit besserem Einrasten)
-  // (sv 2: auch gemerkte Umwege über eine Fährlinie, s. walkUnferry)
-  if(c && c.p && (c.sv||0) < 2 && ((!c.sv && v.length) || walkAbsurd(a, b, c.d || 0))){ c.sv = 2; walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
+  // (sv 3: auch gemerkte Umwege über eine Fährlinie, s. walkUnferry)
+  if(c && c.p && (c.sv||0) < 3 && ((!c.sv && v.length) || walkAbsurd(a, b, c.d || 0))){ c.sv = 3; walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
   if(c && c.p && c.retry && Date.now() - c.retry > 45000){ c.retry = Date.now(); walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
   if(c && c.p){ var pts = c.p.map(function(q){ return {la:q[0], lo:q[1]}; }); pts.unshift(a); pts.push(b); return pts; }
   // wird gerade neu berechnet (z. B. eigener Standort hat sich bewegt): letzten Weg zum selben Ziel zeigen statt Luftlinie –
