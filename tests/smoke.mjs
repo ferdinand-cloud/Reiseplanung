@@ -627,7 +627,8 @@ await test("Routen-Pop-up bleibt bei Standort-Updates ruhig", async () => {
   for(let i = 0; i < 5; i++){ await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; renderGo(true);`); await page.waitForTimeout(60); }
   ok(await page.evaluate(() => window.__pc === document.querySelector("#catPop .pop-card")), "Pop-up wird bei jedem Standort-Update neu aufgebaut (zuckt)");
   await rp(`me = {la:40.7000, lo:-73.9890, acc:8}; renderGo(true);`); await page.waitForTimeout(60);
-  ok(await page.evaluate(() => { const c = document.querySelector("#catPop .pop-card"); return !!c && getComputedStyle(c).animationName==="none"; }), "Aktualisierung spielt die Einblend-Animation erneut ab");
+  // entweder gar nicht neu aufgebaut (nichts hängt vom Standort ab) oder neu aufgebaut ohne Einblend-Animation
+  ok(await page.evaluate(() => { const c = document.querySelector("#catPop .pop-card"); return !!c && (c===window.__pc || getComputedStyle(c).animationName==="none"); }), "Aktualisierung spielt die Einblend-Animation erneut ab");
 });
 
 await test("Tagesplan: Privat-Plakette sichtbar", async () => {
