@@ -6413,7 +6413,7 @@ function transitAlts(a, b, k, force, pref){
 }
 /* Verbindungen einer Etappe. Mit Wegpunkten: die Route führt durch alle Wegpunkte (je Abschnitt eigene Verbindung) */
 function legAlts(a, b, k){
-  var lm = legGet("legMode", b), force = lm==="oepnv" || lm==="ferry", v = legVia(a, b), pref = legPref(b);
+  var lm = legGet("legMode", b), force = lm==="oepnv" || lm==="ferry", v = viaAhead(a, b, legVia(a, b)), pref = legPref(b);
   // Fähre: Verbindungen mit Fähre, sonst (noch nicht geladen / keine sinnvoll) die üblichen Verbindungen
   var alts = function(S, E){ if(lm==="ferry"){ var f = ferryAlts(S, E, k); if(f && f.length) return f; } return transitAlts(S, E, k, force, pref); };
   if(!v.length) return alts(a, b);
@@ -7715,21 +7715,33 @@ function walkPump(){
     (function(job){
       // Weg mit Wegpunkten: jedes Teilstück einzeln berechnen (A→W1, W1→W2, …, Wn→B).
       // So darf der Weg am Wegpunkt umkehren, und jedes Teilstück wird für sich auf unsinnige Umwege geprüft.
+      // Teilstücke werden einzeln gemerkt (wandert der eigene Standort, wird nur das erste neu berechnet).
+      // Fehlt ein Teilstück (kein Weg, Dienst überlastet), wird nur dieses gerade gezeichnet – nicht die ganze Etappe.
       var pts = [job.a].concat((job.v||[]).map(function(q){ return {la:+q[0], lo:+q[1]}; }), [job.b]), parts = [];
-      for(var i = 0; i < pts.length-1; i++) parts.push(walkRoute(pts[i], pts[i+1]));
+      for(var i = 0; i < pts.length-1; i++) parts.push(segGet(pts[i], pts[i+1]).catch(function(){ return "ERR"; }));
       Promise.all(parts).then(function(rs){
-        if(rs.some(function(r){ return !r; })){ WALKC[job.k] = {p:null}; return; }
-        var out = [], d = 0;
+        var out = [], d = 0, err = false, ok = 0;
         rs.forEach(function(rt, n){
           if(n) out.push([+(+pts[n].la).toFixed(5), +(+pts[n].lo).toFixed(5)]); // genau über den gesetzten Wegpunkt
-          var c = rt.geometry.coordinates; for(var j=0;j<c.length;j++) out.push([+c[j][1].toFixed(5), +c[j][0].toFixed(5)]);
-          d += rt.distance;
+          if(rt && rt!=="ERR"){ ok++; var c = rt.geometry.coordinates; for(var j=0;j<c.length;j++) out.push([+c[j][1].toFixed(5), +c[j][0].toFixed(5)]); d += rt.distance; }
+          else { if(rt==="ERR") err = true; d += dist(pts[n], pts[n+1]); }
         });
-        WALKC[job.k] = {p:out, d:Math.round(d), live:!!job.live, sv:1}; if(!job.live) walkSave();
+        if(!ok && !err){ WALKC[job.k] = {p:null}; return; }
+        if(!ok){ WALKC[job.k] = {fail:Date.now()}; return; }
+        WALKC[job.k] = {p:out, d:Math.round(d), live:!!job.live, sv:1}; if(err) WALKC[job.k].retry = Date.now();
+        LASTW[walkLastKey(job.b, job.v)] = job.k;
+        if(!job.live && !err) walkSave();
       }).catch(function(){ WALKC[job.k] = {fail:Date.now()}; })
         .then(function(){ walkBusy--; scheduleOverlay(); if(tab==="day") renderSheetSoon(); walkPump(); });
     })(job);
   }
+}
+var SEGW = {}, LASTW = {};
+function walkLastKey(b, v){ return (+b.la).toFixed(5)+","+(+b.lo).toFixed(5)+"|"+(v||[]).map(function(q){ return (+q[0]).toFixed(5)+","+(+q[1]).toFixed(5); }).join(";"); }
+function segGet(a, b){
+  var k = [a.la, a.lo, b.la, b.lo].map(function(x){ return (+x).toFixed(5); }).join(","), c = SEGW[k];
+  if(c) return Promise.resolve(c.rt || null);
+  return walkRoute(a, b).then(function(rt){ SEGW[k] = rt ? {rt:{geometry:{coordinates:rt.geometry.coordinates}, distance:rt.distance}} : {none:1}; return rt; });
 }
 /* ein Teilstück zu Fuß; bei unsinnigem Umweg (ungünstig eingerastet, z. B. auf einem Parkweg ohne Zugang) andere Einrastpunkte probieren */
 function walkRoute(a, b){
@@ -7759,18 +7771,37 @@ function walkResnap(a, b){
 }
 var rsTimer = null;
 function renderSheetSoon(){ clearTimeout(rsTimer); rsTimer = setTimeout(function(){ var ae = document.activeElement; if(ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) return; var y = document.querySelector(".body"), st = y ? y.scrollTop : 0; renderSheet(); if(y){ var y2 = document.querySelector(".body"); if(y2) y2.scrollTop = st; } }, 400); }
+/* Wegpunkte, an denen man heute schon vorbeigekommen ist (bis 45 m), zählen für den Weg ab dem eigenen Standort nicht mehr
+   (sonst führt die Route zurück zu einem Wegpunkt hinter einem). Gemerkt je Tag auf dem Gerät. */
+var PASSV = (function(){ try { var o = JSON.parse(lsGet("rp-passv")||"{}") || {}; return o.day===todayKeySafe() ? o : {day:todayKeySafe(), v:{}}; } catch(e){ return {day:"", v:{}}; } })();
+function todayKeySafe(){ try { return nyNow().key; } catch(e){ return ""; } }
+function viaAhead(a, b, v){
+  v = v || []; if(!v.length || !a || !(a.id==="me" || a===me)) return v;
+  var k = todayKeySafe(); if(PASSV.day!==k) PASSV = {day:k, v:{}};
+  var ch = false, last = -1;
+  v.forEach(function(q, i){ var key = (+q[0]).toFixed(5)+","+(+q[1]).toFixed(5);
+    if(!PASSV.v[key] && dist(a, {la:+q[0], lo:+q[1]}) < 45){ PASSV.v[key] = 1; ch = true; }
+    if(PASSV.v[key]) last = i; });
+  if(ch) try { lsSet("rp-passv", JSON.stringify(PASSV)); } catch(e){}
+  return last > -1 ? v.slice(last + 1) : v;
+}
 function walkPath(a, b, v){
-  v = v || []; var direct = [a].concat(v.map(function(q){ return {la:q[0], lo:q[1]}; }), [b]);
+  v = viaAhead(a, b, v || []); var direct = [a].concat(v.map(function(q){ return {la:q[0], lo:q[1]}; }), [b]);
   if(!v.length && dist(a, b) < 40) return [a, b];
   var k = wKey(a, b, v), c = WALKC[k];
   // ältere gespeicherte Wege mit unsinnigem Umweg einmal neu berechnen (mit besserem Einrasten)
   if(c && c.p && !c.sv && (v.length || walkAbsurd(a, b, c.d || 0))){ c.sv = 1; walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
+  if(c && c.p && c.retry && Date.now() - c.retry > 45000){ c.retry = Date.now(); walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
   if(c && c.p){ var pts = c.p.map(function(q){ return {la:q[0], lo:q[1]}; }); pts.unshift(a); pts.push(b); return pts; }
+  // wird gerade neu berechnet (z. B. eigener Standort hat sich bewegt): letzten Weg zum selben Ziel zeigen statt Luftlinie
+  var lw = LASTW[walkLastKey(b, v)], lc = lw && lw!==k && WALKC[lw];
+  if(lc && lc.p && (!c || c.pend)){ if(!c){ WALKC[k] = {pend:1}; walkQ.push({k:k, a:a, b:b, v:v, live:a.id==="me" || b.id==="me" || a===me}); setTimeout(walkPump, 0); }
+    var lp = lc.p.map(function(q){ return {la:q[0], lo:q[1]}; }); lp.unshift(a); lp.push(b); return lp; }
   if(c && (c.p===null || (c.fail && Date.now()-c.fail < 60000))) return direct;
   if(!c || c.fail){ WALKC[k] = {pend:1}; walkQ.push({k:k, a:a, b:b, v:v, live:a.id==="me" || b.id==="me" || a===me}); setTimeout(walkPump, 0); }
   return direct;
 }
-function walkDist(a, b, v){ var c = WALKC[wKey(a, b, v)]; return c && c.d ? c.d : null; }
+function walkDist(a, b, v){ var c = WALKC[wKey(a, b, viaAhead(a, b, v || []))]; return c && c.d ? c.d : null; }
 var SHAPES = null, RIDEC = {};
 function shapesFor(name){
   if(!SHAPES){ SHAPES = {}; TRANSIT.subway.forEach(function(t){ SHAPES[t.r] = (SHAPES[t.r]||[]).concat(t.l.map(decPts)); }); }
@@ -8564,7 +8595,7 @@ var OSRMB = "https://routing.openstreetmap.de/routed-bike/", BIKEC = {};
 /* Auto: Weg und Fahrzeit (ohne Verkehr) über OSRM, mit Wegpunkten; Ergebnis je Strecke gemerkt */
 var OSRMC = "https://routing.openstreetmap.de/routed-car/", CARC = {};
 function carPath(a, b, v){
-  v = v || []; var k = bikeKey(a, b, v), c = CARC[k];
+  v = viaAhead(a, b, v || []); var k = bikeKey(a, b, v), c = CARC[k];
   if(c && c.p) return c;
   if(c && c.pend) return null;
   if(c && c.fail && Date.now() - c.fail < Math.min(60000, 8000 * (c.n || 1))) return null;
@@ -8636,7 +8667,7 @@ function navOsrm(base, pts){
     });
 }
 function navTransit(from, p, mode){ var k = todayKey(); if(mode==="ferry"){ var f = ferryAlts(from, p, k); if(f && f.length) return f[0]; } return transit(from, p, k); }
-function navLegVia(p){ var hit = null; if(cur) dayLegs(cur).forEach(function(lg){ if(lg[1]===p) hit = lg; }); return hit ? legVia(hit[0], hit[1]) : []; }
+function navLegVia(p){ var hit = null; if(cur) dayLegs(cur).forEach(function(lg){ if(lg[1]===p) hit = lg; }); return hit ? viaAhead(me ? {la:me.la, lo:me.lo, id:"me"} : hit[0], hit[1], legVia(hit[0], hit[1])) : []; }
 function navBuild(){
   var N = NAV; if(!N || !me) return;
   var p = N.tgt, mode = N.mode, from = {la:me.la, lo:me.lo}, vv = navLegVia(N.pref || p).map(function(q){ return {la:q[0], lo:q[1]}; }), jobs;

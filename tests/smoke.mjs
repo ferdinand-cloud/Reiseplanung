@@ -47,6 +47,13 @@ async function newPage(){
     if(u.includes("routed-bike/route") || (u.includes("routed-car/route") && !u.includes("steps=true"))){ OSRMREQ.push(u); const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
       const coords = []; pts.forEach((p, i) => { if(i){ const q = pts[i-1]; coords.push([q[0] + (p[0]-q[0])*0.5 + 0.0008, q[1] + (p[1]-q[1])*0.5]); } coords.push(p); });
       return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:1800, duration:u.includes("routed-car") ? 420 : undefined, geometry:{type:"LineString", coordinates:coords}}]}) }); }
+    if(u.includes("routed-foot/route") && !u.includes("steps=true") && globalThis.FOOTMOCK){ OSRMREQ.push(u);
+      const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
+      // „Wasser“-Punkt (Längengrad -73.9690): kein Weg
+      if(pts.some(p => Math.abs(p[0] + 73.969) < 0.0002)) return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"NoRoute", routes:[]}) });
+      const A = pts[0], B = pts[pts.length-1], M = [A[0], B[1]], co = [A, [(A[0]+M[0])/2, (A[1]+M[1])/2], M, B];
+      const dm = Math.abs(A[0]-B[0])*84000 + Math.abs(A[1]-B[1])*111000;
+      return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:dm, geometry:{type:"LineString", coordinates:co}}]}) }); }
     if((u.includes("routed-foot/route") || u.includes("routed-car/route")) && u.includes("steps=true")){ OSRMREQ.push(u); const pts = decodeURIComponent(u.split("/driving/")[1].split("?")[0]).split(";").map(x => x.split(",").map(Number));
       const A = pts[0], B = pts[pts.length-1], M = [A[0], B[1]], co = [];
       for(let i = 0; i <= 10; i++) co.push([A[0], A[1] + (M[1]-A[1])*i/10]); for(let i = 1; i <= 10; i++) co.push([M[0] + (B[0]-M[0])*i/10, M[1]]);
@@ -698,6 +705,33 @@ await test("Privat, aber für einzelne Beobachter freigegeben", async () => {
   ok(r.none, "Nicht freigegebener Beobachter bekommt etwas");
 });
 
+await test("Fußweg mit Wegpunkten: echter Weg auch wenn ein Teilstück fehlt, beim Gehen kein Rückfall auf Luftlinie", async () => {
+  globalThis.FOOTMOCK = true;
+  try {
+    await seed();
+    OSRMREQ.length = 0;
+    // Etappe mit zwei Wegpunkten, einer davon „im Wasser“ (kein Weg dorthin)
+    const r = await rp(`(function(){ var a = {la:40.7215, lo:-73.9890, id:"me"}, b = {la:40.7300, lo:-73.9950}, v = [[40.7240, -73.9900], [40.7270, -73.9690]];
+      WALKC = {}; SEGW = {}; LASTW = {}; window.__wt = {a:a, b:b, v:v}; return walkPath(a, b, v).length; })()`);
+    ok(r===4, "Erst Luftlinie erwartet (Weg wird berechnet)");
+    await page.waitForFunction(() => window.__rp(`walkPath(__wt.a, __wt.b, __wt.v).length > 6`), null, {timeout:5000}).catch(() => {});
+    const n1 = await rp(`walkPath(__wt.a, __wt.b, __wt.v).length`);
+    ok(n1 > 6, "Ein fehlendes Teilstück macht die ganze Etappe zur Luftlinie ("+n1+" Punkte)");
+    // eigener Standort bewegt sich: sofort der bisherige Weg, nur das erste Teilstück wird neu geholt
+    const before = OSRMREQ.length;
+    const n2 = await rp(`(function(){ var a2 = {la:40.7218, lo:-73.9892, id:"me"}; return walkPath(a2, __wt.b, __wt.v).length; })()`);
+    ok(n2 > 6, "Nach Bewegung des Standorts wieder Luftlinie ("+n2+" Punkte)");
+    await page.waitForTimeout(800);
+    ok(OSRMREQ.length - before === 1, "Es sollten nicht alle Teilstücke neu berechnet werden ("+(OSRMREQ.length - before)+" Anfragen)");
+    // am ersten Wegpunkt vorbeigegangen: der Weg ab dem Standort führt nicht mehr dorthin zurück
+    const pv = await rp(`(function(){ PASSV = {day:nyNow().key, v:{}}; var near = {la:40.7241, lo:-73.9901, id:"me"}; viaAhead(near, __wt.b, __wt.v);
+      var later = {la:40.7255, lo:-73.9850, id:"me"}; return {a:JSON.stringify(viaAhead(later, __wt.b, __wt.v)), keep:viaAhead({la:40.7, lo:-73.98}, __wt.b, __wt.v).length, saved:!!lsGet("rp-passv")}; })()`);
+    ok(pv.a==='[[40.727,-73.969]]', "Passierter Wegpunkt wird nicht übersprungen: "+pv.a);
+    ok(pv.keep===2, "Wegpunkte für feste Etappen (nicht ab Standort) dürfen nicht wegfallen");
+    ok(pv.saved, "Passierte Wegpunkte werden nicht gemerkt");
+  } finally { globalThis.FOOTMOCK = false; }
+});
+
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
   await seed();
   await rp(`select("p6")`); await page.waitForTimeout(200);
@@ -915,13 +949,13 @@ await test("Navigation zu U-Bahn- und Citi-Bike-Stationen", async () => {
   ok((await page.locator("#card").innerText()).includes("U-Bahn-Station"), "Stations-Pop-up fehlt");
   await click("#card [data-act=navpick]");
   ok(await page.locator("#jpMenu [data-act=navgo]").count()===3, "Menü zur Station sollte Zu Fuß, Citi Bike und Auto bieten");
-  await click("#jpMenu [data-act=navgo][data-mode=walk]");
+  await page.waitForSelector("#jpMenu [data-act=navgo][data-mode=walk]"); await rp(`document.querySelector("#jpMenu [data-act=navgo][data-mode=walk]").click()`);
   await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts)"), null, {timeout:5000}).catch(() => {});
   ok(await rp(`NAV && /Bleecker/.test(NAV.tgt.n) && !!NAV.pts`), "Navigation zur U-Bahn-Station startet nicht");
   await rp(`navEnd(true)`); await page.waitForFunction(() => window.__rp("!map.isMoving()"), null, {timeout:5000}).catch(() => {});
   await rp(`select("cb:S2")`); await page.waitForTimeout(150);
   await click("#card [data-act=navpick]");
-  await click("#jpMenu [data-act=navgo][data-mode=walk]");
+  await page.waitForSelector("#jpMenu [data-act=navgo][data-mode=walk]"); await rp(`document.querySelector("#jpMenu [data-act=navgo][data-mode=walk]").click()`);
   await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts)"), null, {timeout:5000}).catch(() => {});
   ok(await rp(`NAV && /Washington Sq E/.test(NAV.tgt.n)`), "Navigation zur Citi-Bike-Station startet nicht");
   await rp(`navEnd(true); select("p1"); trOpen = true; renderCard();`); await page.waitForTimeout(150);
