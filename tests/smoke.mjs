@@ -52,6 +52,12 @@ async function newPage(){
       for(let i = 0; i <= 10; i++) co.push([A[0], A[1] + (M[1]-A[1])*i/10]); for(let i = 1; i <= 10; i++) co.push([M[0] + (B[0]-M[0])*i/10, M[1]]);
       return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({code:"Ok", routes:[{distance:1200, duration:900, geometry:{type:"LineString", coordinates:co},
         legs:[{steps:[{name:"Bowery", maneuver:{type:"depart", location:A}}, {name:"Bleecker Street", maneuver:{type:"turn", modifier:"right", location:M}}, {name:"", maneuver:{type:"arrive", location:B}}]}]}]}) }); }
+    if(u.includes("photon.komoot.io/api")){ const q = new URL(u).searchParams; globalThis.PHOTONREQ = (globalThis.PHOTONREQ||[]).concat([u]);
+      const feats = q.get("q").toLowerCase().includes("brooklyn") ? [{geometry:{coordinates:[-73.9442, 40.6782]}, properties:{name:"Brooklyn", city:"New York", country:"USA"}}]
+        : [{geometry:{coordinates:[-73.9900, 40.7500]}, properties:{name:"On Store Midtown", osm_value:"shoes", street:"W 34th St", city:"New York"}},
+           {geometry:{coordinates:[-73.6000, 40.9000]}, properties:{name:"On Store Rye", osm_value:"shoes", city:"Rye"}},
+           {geometry:{coordinates:[101.6900, 3.1400]}, properties:{name:"On Store Malaysia", osm_value:"convenience", city:"Kuala Lumpur"}}];
+      return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({features:feats}) }); }
     if(u.includes("openfreemap.org/styles")) return rt.fulfill({ contentType: "application/json", body: JSON.stringify({version:8, sources:{}, layers:[{id:"bg", type:"background", paint:{"background-color":"#dde"}}]}) });
     return rt.abort();
   });
@@ -523,6 +529,37 @@ await test("Ganze Linie zeigen: Linie in der Wegbeschreibung antippen, Strecke v
   await shot("ganze-linie");
   await click("#lineV [data-act=lineVclose]");
   ok(await rp(`LINEV===null && !document.getElementById("lineV")`), "Ganze Linie lässt sich nicht ausblenden");
+});
+
+await test("Suche: Ort und Umkreis einstellbar, weit entfernte Treffer ausgeblendet", async () => {
+  await seed();
+  globalThis.PHOTONREQ = [];
+  await rp(`map.jumpTo({center:[-73.985, 40.758], zoom:13}); lsSet("rp-sr-rad", "10000"); srch.rad = 10000; srch.loc = {k:"map"}; openSearch();`); await page.waitForTimeout(150);
+  ok(await visible("#srLoc [data-act=srlocpick]") && await visible("#srLoc [data-act=srradpick]"), "Ort/Umkreis-Auswahl fehlt");
+  ok((await page.locator("#srLoc").innerText()).includes("10 km"), "Umkreis wird nicht angezeigt");
+  await page.locator("#srchIn").fill("on store"); await page.waitForTimeout(900);
+  let res = await page.locator("#srchRes").innerText();
+  ok(res.includes("On Store Midtown") && !res.includes("Malaysia") && !res.includes("Rye"), "Treffer außerhalb von 10 km sichtbar: "+res.slice(0, 200));
+  ok(PHOTONREQ.some(u => u.includes("bbox=")), "Websuche nutzt keinen Umkreis");
+  // Umkreis 50 km: Rye (ca. 40 km) erscheint, Malaysia nicht
+  await click("#srLoc [data-act=srradpick]"); await click("#jpMenu [data-act=srradset][data-v='50000']"); await page.waitForTimeout(900);
+  res = await page.locator("#srchRes").innerText();
+  ok(res.includes("Rye") && !res.includes("Malaysia"), "Umkreis 50 km wirkt nicht: "+res.slice(0, 200));
+  ok(await rp(`lsGet("rp-sr-rad")`)==="50000", "Umkreis wird nicht gemerkt");
+  // Anderer Ort: Brooklyn
+  await click("#srLoc [data-act=srlocpick]");
+  ok(await page.locator("#jpMenu [data-act=srlocset]").count() >= 3, "Kartenmitte / Mein Standort / Hotel fehlen");
+  await page.locator("#srLocQ").fill("Brooklyn"); await page.waitForTimeout(800);
+  await shot("suche-ort");
+  await click("#jpMenu [data-act=srlocq]");
+  ok((await page.locator("#srLoc").innerText()).includes("Brooklyn"), "Anderer Ort nicht übernommen");
+  const c = await rp(`JSON.stringify(srchCenter())`);
+  ok(c.includes("40.678") && c.includes("-73.944"), "Suchmitte nicht Brooklyn: "+c);
+  // Hotel als Suchort
+  await click("#srLoc [data-act=srlocpick]");
+  await page.locator("#jpMenu [data-act=srlocset]", {hasText:"Hotel Test"}).click(); await page.waitForTimeout(200);
+  ok(await rp(`srch.loc.k==="hotel" && Math.abs(srchCenter().la - 40.7561) < 1e-4`), "Hotel als Suchort funktioniert nicht");
+  await rp(`lsSet("rp-sr-loc", ""); lsSet("rp-sr-rad", "")`);
 });
 
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {

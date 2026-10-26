@@ -2329,6 +2329,17 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .lo-list [aria-checked="true"] .sw2::after{transform:translateX(18px)}
 .lo-note{font-size:12.5px;color:var(--muted);margin:8px 4px 14px}
 .lo-reset{width:100%;border:0;border-radius:14px;padding:13px;font:inherit;font-size:16px;font-weight:600;color:#0a84ff;background:color-mix(in srgb,var(--ink) 7%,transparent);cursor:pointer}
+.srloc{display:flex;gap:6px;margin:8px 0 2px;flex-wrap:wrap}
+.srloc button{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:6px 11px 6px 9px;font:inherit;font-size:13px;color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent);cursor:pointer;max-width:100%}
+.srloc button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srloc svg{width:15px;height:15px;flex:0 0 auto;color:var(--accent,#0a84ff)}
+.srl-q{padding:6px 6px 2px;border-top:1px solid var(--line);margin-top:4px}
+.srl-q input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--sheet);color:var(--ink)}
+#srLocRes{max-height:220px;overflow-y:auto;margin-top:4px}
+#srLocRes button{display:flex;align-items:center;width:100%;border:0;background:none;border-radius:11px;padding:9px 10px;font:600 15px/1.2 var(--f-body);color:var(--ink);text-align:left;cursor:pointer}
+#srLocRes button:active{background:var(--fill)}
+#srLocRes button small{display:block;margin-top:2px;font:500 12.5px/1.3 var(--f-body);color:var(--muted)}
+#srLocRes .note{margin:6px 4px;font-size:13px}
 #lineV{top:calc(env(safe-area-inset-top,0px) + 124px);max-width:calc(100% - 150px);padding:7px 7px 7px 9px;gap:8px;z-index:26}
 #lineV .bul{margin:0;flex:0 0 auto}
 #lineV .lv-t{display:flex;flex-direction:column;min-width:0;line-height:1.2}
@@ -5745,7 +5756,57 @@ var SRCAT = {essen:["amenity:restaurant","amenity:fast_food","amenity:food_court
 function srchCatOk(r){ return !srch.cat || r.kind==="web" || r.c===srch.cat; }
 function openSearch(){ var el = $("srchPop"); el.hidden = false; document.body.classList.add("glass"); renderSearch(true); }
 function closeSearch(){ var el = $("srchPop"); el.hidden = true; el.innerHTML = ""; if($("acctPop").hidden && $("tripPop").hidden) document.body.classList.remove("glass"); }
-function srchCenter(){ if(map){ var c = map.getCenter(); return {la:c.lat, lo:c.lng}; } var h = T().hotels.filter(hasLoc)[0]; return h || {la:40.758, lo:-73.985}; }
+/* Suchort und Umkreis: Kartenmitte, mein Standort, Hotel, Reiseziel oder ein anderer Ort; gemerkt auf diesem Gerät */
+var SRRAD = [[500,"500 m"],[1000,"1 km"],[2000,"2 km"],[5000,"5 km"],[10000,"10 km"],[25000,"25 km"],[50000,"50 km"],[0,"Unbegrenzt"]];
+srch.rad = (function(){ var v = parseInt(lsGet("rp-sr-rad")||"10000", 10); return SRRAD.some(function(x){ return x[0]===v; }) ? v : 10000; })();
+srch.loc = (function(){ try { var o = JSON.parse(lsGet("rp-sr-loc")||"null"); return o && o.k ? o : {k:"map"}; } catch(e){ return {k:"map"}; } })();
+function srLocCands(){
+  var a = [{k:"map", n:"Kartenmitte", sub:"Mitte des aktuellen Kartenausschnitts"}, {k:"me", n:"Mein Standort", sub: me ? "aktuelle Position" : "wird bestimmt …"}];
+  var D = dayByKey(cur), H = D && D.hotel && hasLoc(D.hotel) ? D.hotel : (T().hotels||[]).filter(hasLoc)[0];
+  if(H) a.push({k:"hotel", n:H.n || "Hotel", sub:"Hotel", la:+H.la, lo:+H.lo});
+  (T().orte||[]).filter(hasLoc).forEach(function(o){ a.push({k:"ort:"+o.n, n:o.n, sub:"Reiseziel", la:+o.la, lo:+o.lo}); });
+  return a;
+}
+function srLocName(){
+  var L = srch.loc; if(L.k==="map") return "Kartenmitte"; if(L.k==="me") return "Mein Standort";
+  if(L.k==="hotel"){ var h = srLocCands().filter(function(x){ return x.k==="hotel"; })[0]; return h ? h.n : "Hotel"; }
+  return L.n || "Ort";
+}
+function srchCenter(){
+  var L = srch.loc;
+  if(L.k==="me" && me) return {la:me.la, lo:me.lo};
+  if(L.k==="hotel"){ var h = srLocCands().filter(function(x){ return x.k==="hotel"; })[0]; if(h) return h; }
+  if(L.k!=="map" && L.k!=="me" && L.k!=="hotel" && L.la!=null) return {la:+L.la, lo:+L.lo};
+  return srchMapCenter();
+}
+function srInRad(p, C){ return !srch.rad || !p || p.la==null || dist(C, p) <= srch.rad; }
+function srSet(){ srch.res = srchLocal(srch.q); srch.web = []; renderSearch(false); srchWeb(srch.q); }
+function openSrLoc(btn){
+  var cs = srLocCands(), cur0 = srch.loc.k;
+  var h = "<div class=\"vp-h\">Suchen bei</div>"+cs.map(function(c, i){ var on = c.k===cur0; return "<button type=\"button\" role=\"menuitemradio\" data-act=\"srlocset\" data-i=\""+i+"\" aria-checked=\""+on+"\"><span class=\"cm-t\"><b>"+esc(c.n)+"</b><small>"+esc(c.sub)+"</small></span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("")+
+    (srch.loc.k.indexOf("q:")===0 ? "<button type=\"button\" role=\"menuitemradio\" aria-checked=\"true\" data-act=\"srlockeep\"><span class=\"cm-t\"><b>"+esc(srch.loc.n)+"</b><small>"+esc(srch.loc.sub || "anderer Ort")+"</small></span><b class=\"ck\">✓</b></button>" : "")+
+    "<div class=\"frp-h srl-q\"><input type=\"search\" id=\"srLocQ\" placeholder=\"Anderen Ort suchen (Stadt, Viertel, Adresse)\" autocomplete=\"off\" enterkeyhint=\"search\"><div id=\"srLocRes\"></div></div>";
+  jpPopover("srloc", btn, h, "srloc");
+}
+var srLocT = null, srLocHits = [];
+function srLocSearch(q){
+  clearTimeout(srLocT); var box = $("srLocRes"); if(!box) return;
+  if(q.trim().length < 2){ box.innerHTML = ""; return; }
+  srLocT = setTimeout(function(){ var C = srchMapCenter();
+    fetch("https://photon.komoot.io/api/?q="+encodeURIComponent(q)+"&limit=6&lang=de&lat="+C.la.toFixed(3)+"&lon="+C.lo.toFixed(3)).then(function(r){ return r.json(); }).then(function(j){
+      var b2 = $("srLocRes"); if(!b2 || $("srLocQ").value!==q) return;
+      srLocHits = (j.features||[]).map(function(f){ var pr = f.properties||{}, co = f.geometry && f.geometry.coordinates; if(!co) return null;
+        var nm = pr.name || [pr.street, pr.housenumber].filter(Boolean).join(" "); if(!nm) return null;
+        return {n:nm, la:+co[1].toFixed(5), lo:+co[0].toFixed(5), sub:[pr.district || pr.locality, pr.city, pr.state, pr.country].filter(function(x, i, A){ return x && x!==nm && A.indexOf(x)===i; }).slice(0, 3).join(", ")}; }).filter(Boolean);
+      b2.innerHTML = srLocHits.length ? srLocHits.map(function(x, i){ return "<button type=\"button\" role=\"menuitem\" data-act=\"srlocq\" data-i=\""+i+"\"><span class=\"cm-t\"><b>"+esc(x.n)+"</b><small>"+esc(x.sub)+"</small></span></button>"; }).join("") : "<p class=\"note\">Nichts gefunden.</p>";
+    }).catch(function(){ var b3 = $("srLocRes"); if(b3) b3.innerHTML = "<p class=\"note\">Suche nicht erreichbar.</p>"; });
+  }, 350);
+}
+function setSrLoc(o){ srch.loc = o; try { lsSet("rp-sr-loc", JSON.stringify(o)); } catch(e){} if(o.k==="me" && !me && watchId===null && "geolocation" in navigator) startLocate(); closeJpMore(); srSet(); }
+function openSrRad(btn){
+  jpPopover("srrad", btn, "<div class=\"vp-h\">Umkreis</div>"+SRRAD.map(function(x){ var on = srch.rad===x[0]; return "<button type=\"button\" role=\"menuitemradio\" data-act=\"srradset\" data-v=\""+x[0]+"\" aria-checked=\""+on+"\"><span class=\"cm-t\"><b>"+x[1]+"</b></span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join(""), "srrad");
+}
+function srchMapCenter(){ if(map){ var c = map.getCenter(); return {la:c.lat, lo:c.lng}; } var h = T().hotels.filter(hasLoc)[0]; return h || {la:40.758, lo:-73.985}; }
 function srchLocal(q){
   var w = norm(q).split(/\s+/).filter(Boolean), out = [], C = srchCenter(), seen = {};
   if(!w.length && !srch.cat) return out;
@@ -5765,6 +5826,7 @@ function srchLocal(q){
         var pr = f.properties || {}, nm = pr["name:latin"] || pr.name; if(!nm || !f.geometry || f.geometry.type!=="Point") return;
         if(!hit(nm+" "+(POISUB[pr.subclass]||pr.subclass||"")+" "+(pr["class"]||""))) return;
         var co = f.geometry.coordinates, la = +co[1].toFixed(6), lo = +co[0].toFixed(6), key = norm(nm).slice(0,10)+Math.round(la*2000)+","+Math.round(lo*2000);
+        if(!srInRad({la:la, lo:lo}, C)) return;
         if(seen[key]) return; seen[key] = 1;
         var cls = pr["class"], sub = pr.subclass;
         pois.push({kind:"poi", n:nm, cls:cls, subc:sub, c: (sub==="viewpoint" || cls==="viewpoint") ? "aussicht" : FOODSUB.indexOf(sub)>-1 ? "shop" : (POICLASS[sub] || POICLASS[cls] || "sight"), la:la, lo:lo, sub:(POISUB[sub] || POISUB[cls] || (sub||cls||"").replace(/_/g," ")), d: dist(C, {la:la, lo:lo})});
@@ -5781,13 +5843,15 @@ function srchLocal(q){
 function srchWeb(q){
   clearTimeout(srchT); if(q.trim().length < 3){ srch.web = []; return; }
   srchT = setTimeout(function(){
-    var C = srchCenter(), qq = q;
+    var C = srchCenter(), qq = q, rad0 = srch.rad, bb = "";
+    if(rad0){ var dla = rad0/111320, dlo = rad0/(111320*Math.cos(C.la*Math.PI/180)); bb = "&bbox="+[(C.lo-dlo).toFixed(4), (C.la-dla).toFixed(4), (C.lo+dlo).toFixed(4), (C.la+dla).toFixed(4)].join(","); }
     var tagq = srch.cat && SRCAT[srch.cat] ? SRCAT[srch.cat].map(function(x){ return "&osm_tag="+encodeURIComponent(x); }).join("") : "", cat0 = srch.cat;
-    fetch("https://photon.komoot.io/api/?q="+encodeURIComponent(q)+"&limit="+(tagq ? 12 : 8)+"&lang=de&lat="+C.la.toFixed(4)+"&lon="+C.lo.toFixed(4)+tagq).then(function(r){ return r.json(); }).then(function(j){
-      if(srch.q!==qq || srch.cat!==cat0) return;
+    fetch("https://photon.komoot.io/api/?q="+encodeURIComponent(q)+"&limit="+(tagq ? 12 : 8)+"&lang=de&lat="+C.la.toFixed(4)+"&lon="+C.lo.toFixed(4)+bb+tagq).then(function(r){ return r.json(); }).then(function(j){
+      if(srch.q!==qq || srch.cat!==cat0 || srch.rad!==rad0) return;
       var seen = {}; srch.res.forEach(function(r){ seen[norm(r.n)] = 1; });
       srch.web = (j.features||[]).map(function(f){ var pr = f.properties||{}, co = f.geometry && f.geometry.coordinates; if(!co) return null;
-        var str = [pr.street, pr.housenumber].filter(Boolean).join(" "), nm = pr.name || str; if(!nm || seen[norm(nm)]) return null; seen[norm(nm)] = 1;
+        var str = [pr.street, pr.housenumber].filter(Boolean).join(" "), nm = pr.name || str; if(!nm || seen[norm(nm)]) return null;
+        if(!srInRad({la:co[1], lo:co[0]}, C)) return null; seen[norm(nm)] = 1;
         return {kind:"web", n:nm, la:+co[1].toFixed(6), lo:+co[0].toFixed(6), addr:[str, pr.city || pr.district].filter(Boolean).join(", "), sub:[pr.osm_value ? (POISUB[pr.osm_value] || pr.osm_value.replace(/_/g," ")) : "", [str, pr.city].filter(Boolean).join(", ")].filter(Boolean).join(" · "), c: cat0 || (pr.osm_value==="viewpoint" ? "aussicht" : POICLASS[pr.osm_value] || (pr.osm_key==="shop" ? "shop" : pr.osm_key==="leisure" && pr.osm_value!=="park" ? "erlebnis" : "sight")), cls:pr.osm_value, d: dist(C, {la:+co[1], lo:+co[0]})};
       }).filter(Boolean);
       renderSearch(false);
@@ -5797,20 +5861,23 @@ function srchWeb(q){
 function renderSearch(focus){
   var el = $("srchPop"), q = srch.q;
   var head = "<div class=\"ag-card srch\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Suchen\"><button type=\"button\" class=\"ag-x\" data-act=\"srchclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Suchen</h3>"+
-    "<input type=\"search\" id=\"srchIn\" class=\"frq\" placeholder=\"Ort, Café, Adresse, Notiz …\" autocomplete=\"off\" autocapitalize=\"off\" enterkeyhint=\"search\" value=\""+esc(q)+"\"><div class=\"srcats\" id=\"srCats\" role=\"tablist\" aria-label=\"Kategorie\"></div><div id=\"srchRes\"></div></div>";
+    "<input type=\"search\" id=\"srchIn\" class=\"frq\" placeholder=\"Ort, Café, Adresse, Notiz …\" autocomplete=\"off\" autocapitalize=\"off\" enterkeyhint=\"search\" value=\""+esc(q)+"\"><div class=\"srloc\" id=\"srLoc\"></div><div class=\"srcats\" id=\"srCats\" role=\"tablist\" aria-label=\"Kategorie\"></div><div id=\"srchRes\"></div></div>";
   if(!el.querySelector("#srchIn")) el.innerHTML = head;
+  var sl = $("srLoc"); if(sl){ var rl = (SRRAD.filter(function(x){ return x[0]===srch.rad; })[0]||[0,"Unbegrenzt"])[1];
+    sl.innerHTML = "<button type=\"button\" data-act=\"srlocpick\" aria-haspopup=\"menu\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 18s5.5-5.2 5.5-9.5a5.5 5.5 0 0 0-11 0C4.5 12.8 10 18 10 18z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/></svg><span>Bei <b>"+esc(srLocName())+"</b></span></button>"+
+      "<button type=\"button\" data-act=\"srradpick\" aria-haspopup=\"menu\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7\" stroke-dasharray=\"2.5 2.5\"/><circle cx=\"10\" cy=\"10\" r=\"1.6\" fill=\"currentColor\"/></svg><span>Umkreis <b>"+rl+"</b></span></button>"; }
   var cats = $("srCats"); if(cats) cats.innerHTML = "<button type=\"button\" role=\"tab\" data-act=\"srcat\" data-v=\"\" aria-selected=\""+(!srch.cat)+"\">Alle</button>"+CATS.map(function(c){ return "<button type=\"button\" role=\"tab\" data-act=\"srcat\" data-v=\""+c[0]+"\" aria-selected=\""+(srch.cat===c[0])+"\" style=\"--cc:"+catCol(c[0])+"\">"+icon(c[0])+"<span>"+esc(c[1])+"</span></button>"; }).join("");
   var all = srch.res.concat(srch.web), h = "";
   if(!q.trim() && srch.cat){ var near = all.map(function(r, i){ return {r:r, i:i}; });
     h = near.length ? "<div class=\"srlbl\">"+esc(CATNAME[srch.cat])+" in der Nähe · "+near.length+"</div><ul class=\"srlist\">"+near.map(function(x){ var r = x.r; return "<li><button type=\"button\" class=\"srow\" data-act=\"srchgo\" data-i=\""+x.i+"\"><span class=\"sric\">"+icon(r.c || "sight")+"</span><span class=\"srt\"><b>"+esc(r.n)+"</b><small>"+esc(r.sub||"")+"</small></span>"+(r.d!=null ? "<span class=\"srd\">"+fmtDist(r.d)+"</span>" : "")+"</button></li>"; }).join("")+"</ul>"
       : "<p class=\"note\">Keine "+esc(CATNAME[srch.cat])+" im aktuellen Kartenausschnitt oder in deinem Plan. Gib einen Suchbegriff ein, um weiter zu suchen.</p>";
   }
-  else if(!q.trim()) h = "<p class=\"note\">Durchsucht deinen Plan, die Wunschliste, alle Punkte im aktuellen Kartenausschnitt und weitere Orte in der Umgebung.</p>";
+  else if(!q.trim()) h = "<p class=\"note\">Durchsucht deinen Plan, die Wunschliste, die Punkte auf der Karte und weitere Orte – im gewählten Umkreis um „"+esc(srLocName())+"“.</p>";
   else {
     var grp = function(kind, title){ var xs = all.map(function(r, i){ return {r:r, i:i}; }).filter(function(x){ return x.r.kind===kind; }); if(!xs.length) return "";
       return "<div class=\"srlbl\">"+title+" · "+xs.length+"</div><ul class=\"srlist\">"+xs.map(function(x){ var r = x.r; return "<li><button type=\"button\" class=\"srow\" data-act=\"srchgo\" data-i=\""+x.i+"\"><span class=\"sric\">"+icon(r.c || "sight")+"</span><span class=\"srt\"><b>"+hlq(r.n, q)+"</b><small>"+esc(r.sub||"")+"</small></span>"+(r.d!=null ? "<span class=\"srd\">"+fmtDist(r.d)+"</span>" : "")+"</button></li>"; }).join("")+"</ul>"; };
     h = grp("place", "Dein Plan & Wunschliste") + grp("poi", "Auf der Karte") + grp("web", "Weitere Orte");
-    if(!h) h = "<p class=\"note\">"+(q.trim().length < 3 ? "Weiter tippen …" : "Suche läuft …")+"</p>";
+    if(!h) h = "<p class=\"note\">"+(q.trim().length < 3 ? "Weiter tippen …" : "Suche läuft … (im Umkreis von "+esc((SRRAD.filter(function(x){ return x[0]===srch.rad; })[0]||[0,"–"])[1])+" um „"+esc(srLocName())+"“)")+"</p>";
   }
   $("srchRes").innerHTML = h;
   if(focus){ var i = $("srchIn"); if(i){ i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch(e){} } }
@@ -8885,7 +8952,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -10724,6 +10791,12 @@ document.addEventListener("click", function(e){
       if(t.closest("#jpMenu")){ var lpb = document.querySelector("[data-act=lnmenu][data-leg=\""+lpl+"\"]"); setTimeout(function(){ openLinePick(lpl, lpb || document.body); }, 30); }
       else openLinePick(lpl, t);
       break;
+    case "srlocpick": openSrLoc(t); break;
+    case "srradpick": openSrRad(t); break;
+    case "srlocset": var slc = srLocCands()[parseInt(t.getAttribute("data-i"),10)]; if(slc) setSrLoc({k:slc.k, n:slc.n, la:slc.la, lo:slc.lo}); break;
+    case "srlocq": var slq = srLocHits[parseInt(t.getAttribute("data-i"),10)]; if(slq) setSrLoc({k:"q:"+slq.n, n:slq.n, sub:slq.sub, la:slq.la, lo:slq.lo}); break;
+    case "srlockeep": closeJpMore(); break;
+    case "srradset": srch.rad = parseInt(t.getAttribute("data-v"),10) || 0; lsSet("rp-sr-rad", String(srch.rad)); closeJpMore(); srSet(); break;
     case "lnmenu": openLineMenu(parseInt(t.getAttribute("data-leg"),10), parseInt(t.getAttribute("data-ri"),10), t); break;
     case "lineVshow": var lv3 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(lv3){ var r3 = legRoute(lv3[0], lv3[1], cur), l3 = r3 && r3.legs[parseInt(t.getAttribute("data-ri"),10)]; if(l3) showLine(l3, parseInt(t.getAttribute("data-r"),10)); } break;
     case "lineVclose": endLine(); break;
@@ -10851,6 +10924,7 @@ document.addEventListener("input", function(e){
   }
   if(t.id==="busQ"){ busQ = t.value; renderLineMenus(); return; }
   if(t.id==="suPw2" || (t.id==="suPw" && $("suPw2").value)){ suCheck(false); return; }
+  if(t.id==="srLocQ"){ srLocSearch(t.value); return; }
   if(t.id==="srchIn"){ srch.q = t.value; srch.res = srchLocal(t.value); srch.web = []; renderSearch(false); srchWeb(t.value); return; }
   if(t.id==="frQ"){ var fq = t.value; clearTimeout(frTimer); frTimer = setTimeout(function(){ frDoSearch(fq); }, 300); return; }
   if(t.hasAttribute && t.hasAttribute("data-note")){ var np = t.getAttribute("data-note"), tn = T(); tn.notes = tn.notes || {}; if(t.value) tn.notes[np] = t.value; else delete tn.notes[np]; clearTimeout(jTimer); jTimer = setTimeout(save, 400); return; }
