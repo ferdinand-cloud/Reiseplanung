@@ -728,6 +728,9 @@ await test("Fußweg mit Wegpunkten: echter Weg auch wenn ein Teilstück fehlt, b
     ok(n2 > 6, "Nach Bewegung des Standorts wieder Luftlinie ("+n2+" Punkte)");
     await page.waitForTimeout(800);
     ok(OSRMREQ.length - before === 1, "Es sollten nicht alle Teilstücke neu berechnet werden ("+(OSRMREQ.length - before)+" Anfragen)");
+    // anderer, weit entfernter Start zum selben Ziel (z. B. neuer Stopp davor): nicht den alten Weg von dort zeigen
+    const far = await rp(`(function(){ var a3 = {la:40.7600, lo:-74.0035}, p = walkPath(a3, __wt.b, __wt.v); return {n:p.length, la:p[1].la}; })()`);
+    ok(far.n === 4 && Math.abs(far.la - 40.7240) < 1e-6, "Weg von entferntem Start übernimmt alten Weg eines anderen Starts ("+far.n+" Punkte)");
     // am ersten Wegpunkt vorbeigegangen: der Weg ab dem Standort führt nicht mehr dorthin zurück
     const pv = await rp(`(function(){ PASSV = {day:nyNow().key, v:{}}; var near = {la:40.7241, lo:-73.9901, id:"me"}; viaAhead(near, __wt.b, __wt.v);
       var later = {la:40.7255, lo:-73.9850, id:"me"}; return {a:JSON.stringify(viaAhead(later, __wt.b, __wt.v)), keep:viaAhead({la:40.7, lo:-73.98}, __wt.b, __wt.v).length, saved:!!lsGet("rp-passv")}; })()`);

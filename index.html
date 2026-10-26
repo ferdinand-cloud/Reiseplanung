@@ -7741,7 +7741,7 @@ function walkPump(){
         if(!ok && !err){ WALKC[job.k] = {p:null}; return; }
         if(!ok){ WALKC[job.k] = {fail:Date.now()}; return; }
         WALKC[job.k] = {p:out, d:Math.round(d), live:!!job.live, sv:1}; if(err) WALKC[job.k].retry = Date.now();
-        LASTW[walkLastKey(job.b, job.v)] = job.k;
+        LASTW[walkLastKey(job.b, job.v)] = {k:job.k, a:{la:+job.a.la, lo:+job.a.lo}};
         if(!job.live && !err) walkSave();
       }).catch(function(){ WALKC[job.k] = {fail:Date.now()}; })
         .then(function(){ walkBusy--; scheduleOverlay(); if(tab==="day") renderSheetSoon(); walkPump(); });
@@ -7805,8 +7805,9 @@ function walkPath(a, b, v){
   if(c && c.p && !c.sv && (v.length || walkAbsurd(a, b, c.d || 0))){ c.sv = 1; walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
   if(c && c.p && c.retry && Date.now() - c.retry > 45000){ c.retry = Date.now(); walkQ.push({k:k, a:a, b:b, v:v, live:!!c.live}); setTimeout(walkPump, 0); }
   if(c && c.p){ var pts = c.p.map(function(q){ return {la:q[0], lo:q[1]}; }); pts.unshift(a); pts.push(b); return pts; }
-  // wird gerade neu berechnet (z. B. eigener Standort hat sich bewegt): letzten Weg zum selben Ziel zeigen statt Luftlinie
-  var lw = LASTW[walkLastKey(b, v)], lc = lw && lw!==k && WALKC[lw];
+  // wird gerade neu berechnet (z. B. eigener Standort hat sich bewegt): letzten Weg zum selben Ziel zeigen statt Luftlinie –
+  // nur wenn er fast am selben Punkt begann (sonst z. B. nach neuem Stopp davor ein Weg von ganz woanders)
+  var lw = LASTW[walkLastKey(b, v)], lc = lw && lw.k!==k && dist(lw.a, a) < 300 && WALKC[lw.k];
   if(lc && lc.p && (!c || c.pend)){ if(!c){ WALKC[k] = {pend:1}; walkQ.push({k:k, a:a, b:b, v:v, live:a.id==="me" || b.id==="me" || a===me}); setTimeout(walkPump, 0); }
     var lp = lc.p.map(function(q){ return {la:q[0], lo:q[1]}; }); lp.unshift(a); lp.push(b); return lp; }
   if(c && (c.p===null || (c.fail && Date.now()-c.fail < 60000))) return direct;
