@@ -848,6 +848,17 @@ body.ro #camBtn,body.notrip #camBtn{display:none}
 .gp-modes a span{font-size:12.5px;color:var(--muted)}
 .gp-note{font-size:12.5px;color:var(--muted);margin:0}
 .gp-in{width:100%;margin-bottom:10px}
+.gp-ext{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin:4px 0 4px}
+.gp-ext svg{width:18px;height:18px}
+.gp-sheet{position:fixed;inset:0;z-index:5;display:flex;align-items:flex-end;justify-content:center;padding:0 12px calc(env(safe-area-inset-bottom,0px) + 12px)}
+.gp-sh-bd{position:absolute;inset:0;background:var(--scrim)}
+.gp-sh{position:relative;width:min(420px,100%);display:grid;gap:8px;animation:gpUp .22s ease}
+.gp-sh-g{display:grid;background:var(--sheet);border-radius:16px;overflow:hidden}
+.gp-sh-t{text-align:center;font:600 13px/1 var(--f-body);color:var(--muted);padding:13px 0 11px}
+.gp-sh a,.gp-sh-x{display:block;text-align:center;padding:16px;background:var(--sheet);color:var(--accent,#0A84FF);font:600 17px/1.2 var(--f-body);text-decoration:none;border:0;cursor:pointer}
+.gp-sh a{border-top:1px solid var(--line)}
+.gp-sh-x{border-radius:16px;color:var(--ink)}
+@keyframes gpUp{from{transform:translateY(30px);opacity:0}}
 @media (min-width:900px){
   .edge{display:grid;place-items:center;position:fixed;z-index:17;top:50%;left:400px;transform:translateY(-50%);width:22px;height:56px;border:1px solid var(--line);border-left:0;border-radius:0 10px 10px 0;background:var(--sheet);color:var(--muted);box-shadow:4px 0 10px var(--scrim);padding:0;transition:left .28s cubic-bezier(.2,.8,.2,1)}
   .edge svg{width:14px;height:14px;transition:transform .2s}
@@ -7705,9 +7716,9 @@ function goPrev(id){
 }
 function goUrl(mode, from, to, app){
   var d = encodeURIComponent(goLoc(to)), o = from && from!=="me" ? encodeURIComponent(goLoc(from)) : "";
-  if(app==="apple") return "https://maps.apple.com/directions?"+(o?"source="+o+"&":"")+"destination="+d+"&mode="+mode;
+  if(app==="apple") return "https://maps.apple.com/directions?"+(o?"source="+o+"&":"")+"destination="+d+(mode ? "&mode="+mode : "");
   var gm = {walking:"walking", transit:"transit", cycling:"bicycling", driving:"driving"}[mode];
-  return "https://www.google.com/maps/dir/?api=1"+(o?"&origin="+o:"")+"&destination="+d+"&travelmode="+gm+(o?"":"&dir_action=navigate");
+  return "https://www.google.com/maps/dir/?api=1"+(o?"&origin="+o:"")+"&destination="+d+(gm ? "&travelmode="+gm+(o?"":"&dir_action=navigate") : "");
 }
 function goEst(mode, a, b){
   if(!a || !hasLoc(b)) return "";
@@ -7737,14 +7748,13 @@ function renderGo(live){
   if(prev) h += "<button type=\"button\" data-act=\"gofrom\" data-from=\"prev\" aria-pressed=\""+(goSt.from==="prev")+"\">"+(D && prev===D.hotel ? "Hotel" : "Vorheriger Stopp")+": "+esc(prev.n)+"</button>";
   h += "</div><div class=\"gp-lbl\">In der App navigieren</div><div class=\"gp-nav\" role=\"group\" aria-label=\"In der App navigieren\">"+
     [["walk", LMWALK, "Zu Fuß"], ["bike", LMBIKE, "Citi Bike"], ["oepnv", LMSUB, "U-Bahn & Bus"]].map(function(m){ return "<button type=\"button\" data-act=\"navstart\" data-mode=\""+m[0]+"\">"+m[1]+"<b>"+m[2]+"</b></button>"; }).join("")+"</div>";
-  h += "<div class=\"gp-lbl\">In anderer App öffnen</div><div class=\"gp-modes\">";
-  GOMODES.forEach(function(m){
-    h += "<a href=\""+esc(goUrl(m[0], from, p, goApp))+"\" target=\"_blank\" rel=\"noopener\" data-act=\"gogo\">"+m[2]+"<b>"+m[1]+"</b><span>"+(goEst(m[0], a, p) || "&nbsp;")+"</span></a>";
-  });
+  // andere Karten-App: ein Knopf, dann Auswahl Apple Karten / Google Maps – das Verkehrsmittel wählt man dort
+  h += "<button type=\"button\" class=\"btn g gp-ext\" data-act=\"goext\" aria-haspopup=\"dialog\" aria-expanded=\""+!!goSt.ext+"\">"+NAVGOICO+"In anderer App navigieren</button>";
+  if(from==="me" && !me) h += "<p class=\"gp-note\">Dein Standort wird in der Karten-App bestimmt.</p>";
   h += "</div>";
-  if(a && hasLoc(p) && dist(a, p) < 40000 && !transit(a, p, dayOf(goSt.id)||todayKey()).walk) h += "<button type=\"button\" class=\"btn g gp-in\" data-act=\"goin\">U-Bahn-Weg hier in der Karte zeigen</button>";
-  h += "<div class=\"gp-lbl\">Öffnen in</div><div class=\"gp-app\" role=\"group\" aria-label=\"Karten-App\"><button type=\"button\" data-act=\"goapp\" data-app=\"apple\" aria-pressed=\""+(goApp==="apple")+"\">Apple Karten</button><button type=\"button\" data-act=\"goapp\" data-app=\"google\" aria-pressed=\""+(goApp==="google")+"\">Google Maps</button></div>";
-  h += "<p class=\"gp-note\">"+(from==="me" && !me ? "Dein Standort wird in der Karten-App bestimmt. " : "")+"Die Navigation startet in der gewählten Karten-App.</p></div>";
+  if(goSt.ext) h += "<div class=\"gp-sheet\" role=\"dialog\" aria-modal=\"true\" aria-label=\"In anderer App navigieren\"><div class=\"gp-sh-bd\" data-act=\"goextclose\"></div><div class=\"gp-sh\"><div class=\"gp-sh-g\"><div class=\"gp-sh-t\">Navigieren mit</div>"+
+    [["apple","Apple Karten"],["google","Google Maps"]].map(function(x){ return "<a href=\""+esc(goUrl(null, from, p, x[0]))+"\" target=\"_blank\" rel=\"noopener\" data-act=\"gogo\" data-app=\""+x[0]+"\">"+x[1]+"</a>"; }).join("")+
+    "</div><button type=\"button\" class=\"gp-sh-x\" data-act=\"goextclose\">Abbrechen</button></div></div>";
   // Standort-Updates: nur neu aufbauen, wenn sich wirklich etwas geändert hat – dann ohne Einblend-Animation und mit gleicher Scroll-Position (sonst „zuckt“ das Pop-up)
   var cp = $("catPop"), open = !cp.hidden && !!cp.querySelector("[data-act=gofrom]");
   if(open && goSt.html===h) return;
@@ -10413,7 +10423,9 @@ document.addEventListener("click", function(e){
     case "gkeydel": gKey = ""; gInfo = {}; gMsg = "Schlüssel entfernt."; try { localStorage.removeItem("nyc-gkey"); } catch(e){} refreshSettings(); renderCard(); break;
     case "gofrom": goSt.from = t.getAttribute("data-from"); renderGo(); break;
     case "goapp": goApp = t.getAttribute("data-app"); lsSet("nyc-go-app", goApp); renderGo(); break;
-    case "gogo": setTimeout(closeCatPop, 300); break;
+    case "gogo": var ga = t.getAttribute("data-app"); if(ga){ goApp = ga; lsSet("nyc-go-app", goApp); } setTimeout(closeCatPop, 300); break;
+    case "goext": goSt.ext = true; renderGo(); break;
+    case "goextclose": goSt.ext = false; renderGo(); break;
     case "goin":
       closeCatPop();
       if(goSt.from==="me" && me){ sel = goSt.id; meRoute = false; renderCard(); t = document.querySelector("[data-act=meroute]"); if(t) t.click(); }

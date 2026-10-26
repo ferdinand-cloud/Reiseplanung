@@ -583,6 +583,22 @@ await test("Liste: besuchte Orte nach Sichtbarkeit filtern", async () => {
   ok((await rows()).split(",").sort().join(",")==="p4,p5", "Filter Alle setzt nicht zurück: "+await rows());
 });
 
+await test("Routen-Pop-up: ein Knopf „In anderer App navigieren“ mit Auswahl Apple Karten / Google Maps", async () => {
+  await seed();
+  await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; openGo("p2");`); await page.waitForTimeout(200);
+  ok(await page.locator("#catPop .gp-modes, #catPop .gp-app, #catPop [data-act=goin]").count()===0, "Alte Verkehrsmittel-Kacheln / App-Wahl / U-Bahn-Weg-Knopf noch da");
+  ok(await page.locator("#catPop [data-act=navstart]").count()===3, "In-App-Navigation fehlt");
+  ok(await visible("#catPop [data-act=goext]"), "Knopf „In anderer App navigieren“ fehlt");
+  await click("#catPop [data-act=goext]"); await page.waitForTimeout(250);
+  await shot("route-andere-app");
+  const links = await page.evaluate(() => [...document.querySelectorAll("#catPop .gp-sh a")].map(a => a.textContent+"|"+a.getAttribute("href")));
+  ok(links.length===2 && /^Apple Karten\|https:\/\/maps\.apple\.com\/directions\?destination=/.test(links[0]) && /^Google Maps\|https:\/\/www\.google\.com\/maps\/dir\//.test(links[1]), "Auswahl Apple Karten / Google Maps falsch: "+links.join(" ; "));
+  ok(links.every(l => !/mode=|travelmode=/.test(l)), "Verkehrsmittel sollte in der anderen App gewählt werden: "+links.join(" ; "));
+  ok(await page.evaluate(() => { const r = document.querySelector("#catPop .gp-sh a").getBoundingClientRect(); return r.width > 200 && r.bottom <= innerHeight; }), "Auswahl ist nicht voll sichtbar");
+  await click("#catPop .gp-sh-x"); await page.waitForTimeout(150);
+  ok(await page.locator("#catPop .gp-sheet").count()===0 && await visible("#catPop [data-act=goext]"), "Abbrechen schließt die Auswahl nicht");
+});
+
 await test("Navigation zu U-Bahn- und Citi-Bike-Stationen", async () => {
   await seed();
   await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; layers.sub = true; layers.bike = true; cbLoad(true);`); await page.waitForTimeout(800);
