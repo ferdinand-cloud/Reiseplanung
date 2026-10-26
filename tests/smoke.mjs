@@ -1031,6 +1031,87 @@ await test("Tagesplan: Privat-Plakette sichtbar", async () => {
   ok(await page.locator(".privmk").count() >= 1, "Privat-Plakette fehlt");
 });
 
+/* ---------- Ziele: Orte ohne Reise merken ---------- */
+async function noTripUser(){
+  await rp(`acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; fbDb = null; acct.state = "ok"; S = fresh(); renderGate(); renderAll(); true`);
+}
+await test("Ziele: ohne Reise merken legt Ziel an, keine Reise entsteht", async () => {
+  await noTripUser();
+  await rp(`poiSel = {n:"Trattoria Roma", c:"essen", la:41.9000, lo:12.5000, addr:"Via del Corso 1, Rom"}; sel = null; select("poi");`); await page.waitForTimeout(200);
+  ok(await page.locator("#card [data-act=poimerk]").count()===1, "Merken-Kachel fehlt ohne Reise");
+  ok(await page.locator("#card [data-act=poiadd]").count()===0, "Wunschliste-Kachel ohne Reise");
+  await shot("ziel-poi");
+  await click("#card [data-act=poimerk]");
+  await page.waitForFunction(() => window.__rp("zielIds().length===1"), null, {timeout:4000});
+  ok(await rp(`S.trips[zielIds()[0]].name`)==="Rom", "Ziel heißt nicht nach der Stadt");
+  ok(await rp(`noTrip() && liveIds().length===0`), "Ziel zählt als Reise");
+  ok((await page.locator("#toast").innerText()).includes("gemerkt in „Rom“"), "Hinweis nach dem Merken fehlt");
+  await rp(`poiSel = {n:"Pantheon", c:"sight", la:41.8986, lo:12.4769, addr:"Piazza della Rotonda, Rom"}; sel = null; select("poi");`); await page.waitForTimeout(150);
+  await click("#card [data-act=poimerk]"); await page.waitForTimeout(200);
+  ok(await rp(`zielIds().length===1 && Object.keys(S.trips[zielIds()[0]].places).length===2`), "Zweiter Ort landet nicht im selben Ziel");
+  ok(await page.locator("#card [data-act=planpick]").count()===0, "„Zur Planung“ ohne Reise");
+  await rp(`select(null); lpShow({la:41.8902, lo:12.4922})`); await page.waitForTimeout(300);
+  ok(await page.locator("#catPop [data-act=lpmerk]").count()===1 && await page.locator("#catPop [data-act=lpwish], #catPop [data-act=lphotel]").count()===0, "Langes Drücken ohne Reise bietet nicht nur Merken");
+  await click("#catPop [data-act=lpmerk]"); await page.waitForTimeout(200);
+  ok(await rp(`zielIds().length===1 && Object.keys(S.trips[zielIds()[0]].places).length===3`), "Markierter Punkt nicht im Ziel gemerkt");
+  ok(await page.locator("#card .zgem").count()===1, "Pop-up zeigt nicht „Gemerkt in …“");
+  await rp(`select(null); openZiele()`); await page.waitForTimeout(200);
+  ok(await page.locator("#profView .pf-trip.zt").count()===1, "Ziel fehlt im Profil");
+  await shot("ziele-liste");
+  await click("#profView .pf-trip.zt");
+  ok(await page.locator("#profView .zrow").count()===3, "Gemerkte Orte fehlen im Ziel");
+  await shot("ziel-detail");
+});
+await test("Ziele: neue Reise bietet gemerkte Orte an, Besuch erscheint sofort im Ziel", async () => {
+  await noTripUser();
+  await rp(`var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); zielAdd(z, {n:"Trattoria Roma", c:"essen", la:41.9, lo:12.5}); zielAdd(z, {n:"Pantheon", c:"sight", la:41.8986, lo:12.4769}); save(); true`);
+  await rp(`(function(){ function dk(o){ var d = new Date(); d.setDate(d.getDate()+o); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+    tdraft = {mode:"new", name:"Rom im Frühling", start:dk(0), end:dk(3), arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"Rom", loc:"41.9000, 12.5000", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); })()`);
+  await page.waitForTimeout(150);
+  await rp(`document.getElementById("tForm").requestSubmit()`); await page.waitForTimeout(800);
+  ok(await visible("#cfPop"), "Frage zum Übernehmen fehlt");
+  ok((await page.locator("#cfPop").innerText()).includes("2 gemerkte Orte"), "Falsche Anzahl im Angebot");
+  await click("#cfPop .cf-ok"); await page.waitForTimeout(200);
+  ok(await rp(`Object.keys(T().places).filter(function(k){ return T().places[k].zl; }).length`)===2, "Orte nicht übernommen");
+  ok(await rp(`!T().ziel && !noTrip()`), "Neue Reise ist nicht aktiv");
+  await rp(`var k = Object.keys(T().places).filter(function(k){ return T().places[k].n==="Pantheon"; })[0], d = days()[0].key; T().order[d] = [k]; T().done[k] = true; T().rating = {}; T().rating[k] = 2; save(); openZiele(zielIds()[0]);`);
+  await page.waitForTimeout(200);
+  const txt = await page.locator("#profView .zl").innerText();
+  ok(txt.includes("besucht") && txt.includes("Must Have"), "Besuch/Bewertung erscheint nicht im Ziel");
+  ok(txt.includes("Wunschliste"), "Übernommener, noch offener Ort zeigt keinen Stand");
+  await shot("ziel-besucht");
+  ok(await rp(`zOfferItems(S.cur).length`)===0, "Bereits übernommene Orte würden erneut angeboten");
+});
+await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise und Entdecken", async () => {
+  await seed();
+  await rp(`openZiele()`); await page.waitForTimeout(150);
+  await click("#profView [data-act=znew]");
+  await page.locator("#zName").fill("Brooklyn-Wochenende");
+  await page.locator("#zQ").fill("Brooklyn"); await page.waitForTimeout(700);
+  await shot("ziel-neu");
+  await click("#profView [data-act=zarea]");
+  await click("#profView [data-act=zsave]");
+  ok(await rp(`zielIds().length===1 && S.trips[zielIds()[0]].name==="Brooklyn-Wochenende" && S.trips[zielIds()[0]].orte.length===1`), "Ziel mit Gebiet nicht angelegt");
+  ok(await rp(`liveIds().length===1 && T().id==="t_test"`), "Ziel stört die Reisen");
+  await rp(`closeProfile(); poiSel = {n:"Peter Luger", c:"essen", la:40.7099, lo:-73.9622, addr:"Broadway 178"}; sel = null; select("poi");`); await page.waitForTimeout(150);
+  ok(await page.locator("#card [data-act=poiadd]").count()===1, "In der Nähe der Reise fehlt die Wunschliste-Kachel");
+  await click("#card [data-act=poimore]");
+  await click("#jpMenu [data-act=poimerk]"); await page.waitForTimeout(200);
+  ok(await rp(`Object.keys(S.trips[zielIds()[0]].places).length===1`), "Ort landet nicht im Ziel mit passendem Gebiet");
+  await rp(`select(null); var r = {key:"u_anna/r9", by:"u_anna", fname:"anna", n:"Di Fara Pizza", c:"essen", la:40.6250, lo:-73.9615, photos:[], note:"", cm:[], at:Date.now()};
+    DC.items = [r]; DC.byKey = {}; DC.byKey[r.key] = r; DC.at = Date.now(); dcScope = "all"; openDcPage();`); await page.waitForTimeout(250);
+  await click("#dcView [data-act=dcmerk]"); await page.waitForTimeout(200);
+  ok(await rp(`Object.keys(S.trips[zielIds()[0]].places).some(function(k){ var p = S.trips[zielIds()[0]].places[k]; return p.n==="Di Fara Pizza" && p.rec && p.rec.name==="anna"; })`), "Empfehlung nicht gemerkt");
+  ok(await page.locator("#dcView .zmk.on").count()===1, "Merken-Knopf zeigt den Stand nicht");
+  await shot("ziel-entdecken");
+  await rp(`openZiele(zielIds()[0])`); await page.waitForTimeout(150);
+  await click("#profView [data-act=zedit]");
+  await click("#profView [data-act=zdel]");
+  ok(await visible("#cfPop"), "Löschen ohne Rückfrage");
+  await click("#cfPop .cf-ok"); await page.waitForTimeout(150);
+  ok(await rp(`zielIds().length===0 && !!S.trips.t_test`), "Ziel nicht gelöscht oder Reise betroffen");
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 const bad = results.filter(r => !r.ok);

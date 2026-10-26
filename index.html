@@ -1879,6 +1879,32 @@ form.gnew{position:relative}
 .dc-in{color:var(--ok);font:600 13.5px/1.2 var(--f-body)}
 .dc-map{margin-left:auto;width:36px;height:36px;border:0;border-radius:50%;background:var(--sheet);color:var(--accent);display:grid;place-items:center;cursor:pointer}
 .dc-map svg{width:18px;height:18px}
+.dc-map + .dc-map{margin-left:0}
+.zmk.on{color:var(--sheet);background:var(--accent)}
+.zmk.on svg path{fill:currentColor}
+/* Ziele im Profil */
+.zhead{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+.zback{width:34px;height:34px;flex:0 0 34px;border:0;border-radius:50%;background:var(--fill);color:var(--ink);font:600 22px/1 var(--f-body);display:grid;place-items:center;cursor:pointer;padding:0 0 3px}
+.zhead > b{font:700 17px/1.2 var(--f-body)}
+.zh-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.zh-t b{font:700 18px/1.2 var(--f-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zh-t small{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zh-ed{width:34px;height:34px;flex:0 0 34px;border:0;border-radius:50%;background:var(--fill);color:var(--accent);display:grid;place-items:center;cursor:pointer}
+.zh-ed svg{width:17px;height:17px}
+.zacts{margin-top:0}
+.ls-list .zrow{padding:0 6px 0 0;cursor:default}
+.zrow-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:0;background:none;padding:10px 0 10px 12px;color:var(--ink);text-align:left;cursor:pointer;font:inherit}
+.zrow-x{width:30px;height:30px;flex:0 0 30px;border:0;border-radius:50%;background:none;color:var(--muted);font:500 20px/1 var(--f-body);cursor:pointer}
+.ls-th.zic svg{width:20px;height:20px}
+.zform{margin-bottom:6px}
+.zhint{margin:-2px 2px 8px;font-size:12.5px}
+.ls-list .zq{cursor:text}
+.zq input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:16px;color:var(--ink);outline:none;padding:4px 0}
+.zres:empty{display:none}
+.zres .ls-row{border-top:.5px solid var(--sep,var(--line))}
+.zgem{display:flex;align-items:center;gap:6px;margin:2px 0 8px;border:0;background:none;padding:0;color:var(--accent);font:600 13px/1.2 var(--f-body);cursor:pointer;text-align:left}
+.zgem svg{width:15px;height:15px;flex:0 0 15px}
+.zgem svg path{fill:currentColor}
 .addmenu.jpmenu:has(.frp-h){max-height:min(58vh,440px);overflow-y:auto;overscroll-behavior:contain;padding-top:0;min-width:250px}
 .frp-h{position:sticky;top:0;z-index:2;margin:0 -6px 2px;padding:6px 6px 6px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border-bottom:.5px solid var(--glass-bd,var(--line))}
 .frp-q{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:var(--fill);color:var(--ink);font:500 16px/1.2 var(--f-body);-webkit-appearance:none;appearance:none}
@@ -3272,7 +3298,7 @@ function starterTrip(){
 }
 // Noch keine echte Reise (neues Konto): nur der unsichtbare Platzhalter ist da
 function tripHasContent(t){ if(!t) return false; var J = t.journal || {}; return !!(Object.keys(t.places||{}).length || (t.hotels||[]).length || (t.orte||[]).length || Object.keys(t.photos||{}).length || Object.keys(J).some(function(k){ return J[k] && (J[k].text || J[k].hl); })); }
-function noTrip(){ var ks = S && S.trips ? Object.keys(S.trips).filter(function(k){ return !S.trips[k].arch; }) : []; return !ks.length || ks.every(function(k){ var t = S.trips[k]; return t.starter && t.seed; }); }
+function noTrip(){ var ks = S && S.trips ? Object.keys(S.trips).filter(function(k){ return !S.trips[k].arch && !S.trips[k].ziel; }) : []; return !ks.length || ks.every(function(k){ var t = S.trips[k]; return t.starter && t.seed; }); }
 function noTripHTML(){
   return "<div class=\"notrip\"><div class=\"nt-ic\" aria-hidden=\"true\">🧳</div><h2>Noch keine eigene Reise erstellt</h2><p>Lege deine erste Reise an – mit Reiseziel, Zeitraum und Hotel. Danach füllst du deine Wunschliste und planst die Tage.</p>"+
     "<button type=\"button\" class=\"btn\" data-act=\"tripnew\">Erste Reise anlegen</button>"+
@@ -4430,7 +4456,7 @@ function recThumb(ph){ return phGet(ph).then(function(d){ if(!d) return null; re
 function recCollect(){
   var out = {}, me = acct.user && acct.user.uid;
   Object.keys(S.trips).forEach(function(tid){
-    if(isViewerOf(tid) || !KNOWN[tid]) return; var t = S.trips[tid], hl = {};
+    if(isViewerOf(tid) || !KNOWN[tid] || S.trips[tid].ziel) return; var t = S.trips[tid], hl = {};
     Object.keys(t.journal||{}).forEach(function(dk){ var J = t.journal[dk]; if(J && J.hl) hl[J.hl] = 1; });
     var isP = function(pid){ var q = t.places[pid]; return !!(t.privP && (t.privP[pid] || (q && q.of && t.privP[q.of]))); };
     Object.keys(t.places).forEach(function(pid){
@@ -4511,11 +4537,256 @@ function renderDc(){
         "<small class=\"dc-sub\">"+esc([CATNAME[r.c], r.addr, dd!=null && dcScope==="all" ? fmtDist(dd)+" vom Reiseziel" : ""].filter(Boolean).join(" · "))+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"</small>"+
         (r.note ? "<p class=\"dc-note\">„"+esc(r.note)+"“</p>" : "")+recCmHTML(r, "dc-note")+
         "<div class=\"dc-acts\">"+(inT ? "<span class=\"dc-in\">✓ In deiner Reise</span>" : (isRO() ? "" : "<button type=\"button\" class=\"btn g s\" data-act=\"dcwish\" data-k=\""+esc(r.key)+"\">＋ Wunschliste</button><button type=\"button\" class=\"btn s\" data-act=\"dcplan\" data-k=\""+esc(r.key)+"\">Einplanen …</button>"))+
-          "<button type=\"button\" class=\"dc-map\" data-act=\"dcmap\" data-k=\""+esc(r.key)+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button></div></div></article>";
+          (r.la ? zMkBtn({n:r.n, la:+r.la, lo:+r.lo}, "dcmerk", r.key, "dc-map") : "")+"<button type=\"button\" class=\"dc-map\" data-act=\"dcmap\" data-k=\""+esc(r.key)+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button></div></div></article>";
   });
   if(DC.items.length) h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"dcreload\">Aktualisieren</button></div>";
   el.innerHTML = h+"</div>";
 }
+/* ---------- Ziele: Orte für später merken, auch ohne geplante Reise ----------
+   Ein Ziel ist ein Reise-Datensatz ohne Zeitraum (ziel:1) mit frei wählbarem Namen und Gebiet (orte: Mittelpunkt mit
+   Umkreis r oder Rahmen bb = [W, S, O, N]). Speichern, Konto-Abgleich und Teilen laufen damit wie bei Reisen.
+   Ein Ziel ist nie die aktive Reise. Besuche und Bewertungen werden nicht kopiert, sondern bei jeder Anzeige aus den
+   Reisen gelesen (Verknüpfung zl = "Ziel/Ort" oder gleicher Name in der Nähe). */
+var ZR = 30000, ZBM = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 3.5h8v13l-4-3-4 3z\"/></svg>";
+var zOpen = "", zEdit = null, zLast = null;
+function isZiel(t){ return !!(t && t.ziel); }
+function zielIds(){ return Object.keys(S.trips).filter(function(k){ var t = S.trips[k]; return t && t.ziel && !t.arch; }).sort(function(a, b){ return String(S.trips[a].name).localeCompare(S.trips[b].name); }); }
+function Z(id){ var t = S.trips[id]; return t && t.ziel && !t.arch ? t : null; }
+function zIn(o, p){
+  if(!o || !hasLoc(p)) return false;
+  if(o.bb){ var m = 0.02; return p.lo >= o.bb[0]-m && p.lo <= o.bb[2]+m && p.la >= o.bb[1]-m && p.la <= o.bb[3]+m; }
+  return hasLoc(o) && dist(o, p) <= (o.r || ZR);
+}
+function zSize(o){ return o.bb ? Math.max(dist({la:o.bb[1], lo:o.bb[0]}, {la:o.bb[3], lo:o.bb[2]})/2, 1000) : (o.r || ZR); }
+function zielHas(z, p){ return (z.orte||[]).some(function(o){ return zIn(o, p); }); }
+// passendes Ziel für einen Punkt: das kleinste Gebiet, in dem er liegt
+function zielFor(p){ var best = "", bs = Infinity; zielIds().forEach(function(id){ (S.trips[id].orte||[]).forEach(function(o){ if(zIn(o, p) && zSize(o) < bs){ bs = zSize(o); best = id; } }); }); return best; }
+function zKey(n){ return norm(n).replace(/[^a-z0-9]/g, "").slice(0, 6); }
+function samePl(a, b){ return hasLoc(a) && hasLoc(b) && dist(a, b) < 120 && zKey(a.n)===zKey(b.n); }
+// schon gemerkt? → {zid, pid}
+function zFind(q){ var out = null; zielIds().some(function(zid){ var z = S.trips[zid]; return Object.keys(z.places).some(function(pid){ if(samePl(z.places[pid], q)){ out = {zid:zid, pid:pid}; return true; } return false; }); }); return out; }
+function zielNew(name, o){ var t = newTripObj({id:uid("z"), name:String(name||"Neues Ziel").trim().slice(0, 60) || "Neues Ziel", start:"", end:"", orte:o ? [o] : []}); t.ziel = 1; S.trips[t.id] = t; return t.id; }
+function zielAdd(zid, q){
+  var z = Z(zid); if(!z || !hasLoc(q)) return null;
+  var ex = Object.keys(z.places).filter(function(k){ return samePl(z.places[k], q); })[0];
+  if(ex) return {id:ex, dup:true};
+  var id = uid("w"), p = {id:id, n:String(q.n||"Ort").slice(0, 80), c:CATNAME[q.c] ? q.c : "sight", la:+(+q.la).toFixed(6), lo:+(+q.lo).toFixed(6), addr:String(q.addr||"").slice(0, 120), note:String(q.note||"").slice(0, 400), list:(z.lists[0]||{}).id || null, at:Date.now()};
+  if(q.rec) p.rec = q.rec; if(q.gid) p.gid = q.gid;
+  z.places[id] = p; return {id:id};
+}
+// Ort aus einer Photon-Antwort als Gebiet: Rahmen, wenn bekannt, sonst Umkreis nach Art des Orts
+function zOrt(f){
+  var c = f.geometry.coordinates, pr = f.properties || {}, o = {id:uid("o"), n:pr.name || "", la:+(+c[1]).toFixed(5), lo:+(+c[0]).toFixed(5)};
+  if(Array.isArray(pr.extent) && pr.extent.length===4) o.bb = [pr.extent[0], pr.extent[3], pr.extent[2], pr.extent[1]].map(function(x){ return +(+x).toFixed(4); });
+  else o.r = {country:800000, state:200000, region:200000, county:60000, city:ZR, town:15000, village:6000}[pr.osm_value || pr.type] || ZR;
+  return o;
+}
+// kein passendes Ziel: Stadt des Orts bestimmen (ohne Netz: Umkreis um den Ort)
+function zGuess(q){
+  var fb = {n:"", o:{id:uid("o"), n:"", la:+(+q.la).toFixed(5), lo:+(+q.lo).toFixed(5), r:ZR}};
+  var a = String(q.addr||"").split(",").map(function(x){ return x.trim(); }).filter(Boolean); fb.n = a.length > 1 ? a[a.length-1] : "";
+  if(!navigator.onLine) return Promise.resolve(fb);
+  return fetch("https://photon.komoot.io/reverse?lat="+q.la+"&lon="+q.lo+"&lang=de&limit=1").then(function(r){ return r.json(); }).then(function(j){
+    var pr = (j && j.features && j.features[0] || {}).properties || {}, city = pr.city || pr.county || pr.state || "";
+    if(!city) return fb;
+    fb.n = city; fb.o.n = city;
+    return fetch("https://photon.komoot.io/api/?q="+encodeURIComponent(city)+"&limit=3&lang=de&osm_tag=place&lat="+(+q.la).toFixed(3)+"&lon="+(+q.lo).toFixed(3)).then(function(r){ return r.json(); }).then(function(j2){
+      var f = (j2 && j2.features || []).filter(function(x){ var c = x.geometry && x.geometry.coordinates; return c && dist({la:c[1], lo:c[0]}, q) < 80000; })[0];
+      if(!f) return fb; var o = zOrt(f); if(!zIn(o, q)) return fb; return {n:city, o:o};
+    }, function(){ return fb; });
+  }).catch(function(){ return fb; });
+}
+var zBusy = false;
+function merken(q){
+  if(!q || !hasLoc(q)){ toast("Dieser Ort hat keine Lage und kann nicht gemerkt werden.", false); return; }
+  var ex = zFind(q); if(ex){ zToast("„"+q.n+"“ ist schon in „"+Z(ex.zid).name+"“ gemerkt", ex); return; }
+  var zid = zielFor(q); if(zid){ zielMerk(zid, q, false); return; }
+  if(zBusy) return; zBusy = true;
+  zGuess(q).then(function(g){ zBusy = false; var n = g.n || q.n || "Neues Ziel"; if(!g.o.n) g.o.n = n; zielMerk(zielNew(n, g.o), q, true); });
+}
+function zielMerk(zid, q, neu){
+  var r = zielAdd(zid, q); if(!r) return;
+  save(); zLast = {zid:zid, pid:r.id};
+  zToast("„"+q.n+"“ gemerkt in „"+Z(zid).name+"“"+(neu ? " · neues Ziel" : ""), zLast);
+  if(profOpen) renderProfile(); if(dcPage) renderDc(); if(sel==="poi" && poiSel) renderCard(); if(chOpen) renderChMsgs(false);
+}
+function zToast(msg, ref){
+  zLast = ref; var el = $("toast");
+  el.innerHTML = "<span>"+esc(msg)+"</span><button type=\"button\" data-act=\"zchg\">Ändern</button>";
+  el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.hidden = true; }, 6000);
+}
+// gemerkten Ort in ein anderes oder neues Ziel verschieben
+function zChoose(){
+  var L = zLast, z0 = L && Z(L.zid), p = z0 && z0.places[L.pid]; $("toast").hidden = true; if(!p) return;
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Ziel wählen\"><div class=\"pop-head\"><h4>„"+esc(p.n)+"“ merken in …</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list\">";
+  zielIds().forEach(function(zid){ var z = S.trips[zid]; h += "<button type=\"button\" data-act=\"zmove\" data-z=\""+esc(zid)+"\" aria-pressed=\""+(zid===L.zid)+"\"><span class=\"ls-th ico zic\" style=\"--cc:"+tripColor(zid)+"\">"+ZBM+"</span><span>"+esc(z.name)+"</span></button>"; });
+  h += "<button type=\"button\" data-act=\"zmove\" data-z=\"\"><span class=\"ls-th ico zic\" style=\"--cc:var(--muted)\">＋</span><span>Neues Ziel …</span></button></div></div>";
+  $("catPop").innerHTML = h; $("catPop").hidden = false;
+}
+function zMove(to){
+  var L = zLast, z0 = L && Z(L.zid), p = z0 && z0.places[L.pid]; closeCatPop(); if(!p || to===L.zid) return;
+  var neu = !to; if(neu) to = zielNew(p.n, {id:uid("o"), n:p.n, la:p.la, lo:p.lo, r:ZR});
+  var z1 = Z(to); if(!z1) return;
+  delete z0.places[L.pid];
+  var dup = Object.keys(z1.places).filter(function(k){ return samePl(z1.places[k], p); })[0];
+  if(!dup) z1.places[p.id] = p;
+  if(!zielHas(z1, p)) z1.orte.push({id:uid("o"), n:p.n, la:p.la, lo:p.lo, r:ZR});
+  zLast = {zid:to, pid:dup || p.id}; save();
+  if(neu){ zOpen = to; zEdit = zEditFrom(to); profTab = "ziele"; if(profOpen) renderProfile(); else openProfile(); toast("Neues Ziel angelegt: gib ihm einen Namen", false); return; }
+  toast("„"+p.n+"“ liegt jetzt in „"+z1.name+"“", false); if(profOpen) renderProfile();
+}
+/* Stand eines gemerkten Orts in den Reisen: geplant, besucht, Bewertung */
+function zVisits(t, k){ return [k].concat(Object.keys(t.places).filter(function(x){ return t.places[x] && t.places[x].of===k; })); }
+function zPlanned(t, x){ return Object.keys(t.order||{}).some(function(dk){ return (t.order[dk]||[]).indexOf(x) > -1; }); }
+function zStatus(zid, p){
+  var out = null, ref = zid+"/"+p.id;
+  Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; if(!t || t.ziel || t.arch || t.seed) return false;
+    return Object.keys(t.places||{}).some(function(k){ var q = t.places[k]; if(!q || q.of) return false;
+      if(q.zl!==ref && !samePl(q, p)) return false;
+      var vs = zVisits(t, k); out = {tid:tid, pid:k, done:vs.some(function(x){ return (t.done||{})[x]; }), planned:vs.some(function(x){ return zPlanned(t, x); }), rating:(t.rating||{})[k] || 0};
+      return true; }); });
+  return out;
+}
+// besuchte Orte aus Reisen im Gebiet des Ziels, die nicht gemerkt waren
+function zVisited(zid){
+  var z = Z(zid), out = []; if(!z) return out;
+  Object.keys(S.trips).forEach(function(tid){ var t = S.trips[tid]; if(!t || t.ziel || t.arch || t.seed) return;
+    Object.keys(t.places||{}).forEach(function(k){ var q = t.places[k]; if(!q || q.of || q.k==="hotel" || !hasLoc(q) || !zielHas(z, q)) return;
+      if(q.zl && q.zl.indexOf(zid+"/")===0 && z.places[q.zl.slice(zid.length+1)]) return;
+      if(!zVisits(t, k).some(function(x){ return (t.done||{})[x]; })) return;
+      if(Object.keys(z.places).some(function(x){ return samePl(z.places[x], q); })) return;
+      out.push({tid:tid, p:q, rating:(t.rating||{})[k] || 0}); }); });
+  return out;
+}
+/* Reise angelegt: gemerkte Orte aus passenden Zielen anbieten (einmal fragen) */
+function zMatchTrip(t){
+  var pts = (t.orte||[]).concat(t.hotels||[]).filter(hasLoc);
+  return zielIds().filter(function(zid){ var z = S.trips[zid]; return pts.some(function(p){ return zielHas(z, p) || (z.orte||[]).some(function(o){ return hasLoc(o) && dist(o, p) < 40000; }); }); });
+}
+function zLinked(t, zid, p){ var ref = zid+"/"+p.id; return Object.keys(t.places).some(function(k){ var q = t.places[k]; return q && (q.zl===ref || samePl(q, p)); }); }
+function zOfferItems(tid){
+  var t = S.trips[tid], out = []; if(!t || t.ziel) return out;
+  zMatchTrip(t).forEach(function(zid){ var z = S.trips[zid]; Object.keys(z.places).forEach(function(pid){ var p = z.places[pid]; if(hasLoc(p) && !zLinked(t, zid, p)) out.push({zid:zid, p:p}); }); });
+  return out;
+}
+function zOffer(tid){
+  var it = zOfferItems(tid); if(!it.length) return;
+  var zs = []; it.forEach(function(x){ if(zs.indexOf(x.zid) < 0) zs.push(x.zid); });
+  askConfirm(it.length+(it.length===1 ? " gemerkter Ort" : " gemerkte Orte")+" aus "+zs.map(function(z){ return "„"+S.trips[z].name+"“"; }).join(", "),
+    "In die Wunschliste dieser Reise übernehmen? Was du dort besuchst und bewertest, siehst du danach auch im Ziel.", "Übernehmen", function(){ zTake(tid, it); });
+}
+function zTake(tid, it){
+  var t = S.trips[tid]; if(!t) return;
+  it.forEach(function(x){ var p = x.p, id = uid("w"), q = {id:id, n:p.n, c:p.c, la:p.la, lo:p.lo, addr:p.addr||"", note:p.note||"", list:(t.lists[0]||{}).id || null, zl:x.zid+"/"+p.id};
+    if(p.rec) q.rec = p.rec; if(p.gid) q.gid = p.gid; t.places[id] = q; });
+  save(); dirty(); renderAll(); toast(it.length+(it.length===1 ? " Ort steht" : " Orte stehen")+" jetzt in der Wunschliste", false);
+}
+/* gemerkten Ort auf der Karte zeigen (wie ein neuer Ort: in die aktuelle Reise übernehmen, Route …) */
+function zShow(zid, pid){
+  var z = Z(zid), p = z && z.places[pid]; if(!p || !hasLoc(p)) return;
+  closeProfile(); closeGsPage(); closeDcPage();
+  poiSel = {n:p.n, c:p.c, la:p.la, lo:p.lo, addr:p.addr||"", zr:zid+"/"+pid}; sel = null; select("poi");
+  if(map) revealPoint(poiSel, 15, true);
+}
+function zPlanTrip(zid){
+  var z = Z(zid); if(!z) return; closeProfile();
+  var o = (z.orte||[]).filter(hasLoc).map(function(x){ return {n:x.n || z.name, loc:locStr(x), from:"", to:""}; });
+  tdraft = {mode:"new", name:z.name, start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:o.length ? o : [{n:"", loc:"", from:"", to:""}], err:""};
+  closeMenus(); closeSettings(); tab = "trip"; renderSheet(); if(!desktop.matches) setSheet("mid");
+  var f = document.querySelector("[data-f=start]"); if(f) f.focus();
+}
+/* Ziel anlegen und bearbeiten: Name frei, Gebiet über die Ortssuche */
+function zEditFrom(zid){ var z = zid && Z(zid); return {zid:zid || "", n:z ? z.name : "", orte:z ? jclone(z.orte||[]) : [], q:"", res:[], busy:false}; }
+var zSearchT = null;
+function zSearch(q){
+  zEdit.q = q; clearTimeout(zSearchT);
+  if(q.trim().length < 2){ zEdit.res = []; zRenderRes(); return; }
+  zSearchT = setTimeout(function(){
+    zEdit.busy = true; zRenderRes();
+    fetch("https://photon.komoot.io/api/?q="+encodeURIComponent(q.trim())+"&limit=6&lang=de&osm_tag=place").then(function(r){ return r.json(); }).then(function(j){
+      if(!zEdit || zEdit.q!==q) return;
+      zEdit.res = (j && j.features || []).filter(function(f){ return f.geometry && f.geometry.coordinates; }).slice(0, 6); zEdit.busy = false; zRenderRes();
+    }).catch(function(){ if(zEdit){ zEdit.busy = false; zEdit.res = []; zRenderRes(); } });
+  }, 300);
+}
+function zResLabel(f){ var pr = f.properties || {}; return [pr.state && pr.state!==pr.name ? pr.state : "", pr.country && pr.country!==pr.name ? pr.country : ""].filter(Boolean).join(", "); }
+function zRenderRes(){
+  var el = document.querySelector("#profView .zres"); if(!el || !zEdit) return;
+  el.innerHTML = zEdit.busy ? "<p class=\"note\">Suche …</p>" : zEdit.res.map(function(f, i){ return "<button type=\"button\" class=\"ls-row\" data-act=\"zarea\" data-i=\""+i+"\"><span class=\"ls-t\"><b>"+esc((f.properties||{}).name || "Ort")+"</b><small>"+esc(zResLabel(f))+"</small></span><span class=\"ls-go\">＋</span></button>"; }).join("");
+}
+function zEditHTML(){
+  var e = zEdit;
+  var h = "<div class=\"zhead\"><button type=\"button\" class=\"zback\" data-act=\"zback\" aria-label=\"Zurück\">‹</button><b>"+(e.zid ? "Ziel bearbeiten" : "Neues Ziel")+"</b></div>";
+  h += "<div class=\"ag-grp zform\"><label class=\"tf-row\"><span>Name</span><input type=\"text\" id=\"zName\" value=\""+esc(e.n)+"\" maxlength=\"60\" placeholder=\"z. B. Toskana-Roadtrip\" autocomplete=\"off\"></label></div>";
+  h += "<div class=\"nt-sec\">Gebiet</div><p class=\"note zhint\">Gemerkte Orte in diesem Gebiet landen automatisch hier. Mehrere Orte sind möglich, etwa Florenz und Siena.</p>";
+  h += "<div class=\"ag-grp ls-list\">"+e.orte.map(function(o, i){ return "<div class=\"ls-row\"><span class=\"ls-t\"><b>"+esc(o.n || (o.la ? o.la.toFixed(3)+", "+o.lo.toFixed(3) : "Ort"))+"</b><small>"+(o.bb ? "ganzer Ort" : "Umkreis "+fmtDist(o.r || ZR))+"</small></span><button type=\"button\" class=\"btn g s\" data-act=\"zareadel\" data-i=\""+i+"\" aria-label=\"Gebiet entfernen\">Entfernen</button></div>"; }).join("")+
+    "<label class=\"ls-row zq\"><input type=\"search\" id=\"zQ\" value=\""+esc(e.q)+"\" placeholder=\"Stadt, Region oder Land suchen …\" autocomplete=\"off\" enterkeyhint=\"search\"></label><div class=\"zres\"></div></div>";
+  if(e.err) h += "<p class=\"err\" role=\"alert\">"+esc(e.err)+"</p>";
+  h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"zback\">Abbrechen</button><button type=\"button\" class=\"btn\" data-act=\"zsave\">"+(e.zid ? "Speichern" : "Ziel anlegen")+"</button></div>";
+  if(e.zid) h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g warn\" data-act=\"zdel\" data-z=\""+esc(e.zid)+"\">Ziel löschen</button></div>";
+  return h;
+}
+function zSaveEdit(){
+  var e = zEdit, n = ($("zName") ? $("zName").value : e.n).trim();
+  if(!n){ e.err = "Bitte gib dem Ziel einen Namen."; renderProfile(); return; }
+  if(!e.orte.length){ e.err = "Bitte wähle mindestens einen Ort für das Gebiet."; e.n = n; renderProfile(); return; }
+  var zid = e.zid;
+  if(zid && Z(zid)){ S.trips[zid].name = n.slice(0, 60); S.trips[zid].orte = e.orte; }
+  else zid = zielNew(n, null), S.trips[zid].orte = e.orte;
+  save(); zEdit = null; zOpen = zid; renderProfile(); toast(e.zid ? "Ziel gespeichert" : "Ziel „"+n+"“ angelegt", false);
+}
+function zDel(zid){
+  var z = Z(zid); if(!z) return;
+  askConfirm("Ziel löschen?", "„"+z.name+"“ und "+Object.keys(z.places).length+" gemerkte Orte werden entfernt. Deine Reisen bleiben unverändert.", "Löschen", function(){
+    delete S.trips[zid]; save(); zEdit = null; zOpen = ""; renderProfile(); toast("Ziel gelöscht", false); });
+}
+function zDelPlace(zid, pid){
+  var z = Z(zid), p = z && z.places[pid]; if(!p) return;
+  askConfirm("„"+p.n+"“ entfernen?", "Der Ort wird aus „"+z.name+"“ entfernt. In Reisen bleibt er erhalten.", "Entfernen", function(){ delete z.places[pid]; save(); renderProfile(); });
+}
+function zStatusText(st){
+  if(!st) return "";
+  var RR = RATES.filter(function(x){ return x[0]===st.rating; })[0], tn = (S.trips[st.tid]||{}).name || "Reise";
+  return st.done ? "✓ besucht"+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "") : (st.planned ? "eingeplant in „"+esc(tn)+"“" : "auf der Wunschliste von „"+esc(tn)+"“");
+}
+function zielsHTML(){
+  if(zEdit) return zEditHTML();
+  if(zOpen && Z(zOpen)) return zDetailHTML(zOpen);
+  zOpen = "";
+  var ids = zielIds(), h = "<div class=\"pf-grid\">";
+  ids.forEach(function(zid){ var z = S.trips[zid], n = Object.keys(z.places).length, v = zVisited(zid).length;
+    h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-trip zt\" data-act=\"zopen\" data-z=\""+esc(zid)+"\"><span class=\"pf-cov lt\" style=\"--cc:"+tripColor(zid)+"\"><i>"+esc(tripInitials(z.name))+"</i></span>"+
+      "<span class=\"pf-tt\"><b>"+esc(z.name)+"</b><small>"+esc([n+" gemerkt", v ? v+" besucht" : ""].filter(Boolean).join(" · "))+"</small></span></button></div>"; });
+  h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-new\" data-act=\"znew\"><span class=\"pf-plus\" aria-hidden=\"true\">＋</span><b>Neues Ziel</b><small>Stadt, Region oder Land</small></button></div></div>";
+  if(!ids.length) h += "<p class=\"note pf-empty\">Merke dir Orte für später, auch ohne geplante Reise: Tippe auf der Karte, in Entdecken oder im Chat auf das Merken-Zeichen. Der Ort landet automatisch im passenden Ziel. Legst du später eine Reise dorthin an, bietet die App die gemerkten Orte an.</p>";
+  return h;
+}
+function zRow(zid, p, st){
+  return "<div class=\"ls-row zrow\"><button type=\"button\" class=\"zrow-main\" data-act=\"zshow\" data-z=\""+esc(zid)+"\" data-pid=\""+esc(p.id)+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span><span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+
+    [zStatusText(st) || esc(CATNAME[p.c]||""), p.rec && p.rec.name ? "von @"+esc(p.rec.name) : ""].filter(Boolean).join(" · ")+"</small></span></button>"+
+    "<button type=\"button\" class=\"zrow-x\" data-act=\"zpldel\" data-z=\""+esc(zid)+"\" data-pid=\""+esc(p.id)+"\" aria-label=\"„"+esc(p.n)+"“ entfernen\">×</button></div>";
+}
+function zDetailHTML(zid){
+  var z = S.trips[zid], ps = Object.keys(z.places).map(function(k){ return z.places[k]; }).filter(function(p){ return !p.of; });
+  ps.sort(function(a, b){ return (b.at||0) - (a.at||0) || String(a.n).localeCompare(b.n); });
+  var vis = zVisited(zid), area = (z.orte||[]).map(function(o){ return o.n; }).filter(Boolean).join(", ");
+  var h = "<div class=\"zhead\"><button type=\"button\" class=\"zback\" data-act=\"zback\" aria-label=\"Zurück zu den Zielen\">‹</button><span class=\"zh-t\"><b>"+esc(z.name)+"</b><small>"+esc(area || "Gebiet noch nicht festgelegt")+"</small></span>"+
+    "<button type=\"button\" class=\"zh-ed\" data-act=\"zedit\" data-z=\""+esc(zid)+"\" aria-label=\"Ziel bearbeiten\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M13.5 3.5l3 3L7 16H4v-3z\"/></svg></button></div>";
+  h += "<div class=\"pf-acts zacts\"><button type=\"button\" class=\"btn\" data-act=\"zplan\" data-z=\""+esc(zid)+"\">Reise hierhin planen</button></div>";
+  h += "<div class=\"nt-sec\">Gemerkt · "+ps.length+"</div>";
+  h += ps.length ? "<div class=\"ag-grp ls-list\">"+ps.map(function(p){ return zRow(zid, p, zStatus(zid, p)); }).join("")+"</div>" : "<p class=\"note\">Noch nichts gemerkt. Tippe auf der Karte, in Entdecken oder im Chat auf das Merken-Zeichen.</p>";
+  if(vis.length) h += "<div class=\"nt-sec\">Besucht auf Reisen · "+vis.length+"</div><div class=\"ag-grp ls-list\">"+vis.map(function(x){ var RR = RATES.filter(function(r){ return r[0]===x.rating; })[0];
+    return "<button type=\"button\" class=\"ls-row\" data-act=\"gsplace\" data-trip=\""+esc(x.tid)+"\" data-pid=\""+esc(x.p.id)+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(x.p.c)+"\">"+icon(x.p.c)+"</span><span class=\"ls-t\"><b>"+esc(x.p.n)+"</b><small>"+[esc(S.trips[x.tid].name), RR ? "<i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : ""].filter(Boolean).join(" · ")+"</small></span><span class=\"ls-go\">"+MAPGO+"</span></button>"; }).join("")+"</div>";
+  return h;
+}
+function openZiele(zid){ zEdit = null; zOpen = zid || ""; profTab = "ziele"; if(profOpen) renderProfile(); else openProfile(); }
+// Merken-Knopf (Lesezeichen): gefüllt, wenn der Ort schon gemerkt ist – dann öffnet er das Ziel
+function zMkBtn(q, act, key, cls){
+  var f = hasLoc(q) && zFind(q), z = f && Z(f.zid);
+  return z ? "<button type=\"button\" class=\""+cls+" zmk on\" data-act=\"zopen\" data-z=\""+esc(f.zid)+"\" aria-label=\"Gemerkt in „"+esc(z.name)+"“\" title=\"Gemerkt in „"+esc(z.name)+"“\">"+ZBM+"</button>"
+           : "<button type=\"button\" class=\""+cls+" zmk\" data-act=\""+act+"\" data-k=\""+esc(key)+"\" aria-label=\"Für später merken\" title=\"Für später merken\">"+ZBM+"</button>";
+}
+document.addEventListener("input", function(e){ if(!zEdit || !e.target) return; if(e.target.id==="zQ") zSearch(e.target.value); else if(e.target.id==="zName") zEdit.n = e.target.value; });
 /* ---------- Vollbild für Fotos aus „Entdecken“: wischen durch alle Fotos des Spots, Optionen links ---------- */
 var DCV = null;
 function dcvSV(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; }
@@ -4595,7 +4866,7 @@ function renderGs(full){
   if(!q){ res = "<p class=\"note nt-empty\">Suche nach Personen, deinen Reisen, Orten aus allen Reisen und Empfehlungen deiner Freunde.</p>"; }
   else {
     var ppl = gsPeople.slice(0, 8), trips = liveIds().filter(function(id){ return hit(S.trips[id].name); });
-    var places = []; Object.keys(S.trips).forEach(function(id){ var t = S.trips[id]; Object.keys(t.places||{}).forEach(function(pid){ var p = t.places[pid]; if(p && !p.of && p.k!=="hotel" && hit([p.n, p.addr, p.note, CATNAME[p.c]].join(" "))) places.push({tid:id, p:p, done:!!(t.done||{})[pid]}); }); });
+    var places = [], zpl = [], zls = zielIds().filter(function(id){ return hit(S.trips[id].name); }); Object.keys(S.trips).forEach(function(id){ var t = S.trips[id]; if(t.ziel){ if(!t.arch) Object.keys(t.places||{}).forEach(function(pid){ var p = t.places[pid]; if(p && !p.of && hit([p.n, p.addr, p.note, CATNAME[p.c]].join(" "))) zpl.push({zid:id, p:p}); }); return; } Object.keys(t.places||{}).forEach(function(pid){ var p = t.places[pid]; if(p && !p.of && p.k!=="hotel" && hit([p.n, p.addr, p.note, CATNAME[p.c]].join(" "))) places.push({tid:id, p:p, done:!!(t.done||{})[pid]}); }); });
     var recs = DC.items.filter(function(r){ return hit([r.n, r.addr, r.note, r.fname, r.trip, CATNAME[r.c]].join(" ")); });
     var sec = function(title, n, body){ return n ? "<div class=\"nt-sec\">"+title+" · "+n+"</div><div class=\"ag-grp ls-list\">"+body+"</div>" : ""; };
     res += sec("Personen", ppl.length, ppl.map(function(x){ var st = frState(x.uid);
@@ -4603,6 +4874,8 @@ function renderGs(full){
         (st==="" ? "<button type=\"button\" class=\"btn s\" data-act=\"gsfriend\" data-uid=\""+x.uid+"\" data-name=\""+esc(x.name)+"\">Anfrage</button>" : st==="inc" ? "<button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+x.uid+"\">Annehmen</button>" : "")+"</div>"; }).join(""));
     res += sec("Reisen", trips.length, trips.map(function(id){ var t = S.trips[id], cov = tripCover(id);
       return "<button type=\"button\" class=\"ls-row\" data-act=\"gstrip\" data-trip=\""+esc(id)+"\">"+(cov ? "<img class=\"ls-th\" data-ph=\""+cov+"\" alt=\"\">" : "<span class=\"ls-th gsav\">"+esc(((t.name||"?")[0]).toUpperCase())+"</span>")+"<span class=\"ls-t\"><b>"+esc(t.name)+"</b><small>"+esc([rangeLabel(t.start, t.end), isViewerOf(id) ? "beobachtet" : ""].filter(Boolean).join(" · "))+"</small></span></button>"; }).join(""));
+    res += sec("Ziele", zls.length, zls.map(function(id){ var z = S.trips[id]; return "<button type=\"button\" class=\"ls-row\" data-act=\"zopen\" data-z=\""+esc(id)+"\"><span class=\"ls-th ico zic\" style=\"--cc:"+tripColor(id)+"\">"+ZBM+"</span><span class=\"ls-t\"><b>"+esc(z.name)+"</b><small>"+Object.keys(z.places).length+" gemerkt</small></span></button>"; }).join(""));
+    res += sec("Gemerkte Orte", zpl.length, zpl.slice(0, 40).map(function(x){ var p = x.p; return "<button type=\"button\" class=\"ls-row\" data-act=\"zshow\" data-z=\""+esc(x.zid)+"\" data-pid=\""+esc(p.id)+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span><span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+esc(["gemerkt in „"+S.trips[x.zid].name+"“", CATNAME[p.c]].join(" · "))+"</small></span><span class=\"ls-go\">"+MAPGO+"</span></button>"; }).join(""));
     res += sec("Orte in deinen Reisen", places.length, places.slice(0, 40).map(function(x){ var p = x.p, ph = ((S.trips[x.tid].photos||{})[p.id]||[]);
       return "<button type=\"button\" class=\"ls-row\" data-act=\"gsplace\" data-trip=\""+esc(x.tid)+"\" data-pid=\""+esc(p.id)+"\">"+(ph.length ? "<img class=\"ls-th\" data-ph=\""+ph[ph.length-1]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span>")+
         "<span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+esc([S.trips[x.tid].name, CATNAME[p.c], x.done ? "besucht" : ""].filter(Boolean).join(" · "))+"</small></span><span class=\"ls-go\">"+MAPGO+"</span></button>"; }).join(""));
@@ -4625,7 +4898,7 @@ function locTargets(){
   if(!acct.user || !fbDb) return [];
   var tk = todayKey();
   return Object.keys(S.trips).filter(function(tid){
-    var g = gidFor(tid), m = META[g] || META[tid], t = S.trips[tid]; if(!m || !t || isViewerOf(tid)) return false;
+    var g = gidFor(tid), m = META[g] || META[tid], t = S.trips[tid]; if(!m || !t || t.ziel || isViewerOf(tid)) return false;
     if(!((m.members||[]).length > 1 || (m.viewers||[]).length > 0)) return false;
     if(t.start && t.end){ var d0 = new Date(t.start+"T00:00"), d1 = new Date(t.end+"T23:59"), n = new Date(); if(n < d0.getTime() - 864e5 || n > d1.getTime() + 864e5) return false; }
     return true; }).map(gidFor);
@@ -4893,7 +5166,7 @@ function chOpenConv(cid){
 }
 function chCloseConv(){ if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } chOpen = null; chMsgs = []; chPickOn = false; chVV(); }
 function chWith(u){ var me = acct.user && acct.user.uid; if(!me || !u) return null; return chId(me, u); }
-function chMatch(pl){ var out = null; Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; return Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = {tid:tid, pid:pid}; return true; } return false; }); }); return out; }
+function chMatch(pl){ var out = null; Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; if(t.ziel) return false; return Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = {tid:tid, pid:pid}; return true; } return false; }); }); return out; }
 function chPhotoCard(ph, key, draft){
   var A = function(act){ return draft ? "" : " data-act=\""+act+"\" data-k=\""+key+"\" role=\"button\" tabindex=\"0\""; };
   return "<div class=\"ch-phc"+(draft?" dr":"")+"\">"+(ph.th ? "<img src=\""+ph.th+"\" alt=\"Foto ansehen\""+A("chphfull")+">" : ph.ph && !draft ? "<img class=\"ch-phlz\" data-ph=\""+esc(ph.ph)+"\" alt=\"Foto ansehen\""+A("chphfull")+">" : "<div class=\"ch-phph\""+A("chphfull")+">📷</div>")+
@@ -4963,7 +5236,7 @@ function chPlaceCard(pl, key, draft){
     "<div class=\"ch-plb\"><div class=\"ch-pln\"><span class=\"cic\" style=\"--cc:"+catCol(pl.c)+"\">"+icon(pl.c)+"</span><b>"+esc(pl.n)+"</b></div>"+
     "<small>"+esc([CATNAME[pl.c], pl.addr].filter(Boolean).join(" · "))+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"</small>"+
     (draft ? "" : "<div class=\"ch-pla\">"+
-      (inT ? "<span class=\"dc-in\">✓ In deiner Reise</span>" : (isRO() ? "" : "<button type=\"button\" class=\"btn g s\" data-act=\"chwish\" data-k=\""+key+"\">＋ Wunschliste</button><button type=\"button\" class=\"btn s\" data-act=\"chplan\" data-k=\""+key+"\">Einplanen</button>"))+"<button type=\"button\" class=\"dc-map ch-map\" data-act=\"chmap\" data-k=\""+key+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button></div>")+
+      (inT ? "<span class=\"dc-in\">✓ In deiner Reise</span>" : (isRO() ? "" : "<button type=\"button\" class=\"btn g s\" data-act=\"chwish\" data-k=\""+key+"\">＋ Wunschliste</button><button type=\"button\" class=\"btn s\" data-act=\"chplan\" data-k=\""+key+"\">Einplanen</button>"))+(hasLoc(pl) ? zMkBtn(pl, "chmerk", key, "dc-map ch-map") : "")+"<button type=\"button\" class=\"dc-map ch-map\" data-act=\"chmap\" data-k=\""+key+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button></div>")+
     "</div></div>";
 }
 function chMsgsHTML(){
@@ -5404,7 +5677,8 @@ function renderProfile(){
   h += "<div class=\"pf-stats\"><button type=\"button\" data-act=\"pftab\" data-v=\"mine\"><b>"+mine.length+"</b><span>Reisen</span></button>"+
        "<button type=\"button\" data-act=\"pftab\" data-v=\"obs\"><b>"+obs.length+"</b><span>Beobachtet</span></button>"+
        "<button type=\"button\" data-act=\"openfriends\"><b>"+FR.friends.length+"</b><span>Freunde</span></button></div>";
-  h += "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"mine\" aria-selected=\""+(profTab==="mine")+"\">Meine Reisen</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"obs\" aria-selected=\""+(profTab==="obs")+"\">Beobachtet</button></div>";
+  h += "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"mine\" aria-selected=\""+(profTab==="mine")+"\">Meine Reisen</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"obs\" aria-selected=\""+(profTab==="obs")+"\">Beobachtet</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"ziele\" aria-selected=\""+(profTab==="ziele")+"\">Ziele</button></div>";
+  if(profTab==="ziele") h += "<div class=\"zl\">"+zielsHTML()+"</div>"; else {
   var list = profTab==="obs" ? obs : mine;
   list.sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); });
   h += "<div class=\"pf-grid\">";
@@ -5421,12 +5695,13 @@ function renderProfile(){
          "<button type=\"button\" class=\"pf-more\" data-act=\"pfmore\" data-trip=\""+esc(id)+"\" aria-haspopup=\"menu\" aria-label=\"Optionen für "+esc(t.name||"Reise")+"\">"+MORE+"</button></div>";
   });
   if(profTab==="mine" && list.length) h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-new\" data-act=\"pfnew\"><span class=\"pf-plus\" aria-hidden=\"true\">＋</span><b>Neue Reise</b><small>Ziel, Zeitraum, Hotel</small></button></div>";
-  h += "</div>";
+  h += "</div>"; }
   if(INVITES.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"opentrips\" data-v=\"req\">✉ "+INVITES.length+(INVITES.length===1 ? " Einladung zu einer Reise" : " Einladungen zu Reisen")+" ›</button>";
   if(FR.inc.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"openfriends\">👋 "+FR.inc.length+(FR.inc.length===1 ? " Freundschaftsanfrage" : " Freundschaftsanfragen")+" ›</button>";
   h += "<button type=\"button\" class=\"pf-demo\" data-act=\"demo\"><span class=\"pf-demo-ic\" aria-hidden=\"true\">▶</span><span><b>App-Demo ansehen</b><small>Kurze Einführung, ändert nichts an deinen Reisen</small></span></button>";
   h += "</div>";
   el.innerHTML = h; fillPhotos(el);
+  if(profTab==="ziele" && zEdit) zRenderRes();
 }
 // Profilbild: quadratisch zugeschnitten, klein, im eigenen Profil gespeichert
 function setAvatar(file){
@@ -5609,11 +5884,11 @@ function startSync(){
 
 function T(){ return S.trips[S.cur]; }
 /* Archiv: gelöschte Reisen bleiben mit Zeitstempel „arch“ erhalten und lassen sich wiederherstellen */
-function liveIds(all){ return Object.keys(S.trips).filter(function(k){ var t = S.trips[k]; return !t.arch && (all || !(t.starter && t.seed)); }); }
-function archIds(){ return Object.keys(S.trips).filter(function(k){ return !!S.trips[k].arch; }).sort(function(a,b){ return S.trips[b].arch - S.trips[a].arch; }); }
+function liveIds(all){ return Object.keys(S.trips).filter(function(k){ var t = S.trips[k]; return !t.arch && !t.ziel && (all || !(t.starter && t.seed)); }); }
+function archIds(){ return Object.keys(S.trips).filter(function(k){ return !!S.trips[k].arch && !S.trips[k].ziel; }).sort(function(a,b){ return S.trips[b].arch - S.trips[a].arch; }); }
 function canDelTrip(id){ if(acct.user && isViewerOf(id)) return false; var m = META[id]; return !acct.user || !m || !m.owner || m.owner===acct.user.uid; }
 function ensureLive(){
-  if(S.trips[S.cur] && !S.trips[S.cur].arch) return false;
+  if(S.trips[S.cur] && !S.trips[S.cur].arch && !S.trips[S.cur].ziel) return false;
   var l = liveIds(true).sort(function(a,b){ return S.trips[a].start < S.trips[b].start ? -1 : 1; });
   if(l.length) S.cur = l[0]; else { var f = fresh(); Object.keys(f.trips).forEach(function(id){ S.trips[id] = f.trips[id]; }); S.cur = f.cur; }
   return true;
@@ -6133,8 +6408,9 @@ function lpRender(){
   var el = $("catPop"), ro = acct.user && isViewerOf(S.cur);
   var h = "<div class=\"pop-card lpcard\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Markierter Punkt\"><div class=\"pop-head\"><h4>Markierter Punkt</h4><button type=\"button\" class=\"x\" data-act=\"lpclose\" aria-label=\"Schließen\">×</button></div>";
   h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || "Unbenannter Ort"))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
-  if(ro) h += "<p class=\"note\">Als Beobachter kannst du nichts übernehmen.</p>";
-  else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"planpick\" data-lp=\"1\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+(dayByKey(cur) && dayLegs(cur).length ? "<button type=\"button\" class=\"btn g\" data-act=\"lpvia\">Als Wegpunkt für die Gehroute</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button>"+(dayByKey(cur) ? "<label class=\"btn g lpphoto\" for=\"cphIn\" data-act=\"lpphoto\">"+LPCAM+"Als Fotospot – Fotos hinzufügen</label>" : "")+"<button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button></div>";
+  if(noTrip()) h += "<div class=\"lpacts\"><button type=\"button\" class=\"btn lpphoto\" data-act=\"lpmerk\">"+ZBM+"Für später merken</button></div>";
+  else if(ro) h += "<p class=\"note\">Als Beobachter kannst du nichts übernehmen.</p>";
+  else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"planpick\" data-lp=\"1\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+(dayByKey(cur) && dayLegs(cur).length ? "<button type=\"button\" class=\"btn g\" data-act=\"lpvia\">Als Wegpunkt für die Gehroute</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button>"+(dayByKey(cur) ? "<label class=\"btn g lpphoto\" for=\"cphIn\" data-act=\"lpphoto\">"+LPCAM+"Als Fotospot – Fotos hinzufügen</label>" : "")+"<button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button><button type=\"button\" class=\"btn g lpphoto\" data-act=\"lpmerk\">"+ZBM+"Für später merken</button></div>";
   el.innerHTML = h+"</div>"; el.hidden = false;
 }
 function lpClose(){ lpPt = null; if(lpMark){ lpMark.remove(); lpMark = null; } closeCatPop(); }
@@ -8126,9 +8402,13 @@ function poiCard(){
   if(hasLoc(q)) c += rvChips(q);
   if(poiRv && hasLoc(q)) c += rvSection(q);
   if(hasLoc(q)) c += stationLine(q);
+  var zr0 = q.zr ? {zid:q.zr.split("/")[0]} : (hasLoc(q) ? zFind(q) : null);
+  if(zr0 && Z(zr0.zid)) c += "<button type=\"button\" class=\"zgem\" data-act=\"zopen\" data-z=\""+esc(zr0.zid)+"\">"+ZBM+"<span>Gemerkt in „"+esc(Z(zr0.zid).name)+"“</span></button>";
   c += "<div class=\"jp-tiles ctiles\">";
-  if(D && !isRO()) c += "<button type=\"button\" class=\"jp-tile pri\" data-act=\"planpick\" data-poi=\"1\">"+I("<path d=\"M10 4.5v11M4.5 10h11\"/>")+"<span>Zur Planung</span></button>";
-  if(!isRO()) c += "<button type=\"button\" class=\"jp-tile\" data-act=\"poiadd\" data-to=\"wish\">"+I("<path d=\"M10 16.5s-6-3.6-6-8a3.3 3.3 0 0 1 6-1.9 3.3 3.3 0 0 1 6 1.9c0 4.4-6 8-6 8z\"/>")+"<span>Wunschliste</span></button>";
+  if(D && !isRO() && !noTrip()) c += "<button type=\"button\" class=\"jp-tile pri\" data-act=\"planpick\" data-poi=\"1\">"+I("<path d=\"M10 4.5v11M4.5 10h11\"/>")+"<span>Zur Planung</span></button>";
+  var zr = q.zr ? {zid:q.zr.split("/")[0]} : (hasLoc(q) ? zFind(q) : null), zz = zr && Z(zr.zid), TC = tripCenter(), far = hasLoc(q) && (noTrip() || !TC || dist(TC, q) > 60000);
+  if(far && !zz) c += "<button type=\"button\" class=\"jp-tile\" data-act=\"poimerk\">"+ZBM+"<span>Merken</span></button>";
+  else if(!isRO()) c += "<button type=\"button\" class=\"jp-tile\" data-act=\"poiadd\" data-to=\"wish\">"+I("<path d=\"M10 16.5s-6-3.6-6-8a3.3 3.3 0 0 1 6-1.9 3.3 3.3 0 0 1 6 1.9c0 4.4-6 8-6 8z\"/>")+"<span>Wunschliste</span></button>";
   if(hasLoc(q)) c += "<button type=\"button\" class=\"jp-tile\" data-act=\"navpick\" data-poi=\"1\">"+I("<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>")+"<span>Route</span></button>";
   c += "<button type=\"button\" class=\"jp-tile\" data-act=\"poimore\" aria-haspopup=\"dialog\">"+I("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>")+"<span>Mehr</span></button>";
   c += "</div>";
@@ -8141,6 +8421,7 @@ function openPoiMore(btn){
   var row = function(act, ic, t, sub, extra){ return "<button type=\"button\" role=\"menuitem\" data-act=\""+act+"\""+(extra||"")+">"+ic+"<span class=\"cm-t\"><b>"+t+"</b>"+(sub?"<small>"+sub+"</small>":"")+"</span></button>"; };
   var h = "", lists = T().lists;
   if(!isRO() && lists.length > 1) lists.forEach(function(l){ h += row("poiadd", I("<path d=\"M4 5h12M4 10h12M4 15h7\"/>"), "In „"+esc(l.name)+"“ speichern", "Zur Wunschliste in dieser Liste", " data-to=\"wish\" data-list=\""+l.id+"\""); });
+  if(hasLoc(q) && !q.zr && !zFind(q)) h += row("poimerk", I("<path d=\"M6 3.5h8v13l-4-3-4 3z\"/>"), "Für später merken", "Im passenden Ziel, auch ohne Reise");
   h += row("poigm", I("<path d=\"M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0 1 11 0c0 4-5.5 9-5.5 9z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/>"), "In Google Maps öffnen", "Öffnungszeiten, Bewertungen, Fotos");
   jpPopover("poi", btn, h, "poimore");
 }
@@ -8157,6 +8438,7 @@ function poiAdd(to, at, k, lsel){
   var lid = lsel ? lsel : ((activeList && T().lists.some(function(l){ return l.id===activeList; })) ? activeList : (T().lists[0]||{}).id || null);
   var pid = uid("w"), p = {id:pid, n:q.n.slice(0,80), c:q.c, list:lid||null, note:"", addr:(q.addr||"").slice(0,120), la:q.la, lo:q.lo}, gq = gInfo[gK(q)];
   if(gq && gq.st==="ok"){ p.gid = gq.d.id; gInfo[gK(p)] = gq; }
+  if(q.zr) p.zl = q.zr;
   T().places[pid] = p;
   if(to==="day") plan(pid, k, at); else { save(); toast(p.n+" steht in der Wunschliste", false); }
   poiSel = null; renderAll(); select(pid);
@@ -10817,7 +11099,7 @@ document.addEventListener("click", function(e){
     case "navsrch": if(gsPage) closeGsPage(); else openGsPage(); break;
     case "gsfriend": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); setTimeout(renderGs, 600); break;
     case "gstrip": closeGsPage(); var gtr = t.getAttribute("data-trip"); if(S.trips[gtr] && gtr!==S.cur){ grpSel = ""; S.cur = gtr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
-    case "gsplace": closeGsPage(); var gpt = t.getAttribute("data-trip"), gpp = t.getAttribute("data-pid");
+    case "gsplace": closeGsPage(); closeProfile(); var gpt = t.getAttribute("data-trip"), gpp = t.getAttribute("data-pid");
       if(S.trips[gpt] && gpt!==S.cur){ grpSel = ""; S.cur = gpt; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
       if(P(gpp)){ var gdk = dayOf(gpp); if(gdk) cur = gdk; tab = gdk ? "day" : "wish"; renderAll(); select(gpp); revealPoint(P(gpp), 16, true); } break;
     case "gsrec": closeGsPage(); openDcPage(); break;
@@ -10827,6 +11109,24 @@ document.addEventListener("click", function(e){
     case "dcsrc": dcSrc = t.getAttribute("data-v"); lsSet("rp-dcsrc", dcSrc); renderDc(); break;
     case "dcscope": dcScope = t.getAttribute("data-v"); renderDc(); break;
     case "dcwish": dcAdd(t.getAttribute("data-k"), null); break;
+    case "zopen": closeGsPage(); closeDcPage(); closeChPage(); if(sel==="poi") select(null); openZiele(t.getAttribute("data-z")); break;
+    case "znew": zEdit = zEditFrom(""); zOpen = ""; renderProfile(); setTimeout(function(){ var zn = $("zName"); if(zn) zn.focus(); }, 0); break;
+    case "zback": if(zEdit){ var zeb = zEdit.zid; zEdit = null; zOpen = zeb && Z(zeb) ? zeb : ""; } else zOpen = ""; renderProfile(); break;
+    case "zedit": zEdit = zEditFrom(t.getAttribute("data-z")); renderProfile(); break;
+    case "zsave": zSaveEdit(); break;
+    case "zdel": zDel(t.getAttribute("data-z")); break;
+    case "zarea": var zf = zEdit && zEdit.res[+t.getAttribute("data-i")]; if(zf){ if($("zName")) zEdit.n = $("zName").value; zEdit.orte.push(zOrt(zf)); if(!zEdit.n.trim()) zEdit.n = (zf.properties||{}).name || ""; zEdit.q = ""; zEdit.res = []; zEdit.err = ""; renderProfile(); } break;
+    case "zareadel": if(zEdit){ if($("zName")) zEdit.n = $("zName").value; zEdit.orte.splice(+t.getAttribute("data-i"), 1); renderProfile(); } break;
+    case "zshow": zShow(t.getAttribute("data-z"), t.getAttribute("data-pid")); break;
+    case "zpldel": zDelPlace(t.getAttribute("data-z"), t.getAttribute("data-pid")); break;
+    case "zplan": zPlanTrip(t.getAttribute("data-z")); break;
+    case "zchg": zChoose(); break;
+    case "zmove": zMove(t.getAttribute("data-z")); break;
+    case "poimerk": closeJpMore(); if(poiSel) merken({n:poiSel.n, c:poiSel.c, la:poiSel.la, lo:poiSel.lo, addr:poiSel.addr||""}); break;
+    case "lpmerk": var lq = lpPt; if(lq){ lpClose(); merken({n:lq.n || lq.addr || "Markierter Ort", c:"sight", la:lq.la, lo:lq.lo, addr:lq.addr||""}); } break;
+    case "dcmerk": var dmr = DC.byKey[t.getAttribute("data-k")]; if(dmr) merken({n:dmr.n, c:dmr.c, la:+dmr.la, lo:+dmr.lo, addr:dmr.addr||"", note:"Empfehlung von @"+(dmr.fname||"Freund")+(dmr.note ? ": "+dmr.note.slice(0, 200) : ""), rec:{by:dmr.by||"", name:dmr.fname||""}}); break;
+    case "chmerk": var cmk = t.getAttribute("data-k"), cpl = CHPL[cmk]; if(cpl){ var cmm = chMsgs.filter(function(x){ return x.id===cmk; })[0], cby = cmm && cmm.from, cnm = cby ? chName(cby) : "Freund";
+      merken({n:cpl.n, c:cpl.c, la:+cpl.la, lo:+cpl.lo, addr:cpl.addr||"", note:"Geteilt von @"+cnm+" im Chat", rec:{by:cby||"", name:cnm}}); } break;
     case "dcfull": dcFull(t.getAttribute("data-k"), t.getAttribute("data-i")); break;
     case "dcvclose": dcvClose(); break;
     case "dcvcm": if(DCV){ DCV.cm = !DCV.cm; dcvRefresh(); } break;
@@ -11325,6 +11625,7 @@ document.addEventListener("submit", function(e){
     tab = "day"; activeList = "open"; catFilter = {}; sel = null;
     if(!desktop.matches) setSheet("mid");
     renderAll(); fitDay(); toast(wasNew ? "Reise angelegt" : "Reise gespeichert", false);
+    if(wasNew) setTimeout(function(){ zOffer(S.cur); }, 400);
     return;
   }
   if(id==="nlForm"){
