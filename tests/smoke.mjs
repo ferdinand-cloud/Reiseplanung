@@ -418,6 +418,64 @@ await test("Fähre als Verkehrsmittel einer Etappe (Menü, Tagesplan, Navigation
   ok(await rp(`!!(NAV && NAV.segs && NAV.segs.some(function(sg){ return sg.kind==="ride" && sg.ride.bus; }))`), "Navigation nutzt keine Fähre");
 });
 
+await test("Fähre fährt übers Wasser (Fährlinien der Karte statt Luftlinie)", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  const r = await rp(`(function(){
+    var a = {la:40.7470, lo:-73.9760}, b = {la:40.7144, lo:-73.9680}, f = ferryAlts(a, b, cur), l = f[0].legs.filter(function(x){ return x.t==="ride" && isFerry(x.r); })[0];
+    var A = stLL(l.stops[0]), B = stLL(l.stops[1]);
+    // ohne Kacheln: Luftlinie, später neuer Versuch
+    ferryGeoSrc = function(){ return []; }; FG = null; RIDEC = {}; FERRYP = {}; ferryMiss = false;
+    var p0 = ridePath(l), miss = ferryMiss;
+    // Fährlinie mit Knick über den Fluss (wie in den OSM-Kacheln, in zwei Teilen wie an Kachelgrenzen)
+    var K = {la:(A.la+B.la)/2, lo:Math.max(A.lo, B.lo) + 0.01};
+    ferryGeoSrc = function(){ return [{type:"LineString", coordinates:[[A.lo+0.0003, A.la], [(A.lo+K.lo)/2, (A.la+K.la)/2], [K.lo, K.la]]}, {type:"LineString", coordinates:[[K.lo+0.00005, K.la], [B.lo+0.0003, B.la]]}]; };
+    FG = null; ferryRetry();
+    var p1 = ridePath(l), hasK = p1.some(function(q){ return dist(q, K) < 30; });
+    return {n0:p0.length, miss:miss, n1:p1.length, hasK:hasK, saved:!!FERRYP[NET.s[l.stops[0]][0]+">"+NET.s[l.stops[1]][0]], stops:l.stops.length};
+  })()`);
+  ok(r.n0===r.stops && r.miss, "Ohne Kacheln sollte Luftlinie mit neuem Versuch kommen: "+JSON.stringify(r));
+  ok(r.hasK && r.n1 > r.stops, "Fährweg folgt nicht der Fährlinie: "+JSON.stringify(r));
+  ok(r.saved, "Fährweg wird nicht gemerkt");
+});
+
+await test("Routenoptionen je Etappe: Zeit (Abfahrt/Ankunft) und bevorzugte Verkehrsmittel", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  await rp(`(function(){ var t = T(); t.places.p8 = {id:"p8", n:"Domino Park", c:"park", la:40.7144, lo:-73.9680, list:"l_main", note:"", addr:"River St"}; t.places.p9 = {id:"p9", n:"Kips Bay", c:"sight", la:40.7470, lo:-73.9760, list:"l_main", note:"", addr:"2nd Ave"}; t.order[cur] = ["p9","p8","p3"]; legsList = true; select(null); setSheet("full"); renderSheet(); })()`);
+  await page.waitForTimeout(200);
+  const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][0] && L[i][0].id==="p9" && L[i][1] && L[i][1].id==="p8") return i; } return -1; })()`);
+  ok(li > -1, "Etappe nicht gefunden");
+  ok(await rp(`legMode(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1])`)==="oepnv", "Etappe sollte U-Bahn & Bus sein");
+  await page.locator(`[data-act=lmpick][data-leg="${li}"]`).click(); await page.waitForTimeout(150);
+  await click("#jpMenu [data-act=loptopen]");
+  ok(await visible("#catPop .lopt"), "Optionen-Fenster fehlt");
+  ok(await page.locator("#catPop [data-act=loptp]").count()===3, "Bus / U-Bahn / Fähre fehlen");
+  await click("#catPop [data-act=loptp][data-v=ferry]");
+  await click("#catPop [data-act=loptt][data-v=dep]");
+  ok(await visible("#loTm"), "Uhrzeit-Feld fehlt");
+  await page.locator("#loTm").fill("10:00");
+  await shot("routenoptionen");
+  await click("#catPop [data-act=loptsave]");
+  ok(await page.locator("#catPop").isHidden(), "Fenster schließt nicht");
+  const o = await rp(`JSON.stringify(legOptOf(dayLegs(cur)[${li}][1]))`);
+  ok(o==='{"t":"dep","tm":"10:00","p":["ferry"]}', "Optionen nicht gespeichert: "+o);
+  ok(await rp(`(function(){ var L = dayLegs(cur)[${li}]; return hasFerry(legRoute(L[0], L[1], cur)); })()`), "Fähre bevorzugt, aber Verbindung ohne Fähre");
+  ok(await rp(`(function(){ var L = dayLegs(cur)[${li}], r = legRoute(L[0], L[1], cur); return legCtx(L[0], L[1], r).base; })()`)===36000, "Abfahrtszeit wird nicht verwendet");
+  // Bus bevorzugt: Verbindung ohne Fähre
+  await rp(`legSet("legOpt", dayLegs(cur)[${li}][1], {p:["sub"]}); ALTCACHE = {}; renderSheet();`);
+  ok(await rp(`(function(){ var L = dayLegs(cur)[${li}]; return !hasFerry(legRoute(L[0], L[1], cur)); })()`), "U-Bahn bevorzugt, aber Fähre gewählt");
+  // Ankunft bis 12:00: Abfahrt so, dass man rechtzeitig ankommt
+  await rp(`legSet("legOpt", dayLegs(cur)[${li}][1], {t:"arr", tm:"12:00"}); ALTCACHE = {}; renderSheet();`);
+  const ar = await rp(`(function(){ var L = dayLegs(cur)[${li}], r = legRoute(L[0], L[1], cur), c = legCtx(L[0], L[1], r); return {b:c.base, s:r.secs}; })()`);
+  ok(ar.b < 43200 && ar.b > 43200 - ar.s - 3600, "Abfahrt für Ankunft 12:00 unplausibel: "+JSON.stringify(ar));
+  // Hinweis in der aufgeklappten Etappe, Zurücksetzen
+  await rp(`legOpen[cur+"|${li}"] = true; renderSheet();`); await page.waitForTimeout(100);
+  ok((await page.locator(".lo-chip").first().innerText()).includes("Ankunft bis 12:00"), "Optionen in der Etappe nicht sichtbar");
+  await click(".lo-chip"); await click("#catPop [data-act=loptreset]"); await click("#catPop [data-act=loptsave]");
+  ok(await rp(`legGet("legOpt", dayLegs(cur)[${li}][1])===undefined`), "Zurücksetzen löscht die Optionen nicht");
+});
+
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
   await seed();
   await rp(`select("p6")`); await page.waitForTimeout(200);
