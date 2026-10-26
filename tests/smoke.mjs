@@ -667,13 +667,19 @@ await test("Privat, aber für einzelne Beobachter freigegeben", async () => {
   ok(await rp(`JSON.stringify(phShareTo("ph_c1"))`)==='["u_anna"]', "Foto des freigegebenen Orts nicht für Anna lesbar");
   // im Orts-Fenster direkt unter „Sichtbarkeit“
   await rp(`closeJpMore(); openJPop("p1", cur);`); await page.waitForTimeout(250);
-  ok(await page.locator("#jPop .pt-c").count()===2, "Beobachter-Schalter fehlen im Orts-Fenster");
-  ok(await page.locator('#jPop .pt-c[data-uid=u_anna][aria-checked=true]').count()===1, "Bestehende Freigabe nicht markiert");
-  await page.locator("#jPop .pt-c[data-uid=u_ludwig]").click(); await page.waitForTimeout(200);
-  ok(await rp(`JSON.stringify(T().privTo["p:p1"])`)==='["u_anna","u_ludwig"]', "Freigabe im Orts-Fenster wirkt nicht");
-  await shot("privat-freigabe-fenster");
-  await page.locator("#jPop .pt-c[data-uid=u_ludwig]").click(); await page.waitForTimeout(200);
+  ok(await page.locator("#jPop [data-act=privtopick]").count()===1, "Dropdown „Freigegeben für“ fehlt im Orts-Fenster");
+  ok((await page.locator("#jPop [data-act=privtopick]").innerText()).includes("@anna"), "Bestehende Freigabe nicht angezeigt");
+  ok((await page.locator("#jPop [data-act=privtopick]").boundingBox()).height < 60, "Freigabe-Zeile zu hoch (soll eine Zeile sein)");
+  await click("#jPop [data-act=privtopick]");
+  ok(await page.locator("#jpMenu [data-act=privto]").count()===2, "Dropdown zeigt nicht alle Beobachter");
+  await page.locator("#jpMenu [data-act=privto][data-uid=u_ludwig]").click(); await page.waitForTimeout(200);
+  ok(await page.locator("#jpMenu").count()===1, "Dropdown schließt beim Ankreuzen (Mehrfachauswahl)");
+  ok(await rp(`JSON.stringify(T().privTo["p:p1"])`)==='["u_anna","u_ludwig"]', "Freigabe im Dropdown wirkt nicht");
+  ok((await page.locator("#jPop [data-act=privtopick]").innerText()).includes("2 Beobachtern"), "Zeile zeigt Auswahl nicht an");
+  await shot("privat-freigabe-dropdown");
+  await page.locator("#jpMenu [data-act=privto][data-uid=u_ludwig]").click(); await page.waitForTimeout(200);
   ok(await rp(`JSON.stringify(T().privTo["p:p1"])`)==='["u_anna"]', "Freigabe lässt sich nicht zurücknehmen");
+  await rp(`closeJpMore()`);
   // ⋯-Menü: kein doppelter Privat-Schalter mehr (Sichtbarkeit steht im Fenster)
   await click("#jPop [data-act=jpmore]");
   ok(await page.locator("#jpMenu [data-act=privp]").count()===0 && await page.locator("#jpMenu [data-act=grppick]").count()===1, "⋯-Menü sollte Gruppe, aber keinen Privat-Schalter zeigen");

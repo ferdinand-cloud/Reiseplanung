@@ -2350,18 +2350,17 @@ body.navon .top,body.navon #rail{visibility:hidden}
 #ov .lvl.k{font-weight:700;font-size:12.5px}
 .ch-phc img.ch-phlz{min-height:120px;background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .ch-phc img.ch-phlz.missing{min-height:120px}
-.pt-in{margin-top:10px}
-.pt-l{font-size:12.5px;font-weight:700;color:var(--muted);margin:0 2px 6px}
-.pt-row{display:flex;flex-wrap:wrap;gap:6px}
-.pt-c{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:4px 11px 4px 4px;background:none;color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
-.pt-c[aria-checked="true"]{background:color-mix(in srgb,#0A84FF 16%,transparent);border-color:#0A84FF}
-.pt-c .ck{color:#0A84FF;min-width:0}
-.pt-c .ck:empty{display:none}
+.pt-dd{display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;border:0;border-radius:12px;padding:9px 12px;background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);font:inherit;font-size:14px;cursor:pointer;text-align:left}
+.pt-dd .pt-l{color:var(--muted);font-weight:600}
+.pt-dd b{margin-left:auto;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pt-dd svg{width:14px;height:14px;flex:0 0 auto;opacity:.6}
 .vp-share{border-top:1px solid var(--line);margin-top:6px;padding-top:2px}
-.vp-share > button{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;border-radius:11px;padding:8px 10px;font:600 15px/1.2 var(--f-body);color:var(--ink);text-align:left;cursor:pointer}
+.vp-share > button{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;border-radius:10px;padding:6px 10px;font:600 15px/1.2 var(--f-body);color:var(--ink);text-align:left;cursor:pointer}
 .vp-share > button:active{background:var(--fill)}
-.vp-share > button small{display:block;margin-top:2px;font:500 12.5px/1.3 var(--f-body);color:var(--muted)}
-.vp-share .ck{margin-left:auto;min-width:14px}
+.vp-share .ch-av{width:24px;height:24px;font-size:11px;flex:0 0 auto}
+.pt-cb{width:20px;height:20px;flex:0 0 auto;border:2px solid var(--line);border-radius:6px;display:grid;place-items:center;font-size:13px;font-weight:800;line-height:1;color:#fff}
+.vp-share [aria-checked="true"] .pt-cb{background:#0A84FF;border-color:#0A84FF}
+.pt-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vp-note{margin:4px 10px 6px;font-size:12px;color:var(--muted);line-height:1.35}
 .ln-h{font-size:12px;font-weight:700;color:var(--muted);padding:8px 14px 2px;text-transform:none}
 .ln-buls{display:inline-flex;gap:3px;flex:0 0 auto;min-width:78px}
@@ -3615,17 +3614,16 @@ function privToHTML(kind, key){
   var vs = tripViewers(); if(!vs.length || isRO() || !canPriv()) return "";
   var on = privToOf(kind, key);
   return "<div class=\"frp-h vp-share\"><div class=\"vp-h\">Trotzdem freigeben für</div>"+vs.map(function(u){ var c = on.indexOf(u) > -1;
-    return "<button type=\"button\" role=\"menuitemcheckbox\" data-act=\"privto\" data-k=\""+kind+"\" data-key=\""+esc(key)+"\" data-uid=\""+esc(u)+"\" aria-checked=\""+c+"\"><span class=\"ai\">"+chAv(u, "ch-av xs")+"</span><span class=\"cm-t\"><b>"+esc(viewerName(u))+"</b><small>Beobachter</small></span><b class=\"ck\">"+(c ? "✓" : "")+"</b></button>"; }).join("")+
-    "<p class=\"vp-note\">Nur die Ausgewählten sehen "+(kind==="p" ? "den Ort mit Notiz und Fotos" : kind==="n" ? "die Notiz" : "das Foto")+". Für alle anderen Beobachter bleibt es privat.</p></div>";
+    return "<button type=\"button\" role=\"menuitemcheckbox\" data-act=\"privto\" data-k=\""+kind+"\" data-key=\""+esc(key)+"\" data-uid=\""+esc(u)+"\" aria-checked=\""+c+"\"><span class=\"pt-cb\" aria-hidden=\"true\">"+(c ? "✓" : "")+"</span>"+chAv(u, "ch-av xs")+"<span class=\"pt-n\">"+esc(viewerName(u))+"</span></button>"; }).join("")+
+    "<p class=\"vp-note\">Nur die Ausgewählten sehen "+(kind==="p" ? "den Ort mit Notiz und Fotos" : kind==="n" ? "die Notiz" : "das Foto")+".</p></div>";
 }
-// im Orts-Fenster: Beobachter als Schalter direkt unter „Sichtbarkeit“
+// im Orts-Fenster: eine Zeile „Freigeben für …“, Auswahl als Dropdown mit Mehrfachauswahl
 function privToInline(kind, key){
   if(isRO() || !canPriv()) return "";
-  var vs = tripViewers(), on = privToOf(kind, key);
-  if(!vs.length) return "<p class=\"note vis-hint\">Für einzelne Beobachter freigeben: Diese Reise hat noch keine Beobachter.</p>";
-  return "<div class=\"pt-in\"><div class=\"pt-l\">Trotzdem freigeben für</div><div class=\"pt-row\">"+vs.map(function(u){ var c = on.indexOf(u) > -1;
-    return "<button type=\"button\" class=\"pt-c\" role=\"switch\" data-act=\"privto\" data-k=\""+kind+"\" data-key=\""+esc(key)+"\" data-uid=\""+esc(u)+"\" aria-checked=\""+c+"\">"+chAv(u, "ch-av xs")+"<span>"+esc(viewerName(u))+"</span><b class=\"ck\">"+(c ? "✓" : "")+"</b></button>"; }).join("")+
-    "</div><p class=\"note vis-hint\">"+(on.length ? "Nur die ausgewählten Beobachter sehen den Ort mit Notiz und Fotos." : "Tippe Beobachter an, die den Ort trotzdem sehen dürfen.")+"</p></div>";
+  var vs = tripViewers(); if(!vs.length) return "";
+  var on = privToOf(kind, key).filter(function(u){ return vs.indexOf(u) > -1; });
+  var lbl = !on.length ? "niemandem" : on.length===1 ? viewerName(on[0]) : on.length+" Beobachtern";
+  return "<button type=\"button\" class=\"pt-dd\" data-act=\"privtopick\" data-k=\""+kind+"\" data-key=\""+esc(key)+"\" aria-haspopup=\"menu\"><span class=\"pt-l\">Freigegeben für</span><b>"+esc(lbl)+"</b>"+CHEV+"</button>";
 }
 // Ausschnitt für einen Beobachter: freigegebene private Orte (mit Notiz, Fotos, Bewertung), Notizen und Fotos
 function shareFor(M, u){
@@ -9180,7 +9178,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -10902,10 +10900,12 @@ document.addEventListener("click", function(e){
     case "phback": if(jp && !!jp.ret){ closeJPop(); break; } jp.view = null; renderJPop(); if($("jPop").hidden || !$("jPop").innerHTML) closeJPop(); break;
     case "privp": if(t.closest("#catPop")) closeCatPop(); togglePriv("p", rootPid(jp ? jp.pid : id), function(){ if(jp) renderJPop(); renderSheet(); }); break;
     case "lpphoto": if(!lpPt || isRO()) break; var lq = lpPt; $("cphIn").setAttribute("data-pid", "new:"+lq.la+","+lq.lo+","+encodeURIComponent(lq.n||"")); setTimeout(lpClose, 60); break;
+    case "privtopick": jpPopover("pt", t, privToHTML(t.getAttribute("data-k"), t.getAttribute("data-key")).replace("Trotzdem freigeben für", "Freigeben für (mehrere möglich)"), "privto"); break;
     case "privto": var ptOn = t.getAttribute("aria-checked")!=="true"; setPrivTo(t.getAttribute("data-k"), t.getAttribute("data-key"), t.getAttribute("data-uid"), ptOn);
-      t.setAttribute("aria-checked", String(ptOn)); var ptc = t.querySelector(".ck"); if(ptc) ptc.textContent = ptOn ? "✓" : "";
+      t.setAttribute("aria-checked", String(ptOn)); var ptc = t.querySelector(".ck,.pt-cb"); if(ptc) ptc.textContent = ptOn ? "✓" : "";
       toast(ptOn ? "Freigegeben für "+viewerName(t.getAttribute("data-uid")) : "Freigabe für "+viewerName(t.getAttribute("data-uid"))+" zurückgenommen", false);
-      if(jp && !$("jPop").hidden) renderJPop(); renderSheetSoon(); break;
+      var ptb = document.querySelector("#jPop [data-act=privtopick]"); if(ptb){ var tmp0 = document.createElement("div"); tmp0.innerHTML = privToInline(ptb.getAttribute("data-k"), ptb.getAttribute("data-key")); if(tmp0.firstChild) ptb.innerHTML = tmp0.firstChild.innerHTML; }
+      renderSheetSoon(); break;
     case "placevispick": openPlaceVis(t.getAttribute("data-pid"), t); break;
     case "placevis": if(t.classList.contains("dis")){ toast("Veröffentlichen geht, sobald du den Ort besucht hast", false); break; } closeJpMore(); setVis(t.getAttribute("data-pid"), t.getAttribute("data-v")); break;
     case "itemvispick": if(!jp) break; var ivk = t.getAttribute("data-k"), ivkey = t.getAttribute("data-key"); openItemVis(ivk, ivkey, ivk==="ph" ? (phPlace(ivkey) || jp.pid) : jp.pid, t); break;
