@@ -1,5 +1,5 @@
 // Reiseplan – Service Worker: App offline verfügbar, besuchte Kartenbereiche zwischengespeichert
-const VERSION = "reiseplan-v256";
+const VERSION = "reiseplan-v257";
 const SHELL = ["./", "./index.html", "./maplibre-gl.js", "./maplibre-gl.css", "./manifest.webmanifest", "./bus.json", "./firebase.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 const TILES = "reiseplan-tiles";
@@ -10,7 +10,7 @@ self.addEventListener("install", (e) => {
 });
 
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== TILES).map((k) => caches.delete(k))))
+  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== TILES && !k.startsWith("reiseplan-offline-")).map((k) => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 
@@ -40,7 +40,8 @@ self.addEventListener("fetch", (e) => {
   // Kartenkacheln, Schriften, Stil: Zwischenspeicher zuerst, im Hintergrund aktualisieren
   if (/openfreemap\.org$|fonts\.(googleapis|gstatic)\.com$/.test(url.hostname)) {
     e.respondWith(caches.open(TILES).then(async (c) => {
-      const hit = await c.match(req);
+      // zuerst die vorab geladene Offline-Karte einer Reise, dann besuchte Kacheln
+      const hit = await caches.match(req);
       const net = fetch(req).then((res) => { if (res.ok) { c.put(req, res.clone()); trimTiles(); } return res; }).catch(() => hit);
       return hit || net;
     }));

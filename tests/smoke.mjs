@@ -1149,6 +1149,77 @@ await test("Ziele: mit Freunden teilen, Tipps von Freunden erkennbar", async () 
   ok((await page.locator("#profView [data-act=zdel]").innerText()).includes("verlassen"), "Geteiltes fremdes Ziel bietet Löschen statt Verlassen");
 });
 
+await test("Route: gemerkte Orte am Weg, Zahl am Stern, Einschieben verknüpft mit dem Ziel", async () => {
+  await seed();
+  await rp(`var z = zielNew("New York", {id:"o1", n:"New York", la:40.73, lo:-73.99, r:30000}); zielAdd(z, {n:"Russ & Daughters", c:"essen", la:40.7265, lo:-73.9920}); zielAdd(z, {n:"Weit weg", c:"sight", la:40.80, lo:-73.95});
+    setLegMode(P("p1"), P("p2"), "walk"); save(); renderAll(); true`);
+  await page.waitForTimeout(250);
+  const li = await rp(`var L = dayLegs(cur), j = -1; L.forEach(function(pr, i){ if(pr[1]===P("p2")) j = i; }); j`);
+  ok(li > -1, "Etappe zum Park fehlt");
+  ok(await rp(`sugCount(${li})`) >= 1, "Gemerkter Ort am Weg wird nicht gezählt");
+  ok(await page.locator(`.sugb[data-leg="${li}"] b`).count()===1, "Zahl am Stern-Knopf fehlt");
+  await click(`.sugb[data-leg="${li}"]`); await page.waitForTimeout(200);
+  if(await rp(`SUG.tab`)!=="zl") await click(`#catPop [data-act=sugtab][data-v=zl]`);
+  const txt = await page.locator("#catPop").innerText();
+  ok(txt.includes("Russ & Daughters") && txt.includes("gemerkt in „New York“"), "Gemerkter Ort fehlt im Reiter „Gemerkt“");
+  ok(!txt.includes("Weit weg"), "Ort abseits des Wegs wird vorgeschlagen");
+  await shot("route-gemerkt");
+  await click("#catPop [data-act=sugadd]"); await page.waitForTimeout(250);
+  ok(await rp(`var o = ord(cur), id = o.filter(function(k){ return P(k).n==="Russ & Daughters"; })[0]; !!id && !!P(id).zl && o.indexOf(id) < o.indexOf("p2")`), "Ort nicht vor dem Park eingeplant oder nicht mit Ziel verknüpft");
+  ok(await rp(`sugItems("zl", sugPath(dayLegs(cur)[${li}])).filter(function(r){ return !r.inT; }).length`)===0, "Eingeplanter Ort wird weiter vorgeschlagen");
+});
+await test("Öffnungszeiten: OSM-Regeln lesen, geschlossenen Tag im Plan und in der Karte zeigen", async () => {
+  await seed();
+  ok(await rp(`var W = ohParse("Mo-Fr 09:00-17:00; Sa 10:00-14:00; Su off"); W[0][0][0]===540 && W[5][0][1]===840 && W[6].length===0`), "Einfache Regel falsch gelesen");
+  ok(await rp(`ohParse("24/7")[3][0][1]===1440 && ohParse("Tu-Su 10:00-17:30")[0].length===0 && ohParse("Jan-Mar Mo 10:00-12:00")===null && ohParse("Mo-Th 11:00-15:00,17:00-23:00; Fr-Sa 11:00-01:00")[5][0][1]===1500`), "Sonderfälle falsch gelesen");
+  ok(await rp(`ohCheck("Tu-Su 10:00-17:30", "2026-10-26", "").closed===true && ohCheck("Tu-Su 10:00-17:30", "2026-10-27", "").txt==="10:00–17:30" && ohCheck("Tu-Su 10:00-17:30", "2026-10-27", "09:00").late===true`), "Prüfung für Tag/Uhrzeit falsch");
+  const wd = await rp(`["Su","Mo","Tu","We","Th","Fr","Sa"][parseD(cur).getUTCDay()]`);
+  await page.route(/overpass-api\.de/, rt => rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({elements:[
+    {type:"node", lat:40.7614, lon:-73.9776, tags:{name:"MoMA", opening_hours:"Mo-Su 10:30-17:30; "+wd+" off"}},
+    {type:"node", lat:40.7308, lon:-73.9973, tags:{name:"Other Park", opening_hours:"24/7"}}]}) }));
+  await rp(`OHFAIL = 0; OHNEW.p3 = 1; renderSheet(); true`);
+  await page.waitForFunction(() => document.querySelectorAll("#sheet .st .ohx, .st .ohx").length > 0, null, {timeout:5000});
+  ok(await rp(`var r = document.querySelector('.st[data-id="p3"] .ohx'); !!r && /geschlossen/.test(r.textContent)`), "Geschlossen-Hinweis am MoMA fehlt");
+  ok(await rp(`!document.querySelector('.st[data-id="p2"] .ohx') && ohOf(P("p2")).o===""`), "Öffnungszeiten eines anderen Orts übernommen");
+  ok((await page.locator("#toast").innerText()).includes("MoMA"), "Kein Hinweis nach dem Einplanen eines geschlossenen Orts");
+  await shot("oh-tag");
+  await rp(`select("p3"); renderCard(); true`); await page.waitForTimeout(200);
+  ok((await page.locator("#card .ohl").innerText()).includes("geschlossen"), "Öffnungszeiten fehlen in der Karte");
+  await shot("oh-karte");
+});
+await test("Tagesvorschlag: angezeigte Wünsche nach Nähe auf die übrigen Tage verteilen", async () => {
+  await seed();
+  await rp(`[["q1","Bryant Park",40.7536,-73.9832],["q2","Grand Central",40.7527,-73.9772],["q3","DUMBO",40.7033,-73.9881],["q4","Brooklyn Museum",40.6712,-73.9636]].forEach(function(r){ T().places[r[0]] = {id:r[0], n:r[1], c:"sight", la:r[2], lo:r[3], list:"l_main", note:"", addr:"x"}; });
+    save(); tab = "wish"; renderAll(); true`);
+  await page.waitForTimeout(200);
+  await click("[data-act=dsopen]"); await page.waitForTimeout(200);
+  ok(await page.locator("#catPop .ds-day").count() >= 2, "Vorschau zeigt keine Tage");
+  await shot("tage-verteilen");
+  const n = await rp(`dsPool().length`);
+  await click("#catPop [data-act=dsapply]"); await page.waitForTimeout(250);
+  ok(await rp(`dsPool().length`)===0 && n >= 5, "Nicht alle Wünsche verteilt");
+  ok(await rp(`var tk = todayKeySafe(); ["q1","q2","q3","q4","p6","p7"].every(function(id){ var k = dayOf(id); return k && k >= tk; })`), "Wunsch auf vergangenen Tag gelegt");
+  ok(await rp(`dayOf("q1")===dayOf("q2")`), "Nahe Orte (Bryant Park, Grand Central) auf verschiedene Tage verteilt");
+  ok(await rp(`ord(days().filter(function(d){ return d.key===cur; })[0].key).slice(0,3).join()==="p1,p2,p3"`), "Bereits geplante Stopps verändert");
+  ok((await page.locator("#toast").innerText()).includes("verteilt"), "Hinweis mit Rückgängig fehlt");
+});
+await test("Offline-Karte: Kacheln des Reisegebiets laden, anzeigen und löschen", async () => {
+  await seed();
+  let tiles = 0;
+  await page.route(/tiles\.test/, rt => { tiles++; return rt.fulfill({ contentType: "application/x-protobuf", headers: {"access-control-allow-origin":"*"}, body: "x".repeat(500) }); });
+  await rp(`OFFTPL = "https://tiles.test/{z}/{x}/{y}.pbf"; OFFMAX = 120; tab = "trip"; renderSheet(); true`); await page.waitForTimeout(200);
+  ok((await page.locator("#offBox").innerText()).includes("Kacheln"), "Offline-Bereich fehlt in „Reise“");
+  await click("#offBox [data-act=offload]");
+  await page.waitForFunction(() => window.__rp("!!offMeta(S.cur)"), null, {timeout:15000});
+  ok(tiles > 20, "Kacheln nicht geladen");
+  ok(await page.evaluate(async () => (await (await caches.open(window.__rp("offCacheName(S.cur)"))).keys()).length) === tiles, "Kacheln nicht im Offline-Speicher");
+  ok((await page.locator("#offBox").innerText()).includes("Gespeichert"), "Stand nicht angezeigt");
+  await shot("offline-karte");
+  await click("#offBox [data-act=offdel]"); ok(await visible("#cfPop"), "Löschen ohne Rückfrage");
+  await click("#cfPop .cf-ok"); await page.waitForTimeout(300);
+  ok(await rp(`!offMeta(S.cur)`) && !(await page.evaluate(() => caches.has(window.__rp("offCacheName(S.cur)")))), "Offline-Karte nicht gelöscht");
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 const bad = results.filter(r => !r.ok);
