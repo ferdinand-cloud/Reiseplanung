@@ -1407,7 +1407,12 @@ await test("Ort-Menü (Mehr): Gruppen Planen/Zuordnen/Infos, einzeilige Zeilen, 
 
 await test("Unterkunftsliste: Ort als Unterkunft vormerken, eigene Liste, als Hotel übernehmen, Abbrechen führt zurück", async () => {
   await seed();
+  // Park aus der Suche: keine Unterkunft-Option; selbst gesetzter Ort (z. B. Ferienwohnung): Option da
   await rp(`select("p7")`); await page.waitForTimeout(200);
+  await click("#card [data-act=cardmore]");
+  ok(await page.locator("#jpMenu [data-act=staymark]").count()===0, "Park bietet „Als Unterkunft vormerken“ an");
+  ok(await rp(`!canStay(T().places.p7) && canStay({c:"hotel"}) && canStay({c:"essen", own:1}) && !canStay({c:"cafe"}) && !canStay({c:"sight", own:1, k:"photo"})`), "canStay-Regel falsch");
+  await rp(`closeJpMore(); T().places.p7.own = 1; select(null); select("p7")`); await page.waitForTimeout(200);
   await click("#card [data-act=cardmore]");
   await click("#jpMenu [data-act=staymark]"); await page.waitForTimeout(200);
   ok(await rp(`T().places.p7.c==="hotel" && T().places.p7.c0==="park"`), "Ort wird nicht als Unterkunft markiert");

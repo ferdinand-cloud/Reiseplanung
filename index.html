@@ -8943,6 +8943,8 @@ function lpToHotel(){
   var p = lpPt; lpClose(); if(!p) return; toHotel(p);
 }
 /* Unterkunftsliste: gewählte Unterkunft wird Hotel der Reise (Zeitraum im Reise-Fenster prüfen) */
+// „Als Unterkunft vormerken“ nur für Unterkünfte (Kategorie aus OSM tourism=hotel/hostel/…) und selbst gesetzte Orte (z. B. Ferienwohnung); bereits markierte bleiben umschaltbar
+function canStay(p){ return !!p && p.k!=="photo" && (p.c==="hotel" || !!p.own); }
 function stayHotel(pid){ return (T().hotels||[]).filter(function(h){ return h.src===pid; })[0] || null; }
 function stayToHotel(pid){ var p = P(pid); if(!p || !hasLoc(p)){ toast("Für diese Unterkunft fehlt die Lage auf der Karte", false); return; } closeJpMore(); closeJPop(); toHotel(p, pid); }
 function stayMark(pid){ var p = T().places[pid]; if(!p) return; closeJpMore();
@@ -11856,7 +11858,7 @@ function openCardMore(btn){
   if(!isHs) as += row("grppick", I(IC.group), grpName(p.g) ? "Gruppe" : "Zu Gruppe hinzufügen", grpName(p.g) ? esc(grpName(p.g)) : "");
   if(!isHs && !p.of && p.k!=="photo" && !isRO()){
     if(p.c==="hotel" && !stayHotel(sel) && hasLoc(p)) as += row("stay2h", I(IC.hotel), "Als Hotel übernehmen", "", "Als Hotel der Reise übernehmen, Zeitraum im Reise-Fenster prüfen", " data-pid=\""+sel+"\"");
-    as += row("staymark", I(IC.hotel), p.c==="hotel" ? "Keine Unterkunft" : "Als Unterkunft vormerken", "", p.c==="hotel" ? "Aus der Unterkunftsliste nehmen" : "In die Unterkunftsliste der Reise", " data-pid=\""+sel+"\"");
+    if(canStay(p)) as += row("staymark", I(IC.hotel), p.c==="hotel" ? "Keine Unterkunft" : "Als Unterkunft vormerken", "", p.c==="hotel" ? "Aus der Unterkunftsliste nehmen" : "In die Unterkunftsliste der Reise", " data-pid=\""+sel+"\"");
   }
   if(!isHs && !isRO()){ var ntk = tkOn(tkPlaceOn(sel)).length; as += row("tkplace", I(IC.ticket), "Tickets", ntk ? String(ntk) : "", "Eintritt oder Event hinterlegen, buchen"); }
   inf += row("gmopen", I(IC.ext), "In Google Maps öffnen", "", "Öffnungszeiten, Bewertungen, Fotos");
@@ -12932,7 +12934,7 @@ function openJpMore(id, btn){
     // Privat/Reise/Freunde stellt man unter „Sichtbarkeit“ im Fenster ein – hier nur, wo es dieses Feld nicht gibt (Hotel)
     (canPriv() && p.k==="hotel" ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : "")+
     (hasLoc(p) && p.k!=="hotel" && acct.user ? "<button type=\"button\" data-act=\"chshare\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+ic("send")+"</span><span>Im Chat schicken</span></button>" : "")+
-    (!isRO() && !p.of && p.k!=="hotel" && p.k!=="photo" ? "<button type=\"button\" data-act=\"staymark\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+ic("hotel")+"</span><span>"+(p.c==="hotel" ? "Keine Unterkunft" : "Als Unterkunft vormerken")+"</span></button>" : "")+
+    (!isRO() && !p.of && p.k!=="hotel" && canStay(p) ? "<button type=\"button\" data-act=\"staymark\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+ic("hotel")+"</span><span>"+(p.c==="hotel" ? "Keine Unterkunft" : "Als Unterkunft vormerken")+"</span></button>" : "")+
     (!isRO() && !p.of && p.c==="hotel" && !stayHotel(id) && hasLoc(p) ? "<button type=\"button\" data-act=\"stay2h\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+ic("hotel")+"</span><span>Als Hotel der Reise übernehmen</span></button>" : "")+
     (dayOf(id) && !T().done[id] && !isRO() && p.k!=="hotel" && hasLoc(p) ? "<button type=\"button\" data-act=\"tovia\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+VIAICO+"</span><span>Nur als Wegpunkt</span></button>" : ""), "more");
 }
