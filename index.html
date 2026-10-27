@@ -4230,7 +4230,8 @@ function acctMerge(rows, first){
   });
   return {changed:changed, seen:seen};
 }
-function setAcct(st, msg){ acct.state = st; if(msg!=null) acct.msg = msg; if(!$("acctPop").hidden){ openSettings(); return; } var el = $("acctNote"); if(el) el.innerHTML = acctNote(); }
+// Abgleich-Status steht nur in „Mein Konto“ – andere offene Ansichten (Freunde, Reisen …) nicht bei jedem Abgleich neu aufbauen
+function setAcct(st, msg){ acct.state = st; if(msg!=null) acct.msg = msg; if(!$("acctPop").hidden){ if(accView==="main") openSettings(); return; } var el = $("acctNote"); if(el) el.innerHTML = acctNote(); }
 function acctNote(){
   if(!acct.user) return acct.msg ? esc(acct.msg) : "";
   return acct.state==="sync" ? "Gleiche ab …" : acct.state==="error" ? "<b>Abgleich fehlgeschlagen:</b> "+esc(acct.msg||"")+" – wird erneut versucht." :
@@ -6958,7 +6959,10 @@ function setAvatar(file){
   im.src = url;
 }
 document.addEventListener("change", function(e){ if(e.target.id==="avIn" && e.target.files && e.target.files[0]){ setAvatar(e.target.files[0]); e.target.value = ""; } });
-function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
+// Neuaufbau bei offenem Fenster (z. B. neue Daten): gleiche Ansicht ohne erneutes Aufklappen und ohne Sprung nach oben
+function openSettings(){ var el = $("acctPop"), c0 = !el.hidden && el.getAttribute("data-v")===accView && el.querySelector(".ag-card"), st = c0 ? c0.scrollTop : 0;
+  el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); var c1 = el.querySelector(".ag-card"); if(c0 && c1){ c1.style.animation = "none"; c1.scrollTop = st; }
+  el.setAttribute("data-v", accView); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
 /* Tastatur: alles am sichtbaren Bereich ausrichten und das aktive Feld im Blick halten */
 var KBPRED = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints > 1), KBVH = [0, 0], VVBASE = [0, 0];
 // erwartete sichtbare Höhe bei offener Tastatur: vom letzten Öffnen, sonst vorsichtig geschätzt (lieber zu klein als zu groß)
