@@ -2580,6 +2580,21 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .lo-list [aria-checked="true"] .sw2{background:#34c759}
 .lo-list [aria-checked="true"] .sw2::after{transform:translateX(18px)}
 .lo-note{font-size:12.5px;color:var(--muted);margin:8px 4px 14px}
+.tkpop .lo-leg{margin-top:-4px}
+.tk-seg{grid-template-columns:repeat(2,1fr);margin:4px 0 10px}
+.tkform .tf-row > input{background:var(--fill);border:0;border-radius:10px}
+.tkform .tf-row > input[type=date],.tkform .tf-row > input[type=time]{-webkit-appearance:none;appearance:none;text-align:left;min-height:38px}
+.tkic{--cc:var(--muted)}
+.tkic svg{width:20px;height:20px}
+.tkrow.ok .tkic{--cc:#0b8a4b}
+a.ls-row{text-decoration:none}
+.tkopen{display:grid;place-items:center;color:var(--accent,#0a84ff)}
+.tkopen svg{width:18px;height:18px}
+.tkna small{font-style:italic}
+.tkempty{margin:0 4px 4px;font-size:13px}
+.pf-acts .btn .ii{width:16px;height:16px;vertical-align:-3px}
+.lm button.tk{position:relative}
+.lm button.tk::after{content:"";position:absolute;top:1px;right:1px;width:7px;height:7px;border-radius:50%;background:#0b8a4b;box-shadow:0 0 0 1.5px var(--sheet)}
 .lo-reset{width:100%;border:0;border-radius:14px;padding:13px;font:inherit;font-size:16px;font-weight:600;color:#0a84ff;background:color-mix(in srgb,var(--ink) 7%,transparent);cursor:pointer}
 .srloc{display:flex;gap:6px;margin:8px 0 2px;flex-wrap:wrap}
 .srloc button{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:6px 11px 6px 9px;font:inherit;font-size:13px;color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent);cursor:pointer;max-width:100%}
@@ -3544,6 +3559,7 @@ button.tf-pill{border:0;font:inherit;color:inherit}
   <label><input type="checkbox" id="lNb"><span class="sw" style="background:repeating-linear-gradient(90deg,var(--hi) 0 4px,transparent 4px 7px)"></span>Bezirke</label>
   <h4 style="margin-top:4px">Bezirk hervorheben</h4>
   <select id="nbAdd" aria-label="Bezirk hervorheben"></select>
+  <p class="note dnote" id="nbErr" hidden></p>
   <div class="hl-list" id="nbList"></div>
 </div>
 <input type="file" id="cphIn" accept="image/*,image/heic,image/heif" multiple hidden>
@@ -3613,7 +3629,8 @@ var IC = {
   sync:"<path d=\"M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2\"/>", // Abgleichen
   sort:"<path d=\"M6.5 16.5v-13M3.5 6.5l3-3 3 3M13.5 3.5v13M10.5 13.5l3 3 3-3\"/>", // Sortieren
   camera:"<path d=\"M3 6.5h3l1.5-2h5l1.5 2h3v9.5H3z\"/><circle cx=\"10\" cy=\"11\" r=\"3\"/>", // Foto
-  hotel:"<path d=\"M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5\"/><circle cx=\"5.8\" cy=\"9.6\" r=\"1.6\"/>" // Hotel
+  hotel:"<path d=\"M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5\"/><circle cx=\"5.8\" cy=\"9.6\" r=\"1.6\"/>", // Hotel
+  ticket:"<path d=\"M2.5 6h15v2.6a1.6 1.6 0 0 0 0 3.2V14.4h-15v-2.6a1.6 1.6 0 0 0 0-3.2z\"/><path d=\"M12.5 6.5v1.5M12.5 9.5v1.4M12.5 12.4v1.5\"/>" // Tickets (Fahrkarten, Eintritt)
 };
 // ic("send") – Linie; icf("like") – gefüllt (aktiv); cls z. B. "ii" für Symbole im Fließtext
 function ic(n, cls, fill){ return "<svg"+(cls ? " class=\""+cls+"\"" : "")+" viewBox=\"0 0 20 20\" fill=\""+(fill||"none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+IC[n]+"</svg>"; }
@@ -3826,12 +3843,12 @@ function renameLocal(){
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["places","done","times","journal","order","legMode","legAlt","legOpt","legLine","via","rating","notes","photos","groups","privP","privN","privPh","privTo","capt"];
+var MAPK = ["places","done","times","journal","order","legMode","legAlt","legOpt","legLine","via","rating","notes","photos","groups","privP","privN","privPh","privTo","capt","tickets"];
 /* ---------- Privat: Orte, Notizen und Fotos, die Beobachter nicht bekommen ----------
    Mitreisende lesen und schreiben die vollständige Reise in trips/{id}/priv/data;
    das Reise-Dokument selbst (für Beobachter lesbar) enthält nur den öffentlichen Teil. */
 function jclone(o){ return o===undefined ? undefined : JSON.parse(JSON.stringify(o)); }
-function privOf(t){ return !!(t && ["privP","privN","privPh"].some(function(k){ return t[k] && Object.keys(t[k]).length; })); }
+function privOf(t){ return !!(t && ["privP","privN","privPh","tickets"].some(function(k){ return t[k] && Object.keys(t[k]).length; })); }
 function privSet(t){ var P0 = t.privP || {}, out = Object.keys(P0).filter(function(id){ return t.places && t.places[id]; });
   Object.keys(t.places||{}).forEach(function(id){ var q = t.places[id]; if(q && q.of && P0[q.of] && out.indexOf(id)<0) out.push(id); }); return out; }
 function pubOf(M){
@@ -3851,14 +3868,14 @@ function pubOf(M){
     Object.keys(N0).forEach(function(pid){ if(c.notes) delete c.notes[pid]; });
     Object.keys(c.photos||{}).forEach(function(pid){ c.photos[pid] = (c.photos[pid]||[]).filter(function(x){ return !H0[x]; }); if(!c.photos[pid].length) delete c.photos[pid]; });
   }
-  delete c.privP; delete c.privN; delete c.privPh; delete c.privTo;
+  delete c.privP; delete c.privN; delete c.privPh; delete c.privTo; delete c.tickets; // Tickets nur für Mitreisende
   return c;
 }
 // private Teile aus „full“ in einen öffentlichen Stand zurückholen (falls jemand nur den öffentlichen Teil geschrieben hat)
 function privReadd(pub, full){
   var r = jclone(pub);
   if(!full || !privOf(full)) return r;
-  ["privP","privN","privPh","privTo"].forEach(function(k){ if(full[k]) r[k] = Object.assign({}, full[k], r[k]||{}); });
+  ["privP","privN","privPh","privTo","tickets"].forEach(function(k){ if(full[k]) r[k] = Object.assign({}, full[k], r[k]||{}); });
   r.places = r.places || {}; r.order = r.order || {};
   privSet(full).forEach(function(pid){
     if(!full.places[pid] || r.places[pid]) return;
@@ -4765,28 +4782,57 @@ function offExtras(){
   } catch(e){}
   return out;
 }
+/* ÖPNV fürs Offline-Paket: New York ist eingebaut (Fahrpläne, Busse, Fähren), dazu Citi-Bike-Stationen;
+   andere Ziele der Reise: Bahnen, Busse und Bezirke aus OpenStreetMap in den Gerätespeicher */
+function offTransit(run){
+  var t = T(), os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); });
+  var cs = os.length > 1 ? os.map(function(o){ return destNow(o); }) : [destNow()], nyc = cs.some(function(C){ return C && inNYC(C); });
+  var ds = destAll(), jobs = [], res = {nyc:nyc, n:[], err:0};
+  if(nyc){
+    jobs.push(function(){ return fetch("bus.json").then(function(r){ if(!r.ok) throw 0; }); });
+    jobs.push(function(){ return cbJSON(CB_BASE+"station_information.json").then(function(j){
+      var st = ((j && j.data && j.data.stations) || []).filter(function(x){ return x && x.lat && x.lon; }).map(function(x){ return [String(x.station_id), String(x.name||"Station").slice(0, 60), +(+x.lat).toFixed(6), +(+x.lon).toFixed(6), x.capacity||0]; });
+      if(!st.length) throw 0; lsSet("rp-cb-info", JSON.stringify({at:Date.now(), s:st})); }); });
+  }
+  ds.forEach(function(d){ var ok = true;
+    ["tr", "bus", "nb"].forEach(function(part){ jobs.push(function(){
+      return destGet(d.k+":"+part).then(function(v){
+        if(v && Date.now() - v.at < 30*864e5) return;
+        return (part==="nb" ? nbFetch(d) : trFetch(d, part==="bus")).then(function(v2){
+          destPut(d.k+":"+part, v2);
+          if(DEST && DEST.k===d.k){ DEST[part] = v2; DEST.st[part] = ""; destApply(part); } });
+      }).catch(function(e){ ok = false; throw e; });
+    }); });
+    jobs.push(function(){ if(ok) res.n.push(d.n || "Ziel"); return Promise.resolve(); });
+  });
+  OFF.all += jobs.length;
+  // nacheinander, damit Overpass nicht überlastet wird
+  return jobs.reduce(function(pr, f){ return pr.then(function(){ if(run.stop) return;
+    return f().catch(function(){ res.err++; }).then(function(){ OFF.done++; offShow(); }); }); }, Promise.resolve()).then(function(){ return res; });
+}
 function offStart(){
   if(OFF.run || !window.caches) return;
+  if(!navigator.onLine){ toast("Offline – der Download startet, sobald du Internet hast.", false); return; }
   var b = offBox(), tpl = offTpl(); if(!b){ toast("Die Reise hat noch keine Orte mit Adresse.", false); return; }
   if(!tpl){ toast("Die Karte ist noch nicht geladen – bitte kurz warten.", false); return; }
   var P0 = offPlan(b), urls = [];
   P0.rs.forEach(function(r){ for(var x = r.x0; x <= r.x1; x++) for(var y = r.y0; y <= r.y1; y++) urls.push(tpl.replace("{z}", r.z).replace("{x}", x).replace("{y}", y)); });
   urls = urls.concat(offExtras());
-  var tid = S.cur, run = OFF.run = {tid:tid, stop:false}; OFF.done = 0; OFF.all = urls.length; OFF.err = 0; var bytes = 0, i = 0;
+  var tid = S.cur, run = OFF.run = {tid:tid, stop:false}; OFF.done = 0; OFF.all = urls.length; OFF.err = 0; OFF.ph = "Karte"; var bytes = 0, i = 0, tr = null;
   offShow();
   caches.open(offCacheName(tid)).then(function(c){
     var next = function(){ if(run.stop || i >= urls.length) return Promise.resolve(); var u = urls[i++];
       return c.match(u).then(function(hit){ if(hit) return; return fetch(u).then(function(r){ if(!r.ok) throw 0; return r.clone().arrayBuffer().then(function(ab){ bytes += ab.byteLength; return c.put(u, r); }); }); })
         .catch(function(){ OFF.err++; }).then(function(){ OFF.done++; if(OFF.done % 25===0 || OFF.done===OFF.all) offShow(); return next(); }); };
     return Promise.all([0,1,2,3,4,5].map(next));
-  }).then(function(){
-    OFF.run = null;
+  }).then(function(){ if(run.stop) return; OFF.ph = "ÖPNV"; offShow(); return offTransit(run).then(function(r){ tr = r; }); }).then(function(){
+    OFF.run = null; OFF.ph = "";
     if(run.stop){ offShow(); return; }
-    var old = offMeta(tid) || {};
-    lsSet(offKey(tid), JSON.stringify({at:Date.now(), n:OFF.all - OFF.err, z:P0.zmax, mb:Math.round(bytes/1e5)/10 || old.mb || 0}));
+    var old = offMeta(tid) || {}, terr = tr ? tr.err : 0;
+    lsSet(offKey(tid), JSON.stringify({at:Date.now(), n:urls.length - OFF.err, z:P0.zmax, mb:Math.round(bytes/1e5)/10 || old.mb || 0, nyc:!!(tr && tr.nyc), dst:tr ? tr.n : [], terr:terr}));
     offShow();
-    toast(OFF.err > OFF.all/2 ? "Offline-Karte: viele Kacheln konnten nicht geladen werden ("+OFF.err+")." : "Offline-Karte gespeichert"+(OFF.err ? " ("+OFF.err+" Kacheln fehlen)" : ""), false);
-  }, function(){ OFF.run = null; offShow(); toast("Offline-Karte konnte nicht gespeichert werden (Speicher voll?).", false); });
+    toast(OFF.err > urls.length/2 ? "Offline-Karte: viele Kacheln konnten nicht geladen werden ("+OFF.err+")." : terr ? "Offline gespeichert – ÖPNV teilweise nicht geladen, bitte später aktualisieren." : "Karte und ÖPNV offline gespeichert"+(OFF.err ? " ("+OFF.err+" Kacheln fehlen)" : ""), false);
+  }, function(){ OFF.run = null; OFF.ph = ""; offShow(); toast("Offline-Karte konnte nicht gespeichert werden (Speicher voll?).", false); });
 }
 function offStop(){ if(OFF.run) OFF.run.stop = true; }
 function offDel(){
@@ -4796,12 +4842,15 @@ function offDel(){
 function offHTML(){
   if(!window.caches) return "";
   var m = offMeta(S.cur), b = offBox(), P0 = b ? offPlan(b) : null, run = OFF.run && OFF.run.tid===S.cur;
-  var sub = run ? "Lädt … "+Math.round(OFF.done*100/Math.max(1, OFF.all))+" % ("+OFF.done+" von "+OFF.all+")"
-    : m ? "Gespeichert am "+new Date(m.at).toLocaleDateString("de-DE", {day:"numeric", month:"short"})+" · "+m.n+" Kacheln"+(m.mb ? " · "+String(m.mb).replace(".", ",")+" MB" : "")+" · bis Zoom "+m.z
-    : P0 ? "Reisegebiet ohne Netz anzeigen · ca. "+P0.n+" Kacheln (~"+Math.max(1, Math.round(P0.n*0.05))+" MB)" : "Erst Orte mit Adresse anlegen";
+  var tl = m ? [m.nyc ? "New York (eingebaut)" : ""].concat(m.dst || []).filter(Boolean) : [];
+  var sub = run ? (OFF.ph==="ÖPNV" ? "Lädt ÖPNV … " : "Lädt Karte … ")+Math.round(OFF.done*100/Math.max(1, OFF.all))+" % ("+OFF.done+" von "+OFF.all+")"
+    : m ? "Gespeichert am "+new Date(m.at).toLocaleDateString("de-DE", {day:"numeric", month:"short"})+" · "+m.n+" Kacheln"+(m.mb ? " · "+String(m.mb).replace(".", ",")+" MB" : "")+" · bis Zoom "+m.z+
+      (tl.length ? " · ÖPNV: "+tl.join(", ") : m.dst ? "" : " · ÖPNV noch nicht geladen")+(m.terr ? " · ÖPNV unvollständig" : "")
+    : P0 ? "Karte und ÖPNV des Reisegebiets ohne Netz nutzen · ca. "+P0.n+" Kacheln (~"+Math.max(1, Math.round(P0.n*0.05))+" MB)" : "Erst Orte mit Adresse anlegen";
   var btn = run ? "<button type=\"button\" class=\"btn g s\" data-act=\"offstop\">Abbrechen</button>"
     : (P0 ? "<button type=\"button\" class=\"btn s"+(m ? " g" : "")+"\" data-act=\"offload\">"+(m ? "Aktualisieren" : "Laden")+"</button>" : "")+(m ? "<button type=\"button\" class=\"btn g s\" data-act=\"offdel\">Löschen</button>" : "");
-  return "<div class=\"sec offm\" id=\"offBox\"><h4>Offline-Karte</h4><div class=\"offrow\"><p class=\"note\">"+esc(sub)+"</p><div class=\"offacts\">"+btn+"</div></div></div>";
+  return "<div class=\"sec offm\" id=\"offBox\"><h4>Offline verfügbar</h4><div class=\"offrow\"><p class=\"note\">"+esc(sub)+"</p><div class=\"offacts\">"+btn+"</div></div>"+
+    "<p class=\"note offna\">Ohne Netz gehen Plan, GPS-Standort, Fotospots und Fotos weiter; Fotos werden hochgeladen, sobald wieder Internet da ist. Laden im Hintergrund bei geschlossener App ist noch nicht verfügbar (erst in der iPhone-App).</p></div>";
 }
 function offShow(){ var el = $("offBox"); if(el) el.outerHTML = offHTML(); }
 function shareBlock(){
@@ -7973,6 +8022,7 @@ function lpPhotoSpot(code){
   var a = code.slice(4).split(","), la = +a[0], lo = +a[1], nm = decodeURIComponent(a.slice(2).join(",") || ""), t = T(), pid = uid("w"), w = new Date(), tm = w.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
   var p = {id:pid, k:"photo", own:1, n:"Fotospot", c:"sight", list:(t.lists && t.lists[0] || {}).id || null, note:"", addr:"", la:+la.toFixed(6), lo:+lo.toFixed(6)};
   var nb = nbOf(p); p.n = nm ? "Fotospot "+nm : nb ? "Fotospot "+nb : "Fotospot"; p.n = p.n.slice(0, 80);
+  if(!nm && !navigator.onLine){ p.geo = 1; p.geoN = p.n; }
   t.places[pid] = p; var dk = dayByKey(cur) ? cur : null;
   if(dk){ ord(dk).push(pid); t.done[pid] = true; doneMove(pid, dk); if(dk===todayKey()){ t.times = t.times || {}; t.times[pid] = tm; } }
   save(); dirty(); select(pid); renderAll(); return pid;
@@ -7989,6 +8039,7 @@ function lpShow(pt){
   if(lpMark) lpMark.remove();
   var me2 = document.createElement("div"); me2.className = "lppin"; me2.innerHTML = "<i></i>";
   lpMark = new maplibregl.Marker({element:me2, anchor:"bottom"}).setLngLat([pt.lo, pt.la]).addTo(map);
+  if(!navigator.onLine){ lpPt.busy = false; lpPt.off = true; lpRender(); return; }
   lpRender();
   fetch("https://photon.komoot.io/reverse?lat="+pt.la+"&lon="+pt.lo+"&lang=de&limit=1").then(function(r){ return r.json(); }).then(function(j){
     var f = j && j.features && j.features[0], pr = f && f.properties || {};
@@ -8001,10 +8052,11 @@ function lpRender(){
   if(!lpPt) return;
   var el = $("catPop"), ro = acct.user && isViewerOf(S.cur);
   var h = "<div class=\"pop-card lpcard\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Markierter Punkt\"><div class=\"pop-head\"><h4>Markierter Punkt</h4><button type=\"button\" class=\"x\" data-act=\"lpclose\" aria-label=\"Schließen\">×</button></div>";
-  h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || "Unbenannter Ort"))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
+  h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || (lpPt.off ? "Offline – Adresse folgt mit Internet" : "Unbenannter Ort")))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
   if(noTrip()) h += "<div class=\"lpacts\"><button type=\"button\" class=\"btn lpphoto\" data-act=\"lpmerk\">"+ZBM+"Für später merken</button></div>";
   else if(ro) h += "<p class=\"note\">Als Beobachter kannst du nichts übernehmen.</p>";
   else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"planpick\" data-lp=\"1\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+(dayByKey(cur) && dayLegs(cur).length ? "<button type=\"button\" class=\"btn g\" data-act=\"lpvia\">Als Wegpunkt für die Gehroute</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button>"+(dayByKey(cur) ? "<label class=\"btn g lpphoto\" for=\"cphIn\" data-act=\"lpphoto\">"+LPCAM+"Als Fotospot – Fotos hinzufügen</label>" : "")+"<button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button><button type=\"button\" class=\"btn g lpphoto\" data-act=\"lpmerk\">"+ZBM+"Für später merken</button></div>";
+  if(lpPt.off && !ro) h += "<p class=\"note lpoff\">Offline: Fotospot und Fotos bleiben auf dem Gerät und werden hochgeladen, sobald du wieder Internet hast.</p>";
   el.innerHTML = h+"</div>"; el.hidden = false;
 }
 function lpClose(){ lpPt = null; if(lpMark){ lpMark.remove(); lpMark = null; } closeCatPop(); }
@@ -8610,6 +8662,83 @@ function loptSave(){
   legSet("legAlt", lp[1], null);
   ALTCACHE = {}; LOPT = null; closeCatPop(); renderSheet(); scheduleOverlay();
 }
+/* ---------- Tickets (Vorbereitung): Fahrkarten je Etappe, Eintritt/Events je Ort hinterlegen; Buchen in der App folgt ----------
+   T().tickets[id] = {on:"l:<Tag>|><Ziel>" oder "p:<Ort>", k:"transit"|"event", n, prov, d, tm, code, url, price, note, st:"plan"|"ok", at}
+   Tickets enthalten Buchungsnummern: nur für Mitreisende (privater Teil der Reise, pubOf entfernt sie) */
+var TKST = [["plan", "Geplant"], ["ok", "Gebucht"]];
+function tkAll(){ var o = T().tickets; return o && typeof o==="object" ? o : {}; }
+function tkOn(on){ var A = tkAll();
+  return Object.keys(A).filter(function(id){ return A[id] && A[id].on===on; }).map(function(id){ return Object.assign({}, A[id], {id:id}); })
+    .sort(function(a, b){ return ((a.d||"9")+(a.tm||"")).localeCompare((b.d||"9")+(b.tm||"")) || (a.at||0) - (b.at||0); }); }
+function tkLegOn(b){ return "l:"+viaKey(b); }
+function tkPlaceOn(pid){ return "p:"+rootOf(pid); }
+function tkUrl(u){ u = String(u||"").trim(); if(!u) return ""; if(!/^https?:\/\//i.test(u)) u = "https://"+u.replace(/^\/+/, ""); return /^https?:\/\/[^\s\/]+\.[^\s]+$/i.test(u) ? u.slice(0, 500) : ""; }
+// Anbieter-Links nur, wo es sie wirklich gibt (New York); keine Anbieter-Schnittstellen, nur Weiterleitung
+function tkBook(k, m){
+  if(k==="transit" && DEST && m==="bike"){ var sy = CB.sys[0]; return sy && sy.web ? [[sy.n, "Ausleihe über die App oder Website des Anbieters", sy.web]] : []; }
+  if(k!=="transit" || DEST) return [];
+  if(m==="ferry") return [["NYC Ferry", "Tickets in der NYC-Ferry-App oder am Automaten am Anleger", "https://www.ferry.nyc/"]];
+  if(m==="bike") return [["Citi Bike", "Einzelfahrt oder Tagespass in der Citi-Bike-App", "https://citibikenyc.com/pricing"]];
+  return [["OMNY", "U-Bahn & Bus: kontaktlos mit Karte oder Handy zahlen, kein Ticket nötig", "https://omny.info/"]];
+}
+var TK = null;
+function tkLegOpen(li){ var lp = dayLegs(cur)[li]; if(!lp) return;
+  TK = {on:tkLegOn(lp[1]), k:"transit", title:(lp[0].n||"Start")+" → "+(lp[1].n||"Ziel"), m:legMode(lp[0], lp[1]), d0:cur, ed:null}; renderTk(true); }
+function tkPlaceOpen(pid){ var p = P(pid); if(!p) return;
+  TK = {on:tkPlaceOn(pid), k:"event", title:p.n, m:"", d0:dayOf(pid)||"", ed:null}; renderTk(true); }
+var TKF = [["n", "tkN", "Name", "text", 80], ["prov", "tkP", "Anbieter", "text", 60], ["d", "tkD", "Datum", "date", 10], ["tm", "tkT", "Uhrzeit", "time", 5],
+  ["code", "tkC", "Code", "text", 80], ["url", "tkU", "Link", "url", 500], ["price", "tkPr", "Preis", "text", 30], ["note", "tkNo", "Notiz", "text", 200]];
+function tkKeep(){ if(!TK || !TK.ed) return; TKF.forEach(function(f){ var i = $(f[1]); if(i) TK.ed[f[0]] = i.value; }); }
+function tkHTML(){
+  var e = TK, I = function(n){ return "<span class=\"ls-th ico tkic\">"+ic(n)+"</span>"; };
+  var h = "<div class=\"pop-card zpop tkpop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Tickets\">";
+  if(e.ed){ var f = e.ed, ev = e.k==="event";
+    var ph = {n:ev ? "z. B. Eintritt, Konzert" : "z. B. 7-Tage-Pass", prov:ev ? "z. B. Ticketmaster" : "z. B. MTA, NYC Ferry", code:"Buchungsnummer", url:"https://…", price:"z. B. 34 $", note:"z. B. Einlass ab 19 Uhr"};
+    h += "<div class=\"pop-head\"><h4>"+(f.id ? "Ticket bearbeiten" : "Ticket hinterlegen")+"</h4><button type=\"button\" class=\"x\" data-act=\"tkback\" aria-label=\"Abbrechen\">×</button></div>";
+    h += "<p class=\"lo-leg\">"+esc(e.title)+"</p>";
+    h += "<div class=\"lo-seg tk-seg\" role=\"radiogroup\" aria-label=\"Status\">"+TKST.map(function(s){ return "<button type=\"button\" role=\"radio\" data-act=\"tkst\" data-v=\""+s[0]+"\" aria-checked=\""+(f.st===s[0])+"\">"+s[1]+"</button>"; }).join("")+"</div>";
+    h += "<div class=\"ag-grp zform tkform\">"+TKF.map(function(x){ return "<label class=\"tf-row\"><span>"+x[2]+"</span><input type=\""+x[3]+"\" id=\""+x[1]+"\" value=\""+esc(f[x[0]]||"")+"\" maxlength=\""+x[4]+"\""+(ph[x[0]] ? " placeholder=\""+esc(ph[x[0]])+"\"" : "")+" autocomplete=\"off\""+(x[3]==="url" || x[0]==="code" ? " autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"" : "")+"></label>"; }).join("")+"</div>";
+    if(f.err) h += "<p class=\"err\" role=\"alert\">"+esc(f.err)+"</p>";
+    h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"tkback\">Abbrechen</button><button type=\"button\" class=\"btn\" data-act=\"tksave\">Speichern</button></div>";
+    if(f.id) h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g warn\" data-act=\"tkdel\">Ticket löschen</button></div>";
+    return h+"</div>";
+  }
+  var L = tkOn(e.on), bk = tkBook(e.k, e.m);
+  h += "<div class=\"pop-head\"><h4>Tickets</h4><button type=\"button\" class=\"x\" data-act=\"tkclose\" aria-label=\"Schließen\">×</button></div>";
+  h += "<p class=\"lo-leg\">"+esc(e.title)+"</p>";
+  h += "<div class=\"nt-sec\">Buchen</div><div class=\"ag-grp ls-list\">"+bk.map(function(b){
+      return "<a class=\"ls-row tkbook\" href=\""+esc(b[2])+"\" target=\"_blank\" rel=\"noopener\">"+I("ext")+"<span class=\"ls-t\"><b>"+esc(b[0])+"</b><small>"+esc(b[1])+"</small></span></a>"; }).join("")+
+    "<button type=\"button\" class=\"ls-row tkna\" data-act=\"tkna\">"+I("ticket")+"<span class=\"ls-t\"><b>"+(e.k==="event" ? "Tickets in der App buchen" : "Fahrkarte in der App buchen")+"</b><small>Noch nicht verfügbar</small></span></button></div>";
+  h += "<div class=\"nt-sec\">Meine Tickets</div>";
+  if(!L.length) h += "<p class=\"note tkempty\">Noch nichts hinterlegt. Name, Code oder Link zum Ticket speichern – sichtbar nur für Mitreisende.</p>";
+  else h += "<div class=\"ag-grp ls-list tklist\">"+L.map(function(t){
+      var st = (TKST.filter(function(s){ return s[0]===t.st; })[0]||TKST[0])[1], u = tkUrl(t.url);
+      var sub = [st, t.d ? shortD(t.d) : "", t.tm || "", t.prov || "", t.code ? "Code "+t.code : "", t.price || ""].filter(Boolean).join(" · ");
+      return "<div class=\"ls-row zrow tkrow"+(t.st==="ok" ? " ok" : "")+"\"><button type=\"button\" class=\"zrow-main\" data-act=\"tkedit\" data-tk=\""+esc(t.id)+"\">"+I("ticket")+"<span class=\"ls-t\"><b>"+esc(t.n||"Ticket")+"</b><small>"+esc(sub)+"</small></span></button>"+
+        (u ? "<a class=\"zrow-x tkopen\" href=\""+esc(u)+"\" target=\"_blank\" rel=\"noopener\" aria-label=\"Ticket öffnen\">"+ic("ext")+"</a>" : "")+"</div>"; }).join("")+"</div>";
+  h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"tknew\">"+ic("add", "ii")+" Ticket hinterlegen</button></div>";
+  return h+"</div>";
+}
+function renderTk(first){
+  if(!TK) return; var cp = $("catPop"), ae = document.activeElement, fid = ae && ae.id && /^tk/.test(ae.id) ? ae.id : "";
+  if(first || cp.hidden){ cp.innerHTML = tkHTML(); cp.hidden = false; } else catKeep(tkHTML());
+  if(fid && $(fid)) $(fid).focus();
+}
+function tkEdit(id){ if(!TK) return; var A = tkAll(), t = id && A[id];
+  TK.ed = t ? Object.assign({}, t, {id:id}) : {st:"plan", d:parseD(TK.d0) ? TK.d0 : "", n:"", prov:""}; renderTk(); }
+function tkSave(){
+  if(!TK || !TK.ed) return; tkKeep(); var f = TK.ed, o = {on:TK.on, k:TK.k, st:f.st==="ok" ? "ok" : "plan", at:f.at || Date.now()};
+  TKF.forEach(function(x){ var v = String(f[x[0]]||"").trim().slice(0, x[4]); if(v) o[x[0]] = v; });
+  if(o.url){ var u = tkUrl(o.url); if(!u){ f.err = "Der Link sieht nicht gültig aus."; renderTk(); return; } o.url = u; }
+  if(o.d && !parseD(o.d)) delete o.d;
+  if(!o.n && !o.code && !o.url){ f.err = "Bitte mindestens Name, Code oder Link angeben."; renderTk(); return; }
+  var t = T(); t.tickets = t.tickets && typeof t.tickets==="object" ? t.tickets : {}; t.tickets[f.id || uid("tk")] = o;
+  save(); TK.ed = null; renderTk(); renderSheet(); renderCard();
+}
+function tkDel(){
+  if(!TK || !TK.ed || !TK.ed.id) return; var id = TK.ed.id, nm = TK.ed.n || "Ticket";
+  askConfirm("Ticket löschen?", "„"+nm+"“ wird entfernt.", "Löschen", function(){ var t = T(); if(t.tickets) delete t.tickets[id]; save(); if(TK){ TK.ed = null; renderTk(); } renderSheet(); renderCard(); });
+}
 var routeMode = "walk"; // nicht mehr global; jede Etappe hat ihre eigene Wahl
 function legKey(a, b){ return (a.id||((+a.la).toFixed(4)+","+(+a.lo).toFixed(4)))+">"+(b.id||((+b.la).toFixed(4)+","+(+b.lo).toFixed(4))); }
 function legMode(a, b){ var m = legGet("legMode", b); if(m) return m; if(dist(a, b) < 1100) return "walk"; return transit(a, b, cur).walk ? "walk" : "oepnv"; }
@@ -8664,7 +8793,9 @@ function saveNb(){ lsSet(NBKEY, JSON.stringify(Object.keys(nbHi))); }
 function applyNb(){
   var on = {}; nbActive().forEach(function(n){ on[n] = 1; });
   if(mapReady){ var f = ["in", ["get","n"], ["literal", Object.keys(on)]]; map.setFilter("nb-fill", f); map.setFilter("nb-hi", f); if(typeof applyPoi==="function") applyPoi(); }
-  var d = typeof DEST!=="undefined" && DEST, opts = "<option value=\"\">"+(d && !d.nb ? (d.st.nb==="err" ? "Bezirke konnten nicht geladen werden" : d.st.nb==="off" ? "Bezirke laden, sobald du online bist" : "Bezirke werden geladen …") : d && !NB.length ? "Keine Bezirke gefunden" : "Bezirk wählen …")+"</option>";
+  var d = typeof DEST!=="undefined" && DEST, opts = "<option value=\"\">"+(d && !d.nb ? (d.st.nb==="err" ? "Nicht geladen" : d.st.nb==="off" ? "Bezirke laden, sobald du online bist" : "Bezirke werden geladen …") : d && !NB.length ? "Keine Bezirke gefunden" : "Bezirk wählen …")+"</option>";
+  var ne = $("nbErr"), nm = d && !d.nb && d.st.nb==="err";
+  ne.hidden = !nm; ne.innerHTML = nm ? "Bezirke von "+esc(d.n || "diesem Ziel")+" kamen nicht an (Server ausgelastet oder zu viele Daten). <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"nb\">Erneut versuchen</button>" : "";
   var grp = d ? NB.map(function(x){ return x.b; }).filter(function(b, i, a){ return a.indexOf(b)===i; }) : ["Manhattan","Brooklyn","Queens"];
   grp.forEach(function(b){
     var o = NB.filter(function(x){ return x.b===b; }).map(function(x){ return x.n; }).sort(natCmp).map(function(n){ return "<option value=\""+esc(n)+"\""+(nbHi[n]?" disabled":"")+">"+esc(n)+"</option>"; }).join("");
@@ -8743,23 +8874,24 @@ var DRMODE = {subway:"metro", light_rail:"light", monorail:"light", tram:"tram",
 var DSTMODE = {subway:"metro", light_rail:"light", monorail:"light", funicular:"funi", train:"train"};
 var DCOL = {metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"};
 var DPAL = ["#C8102E","#0072CE","#E5A800","#00965E","#7D55C7","#E87722","#00A3AD","#A6192E","#5B7F95","#C6007E"];
+var DRMAX = 10000; // Suchradius höchstens 10 km: in großen Städten sonst zu viele Daten für Overpass und das iPhone
 var OVP = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 var DEST = null, NB_NYC = NB, NBKEY = "nyc-nb-hi", DOFF = {}, dQ = "", dOpen = {}, dWant = false, DMEM = {};
 var DL = (function(){ try { return JSON.parse(lsGet("rp-dl")||"{}") || {}; } catch(e){ return {}; } })();
 function inNYC(c){ return c.la > 40.45 && c.la < 41.0 && c.lo > -74.35 && c.lo < -73.6; }
 function isDest(){ return !!DEST; }
 /* Mittelpunkt des Ziels: Ort des aktuellen Tags (Reisen mit mehreren Städten), sonst Mitte der Reise */
-function destNow(){
+function destNow(o0){
   var t = T(); if(!t) return null;
-  var os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); }), o = null, C = null;
-  if(os.length > 1 && cur) o = os.filter(function(x){ return (!x.from || x.from <= cur) && (!x.to || x.to >= cur); })[0];
+  var os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); }), o = o0 || null, C = null;
+  if(!o0 && os.length > 1 && cur) o = os.filter(function(x){ return (!x.from || x.from <= cur) && (!x.to || x.to >= cur); })[0];
   o = o || (t.ziel || os.length > 1 ? os[0] : null);
   if(o) C = o.bb ? {la:(o.bb[1]+o.bb[3])/2, lo:(o.bb[0]+o.bb[2])/2} : {la:o.la, lo:o.lo};
   else C = tripCenter(t);
   if(!C || !hasLoc(C)) return null;
   var pts = (t.hotels||[]).concat(t.orte||[]).concat(Object.keys(t.places||{}).map(function(k){ return t.places[k]; })).filter(function(p){ return p && hasLoc(p) && dist(p, C) < 30000; }), r = 0;
   pts.forEach(function(p){ r = Math.max(r, dist(p, C)); });
-  return {la:+C.la.toFixed(4), lo:+C.lo.toFixed(4), r:Math.round(Math.min(14000, Math.max(6000, r + 2500))), n:String((o && o.n) || t.name || "").slice(0, 60), pts:pts.slice(0, 300).map(function(p){ return [p.la, p.lo]; })};
+  return {la:+C.la.toFixed(4), lo:+C.lo.toFixed(4), r:Math.round(Math.min(DRMAX, Math.max(5000, r + 2500))), n:String((o && o.n) || t.name || "").slice(0, 60), pts:pts.slice(0, 300).map(function(p){ return [p.la, p.lo]; })};
 }
 function destIdx(){ try { var a = JSON.parse(lsGet("rp-dest")||"[]"); return Array.isArray(a) ? a : []; } catch(e){ return []; } }
 function destNear(e, C){ return dist(e, C) < Math.max(3000, e.r*0.4); }
@@ -8767,8 +8899,17 @@ function destSync(){
   var C = destNow();
   if(!C || inNYC(C)){ if(DEST) destSet(null); return; }
   if(DEST && destNear(DEST, C)){ DEST.pts = C.pts; return; }
-  var hit = destIdx().filter(function(e){ return destNear(e, C); })[0];
-  destSet(hit ? {k:hit.k, la:hit.la, lo:hit.lo, r:hit.r, n:hit.n} : {k:"d"+C.la.toFixed(3)+"_"+C.lo.toFixed(3), la:C.la, lo:C.lo, r:C.r, n:C.n}, C.pts);
+  destSet(destOf(C), C.pts);
+}
+function destOf(C){ var hit = destIdx().filter(function(e){ return destNear(e, C); })[0];
+  return hit ? {k:hit.k, la:hit.la, lo:hit.lo, r:Math.min(hit.r, DRMAX), n:hit.n} : {k:"d"+C.la.toFixed(3)+"_"+C.lo.toFixed(3), la:C.la, lo:C.lo, r:C.r, n:C.n}; }
+/* alle Ziele der Reise außerhalb New Yorks (für den Offline-Download) */
+function destAll(){
+  var t = T(); if(!t) return [];
+  var os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); }), out = [], ks = {};
+  (os.length > 1 ? os.map(function(o){ return destNow(o); }) : [destNow()]).forEach(function(C){
+    if(!C || inNYC(C)) return; var d = destOf(C); if(ks[d.k]) return; ks[d.k] = 1; d.pts = C.pts; out.push(d); });
+  return out;
 }
 function destSet(d, pts){
   if(d){ d.pts = pts || []; d.st = {tr:"", bus:"", nb:""}; d.tr = null; d.bus = null; d.nb = null; }
@@ -8794,10 +8935,16 @@ function destWanted(part){ var on = DMODES.some(function(m){ return m[0]!=="bus"
 /* Zwischenspeicher: im Speicher und im Gerätespeicher (IndexedDB) */
 function destGet(id){ if(DMEM[id]) return Promise.resolve(DMEM[id]); return idbDo("readonly", function(st){ return st.get("dest:"+id); }).then(function(r){ var v = r && r.data && r.data.at ? r.data : null; if(v) DMEM[id] = v; return v; }).catch(function(){ return null; }); }
 function destPut(id, v){ DMEM[id] = v; idbDo("readwrite", function(st){ st.put({id:"dest:"+id, data:v}); }).catch(function(){}); }
+/* Overpass-Abfrage mit Zeitlimit: große Städte (z. B. Tokio) dürfen nicht endlos „laden“; Abbruch oder Serverfehler → Ersatzserver, dann Fehlermeldung.
+   Eine abgebrochene Abfrage („runtime error“, „Query timed out“) liefert unvollständige Daten: als Fehler werten, nicht speichern */
+var OVTO = 45000;
 function ovq(q, i){
   i = i || 0;
-  return fetch(OVP[i], {method:"POST", body:"data="+encodeURIComponent(q), headers:{"Content-Type":"application/x-www-form-urlencoded"}})
+  var ac = typeof AbortController==="function" ? new AbortController() : null, to = setTimeout(function(){ if(ac) ac.abort(); }, OVTO);
+  return fetch(OVP[i], {method:"POST", body:"data="+encodeURIComponent(q), headers:{"Content-Type":"application/x-www-form-urlencoded"}, signal:ac ? ac.signal : undefined})
     .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(j){ clearTimeout(to); if(j && j.remark && /error|timed out|out of memory/i.test(j.remark)) throw new Error("zu viele Daten"); return j; },
+      function(e){ clearTimeout(to); throw e; })
     .catch(function(e){ if(i+1 < OVP.length) return ovq(q, i+1); throw e; });
 }
 function destBB(d){ var a = d.r/111320, b = d.r/(111320*Math.cos(d.la*Math.PI/180)); return [(d.la-a).toFixed(4), (d.lo-b).toFixed(4), (d.la+a).toFixed(4), (d.lo+b).toFixed(4)].join(","); }
@@ -8819,8 +8966,8 @@ function txtCol(c){ var h = c.replace("#",""); if(h.length===3) h = h.replace(/.
 function natCmp(a, b){ return String(a).localeCompare(String(b), "de", {numeric:true}); }
 function trFetch(d, bus){
   var bb = destBB(d), q = bus
-    ? "[out:json][timeout:120];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out geom;"
-    : "[out:json][timeout:120];rel[type=route][route~\"^(subway|light_rail|monorail|tram|train|funicular|ferry)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out geom;"+
+    ? "[out:json][timeout:40];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;"
+    : "[out:json][timeout:40];(rel[type=route][route~\"^(subway|light_rail|monorail|tram|funicular|ferry)$\"]("+bb+");rel[type=route][route=train][service!~\"^(long_distance|high_speed|night|car_shuttle)$\"]("+bb+");)->.r;.r out body;way(r.r)("+bb+");out skel geom;"+
       "(way[railway=funicular]("+bb+");way[aerialway~\"^(cable_car|gondola)$\"]("+bb+"););out geom;node[railway=station][name]("+bb+");out;node[amenity=bicycle_rental]("+bb+");out;"+
       "rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+");out count;";
   return ovq(q).then(function(j){ return trParse(j); });
@@ -8829,7 +8976,7 @@ function trParse(j){
   var W = {}, used = {}, rels = [], st = [], bk = [], nbus = 0;
   (j.elements||[]).forEach(function(e){
     var tg = e.tags || {};
-    if(e.type==="way" && e.geometry) W[e.id] = {g:e.geometry.filter(Boolean).map(function(p){ return [+p.lon.toFixed(5), +p.lat.toFixed(5)]; }), t:tg};
+    if(e.type==="way" && e.geometry) W[e.id] = {g:simp(e.geometry.filter(Boolean).map(function(p){ return [+p.lon.toFixed(5), +p.lat.toFixed(5)]; }), 0.00003), t:tg};
     else if(e.type==="relation" && tg.type==="route") rels.push(e);
     else if(e.type==="node" && tg.amenity==="bicycle_rental"){ if(!tg.shop && tg.bicycle_rental!=="shop") bk.push([+e.lon.toFixed(5), +e.lat.toFixed(5), String(tg.name || tg.network || "").slice(0, 60)]); }
     else if(e.type==="node" && tg.railway==="station" && tg.name) st.push([+e.lon.toFixed(5), +e.lat.toFixed(5), String(tg.name).slice(0, 60), DSTMODE[tg.station] || "train"]);
@@ -8860,22 +9007,24 @@ function trParse(j){
 /* Bezirke: die kleinste Verwaltungseinheit, die (fast) alle Orte der Reise enthält, und deren nächste Unterteilung */
 function nbFetch(d){
   var pts = d.pts && d.pts.length ? d.pts : [[d.la, d.lo]];
-  return ovq("[out:json][timeout:30];is_in("+d.la+","+d.lo+")->.a;rel(pivot.a)[boundary=administrative][admin_level];out tags bb;").then(function(j){
+  return ovq("[out:json][timeout:25];is_in("+d.la+","+d.lo+")->.a;rel(pivot.a)[boundary=administrative][admin_level];out tags bb;").then(function(j){
     var cs = (j.elements||[]).filter(function(e){ var b = e.bounds, lv = +((e.tags||{}).admin_level); if(!b || !(lv >= 4 && lv <= 10)) return false;
       var n = pts.filter(function(p){ return p[0] >= b.minlat && p[0] <= b.maxlat && p[1] >= b.minlon && p[1] <= b.maxlon; }).length;
       return n >= pts.length*0.9 && dist({la:b.minlat, lo:b.minlon}, {la:b.maxlat, lo:b.maxlon}) > 4000; })
       .sort(function(a, b){ return b.tags.admin_level - a.tags.admin_level; });
     var tryC = function(i){
       if(i >= Math.min(cs.length, 3)) return {at:Date.now(), city:"", nb:[]};
-      var c = cs[i], lv = +c.tags.admin_level, b = c.bounds, tol = 0.003, lvs = []; for(var x = lv+1; x <= 11; x++) lvs.push(x);
-      return ovq("[out:json][timeout:60];rel("+c.id+");map_to_area->.c;rel(area.c)[boundary=administrative][admin_level~\"^("+lvs.join("|")+")$\"][name];out tags bb;").then(function(j2){
+      var c = cs[i], lv = +c.tags.admin_level, b = c.bounds, tol = 0.003, lvs = []; for(var x = lv+1; x <= 10; x++) lvs.push(x);
+      // nur Bezirke rund um die Reise (Suchgebiet), nicht die ganze Verwaltungseinheit (Tokio reicht bis zu den Ogasawara-Inseln)
+      var sb = destBB({la:d.la, lo:d.lo, r:d.r*1.3}).split(",").map(Number), qb = [Math.max(sb[0], b.minlat), Math.max(sb[1], b.minlon), Math.min(sb[2], b.maxlat), Math.min(sb[3], b.maxlon)].map(function(v){ return v.toFixed(4); }).join(",");
+      return ovq("[out:json][timeout:30];rel[boundary=administrative][admin_level~\"^("+lvs.join("|")+")$\"][name]("+qb+");out tags bb;").then(function(j2){
         var by = {};
         (j2.elements||[]).forEach(function(e){ var o = e.bounds; if(!o || e.id===c.id) return;
           if(o.minlat < b.minlat - tol || o.maxlat > b.maxlat + tol || o.minlon < b.minlon - tol || o.maxlon > b.maxlon + tol) return;
           (by[e.tags.admin_level] = by[e.tags.admin_level] || []).push(e.id); });
         var lk = Object.keys(by).map(Number).sort(function(a, b){ return a - b; }).filter(function(l){ return by[l].length >= 3 && by[l].length <= 120; })[0];
         if(!lk) return tryC(i+1);
-        return ovq("[out:json][timeout:120];rel(id:"+by[lk].join(",")+");out geom;").then(function(j3){ return nbParse(j3, String(c.tags.name || d.n || "").slice(0, 60)); });
+        return ovq("[out:json][timeout:40];rel(id:"+by[lk].join(",")+");out geom;").then(function(j3){ return nbParse(j3, String(c.tags.name || d.n || "").slice(0, 60)); });
       });
     };
     return tryC(0);
@@ -9006,7 +9155,7 @@ function destUi(){
   if(br) br.style.display = d && (!d.tr || !dBike().length) ? "none" : "";
   if(!d){ el.innerHTML = ""; trSync(); return; }
   var h = "", ms = dModes(), ro = isRO();
-  if(!d.tr) h += "<p class=\"note dnote\">"+(d.st.tr==="err" ? "ÖPNV von "+esc(d.n || "diesem Ziel")+" konnte nicht geladen werden. <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>"
+  if(!d.tr) h += "<p class=\"note dnote\">"+(d.st.tr==="err" ? "ÖPNV von "+esc(d.n || "diesem Ziel")+" kam nicht an (Server ausgelastet oder zu viele Daten). <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>"
     : d.st.tr==="off" ? "Offline: ÖPNV von "+esc(d.n || "diesem Ziel")+" lädt, sobald du wieder Internet hast." : "ÖPNV von "+esc(d.n || "diesem Ziel")+" wird geladen …")+"</p>";
   else if(!ms.length) h += "<p class=\"note dnote\">Keine ÖPNV-Linien in OpenStreetMap gefunden.</p>";
   if(!ro) ms.forEach(function(m){
@@ -9801,7 +9950,26 @@ function drawMe(){
 }
 
 /* ---------- Netz und Sicherung ---------- */
-function setNet(on){ var el = $("offline"); if(el) el.hidden = on; }
+function setNet(on){ netUi(); if(on) spotGeo(); }
+/* Hinweis oben: offline geht Plan, GPS und Fotospots weiter; wartende Fotos zählen */
+function netUi(){
+  var el = $("offline"); if(!el) return; var on = navigator.onLine; el.hidden = on; if(on) return;
+  var n = phQueue().up.length;
+  el.textContent = "Offline · GPS und Fotospots gehen weiter"+(n ? " · "+n+(n===1 ? " Foto wartet" : " Fotos warten")+" aufs Hochladen" : "")+(S.cur && offMeta(S.cur) ? "" : " · neue Kartenbereiche erst mit Netz");
+}
+/* offline gesetzte Fotospots bekommen ihre Adresse, sobald wieder Internet da ist */
+var spotBusy = false;
+function spotGeo(){
+  if(spotBusy || !navigator.onLine) return; var t = T(); if(!t || !t.places) return;
+  var ps = Object.keys(t.places).map(function(k){ return t.places[k]; }).filter(function(p){ return p && p.geo && hasLoc(p); }).slice(0, 20);
+  if(!ps.length) return; spotBusy = true;
+  ps.reduce(function(pr, p){ return pr.then(function(){
+    return fetch("https://photon.komoot.io/reverse?lat="+p.la+"&lon="+p.lo+"&lang=de&limit=1").then(function(r){ return r.json(); }).then(function(j){
+      var f = j && j.features && j.features[0], pr2 = f && f.properties || {}, str = [pr2.street, pr2.housenumber].filter(Boolean).join(" "), nm = pr2.name || str;
+      if(!p.addr) p.addr = [str, pr2.city || pr2.district].filter(Boolean).join(", ").slice(0, 120);
+      if(nm && /^Fotospot( |$)/.test(p.n||"") && p.n===p.geoN) p.n = ("Fotospot "+nm).slice(0, 80);
+      delete p.geo; delete p.geoN; }); }).catch(function(){}); }, Promise.resolve()).then(function(){ spotBusy = false; save(); dirty(); renderAll(); });
+}
 window.addEventListener("online", function(){ setNet(true); });
 window.addEventListener("offline", function(){ setNet(false); });
 function exportPlan(){
@@ -10537,6 +10705,7 @@ function openCardMore(btn){
   if(dk===cur && !dn) h += row("unplan", I("<path d=\"M12 5l-5 5 5 5\"/>"), isHs ? "Zwischenstopp entfernen" : p.of ? "Diesen Besuch entfernen" : "Zurück in die Wunschliste", "Aus dem Tagesplan nehmen");
   if(!dk && !isHs && !p.of && !isRO()) h += p.park ? row("wunpark", I("<path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/>"), "Wieder auf die Wunschliste", "Zurückstellen aufheben", " data-pid=\""+sel+"\"")
     : row("wpark", I("<rect x=\"3\" y=\"4\" width=\"14\" height=\"4\" rx=\"1\"/><path d=\"M4.5 8v7.5h11V8M8 11h4\"/>"), "Zurückstellen", "Aus der Wunschliste nehmen, ohne zu löschen", " data-pid=\""+sel+"\"");
+  if(!isHs && !isRO()){ var ntk = tkOn(tkPlaceOn(sel)).length; h += row("tkplace", I(IC.ticket), "Tickets", ntk ? ntk+" hinterlegt" : "Eintritt oder Event hinterlegen, buchen"); }
   h += row("gmopen", I(IC.ext), "In Google Maps öffnen", "Öffnungszeiten, Bewertungen, Fotos");
   h += row("moredel", I(IC.del, "warn"), "Löschen", "Punkt aus der Reise entfernen", " class=\"del\"");
   jpPopover(sel, btn || document.querySelector("#card [data-act=cardmore]"), h, "cardmore");
@@ -10764,7 +10933,8 @@ function openLegModes(li, btn){
   var fa = ferryAlts(a, b, cur), fsub = fa===null ? "Fahrpläne werden geladen …" : !fa.length ? "Keine sinnvolle Fährverbindung" : mins(fa[0].secs)+" · "+esc(ferryLabel(fa[0]));
   var rows = [["walk", LMWALK, mins(wd/1.33)+" · "+fmtDist(wd)], ["oepnv", LMSUB, tr.walk ? "Kein Umstieg sinnvoll – zu Fuß schneller" : mins(tr.secs)], ["ferry", LMFERRY, fsub], ["car", LMCAR, (function(){ var cp = carPath(a, b, legVia(a, b)), ce = cp || carEst(a, b, legVia(a, b)); return (cp ? "" : "ca. ")+mins(ce.secs)+" · "+fmtDist(ce.d)+" · ohne Verkehr"; })()], ["bike", LMBIKE, br.wait ? (CB.err ? "Daten nicht erreichbar" : "Stationen werden geladen …") : br.nosys ? "Hier kein Leihrad-System mit Live-Daten" : br.none ? "Keine passende Station in der Nähe" : mins(br.secs)+" · inkl. Wege zur Station"]];
   jpPopover("lm"+li, btn, "<div class=\"vp-h\">Unterwegs auf dieser Etappe</div>"+rows.map(function(r){ return "<button type=\"button\" role=\"menuitemradio\" data-act=\"lmode\" data-leg=\""+li+"\" data-mode=\""+r[0]+"\" aria-checked=\""+(m===r[0])+"\"><span class=\"ai lmi\">"+r[1]+"</span><span class=\"cm-t\"><b>"+LMNAME[r[0]]+"</b><small>"+r[2]+"</small></span>"+(m===r[0] ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("")+
-    "<button type=\"button\" role=\"menuitem\" class=\"lm-opt\" data-act=\"loptopen\" data-leg=\""+li+"\"><span class=\"ai lmi\">"+LOICO+"</span><span class=\"cm-t\"><b>Routenoptionen</b><small>"+esc(loptSum(legOptOf(b)).replace(/^Optionen: /, ""))+"</small></span></button>", "lmodes");
+    "<button type=\"button\" role=\"menuitem\" class=\"lm-opt\" data-act=\"loptopen\" data-leg=\""+li+"\"><span class=\"ai lmi\">"+LOICO+"</span><span class=\"cm-t\"><b>Routenoptionen</b><small>"+esc(loptSum(legOptOf(b)).replace(/^Optionen: /, ""))+"</small></span></button>"+
+    (m!=="walk" && m!=="car" ? (function(){ var nt = tkOn(tkLegOn(b)).length; return "<button type=\"button\" role=\"menuitem\" class=\"lm-opt\" data-act=\"tkleg\" data-leg=\""+li+"\"><span class=\"ai lmi\">"+ic("ticket")+"</span><span class=\"cm-t\"><b>Tickets</b><small>"+(nt ? nt+" hinterlegt" : "Fahrkarte hinterlegen oder buchen")+"</small></span></button>"; })() : ""), "lmodes");
 }
 var CB_BASE = "https://gbfs.lyft.com/gbfs/1.1/bkn/en/", CBCOL = "#0A6CDB", BIKE = 4.2; // Fahrgeschwindigkeit in m/s (ca. 15 km/h)
 var CBNYC = [{n:"Citi Bike", by:"Citi Bike (Lyft)", web:"https://citibikenyc.com/how-it-works", info:CB_BASE+"station_information.json", stat:CB_BASE+"station_status.json"}];
@@ -10772,7 +10942,7 @@ var CBNYC = [{n:"Citi Bike", by:"Citi Bike (Lyft)", web:"https://citibikenyc.com
 var CB = {st:[], byId:{}, infoAt:0, statAt:0, busy:false, err:"", sys:CBNYC, dk:""};
 var LMBIKE = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"5.5\" cy=\"17\" r=\"3.5\"/><circle cx=\"18.5\" cy=\"17\" r=\"3.5\"/><path d=\"M5.5 17L9 9h6l3.5 8M9 9l3 8 3-8M8 6h3\"/></svg>";
 function cbJSON(u){ return fetch(u, {cache:"no-store"}).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }); }
-function cbInfoCached(){ try { var c = JSON.parse(lsGet("rp-cb-info")||"null"); if(c && c.s && Date.now() - c.at < 7*864e5) return c; } catch(e){} return null; }
+function cbInfoCached(any){ try { var c = JSON.parse(lsGet("rp-cb-info")||"null"); if(c && c.s && (any || Date.now() - c.at < 7*864e5)) return c; } catch(e){} return null; }
 function cbName(){ return CB.sys.length===1 ? CB.sys[0].n : DEST ? "Leihrad" : "Citi Bike"; }
 function cbSysOf(s){ return CB.sys[s && s.sy || 0] || {n:cbName()}; }
 /* wait = Stationen noch nicht da, nosys = am Ziel kein Leihrad-System mit Live-Daten gefunden */
@@ -10783,6 +10953,8 @@ function cbInfoSet(rows, at){
 }
 function cbLoad(force){
   if(DEST && (CB.dk!==DEST.k || CB.findErr)){ gbfsFind(DEST); return; }
+  // offline: gespeicherte Stationen (ohne Live-Verfügbarkeit) zeigen, z. B. aus dem Offline-Download
+  if(!DEST && !navigator.onLine && !CB.st.length){ var c1 = cbInfoCached(true); if(c1){ cbInfoSet(c1.s, 0); cbApply(); } }
   if(!CB.sys.length || CB.busy || !navigator.onLine || (!force && CB.errAt && Date.now() - CB.errAt < 45000)) return;
   var now = Date.now(), needInfo = !DEST && (!CB.st.length || now - CB.infoAt > 7*864e5), needStat = force || needInfo || now - CB.statAt > 60000;
   if(DEST && now - CB.infoAt > 7*864e5){ CB.dk = null; gbfsFind(DEST); return; }
@@ -11506,7 +11678,8 @@ function renderDay(){
     var pre = a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#007AFF\">●</span><span><b>Mein Standort</b> <span class=\"sub\">Start zum nächsten Ziel</span></span></li>"
             : (a.id && T().done[a.id]) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (zuletzt erledigt)</span></li>" : "";
     var lh = legHidden(a, b), ev = "<button type=\"button\" class=\"leye\" data-act=\"legvis\" data-leg=\""+i+"\" aria-pressed=\""+!lh+"\" title=\""+(lh?"Etappe auf der Karte einblenden":"Etappe auf der Karte ausblenden")+"\" aria-label=\"Etappe auf der Karte zeigen\">"+(lh?EYEOFF:EYE)+"</button>";
-    var sw = "<span class=\"lm one\"><button type=\"button\" data-act=\"lmpick\" data-leg=\""+i+"\" aria-haspopup=\"menu\" aria-pressed=\"true\" title=\"Unterwegs: "+LMNAME[m]+" – tippen zum Wechseln\" aria-label=\"Unterwegs: "+LMNAME[m]+", ändern\">"+(m==="bike" ? LMBIKE : m==="walk" ? LMWALK : m==="ferry" ? LMFERRY : m==="car" ? LMCAR : LMSUB)+"</button></span>";
+    var ntk = m!=="walk" && m!=="car" ? tkOn(tkLegOn(b)).length : 0;
+    var sw = "<span class=\"lm one\"><button type=\"button\""+(ntk ? " class=\"tk\"" : "")+" data-act=\"lmpick\" data-leg=\""+i+"\" aria-haspopup=\"menu\" aria-pressed=\"true\" title=\"Unterwegs: "+LMNAME[m]+(ntk ? " · "+ntk+(ntk===1 ? " Ticket" : " Tickets") : "")+" – tippen zum Wechseln\" aria-label=\"Unterwegs: "+LMNAME[m]+", ändern\">"+(m==="bike" ? LMBIKE : m==="walk" ? LMWALK : m==="ferry" ? LMFERRY : m==="car" ? LMCAR : LMSUB)+"</button></span>";
     if(m==="bike"){ var br = bikeRoute(a, b), bsum;
       if(br.wait) bsum = "<b>"+esc(cbName())+"</b> · "+(CB.err ? esc(CB.err) : "Stationen werden geladen …");
       else if(br.nosys) bsum = "<b>Kein Leihrad</b> · hier ist kein System mit Live-Daten bekannt – besser zu Fuß";
@@ -11953,7 +12126,7 @@ function idb(){
 function idbDo1(mode, fn){ return idb().then(function(db){ return new Promise(function(res, rej){ var tx; try { tx = db.transaction("photos", mode); } catch(e){ phDB = null; rej(e); return; } var st = tx.objectStore("photos"), out = fn(st); tx.oncomplete = function(){ res(out && out.result); }; tx.onerror = function(){ rej(tx.error); }; tx.onabort = function(){ rej(tx.error || new Error("abgebrochen")); }; }); }); }
 function idbDo(mode, fn){ return idbDo1(mode, fn).catch(function(e){ phDB = null; if(Date.now() < idbDown) throw e; return idbDo1(mode, fn); }); }
 function phQueue(){ try { return JSON.parse(lsGet("rp-ph-q")||'{"up":[],"del":[]}'); } catch(e){ return {up:[], del:[]}; } }
-function phSaveQ(q){ lsSet("rp-ph-q", JSON.stringify(q)); }
+function phSaveQ(q){ lsSet("rp-ph-q", JSON.stringify(q)); netUi(); }
 function phCol(tid){ return tripRef(tid || S.cur).collection("photos"); }
 var PHERR = {}, PHMEM = {};
 function phGet(id){
@@ -12265,7 +12438,8 @@ function phFlush(){
   if(phBusy || !fbDb || !acct.user || !navigator.onLine) return;
   var q = phQueue(); if(!q.up.length && !q.del.length) return;
   phBusy = true;
-  var ups = q.up.slice(), dels = q.del.slice();
+  var ups = q.up.filter(function(id){ return CAPQ.indexOf(id) < 0; }), dels = q.del.slice();
+  if(!ups.length && !dels.length){ phBusy = false; return; }
   Promise.all(ups.map(function(id){ return idbDo("readonly", function(st){ return st.get(id); }).catch(function(){ return null; }).then(function(r){ r = r || PHMEM[id]; if(!r) return; var tid = gidFor(r.trip||S.cur); if(!KNOWN[tid]) throw new Error("Reise noch nicht im Konto"); return phCol(tid).doc(id).set({data:r.data, place:r.place||"", trip:tid, by:acct.user.uid, at:Date.now(), shareTo:phShareTo(id), priv:isPrivPh(id, r.place)}); }).then(function(){ var q2 = phQueue(); q2.up = q2.up.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })
     .concat(dels.map(function(id){ return phCol(S.cur).doc(id).delete().then(function(){ var q2 = phQueue(); q2.del = q2.del.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })))
     .then(function(){ phBusy = false; }, function(){ phBusy = false; setTimeout(phFlush, 20000); });
@@ -13147,7 +13321,7 @@ function openDayPop(forId, mv){
   $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
 }
-function closeCatPop(){ $("catPop").hidden = true; locSt = null; }
+function closeCatPop(){ $("catPop").hidden = true; locSt = null; TK = null; }
 function endPick(){ pick = null; $("pick").hidden = true; if(viaPick) endViaPick(); if(vmPick) endVmPick(); }
 /* Wegpunkt per Karte einer Strecke zuordnen: die beiden Punkte antippen, zwischen denen er liegen soll */
 var vmPick = null;
@@ -13192,7 +13366,7 @@ document.addEventListener("pointerdown", function(e){ bgDown = e.target; }, true
 document.addEventListener("click", function(e){
   if(e.target && e.target.id && /^(zPop|catPop|acctPop|suPop|tripPop|srchPop|jPop)$/.test(e.target.id) && bgDown && bgDown!==e.target) return;
   if(e.target.id==="zPop"){ zClosePop(); return; }
-  if(e.target.id==="catPop"){ if(lpPt){ if(Date.now()-lpAt > 900) lpClose(); } else closeCatPop(); return; }
+  if(e.target.id==="catPop"){ if(TK && TK.ed) return; /* Ticket-Formular: nur × oder Abbrechen schließen */ if(lpPt){ if(Date.now()-lpAt > 900) lpClose(); } else closeCatPop(); return; }
   if(e.target.id==="acctPop"){ closeSettings(); return; }
   if(e.target.id==="suPop"){ closeSignup(); return; }
   if(e.target.id==="tripPop"){ if(!tdraft) closeTrip(); return; } // Formular: nur × oder Abbrechen schließen, ein Fehltipp verwirft keine Eingaben
@@ -13641,6 +13815,16 @@ document.addEventListener("click", function(e){
     case "lmpick": openLegModes(parseInt(t.getAttribute("data-leg"), 10), t); break;
     case "loptopen": closeJpMore(); openLopt(parseInt(t.getAttribute("data-leg"),10)); break;
     case "loptclose": LOPT = null; closeCatPop(); break;
+    case "tkleg": closeJpMore(); tkLegOpen(parseInt(t.getAttribute("data-leg"),10)); break;
+    case "tkplace": closeJpMore(); tkPlaceOpen(sel); break;
+    case "tkclose": TK = null; closeCatPop(); break;
+    case "tknew": tkEdit(null); break;
+    case "tkedit": tkEdit(t.getAttribute("data-tk")); break;
+    case "tkback": if(TK && TK.ed){ TK.ed = null; renderTk(); } else { TK = null; closeCatPop(); } break;
+    case "tkst": tkKeep(); if(TK && TK.ed){ TK.ed.st = t.getAttribute("data-v"); renderTk(); } break;
+    case "tksave": tkSave(); break;
+    case "tkdel": tkKeep(); tkDel(); break;
+    case "tkna": toast("Buchen in der App ist noch nicht verfügbar", false); break;
     case "loptt": loptKeepTime(); if(LOPT){ LOPT.t = t.getAttribute("data-v"); if(LOPT.t!=="now" && !LOPT.tm) LOPT.tm = loptDefTime(); renderLopt(); } break;
     case "loptp": loptKeepTime(); if(LOPT){ var lv = t.getAttribute("data-v"), lx = LOPT.p.indexOf(lv); if(lx > -1) LOPT.p.splice(lx, 1); else LOPT.p.push(lv); renderLopt(); } break;
     case "loptreset": if(LOPT){ LOPT.t = "now"; LOPT.tm = ""; LOPT.p = []; renderLopt(); } break;
