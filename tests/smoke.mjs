@@ -535,20 +535,51 @@ await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kac
   ok(await page.locator("#profView .pf-new").count()===1, "Neue Reise ist keine Kachel");
   ok(await page.locator("#profView .pf-cov.lt i").first().innerText()==="M", "Buchstaben-Kachel ohne Initialen");
   await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
-  ok(await page.locator("#jpMenu [data-act=opentrip]").count()===1, "Mitreisende einladen fehlt im ⋯-Menü");
-  await click("#jpMenu [data-act=pfcover][data-v=photo]");
+  ok(await page.locator("#jpMenu [data-act=pfshare]").count()===1, "Mitreisende & Beobachter fehlt im ⋯-Menü");
+  ok(await page.locator("#jpMenu [data-act=pfedit]").count()===1, "Reise bearbeiten fehlt im ⋯-Menü");
+  ok(await page.locator("#jpMenu [data-act=pfopen]").count()===0, "„Reise öffnen“ steht noch im ⋯-Menü");
+  ok(await page.locator("#jpMenu [data-act=pfcvopen]").count()===1 && await page.locator("#jpMenu [data-act=pfcover]").count()===0, "Titelbild nicht als ein Eintrag „Titelbild ändern“");
+  await click("#jpMenu [data-act=pfcvopen]");
+  ok(await page.locator("#cvPop .cv-seg [data-act=cvmode]").count()===3, "Titelbild-Pop-up ohne die drei Optionen");
+  await shot("titelbild-popup");
+  await click("#cvPop [data-act=cvmode][data-v=photo]");
   ok(await visible("#cvPop .cv-grid"), "Foto-Auswahl öffnet nicht");
   await page.locator("#cvPop [data-act=cvph]").last().click(); await page.waitForTimeout(200);
   ok(!!(await rp(`S.trips.t_test.cover && S.trips.t_test.cover.ph`)), "Titelbild wird nicht gespeichert");
   await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
-  await click("#jpMenu [data-act=pfcover][data-v=letters]");
+  await click("#jpMenu [data-act=pfcvopen]");
+  ok(await page.locator("#cvPop .cv-grid button.on").count()===1, "Gewähltes Foto nicht markiert");
+  await click("#cvPop [data-act=cvmode][data-v=letters]");
   await page.locator("#cvPop [data-act=cvcol]").nth(2).click();
   await click("#cvPop [data-act=cvletters]");
   ok(await rp(`!!(S.trips.t_test.cover && S.trips.t_test.cover.txt)`), "Buchstaben-Modus wird nicht gespeichert");
   ok(await page.locator("#profView .pf-tw:has([data-trip=t_test]) .pf-cov.lt").count()===1, "Kachel zeigt nach Buchstaben-Wahl noch ein Foto");
   await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
-  await click("#jpMenu [data-act=pfcover][data-v=auto]");
+  await click("#jpMenu [data-act=pfcvopen]");
+  await click("#cvPop [data-act=cvmode][data-v=auto]");
+  await click("#cvPop .cv-ok[data-act=cvauto]");
   ok(await rp(`!S.trips.t_test.cover`), "Automatisch setzt nicht zurück");
+  // Mitreisende & Beobachter als eigenes Pop-up
+  await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
+  await click("#jpMenu [data-act=pfshare]"); await page.waitForTimeout(150);
+  ok(await visible("#shPop .share"), "Mitreisende & Beobachter öffnet kein eigenes Pop-up");
+  await click("#shPop [data-act=shclose]"); ok(!(await visible("#shPop")), "Pop-up schließt nicht");
+  // Reise bearbeiten aus dem Menü: Knopf statt Liste, Schließen führt zurück zum Profil
+  await page.locator("#profView [data-act=pfmore][data-trip=t_mal]").click();
+  await click("#jpMenu [data-act=pfedit]"); await page.waitForTimeout(200);
+  ok(await visible("#tripPop #tForm") && await rp(`S.cur==="t_mal" && tdraft.mode==="edit"`), "Reise bearbeiten öffnet nicht für diese Reise");
+  ok(await page.locator("#tripPop .share").count()===0 && await page.locator("#tripPop [data-act=shopen]").count()===1, "Bearbeiten zeigt die Liste statt des Knopfs");
+  await click("#tripPop [data-act=shopen]"); await page.waitForTimeout(150);
+  ok(await visible("#shPop .share"), "Knopf in „Reise bearbeiten“ öffnet das Pop-up nicht");
+  await click("#shPop [data-act=shclose]");
+  await click("#tripPop [data-act=tcancel]"); await page.waitForTimeout(200);
+  ok(!(await visible("#tripPop")) && await visible("#profView"), "Abbrechen führt nicht zurück zum Profil");
+  for(const how of ["#tripPop [data-act=tripclose]", "backdrop"]){
+    await page.locator("#profView [data-act=pfmore][data-trip=t_mal]").click(); await click("#jpMenu [data-act=pfedit]"); await page.waitForTimeout(200);
+    if(how==="backdrop") await page.mouse.click(5, 5); else await click(how);
+    await page.waitForTimeout(200);
+    ok(!(await visible("#tripPop")) && await visible("#profView") && await rp(`profTab`)==="mine", how+": nicht zurück zum Profil");
+  }
 });
 
 await test("Titelbild-Auswahl: viele Fotos als sauberes Raster, nur sichtbare geladen", async () => {
@@ -556,7 +587,7 @@ await test("Titelbild-Auswahl: viele Fotos als sauberes Raster, nur sichtbare ge
   await rp(`(function(){ var t = S.trips.t_test, ids = []; for(var i = 0; i < 90; i++){ var id = "phx"+i; ids.push(id); PHC[id] = PHC["ph_"+["a","b","c"][i%3]]; } t.photos.p4 = t.photos.p4.concat(ids); PROF = {name:"tester"}; openProfile(); })()`);
   await page.waitForTimeout(300);
   await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
-  await click("#jpMenu [data-act=pfcover][data-v=photo]");
+  await click("#jpMenu [data-act=pfcvopen]"); await click("#cvPop [data-act=cvmode][data-v=photo]");
   await page.waitForTimeout(900);
   const g = await page.evaluate(() => { const b = [...document.querySelectorAll("#cvPop .cv-grid button")].slice(0, 6).map(x => x.getBoundingClientRect());
     return {n: document.querySelectorAll("#cvPop .cv-grid button").length, w: b[0].width, h: b[0].height, row2: b[3].top - b[0].top, loaded: document.querySelectorAll("#cvPop .cv-grid img[src]").length}; });
@@ -2067,7 +2098,7 @@ await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, 
 
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {
   await seed();
-  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); try { localStorage.removeItem("rp-chkb"); } catch(e){} if(typeof KBPRED!=="undefined") KBPRED = true; true`);
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); try { localStorage.removeItem("rp-chkb"); } catch(e){} if(typeof KBPRED!=="undefined") KBPRED = true; CHKB.fb = 60000; true`);   // Rückfallebene „keine Tastatur“ (1,2 s) würde unter Last vorzeitig greifen
   await page.waitForTimeout(1000);   // Zeitgeber vorheriger Tests (Fokus) abwarten
   ok(await page.locator("#chIn").count()===1, "Chat-Eingabe fehlt");
   const vp = page.viewportSize(), H = vp.height, VH = H - 380;
@@ -2098,9 +2129,8 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
     for(let i = 1; i < ys.length; i++){ if(Math.sign(ys[i] - ys[i-1]) === -dir && Math.abs(ys[i] - ys[i-1]) > 1) mono = false; if(Math.abs(ys[i] - a) > 8 && Math.abs(ys[i] - z) > 8) mid++; }
     ok(Math.abs(ys[1] - a) <= 40 && mono && mid >= 2, w+": Eingabe springt statt zu gleiten: "+ys0.join(",")); };
   const g1 = await glide("focus"); smooth(g1, "Antippen", H - 400);   // erste Schätzung: gut 400 pt Tastatur
-  // Rückfallebene „keine Tastatur gekommen“ (1,2 s) hier abschalten und auf das Ende der Bewegung warten – unter Last dauert sie länger
-  await rp(`clearTimeout(CHKB.t); true`);
-  await page.waitForFunction(() => { const b = Math.round(document.querySelector("#chView .ch-comp").getBoundingClientRect().bottom), o = window.__lb; window.__lb = b; return o === b; }, null, {polling:100, timeout:3000});
+  // auf das Ende der Bewegung warten – unter Last dauert sie länger
+  for(let i = 0; i < 60 && await rp(`CHKB.anim`); i++) await page.waitForTimeout(50);
   const p1 = await pos(); same(p1, "Antippen"); ok(p1.inp.b <= H - 380 && p1.inp.b >= H - 420, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(p1.inp));
 
   // 2) Fall A – iOS meldet die Tastatur nur über visualViewport (innerHeight bleibt) und verschiebt die Seite (offsetTop)
@@ -2125,7 +2155,7 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
   // 5) Senden lässt die Tastatur offen (Fokus bleibt im Feld)
   await page.evaluate(() => { const b = document.querySelector("#chView .ch-send"); const ev = new MouseEvent("mousedown", {bubbles:true, cancelable:true}); b.dispatchEvent(ev); window.__md = ev.defaultPrevented; });
   ok(await page.evaluate(() => window.__md), "Senden-Knopf nimmt dem Feld den Fokus (Tastatur ginge zu)");
-  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50);
+  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50); await rp(`CHKB.fb = 1200; true`);
 });
 
 await test("Anmeldung: Hintergrund bleibt ganz, beim Antippen und mit Tastatur bewegt sich nichts", async () => {
