@@ -1628,7 +1628,13 @@ const kbPop = async (open, ovSel, name) => {
   ok(after.y + after.height <= H - kbH + 1, name+": Karte reicht unter die Tastatur");
   ok(f.y >= 0 && f.y + f.height <= H - kbH, name+": Feld verdeckt");
   await shot("tastatur-"+name);
-  await page.evaluate(() => { document.activeElement.blur(); delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
+  // iOS schiebt die Seite beim Fokus/Verlassen ein Stück hoch (offsetTop): das Pop-up darf dem nicht nachspringen (sonst blitzt oben die Leiste auf)
+  await page.evaluate(() => { Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => 90}); visualViewport.dispatchEvent(new Event("scroll")); });
+  await page.waitForTimeout(150);
+  const pan = await page.locator(card).first().boundingBox(), ov2 = await page.locator(ovSel).boundingBox();
+  ok(Math.abs(pan.y - before.y) <= 1, name+": Karte springt beim Verschieben der Seite ("+before.y+" → "+pan.y+")");
+  ok(ov2.y <= 0.5, name+": Lücke über dem Pop-up-Hintergrund: "+ov2.y);
+  await page.evaluate(() => { document.activeElement.blur(); delete visualViewport.height; delete visualViewport.offsetTop; visualViewport.dispatchEvent(new Event("scroll")); visualViewport.dispatchEvent(new Event("resize")); });
   await page.waitForTimeout(300);
   ok(!(await rp(`!!document.querySelector(".kbpin") || document.body.classList.contains("kb")`)), name+": Tastatur-Zustand bleibt hängen");
   const back = await page.locator(card).first().boundingBox();
