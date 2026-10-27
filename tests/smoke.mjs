@@ -136,7 +136,7 @@ async function seed(){
     t.photos = {p4:["ph_a","ph_b"], p5:["ph_c"]};
     var c = document.createElement("canvas"); c.width = 320; c.height = 240; var g = c.getContext("2d");
     ["#c33","#3a3","#36c"].forEach(function(col, i){ g.fillStyle = col; g.fillRect(0, 0, 320, 240); g.fillStyle = "#fff"; g.font = "60px sans-serif"; g.fillText(String(i+1), 140, 140); PHC[["ph_a","ph_b","ph_c"][i]] = c.toDataURL("image/jpeg", .7); });
-    acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; fbDb = null; acct.state = "ok";
+    acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; fbDb = null; acct.state = "ok"; lsSet("rp-dcdemo", "0"); DCSIG = "";
     S = {trips:{t_test:t}, cur:"t_test"}; cur = H; tab = "day"; sel = null;
     FR.friends = [{uid:"u_anna", name:"anna"},{uid:"u_ludwig", name:"Ludwig"},{uid:"u_clara", name:"Clara"}];
     renderGate(); renderAll();
@@ -393,6 +393,15 @@ await test("Entdecken: Reels-Feed mit Auswahl Reise/Ziel/Inspiration, Like, Übe
   ok(await page.locator("#dcView .dc-reel").count()===2 && (await page.locator("#dcView .dc-tgt").innerText()).includes("Inspiration"), "Inspiration zeigt nicht alle Vorschläge");
   await rp(`document.getElementById("dcFeed").scrollTop = document.getElementById("dcFeed").clientHeight; true`); await page.waitForTimeout(300);
   ok(await rp(`DCI===1`), "Feed rastet nicht auf den nächsten Vorschlag");
+  await rp(`dcSrc = "all"; DCSIG = ""; renderDc(); true`); await page.waitForTimeout(200);
+  await page.locator("#dcView [data-act=dcdemo]").scrollIntoViewIfNeeded(); await click("#dcView [data-act=dcdemo]"); await page.waitForTimeout(250);
+  ok(await page.locator("#dcView .dc-reel .dc-demo").count() >= 10, "Beispiel-Vorschläge fehlen oder sind nicht markiert");
+  await rp(`window.__log = []; document.getElementById("dcFeed").scrollTop = 0; true`); await page.waitForTimeout(250);
+  const dk = await rp(`DCL.filter(function(r){ return r.demo; })[0].key`);
+  await page.locator("#dcView .dc-reel[data-k='"+dk+"'] [data-act=dclike]").click(); await page.waitForTimeout(150);
+  ok(await rp(`window.__log.length===0`), "Beispiel-Like geht an den Server");
+  await shot("entdecken-beispiele");
+  await rp(`lsSet("rp-dcdemo", "0"); true`);
   await rp(`fbDb = null; dcScope = "here"; closeDcPage(); true`);
 });
 
@@ -1489,8 +1498,12 @@ await test("Öffnungszeiten (online): Warnung bei später Uhrzeit, Anzeige in de
     if(dayOf("p3")!==k){ Object.keys(T().order).forEach(function(d){ T().order[d] = T().order[d].filter(function(x){ return x!=="p3"; }); }); ord(k).push("p3"); }
     save(); openJPop("p3", k); true`); await page.waitForTimeout(300);
   ok((await page.locator("#jPop .jp-info").innerText()).includes("10:00–18:00"), "Öffnungszeiten fehlen in der Detailansicht");
-  await page.fill("#jPop input[data-act=time]", "19:30"); await page.dispatchEvent("#jPop input[data-act=time]", "change");
-  await page.locator("#jPop input[data-act=time]").blur(); await page.waitForTimeout(300);
+  // Uhrzeit wie auf dem iPhone setzen: Feld hat den Fokus, Rad meldet input/change, gespeichert wird beim Verlassen (blur).
+  // Bewusst im Seitenkontext statt page.fill/locator.blur – Google Chrome (Action) verhielt sich dabei anders als Chromium.
+  ok(await rp(`var i = document.querySelector("#jPop input[data-act=time]"); i.focus(); i.value = "19:30";
+    i.dispatchEvent(new Event("input", {bubbles:true})); i.dispatchEvent(new Event("change", {bubbles:true}));
+    var early = timeOf("p3")==="19:30" && document.activeElement===i; i.blur(); !early`), "Uhrzeit schon während der Eingabe gespeichert (iOS-Rad würde schließen)");
+  await page.waitForTimeout(300);
   ok(await rp(`timeOf("p3")==="19:30"`), "Uhrzeit nicht gespeichert");
   const tt = await page.locator("#toast").innerText();
   ok(tt.includes("19:30") && tt.includes("zu"), "Keine Warnung bei Uhrzeit außerhalb der Öffnungszeiten: "+tt);
