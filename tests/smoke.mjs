@@ -773,6 +773,57 @@ await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad",
   ok(await rp(`legMode(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1])`)==="bike", "Rad-Modus wird nicht gespeichert");
 });
 
+await test("Leihrad am Ziel: System aus dem GBFS-Katalog finden, Live-Verfügbarkeit (Lissabon)", async () => {
+  const REQ = [], J = (rt, b) => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(b) });
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => J(rt, {elements:[{type:"node", id:22, lat:38.7120, lon:-9.1400, tags:{amenity:"bicycle_rental", name:"OSM-Station"}}]}));
+  await page.route(/raw\.githubusercontent\.com\/MobilityData/, rt => { REQ.push(rt.request().url()); return rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:
+    "Country Code,Name,Location,System ID,URL,Auto-Discovery URL,Supported Versions,Authentication Info URL,Authentication Type,Authentication Parameter Name\n"+
+    "PT,Bird Lisbon,Lisbon,bird-lisbon,https://www.bird.co,https://bird.example/gbfs.json,2.3,,,\n"+
+    "PT,Gira,Lisbon,gira,https://www.gira-bicicletasdelisboa.pt/,https://gira.example/gbfs.json,2.3 ; 3.0,,,\n"+
+    "PT,\"Gira, Porto\",Porto,gira_porto,https://example.org,https://porto.example/gbfs.json,2.3,,,\n"+
+    "US,Lisbon Bikes,\"Lisbon, ME\",lisbon_me,https://example.org,https://me.example/gbfs.json,2.3,,,\n" }); });
+  await page.route(/photon\.komoot\.io\/reverse/, rt => { const u = rt.request().url(), faro = u.includes("lat=37.0");
+    return J(rt, {features:[{properties:{osm_key:"place", type:"city", name:faro ? "Faro" : u.includes("lang=en") ? "Lisbon" : "Lisboa", city:faro ? "Faro" : u.includes("lang=en") ? "Lisbon" : "Lisboa", countrycode:"PT"}}]}); });
+  await page.route(/\.example\//, rt => { const u = rt.request().url(); REQ.push(u);
+    if(u.includes("gira.example/gbfs.json")) return J(rt, {data:{pt:{feeds:[{name:"station_information", url:"https://gira.example/si.json"}, {name:"station_status", url:"https://gira.example/ss.json"}, {name:"vehicle_types", url:"https://gira.example/vt.json"}]}}});
+    if(u.includes("gira.example/vt.json")) return J(rt, {data:{vehicle_types:[{vehicle_type_id:"e", form_factor:"bicycle", propulsion_type:"electric_assist"}]}});
+    if(u.includes("gira.example/si.json")) return J(rt, {data:{stations:[
+      {station_id:"101", name:[{text:"Cais do Sodré", language:"pt"}], lat:38.7060, lon:-9.1440, capacity:20},
+      {station_id:"102", name:"Rossio", lat:38.7139, lon:-9.1394, capacity:15},
+      {station_id:"103", name:"Alfama", lat:38.7118, lon:-9.1300, capacity:12},
+      {station_id:"900", name:"Weit weg", lat:41.15, lon:-8.61, capacity:10}]}});
+    if(u.includes("gira.example/ss.json")) return J(rt, {data:{stations:[
+      {station_id:"101", num_vehicles_available:4, num_docks_available:16, is_installed:true, is_renting:true, is_returning:true},
+      {station_id:"102", num_bikes_available:0, num_docks_available:15, is_installed:true, is_renting:true, is_returning:true},
+      {station_id:"103", num_bikes_available:3, num_docks_available:9, is_installed:true, is_renting:true, is_returning:true}]}});
+    return rt.abort(); });
+  await seed();
+  await rp(`(function(){ var t = newTripObj({id:"t_lis", name:"Lissabon", start:"2026-11-02", end:"2026-11-06", hotels:[{id:"h9", n:"Hotel Lisboa", la:38.7150, lo:-9.1400, from:"2026-11-02", to:"2026-11-06"}], orte:[{id:"o9", n:"Lissabon", la:38.7223, lo:-9.1393, from:"2026-11-02", to:"2026-11-06"}]});
+    S.trips.t_lis = t; S.cur = "t_lis"; layers.bike = true; renderAll(); cbLoad(); })()`);
+  await page.waitForFunction(() => window.__rp("CB.sys.length > 0 && CB.st.length > 0 && CB.statAt > 0"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`CB.sys.length===1 && CB.sys[0].n==="Gira" && CB.st.length===3`), "System am Ziel nicht gefunden: "+await rp(`JSON.stringify(CB.sys)+" "+CB.st.length+" "+CB.err`));
+  ok(!REQ.some(u => u.includes("bird.example") || u.includes("porto.example") || u.includes("me.example")), "Falsche Systeme abgefragt (Roller, andere Stadt, anderes Land): "+REQ.join(" "));
+  ok(await rp(`map.getLayoutProperty("cb","visibility")==="visible" && map.getLayoutProperty("dbike","visibility")==="none" && map.getSource("cb")._data.features.length===3`), "Live-Stationen statt OSM-Stationen nicht auf der Karte");
+  const id = await rp(`CB.st.filter(function(s){ return s.n==="Cais do Sodré"; })[0].id`);
+  await rp(`select("cb:${id}")`); await page.waitForTimeout(150);
+  const card = await page.locator("#card").innerText();
+  ok(card.includes("Cais do Sodré") && card.includes("Gira Station") && card.includes("4") && card.includes("16") && card.includes("Daten: Gira") && !card.includes("Citi"), "Stations-Karte am Ziel falsch: "+card.slice(0, 200));
+  ok(await rp(`LMNAME.bike`)==="Gira", "Verkehrsmittel heißt nicht nach dem System am Ziel");
+  // aus dem Speicher: kein neuer Katalog-Abruf beim Wechsel zurück
+  const n0 = REQ.filter(u => u.includes("MobilityData")).length;
+  await rp(`select(null); S.cur = "t_test"; renderAll(); true`); await page.waitForTimeout(150);
+  ok(await rp(`CB.sys[0].n==="Citi Bike" && LMNAME.bike==="Citi Bike"`), "New York bekommt Citi Bike nicht zurück");
+  await rp(`S.cur = "t_lis"; renderAll(); cbLoad(); true`);
+  await page.waitForFunction(() => window.__rp("CB.sys.length > 0 && CB.st.length===3"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`CB.sys.length && CB.sys[0].n==="Gira"`) && REQ.filter(u => u.includes("MobilityData")).length===n0, "Ergebnis wird nicht je Ziel gemerkt");
+  // Ziel ohne bekanntes System: OSM-Stationen bleiben, Rad-Etappe sagt es klar
+  await rp(`(function(){ var t = newTripObj({id:"t_faro", name:"Faro", start:"2026-11-02", end:"2026-11-06", hotels:[{id:"h8", n:"Hotel Faro", la:37.0170, lo:-7.9350, from:"2026-11-02", to:"2026-11-06"}], orte:[{id:"o8", n:"Faro", la:37.0194, lo:-7.9304, from:"2026-11-02", to:"2026-11-06"}]});
+    S.trips.t_faro = t; S.cur = "t_faro"; renderAll(); cbLoad(); })()`);
+  await page.waitForFunction(() => window.__rp("cbState()==='nosys'"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`cbState()==="nosys" && map.getLayoutProperty("cb","visibility")==="none" && map.getLayoutProperty("dbike","visibility")==="visible"`), "Ohne System sollen die OSM-Stationen bleiben");
+  ok(await rp(`bikeRoute({la:37.017, lo:-7.935}, {la:37.019, lo:-7.930}).nosys===true`), "Rad-Etappe wartet endlos statt „kein System“");
+});
+
 await test("Fähre als Verkehrsmittel einer Etappe (Menü, Tagesplan, Navigation)", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
@@ -1577,6 +1628,7 @@ await test("Reise-Status und Option: abgeschlossen/aktuell/in Planung, Option oh
   await page.locator("#tForm [type=submit]").click(); await page.waitForTimeout(400);
   ok(await rp(`T().name==="Lissabon irgendwann" && T().opt===true && !T().start && !T().end && T().orte.length===1 && days().length===0`), "Option-Reise nicht angelegt");
   ok(await rp(`$("tripBtn").textContent.includes("Option")`), "Kopfzeile zeigt nicht „Option“: "+await rp(`$("tripBtn").textContent+" / "+getComputedStyle($("tripBtn")).display`));
+  ok(await rp(`lsTripSub(T())==="Option" && lsTripIds()[0]===S.cur`), "Liste: Reise-Auswahl zeigt Status nicht");
   await click("#tripBtn"); await page.waitForTimeout(150);
   ok((await page.locator("#tripMenu").innerText()).includes("Option") && (await page.locator("#tripMenu .tst").count()) >= 2, "Reise-Menü zeigt den Status nicht");
   await shot("reise-status-menue");
@@ -2562,6 +2614,32 @@ await test("Lösch-X sitzt im Suchfeld, auch nach Scrollen (Profil → Ziele, Su
   const sf = "#srchPop input[type=search]";
   await page.locator(sf).first().fill("Katz"); await page.waitForTimeout(400);
   await xIn(sf, "Suche");
+});
+
+await test("Liste: Reise-Auswahl als Dropdown mit Suche statt Chips (30 Reisen)", async () => {
+  await seed();
+  await rp(`(function(){ var N = ["Lissabon","Tokio","New York","Rom","Paris"]; for(var i = 0; i < 30; i++){ var y = 2000 + i, nm = i < 5 ? N[i] : "Reise "+(i+1);
+      var t = newTripObj({id:"t_r"+i, name:nm, start:y+"-05-01", end:y+"-05-08", hotels:[], orte:[]}); S.trips[t.id] = t; } save(); openLsPage(); return true; })()`);
+  await page.waitForTimeout(300);
+  ok(await page.locator("#lsView .ls-trips button").count()===0, "Reisen stehen noch als Chips nebeneinander");
+  ok(await page.locator("#lsView .ls-tripdd").count()===1, "Dropdown für die Reise fehlt");
+  ok((await page.locator("#lsView .ls-tripdd").innerText()).includes("Testreise"), "Dropdown zeigt die aktuelle Reise nicht");
+  const bb = await page.locator("#lsView .ls-tripdd").boundingBox(); ok(bb.height < 50, "Dropdown zu hoch: "+bb.height);
+  await page.tap("#lsView .ls-tripdd"); await page.waitForTimeout(250);
+  ok(await page.locator("#jpMenu .frp-q").count()===1, "Suche im Dropdown fehlt");
+  ok(await page.locator("#jpMenu [data-act=lstrip]").count()===31, "nicht alle Reisen im Dropdown: "+await page.locator("#jpMenu [data-act=lstrip]").count());
+  const mb = await page.locator("#jpMenu").boundingBox(); ok(mb.y + mb.height <= 844 && mb.height <= 480, "Dropdown zu groß: "+JSON.stringify(mb));
+  await page.locator("#jpMenu .frp-q").fill("tok"); await page.waitForTimeout(100);
+  const vis = await page.evaluate(() => [].slice.call(document.querySelectorAll("#jpMenu [data-act=lstrip]")).filter(b => !b.hidden).map(b => b.getAttribute("data-trip")));
+  ok(vis.length===1 && vis[0]==="t_r1", "Suche „tok“ findet nicht nur Tokio: "+vis.join(","));
+  await page.locator("#jpMenu .frp-q").fill("xyz"); await page.waitForTimeout(100);
+  ok((await page.locator("#jpMenu").innerText()).includes("Keine Reise gefunden"), "Hinweis bei leerer Suche fehlt");
+  await page.locator("#jpMenu .frp-q").fill("tok"); await page.waitForTimeout(100);
+  await shot("liste-reise-dropdown");
+  await page.locator("#jpMenu [data-trip=t_r1]").click(); await page.waitForTimeout(300);
+  ok(await rp(`S.cur`)==="t_r1", "Auswahl wechselt die Reise nicht");
+  ok(await page.locator("#jpMenu").count()===0, "Dropdown bleibt nach der Auswahl offen");
+  ok((await page.locator("#lsView .ls-tripdd").innerText()).includes("Tokio"), "Dropdown zeigt die neue Reise nicht");
 });
 
 /* ------------------------------------------------------------------ Ergebnis */

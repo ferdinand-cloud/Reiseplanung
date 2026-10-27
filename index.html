@@ -2641,6 +2641,13 @@ a.ls-row{text-decoration:none}
 .pt-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vp-note{margin:4px 10px 6px;font-size:12px;color:var(--muted);line-height:1.35}
 .ls-dds{display:flex;gap:8px;margin:10px 0 4px}
+.ls-tripdds{margin:0 0 12px}
+.ls-tripdd{max-width:100%;gap:8px}
+.ls-tripdd .ls-ddn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ls-tripdd small{color:var(--muted);font-weight:500;font-size:12px;white-space:nowrap}
+.ls-tripdd svg{flex:0 0 auto}
+.ls-tsub{display:block;color:var(--muted);font-size:12px;font-weight:500}
+.addmenu.jpmenu[data-kind="lstrip"]{max-height:min(60vh,460px);overflow-y:auto;overscroll-behavior:contain;min-width:250px;max-width:min(340px,calc(100vw - 20px))}
 .ls-dd{display:inline-flex;align-items:center;gap:6px;min-width:0;border:1px solid var(--line);border-radius:999px;padding:7px 10px 7px 13px;background:none;color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
 .ls-dd.on{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
 .ls-dd svg{width:14px;height:14px;flex:0 0 auto}
@@ -6569,11 +6576,11 @@ function frsPopRender(first){
   var r2 = cp.querySelector(".frs-big"); if(r2) r2.scrollTop = st;
   if(kf){ var i = cp.querySelector(".frs-in"); if(i) i.focus(); }
 }
-function frPickHead(title){ return "<div class=\"frp-h\"><div class=\"dc-dh\">"+title+"</div><input type=\"search\" class=\"frp-q\" placeholder=\"Freunde suchen\" aria-label=\"Freunde suchen\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\"></div>"; }
+function frPickHead(title, ph, none){ ph = ph || "Freunde suchen"; return "<div class=\"frp-h\"><div class=\"dc-dh\">"+title+"</div><input type=\"search\" class=\"frp-q\" placeholder=\""+ph+"\" aria-label=\""+ph+"\" data-none=\""+(none || "Keine Freunde gefunden")+"\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\"></div>"; }
 document.addEventListener("input", function(e){ var q = e.target; if(!q.classList || !q.classList.contains("frp-q")) return;
   var m = q.closest(".jpmenu"), v = q.value.trim().replace(/^@/, "").toLowerCase(), n = 0; if(!m) return;
   m.querySelectorAll("[data-frn]").forEach(function(b){ var on = !v || b.getAttribute("data-frn").indexOf(v) > -1; b.hidden = !on; if(on) n++; });
-  var e0 = m.querySelector(".frp-none"); if(!n){ if(!e0){ e0 = document.createElement("p"); e0.className = "frp-none"; e0.textContent = "Keine Freunde gefunden"; m.appendChild(e0); } } else if(e0) e0.remove(); });
+  var e0 = m.querySelector(".frp-none"); if(!n){ if(!e0){ e0 = document.createElement("p"); e0.className = "frp-none"; e0.textContent = q.getAttribute("data-none") || "Keine Freunde gefunden"; m.appendChild(e0); } } else if(e0) e0.remove(); });
 function chPhSendMenu(ph, btn){
   if(!acct.user){ toast("Melde dich an, um Fotos zu schicken", false); return; }
   if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
@@ -6885,17 +6892,26 @@ function lsGoMap(pid){
   // wie im Tagesplan: Planung ganz einklappen, Pop-up offen, Punkt mit Abstand darüber
   if(!desktop.matches && hasLoc(p)){ setSheet("min"); setTimeout(function(){ revealPoint(p, 16, true); }, 60); } else revealPoint(p, 16, true);
 }
+/* Reise-Auswahl der Liste: ein Dropdown statt Chips nebeneinander (bei 30+ Reisen sonst unübersichtlich), ab 6 Reisen mit Suche */
+function lsTripIds(){ return liveIds().filter(function(id){ return !isViewerOf(id); }).sort(function(a, b){ var A = S.trips[a]||{}, B = S.trips[b]||{}; return (B.opt?1:0) - (A.opt?1:0) || (B.start||"").localeCompare(A.start||""); }); }
+function lsTripSub(t){ return TSTAT[tripStatus(t)]+(!t.opt && t.start && t.end ? " · "+shortD(t.start)+"–"+shortD(t.end)+(t.end.slice(0, 4) ? " "+t.end.slice(0, 4) : "") : ""); }
+function lsTripDD(cur){ var t = cur && S.trips[cur];
+  return "<div class=\"ls-dds ls-tripdds\"><button type=\"button\" class=\"ls-dd ls-tripdd\" data-act=\"lstrippick\" aria-haspopup=\"menu\" aria-label=\"Reise wählen\">"+
+    (t ? "<i class=\"dc-tdot\" style=\"--cc:"+tripColor(cur)+"\"></i><span class=\"ls-ddn\">"+esc(t.name||"Reise")+"</span>"+(lsTripSub(t) ? "<small>"+esc(lsTripSub(t))+"</small>" : "") : "<span class=\"ls-ddn\">Reise wählen</span>")+CHEV+"</button></div>"; }
+function lsTripMenu(btn){ var ids = lsTripIds();
+  var h = (ids.length > 5 ? frPickHead("Reise", "Reise suchen", "Keine Reise gefunden") : "<div class=\"vp-h\">Reise</div>")+ids.map(function(id){ var t = S.trips[id], on = id===S.cur && !isViewerOf(S.cur);
+    return "<button type=\"button\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" data-frn=\""+esc(((t.name||"")+" "+(t.start||"").slice(0, 4)).toLowerCase())+"\" role=\"menuitemradio\" aria-checked=\""+on+"\"><span class=\"ai\"><i class=\"dc-tdot\" style=\"--cc:"+tripColor(id)+"\"></i></span><span>"+esc(t.name||"Reise")+(lsTripSub(t) ? "<small class=\"ls-tsub\">"+esc(lsTripSub(t))+"</small>" : "")+"</span>"+(on ? "<span class=\"ck\">✓</span>" : "")+"</button>"; }).join("");
+  jpPopover("lst", btn, h, "lstrip"); }
 function renderLs(){
   var el = $("lsView"); if(!el) return;
   var t = T(), ds = days(), ids = liveIds().filter(function(id){ return !isViewerOf(id); }); // nur eigene Reisen, keine beobachteten
   var h = "<div class=\"pf ls-page\"><div class=\"ls-head\">";
   if(!ids.length){ el.innerHTML = h+"</div><p class=\"note nt-empty\">Die Liste gibt es für deine eigenen Reisen. Du hast noch keine.</p></div>"; return; }
   if(isViewerOf(S.cur)){
-    h += "<div class=\"nt-kinds ls-trips\" role=\"tablist\" aria-label=\"Reise\">"+ids.map(function(id){ return "<button type=\"button\" role=\"tab\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" aria-selected=\"false\">"+esc(S.trips[id].name||"Reise")+"</button>"; }).join("")+"</div>";
+    h += lsTripDD(null);
     el.innerHTML = h+"</div><p class=\"note nt-empty\">Die Liste gibt es nur für deine eigenen Reisen. Wähle oben eine aus.</p></div>"; return;
   }
-  if(ids.length > 1) h += "<div class=\"nt-kinds ls-trips\" role=\"tablist\" aria-label=\"Reise\">"+ids.sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); }).map(function(id){
-    return "<button type=\"button\" role=\"tab\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" aria-selected=\""+(id===S.cur)+"\">"+esc(S.trips[id].name||"Reise")+"</button>"; }).join("")+"</div>";
+  if(ids.length > 1) h += lsTripDD(S.cur);
   else h += "<p class=\"ls-trip1\"><b>"+esc(t.name||"Reise")+"</b>"+(!t.opt && t.start && t.end ? " · "+shortD(t.start)+"–"+shortD(t.end) : "")+" "+tstatHTML(t)+"</p>";
   // besuchte Orte je Tag
   var visited = [], nPh = 0;
@@ -8694,6 +8710,7 @@ function tkPlaceOn(pid){ return "p:"+rootOf(pid); }
 function tkUrl(u){ u = String(u||"").trim(); if(!u) return ""; if(!/^https?:\/\//i.test(u)) u = "https://"+u.replace(/^\/+/, ""); return /^https?:\/\/[^\s\/]+\.[^\s]+$/i.test(u) ? u.slice(0, 500) : ""; }
 // Anbieter-Links nur, wo es sie wirklich gibt (New York); keine Anbieter-Schnittstellen, nur Weiterleitung
 function tkBook(k, m){
+  if(k==="transit" && DEST && m==="bike"){ var sy = CB.sys[0]; return sy && sy.web ? [[sy.n, "Ausleihe über die App oder Website des Anbieters", sy.web]] : []; }
   if(k!=="transit" || DEST) return [];
   if(m==="ferry") return [["NYC Ferry", "Tickets in der NYC-Ferry-App oder am Automaten am Anleger", "https://www.ferry.nyc/"]];
   if(m==="bike") return [["Citi Bike", "Einzelfahrt oder Tagespass in der Citi-Bike-App", "https://citibikenyc.com/pricing"]];
@@ -8880,7 +8897,7 @@ function applyLayers(){
   }
   $("lSub").checked = layers.sub; $("lBus").checked = layers.bus; $("lFerry").checked = layers.ferry; $("lWish").checked = layers.wish; $("lNb").checked = layers.nb; $("lRoute").checked = layers.route; $("lVis").checked = visOn(); $("lBike").checked = !!layers.bike;
   trSync();
-  if(mapReady && map.getLayer("cb")) map.setLayoutProperty("cb", "visibility", layers.bike && !DEST ? "visible" : "none");
+  if(mapReady && map.getLayer("cb")) map.setLayoutProperty("cb", "visibility", layers.bike && (!DEST || CB.sys.length > 0) ? "visible" : "none");
   renderLineMenus(); dApplyMap(); destUi();
 }
 /* ---------- Kartenebenen je Reiseziel ----------
@@ -8934,11 +8951,12 @@ function destSet(d, pts){
   DEST = d; dQ = ""; dOpen = {}; dWant = false; DOFF = {};
   document.body.classList.toggle("dyn", !!d);
   $("attr").textContent = "© OpenFreeMap · © OpenMapTiles · © OpenStreetMap-Mitwirkende" + (d ? "" : " · ÖPNV: MTA");
-  if(!d){ CB.st = []; CB.byId = {}; CB.infoAt = 0; nbUse(NB_NYC, "nyc-nb-hi"); destApply(); if(cbNeeded()) cbLoad(); return; }
+  CB.st = []; CB.byId = {}; CB.infoAt = 0; CB.statAt = 0; CB.err = ""; CB.errAt = 0; CB.sys = d ? [] : CBNYC; CB.dk = d ? null : ""; LMNAME.bike = cbName();
+  if(!d){ nbUse(NB_NYC, "nyc-nb-hi"); destApply(); if(cbNeeded()) cbLoad(); return; }
   lsList("rp-doff-"+d.k).forEach(function(id){ DOFF[id] = 1; });
   nbUse([], "rp-nb-hi-"+d.k);
   var ix = destIdx().filter(function(e){ return e.k!==d.k; }); ix.unshift({k:d.k, la:d.la, lo:d.lo, r:d.r, n:d.n}); lsSet("rp-dest", JSON.stringify(ix.slice(0, 12)));
-  destApply();
+  destApply(); if(cbNeeded()) cbLoad();
   var PT = ["tr","bus","nb"]; d.rd = false;
   d.rdP = Promise.all(PT.map(function(p){ return destGet(d.k+":"+p); })).then(function(vs){
     d.rd = true; if(DEST!==d) return;
@@ -9162,7 +9180,7 @@ function dApplyMap(){
   vis("dbus", dy && dOn("bus")); vis("dbus-lbl", dy && dOn("bus")); map.setFilter("dbus", off); if(map.getLayer("dbus-lbl")) map.setFilter("dbus-lbl", off);
   vis("dst", dy && rail.length); vis("dst-lbl", dy && rail.length);
   map.setFilter("dst", ["in", ["get","m"], ["literal", rail]]); if(map.getLayer("dst-lbl")) map.setFilter("dst-lbl", ["in", ["get","m"], ["literal", rail]]);
-  vis("dbike", dy && layers.bike);
+  vis("dbike", dy && layers.bike && !CB.sys.length); // OpenStreetMap-Stationen nur, solange kein Leihrad-System mit Live-Daten bekannt ist
 }
 /* Menü: ÖPNV → Verkehrsmittel des Ziels → einzelne Linien (wie U-Bahn/Bus in New York) */
 var DCHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 6l4 4 4-4\"/></svg>";
@@ -10641,7 +10659,7 @@ function renderGo(live){
   h += "<div class=\"gp-lbl\">Start</div><div class=\"gp-from\" role=\"group\" aria-label=\"Start\"><button type=\"button\" data-act=\"gofrom\" data-from=\"me\" aria-pressed=\""+(goSt.from==="me")+"\">Mein Standort</button>";
   if(prev) h += "<button type=\"button\" data-act=\"gofrom\" data-from=\"prev\" aria-pressed=\""+(goSt.from==="prev")+"\">"+(D && prev===D.hotel ? "Hotel" : "Vorheriger Stopp")+": "+esc(prev.n)+"</button>";
   h += "</div><div class=\"gp-lbl\">In der App navigieren</div><div class=\"gp-nav\" role=\"group\" aria-label=\"In der App navigieren\">"+
-    [["walk", LMWALK, "Zu Fuß"], ["bike", LMBIKE, "Citi Bike"], ["oepnv", LMSUB, "U-Bahn & Bus"], ["ferry", LMFERRY, "Fähre"], ["car", LMCAR, "Auto"]].map(function(m){ return "<button type=\"button\" data-act=\"navstart\" data-mode=\""+m[0]+"\">"+m[1]+"<b>"+m[2]+"</b></button>"; }).join("")+"</div>";
+    [["walk", LMWALK, "Zu Fuß"], ["bike", LMBIKE, esc(cbName())], ["oepnv", LMSUB, "U-Bahn & Bus"], ["ferry", LMFERRY, "Fähre"], ["car", LMCAR, "Auto"]].map(function(m){ return "<button type=\"button\" data-act=\"navstart\" data-mode=\""+m[0]+"\">"+m[1]+"<b>"+m[2]+"</b></button>"; }).join("")+"</div>";
   // andere Karten-App: ein Knopf, dann Auswahl Apple Karten / Google Maps – das Verkehrsmittel wählt man dort
   h += "<button type=\"button\" class=\"btn g gp-ext\" data-act=\"goext\" aria-haspopup=\"dialog\" aria-expanded=\""+!!goSt.ext+"\">"+NAVGOICO+"In anderer App navigieren</button>";
   if(from==="me" && !me) h += "<p class=\"gp-note\">Dein Standort wird in der Karten-App bestimmt.</p>";
@@ -10948,22 +10966,33 @@ function openLegModes(li, btn){
   var wd = walkDist(a, b, legVia(a, b)) || dist(a, b)*1.25, tr = transit(a, b, cur), br = bikeRoute(a, b);
   var mins = function(x){ return Math.max(1, Math.round(x/60))+" Min."; };
   var fa = ferryAlts(a, b, cur), fsub = fa===null ? "Fahrpläne werden geladen …" : !fa.length ? "Keine sinnvolle Fährverbindung" : mins(fa[0].secs)+" · "+esc(ferryLabel(fa[0]));
-  var rows = [["walk", LMWALK, mins(wd/1.33)+" · "+fmtDist(wd)], ["oepnv", LMSUB, tr.walk ? "Kein Umstieg sinnvoll – zu Fuß schneller" : mins(tr.secs)], ["ferry", LMFERRY, fsub], ["car", LMCAR, (function(){ var cp = carPath(a, b, legVia(a, b)), ce = cp || carEst(a, b, legVia(a, b)); return (cp ? "" : "ca. ")+mins(ce.secs)+" · "+fmtDist(ce.d)+" · ohne Verkehr"; })()], ["bike", LMBIKE, br.wait ? (CB.err ? "Daten nicht erreichbar" : "Stationen werden geladen …") : br.none ? "Keine passende Station in der Nähe" : mins(br.secs)+" · inkl. Wege zur Station"]];
+  var rows = [["walk", LMWALK, mins(wd/1.33)+" · "+fmtDist(wd)], ["oepnv", LMSUB, tr.walk ? "Kein Umstieg sinnvoll – zu Fuß schneller" : mins(tr.secs)], ["ferry", LMFERRY, fsub], ["car", LMCAR, (function(){ var cp = carPath(a, b, legVia(a, b)), ce = cp || carEst(a, b, legVia(a, b)); return (cp ? "" : "ca. ")+mins(ce.secs)+" · "+fmtDist(ce.d)+" · ohne Verkehr"; })()], ["bike", LMBIKE, br.wait ? (CB.err ? "Daten nicht erreichbar" : "Stationen werden geladen …") : br.nosys ? "Hier kein Leihrad-System mit Live-Daten" : br.none ? "Keine passende Station in der Nähe" : mins(br.secs)+" · inkl. Wege zur Station"]];
   jpPopover("lm"+li, btn, "<div class=\"vp-h\">Unterwegs auf dieser Etappe</div>"+rows.map(function(r){ return "<button type=\"button\" role=\"menuitemradio\" data-act=\"lmode\" data-leg=\""+li+"\" data-mode=\""+r[0]+"\" aria-checked=\""+(m===r[0])+"\"><span class=\"ai lmi\">"+r[1]+"</span><span class=\"cm-t\"><b>"+LMNAME[r[0]]+"</b><small>"+r[2]+"</small></span>"+(m===r[0] ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("")+
     "<button type=\"button\" role=\"menuitem\" class=\"lm-opt\" data-act=\"loptopen\" data-leg=\""+li+"\"><span class=\"ai lmi\">"+LOICO+"</span><span class=\"cm-t\"><b>Routenoptionen</b><small>"+esc(loptSum(legOptOf(b)).replace(/^Optionen: /, ""))+"</small></span></button>"+
     (m!=="walk" && m!=="car" ? (function(){ var nt = tkOn(tkLegOn(b)).length; return "<button type=\"button\" role=\"menuitem\" class=\"lm-opt\" data-act=\"tkleg\" data-leg=\""+li+"\"><span class=\"ai lmi\">"+ic("ticket")+"</span><span class=\"cm-t\"><b>Tickets</b><small>"+(nt ? nt+" hinterlegt" : "Fahrkarte hinterlegen oder buchen")+"</small></span></button>"; })() : ""), "lmodes");
 }
 var CB_BASE = "https://gbfs.lyft.com/gbfs/1.1/bkn/en/", CBCOL = "#0A6CDB", BIKE = 4.2; // Fahrgeschwindigkeit in m/s (ca. 15 km/h)
-var CB = {st:[], byId:{}, infoAt:0, statAt:0, busy:false, err:""};
+var CBNYC = [{n:"Citi Bike", by:"Citi Bike (Lyft)", web:"https://citibikenyc.com/how-it-works", info:CB_BASE+"station_information.json", stat:CB_BASE+"station_status.json"}];
+/* sys = Leihrad-Systeme mit Live-Daten (New York: Citi Bike, sonst aus dem GBFS-Katalog), dk = Ziel, für das sys gilt ("" = New York, null = noch offen) */
+var CB = {st:[], byId:{}, infoAt:0, statAt:0, busy:false, err:"", sys:CBNYC, dk:""};
 var LMBIKE = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"5.5\" cy=\"17\" r=\"3.5\"/><circle cx=\"18.5\" cy=\"17\" r=\"3.5\"/><path d=\"M5.5 17L9 9h6l3.5 8M9 9l3 8 3-8M8 6h3\"/></svg>";
 function cbJSON(u){ return fetch(u, {cache:"no-store"}).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }); }
 function cbInfoCached(any){ try { var c = JSON.parse(lsGet("rp-cb-info")||"null"); if(c && c.s && (any || Date.now() - c.at < 7*864e5)) return c; } catch(e){} return null; }
+function cbName(){ return CB.sys.length===1 ? CB.sys[0].n : DEST ? "Leihrad" : "Citi Bike"; }
+function cbSysOf(s){ return CB.sys[s && s.sy || 0] || {n:cbName()}; }
+/* wait = Stationen noch nicht da, nosys = am Ziel kein Leihrad-System mit Live-Daten gefunden */
+function cbState(){ if(DEST && CB.dk===DEST.k && !CB.sys.length && !CB.findErr) return "nosys"; return CB.st.length ? "ok" : "wait"; }
+function cbInfoSet(rows, at){
+  CB.st = rows.map(function(r){ var o = CB.byId[r[0]] || {}; return {id:r[0], n:r[1], la:r[2], lo:r[3], cap:r[4], sy:r[5]||0, b:o.b||0, e:o.e||0, d:o.d!=null ? o.d : 0, ok:o.ok!==false, known:!!o.known}; });
+  CB.byId = {}; CB.st.forEach(function(s){ CB.byId[s.id] = s; }); CB.infoAt = at;
+}
 function cbLoad(force){
-  if(DEST) return; // Citi Bike nur in New York
+  if(DEST && (CB.dk!==DEST.k || CB.findErr)){ gbfsFind(DEST); return; }
   // offline: gespeicherte Stationen (ohne Live-Verfügbarkeit) zeigen, z. B. aus dem Offline-Download
-  if(!navigator.onLine && !CB.st.length){ var c1 = cbInfoCached(true); if(c1){ CB.st = c1.s.map(function(r){ return {id:r[0], n:r[1], la:r[2], lo:r[3], cap:r[4], b:0, e:0, d:0, ok:true, known:false}; }); CB.byId = {}; CB.st.forEach(function(x){ CB.byId[x.id] = x; }); CB.infoAt = 0; cbApply(); } }
-  if(CB.busy || !navigator.onLine || (!force && CB.errAt && Date.now() - CB.errAt < 45000)) return;
-  var now = Date.now(), needInfo = !CB.st.length || now - CB.infoAt > 7*864e5, needStat = force || needInfo || now - CB.statAt > 60000;
+  if(!DEST && !navigator.onLine && !CB.st.length){ var c1 = cbInfoCached(true); if(c1){ cbInfoSet(c1.s, 0); cbApply(); } }
+  if(!CB.sys.length || CB.busy || !navigator.onLine || (!force && CB.errAt && Date.now() - CB.errAt < 45000)) return;
+  var now = Date.now(), needInfo = !DEST && (!CB.st.length || now - CB.infoAt > 7*864e5), needStat = force || needInfo || now - CB.statAt > 60000;
+  if(DEST && now - CB.infoAt > 7*864e5){ CB.dk = null; gbfsFind(DEST); return; }
   if(!needInfo && !needStat) return;
   CB.busy = true;
   var c0 = needInfo ? cbInfoCached() : null;
@@ -10971,17 +11000,111 @@ function cbLoad(force){
     cbJSON(CB_BASE+"station_information.json").then(function(j){
       var s = ((j && j.data && j.data.stations) || []).filter(function(x){ return x && x.lat && x.lon; }).map(function(x){ return [String(x.station_id), String(x.name||"Station").slice(0, 60), +(+x.lat).toFixed(6), +(+x.lon).toFixed(6), x.capacity||0]; });
       var c = {at:Date.now(), s:s}; try { lsSet("rp-cb-info", JSON.stringify(c)); } catch(e){} return c; });
+  var sys = CB.sys, fails = 0, last = null;
   pInfo.then(function(info){
-    if(info){ CB.st = info.s.map(function(r){ var o = CB.byId[r[0]] || {}; return {id:r[0], n:r[1], la:r[2], lo:r[3], cap:r[4], b:o.b||0, e:o.e||0, d:o.d||0, ok:o.ok!==false, known:!!o.known}; });
-      CB.byId = {}; CB.st.forEach(function(s){ CB.byId[s.id] = s; }); CB.infoAt = info.at; }
-    return cbJSON(CB_BASE+"station_status.json");
-  }).then(function(j){
-    ((j && j.data && j.data.stations) || []).forEach(function(x){ var s = CB.byId[String(x.station_id)]; if(!s) return;
-      s.b = x.num_bikes_available || 0; s.e = x.num_ebikes_available || 0; s.d = x.num_docks_available || 0;
-      s.ok = x.is_installed!==0 && x.is_renting!==0 && x.is_returning!==0 && x.is_installed!==false && x.is_renting!==false; s.known = true; });
+    if(info) cbInfoSet(info.s, info.at);
+    return Promise.all(sys.map(function(sy, i){ return cbJSON(sy.stat).then(function(j){ cbStat(j, DEST ? i+"~" : ""); }, function(e){ fails++; last = e; }); }));
+  }).then(function(){
+    if(fails && fails===sys.length) throw last || new Error("");
     CB.statAt = Date.now(); CB.err = ""; CB.errAt = 0;
-  }).catch(function(e){ CB.errAt = Date.now(); CB.err = "Citi-Bike-Daten gerade nicht erreichbar"+(e && e.message ? " ("+e.message+")" : ""); })
+  }).catch(function(e){ CB.errAt = Date.now(); CB.err = cbName()+"-Daten gerade nicht erreichbar"+(e && e.message ? " ("+e.message+")" : ""); })
   .then(function(){ CB.busy = false; cbApply(); });
+}
+/* Verfügbarkeit (GBFS 1.x–3.x): Räder, davon E-Bikes, freie Plätze (d = -1: Station ohne Angabe, z. B. ohne Andockplätze) */
+function cbStat(j, pre){
+  ((j && j.data && j.data.stations) || []).forEach(function(x){ var s = CB.byId[pre+String(x.station_id)]; if(!s) return;
+    s.b = (x.num_bikes_available!=null ? x.num_bikes_available : x.num_vehicles_available) || 0; s.e = Math.min(s.b, x.num_ebikes_available || 0); if(pre) s.b -= s.e;
+    s.d = x.num_docks_available!=null ? x.num_docks_available : -1;
+    s.ok = x.is_installed!==0 && x.is_renting!==0 && x.is_returning!==0 && x.is_installed!==false && x.is_renting!==false; s.known = true; });
+}
+/* ---------- Leihräder an anderen Zielen: das Bikesharing-System am Ziel automatisch finden ----------
+   Quelle ist der offene GBFS-Katalog von MobilityData (systems.csv, über 1.000 Systeme weltweit). Er nennt Land und Stadt,
+   aber keine Koordinaten: Die Stadt des Ziels kommt aus Photon (englischer und örtlicher Name), passende Einträge werden
+   geprüft (hat Stationen? fährt Fahrräder? Stationen rund ums Ziel?). Ergebnis je Ziel eine Woche gemerkt; findet sich
+   nichts oder lässt der Anbieter keine Abfrage aus dem Browser zu (CORS), bleiben die Stationen aus OpenStreetMap ohne Live-Stand. */
+var GBFS_CAT = "https://raw.githubusercontent.com/MobilityData/gbfs/master/systems.csv";
+var GBFS_NO = /\b(bird|dott|lime|voi|tier|bolt|getaround|cooltra|felyx|yego|zipcar|spin|hopp|check|miles|share ?now|cityscoot|gocar|communauto|cambio|stadtmobil|flinkster|free2move|zity|evo|modo|scooter|moped|car ?shar\w*)\b/i;
+function csvRows(t){
+  var rows = [], row = [], f = "", q = false;
+  for(var i = 0; i < t.length; i++){ var c = t.charAt(i);
+    if(q){ if(c==="\"" && t.charAt(i+1)==="\""){ f += "\""; i++; } else if(c==="\"") q = false; else f += c; }
+    else if(c==="\"") q = true; else if(c===","){ row.push(f); f = ""; }
+    else if(c==="\n" || c==="\r"){ if(c==="\r" && t.charAt(i+1)==="\n") i++; row.push(f); f = ""; if(row.length > 1) rows.push(row); row = []; }
+    else f += c; }
+  row.push(f); if(row.length > 1) rows.push(row);
+  return rows;
+}
+function gbfsCat(){
+  return destGet("gbfs-cat").then(function(c){
+    if(c && Date.now() - c.at < 14*864e5) return c;
+    return fetch(GBFS_CAT).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.text(); }).then(function(t){
+      var rows = csvRows(t), h = (rows.shift() || []).map(function(x){ return x.trim().toLowerCase(); }), ix = function(n){ return h.indexOf(n); };
+      var C = ix("country code"), N = ix("name"), L = ix("location"), U = ix("auto-discovery url"), W = ix("url"), A = ix("authentication type");
+      if(C < 0 || L < 0 || U < 0) throw new Error("Katalog unbekannt");
+      var v = {at:Date.now(), s:rows.filter(function(r){ return /^https:\/\//.test(r[U]||"") && !(A > -1 && (r[A]||"").trim()); })
+        .map(function(r){ return [(r[C]||"").trim().toUpperCase(), (r[N]||"").trim().slice(0, 60), (r[L]||"").trim().slice(0, 60), (r[U]||"").trim(), /^https:\/\//.test(r[W]||"") ? r[W].trim() : ""]; })};
+      destPut("gbfs-cat", v); return v;
+    }).catch(function(e){ if(c) return c; throw e; });
+  });
+}
+function gNorm(x){ return String(x||"").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
+/* Stadtnamen des Ziels (englisch, örtlich, wie in der Reise eingetragen) und Ländercode */
+function gbfsPlace(d){
+  var get = function(l){ return fetch("https://photon.komoot.io/reverse?lat="+d.la+"&lon="+d.lo+"&limit=1"+(l ? "&lang="+l : "")).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ return (j && j.features && j.features[0] && j.features[0].properties) || null; }).catch(function(){ return null; }); };
+  return Promise.all([get("en"), get("default")]).then(function(ps){
+    var n = [d.n], cc = "";
+    ps.forEach(function(p){ if(!p) return; n.push(p.city, p.osm_key==="place" ? p.name : ""); cc = cc || String(p.countrycode||"").toUpperCase(); });
+    if(DEST===d && d.nb && d.nb.city) n.push(d.nb.city);
+    var u = {}; n.map(gNorm).forEach(function(x){ if(x.length > 1) u[x] = 1; });
+    return {n:Object.keys(u), cc:cc};
+  });
+}
+function gTxt(v){ if(Array.isArray(v)){ var h = v.filter(function(x){ return x && /^de/i.test(x.language||""); })[0] || v.filter(function(x){ return x && /^en/i.test(x.language||""); })[0] || v[0]; return h ? h.text : ""; } return v; }
+/* ein System prüfen: Feeds aus gbfs.json (1.x/2.x je Sprache, 3.x direkt), nur Fahrräder, Stationen nahe am Ziel */
+function gbfsProbe(row, d, i){
+  return cbJSON(row[3]).then(function(j){
+    var dd = (j && j.data) || {}, lg = dd.feeds ? null : dd.de || dd.en || dd[Object.keys(dd)[0]] || {}, u = {};
+    ((lg ? lg.feeds : dd.feeds) || []).forEach(function(f){ if(f && f.name && f.url) u[f.name] = f.url; });
+    if(!u.station_information || !u.station_status) return null;
+    var pv = u.vehicle_types ? cbJSON(u.vehicle_types).then(function(v){ return (v && v.data && v.data.vehicle_types) || null; }, function(){ return null; }) : Promise.resolve(null);
+    return Promise.all([cbJSON(u.station_information), pv]).then(function(r){
+      var vt = r[1]; if(vt && vt.length && !vt.some(function(v){ return /bicycle/.test(v.form_factor||""); })) return null;
+      var s = ((r[0] && r[0].data && r[0].data.stations) || []).filter(function(x){ return x && x.lat && x.lon && dist({la:+x.lat, lo:+x.lon}, d) < d.r + 4000; })
+        .map(function(x){ return [i+"~"+String(x.station_id), String(gTxt(x.name)||"Station").slice(0, 60), +(+x.lat).toFixed(6), +(+x.lon).toFixed(6), x.capacity||0]; });
+      return s.length >= 3 ? {sys:{n:row[1].replace(/\s+(Bike ?Share|Bikeshare)$/i, "") || "Leihrad", by:row[1], web:row[4], stat:u.station_status}, s:s} : null;
+    });
+  });
+}
+function gbfsDiscover(d){
+  return Promise.all([gbfsCat(), gbfsPlace(d)]).then(function(r){
+    var pl = r[1], pad = function(x){ return " "+x+" "; };
+    var cands = r[0].s.filter(function(c){ if(pl.cc && c[0]!==pl.cc) return false; if(GBFS_NO.test(c[1]) || /citibikenyc|gbfs\.lyft\.com\/gbfs\/[\d.]+\/bkn\//.test(c[3])) return false;
+      var lc = gNorm(c[2].split(",")[0]), nm = pad(gNorm(c[1])); return pl.n.some(function(x){ return x===lc || nm.indexOf(pad(x)) > -1; }); }).slice(0, 12);
+    var soft = false;
+    return Promise.all(cands.map(function(c, i){ return gbfsProbe(c, d, i).catch(function(){ soft = true; return null; }); })).then(function(rs){
+      var sys = [], st = [], seen = {}, cell = function(s){ return Math.round(s[2]*2000)+","+Math.round(s[3]*1500); };
+      rs.filter(Boolean).sort(function(a, b){ return b.s.length - a.s.length; }).forEach(function(x){
+        if(sys.length >= 3 || x.s.filter(function(s){ return seen[cell(s)]; }).length > x.s.length/2) return; // dasselbe Netz doppelt im Katalog
+        var k = sys.length; sys.push(x.sys);
+        x.s.slice(0, 4000 - st.length).forEach(function(s){ seen[cell(s)] = 1; st.push([k+s[0].slice(s[0].indexOf("~")), s[1], s[2], s[3], s[4], k]); });
+      });
+      return {at:Date.now(), sys:sys, s:st, soft:soft && !sys.length};
+    });
+  });
+}
+function gbfsFind(d){
+  if(CB.finding===d.k || (CB.findErr && CB.findErr.k===d.k && Date.now() - CB.findErr.at < 60000)) return;
+  CB.finding = d.k;
+  destGet(d.k+":gbfs").then(function(c){
+    if(c && Date.now() - c.at < (c.sys.length ? 7 : c.soft ? 1 : 14)*864e5) return c;
+    if(!navigator.onLine) return c;
+    return gbfsDiscover(d).then(function(v){ destPut(d.k+":gbfs", v); return v; }, function(){ return c; });
+  }).then(function(v){
+    CB.finding = ""; if(DEST!==d) return;
+    if(!v){ CB.findErr = {k:d.k, at:Date.now()}; CB.dk = d.k; CB.sys = []; LMNAME.bike = cbName(); applyLayers(); cbApply(); return; }
+    CB.findErr = null; CB.dk = d.k; CB.sys = v.sys; cbInfoSet(v.s, v.at); CB.statAt = 0; LMNAME.bike = cbName();
+    applyLayers(); cbApply(); if(CB.sys.length) cbLoad(true);
+  });
 }
 function cbGeo(){ return {type:"FeatureCollection", features:CB.st.map(function(s){ return {type:"Feature", properties:{id:s.id, b:s.known ? s.b : -1, ok:s.ok ? 1 : 0}, geometry:{type:"Point", coordinates:[s.lo, s.la]}}; })}; }
 function cbApply(){
@@ -11003,7 +11126,7 @@ function cbNeeded(){ if(layers.bike) return true; if(!cur || isRO()) return fals
 setInterval(function(){ if(document.visibilityState==="visible" && cbNeeded()) cbLoad(); }, 30000);
 function cbNear(p, need, maxD){
   var best = null, bd = 1e9;
-  CB.st.forEach(function(s){ if(!s.ok || (s.known && need==="bike" && s.b + s.e < 1) || (s.known && need==="dock" && s.d < 1)) return; var d = dist(p, s); if(d < bd){ bd = d; best = s; } });
+  CB.st.forEach(function(s){ if(!s.ok || (s.known && need==="bike" && s.b + s.e < 1) || (s.known && need==="dock" && s.d===0)) return; var d = dist(p, s); if(d < bd){ bd = d; best = s; } });
   return best && bd <= maxD ? {s:best, d:bd} : null;
 }
 /* Fahrradweg zwischen zwei Stationen über OSRM (Fahrrad-Profil), über die gesetzten Wegpunkte der Etappe.
@@ -11045,6 +11168,7 @@ function bikePath(a, b, v){
   return null;
 }
 function bikeRoute(a, b){
+  if(cbState()==="nosys") return {none:true, nosys:true};
   if(!CB.st.length){ cbLoad(); return {wait:true}; }
   var s1 = cbNear(a, "bike", 900), s2 = cbNear(b, "dock", 900);
   if(!s1 || !s2 || s1.s===s2.s) return {none:true, s1:s1, s2:s2};
@@ -11090,9 +11214,10 @@ function navBuild(){
   var p = N.tgt, mode = N.mode, from = {la:me.la, lo:me.lo}, vv = navLegVia(N.pref || p).map(function(q){ return {la:q[0], lo:q[1]}; }), jobs;
   N.busy = true; N.err = ""; navRender();
   if(mode==="bike"){
-    if(!CB.st.length){ cbLoad(true); N.busy = false; N.err = "Citi-Bike-Stationen werden geladen …"; navRender(); setTimeout(function(){ if(NAV===N) navBuild(); }, 2500); return; }
+    if(cbState()==="nosys"){ N.busy = false; N.err = "Hier ist kein Leihrad-System mit Live-Daten bekannt – nimm „Zu Fuß“."; navRender(); return; }
+    if(!CB.st.length){ cbLoad(true); N.busy = false; N.err = esc(cbName())+"-Stationen werden geladen …"; navRender(); setTimeout(function(){ if(NAV===N) navBuild(); }, 2500); return; }
     var s1 = cbNear(from, "bike", 1200), s2 = cbNear(p, "dock", 1200);
-    if(!s1 || !s2 || s1.s===s2.s){ N.busy = false; N.err = "Keine passende Citi-Bike-Station in der Nähe – nimm „Zu Fuß“."; navRender(); return; }
+    if(!s1 || !s2 || s1.s===s2.s){ N.busy = false; N.err = "Keine passende "+esc(cbName())+"-Station in der Nähe – nimm „Zu Fuß“."; navRender(); return; }
     jobs = [navOsrm(OSRMF, [from, s1.s]).then(function(r){ r.kind = "walk"; r.steps = r.steps.filter(function(x){ return !x.arrive; }); r.steps.push({at:s1.s, text:"Rad an „"+s1.s.n+"“ ausleihen", sub:cbAvail(s1.s), ic:LMBIKE}); return r; }),
             navOsrm(OSRMB, [s1.s].concat(vv, [s2.s])).then(function(r){ r.kind = "bike"; r.steps = r.steps.filter(function(x){ return !x.arrive && x.text.indexOf("Los")!==0; }); r.steps.push({at:s2.s, text:"Rad an „"+s2.s.n+"“ abgeben", sub:cbAvail(s2.s), ic:LMBIKE}); return r; }),
             navOsrm(OSRMF, [s2.s, p]).then(function(r){ r.kind = "walk"; r.steps = r.steps.filter(function(x){ return x.text.indexOf("Los")!==0; }); return r; })];
@@ -11128,7 +11253,7 @@ function navPick(tg, btn, ext){
   var d = me ? dist(me, NAVPICK) : null;
   var h = "<div class=\"vp-h\">Navigieren zu „"+esc(NAVPICK.n)+"“</div>"+
     row("walk", LMWALK, "Zu Fuß", d!=null ? "ca. "+navMins(d*1.25/1.33)+" Min. · "+fmtDist(d*1.25) : "")+
-    row("bike", LMBIKE, "Citi Bike", "Station holen, fahren, abgeben")+
+    (cbState()==="nosys" ? "" : row("bike", LMBIKE, esc(cbName()), "Station holen, fahren, abgeben"))+
     row("car", LMCAR, "Auto", "Fahrweg mit Abbiegehinweisen")+
     (ext==="nosub" ? "" : row("oepnv", LMSUB, "U-Bahn & Bus", "")+row("ferry", LMFERRY, "Fähre", "NYC Ferry, Staten Island Ferry …"));
   if(ext!=="noext") h += "<a role=\"menuitem\" target=\"_blank\" rel=\"noopener\" href=\"https://www.google.com/maps/dir/?api=1&destination="+NAVPICK.la+","+NAVPICK.lo+"&travelmode=walking\"><span class=\"ai lmi\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M11 4h5v5M16 4l-7 7M14 11v5H4V6h5\"/></svg></span><span class=\"cm-t\"><b>In Google Maps öffnen</b></span></a>";
@@ -11501,17 +11626,17 @@ function subCard(i){
 }
 var HSICO = ic("hotel");
 var NAVGOICO = ic("route");
-function cbAvail(s){ return s.known ? (s.b + s.e)+(s.b + s.e===1 ? " Rad" : " Räder")+(s.e ? " ("+s.e+" E-Bike"+(s.e===1?"":"s")+")" : "")+" · "+s.d+(s.d===1 ? " freier Platz" : " freie Plätze") : "Verfügbarkeit wird geladen …"; }
+function cbAvail(s){ return s.known ? (s.b + s.e)+(s.b + s.e===1 ? " Rad" : " Räder")+(s.e ? " ("+s.e+" E-Bike"+(s.e===1?"":"s")+")" : "")+(s.d < 0 ? "" : " · "+s.d+(s.d===1 ? " freier Platz" : " freie Plätze")) : "Verfügbarkeit wird geladen …"; }
 function cbCard(id){
-  var s = CB.byId[id]; if(!s) return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button><h3>Citi Bike</h3><p class=\"note\">Station nicht gefunden.</p>";
-  var age = CB.statAt ? Math.max(0, Math.round((Date.now() - CB.statAt)/60000)) : null;
+  var s = CB.byId[id]; if(!s) return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button><h3>"+esc(cbName())+"</h3><p class=\"note\">Station nicht gefunden.</p>";
+  var sy = cbSysOf(s), age = CB.statAt ? Math.max(0, Math.round((Date.now() - CB.statAt)/60000)) : null;
   return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>"+
-    "<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+CBCOL+"\">"+LMBIKE+"</span><div class=\"cht\"><h3>"+esc(s.n)+"</h3><p>Citi Bike Station"+(s.cap ? " · "+s.cap+" Plätze" : "")+"</p></div></div>"+
-    "<div class=\"cb-av\"><span class=\"cb-b"+(s.known && s.b + s.e < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.b + s.e : "–")+"</b>Räder"+(s.known && s.e ? "<small>davon "+s.e+" E-Bike"+(s.e===1?"":"s")+"</small>" : "")+"</span><span class=\"cb-d"+(s.known && s.d < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.d : "–")+"</b>freie Plätze</span></div>"+
+    "<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+CBCOL+"\">"+LMBIKE+"</span><div class=\"cht\"><h3>"+esc(s.n)+"</h3><p>"+esc(sy.n)+" Station"+(s.cap ? " · "+s.cap+" Plätze" : "")+"</p></div></div>"+
+    "<div class=\"cb-av\"><span class=\"cb-b"+(s.known && s.b + s.e < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.b + s.e : "–")+"</b>Räder"+(s.known && s.e ? "<small>davon "+s.e+" E-Bike"+(s.e===1?"":"s")+"</small>" : "")+"</span>"+(s.d < 0 ? "" : "<span class=\"cb-d"+(s.known && s.d < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.d : "–")+"</b>freie Plätze</span>")+"</div>"+
     (!s.ok ? "<p class=\"note\">Diese Station ist gerade außer Betrieb.</p>" : "")+
-    "<p class=\"note cb-note\">"+(CB.err ? esc(CB.err) : age===null ? "Wird geladen …" : "Stand: "+(age < 1 ? "gerade eben" : "vor "+age+" Min."))+" · Daten: Citi Bike (Lyft)</p>"+
+    "<p class=\"note cb-note\">"+(CB.err ? esc(CB.err) : age===null ? "Wird geladen …" : "Stand: "+(age < 1 ? "gerade eben" : "vor "+age+" Min."))+" · Daten: "+esc(sy.by || sy.n)+"</p>"+
     "<div class=\"jp-tiles ctiles\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"navpick\" data-cb=\""+esc(s.id)+"\">"+NAVGOICO+"<span>Navigieren</span></button>"+
-    "<a class=\"jp-tile\" target=\"_blank\" rel=\"noopener\" href=\"https://citibikenyc.com/how-it-works\">"+LMBIKE+"<span>So geht’s</span></a>"+
+    (sy.web ? "<a class=\"jp-tile\" target=\"_blank\" rel=\"noopener\" href=\""+esc(sy.web)+"\">"+LMBIKE+"<span>So geht’s</span></a>" : "")+
     "<button type=\"button\" class=\"jp-tile\" data-act=\"cbrefresh\">"+"<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2\"/></svg><span>Aktualisieren</span></button></div>";
 }
 var CHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 6l4 4 4-4\"/></svg>";
@@ -11592,8 +11717,9 @@ function renderDay(){
     var ntk = m!=="walk" && m!=="car" ? tkOn(tkLegOn(b)).length : 0;
     var sw = "<span class=\"lm one\"><button type=\"button\""+(ntk ? " class=\"tk\"" : "")+" data-act=\"lmpick\" data-leg=\""+i+"\" aria-haspopup=\"menu\" aria-pressed=\"true\" title=\"Unterwegs: "+LMNAME[m]+(ntk ? " · "+ntk+(ntk===1 ? " Ticket" : " Tickets") : "")+" – tippen zum Wechseln\" aria-label=\"Unterwegs: "+LMNAME[m]+", ändern\">"+(m==="bike" ? LMBIKE : m==="walk" ? LMWALK : m==="ferry" ? LMFERRY : m==="car" ? LMCAR : LMSUB)+"</button></span>";
     if(m==="bike"){ var br = bikeRoute(a, b), bsum;
-      if(br.wait) bsum = "<b>Citi Bike</b> · "+(CB.err ? esc(CB.err) : "Stationen werden geladen …");
-      else if(br.none) bsum = "<b>Kein Citi Bike</b> · "+(!br.s1 ? "keine Station mit freien Rädern in der Nähe" : !br.s2 ? "keine Station mit freien Plätzen am Ziel" : "Start und Ziel an derselben Station")+" – besser zu Fuß";
+      if(br.wait) bsum = "<b>"+esc(cbName())+"</b> · "+(CB.err ? esc(CB.err) : "Stationen werden geladen …");
+      else if(br.nosys) bsum = "<b>Kein Leihrad</b> · hier ist kein System mit Live-Daten bekannt – besser zu Fuß";
+      else if(br.none) bsum = "<b>Kein "+esc(cbName())+"</b> · "+(!br.s1 ? "keine Station mit freien Rädern in der Nähe" : !br.s2 ? "keine Station mit freien Plätzen am Ziel" : "Start und Ziel an derselben Station")+" – besser zu Fuß";
       else bsum = "<b>"+Math.max(1, Math.round(br.secs/60))+" Min.</b> · "+fmtDist(br.rideD)+(br.exact ? " mit dem Rad" : " (ca.) · Radweg wird berechnet …")+(br.via ? " · über "+br.via+(br.via===1 ? " Wegpunkt" : " Wegpunkte") : "");
       return pre+"<li class=\"leg tleg lbk"+(legSel===i?" sel":"")+"\"><div class=\"tl\">"+sw+"<button type=\"button\" class=\"tsum\" data-act=\"legsel\" data-leg=\""+i+"\" aria-label=\"Etappe auf der Karte zeigen\">"+bsum+"</button>"+viaBtn(i, legVia(a, b))+ev+"</div>"+
         (br.s1 && br.s2 && !br.none ? "<div class=\"cb-leg\"><p><i class=\"cb-dot\"></i><span>Rad holen: <b>"+esc(br.s1.s.n)+"</b> · "+fmtDist(br.s1.d)+" zu Fuß<small>"+cbAvail(br.s1.s)+"</small></span></p><p><i class=\"cb-dot\"></i><span>Rad abgeben: <b>"+esc(br.s2.s.n)+"</b> · dann "+fmtDist(br.s2.d)+" zu Fuß<small>"+cbAvail(br.s2.s)+"</small></span></p></div>" : "")+"</li>"; }
@@ -11651,7 +11777,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h,.fg-keep")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lsvispick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=dcmore],[data-act=dctgt],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend],[data-act=fgfor]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h,.fg-keep")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lstrippick],[data-act=lsvispick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=dcmore],[data-act=dctgt],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend],[data-act=fgfor]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -13428,7 +13554,8 @@ document.addEventListener("click", function(e){
     case "dcreload": DC.at = 0; dcLoad(); if(dcSrc==="all") pubLoad(true); break;
     case "recshare": recShare = !recShare; lsSet("rp-recshare", recShare ? "1" : "0"); if(recShare) recSyncSoon(); else recWipe(); openSettings(); break;
     case "navlist": if(lsPage) closeLsPage(); else openLsPage(); break;
-    case "lstrip": var lst = t.getAttribute("data-trip"); if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
+    case "lstrippick": lsTripMenu(t); break;
+    case "lstrip": closeJpMore(); var lst = t.getAttribute("data-trip"); if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
     case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;
     case "lsvis": closeJpMore(); lsVis = t.getAttribute("data-v"); renderLs(); break;
     case "lsfilt": closeJpMore(); lsFilter = t.getAttribute("data-v"); renderLs(); break;
@@ -13444,7 +13571,7 @@ document.addEventListener("click", function(e){
     case "navpick":
       var npT = null, npX = "";
       if(t.hasAttribute("data-sub")){ var nst = TRANSIT.stations[+t.getAttribute("data-sub")]; if(nst){ npT = subLL(nst); npT.n = nst[0]; npX = "nosub"; } }
-      else if(t.hasAttribute("data-cb")){ var ncb = CB.byId[t.getAttribute("data-cb")]; if(ncb) npT = {la:ncb.la, lo:ncb.lo, n:"Citi Bike · "+ncb.n}; }
+      else if(t.hasAttribute("data-cb")){ var ncb = CB.byId[t.getAttribute("data-cb")]; if(ncb) npT = {la:ncb.la, lo:ncb.lo, n:cbSysOf(ncb).n+" · "+ncb.n}; }
       else if(t.hasAttribute("data-poi")){ if(poiSel) npT = {la:poiSel.la, lo:poiSel.lo, n:poiSel.n}; }
       else if(t.hasAttribute("data-hotel")){ var nh = hotelById(t.getAttribute("data-hotel")); if(nh) npT = {la:nh.la, lo:nh.lo, n:nh.n}; }
       if(npT) navPick(npT, t, npX); break;
