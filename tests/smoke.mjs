@@ -229,6 +229,52 @@ await test("Foto-Ansicht als Beobachter: kein Sichern, kein ⋯", async () => {
   ok(await page.locator("#pvLayer [data-act=phmap]").count()===1, "Karten-Button fehlt für Beobachter");
 });
 
+await test("Chat: nach rechts wischen führt zurück zur Übersicht, Position und Chat bleiben erhalten", async () => {
+  await seed();
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId = {}; CH.list = []; CH.got = true;
+    for(var i = 0; i < 14; i++){ var id = "u_me_u"+i; CH.byId[id] = {id:id, members:["u_me","u"+i], names:{["u"+i]:"Freund"+i}, at:1000 - i, last:{t:"Hallo "+i, from:"u"+i, at:1000 - i}}; CH.list.push(CH.byId[id]); }
+    openChPage(); true`);
+  await page.waitForTimeout(300);
+  const row = '#chView [data-act=chopen][data-v="u_me_u9"]';
+  await page.evaluate(() => { document.getElementById("chView").scrollTop = 260; });
+  const sc0 = await page.evaluate(() => document.getElementById("chView").scrollTop);
+  ok(sc0 > 100, "Übersicht lässt sich nicht scrollen: "+sc0);
+  await page.tap(row); await page.waitForTimeout(300);
+  ok(await rp(`chOpen==="u_me_u9" && history.state && history.state.rpch==="u_me_u9"`), "Chat nicht geöffnet oder kein Verlaufseintrag");
+  const cdp = await page.context().newCDPSession(page);
+  const swipe = async (pts) => { await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:pts[0][0], y:pts[0][1]}]});
+    for(const p of pts.slice(1)){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:p[0], y:p[1]}]}); await page.waitForTimeout(16); }
+    await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); };
+  // senkrecht wischen: bleibt im Chat
+  await swipe([[200, 400], [205, 450], [208, 520], [210, 600]]); await page.waitForTimeout(350);
+  ok(await rp(`chOpen==="u_me_u9"`), "Senkrechtes Wischen verlässt den Chat");
+  // kurz nach rechts und zurück: bleibt im Chat, nichts verschoben
+  await swipe([[100, 400], [130, 402], [150, 404], [120, 404]]); await page.waitForTimeout(350);
+  ok(await rp(`chOpen==="u_me_u9" && !document.querySelector("#chView .ch-under") && !document.querySelector("#chView .ch-conv").style.translate`), "Abgebrochenes Wischen lässt Reste zurück");
+  // während des Wischens folgt der Chat dem Finger, darunter die Übersicht
+  await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:60, y:400}]});
+  for(const x of [80, 110, 150, 200]){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x, y:405}]}); await page.waitForTimeout(16); }
+  const mid = await page.evaluate(() => { const c = document.querySelector("#chView .ch-conv"); return {x:Math.round(c.getBoundingClientRect().left), under:!!document.querySelector("#chView .ch-under .ch-list")}; });
+  ok(mid.x > 100 && mid.under, "Chat folgt dem Finger nicht oder keine Übersicht darunter: "+JSON.stringify(mid));
+  await shot("chat-zurueckwischen");
+  for(const x of [260, 320]){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x, y:405}]}); await page.waitForTimeout(16); }
+  await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); await page.waitForTimeout(500);
+  const st = await page.evaluate(r => { const v = document.getElementById("chView"), e = document.querySelector(r), b = e && e.getBoundingClientRect();
+    return {sc:v.scrollTop, ret:!!e && e.classList.contains("ch-ret"), foc:document.activeElement===e, vis:!!b && b.top >= 0 && b.bottom <= innerHeight}; }, row);
+  ok(await rp(`chPage && !chOpen && !!document.querySelector("#chView .ch-list")`), "Wischen führt nicht zur Übersicht");
+  ok(Math.abs(st.sc - sc0) <= 2, "Scrollposition der Übersicht nicht erhalten: "+sc0+" → "+st.sc);
+  ok(st.ret && st.foc && st.vis, "Chat, aus dem man kam, nicht sichtbar/markiert/fokussiert: "+JSON.stringify(st));
+  ok(await rp(`!(history.state && history.state.rpch)`), "Verlaufseintrag des Chats bleibt stehen");
+  // Safari-Zurück (Rand-Wischen) = Verlauf zurück: ebenfalls zur Übersicht
+  await page.tap(row); await page.waitForTimeout(300);
+  await page.evaluate(() => history.back()); await page.waitForTimeout(400);
+  ok(await rp(`chPage && !chOpen && !!document.querySelector("#chView .ch-list")`), "Safari-Zurück führt nicht zur Übersicht");
+  // Zurück-Knopf: gleiche Wiederherstellung
+  await page.tap(row); await page.waitForTimeout(300); await page.tap("#chView [data-act=chback]"); await page.waitForTimeout(400);
+  ok(await rp(`!chOpen && document.querySelector('#chView [data-v="u_me_u9"]').classList.contains("ch-ret")`), "Zurück-Knopf markiert den Chat nicht");
+  await cdp.detach(); await rp(`closeChPage(); CH.byId = {}; CH.list = []; true`);
+});
+
 await test("Foto im Chat schicken: Freunde-Suche filtert, Menü bleibt offen", async () => {
   await seed();
   await rp(`openJPop("p4", dayOf("p4"), "ph_a")`); await page.waitForTimeout(300);
@@ -1946,7 +1992,7 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
     if(act==="focus") document.getElementById("chIn").focus(); else document.activeElement.blur();
     const t0 = performance.now(); let slow = 0;
     for(let i = 0; i < 40 && performance.now() - t0 < 500; i++){ const t = performance.now(); await new Promise(r => requestAnimationFrame(r)); if(i < 12 && performance.now() - t > 60) slow++; ys.push(Math.round(c.getBoundingClientRect().bottom)); }
-    ys.slow = slow > 2; return {ys, slow:slow > 2}; }, act).then(r => { r.ys.slow = r.slow; return r.ys; });
+    return {ys, slow:slow > 2 || ys.length < 10}; }, act).then(r => { r.ys.slow = r.slow; return r.ys; });
   // Gleiten = erstes Bild noch (fast) an der alten Stelle, dann gleichmäßig in eine Richtung über mehrere Bilder bis zum Ziel
   // (die Bildrate schwankt unter Last, daher keine feste Schrittgrenze)
   // nur bis zum ersten Erreichen des Ziels auswerten (danach greift ggf. die Rückfallebene „keine Tastatur gekommen“ nach 1,2 s)
