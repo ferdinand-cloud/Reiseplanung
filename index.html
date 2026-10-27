@@ -1895,11 +1895,21 @@ form.gnew{position:relative}
 .zh-ed{width:34px;height:34px;flex:0 0 34px;border:0;border-radius:50%;background:var(--fill);color:var(--accent);display:grid;place-items:center;cursor:pointer}
 .zh-ed svg{width:17px;height:17px}
 .zacts{margin-top:0}
+#zPop{z-index:62}
+.zhead .zx{width:32px;height:32px;flex:0 0 32px;border:0;background:var(--chip);border-radius:50%;font-size:17px;color:var(--ink);cursor:pointer}
+/* Ziel-Fenster mittig statt von unten */
+#zPop,#catPop:has(.zpop){align-items:center;padding:12px}
+#zPop .pop-card,.pop-card.zpop{border-radius:var(--r-l,18px);border-bottom:1px solid var(--glass-bd,var(--line));padding-bottom:16px}
+#zPop .pop-card::before,.pop-card.zpop::before{display:none}
+.zdpop .zhead{position:sticky;top:-10px;z-index:2;margin:-10px -16px 12px;padding:12px 16px 10px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%)}
 .ls-list .zrow{padding:0 6px 0 0;cursor:default}
 .zrow-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:0;background:none;padding:10px 0 10px 12px;color:var(--ink);text-align:left;cursor:pointer;font:inherit}
 .zrow-x{width:30px;height:30px;flex:0 0 30px;border:0;border-radius:50%;background:none;color:var(--muted);font:500 20px/1 var(--f-body);cursor:pointer}
 .ls-th.zic svg{width:20px;height:20px}
 .zform{margin-bottom:6px}
+/* Textfelder mit Hintergrund: Text nie am Rand */
+.tf-row > input{padding:8px 12px;border-radius:10px}
+.jp-name{padding:6px 10px;border-radius:10px}
 .zhint{margin:-2px 2px 8px;font-size:12.5px}
 .ls-list .zq{cursor:text}
 .zq input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:16px;color:var(--ink);outline:none;padding:4px 0}
@@ -2217,6 +2227,7 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .ds-h .b.y{color:#222}.ds-h small{margin-left:auto;color:var(--muted);font-size:12px}
 .ds-day p{margin:5px 0 0 30px;display:flex;flex-wrap:wrap;gap:4px 10px;font-size:13px}
 .ds-day p span{display:inline-flex;align-items:center;gap:3px}.ds-day p svg{width:14px;height:14px;color:var(--cc)}
+.jp-info{margin:2px 2px 10px}.jp-info .note{margin:0;font-size:13.5px}
 .ohl{display:flex;gap:7px;align-items:flex-start;margin:6px 0 0;font-size:13px;color:var(--muted)}
 .ohl svg{flex:0 0 15px;width:15px;height:15px;margin-top:1px}
 .ohl span{min-width:0}.ohl small{display:block;font-size:11.5px;opacity:.8;overflow-wrap:anywhere}
@@ -2722,6 +2733,14 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .pf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border:0;padding:0;margin:6px 0 18px}
 .pf-stats button,.wm-stats div{background:var(--fill);border-radius:16px;padding:12px 6px}
 .pf-stats b{font-size:20px}
+/* Zähler klein rechts neben dem Profilbild */
+.pf-head{padding-right:0;align-items:flex-start}
+.pf-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.pf-side .pf-id{padding-right:48px;min-height:40px;justify-content:center}
+.pf-side .pf-stats{margin:0;gap:6px}
+.pf-side .pf-stats button{padding:6px 2px;border-radius:12px;gap:1px;min-width:0}
+.pf-side .pf-stats b{font-size:16px}
+.pf-side .pf-stats span{font-size:11px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pf-grid{gap:14px}
 .pf-tw{position:relative;min-width:0}
 .pf-trip{position:relative;display:block;aspect-ratio:4/5;border-radius:22px;overflow:hidden;background:var(--fill);box-shadow:0 6px 18px rgba(0,0,0,.18);transition:transform .15s ease}
@@ -3273,6 +3292,7 @@ body.ro .navtools [data-act="addpop"]{display:none}
 <div class="offline" id="offline" hidden>Offline: Plan und Routen gehen weiter, neue Kartenbereiche laden erst wieder mit Netz.</div>
 <div class="card" id="card" hidden></div>
 <div class="toast" id="toast" hidden></div>
+<div class="pop" id="zPop" hidden></div>
 <div class="pop" id="catPop" hidden></div>
 <div class="attr" id="attr" onclick="this.classList.toggle('open')" title="Kartendaten">© OpenFreeMap · © OpenMapTiles · © OpenStreetMap-Mitwirkende · ÖPNV: MTA</div>
 
@@ -5011,9 +5031,8 @@ function zStatusText(st){
   return st.done ? "✓ besucht"+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "") : (st.planned ? "eingeplant in „"+esc(tn)+"“" : "auf der Wunschliste von „"+esc(tn)+"“");
 }
 function zielsHTML(){
-  if(zOpen && Z(zOpen)) return zDetailHTML(zOpen);
-  zOpen = ""; zLk.zid = "";
-  var ids = zielIds(), h = zLinkHTML()+"<div class=\"pf-grid\">";
+  var zo = !!(zOpen && Z(zOpen)); if(!zo){ zOpen = ""; zLk.zid = ""; }
+  var ids = zielIds(), h = zLinkHTML(zo)+"<div class=\"pf-grid\">";
   ids.forEach(function(zid){ var z = S.trips[zid], n = Object.keys(z.places).length, v = zVisited(zid).length;
     h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-trip zt\" data-act=\"zopen\" data-z=\""+esc(zid)+"\"><span class=\"pf-cov lt\" style=\"--cc:"+tripColor(zid)+"\"><i>"+esc(tripInitials(z.name))+"</i></span>"+
       "<span class=\"pf-tt\"><b>"+esc(z.name)+"</b><small>"+esc([n+" gemerkt", v ? v+" besucht" : "", META[zid] && (META[zid].members||[]).length > 1 ? "geteilt" : ""].filter(Boolean).join(" · "))+"</small></span></button></div>"; });
@@ -5031,8 +5050,8 @@ function zDetailHTML(zid){
   var z = S.trips[zid], ps = Object.keys(z.places).map(function(k){ return z.places[k]; }).filter(function(p){ return !p.of; });
   ps.sort(function(a, b){ return (b.at||0) - (a.at||0) || String(a.n).localeCompare(b.n); });
   var vis = zVisited(zid), area = (z.orte||[]).map(function(o){ return o.n; }).filter(Boolean).join(", ");
-  var h = "<div class=\"zhead\"><button type=\"button\" class=\"zback\" data-act=\"zback\" aria-label=\"Zurück zu den Zielen\">‹</button><span class=\"zh-t\"><b>"+esc(z.name)+"</b><small>"+esc(area || "Gebiet noch nicht festgelegt")+"</small></span>"+
-    "<button type=\"button\" class=\"zh-ed\" data-act=\"zedit\" data-z=\""+esc(zid)+"\" aria-label=\"Ziel bearbeiten\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M13.5 3.5l3 3L7 16H4v-3z\"/></svg></button></div>";
+  var h = "<div class=\"zhead\"><span class=\"zh-t\"><b>"+esc(z.name)+"</b><small>"+esc(area || "Gebiet noch nicht festgelegt")+"</small></span>"+
+    "<button type=\"button\" class=\"zh-ed\" data-act=\"zedit\" data-z=\""+esc(zid)+"\" aria-label=\"Ziel bearbeiten\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M13.5 3.5l3 3L7 16H4v-3z\"/></svg></button><button type=\"button\" class=\"x zx\" data-act=\"zback\" aria-label=\"Schließen\">×</button></div>";
   if(zLk.zid!==zid) zLk = {q:"", res:[], msg:"", src:"", busy:false, zid:zid};
   h += "<div class=\"pf-acts zacts\"><button type=\"button\" class=\"btn\" data-act=\"zplan\" data-z=\""+esc(zid)+"\">Reise hierhin planen</button>"+(acct.user && FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"askopen\" data-z=\""+esc(zid)+"\">Freunde fragen</button>" : "")+(ps.some(hasLoc) ? "<button type=\"button\" class=\"btn g\" data-act=\"lkzshare\" data-z=\""+esc(zid)+"\">Als Link teilen</button>" : "")+"</div>";
   h += zLinkHTML();
@@ -5043,6 +5062,16 @@ function zDetailHTML(zid){
     return "<button type=\"button\" class=\"ls-row\" data-act=\"gsplace\" data-trip=\""+esc(x.tid)+"\" data-pid=\""+esc(x.p.id)+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(x.p.c)+"\">"+icon(x.p.c)+"</span><span class=\"ls-t\"><b>"+esc(x.p.n)+"</b><small>"+[esc(S.trips[x.tid].name), RR ? "<i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : ""].filter(Boolean).join(" · ")+"</small></span><span class=\"ls-go\">"+MAPGO+"</span></button>"; }).join("")+"</div>";
   return h;
 }
+/* Ziel-Ansicht als Fenster über dem Profil: Scrollstand und Eingabe im Linkfeld bleiben beim Neuzeichnen erhalten */
+function zRenderPop(){
+  var zp = $("zPop"); if(!zp) return;
+  if(!(profOpen && profTab==="ziele" && zOpen && Z(zOpen))){ zp.hidden = true; zp.innerHTML = ""; return; }
+  var oc = zp.querySelector(".pop-card"), st = oc && !zp.hidden ? oc.scrollTop : 0, ae = document.activeElement, kf = ae && ae.id==="zLink" && zp.contains(ae), ss = kf ? ae.selectionStart : 0;
+  zp.innerHTML = "<div class=\"pop-card zdpop\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+esc(Z(zOpen).name)+"\">"+zDetailHTML(zOpen)+"</div>"; zp.hidden = false;
+  var nc = zp.querySelector(".pop-card"); if(nc) nc.scrollTop = st; fillPhotos(zp);
+  if(kf && $("zLink")){ var i = $("zLink"); i.focus(); try { i.setSelectionRange(ss, ss); } catch(x){} }
+}
+function zClosePop(){ zOpen = ""; zLk.zid = ""; var zp = $("zPop"); if(zp){ zp.hidden = true; zp.innerHTML = ""; } if(profOpen) renderProfile(); }
 /* Link oder Name einfügen: Google Maps, Apple Maps, Instagram/TikTok oder einfach ein Name */
 var zLk = {q:"", res:[], msg:"", src:"", busy:false, zid:""}, zLkT = null;
 function zLinkParse(txt){
@@ -5089,11 +5118,11 @@ function zLinkRun(v){
     zLinkRender();
   }).catch(function(){ zLk.busy = false; zLk.msg = "Suche gerade nicht möglich (offline?)."; zLinkRender(); });
 }
-function zLinkHTML(){
-  return "<div class=\"ag-grp ls-list zlk\"><label class=\"ls-row zq\"><span class=\"zlk-ic\" aria-hidden=\"true\">"+ZBM+"</span><input type=\"search\" id=\"zLink\" value=\""+esc(zLk.q)+"\" placeholder=\"Link oder Name einfügen …\" autocomplete=\"off\" enterkeyhint=\"search\" aria-label=\"Ort über Link oder Name merken\"></label><div class=\"zlres\"></div></div>";
+function zLinkHTML(bg){
+  return "<div class=\"ag-grp ls-list zlk\"><label class=\"ls-row zq\"><span class=\"zlk-ic\" aria-hidden=\"true\">"+ZBM+"</span><input type=\"search\" "+(bg ? "tabindex=\"-1\" readonly" : "id=\"zLink\"")+" value=\""+(bg ? "" : esc(zLk.q))+"\" placeholder=\"Link oder Name einfügen …\" autocomplete=\"off\" enterkeyhint=\"search\" aria-label=\"Ort über Link oder Name merken\"></label><div class=\"zlres\"></div></div>";
 }
 function zLinkRender(){
-  var el = document.querySelector("#profView .zlres"); if(!el) return;
+  var el = document.querySelector(zOpen && !$("zPop").hidden ? "#zPop .zlres" : "#profView .zlres"); if(!el) return;
   var h = zLk.msg ? "<p class=\"note zlk-msg\">"+esc(zLk.msg)+"</p>" : "";
   if(zLk.busy) h += "<p class=\"note zlk-msg\">Suche …</p>";
   else h += zLk.res.map(function(r, i){ var f = zFind(r);
@@ -5375,6 +5404,43 @@ function ohLoad(){
       if(warn.length) toast("Laut OpenStreetMap geschlossen: "+warn.join(", "), false);
     }, function(){ OHFAIL = Date.now(); });
 }
+/* Öffnungszeiten aus der Notiz zum Ort lesen („Di–Sa 10:00–18:00“, „Montags geschlossen“, „täglich ab 9:00“, „Mo–Sa 8:00–20:00, So bis 19:00“).
+   Ergebnis: je Wochentag Zeitfenster, [] = geschlossen, null = unbekannt; null, wenn nichts erkannt */
+var OHDE = ["mo","di","mi","do","fr","sa","so"], OHDW = ["montags","dienstags","mittwochs","donnerstags","freitags","samstags","sonntags"];
+function ohNote(s){
+  s = String(s||"").replace(/\bca\.\s*/gi, "").replace(/\s+Uhr\b/gi, ""); if(!/\d{1,2}[:.]\d{2}|geschlossen/i.test(s)) return null;
+  var D = "(?:Mo|Di|Mi|Do|Fr|Sa|So)", DW = "(?:montags|dienstags|mittwochs|donnerstags|freitags|samstags|sonntags)", T = "(?:\\d{1,2}[:.]\\d{2}\\s*[–-]\\s*\\d{1,2}[:.]\\d{2}|(?:ab|bis)\\s+\\d{1,2}[:.]\\d{2})";
+  var DS = "(?:"+D+"(?:\\s*[–-]\\s*"+D+")?(?:\\s*(?:\\+|,|und)\\s*"+D+"(?:\\s*[–-]\\s*"+D+")?)*|"+DW+"(?:\\s*(?:\\+|,|und)\\s*"+DW+")*|täglich)";
+  var re = new RegExp("^(nur\\s+)?("+DS+")\\s+("+T+"(?:\\s*(?:,|und)\\s*"+T+")*|geschlossen)$", "i");
+  var W = [null,null,null,null,null,null,null], hit = [], timed = false;
+  s.split(/\s*;\s*|\.\s+|\.$|,\s*(?=(?:Mo|Di|Mi|Do|Fr|Sa|So|täglich|montags|dienstags|mittwochs|donnerstags|freitags|samstags|sonntags)\b)/i).forEach(function(c){
+    c = c.trim(); var m = re.exec(c); if(!m && c.indexOf(",") > 0){ c = c.split(/\s*,\s*/)[0]; m = re.exec(c); } if(!m) return;
+    var ds = [], sel = m[2].toLowerCase();
+    if(sel==="täglich") ds = [0,1,2,3,4,5,6];
+    else sel.split(/\s*(?:\+|,|und)\s*/).forEach(function(x){ var ab = x.split(/\s*[–-]\s*/), a = OHDE.indexOf(ab[0].slice(0, 2)), b = ab[1] ? OHDE.indexOf(ab[1].slice(0, 2)) : a; if(OHDW.indexOf(ab[0]) > -1) a = b = OHDW.indexOf(ab[0]); if(a < 0 || b < 0) return; for(var i = a, n = 0; n < 7; i = (i+1)%7, n++){ ds.push(i); if(i===b) break; } });
+    if(!ds.length) return;
+    var iv = [];
+    if(!/geschlossen/i.test(m[3])){ timed = true;
+      m[3].split(/\s*(?:,|und)\s*/).forEach(function(t){ var q = /(\d{1,2})[:.](\d{2})\s*[–-]\s*(\d{1,2})[:.](\d{2})/.exec(t), q2 = /^(ab|bis)\s+(\d{1,2})[:.](\d{2})/i.exec(t);
+        if(q){ var a = +q[1]*60 + +q[2], b = +q[3]*60 + +q[4]; if(b <= a) b += 1440; iv.push([a, b]); }
+        else if(q2){ var mm = +q2[2]*60 + +q2[3]; iv.push(/ab/i.test(q2[1]) ? [mm, 1440] : [0, mm]); } }); }
+    ds.forEach(function(d){ W[d] = iv.slice(); }); hit.push(c);
+  });
+  if(!hit.length) return null;
+  if(timed) W = W.map(function(x){ return x==null ? [] : x; }); // „Di–Sa 10:00–18:00“: übrige Tage geschlossen
+  return {W:W, txt:hit.join("; ")};
+}
+/* Öffnungszeiten eines Orts: zuerst OpenStreetMap, sonst aus der Notiz */
+function ohInfo(p){
+  if(!p || p.k==="hotel") return null;
+  var e = ohOf(p); if(e && e.o) return {o:e.o, W:e.o, src:"OpenStreetMap"};
+  var n = p.note && ohNote(p.note); return n ? {o:n.txt, W:n.W, src:"Notiz"} : null;
+}
+/* Warnung, wenn ein eingeplanter Ort zur gewählten Zeit (oder am Tag) geschlossen hat */
+function ohWarn(id){
+  var p = P(id), k = dayOf(id), i = p && k && ohInfo(p), w = i && ohCheck(i.W, k, timeOf(id)); if(!w) return "";
+  return w.closed ? p.n+" hat am "+dayByKey(k).wd+" laut "+i.src+" geschlossen" : w.late ? p.n+" hat um "+timeOf(id)+" laut "+i.src+" zu (geöffnet "+w.txt+")" : "";
+}
 /* einfache opening_hours-Regeln lesen: „Mo-Fr 09:00-17:00; Sa 10:00-14:00; Su off“, „24/7“ – sonst null (dann nur den Text zeigen) */
 function ohParse(s){
   s = String(s||"").trim(); if(!s) return null;
@@ -5398,8 +5464,8 @@ function ohParse(s){
 function ohFmt(m){ m = m % 1440; return String(Math.floor(m/60)).padStart(2, "0")+":"+String(m%60).padStart(2, "0"); }
 /* Ergebnis für einen Tag (und optional eine Uhrzeit): {closed}, {late}, {txt} oder null wenn unbekannt */
 function ohCheck(o, k, tm){
-  var W = ohParse(o), d = parseD(k); if(!W || !d) return null;
-  var iv = W[(d.getUTCDay() + 6) % 7];
+  var W = Array.isArray(o) ? o : ohParse(o), d = parseD(k); if(!W || !d) return null;
+  var iv = W[(d.getUTCDay() + 6) % 7]; if(!iv) return null;
   if(!iv.length) return {closed:true, txt:"geschlossen"};
   var txt = iv.map(function(x){ return ohFmt(x[0])+"–"+(x[1]===1440 ? "24:00" : ohFmt(x[1])); }).join(", ");
   var q = /^(\d{1,2}):(\d{2})$/.exec(tm||"");
@@ -5409,15 +5475,16 @@ function ohCheck(o, k, tm){
 /* kleine Warnung im Tagesplan */
 function ohRowMark(id){
   var p = P(id), k = dayOf(id); if(!p || !k) return ""; ohWant(p);
-  var e = ohOf(p), w = e && e.o && ohCheck(e.o, k, timeOf(id)); if(!w) return "";
-  return w.closed ? "<span class=\"ohx\" title=\"Laut OpenStreetMap: "+esc(e.o)+"\">geschlossen</span> · " : w.late ? "<span class=\"ohx\" title=\"Geöffnet "+esc(w.txt)+"\">um "+esc(timeOf(id))+" zu</span> · " : "";
+  var e = ohInfo(p), w = e && ohCheck(e.W, k, timeOf(id)); if(!w) return "";
+  return w.closed ? "<span class=\"ohx\" title=\"Laut "+e.src+": "+esc(e.o)+"\">geschlossen</span> · " : w.late ? "<span class=\"ohx\" title=\"Geöffnet "+esc(w.txt)+"\">um "+esc(timeOf(id))+" zu</span> · " : "";
 }
 /* Zeile in der Ortskarte */
-function ohLine(p, k){
-  if(!p) return ""; ohWant(p); var e = ohOf(p); if(!e || !e.o) return "";
-  var w = k && ohCheck(e.o, k, k ? timeOf(p.id) : ""), D = k && dayByKey(k);
+function ohLine(p, k, full){
+  if(!p) return ""; ohWant(p); var e = ohInfo(p); if(!e) return "";
+  var w = k && ohCheck(e.W, k, k ? timeOf(p.id) : ""), D = k && dayByKey(k);
+  if(e.src==="Notiz" && !full && !(w && D)) return ""; // steht schon in der Notiz darüber
   var head = w && D ? (w.closed ? "<b class=\"ohx\">Am "+esc(D.wd)+" geschlossen</b>" : w.late ? "<b class=\"ohx\">Um "+esc(timeOf(p.id))+" geschlossen</b> · "+esc(D.wd)+" "+esc(w.txt) : "Am "+esc(D.wd)+" geöffnet "+esc(w.txt)) : "";
-  return "<p class=\"ohl\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 5.5V10l3 2\"/></svg><span>"+(head ? head+"<small>"+esc(e.o)+"</small>" : "Öffnungszeiten: "+esc(e.o))+"</span></p>";
+  return "<p class=\"ohl\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 5.5V10l3 2\"/></svg><span>"+(head ? head+(e.src==="Notiz" ? "" : "<small>"+esc(e.o)+"</small>") : "Öffnungszeiten: "+esc(e.o))+"</span></p>";
 }
 /* ---------- Vorschläge entlang einer Gehroute: aus der Wunschliste und öffentliche Orte (OpenStreetMap) ---------- */
 var SUG = {li:-1, tab:"wish", cat:"", pub:{}, busy:false, err:""}, SUGR = 250;
@@ -6084,7 +6151,7 @@ function avHTML(cls){ var ph = PROF && PROF.photo, nm = (PROF && PROF.name) || m
   return ph ? "<img class=\""+cls+"\" src=\""+ph+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
 function navAv(){ var e = $("tbAv"); if(!e) return; e.innerHTML = acct.user ? avHTML("tbimg") : "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/><path d=\"M6.2 18.4a7 7 0 0 1 11.6 0\"/></svg>"; }
 function openProfile(){ closeMenus(); closeChPage(); closeGsPage(); closeNtPage(); closeLsPage(); closeDcPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
-function closeProfile(){ if(!profOpen) return; profOpen = false; wmStop(); $("profView").hidden = true; if(!ntPage) document.body.classList.remove("profopen"); navActive(); }
+function closeProfile(){ if(!profOpen) return; profOpen = false; wmStop(); zRenderPop(); $("profView").hidden = true; if(!ntPage) document.body.classList.remove("profopen"); navActive(); }
 /* Titelbild einer Reise: gewähltes Foto, nur Buchstaben oder automatisch (neuestes Foto).
    Mitreisende speichern die Wahl in der Reise (für alle gleich), Beobachter nur auf ihrem Gerät. */
 var CV_COLS = ["#0A84FF","#5E5CE6","#BF5AF2","#FF375F","#FF9F0A","#30B0C7","#34C759","#8E8E93"];
@@ -6236,10 +6303,10 @@ function renderProfile(){
   var ids = liveIds(), mine = ids.filter(function(id){ return !isViewerOf(id); }), obs = ids.filter(function(id){ return isViewerOf(id); });
   h += "<button type=\"button\" class=\"pf-gear\" data-act=\"openacct\" aria-label=\"Konto &amp; Einstellungen\" title=\"Konto &amp; Einstellungen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg></button>";
   h += "<div class=\"pf-head\">"+avHTML("pf-av")+
-       "<div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b><small>"+esc(myMail())+"</small></div></div>";
+       "<div class=\"pf-side\"><div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b><small>"+esc(myMail())+"</small></div>";
   h += "<div class=\"pf-stats\"><button type=\"button\" data-act=\"pftab\" data-v=\"mine\"><b>"+mine.length+"</b><span>Reisen</span></button>"+
        "<button type=\"button\" data-act=\"pftab\" data-v=\"obs\"><b>"+obs.length+"</b><span>Beobachtet</span></button>"+
-       "<button type=\"button\" data-act=\"openfriends\"><b>"+FR.friends.length+"</b><span>Freunde</span></button></div>";
+       "<button type=\"button\" data-act=\"openfriends\"><b>"+FR.friends.length+"</b><span>Freunde</span></button></div></div></div>";
   h += "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"mine\" aria-selected=\""+(profTab==="mine")+"\">Reisen</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"obs\" aria-selected=\""+(profTab==="obs")+"\">Beobachtet</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"ziele\" aria-selected=\""+(profTab==="ziele")+"\">Ziele</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"welt\" aria-selected=\""+(profTab==="welt")+"\">Karte</button></div>";
   if(profTab==="ziele") h += "<div class=\"zl\">"+zielsHTML()+"</div>"; else if(profTab==="welt") h += wmHTML(); else {
   var list = profTab==="obs" ? obs : mine;
@@ -6265,6 +6332,7 @@ function renderProfile(){
   h += "</div>";
   el.innerHTML = h; fillPhotos(el);
   if(profTab==="welt") wmMount();
+  zRenderPop();
   if(profTab==="ziele") zLinkRender();
 }
 // Profilbild: quadratisch zugeschnitten, klein, im eigenen Profil gespeichert
@@ -10219,6 +10287,7 @@ function renderJPop(){
   if(!isRO()) h += "<button type=\"button\" class=\"jq"+(grpName(p.g)?" grp":"")+"\" data-act=\"jpmore\" aria-haspopup=\"dialog\" aria-label=\"Mehr: Gruppe, im Chat teilen\" title=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Mehr")+"\">"+
        (p.k==="hotel" && pv0 ? ILOCK : I("<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>"))+"</button>";
   h += "</div>";
+  if(p.note || (hasLoc(p) && ohInfo(p))) h += "<div class=\"jp-info\">"+(p.note ? "<p class=\"note\">"+esc(p.note)+"</p>" : "")+ohLine(p, jp.dk || dayOf(jp.pid), true)+"</div>";
   if(canPriv() && p.k!=="hotel"){ var vv = visOf(jp.pid), vis1 = wasVisited(jp.pid);
     h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Sichtbarkeit</div><div class=\"vis-seg\" role=\"radiogroup\" aria-label=\"Sichtbarkeit\">"+
       [["priv", ILOCK+"Privat", "nur Mitreisende"], ["trip", VISTRIP+"Reise", "+ Beobachter"], ["pub", VISPUB+"Freunde", vis1 ? "veröffentlicht" : "nach Besuch"]].map(function(o){
@@ -11555,8 +11624,8 @@ function plan(id, k, at){
   undoSnap = snapshot(); if(T().places[id]) delete T().places[id].park;
   var idx = at!=null && at >= 0 && at <= ord(k).length ? at : insertIdx(k, p);
   ord(k).splice(idx, 0, id);
-  var oe = ohOf(p), ow = oe && oe.o && ohCheck(oe.o, k, ""); if(!oe){ OHNEW[id] = 1; ohWant(p); }
-  save(); toast(p.n+" ist jetzt Stopp "+stopNo(id, k)+" am "+dayByKey(k).lbl+(ow && ow.closed ? " – laut OpenStreetMap an dem Tag geschlossen" : ""), true);
+  var oe = ohInfo(p), ow = oe && ohCheck(oe.W, k, ""); if(!ohOf(p) && !oe){ OHNEW[id] = 1; ohWant(p); }
+  save(); toast(p.n+" ist jetzt Stopp "+stopNo(id, k)+" am "+dayByKey(k).lbl+(ow && ow.closed ? " – laut "+oe.src+" an dem Tag geschlossen" : ""), true);
 }
 /* Einplanen von der Karte: ans Ende oder zwischen zwei Punkte des Tages */
 var PLANCTX = null;
@@ -11717,6 +11786,7 @@ function startViaPick(li){
 function endViaPick(){ viaPick = null; legSel = -1; $("pick").hidden = true; $("pick").querySelector("span").textContent = "Tippe auf die Karte, um den Ort zu setzen."; $("pickCancel").textContent = "Abbrechen"; scheduleOverlay(); }
 
 document.addEventListener("click", function(e){
+  if(e.target.id==="zPop"){ zClosePop(); return; }
   if(e.target.id==="catPop"){ if(lpPt){ if(Date.now()-lpAt > 900) lpClose(); } else closeCatPop(); return; }
   if(e.target.id==="acctPop"){ closeSettings(); return; }
   if(e.target.id==="suPop"){ closeSignup(); return; }
@@ -11793,7 +11863,7 @@ document.addEventListener("click", function(e){
     case "dcwish": dcAdd(t.getAttribute("data-k"), null); break;
     case "zopen": closeGsPage(); closeDcPage(); closeChPage(); if(sel==="poi") select(null); openZiele(t.getAttribute("data-z")); break;
     case "znew": zEdit = zEditFrom(""); zRenderEdit(true); setTimeout(function(){ var zn = $("zName"); if(zn) zn.focus(); }, 0); break;
-    case "zback": if(zEdit){ zEdit = null; closeCatPop(); break; } zOpen = ""; renderProfile(); break;
+    case "zback": if(zEdit && t.closest("#catPop")){ zEdit = null; closeCatPop(); break; } zEdit = null; zClosePop(); break;
     case "zedit": zEdit = zEditFrom(t.getAttribute("data-z")); zRenderEdit(true); break;
     case "zsave": zSaveEdit(); break;
     case "zdel": zDel(t.getAttribute("data-z")); break;
@@ -12233,7 +12303,8 @@ function timeSave(t, id){
   if(!P(id)) return; var v = t.value || "", old = T().times[id] || "";
   if(v===old) return;
   if(v) T().times[id] = v; else delete T().times[id];
-  save(); renderSheet(); if(jp && jp.pid===id && !$("jPop").hidden) renderJPop();
+  save(); renderSheet(); if(jp && jp.pid===id && !$("jPop").hidden) renderJPop(); if(sel===id) renderCard();
+  var ow = v && ohWarn(id); if(ow) toast(ow, false);
 }
 document.addEventListener("input", function(e){
   if(e.target && e.target.getAttribute && e.target.getAttribute("data-act")==="time" && e.target.closest("#jPop")){ var tsp = e.target.parentNode.querySelector("span"); if(tsp) tsp.textContent = e.target.value || "Uhrzeit"; e.target.parentNode.classList.toggle("set", !!e.target.value); }

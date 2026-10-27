@@ -1095,7 +1095,7 @@ await test("Ziele: ohne Reise merken legt Ziel an, keine Reise entsteht", async 
   ok(await page.locator("#profView .pf-trip.zt").count()===1, "Ziel fehlt im Profil");
   await shot("ziele-liste");
   await click("#profView .pf-trip.zt");
-  ok(await page.locator("#profView .zrow").count()===3, "Gemerkte Orte fehlen im Ziel");
+  ok(await page.locator("#zPop .zrow").count()===3, "Gemerkte Orte fehlen im Ziel");
   await shot("ziel-detail");
 });
 await test("Ziele: neue Reise bietet gemerkte Orte an, Besuch erscheint sofort im Ziel", async () => {
@@ -1112,7 +1112,7 @@ await test("Ziele: neue Reise bietet gemerkte Orte an, Besuch erscheint sofort i
   ok(await rp(`!T().ziel && !noTrip()`), "Neue Reise ist nicht aktiv");
   await rp(`var k = Object.keys(T().places).filter(function(k){ return T().places[k].n==="Pantheon"; })[0], d = days()[0].key; T().order[d] = [k]; T().done[k] = true; T().rating = {}; T().rating[k] = 2; save(); openZiele(zielIds()[0]);`);
   await page.waitForTimeout(200);
-  const txt = await page.locator("#profView .zl").innerText();
+  const txt = await page.locator("#zPop .zdpop").innerText();
   ok(txt.includes("besucht") && txt.includes("Must Have"), "Besuch/Bewertung erscheint nicht im Ziel");
   ok(txt.includes("Wunschliste"), "Übernommener, noch offener Ort zeigt keinen Stand");
   await shot("ziel-besucht");
@@ -1144,7 +1144,7 @@ await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise u
   ok(await page.locator("#dcView .zmk.on").count()===1, "Merken-Knopf zeigt den Stand nicht");
   await shot("ziel-entdecken");
   await rp(`openZiele(zielIds()[0])`); await page.waitForTimeout(150);
-  await click("#profView [data-act=zedit]");
+  await click("#zPop [data-act=zedit]");
   await click("#catPop [data-act=zdel]");
   ok(await visible("#cfPop"), "Löschen ohne Rückfrage");
   await click("#cfPop .cf-ok"); await page.waitForTimeout(150);
@@ -1154,17 +1154,17 @@ await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise u
 await test("Ziele: Ort über Google-Maps-Link, Instagram-Link oder Namen merken", async () => {
   await noTripUser();
   await rp(`var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); save(); openZiele(z); true`); await page.waitForTimeout(200);
-  ok(await page.locator("#profView #zLink").count()===1, "Feld für Link/Name fehlt im Ziel");
+  ok(await page.locator("#zPop #zLink").count()===1, "Feld für Link/Name fehlt im Ziel");
   await page.locator("#zLink").fill("https://www.google.com/maps/place/Trevi+Fountain/@41.9009,12.4833,17z/data=!3m1!4b1!4m6!3m5!1s0x0:0x0!8m2!3d41.900932!4d12.483313"); await page.waitForTimeout(600);
-  ok((await page.locator("#profView .zlres").innerText()).includes("Trevi Fountain"), "Ort aus Google-Link nicht erkannt");
-  await click("#profView [data-act=zlkadd]"); await page.waitForTimeout(200);
+  ok((await page.locator("#zPop .zlres").innerText()).includes("Trevi Fountain"), "Ort aus Google-Link nicht erkannt");
+  await click("#zPop [data-act=zlkadd]"); await page.waitForTimeout(200);
   ok(await rp(`var z = S.trips[zielIds()[0]], p = Object.keys(z.places).map(function(k){ return z.places[k]; })[0]; !!p && p.n==="Trevi Fountain" && Math.abs(p.la-41.900932) < 1e-5 && /google/.test(p.src)`), "Ort aus Link nicht mit Lage und Quelle gemerkt");
-  ok(await page.locator("#profView .zrow a.zsrc").count()===1, "Quelle lässt sich nicht öffnen");
+  ok(await page.locator("#zPop .zrow a.zsrc").count()===1, "Quelle lässt sich nicht öffnen");
   await page.locator("#zLink").fill("https://www.instagram.com/p/C0abc123/ On Store"); await page.waitForTimeout(800);
-  ok((await page.locator("#profView .zlres").innerText()).includes("Instagram"), "Hinweis zu Instagram fehlt");
-  ok(await page.locator("#profView [data-act=zlkadd]").count() >= 1, "Namenssuche nach Instagram-Link liefert nichts");
+  ok((await page.locator("#zPop .zlres").innerText()).includes("Instagram"), "Hinweis zu Instagram fehlt");
+  ok(await page.locator("#zPop [data-act=zlkadd]").count() >= 1, "Namenssuche nach Instagram-Link liefert nichts");
   await shot("ziel-link");
-  await page.locator("#profView [data-act=zlkadd]").first().click(); await page.waitForTimeout(200);
+  await page.locator("#zPop [data-act=zlkadd]").first().click(); await page.waitForTimeout(200);
   ok(await rp(`var z = S.trips[zielIds()[0]]; Object.keys(z.places).some(function(k){ return /instagram/.test(z.places[k].src||""); })`), "Instagram-Link nicht als Quelle gespeichert");
   ok(await rp(`var a = zLinkParse("https://maps.apple.com/?ll=48.8584,2.2945&q=Eiffelturm"), b = zLinkParse("https://maps.app.goo.gl/xyz"); a.n==="Eiffelturm" && Math.abs(a.la-48.8584) < 1e-6 && !!b.msg`), "Apple-Maps-Link oder Kurzlink falsch erkannt");
 });
@@ -1177,12 +1177,12 @@ await test("Ziele: mit Freunden teilen, Tipps von Freunden erkennbar", async () 
     S.trips[z].places.w1 = {id:"w1", n:"Ichiran", c:"essen", la:35.66, lo:139.70, list:"l_main", by:"u_anna", byn:"anna"};
     META[z] = {owner:"u_me", members:["u_me","u_anna"], memberEmails:{u_anna:"anna@test.de"}, invites:[], viewers:[], viewInvites:[]};
     save(); openZiele(z); true`); await page.waitForTimeout(200);
-  const txt = await page.locator("#profView .zl").innerText();
+  const txt = await page.locator("#zPop .zdpop").innerText();
   ok(/mit freunden teilen/i.test(txt) && txt.includes("@anna"), "Teilen-Bereich oder Mitglied fehlt");
   ok(txt.includes("Tipp von @anna"), "Tipp eines Freundes nicht erkennbar");
-  await click("#profView [data-act=zinv][data-name=Ludwig]"); await page.waitForTimeout(200);
+  await click("#zPop [data-act=zinv][data-name=Ludwig]"); await page.waitForTimeout(200);
   ok(await rp(`!!(window.__zup && window.__zup.invites)`), "Einladung nicht gespeichert");
-  ok((await page.locator("#profView .zl").innerText()).includes("eingeladen"), "Einladung nicht angezeigt");
+  ok((await page.locator("#zPop .zdpop").innerText()).includes("eingeladen"), "Einladung nicht angezeigt");
   await shot("ziel-teilen");
   await rp(`META[zielIds()[0]].owner = "u_anna"; zEdit = zEditFrom(zielIds()[0]); zRenderEdit(true);`); await page.waitForTimeout(150);
   ok((await page.locator("#catPop [data-act=zdel]").innerText()).includes("verlassen"), "Geteiltes fremdes Ziel bietet Löschen statt Verlassen");
@@ -1334,6 +1334,26 @@ await test("Öffnungszeiten: OSM-Regeln lesen, geschlossenen Tag im Plan und in 
   ok((await page.locator("#card .ohl").innerText()).includes("geschlossen"), "Öffnungszeiten fehlen in der Karte");
   await shot("oh-karte");
 });
+await test("Öffnungszeiten aus der Notiz: Warnung bei später Uhrzeit, Anzeige in der Detailansicht", async () => {
+  await seed();
+  ok(await rp(`var a = ohNote("Kunstgalerie. Di–Sa 10:00–18:00."), b = ohNote("Argentinisch. Sonntags geschlossen."), c = ohNote("Coffee Shop. Mo–Sa 8:00–20:00, So bis 19:00."), d = ohNote("Nur samstags 8:00–14:00, also am 24.10.");
+    a.W[0].length===0 && a.W[1][0][1]===1080 && b.W[6].length===0 && b.W[2]===null && c.W[6][0][1]===1140 && d.W[5][0][0]===480 && d.W[4].length===0 && ohNote("Brunch nur Sa + So ab 11:00.")===null`), "Notiz falsch gelesen");
+  // Ort ohne OSM-Daten, Notiz wie im Beispiel; an einem Tag Di–Sa einplanen
+  await rp(`var p = P("p3"); p.note = "Kunstgalerie. Di–Sa 10:00–18:00."; ohCache()[ohKey(p)] = {o:"", at:Date.now()};
+    var k = days().map(function(d){ return d.key; }).filter(function(x){ var w = parseD(x).getUTCDay(); return w>=2 && w<=6; })[0];
+    if(dayOf("p3")!==k){ Object.keys(T().order).forEach(function(d){ T().order[d] = T().order[d].filter(function(x){ return x!=="p3"; }); }); ord(k).push("p3"); }
+    save(); openJPop("p3", k); true`); await page.waitForTimeout(300);
+  ok((await page.locator("#jPop .jp-info").innerText()).includes("10:00–18:00"), "Öffnungszeiten fehlen in der Detailansicht");
+  await page.fill("#jPop input[data-act=time]", "19:30"); await page.dispatchEvent("#jPop input[data-act=time]", "change");
+  await page.locator("#jPop input[data-act=time]").blur(); await page.waitForTimeout(300);
+  ok(await rp(`timeOf("p3")==="19:30"`), "Uhrzeit nicht gespeichert");
+  const tt = await page.locator("#toast").innerText();
+  ok(tt.includes("19:30") && tt.includes("zu"), "Keine Warnung bei Uhrzeit außerhalb der Öffnungszeiten: "+tt);
+  ok((await page.locator("#jPop .jp-info").innerText()).includes("Um 19:30 geschlossen"), "Detailansicht zeigt nicht, dass um 19:30 zu ist");
+  await shot("oh-notiz-detail");
+  await rp(`closeJPop(); cur = dayOf("p3"); tab = "plan"; renderAll(); true`); await page.waitForTimeout(300);
+  ok(await rp(`var r = document.querySelector('.st[data-id="p3"] .ohx'); !!r && /zu/.test(r.textContent)`), "Hinweis im Tagesplan fehlt");
+});
 await test("Tagesvorschlag: angezeigte Wünsche nach Nähe auf die übrigen Tage verteilen", async () => {
   await seed();
   await rp(`[["q1","Bryant Park",40.7536,-73.9832],["q2","Grand Central",40.7527,-73.9772],["q3","DUMBO",40.7033,-73.9881],["q4","Brooklyn Museum",40.6712,-73.9636]].forEach(function(r){ T().places[r[0]] = {id:r[0], n:r[1], c:"sight", la:r[2], lo:r[3], list:"l_main", note:"", addr:"x"}; });
@@ -1391,7 +1411,7 @@ await test("Social: Freunde nach Tipps für ein Ziel fragen", async () => {
     window.__msgs = []; fbDb = window.__fakeDb({batch:function(){ return {set:function(ref, d){ if(d.from && d.t) window.__msgs.push(d); }, commit:function(){ return Promise.resolve(); }}; }});
     var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); save(); openZiele(z); true`);
   await page.waitForTimeout(200);
-  await click("#profView [data-act=askopen]");
+  await click("#zPop [data-act=askopen]");
   ok((await page.locator("#askT").inputValue()).includes("„Rom“"), "Nachricht nennt das Ziel nicht");
   ok(await page.locator("#catPop [data-act=asksend][disabled]").count()===1, "Senden ohne Auswahl möglich");
   await click("#catPop [data-act=askpick][data-uid=u_anna]");
@@ -1481,6 +1501,96 @@ await test("Öffentlich: Ort für alle freigeben, in pub speichern, in Entdecken
   ok(!(await page.locator("#dcView").innerText()).includes("Lucali"), "Gemeldeter Beitrag noch sichtbar");
   await rp(`fbDb = null; closeDcPage(); true`);
 });
+
+await test("Ziele: Pop-up „Neues Ziel“ bleibt über dem Profil (Tippen)", async () => {
+  await seed();
+  await rp(`openZiele(); true`); await page.waitForTimeout(200);
+  const st = async (w) => ok(await rp(`profOpen && !document.getElementById("profView").hidden`), "Profil geschlossen "+w);
+  await page.tap("#profView [data-act=znew]"); await page.waitForTimeout(300);
+  ok(await visible("#catPop .zpop"), "Pop-up fehlt"); await st("nach dem Öffnen");
+  await page.tap("#zName"); await page.keyboard.type("Testziel"); await page.waitForTimeout(200); await st("nach Name");
+  await page.tap("#zQ"); await page.keyboard.type("Brooklyn"); await page.waitForTimeout(800); await st("nach Suche");
+  await page.tap("#catPop [data-act=zarea]"); await page.waitForTimeout(300); await st("nach Gebiet");
+  await page.tap("#catPop .pop-head h4"); await page.waitForTimeout(200); await st("nach Tippen auf den Titel");
+  await page.tap("#catPop [data-act=zsave]"); await page.waitForTimeout(300); await st("nach Speichern");
+  ok(await rp(`profTab==="ziele" && zOpen && Z(zOpen).name==="Testziel"`), "Ziel nicht im Profil geöffnet");
+  await rp(`zEdit = zEditFrom(zOpen); zRenderEdit(true); true`); await page.waitForTimeout(200);
+  await page.tap("#catPop [data-act=zback]"); await page.waitForTimeout(250); await st("nach Schließen");
+});
+
+await test("Ziele: Pop-up „Neues Ziel“ im Querformat über dem Profil", async () => {
+  await seed();
+  await rp(`openZiele(); true`); await page.waitForTimeout(300);
+  await page.tap("#profView [data-act=znew]"); await page.waitForTimeout(400);
+  await shot("quer-ziel-neu");
+  ok(await rp(`profOpen && !document.getElementById("profView").hidden`), "Profil geschlossen");
+}, QUER);
+
+await test("Ziele: Ziel öffnet als Pop-up über dem Profil, schließt mit × und Tipp daneben", async () => {
+  await seed();
+  await rp(`var z = zielNew("Lissabon", {id:"o1", n:"Lissabon", la:38.72, lo:-9.14, r:20000}); zielMerk(z, {n:"Belém", c:"sight", la:38.69, lo:-9.21}, false); save(); openZiele(); true`); await page.waitForTimeout(250);
+  await page.tap("#profView .pf-trip.zt"); await page.waitForTimeout(300);
+  ok(await visible("#zPop .zdpop"), "Ziel-Pop-up fehlt");
+  ok(await rp(`profOpen && !$("profView").hidden && !!document.querySelector("#profView .pf-trip.zt")`), "Profil-Übersicht nicht mehr dahinter");
+  ok((await page.locator("#zPop .zdpop").innerText()).includes("Belém"), "Gemerkter Ort fehlt im Pop-up");
+  ok(await page.locator("#zLink").count()===1, "Linkfeld doppelt oder fehlt");
+  const r = await page.locator("#zPop .pop-card").boundingBox();
+  ok(r.y > 20 && r.y + r.height < 844 - 20, "Pop-up nicht mittig: "+JSON.stringify(r));
+  await shot("ziel-popup");
+  await page.tap("#zPop [data-act=zedit]"); await page.waitForTimeout(250);
+  ok(await visible("#catPop .zpop") && await visible("#zPop .zdpop"), "Bearbeiten liegt nicht über dem Ziel-Pop-up");
+  await page.tap("#catPop .pop-head [data-act=zback]"); await page.waitForTimeout(250);
+  ok(await rp(`$("catPop").hidden && !$("zPop").hidden`), "Nach Bearbeiten-Schließen ist das Ziel weg");
+  await page.tap("#zPop .zhead [data-act=zback]"); await page.waitForTimeout(250);
+  ok(await rp(`$("zPop").hidden && profOpen && profTab==="ziele" && !zOpen`), "× schließt nicht zurück zum Profil");
+  await page.tap("#profView .pf-trip.zt"); await page.waitForTimeout(300);
+  await page.mouse.click(195, 12); await page.waitForTimeout(250);
+  ok(await rp(`$("zPop").hidden && profOpen`), "Tipp neben das Pop-up schließt es nicht");
+});
+
+await test("Textfelder: Text hat Abstand zum Rand (Ziel, Reise, Suche, Konto)", async () => {
+  await seed();
+  const scan = async (where) => {
+    const bad = await page.evaluate(() => {
+      const out = [];
+      document.querySelectorAll("input[type=text],input[type=search],input[type=email],input[type=password],input[type=url],input[type=tel],input[type=number],input:not([type]),textarea").forEach((el) => {
+        const r = el.getBoundingClientRect(); if(!r.width || !r.height) return;
+        const cs = getComputedStyle(el), bg = cs.backgroundColor, bw = parseFloat(cs.borderLeftWidth);
+        const boxed = !(bg==="transparent" || /rgba\(.*,\s*0\)$/.test(bg)) || bw > 0; if(!boxed) return;
+        const pl = parseFloat(cs.paddingLeft), pr = parseFloat(cs.paddingRight), pt = parseFloat(cs.paddingTop), pb = parseFloat(cs.paddingBottom);
+        if(pl < 8 || pr < 8 || pt < 5 || pb < 5) out.push((el.id || el.className || el.placeholder || el.tagName)+" "+[pt, pr, pb, pl].join("/"));
+      });
+      return out;
+    });
+    ok(!bad.length, where+": zu wenig Innenabstand: "+bad.join(" | "));
+  };
+  await rp(`openZiele(); zEdit = zEditFrom(""); zRenderEdit(true); true`); await page.waitForTimeout(250); await scan("Neues Ziel");
+  await rp(`closeCatPop(); zEdit = null; closeProfile(); tdraft = null; tab = "trip"; renderSheet(); setSheet("full"); true`); await page.waitForTimeout(300); await scan("Reise");
+  await rp(`openSearch(); true`); await page.waitForTimeout(250); await scan("Suche"); await rp(`closeSearch(); true`);
+  await rp(`openSettings(); true`); await page.waitForTimeout(250); await scan("Konto"); await rp(`closeSettings(); true`);
+  await rp(`accView = "profile"; openSettings(); true`); await page.waitForTimeout(250); await scan("Profil bearbeiten"); await rp(`closeSettings(); accView = ""; true`);
+  await rp(`zPlanTrip(zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000})); true`); await page.waitForTimeout(300); await scan("Neue Reise");
+  await rp(`tdraft = null; openJPop("p4", dayOf("p4")); true`); await page.waitForTimeout(300); await scan("Tagebuch"); await rp(`closeJPop(); true`);
+  await rp(`openChPage(); true`); await page.waitForTimeout(300); await scan("Chat"); await rp(`closeChPage(); true`);
+  await rp(`openDcPage(); true`); await page.waitForTimeout(300); await scan("Entdecken"); await rp(`closeDcPage(); true`);
+  await rp(`openLsPage(); true`); await page.waitForTimeout(300); await scan("Liste"); await rp(`closeLsPage(); true`);
+  await rp(`tab = "wish"; renderSheet(); true`); await page.waitForTimeout(300); await scan("Wunschliste");
+});
+
+const pfStatsSide = async (n) => {
+  await seed();
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; PROF = {name:"Ferdinand_V"}; openProfile(); true`); await page.waitForTimeout(400);
+  const av = await page.locator("#profView .pf-av").first().boundingBox(), st = await page.locator("#profView .pf-stats").boundingBox(), gr = await page.locator("#profView .pf-gear").boundingBox();
+  ok(st.x >= av.x + av.width, "Zähler nicht rechts vom Profilbild: "+JSON.stringify([av, st]));
+  ok(st.y < av.y + av.height, "Zähler liegen unter dem Profilbild");
+  ok(st.height <= 60, "Zähler zu groß: "+st.height);
+  ok(!(gr.y + gr.height > st.y && gr.x < st.x + st.width), "Zahnrad überdeckt die Zähler");
+  const ov = await rp(`[].slice.call(document.querySelectorAll("#profView .pf-stats span")).filter(function(x){ return x.scrollWidth > x.clientWidth + 1; }).length`);
+  ok(ov===0, "Beschriftung abgeschnitten");
+  await shot("profil-zaehler-"+n);
+};
+await test("Profil: Zähler klein rechts neben dem Profilbild", async () => { await pfStatsSide("hoch"); });
+await test("Profil: Zähler rechts neben dem Profilbild im Querformat", async () => { await pfStatsSide("quer"); }, QUER);
 
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
