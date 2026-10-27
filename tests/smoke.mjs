@@ -1883,6 +1883,9 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
     for(let i = 1; i < ys.length; i++){ if(Math.sign(ys[i] - ys[i-1]) === -dir && Math.abs(ys[i] - ys[i-1]) > 1) mono = false; if(Math.abs(ys[i] - a) > 8 && Math.abs(ys[i] - z) > 8) mid++; }
     ok(Math.abs(ys[1] - a) <= 40 && mono && mid >= 2, w+": Eingabe springt statt zu gleiten: "+ys0.join(",")); };
   const g1 = await glide("focus"); smooth(g1, "Antippen", H - 400);   // erste Schätzung: gut 400 pt Tastatur
+  // Rückfallebene „keine Tastatur gekommen“ (1,2 s) hier abschalten und auf das Ende der Bewegung warten – unter Last dauert sie länger
+  await rp(`clearTimeout(CHKB.t); true`);
+  await page.waitForFunction(() => { const b = Math.round(document.querySelector("#chView .ch-comp").getBoundingClientRect().bottom), o = window.__lb; window.__lb = b; return o === b; }, null, {polling:100, timeout:3000});
   const p1 = await pos(); same(p1, "Antippen"); ok(p1.inp.b <= H - 380 && p1.inp.b >= H - 420, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(p1.inp));
 
   // 2) Fall A – iOS meldet die Tastatur nur über visualViewport (innerHeight bleibt) und verschiebt die Seite (offsetTop)
