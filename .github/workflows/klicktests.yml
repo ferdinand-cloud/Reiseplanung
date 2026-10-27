@@ -23,7 +23,7 @@ jobs:
           SHOTS: shots
         run: |
           npm ci
-          node smoke.mjs   # gleiches Chromium (@sparticuz/chromium) wie in den Sessions
+          CHROME=$(command -v google-chrome) node smoke.mjs   # Google Chrome: in der Action ca. 2,5 statt 9 min mit @sparticuz/chromium
       - name: Screenshots der Fehler
         if: failure()
         uses: actions/upload-artifact@v4
