@@ -279,7 +279,9 @@ await test("Rückblick: Foto nach unten wegziehen schließt und bleibt im Rückb
 await test("Rückblick: seitlich wischen wechselt den Tag", async () => {
   await seed();
   const Y = await rp(`dayOf("p4")`);
-  await rp(`openRecap("${Y}")`); await page.waitForTimeout(900);
+  await rp(`openRecap("${Y}")`);
+  // warten, bis die Einblendung (Deckkraft/Zoom) fertig ist – unter Last dauert das länger als die nominalen 0,5 s
+  await page.waitForFunction(() => { const el = document.getElementById("rc"), cs = el && getComputedStyle(el); return el && el.classList.contains("on") && cs.opacity==="1" && cs.transform==="none" && !el.getAnimations({subtree:false}).length; }, null, {timeout:10000});
   await page.evaluate(() => {
     const el = document.getElementById("rc"), tg = el.querySelector(".rc-hero") || el;
     const T = (x, y) => new Touch({identifier:1, target:tg, clientX:x, clientY:y});
@@ -1820,7 +1822,7 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
   const H = await page.evaluate(() => innerHeight), VH = H - 380;
   const bar0 = await page.locator(".tabbar").first().boundingBox(), head0 = await page.locator("#chView .ch-head, #chView header, #chView .ls-head").first().boundingBox();
   await rp(`KBPRED = true; KBVH = [${VH}, 0]; true`);
-  await page.locator("#chIn").focus(); await page.waitForTimeout(100);
+  await page.locator("#chIn").focus(); await page.waitForTimeout(100); await kbSettle();
   const inp = await page.locator("#chIn").boundingBox();
   ok(inp.y + inp.height <= VH, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(inp));
   await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); visualViewport.dispatchEvent(new Event("resize")); }, VH);
@@ -1830,10 +1832,15 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
   ok(bar1 && Math.abs(bar1.y - bar0.y) <= 1 && await page.locator(".tabbar").first().isVisible(), "Hauptleiste verschwindet oder verrutscht");
   if(head0) ok(Math.abs(head1.y - head0.y) <= 1, "Chat-Kopf verrutscht");
   await shot("tastatur-chat");
-  await page.evaluate(() => { document.activeElement.blur(); delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
-  await page.waitForTimeout(300);
-  const inp3 = await page.locator("#chIn").boundingBox();
-  ok(inp3.y + inp3.height > H - 120, "Eingabe nach dem Schließen nicht wieder unten");
+  // Schließen: iOS meldet den resize oft spät – die Eingabe geht trotzdem sofort mit der Tastatur nach unten (keine leere Fläche)
+  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(100); await kbSettle();
+  const inp3 = await page.locator("#chIn").boundingBox(), bar2 = await page.locator(".tabbar").first().boundingBox();
+  ok(inp3.y + inp3.height > H - 120, "Eingabe bleibt nach dem Verlassen oben stehen: "+JSON.stringify(inp3));
+  ok(Math.abs(bar2.y - bar0.y) <= 1, "Hauptleiste verrutscht beim Schließen");
+  await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
+  await page.waitForTimeout(100); await kbSettle();
+  const inp4 = await page.locator("#chIn").boundingBox();
+  ok(Math.abs(inp4.y - inp3.y) <= 1, "Eingabe bewegt sich beim späten resize noch einmal ("+inp3.y+" → "+inp4.y+")");
 });
 
 await test("Freunde: Suche statt Liste bei 200 Freunden (Ziel teilen)", async () => {
