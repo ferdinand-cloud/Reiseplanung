@@ -1827,6 +1827,11 @@ form.gnew{position:relative}
 .chview.conv.kbt .ch-comp{padding-bottom:8px}
 body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-conv{display:flex;flex-direction:column;height:100%;max-width:640px;width:100%;margin:0 auto;padding-top:calc(env(safe-area-inset-top,0px) + 72px);box-sizing:border-box}
+/* Zurückwischen: Chat gleitet nach rechts weg, darunter die Übersicht (leicht abgedunkelt, hellt sich auf) */
+.ch-conv.sw{position:relative;z-index:1;background:var(--sheet);box-shadow:-10px 0 28px rgba(0,0,0,.22);will-change:translate}
+.ch-under{position:absolute;inset:0;z-index:0;overflow:hidden;filter:brightness(calc(1 - var(--d,1) * .14));padding:calc(env(safe-area-inset-top,0px) + 76px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);pointer-events:none}
+.ch-list .ls-row.ch-ret{animation:chret 1.7s ease-out}
+@keyframes chret{0%,35%{background:color-mix(in srgb,var(--accent) 22%,transparent)}100%{background:transparent}}
 .ch-head{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:.5px solid var(--sep,var(--line))}
 .ch-head b{font:700 16px/1.2 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch-back{width:36px;height:36px;border:0;border-radius:50%;background:var(--fill);color:var(--ink);display:grid;place-items:center;cursor:pointer;flex:0 0 36px}
@@ -6281,7 +6286,7 @@ function chRefresh(){
   var settle = function(off, done){ if(tgt){ tgt.style.transition = "transform .38s cubic-bezier(.2,.9,.25,1)"; } paint(off, off ? 1 : 0, !!off && busy); setTimeout(function(){ if(tgt) tgt.style.transition = ""; if(done) done(); }, 400); };
   el.addEventListener("touchstart", function(e){ if(busy || !chPage || e.touches.length!==1 || ($("chPick") && !$("chPick").hidden)) return; if(e.target.closest && e.target.closest(".ch-comp,textarea,input,.ch-pick")) return;
     if(sc() > 0){ y0 = null; return; } y0 = e.touches[0].clientY; d = 0; tgt = box(); if(tgt){ tgt.style.transition = ""; top0 = tgt.getBoundingClientRect().top; } }, {passive:true});
-  el.addEventListener("touchmove", function(e){ if(y0==null) return; d = e.touches[0].clientY - y0; if(d <= 0){ paint(0, 0); if(sc() > 0) y0 = null; return; }
+  el.addEventListener("touchmove", function(e){ if(y0==null) return; if(chSwOn){ y0 = null; paint(0, 0); return; } d = e.touches[0].clientY - y0; if(d <= 0){ paint(0, 0); if(sc() > 0) y0 = null; return; }
     if(e.cancelable) e.preventDefault(); paint(shift(d), d/TH); }, {passive:false});
   var end = function(){ if(y0==null) return; y0 = null;
     if(d > TH){ busy = true; settle(HOLD); var t0 = Date.now();
@@ -6296,6 +6301,9 @@ function openChPage(cid){ closeMenus(); closeGsPage(); closeProfile(); closeNtPa
 function closeChPage(){ if(!chPage) return; chPage = false; chCloseConv(); $("chView").hidden = true; closeJpMore(); navActive(); }
 function chOpenConv(cid){
   if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; }
+  var cv = $("chView"); CHRET.sc = cv && chPage && !chOpen && !cv.classList.contains("conv") ? cv.scrollTop : CHRET.sc;
+  // eigener Verlaufseintrag: Safaris Zurück (auch Wischen vom linken Rand) führt so genau zur Chat-Übersicht
+  try { if(history.state && history.state.rpch) history.replaceState({rpch:cid}, ""); else history.pushState({rpch:cid}, ""); } catch(e){}
   chOpen = cid; chMsgs = []; chMsgErr = false; chPickOn = false; renderCh(true);
   var me = acct.user && acct.user.uid; if(!me || !fbDb) return;
   chMsgUnsub = fbDb.collection("chats").doc(cid).collection("msgs").orderBy("at").limitToLast(300).onSnapshot(function(qs){
@@ -6303,7 +6311,7 @@ function chOpenConv(cid){
     if(chOpen===cid){ renderChMsgs(true); if(chUnread(CH.byId[cid] || {})) chMarkRead(cid); }
   }, function(){ chMsgs = []; chMsgErr = true; if(chOpen===cid) renderChMsgs(); });
 }
-function chCloseConv(){ if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } chOpen = null; chMsgs = []; chPickOn = false; chVV(); }
+function chCloseConv(){ if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } if(chOpen && !chPopping && history.state && history.state.rpch){ chPopIgn = true; setTimeout(function(){ chPopIgn = false; }, 600); try { history.back(); } catch(e){ chPopIgn = false; } } chOpen = null; chMsgs = []; chPickOn = false; chVV(); }
 function chWith(u){ var me = acct.user && acct.user.uid; if(!me || !u) return null; return chId(me, u); }
 function chMatch(pl){ var out = null; Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; if(t.ziel) return false; return Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = {tid:tid, pid:pid}; return true; } return false; }); }); return out; }
 function chPhotoCard(ph, key, draft){
@@ -6477,19 +6485,23 @@ function chPickHTML(){
   all.sort(function(a, b){ return (b.cur - a.cur) || (b.done - a.done) || String(a.p.n).localeCompare(b.p.n); });
   return all.slice(0, 60).map(function(x){ return "<button type=\"button\" class=\"ls-row\" data-act=\"chpickp\" data-trip=\""+esc(x.tid)+"\" data-pid=\""+esc(x.p.id)+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(x.p.c)+"\">"+icon(x.p.c)+"</span><span class=\"ls-t\"><b>"+esc(x.p.n)+"</b><small>"+esc([S.trips[x.tid].name, CATNAME[x.p.c], x.done ? "besucht" : ""].filter(Boolean).join(" · "))+"</small></span></button>"; }).join("") || "<p class=\"note nt-empty\">Keine Orte gefunden.</p>";
 }
-function renderCh(full){
-  var el = $("chView"); if(!el) return; var me = acct.user && acct.user.uid;
-  if(!chOpen){
-    el.classList.remove("conv"); chVV();
+// Chat-Übersicht als HTML (auch für die Ansicht unter dem Chat beim Zurückwischen)
+function chListHTML(){ var me = acct.user && acct.user.uid;
     var h = "<div class=\"pf ch-page\"><div class=\"ls-head dc-head\"><div class=\"dc-title ch-title\"><b>Chats</b>"+(me ? "<button type=\"button\" class=\"ch-plus"+(chNewOn?" on":"")+"\" data-act=\"chnewtog\" aria-label=\"Neuer Chat\" aria-expanded=\""+chNewOn+"\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M10 4v12M4 10h12\"/></svg></button>" : "")+"</div>"+
       (me && chNewOn ? "<div class=\"gs-box ch-newbox\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"chNewIn\" placeholder=\"Name des Freundes\" autocomplete=\"off\" autocapitalize=\"off\" value=\""+esc(chNewQ)+"\"></div><div id=\"chNewRes\"></div>" : "")+"</div>";
-    if(!me){ el.innerHTML = h+"<p class=\"note nt-empty\">Melde dich an, um mit Freunden zu chatten.</p></div>"; return; }
+    if(!me) return h+"<p class=\"note nt-empty\">Melde dich an, um mit Freunden zu chatten.</p></div>";
     if(CH.list.length){
       h += "<div class=\"ag-grp ls-list ch-list\">"+CH.list.map(function(c){ var u = chOther(c), L = c.last || {}, un = chUnread(c);
         return "<button type=\"button\" class=\"ls-row"+(un?" un":"")+"\" data-act=\"chopen\" data-v=\""+esc(c.id)+"\">"+chAv(u, "ch-av")+"<span class=\"ls-t\"><b>@"+esc(chName(u))+"</b><small>"+(L.from===me ? "Du: " : "")+esc(L.t || (L.place ? (L.ph ? "📷 " : "📍 ")+L.place : ""))+"</small></span><span class=\"ch-meta\"><small>"+chTime(L.at)+"</small>"+(un ? "<i class=\"ch-dot\"></i>" : "")+"</span></button>"; }).join("")+"</div>";
     } else if(CH.got && !chNewOn) h += "<p class=\"note nt-empty\">Noch keine Chats. Tippe auf ＋, um einen Chat mit einem Freund zu beginnen.</p>";
     if(!FR.friends.length) h += "<p class=\"note nt-empty\">Füge Freunde hinzu, um mit ihnen zu chatten.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div>";
-    el.innerHTML = h+"</div>"; renderChNew(); return;
+    return h+"</div>";
+}
+function renderCh(full){
+  var el = $("chView"); if(!el) return; var me = acct.user && acct.user.uid;
+  if(!chOpen){
+    el.classList.remove("conv"); chVV();
+    el.innerHTML = chListHTML(); if(me) renderChNew(); return;
   }
   var c = CH.byId[chOpen], u = c ? chOther(c) : chOpen.split("_").filter(function(x){ return x!==me; })[0];
   if(full || !$("chMsgs")){
@@ -6595,6 +6607,42 @@ document.addEventListener("focusout", function(){ if(CHKB.on) setTimeout(chVV, 0
 document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send") && chTyping()) e.preventDefault(); }, true);
 document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn") chGrow(); if(e.target.id==="chNewIn"){ chNewQ = e.target.value; renderChNew(); } if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
 document.addEventListener("keydown", function(e){ if(e.target && e.target.id==="chIn" && e.key==="Enter" && !e.shiftKey && !e.isComposing && !("ontouchstart" in window)){ e.preventDefault(); chSend(); } });
+/* Zurück zur Chat-Übersicht: dieselbe Scrollposition wie vorher, der Chat, aus dem man kommt, ist sichtbar und kurz markiert */
+var CHRET = {sc:0}, chPopIgn = false, chPopping = false, chSwOn = false;
+function chBackToList(fromPop){ var el = $("chView"), cid = chOpen; if(!el || !chPage || !cid) return;
+  chPopping = !!fromPop; if(document.activeElement && el.contains(document.activeElement)) document.activeElement.blur();
+  chCloseConv(); chPopping = false; renderCh();
+  el.scrollTop = CHRET.sc || 0;
+  var row = el.querySelector("[data-act=chopen][data-v=\""+(window.CSS && CSS.escape ? CSS.escape(cid) : cid)+"\"]"); if(!row) return;
+  var r = row.getBoundingClientRect(), top = parseFloat(getComputedStyle(el).paddingTop) || 0, bot = el.clientHeight - 12;
+  if(r.top < top) el.scrollTop += r.top - top - 8; else if(r.bottom > bot) el.scrollTop += r.bottom - bot;
+  row.classList.add("ch-ret"); try { row.focus({preventScroll:true}); } catch(e){}
+  setTimeout(function(){ row.classList.remove("ch-ret"); }, 1700); }
+window.addEventListener("popstate", function(e){ if(chPopIgn){ chPopIgn = false; return; } if(chPage && chOpen && !(e.state && e.state.rpch)) chBackToList(true); });
+/* Im Chat von links nach rechts wischen = zurück. Der Chat folgt dem Finger, darunter liegt schon die Übersicht.
+   In Safari bleibt der äußerste linke Rand frei: dort wischt Safari selbst zurück (führt dank Verlaufseintrag ebenfalls zur Übersicht). */
+(function(){ var x0 = 0, y0 = 0, t0 = 0, dx = 0, mode = 0, conv = null, under = null;
+  var standalone = function(){ return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone; };
+  function reset(){ chSwOn = false; mode = 0; if(conv){ conv.style.translate = ""; conv.style.transition = ""; conv.classList.remove("sw"); } if(under) under.remove(); conv = under = null; }
+  document.addEventListener("touchstart", function(e){ mode = 0; var el = $("chView"), t = e.touches[0];
+    if(e.touches.length!==1 || !chPage || !chOpen || !el || !el.classList.contains("conv") || !el.contains(e.target)) { mode = -1; return; }
+    if(e.target.closest && e.target.closest(".ch-comp,.ch-pick,.ch-draft,textarea,input")){ mode = -1; return; }
+    if(!standalone() && t.clientX < 24){ mode = -1; return; }
+    x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); dx = 0; }, {passive:true, capture:true});
+  document.addEventListener("touchmove", function(e){ if(mode < 0) return; var t = e.touches[0], ddx = t.clientX - x0, ddy = t.clientY - y0;
+    if(!mode){ if(Math.abs(ddy) > 10 && Math.abs(ddy) > Math.abs(ddx)){ mode = -1; return; }
+      if(ddx > 12 && ddx > Math.abs(ddy) * 1.5){ var el = $("chView"); mode = 1; chSwOn = true; x0 = t.clientX; conv = el.querySelector(".ch-conv");
+        under = document.createElement("div"); under.className = "ch-under"; under.setAttribute("aria-hidden", "true"); under.innerHTML = chListHTML(); el.insertBefore(under, el.firstChild); under.scrollTop = CHRET.sc || 0;
+        if(conv) conv.classList.add("sw"); } else return; }
+    if(e.cancelable) e.preventDefault();
+    dx = Math.max(0, t.clientX - x0); if(conv) conv.style.translate = dx+"px 0";
+    if(under) under.style.setProperty("--d", Math.max(0, 1 - dx / innerWidth).toFixed(3)); }, {passive:false, capture:true});
+  function end(cancel){ if(mode!==1){ mode = 0; return; } mode = 0; var w = innerWidth, v = dx / Math.max(1, Date.now() - t0), go = !cancel && (dx > w * 0.33 || (v > 0.45 && dx > 50));
+    var c = conv, u = under; if(!c){ reset(); return; }
+    c.style.transition = "translate .22s cubic-bezier(.2,.8,.2,1)"; c.style.translate = (go ? w : 0)+"px 0"; if(u) u.style.setProperty("--d", go ? "0" : "1");
+    setTimeout(function(){ if(go){ chSwOn = false; conv = under = null; chBackToList(); } else reset(); }, 230); }
+  document.addEventListener("touchend", function(){ end(false); }, {capture:true}); document.addEventListener("touchcancel", function(){ end(true); }, {capture:true});
+})();
 /* Ort aus dem Ort-Fenster im Chat teilen: erst Freund wählen */
 function chShareMenu(pid, btn){
   if(!acct.user){ toast("Melde dich an, um Orte zu teilen", false); return; }
@@ -12641,7 +12689,7 @@ document.addEventListener("click", function(e){
     case "chopen": chOpenConv(t.getAttribute("data-v")); break;
     case "chnew": var chu = chWith(t.getAttribute("data-uid")); chNewOn = false; chNewQ = ""; if(chu) chOpenConv(chu); break;
     case "chnewtog": chNewOn = !chNewOn; chNewQ = ""; renderCh(); if(chNewOn) setTimeout(function(){ var i = $("chNewIn"); if(i) i.focus(); }, 40); break;
-    case "chback": chCloseConv(); renderCh(); break;
+    case "chback": chBackToList(); break;
     case "chsend": chSend(); break;
     case "chpick": chPickOn = !chPickOn; chPickQ = ""; var chpk = $("chPick"); if(chpk){ chpk.hidden = !chPickOn; if(chPickOn){ $("chPickIn").value = ""; $("chPickRes").innerHTML = chPickHTML(); } } break;
     case "chpickp": chPickOn = false; $("chPick").hidden = true; chPlaceFrom(t.getAttribute("data-trip"), t.getAttribute("data-pid")).then(function(pl){ chDraft = pl; renderChDraft(); var ci = $("chIn"); if(ci) ci.focus(); }); break;
