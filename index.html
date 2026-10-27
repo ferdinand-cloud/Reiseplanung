@@ -1818,9 +1818,10 @@ form.gnew{position:relative}
 .ch-newlist .ls-row{padding:8px 12px}
 .ch-dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
 .chview.conv{padding:0;overflow:hidden;display:flex;flex-direction:column}
-/* Tastatur offen: Bereich zwischen Eingabezeile und Tastatur (Safari-Leisten) in Chat-Farbe statt der App darunter */
-.chview.conv{box-shadow:0 var(--vvh,100vh) 0 var(--sheet);transition:height .28s cubic-bezier(.2,.8,.2,1)}
-@media (prefers-reduced-motion: reduce){ .chview.conv{transition:none} }
+/* Tippen: #chView bleibt bildschirmfüllend, nur der Inhalt folgt dem sichtbaren Bereich (Höhe/Oberkante aus chVV) */
+.chview.conv.kbt .ch-conv{flex:0 0 auto;height:var(--chh,100%);transform:translateY(var(--cht,0px))}
+.chview.conv.kbt .ch-comp{padding-bottom:8px}
+body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-conv{display:flex;flex-direction:column;height:100%;max-width:640px;width:100%;margin:0 auto;padding-top:calc(env(safe-area-inset-top,0px) + 72px);box-sizing:border-box}
 .ch-head{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:.5px solid var(--sep,var(--line))}
 .ch-head b{font:700 16px/1.2 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1911,6 +1912,9 @@ form.gnew{position:relative}
 .dc-tgd.in{background:linear-gradient(135deg,#2F7BFF,#C04FE0)}
 .dc-tdot{display:block;width:12px;height:12px;border-radius:50%;background:var(--cc)}
 .dc-tz{color:var(--cc);display:grid;place-items:center}
+#dcView{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#dcView .dc-page{width:100%;max-width:560px;margin:0 auto}
+.dc-demo{align-self:flex-start;padding:2px 8px;border-radius:6px;background:rgba(255,204,0,.9);color:#1c1c1e;font:700 11px/1.3 var(--f-body);text-shadow:none;letter-spacing:.02em}
 .dc-feed{flex:1;min-height:0;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-radius:22px}
 .dc-feed::-webkit-scrollbar{display:none}
 .dc-card.dc-reel{margin:0;height:100%;padding:0 0 8px;box-sizing:border-box;scroll-snap-align:start;scroll-snap-stop:always;background:none;border-radius:0;overflow:visible}
@@ -5101,10 +5105,10 @@ function hash53(s){ var h1 = 0xdeadbeef, h2 = 0x41c6ce57; for(var i = 0; i < s.l
 function spotId(r){ return "s"+hash53(geohash(+r.la, +r.lo, 6)+"|"+zKey(r.n)); }
 function myLikes(){ if(!MYLK){ try { MYLK = JSON.parse(lsGet("rp-likes") || "{}") || {}; } catch(e){ MYLK = {}; } } return MYLK; }
 function setMyLike(id, on){ var m = myLikes(); if(on) m[id] = 1; else delete m[id]; lsSet("rp-likes", JSON.stringify(m)); }
-function spotOf(r){ var id = spotId(r); return SPOT[id] || (SPOT[id] = {id:id, likes:null, adds:null, me:!!myLikes()[id], meAdd:false, at:0}); }
+function spotOf(r){ var id = (r.demo ? "d" : "")+spotId(r); return SPOT[id] || (SPOT[id] = r.demo ? {id:id, likes:r.dl||0, adds:r.da||0, me:false, meAdd:false, at:Date.now(), demo:1} : {id:id, likes:null, adds:null, me:!!myLikes()[id], meAdd:false, at:0}); }
 function spotRef(id){ return fbDb.collection("spots").doc(id); }
 function spotLoad(r){
-  if(!fbDb || !acct.user || !r || !r.la) return; var s = spotOf(r);
+  if(!fbDb || !acct.user || !r || !r.la || r.demo) return; var s = spotOf(r);
   if(s.busy || s.load || Date.now() - s.at < 90000) return; s.load = true; var me = acct.user.uid, ref = spotRef(s.id);
   Promise.all([ref.get(), ref.collection("likes").doc(me).get(), ref.collection("adds").doc(me).get()]).then(function(a){
     s.load = false; s.at = Date.now(); if(s.busy) return; var d = a[0] && a[0].exists ? a[0].data() || {} : {};
@@ -5113,8 +5117,10 @@ function spotLoad(r){
 }
 function spotErr(e){ return e && e.code==="permission-denied" ? " (Regeln noch nicht aktiv?)" : ""; }
 function spotLike(r){
-  if(!r || !r.la) return; if(!fbDb || !acct.user){ toast("Melde dich an, um Vorschläge zu liken.", false); return; }
-  var s = spotOf(r); if(s.busy) return;
+  if(!r || !r.la) return; var s = spotOf(r);
+  if(s.demo){ s.me = !s.me; s.likes += s.me ? 1 : -1; dcReelRefresh(r.key); return; }
+  if(!fbDb || !acct.user){ toast("Melde dich an, um Vorschläge zu liken.", false); return; }
+  if(s.busy) return;
   var on = !s.me, me = acct.user.uid, FV = window.firebase.firestore.FieldValue, ref = spotRef(s.id), b = fbDb.batch();
   s.me = on; s.likes = Math.max(0, (s.likes||0) + (on ? 1 : -1)); s.busy = true; setMyLike(s.id, on); dcReelRefresh(r.key);
   if(on) b.set(ref.collection("likes").doc(me), {at:Date.now()}); else b.delete(ref.collection("likes").doc(me));
@@ -5123,7 +5129,8 @@ function spotLike(r){
 }
 // Übernahme zählen: je Konto und Ort einmal
 function spotAdd(r){
-  if(!r || !r.la || !fbDb || !acct.user) return; var s = spotOf(r); if(s.meAdd) return;
+  if(!r || !r.la) return; var s = spotOf(r); if(s.meAdd) return;
+  if(s.demo){ s.meAdd = true; s.adds++; return; } if(!fbDb || !acct.user) return;
   var me = acct.user.uid, FV = window.firebase.firestore.FieldValue, ref = spotRef(s.id), b = fbDb.batch();
   s.meAdd = true; s.adds = (s.adds||0) + 1;
   b.set(ref.collection("adds").doc(me), {at:Date.now()}); b.set(ref, {adds:FV.increment(1)}, {merge:true});
@@ -5134,9 +5141,42 @@ function dcRevs(r){ return [r].concat(r.also||[]); }
 function dcAvg(r){ var v = dcRevs(r).filter(function(x){ return rateRank(x.rating) < 99; }); if(!v.length) return null;
   var a = v.reduce(function(s, x){ return s + 8 - rateRank(x.rating); }, 0)/v.length; return {avg:a, n:v.length, R:RATES[Math.max(0, Math.min(6, 7 - Math.round(a)))]}; }
 function dcCmN(r){ return dcRevs(r).reduce(function(s, x){ return s + (x.note ? 1 : 0) + (x.cm||[]).length; }, 0); }
+/* Beispiel-Vorschläge zum Ausprobieren von Entdecken: nur lokal, deutlich als „Beispiel“ markiert, nichts davon geht an den Server */
+var DCDEMO = null;
+function dcDemoOn(){ return lsGet("rp-dcdemo")!=="0"; }
+function dcDemoPh(t, a, b){ return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='540' height='960'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='"+a+"'/><stop offset='1' stop-color='"+b+"'/></linearGradient></defs><rect width='540' height='960' fill='url(#g)'/><text x='270' y='420' font-family='-apple-system,Helvetica,sans-serif' font-size='44' font-weight='700' fill='rgba(255,255,255,.9)' text-anchor='middle'>"+t+"</text><text x='270' y='480' font-family='-apple-system,Helvetica,sans-serif' font-size='26' fill='rgba(255,255,255,.7)' text-anchor='middle'>Beispielfoto</text></svg>"); }
+function dcDemo(){
+  if(DCDEMO) return DCDEMO;
+  var now = Date.now(), D = 86400000, P = [
+    // [Name, Kategorie, la, lo, Adresse, Farben, Fotos, Likes, Übernahmen, [[Person, Bewertung, Notiz, öffentlich, Kommentare]]]
+    ["Joe's Pizza", "essen", 40.7306, -74.0021, "Carmine St 7", ["#E8853A", "#8a2be2"], 2, 128, 41, [["Lena", 2, "Der beste Slice in Manhattan – nicht anstehen lassen, geht schnell.", 1, [["Tom", "Plain Cheese reicht völlig!"]]], ["Tom", 1, "Kultstatus zu Recht.", 0], ["Mira", 3, "Gut, aber überlaufen.", 1]]],
+    ["The High Line", "sight", 40.7480, -74.0048, "Gansevoort St bis 34th St", ["#5E9970", "#2E9E9A"], 3, 342, 97, [["Mira", 1, "Am besten früh morgens oder zum Sonnenuntergang.", 1], ["Jonas", 6, "Schön, am Wochenende sehr voll.", 1, [["Lena", "Unten am Chelsea Market weiter."]]]]],
+    ["Russ & Daughters Café", "essen", 40.7197, -73.9881, "Orchard St 127", ["#007AFF", "#00c6ff"], 1, 87, 23, [["Tom", 2, "Bagel mit Lachs – unbedingt.", 0], ["Lena", 6, "", 1]]],
+    ["Brooklyn Bridge Walk", "sight", 40.7061, -73.9969, "Brooklyn Bridge", ["#6b7785", "#1c1c1e"], 2, 410, 156, [["Jonas", 1, "Von Brooklyn nach Manhattan laufen – dann hat man die Skyline vor sich.", 1]]],
+    ["Smorgasburg", "essen", 40.7215, -73.9620, "Williamsburg, East River", ["#FF3B30", "#E8853A"], 0, 64, 12, [["Mira", 6, "Nur samstags. Hungrig hingehen!", 1], ["Tom", 4, "Teuer für Streetfood.", 1]]],
+    ["Overrated Rooftop Bar", "bar", 40.7580, -73.9855, "Times Square", ["#8a2be2", "#FF3B30"], 0, 9, 2, [["Lena", 7, "Teuer, laut, Aussicht okay.", 1], ["Jonas", 8, "Nicht empfehlenswert.", 0]]],
+    ["Time Out Market Lisboa", "essen", 38.7069, -9.1459, "Av. 24 de Julho 49", ["#C9A227", "#E8853A"], 2, 201, 66, [["Jonas", 2, "Viele kleine Stände, ideal zum Probieren.", 1]]],
+    ["Miradouro da Senhora do Monte", "sight", 38.7192, -9.1328, "Graça, Lissabon", ["#2E9E9A", "#007AFF"], 1, 155, 48, [["Mira", 1, "Schönster Blick über Lissabon.", 1, [["Jonas", "Zum Sonnenuntergang!"]]], ["Lena", 6, "", 1]]],
+    ["Fushimi Inari", "sight", 34.9671, 135.7727, "Kyoto, Japan", ["#FF3B30", "#C9A227"], 2, 512, 203, [["Tom", 1, "Ganz nach oben laufen – oben ist es leer.", 1]]],
+    ["Trastevere Abendspaziergang", "sight", 41.8897, 12.4707, "Rom, Italien", ["#E8853A", "#5E9970"], 1, 230, 71, [["Lena", 2, "Abends durch die Gassen, danach Supplì.", 1]]],
+    ["Café Sacher", "cafe", 48.2038, 16.3693, "Philharmoniker Str. 4, Wien", ["#8B4513", "#C9A227"], 0, 98, 19, [["Jonas", 4, "Torte gut, Wartezeit lang.", 1], ["Mira", 3, "", 1]]],
+    ["Tegallalang Reisterrassen", "sight", -8.4335, 115.2790, "Bali, Indonesien", ["#5E9970", "#C9A227"], 2, 377, 140, [["Mira", 1, "Früh hin, bevor die Busse kommen.", 1]]]
+  ];
+  var out = [];
+  P.forEach(function(p, i){
+    var ph = []; for(var j = 0; j < p[6]; j++) ph.push(dcDemoPh(p[0].replace(/[&'<>]/g, " ")+(p[6] > 1 ? " · "+(j+1) : ""), p[5][j % 2], p[5][(j+1) % 2]));
+    p[9].forEach(function(v, k){
+      var by = "demo_"+v[0].toLowerCase(), cm = (v[4]||[]).map(function(c){ return {name:"Beispiel_"+c[0], text:c[1], at:now}; });
+      out.push({key:by+"/d"+i, by:by, fname:"Beispiel_"+v[0], n:p[0], c:p[1], la:p[2], lo:p[3], addr:p[4], rating:v[1], hl:v[1]===1 && k===0, note:v[2], cm:cm, trip:"Beispiel", photos:k===0 ? ph : [], at:now - (i*3 + k)*D, pub:v[3] ? 1 : 0, demo:1, dl:p[7], da:p[8]});
+    });
+  });
+  return (DCDEMO = out);
+}
 function dcList(){
   var tg = dcTgt(), list = DC.items.slice(), hid = pubHidden();
   if(dcSrc==="all") PUB.items.forEach(function(r){ if(!hid[r.pid] && !DC.items.some(function(x){ return x.key===r.key; })) list.push(r); });
+  if(!FR.friends.length && dcSrc!=="all") list = [];
+  if(dcDemoOn()) dcDemo().forEach(function(r){ DC.byKey[r.key] = r; if(dcSrc==="all" || !r.pub) list.push(r); });
   if(tg && tg.z) list = list.filter(function(r){ return r.la && zielHas(tg.t, {la:+r.la, lo:+r.lo}); });
   else if(tg && tg.C) list = list.filter(function(r){ return r.la && dist(tg.C, r) < 40000; });
   list.sort(function(a, b){ var ra = a.hl ? 0 : (a.rating ? rateRank(a.rating) : 99), rb = b.hl ? 0 : (b.rating ? rateRank(b.rating) : 99); return ra - rb || (b.at||0) - (a.at||0); });
@@ -5157,8 +5197,8 @@ function dcSideHTML(r){
 }
 function dcInfoHTML(r){
   var tg = dcTgt(), A = dcAvg(r), RR = RATES.filter(function(x){ return x[0]===r.rating; })[0], dd = tg && tg.C && r.la ? dist(tg.C, r) : null;
-  return "<div class=\"dc-who\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><b>@"+esc(r.fname||"Freund")+"</b><small>"+esc([r.pub ? "öffentlich" : "Freund", r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+(r.hl ? "<span class=\"dc-hl\">★</span>" : "")+"</div>"+
-    "<div class=\"dc-name\"><span class=\"cic\" style=\"--cc:"+catCol(r.c)+"\">"+icon(r.c)+"</span><b>"+esc(r.n)+"</b></div>"+
+  return "<div class=\"dc-who\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><b>@"+esc(r.fname||"Freund")+"</b><small>"+esc([r.pub ? "öffentlich" : "Freund", r.demo ? "" : r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+(r.hl ? "<span class=\"dc-hl\">★</span>" : "")+"</div>"+
+    (r.demo ? "<span class=\"dc-demo\">Beispiel – nur zum Ausprobieren</span>" : "")+"<div class=\"dc-name\"><span class=\"cic\" style=\"--cc:"+catCol(r.c)+"\">"+icon(r.c)+"</span><b>"+esc(r.n)+"</b></div>"+
     "<small class=\"dc-sub\">"+esc([CATNAME[r.c], r.addr, dd!=null && dd > 2000 && !tg.z ? fmtDist(dd)+" vom Reiseziel" : ""].filter(Boolean).join(" · "))+"</small>"+
     (A ? "<button type=\"button\" class=\"dc-avg\" data-act=\"dcrate\" data-k=\""+esc(r.key)+"\"><span>Ø</span><i style=\"--rc:"+A.R[2]+"\">"+A.R[1]+"</i>"+(A.n > 1 ? "<small>"+A.n+" Bewertungen</small>" : "")+"</button>" : RR ? "<i class=\"dc-rt\" style=\"--rc:"+RR[2]+"\">"+RR[1]+"</i>" : "")+
     (r.note ? "<p class=\"dc-note\">„"+esc(r.note)+"“</p>" : "")+
@@ -5183,7 +5223,7 @@ function renderDc(){
     "<button type=\"button\" class=\"dc-tgt\" data-act=\"dctgt\" aria-haspopup=\"menu\" aria-label=\"Vorschläge für: "+esc(dcTgtName(tg))+"\"><span class=\"dc-tgd"+(tg ? (tg.z ? " z" : "") : " in")+"\" style=\"--cc:"+tc+"\">"+(tg ? (tg.z ? ZBM : "") : "✦")+"</span><span class=\"dc-tgn\">"+esc(dcTgtName(tg))+"</span>"+dcSV("<path d=\"m7 10 5 5 5-5\"/>")+"</button></div>";
   if(!acct.user){ DCSIG = ""; el.innerHTML = "<div class=\"dc-page\">"+head+"<p class=\"note nt-empty\">Melde dich an, um Vorschläge zu sehen.</p></div>"; return; }
   if(dcSrc==="all") pubLoad();
-  var list = (dcSrc!=="all" && !FR.friends.length) ? [] : dcList(), busy = DC.busy || (dcSrc==="all" && PUB.busy);
+  var list = dcList(), busy = DC.busy || (dcSrc==="all" && PUB.busy);
   var sig = [dcSrc, dcScope, tg && tg.id, list.map(function(r){ return r.key+":"+r.also.length; }).join("|"), !list.length && busy, PUB.err, FR.friends.length].join("#"), f = $("dcFeed");
   DCL = list;
   if(f && sig===DCSIG){ list.forEach(function(r){ dcReelRefresh(r.key); }); return; }
@@ -5201,7 +5241,8 @@ function renderDc(){
     (dcSrc!=="all" && !FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button>" : "")+
     (tg ? "<button type=\"button\" class=\"btn g\" data-act=\"dcscopeset\" data-v=\"all\">✦ Inspiration</button>" : "")+
     (tg && FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"askopen\""+(tg.z ? " data-z=\""+esc(tg.id)+"\"" : "")+">Freunde nach Tipps fragen</button>" : "")+
-    (list.length ? "<button type=\"button\" class=\"btn g\" data-act=\"dcreload\">Aktualisieren</button>" : "")+"</div></div></div></div>";
+    (list.length ? "<button type=\"button\" class=\"btn g\" data-act=\"dcreload\">Aktualisieren</button>" : "")+
+    "<button type=\"button\" class=\"btn g\" data-act=\"dcdemo\">"+(dcDemoOn() ? "Beispiele ausblenden" : "Beispiele einblenden")+"</button></div></div></div></div>";
   el.innerHTML = h; f = $("dcFeed");
   if(keep) f.scrollTop = keep;
   var tmr = 0; f.addEventListener("scroll", function(){ clearTimeout(tmr); tmr = setTimeout(dcFill, 70); }, {passive:true});
@@ -5222,7 +5263,7 @@ function dcMore(key, btn){
   var r = DC.byKey[key]; if(!r) return; var tg = dcTgt(), C = tripCenter(), cur = !isRO() && !noTrip() && days().length && (tg ? tg.id===S.cur : C && dist(C, r) < 40000);
   var it = function(act, ic, n, cls){ return "<button type=\"button\" data-act=\""+act+"\" data-k=\""+esc(key)+"\" role=\"menuitem\""+(cls ? " class=\""+cls+"\"" : "")+"><span class=\"ai\">"+ic+"</span><span>"+n+"</span></button>"; };
   jpPopover("dcm", btn, (r.la ? it("dcmap", MAPGO, "Auf der Karte zeigen") : "")+(cur && !dcInTrip(r) ? it("dcplanm", "📅", "Einplanen am …") : "")+
-    (FR.friends.length ? it("dcsend", "💬", "Im Chat schicken") : "")+(r.pub ? it("dcreport", "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 17.5V3.5M5 4h9.5l-2 3.5 2 3.5H5\"/></svg>", "Beitrag melden", "del") : ""), "dcmore");
+    (FR.friends.length ? it("dcsend", "💬", "Im Chat schicken") : "")+(r.pub && !r.demo ? it("dcreport", "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 17.5V3.5M5 4h9.5l-2 3.5 2 3.5H5\"/></svg>", "Beitrag melden", "del") : ""), "dcmore");
 }
 function dcMoreBtn(key){ var el = dcReelEl(key); return el && el.querySelector("[data-act=dcmore]"); }
 // Bewertungen und Kommentare zu einem Vorschlag: Durchschnitt, Verteilung, jede Einzelbewertung mit Notiz und Kommentaren
@@ -6355,18 +6396,40 @@ function chSend(){
   b.commit().then(function(){ chSending = false; if(chMsgErr && chOpen){ var dr = chDraft; chOpenConv(chOpen); chDraft = dr; renderChDraft(); } }, function(e){ chSending = false; if(inp && !inp.value) inp.value = keepT; chDraft = keepP; renderChDraft(); toast("Senden fehlgeschlagen: "+((e && e.code)==="permission-denied" ? "keine Berechtigung (Firestore-Regeln für Chats ergänzen?)" : (e && e.message) || ""), false); });
 }
 function chGrow(){ var i = $("chIn"); if(!i) return; i.style.height = "auto"; i.style.height = Math.min(120, i.scrollHeight)+"px"; }
-/* Chat-Höhe bei Tastatur: oben bleibt alles fest (top 0), nur die Höhe folgt der Tastatur – und zwar gleitend (CSS-Übergang).
-   Feld im Chat aktiv: sichtbare Höhe (vor dem Öffnen auf iOS schon die erwartete). Sonst sofort volle Höhe, auch wenn iOS
-   den resize erst spät meldet – so bleibt beim Schließen keine leere Fläche stehen. */
-function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualViewport;
-  if(!(chPage && chOpen && vv)){ el.style.top = ""; el.style.height = ""; el.style.bottom = ""; return; }
-  var ae = document.activeElement, foc = ae && el.contains(ae) && isTypeField(ae), up = window.innerHeight - vv.height > 120;
-  var h = !foc ? window.innerHeight : up ? vv.height : KBPRED ? Math.min(vv.height, kbPredH()) : vv.height;
-  var box = $("chMsgs"), end = box && box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-  el.style.top = "0px"; el.style.bottom = "auto"; if(Math.abs((parseFloat(el.style.height) || 0) - h) > 1) el.style.height = Math.round(h)+"px";
-  if(end){ box.scrollTop = box.scrollHeight; setTimeout(function(){ var b = $("chMsgs"); if(b) b.scrollTop = b.scrollHeight; }, 320); } }
-if(window.visualViewport){ window.visualViewport.addEventListener("resize", function(){ if(chPage && chOpen) chVV(); }); }
-document.addEventListener("focusout", function(e){ if(chPage && chOpen && e.target && e.target.id==="chIn") setTimeout(chVV, 0); });
+/* Chat und Tastatur (iOS). Grundsatz: Die Chat-Fläche (#chView) deckt IMMER den ganzen Bildschirm ab – es kann nie die Karte
+   durchscheinen. Nur der Inhalt (.ch-conv: Kopf, Verlauf, Eingabe) bekommt beim Tippen die Höhe des sichtbaren Bereichs
+   (visualViewport.height) und sitzt an dessen Oberkante (offsetTop). Damit stimmt die Lage, egal ob iOS die Seite verschiebt,
+   die Höhe des Layouts mitändert oder gar nichts meldet. Ob die Tastatur offen ist, wird NICHT aus innerHeight geschlossen
+   (das war der Fehler: wenn iOS innerHeight mitverkleinert, blieb der Chat auf der geschätzten halben Höhe stehen).
+   Beim Antippen sitzt die Eingabe sofort an der erwarteten Stelle über der Tastatur (Höhe vom letzten Mal, sonst vorsichtig
+   geschätzt), damit iOS die Seite gar nicht erst verschiebt; sobald iOS die echte Höhe meldet, gilt nur noch die. */
+var CHKB = {on:false, h0:0, got:false, t:0};
+function chKbKey(){ return (matchMedia("(display-mode: standalone)").matches || navigator.standalone ? "a" : "b")+Math.round(innerWidth)+"x"+Math.round(CHKB.h0); }
+function chKbGuess(){ var v = 0; try { v = +(JSON.parse(localStorage.getItem("rp-chkb") || "{}")[chKbKey()] || 0); } catch(e){}
+  return v > 100 && v < CHKB.h0 - 100 ? v : Math.round(CHKB.h0 * (innerWidth > innerHeight ? 0.4 : 0.5)); }
+function chKbSave(h){ try { var o = JSON.parse(localStorage.getItem("rp-chkb") || "{}"); o[chKbKey()] = Math.round(h); localStorage.setItem("rp-chkb", JSON.stringify(o)); } catch(e){} }
+function chTyping(){ var el = $("chView"), ae = document.activeElement; return !!(el && chPage && chOpen && ae && el.contains(ae) && isTypeField(ae)); }
+function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualViewport, de = document.documentElement;
+  var typ = chTyping() && !!vv;
+  if(!typ){ CHKB.on = false; clearTimeout(CHKB.t); el.classList.remove("kbt"); document.body.classList.remove("chkb"); el.style.removeProperty("--chh"); el.style.removeProperty("--cht"); de.style.removeProperty("--chtop"); return; }
+  if(!CHKB.on){ CHKB.on = true; CHKB.h0 = el.clientHeight || innerHeight; CHKB.got = vv.height < CHKB.h0 - 120; clearTimeout(CHKB.t);
+    // kommt keine Tastatur (Hardware-Tastatur), gilt nach einer Weile einfach die sichtbare Höhe
+    CHKB.t = setTimeout(function(){ if(CHKB.on && !CHKB.got){ CHKB.got = true; chVV(); } }, 1200); }
+  if(!CHKB.got && vv.height < CHKB.h0 - 120){ CHKB.got = true; }
+  var h = CHKB.got ? vv.height : Math.min(vv.height, chKbGuess()), t = CHKB.got ? Math.max(0, vv.offsetTop) : 0;
+  if(CHKB.got && vv.height < CHKB.h0 - 120) chKbSave(vv.height);
+  var box = $("chMsgs"), end = !box || box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  el.classList.add("kbt"); document.body.classList.add("chkb");
+  el.style.setProperty("--chh", Math.round(h)+"px"); el.style.setProperty("--cht", Math.round(t)+"px"); de.style.setProperty("--chtop", Math.round(t)+"px");
+  if(box && end) box.scrollTop = box.scrollHeight;
+  if(el.scrollTop) el.scrollTop = 0; }
+// iOS scrollt beim Fokus auch Behälter mit overflow:hidden, um das Feld zu zeigen – die Chat-Fläche selbst bleibt immer oben
+document.addEventListener("scroll", function(e){ var el = e.target; if(el && el.id==="chView" && el.classList.contains("conv") && el.scrollTop) el.scrollTop = 0; }, true);
+if(window.visualViewport){ ["resize", "scroll"].forEach(function(n){ window.visualViewport.addEventListener(n, function(){ if(CHKB.on) chVV(); }); }); }
+document.addEventListener("focusin", function(e){ if(chPage && chOpen && e.target && isTypeField(e.target) && $("chView").contains(e.target)) chVV(); });
+document.addEventListener("focusout", function(){ if(CHKB.on) setTimeout(chVV, 0); });
+// Senden-Knopf nimmt dem Feld den Fokus nicht – die Tastatur bleibt offen wie in Nachrichten-Apps
+document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send") && chTyping()) e.preventDefault(); }, true);
 document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn") chGrow(); if(e.target.id==="chNewIn"){ chNewQ = e.target.value; renderChNew(); } if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
 document.addEventListener("keydown", function(e){ if(e.target && e.target.id==="chIn" && e.key==="Enter" && !e.shiftKey && !e.isComposing && !("ontouchstart" in window)){ e.preventDefault(); chSend(); } });
 /* Ort aus dem Ort-Fenster im Chat teilen: erst Freund wählen */
@@ -6865,7 +6928,6 @@ function ensureVis(el){
     // iOS schiebt die ganze Seite hoch, wenn das Feld sonst unter der Tastatur läge: dann rutschen die Hauptleiste und Köpfe aus dem Bild.
     // Die App-Seite selbst scrollt nie – also sofort zurück; Pop-ups und Chat sitzen ohnehin über der Tastatur.
     if(kbh > 120 && (window.scrollY > 0 || window.pageYOffset > 0)) window.scrollTo(0, 0);
-    if(!kb && chPage && chOpen) chVV();   // Vorhersage im Chat zurücknehmen, falls keine Tastatur kam
     document.querySelectorAll(".kbpin").forEach(function(ov){
       var card = ov._kbc;
       // Feld verlassen: festhalten, bis die Tastatur wirklich zu ist – dann Lage und Größe in EINER Bewegung zurück
@@ -6909,9 +6971,7 @@ function ensureVis(el){
       // Feld innerhalb der Karte gleich in den künftig sichtbaren Teil scrollen (Abstände relativ zur Karte, Animation egal)
       var rel = el.getBoundingClientRect().top - card.getBoundingClientRect().top, fh = Math.min(el.offsetHeight, 140);
       if(rel + fh > pmax - 16) card.scrollTop += rel + fh - (pmax - 16); else if(rel < 8) card.scrollTop += rel - 8; } }
-  // Chat (keine Pop-up-Seite): Eingabezeile schon beim Antippen über die erwartete Tastatur, damit iOS nichts verschieben muss
-  function kbPredChat(el){ if(el.id==="chIn" && chPage && chOpen) chVV(); }
-  document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; kbPin(el); kbPredChat(el); setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
+  document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; kbPin(el); setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
   document.addEventListener("focusout", function(){ setTimeout(upd, 80); });
   upd(); })();
 function closeSettings(){ accView = "main"; unameMsg = ""; $("acctPop").hidden = true; if($("tripPop").hidden) document.body.classList.remove("glass"); }
@@ -12407,6 +12467,7 @@ document.addEventListener("click", function(e){
     case "dcwish": dcAdd(t.getAttribute("data-k"), null); break;
     case "dclike": spotLike(DC.byKey[t.getAttribute("data-k")]); break;
     case "dctake": dcTake(t.getAttribute("data-k")); break;
+    case "dcdemo": lsSet("rp-dcdemo", dcDemoOn() ? "0" : "1"); DCSIG = ""; renderDc(); break;
     case "dcrate": dcRatings(t.getAttribute("data-k")); break;
     case "dcmore": dcMore(t.getAttribute("data-k"), t); break;
     case "dctgt": dcTgtMenu(t); break;
