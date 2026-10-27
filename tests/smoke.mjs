@@ -2323,6 +2323,16 @@ const pfStatsSide = async (n) => {
   ok(!(gr.y + gr.height > st.y && gr.x < st.x + st.width), "Zahnrad überdeckt die Zähler");
   const ov = await rp(`[].slice.call(document.querySelectorAll("#profView .pf-stats span")).filter(function(x){ return x.scrollWidth > x.clientWidth + 1; }).length`);
   ok(ov===0, "Beschriftung abgeschnitten");
+  // Kein Instagram-Zahlenblock: Reisen/Beobachtet zählen in den Reitern, Kopf hat nur Follower/Gefolgt
+  ok(await rp(`!/Reisen|Beobachtet/.test(document.querySelector("#profView .pf-head").textContent)`), "Reisen/Beobachtet stehen noch als Zahlenzeile im Kopf");
+  ok(await rp(`var t = document.querySelectorAll("#profView .pf-seg button"); t.length===4 && t[0].querySelector(".pf-n").textContent===String(liveIds().filter(function(id){ return !isViewerOf(id); }).length) && !!t[1].querySelector(".pf-n") && !t[2].querySelector(".pf-n")`), "Reiter zeigen keine Anzahl");
+  ok(await rp(`[].every.call(document.querySelectorAll("#profView .pf-seg button"), function(b){ return b.scrollWidth <= b.clientWidth + 1; })`), "Reiter-Beschriftung abgeschnitten");
+  ok(gr.y < av.y + av.height && gr.y + gr.height > av.y, "Zahnrad nicht in der Kopfzeile");
+  await tapS('#profView .pf-seg [data-v="obs"]'); await page.waitForTimeout(150);
+  ok(await rp(`profTab==="obs"`), "Reiter Beobachtet reagiert nicht");
+  await tapS('#profView .pf-stats [data-v="fol"]'); await page.waitForTimeout(250);
+  ok(await visible("#acctPop"), "Follower-Zähler öffnet nichts");
+  await rp(`closeSettings(); profTab = "mine"; renderProfile(); true`);
   await shot("profil-zaehler-"+n);
 };
 await test("Profil: Zähler klein rechts neben dem Profilbild", async () => { await pfStatsSide("hoch"); });
