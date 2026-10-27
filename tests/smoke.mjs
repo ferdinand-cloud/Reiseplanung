@@ -1663,7 +1663,7 @@ await test("Reise-Status und Option: abgeschlossen/aktuell/in Planung, Option oh
   await page.locator("#tForm [type=submit]").click(); await page.waitForTimeout(400);
   ok(await rp(`T().name==="Lissabon irgendwann" && T().opt===true && !T().start && !T().end && T().orte.length===1 && days().length===0`), "Option-Reise nicht angelegt");
   ok(await rp(`$("tripBtn").textContent.includes("Option")`), "Kopfzeile zeigt nicht „Option“: "+await rp(`$("tripBtn").textContent+" / "+getComputedStyle($("tripBtn")).display`));
-  ok(await rp(`lsTripSub(T())==="Option" && lsTripIds()[0]===S.cur`), "Liste: Reise-Auswahl zeigt Status nicht");
+  ok(await rp(`lsTripSub(T())==="Option" && lsTripIds()[1]===S.cur`), "Liste: Reise-Auswahl zeigt Status nicht");
   await click("#tripBtn"); await page.waitForTimeout(150);
   ok((await page.locator("#tripMenu").innerText()).includes("Option") && (await page.locator("#tripMenu .tst").count()) >= 2, "Reise-Menü zeigt den Status nicht");
   await shot("reise-status-menue");
@@ -1682,6 +1682,8 @@ await test("Reise-Status und Option: abgeschlossen/aktuell/in Planung, Option oh
   await rp(`var o = newTripObj({name:"Irgendwann Japan", start:"", end:"", orte:[{id:"o_j", n:"Tokio", la:35.68, lo:139.69}], opt:true}); S.trips[o.id] = o; save(); pfStat = {}; openProfile(); true`); await page.waitForTimeout(300);
   ok(await page.locator("#profView .pf-trip .pf-st").count()===3, "Status-Plakette fehlt auf den Kacheln");
   ok(await page.locator("#profView .pf-trip .pf-st.pfs-opt").count()===1, "Option-Plakette fehlt");
+  ok(await page.locator("#profView .pf-trip").first().locator(".pfs-now").count()===1, "Aktuelle Reise steht nicht oben links");
+  ok(await rp(`(function(){ var ids = liveIds(), sorted = ids.map(function(k){ return S.trips[k]; }).sort(tripCmp); return tripStatus(sorted[0])==="now" && tripStatus(S.trips[lsTripIds()[0]])==="now"; })()`), "Aktuelle Reise nicht zuerst in Menü/Liste");
   await shot("profil-status");
   await click("#profView [data-act=pfstatpick]"); await page.waitForTimeout(150);
   ok(await page.locator("#jpMenu [data-act=pfstat]").count()===5, "Status-Filter hat nicht Alle + 4 Status");

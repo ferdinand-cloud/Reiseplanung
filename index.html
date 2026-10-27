@@ -3756,7 +3756,9 @@ function tstatHTML(t){ var k = tripStatus(t); return "<em class=\"tst tst-"+k+"\
 // Zeitraum oder „Option“ (ohne Termin)
 function tripRange(t){ return t && t.opt ? "Option · ohne Termin" : rangeLabel(t.start, t.end); }
 // Sortierung: Option-Reisen ans Ende
-function tripCmp(a, b){ return (a.opt?1:0) - (b.opt?1:0) || String(a.start||"").localeCompare(String(b.start||"")); }
+// laufende Reise (Status „Aktuell“) immer zuerst
+function nowFirst(a, b){ return (tripStatus(b)==="now"?1:0) - (tripStatus(a)==="now"?1:0); }
+function tripCmp(a, b){ return nowFirst(a, b) || (a.opt?1:0) - (b.opt?1:0) || String(a.start||"").localeCompare(String(b.start||"")); }
 function todayKey(){ var n = new Date(); return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0"); }
 
 /* ---------- Zustand (Prototyp: nur dieses Gerät) ---------- */
@@ -7017,7 +7019,7 @@ function lsGoMap(pid){
   if(!desktop.matches && hasLoc(p)){ setSheet("min"); setTimeout(function(){ revealPoint(p, 16, true); }, 60); } else revealPoint(p, 16, true);
 }
 /* Reise-Auswahl der Liste: ein Dropdown statt Chips nebeneinander (bei 30+ Reisen sonst unübersichtlich), ab 6 Reisen mit Suche */
-function lsTripIds(){ return liveIds().filter(function(id){ return !isViewerOf(id); }).sort(function(a, b){ var A = S.trips[a]||{}, B = S.trips[b]||{}; return (B.opt?1:0) - (A.opt?1:0) || (B.start||"").localeCompare(A.start||""); }); }
+function lsTripIds(){ return liveIds().filter(function(id){ return !isViewerOf(id); }).sort(function(a, b){ var A = S.trips[a]||{}, B = S.trips[b]||{}; return nowFirst(A, B) || (B.opt?1:0) - (A.opt?1:0) || (B.start||"").localeCompare(A.start||""); }); }
 function lsTripSub(t){ return TSTAT[tripStatus(t)]+(!t.opt && t.start && t.end ? " · "+shortD(t.start)+"–"+shortD(t.end)+(t.end.slice(0, 4) ? " "+t.end.slice(0, 4) : "") : ""); }
 function lsTripDD(cur){ var t = cur && S.trips[cur];
   return "<div class=\"ls-dds ls-tripdds\"><button type=\"button\" class=\"ls-dd ls-tripdd\" data-act=\"lstrippick\" aria-haspopup=\"menu\" aria-label=\"Reise wählen\">"+
@@ -7395,7 +7397,7 @@ function renderProfile(){
   h += "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"mine\" aria-selected=\""+(profTab==="mine")+"\">Reisen</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"obs\" aria-selected=\""+(profTab==="obs")+"\">Beobachtet</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"ziele\" aria-selected=\""+(profTab==="ziele")+"\">Ziele</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"welt\" aria-selected=\""+(profTab==="welt")+"\">Karte</button></div>";
   if(profTab==="ziele") h += "<div class=\"zl\">"+zielsHTML()+"</div>"; else if(profTab==="welt") h += wmHTML(); else {
   var list = profTab==="obs" ? obs : mine, all0 = list.length;
-  list.sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); });
+  list.sort(function(a, b){ return nowFirst(S.trips[a], S.trips[b]) || ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); });
   PFSTCNT = {}; list.forEach(function(id){ var k = tripStatus(S.trips[id]); PFSTCNT[k] = (PFSTCNT[k]||0) + 1; });
   var stSel = pfStatSel();
   if(all0 > 1 || stSel.length) h += "<div class=\"ls-dds pf-filt\"><button type=\"button\" class=\"ls-dd"+(stSel.length ? " on" : "")+"\" data-act=\"pfstatpick\" aria-haspopup=\"menu\">"+esc(pfStatLbl(stSel))+CHEV+"</button></div>";
