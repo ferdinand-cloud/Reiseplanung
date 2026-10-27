@@ -1090,11 +1090,14 @@ await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise u
   await seed();
   await rp(`openZiele()`); await page.waitForTimeout(150);
   await click("#profView [data-act=znew]");
+  ok(await visible("#catPop .zpop"), "„Neues Ziel“ öffnet kein Pop-up");
   await page.locator("#zName").fill("Brooklyn-Wochenende");
   await page.locator("#zQ").fill("Brooklyn"); await page.waitForTimeout(700);
   await shot("ziel-neu");
-  await click("#profView [data-act=zarea]");
-  await click("#profView [data-act=zsave]");
+  await click("#catPop [data-act=zarea]");
+  ok((await page.locator("#zName").inputValue())==="Brooklyn-Wochenende", "Name nach Gebietswahl verloren");
+  await click("#catPop [data-act=zsave]");
+  ok(!(await visible("#catPop")), "Pop-up bleibt nach dem Anlegen offen");
   ok(await rp(`zielIds().length===1 && S.trips[zielIds()[0]].name==="Brooklyn-Wochenende" && S.trips[zielIds()[0]].orte.length===1`), "Ziel mit Gebiet nicht angelegt");
   ok(await rp(`liveIds().length===1 && T().id==="t_test"`), "Ziel stört die Reisen");
   await rp(`closeProfile(); poiSel = {n:"Peter Luger", c:"essen", la:40.7099, lo:-73.9622, addr:"Broadway 178"}; sel = null; select("poi");`); await page.waitForTimeout(150);
@@ -1110,7 +1113,7 @@ await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise u
   await shot("ziel-entdecken");
   await rp(`openZiele(zielIds()[0])`); await page.waitForTimeout(150);
   await click("#profView [data-act=zedit]");
-  await click("#profView [data-act=zdel]");
+  await click("#catPop [data-act=zdel]");
   ok(await visible("#cfPop"), "Löschen ohne Rückfrage");
   await click("#cfPop .cf-ok"); await page.waitForTimeout(150);
   ok(await rp(`zielIds().length===0 && !!S.trips.t_test`), "Ziel nicht gelöscht oder Reise betroffen");
@@ -1149,8 +1152,8 @@ await test("Ziele: mit Freunden teilen, Tipps von Freunden erkennbar", async () 
   ok(await rp(`!!(window.__zup && window.__zup.invites)`), "Einladung nicht gespeichert");
   ok((await page.locator("#profView .zl").innerText()).includes("eingeladen"), "Einladung nicht angezeigt");
   await shot("ziel-teilen");
-  await rp(`META[zielIds()[0]].owner = "u_anna"; zEdit = zEditFrom(zielIds()[0]); renderProfile();`); await page.waitForTimeout(150);
-  ok((await page.locator("#profView [data-act=zdel]").innerText()).includes("verlassen"), "Geteiltes fremdes Ziel bietet Löschen statt Verlassen");
+  await rp(`META[zielIds()[0]].owner = "u_anna"; zEdit = zEditFrom(zielIds()[0]); zRenderEdit(true);`); await page.waitForTimeout(150);
+  ok((await page.locator("#catPop [data-act=zdel]").innerText()).includes("verlassen"), "Geteiltes fremdes Ziel bietet Löschen statt Verlassen");
 });
 /* Querformat: iPhone quer (844×390) mit Notch-Rändern links/rechts und Home-Leiste unten */
 const QUER = {vp:{width:844, height:390}, safe:{left:47, right:47, bottom:21}};
@@ -1304,6 +1307,121 @@ await test("Offline-Karte: Kacheln des Reisegebiets laden, anzeigen und löschen
   await click("#offBox [data-act=offdel]"); ok(await visible("#cfPop"), "Löschen ohne Rückfrage");
   await click("#cfPop .cf-ok"); await page.waitForTimeout(300);
   ok(await rp(`!offMeta(S.cur)`) && !(await page.evaluate(() => caches.has(window.__rp("offCacheName(S.cur)")))), "Offline-Karte nicht gelöscht");
+});
+
+await test("Social: „3 Freunde empfehlen das“ an Ort, in Entdecken und Wunschliste", async () => {
+  await seed();
+  await rp(`var mk = function(k, by, fn, rt){ return {key:by+"/"+k, by:by, fname:fn, n:"MoMA", c:"kultur", la:40.7615, lo:-73.9777, rating:rt, photos:[], note:"", cm:[], at:Date.now()}; };
+    DC.items = [mk("a", "u_anna", "anna", 1), mk("b", "u_ludwig", "Ludwig", 6), mk("c", "u_clara", "Clara", 0), mk("d", "u_bob", "bob", 8),
+      {key:"u_anna/j", by:"u_anna", fname:"anna", n:"Joe's Pizza", c:"essen", la:40.7306, lo:-74.0021, rating:2, photos:[], note:"", cm:[], at:Date.now()}];
+    DC.byKey = {}; DC.items.forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); select("p3"); renderCard(); true`);
+  await page.waitForTimeout(200);
+  const fl = await page.locator("#card .frl").innerText();
+  ok(fl.includes("3 Freunde") && fl.includes("@anna"), "„3 Freunde empfehlen das“ fehlt oder zählt die schlechte Bewertung mit: "+fl);
+  await shot("social-3freunde");
+  await rp(`select(null); dcScope = "all"; openDcPage(); true`); await page.waitForTimeout(250);
+  ok(await page.locator("#dcView .dc-card").count()===2, "Derselbe Ort erscheint mehrfach in Entdecken");
+  ok((await page.locator("#dcView .dc-also").first().innerText()).includes("@Ludwig"), "„auch empfohlen von“ fehlt");
+  await rp(`closeDcPage(); tab = "wish"; renderAll(); true`); await page.waitForTimeout(200);
+  ok(await rp(`!!document.querySelector('.wi[data-id="p6"] .wfr')`), "Wunschliste zeigt Freunde-Empfehlung nicht");
+});
+await test("Social: Freunde nach Tipps für ein Ziel fragen", async () => {
+  await seed();
+  await rp(`var fq = function(){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(id); }, add:function(){ return Promise.resolve({}); }}; return q; },
+      fd = function(id){ return {id:id, collection:function(){ return fq(); }, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }, set:function(){ return Promise.resolve(); }, update:function(){ return Promise.resolve(); }, delete:function(){ return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }}; };
+    window.__fakeDb = function(over){ var db = {collection:function(){ return fq(); }, batch:function(){ return {set:function(){}, update:function(){}, delete:function(){}, commit:function(){ return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }}; return Object.assign(db, over||{}); };
+    window.__msgs = []; fbDb = window.__fakeDb({batch:function(){ return {set:function(ref, d){ if(d.from && d.t) window.__msgs.push(d); }, commit:function(){ return Promise.resolve(); }}; }});
+    var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); save(); openZiele(z); true`);
+  await page.waitForTimeout(200);
+  await click("#profView [data-act=askopen]");
+  ok((await page.locator("#askT").inputValue()).includes("„Rom“"), "Nachricht nennt das Ziel nicht");
+  ok(await page.locator("#catPop [data-act=asksend][disabled]").count()===1, "Senden ohne Auswahl möglich");
+  await click("#catPop [data-act=askpick][data-uid=u_anna]");
+  await click("#catPop [data-act=askpick][data-uid=u_clara]");
+  await shot("social-fragen");
+  await click("#catPop [data-act=asksend]"); await page.waitForTimeout(250);
+  ok(await rp(`window.__msgs.length===2 && window.__msgs.every(function(m){ return /Rom/.test(m.t) && !m.place; })`), "Nicht an beide Freunde gesendet");
+  ok((await page.locator("#toast").innerText()).includes("2 Freunde"), "Bestätigung fehlt");
+  await rp(`fbDb = null; true`);
+});
+await test("Social: Einladungslink fragt nach Freundschaftsanfrage", async () => {
+  await seed();
+  await rp(`window.__req = null; PROF = {name:"ich", nameLower:"ich"}; frRequest = function(u, n){ window.__req = [u, n]; };
+    var fq = function(){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(id); }, add:function(){ return Promise.resolve({}); }}; return q; },
+      fd = function(id){ return {id:id, collection:function(){ return fq(); }, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }, set:function(){ return Promise.resolve(); }, update:function(){ return Promise.resolve(); }, delete:function(){ return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }}; };
+    window.__fakeDb = function(over){ var db = {collection:function(){ return fq(); }, batch:function(){ return {set:function(){}, update:function(){}, delete:function(){}, commit:function(){ return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }}; return Object.assign(db, over||{}); };
+    fbDb = window.__fakeDb({collection:function(n){ var q = fq(); q.doc = function(id){ var d = fd(id); d.get = function(){ return Promise.resolve(n==="usernames" ? {exists:id==="zoe", data:function(){ return {uid:"u_zoe"}; }} : {exists:true, data:function(){ return {name:"Zoe"}; }}); }; return d; }; return q; }});
+    INVFR = "zoe"; invCheck(); true`);
+  await page.waitForTimeout(300);
+  ok(await visible("#cfPop") && (await page.locator("#cfPop").innerText()).includes("@Zoe"), "Frage nach Freundschaft fehlt");
+  await click("#cfPop .cf-ok");
+  ok(await rp(`window.__req && window.__req[0]==="u_zoe"`), "Anfrage nicht gesendet");
+  ok(await rp(`invLink().endsWith("?freund=ich")`), "Einladungslink falsch");
+  await rp(`INVFR = "ich"; invCheck(); true`); await page.waitForTimeout(200);
+  ok(!(await visible("#cfPop")), "Eigener Link fragt nach Freundschaft mit sich selbst");
+  await rp(`fbDb = null; true`);
+});
+await test("Social: Liste per Link teilen und als Ziel oder Wunschliste übernehmen", async () => {
+  await seed();
+  const code = await page.evaluate(() => window.__rp(`lkPack("Pizza in NYC", [{n:"Lucali", c:"essen", la:40.6818, lo:-73.9991, addr:"Henry St", note:"früh kommen"}, {n:"L'Industrie", c:"essen", la:40.7115, lo:-73.9576}])`));
+  ok(/^[zj][A-Za-z0-9_-]+$/.test(code) && code.length < 600, "Link-Code ungültig oder zu lang");
+  await rp(`location.hash = "liste=${code}"; true`); await page.waitForTimeout(600);
+  ok(await visible("#catPop .lk-card") && (await page.locator("#catPop").innerText()).includes("Lucali"), "Geteilte Liste wird nicht angezeigt");
+  ok(await rp(`location.hash===""`), "Link bleibt in der Adresse stehen");
+  await shot("social-liste");
+  await click("#catPop [data-act=lkziel]");
+  ok(await rp(`var z = zielIds().map(function(k){ return S.trips[k]; }).filter(function(t){ return t.name==="Pizza in NYC"; })[0]; !!z && Object.keys(z.places).length===2 && z.orte[0].bb`), "Nicht als Ziel übernommen");
+  await rp(`location.hash = "liste=${code}"; true`); await page.waitForTimeout(600);
+  await click("#catPop [data-act=lkwish]");
+  ok(await rp(`T().lists.some(function(l){ return l.name==="Pizza in NYC"; }) && Object.keys(T().places).filter(function(k){ return T().places[k].n==="Lucali"; }).length===1`), "Nicht in die Wunschliste übernommen");
+  await rp(`location.hash = "liste=zkaputt"; true`); await page.waitForTimeout(500);
+  ok((await page.locator("#toast").innerText()).includes("beschädigt"), "Kaputter Link ohne Hinweis");
+});
+await test("Profil: Weltkarte mit besuchten Orten und Städten", async () => {
+  await seed();
+  await rp(`openProfile(); profTab = "welt"; renderProfile(); true`); await page.waitForTimeout(800);
+  const st = await page.locator("#profView .wm-stats").innerText();
+  ok(/1\s*Städte/.test(st) && /2\s*Orte besucht/.test(st), "Zahlen der Weltkarte falsch: "+st.replace(/\s+/g, " "));
+  ok(await page.locator("#pfMap canvas").count()===1, "Karte fehlt");
+  const same = await rp(`var a = document.querySelector("#pfMap"); renderProfile(); a===document.querySelector("#pfMap")`);
+  ok(same, "Karte wird bei jedem Neuzeichnen neu geladen");
+  await shot("profil-weltkarte");
+  await rp(`profTab = "mine"; renderProfile(); true`);
+  ok(await rp(`PFMAP===null`), "Karte bleibt nach Tabwechsel im Speicher");
+});
+
+await test("Öffentlich: Ort für alle freigeben, in pub speichern, in Entdecken zeigen und melden", async () => {
+  await seed();
+  await rp(`window.__log = []; var mk = function(path){ var o = {collection:function(n){ return mk(path+"/"+n); }, doc:function(id){ return mk(path+"/"+id); },
+      set:function(d){ window.__log.push([path, d]); return Promise.resolve(); }, update:function(d){ return Promise.resolve(); }, delete:function(){ window.__log.push([path, "del"]); return Promise.resolve(); },
+      where:function(){ return o; }, orderBy:function(){ return o; }, limit:function(){ return o; }, onSnapshot:function(){ return function(){}; },
+      get:function(){ return Promise.resolve(path.indexOf("/pub")===0 ? {docs:[{id:"u_zoe_t1_p1", data:function(){ return {by:"u_zoe", name:"zoe", n:"Lucali", c:"essen", la:40.6818, lo:-73.9991, gh:geohash(40.6818, -73.9991, 7), rating:1, photos:[], at:Date.now()}; }}]} : {docs:[], exists:false, data:function(){ return {}; }}); }};
+      return o; };
+    fbDb = Object.assign(mk(""), {batch:function(){ return {set:function(){}, commit:function(){ return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }}); true`);
+  ok(await rp(`geohash(57.64911, 10.40744, 11)==="u4pruydqqvj"`), "Geohash falsch");
+  await rp(`setVis("p4", "all"); true`); await page.waitForTimeout(200);
+  ok(await visible("#pubPop") && (await page.locator("#pubPop").innerText()).includes("Öffentlich teilen"), "Rückfrage zum öffentlichen Teilen fehlt");
+  await shot("oeffentlich-frage");
+  await click("#pubPop .pub-ok");
+  ok(await rp(`T().pubA.p4===1 && T().pubP.p4===1 && visOf4("p4")==="all" && isPubP("p4")`), "Ort nicht öffentlich gestellt");
+  await rp(`KNOWN.t_test = 1; recBusy = false; lsSet("rp-recs-u_me", "{}"); recSync(); true`); await page.waitForTimeout(500);
+  ok(await rp(`window.__log.some(function(x){ return x[0]==="/pub/u_me_t_test_p4" && x[1].gh && x[1].gh.length===7 && x[1].by==="u_me"; })`), "Öffentliche Empfehlung nicht in pub geschrieben");
+  ok(await rp(`window.__log.some(function(x){ return x[0]==="/recs/u_me/items/t_test_p4"; })`), "Freundes-Empfehlung fehlt");
+  await rp(`setVis("p4", "pub"); true`); await page.waitForTimeout(200);
+  ok(await visible("#cfPop"), "Zurücknehmen ohne Rückfrage");
+  await click("#cfPop .cf-ok");
+  ok(await rp(`!T().pubA.p4 && T().pubP.p4===1`), "Öffentlich nicht zurückgenommen");
+  await rp(`recBusy = false; window.__log = []; recSync(); true`); await page.waitForTimeout(500);
+  ok(await rp(`window.__log.some(function(x){ return x[0]==="/pub/u_me_t_test_p4" && x[1]==="del"; })`), "Öffentliche Empfehlung nicht gelöscht");
+  await rp(`dcSrc = "all"; dcScope = "all"; DC.at = Date.now(); openDcPage(); true`); await page.waitForTimeout(500);
+  const txt = await page.locator("#dcView").innerText();
+  ok(txt.includes("Lucali") && txt.includes("öffentlich"), "Öffentliche Empfehlung fehlt in Entdecken");
+  await shot("oeffentlich-entdecken");
+  await click("#dcView [data-act=dcreport]");
+  await click("#catPop [data-act=dcrepgo]"); await page.waitForTimeout(300);
+  ok(await rp(`window.__log.some(function(x){ return x[0]==="/reports/u_me_u_zoe_t1_p1" && x[1].target==="u_zoe_t1_p1" && x[1].owner==="u_zoe"; })`), "Meldung nicht gespeichert");
+  ok(!(await page.locator("#dcView").innerText()).includes("Lucali"), "Gemeldeter Beitrag noch sichtbar");
+  await rp(`fbDb = null; closeDcPage(); true`);
 });
 
 /* ------------------------------------------------------------------ Ergebnis */

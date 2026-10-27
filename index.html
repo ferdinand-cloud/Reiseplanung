@@ -2190,6 +2190,26 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 
 .sugb{color:#E5A100}
 .ohx{color:#C4462F;font-weight:600}
+.frl{display:flex;align-items:center;gap:9px;width:100%;margin:8px 0 2px;padding:7px 10px;border:0;border-radius:12px;background:color-mix(in srgb,#5E9970 12%,transparent);color:var(--ink);font:inherit;font-size:13.5px;text-align:left;cursor:pointer}
+.frl-av{display:flex;flex:0 0 auto}.frl-av>*{width:24px;height:24px;border-radius:50%;margin-left:-7px;border:2px solid var(--card,#fff);object-fit:cover;display:grid;place-items:center;font:700 11px/1 var(--f-body);background:#5E9970;color:#fff}
+.frl-av>*:first-child{margin-left:0}.frl-t{min-width:0}.frl-t small{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wfr{color:#5E9970}
+.dc-acts:has(.dc-rep){gap:6px}.dc-acts:has(.dc-rep) .btn{padding-left:11px;padding-right:11px}.dc-rep{color:var(--muted)}
+.vlv-all.ls-vis,.vlv-all.cvis{background:color-mix(in srgb,#AF52DE 20%,transparent);color:#AF52DE}.addmenu.jpmenu .ai.vlc-all{color:#AF52DE}
+.vis-all{display:flex;align-items:center;gap:10px;width:100%;margin-top:8px;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.vis-all svg{width:20px;height:20px;color:#AF52DE;flex:0 0 auto}.vis-all span{flex:1;min-width:0}.vis-all small{display:block;color:var(--muted);font-size:12px}
+.vis-all i{font-style:normal;font-weight:700;color:#AF52DE}.vis-all.on{border-color:#AF52DE;background:color-mix(in srgb,#AF52DE 10%,transparent)}
+.wm-stats div{display:flex;flex-direction:column;align-items:center}
+.wm-map{height:240px;border-radius:16px;overflow:hidden;margin:4px 0 6px;background:var(--fill)}
+.wm-leg{display:flex;gap:14px;justify-content:center;font-size:12px;color:var(--muted);margin-bottom:10px}.wm-leg span{display:inline-flex;align-items:center;gap:5px}
+.wm-d{width:9px;height:9px;border-radius:50%;display:inline-block}.wm-d.v{background:#5E9970}.wm-d.p{background:#007AFF}.wm-d.z{background:#AF52DE}
+.wm-fl{font-size:22px;display:grid;place-items:center;background:none}
+.lk-list{max-height:46vh;overflow:auto;margin:0 0 12px}.lk-list li{display:flex;gap:10px;align-items:center;padding:7px 2px}
+.ask-card textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:15px;background:var(--fill);color:var(--ink);resize:none}
+.ask-h{display:flex;justify-content:space-between;align-items:center;margin:12px 2px 4px;font-size:13px;color:var(--muted)}
+.ask-list{max-height:36vh;overflow:auto;margin-bottom:12px}.ask-list button{display:flex;align-items:center;gap:10px}
+.ask-av{width:26px;height:26px;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:#5E9970;color:#fff;font:700 12px/1 var(--f-body);flex:0 0 auto}
+.dc-also{margin:6px 0 0;font-size:13px;color:var(--muted)}.dc-also b{color:#5E9970}
 .offrow .note{margin:0 0 8px}.offacts{display:flex;gap:8px}
 .dschip svg{width:15px;height:15px}
 .ds-list{max-height:52vh;overflow:auto;display:grid;gap:10px;margin-bottom:12px}
@@ -2700,7 +2720,7 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .pf-head{gap:18px}
 .pf-av{box-shadow:0 0 0 3px var(--sheet),0 0 0 5px color-mix(in srgb,var(--accent) 55%,transparent)}
 .pf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border:0;padding:0;margin:6px 0 18px}
-.pf-stats button{background:var(--fill);border-radius:16px;padding:12px 6px}
+.pf-stats button,.wm-stats div{background:var(--fill);border-radius:16px;padding:12px 6px}
 .pf-stats b{font-size:20px}
 .pf-grid{gap:14px}
 .pf-tw{position:relative;min-width:0}
@@ -3545,6 +3565,9 @@ function canPriv(){ return !!acct.user && !isRO(); }
    privat (nur Mitreisende) · Reise (Standard: Mitreisende und Beobachter) · veröffentlicht (zusätzlich alle Freunde, wird ihnen vorgeschlagen)
    Privat und Veröffentlichen sind beide bewusste Schritte; ein Ort ist nie beides zugleich. */
 function isPubP(pid){ return !!((T().pubP||{})[rootOf(pid)]); }
+// zusätzlich öffentlich (alle Nutzer, in Entdecken): nur zusammen mit „Freunde“
+function isPubA(pid){ return isPubP(pid) && !!((T().pubA||{})[rootOf(pid)]); }
+function visOf4(pid){ return isPubA(pid) ? "all" : visOf(pid); }
 function wasVisited(pid){ var t = T(); return visitIds(pid).some(function(k){ return !!t.done[k]; }); }
 function visOf(pid){ return isPrivP(pid) ? "priv" : isPubP(pid) ? "pub" : "trip"; }
 var VRANK = {priv:0, trip:1, pub:2};
@@ -3552,9 +3575,10 @@ var VRANK = {priv:0, trip:1, pub:2};
    „Freunde“ (pubItem) muss man bewusst wählen und geht nur, wenn der Ort selbst veröffentlicht ist. */
 function itemVisRaw(kind, key){ var t = T(); if(kind==="n" ? (t.privN||{})[key] : (t.privPh||{})[key]) return "priv"; if((t.pubItem||{})[kind+":"+key]) return "pub"; return "trip"; }
 function itemVis(kind, key, pid){ var a = itemVisRaw(kind, key), b = visOf(pid); return VRANK[a] < VRANK[b] ? a : b; }
-var VISLBL = {priv:"Privat", trip:"Reise", pub:"Freunde"};
+var VISLBL = {priv:"Privat", trip:"Reise", pub:"Freunde", all:"Alle"};
+var VISALL = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"1.8\" fill=\"currentColor\"/><path d=\"M6.5 6.5a5 5 0 0 0 0 7M13.5 6.5a5 5 0 0 1 0 7M4 4a8.5 8.5 0 0 0 0 12M16 4a8.5 8.5 0 0 1 0 12\"/></svg>";
 var IEYE = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M1.5 10s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z\"/><circle cx=\"10\" cy=\"10\" r=\"2.5\"/></svg>";
-function visIco(v){ return v==="priv" ? ILOCK : v==="trip" ? VISTRIP : VISPUB; }
+function visIco(v){ return v==="priv" ? ILOCK : v==="trip" ? VISTRIP : v==="all" ? VISALL : VISPUB; }
 function setItemVis(kind, key, pid, v){
   var t = T(), was = itemVis(kind, key, pid), pk = kind==="n" ? "privN" : "privPh";
   if(VRANK[v] > VRANK[visOf(pid)]){ toast(v==="pub" ? "Erst den Ort unter „Sichtbarkeit“ für Freunde veröffentlichen" : "Der ganze Ort ist privat", false); return; }
@@ -3571,7 +3595,7 @@ function setItemVis(kind, key, pid, v){
   apply();
 }
 /* Veröffentlichen: in einem Schritt auswählen, welche Fotos (und ob die Notiz) Freunde sehen */
-function pubPrompt(ro, cur0, apply){
+function pubPrompt(ro, cur0, apply, toAll){
   var t = T(), phs = photosAll(ro).filter(function(x){ return !(t.privPh||{})[x]; }), note = noteOf(ro) && !(t.privN||{})[ro];
   var sel0 = {}; phs.forEach(function(x){ if((t.pubItem||{})["ph:"+x]) sel0[x] = 1; }); var noteOn = !!(t.pubItem||{})["n:"+ro];
   // eigene Kommentare zum Ort (alle Besuche); Kommentare von Mitreisenden bleiben in der Reise
@@ -3581,9 +3605,9 @@ function pubPrompt(ro, cur0, apply){
   var el = $("pubPop"); if(!el){ el = document.createElement("div"); el.id = "pubPop"; el.className = "cfpop"; document.body.appendChild(el); }
   var draw = function(){
     var n = Object.keys(sel0).length, all = phs.length && n===phs.length;
-    el.innerHTML = "<div class=\"cf-card pub-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"pubT\"><b id=\"pubT\">Für Freunde veröffentlichen</b>"+
-      "<p>Deine Freunde sehen den Ort mit deiner Bewertung und bekommen ihn vorgeschlagen, wenn sie in der Nähe planen."+(cur0==="priv" ? " Der Ort ist dann nicht mehr privat." : "")+"</p>"+
-      (phs.length ? "<div class=\"pub-h\"><span>Welche Fotos sollen Freunde sehen?</span><button type=\"button\" data-pub=\"all\">"+(all ? "Keine" : "Alle")+"</button></div><div class=\"pub-grid\">"+
+    el.innerHTML = "<div class=\"cf-card pub-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"pubT\"><b id=\"pubT\">"+(toAll ? "Öffentlich teilen" : "Für Freunde veröffentlichen")+"</b>"+
+      "<p>"+(toAll ? "Alle Nutzer der App sehen den Ort mit deiner Bewertung in „Entdecken“ – nicht nur deine Freunde." : "Deine Freunde sehen den Ort mit deiner Bewertung und bekommen ihn vorgeschlagen, wenn sie in der Nähe planen.")+(cur0==="priv" ? " Der Ort ist dann nicht mehr privat." : "")+"</p>"+
+      (phs.length ? "<div class=\"pub-h\"><span>Welche Fotos sollen "+(toAll ? "alle" : "Freunde")+" sehen?</span><button type=\"button\" data-pub=\"all\">"+(all ? "Keine" : "Alle")+"</button></div><div class=\"pub-grid\">"+
         phs.map(function(x){ var on = !!sel0[x]; return "<button type=\"button\" data-pubph=\""+x+"\" aria-pressed=\""+on+"\" class=\""+(on?"on":"")+"\"><img data-ph=\""+x+"\" alt=\"\"><i>"+(on ? "✓" : "")+"</i></button>"; }).join("")+"</div>"+
         "<small class=\"pub-n\">"+(n ? n+" von "+phs.length+" Fotos ausgewählt" : "Keine Fotos ausgewählt – Freunde sehen nur Ort und Bewertung")+(photosAll(ro).length > phs.length ? " · private Fotos sind ausgeblendet" : "")+"</small>" : "")+
       (note ? "<button type=\"button\" class=\"pub-note"+(noteOn?" on":"")+"\" data-pub=\"note\" aria-pressed=\""+noteOn+"\"><i>"+(noteOn ? "✓" : "")+"</i><span><b>Notiz auch zeigen</b><small>"+esc(noteOf(ro).slice(0, 80))+(noteOf(ro).length > 80 ? " …" : "")+"</small></span></button>" : "")+
@@ -3614,12 +3638,12 @@ function pubPrompt(ro, cur0, apply){
   };
   el.hidden = false; draw();
 }
-function visBtn(pid, cls, label){ if(!canPriv() || !P(pid) || P(pid).k==="hotel") return ""; var v = visOf(pid);
+function visBtn(pid, cls, label){ if(!canPriv() || !P(pid) || P(pid).k==="hotel") return ""; var v = visOf4(pid);
   return "<"+(cls==="ls-vis" ? "span role=\"button\" tabindex=\"0\"" : "button type=\"button\"")+" class=\""+cls+" vlv-"+v+"\" data-act=\"placevispick\" data-pid=\""+pid+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit: "+VISLBL[v]+"\" title=\"Sichtbarkeit: "+VISLBL[v]+"\">"+visIco(v)+(label ? "<span>"+VISLBL[v]+(v==="priv" && privToOf("p", pid).length ? " · "+privToOf("p", pid).length+" Beob." : "")+"</span>" : "")+"</"+(cls==="ls-vis" ? "span" : "button")+">"; }
 function openPlaceVis(pid, btn){
-  var cur0 = visOf(pid), vis1 = wasVisited(pid);
-  var h = "<div class=\"vp-h\">Ort sichtbar für</div>"+["priv","trip","pub"].map(function(v){
-    var dis = v==="pub" && !vis1, sub = v==="priv" ? "nur Mitreisende" : v==="trip" ? "Mitreisende + Beobachter" : (dis ? "erst nach dem Besuch" : "+ Freunde, als Vorschlag");
+  var cur0 = visOf4(pid), vis1 = wasVisited(pid);
+  var h = "<div class=\"vp-h\">Ort sichtbar für</div>"+["priv","trip","pub","all"].map(function(v){
+    var dis = (v==="pub" || v==="all") && !vis1, sub = v==="priv" ? "nur Mitreisende" : v==="trip" ? "Mitreisende + Beobachter" : dis ? "erst nach dem Besuch" : v==="all" ? "+ alle Nutzer, öffentlich" : "+ Freunde, als Vorschlag";
     return "<button type=\"button\" role=\"menuitemradio\" data-act=\"placevis\" data-pid=\""+pid+"\" data-v=\""+v+"\" aria-checked=\""+(cur0===v)+"\""+(dis ? " class=\"dis\"" : "")+"><span class=\"ai vlc-"+v+"\">"+visIco(v)+"</span><span class=\"cm-t\"><b>"+VISLBL[v]+"</b><small>"+sub+"</small></span>"+(cur0===v ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("")+(cur0==="priv" ? privToHTML("p", pid) : "");
   jpPopover(pid, btn, h, "vis-place");
 }
@@ -3631,19 +3655,22 @@ function openItemVis(kind, key, pid, btn){
   jpPopover(pid, btn, h, "vis-"+kind);
 }
 function setVis(pid, v){
-  var t = T(), ro = rootOf(pid), cur0 = visOf(pid); if(v===cur0) return;
+  var t = T(), ro = rootOf(pid), cur0 = visOf4(pid); if(v===cur0) return;
   var apply = function(){
-    t.privP = t.privP || {}; t.pubP = t.pubP || {};
-    visitIds(ro).forEach(function(k){ delete t.privP[k]; delete t.pubP[k]; });
-    if(v==="priv") t.privP[ro] = 1; else if(v==="pub") t.pubP[ro] = 1;
-    save(); phPrivSync(photosAll(ro)); cmResync(); pubCmSyncSoon();
-    toast(v==="priv" ? "Privat – nur Mitreisende sehen den Ort" : v==="pub" ? "Veröffentlicht – deine Freunde sehen den Ort mit Bewertung" : "Nur für diese Reise sichtbar (Mitreisende und Beobachter)", false);
+    t.privP = t.privP || {}; t.pubP = t.pubP || {}; t.pubA = t.pubA || {};
+    visitIds(ro).forEach(function(k){ delete t.privP[k]; delete t.pubP[k]; delete t.pubA[k]; });
+    if(v==="priv") t.privP[ro] = 1; else if(v==="pub") t.pubP[ro] = 1; else if(v==="all"){ t.pubP[ro] = 1; t.pubA[ro] = 1; }
+    save(); phPrivSync(photosAll(ro)); cmResync(); pubCmSyncSoon(); recSyncSoon();
+    toast(v==="priv" ? "Privat – nur Mitreisende sehen den Ort" : v==="all" ? "Öffentlich – alle Nutzer sehen den Ort in Entdecken" : v==="pub" ? "Veröffentlicht – deine Freunde sehen den Ort mit Bewertung" : "Nur für diese Reise sichtbar (Mitreisende und Beobachter)", false);
     if(jp && !$("jPop").hidden) renderJPop(); renderSheet(); if(sel) renderCard(); if(lsPage) renderLs();
   };
-  if(v==="pub"){
+  if(v==="pub" || v==="all"){
     if(!wasVisited(ro)){ toast("Veröffentlichen geht, sobald du den Ort besucht hast", false); return; }
-    pubPrompt(ro, cur0, apply); return;
+    if(v==="all" && cur0==="pub"){ askConfirm("Öffentlich zeigen?", "Alle Nutzer der App sehen den Ort dann mit deiner Bewertung und den für Freunde freigegebenen Notizen und Fotos. Du kannst das jederzeit zurücknehmen.", "Öffentlich zeigen", apply); return; }
+    if(v==="pub" && cur0==="all"){ askConfirm("Nicht mehr öffentlich?", "Nur noch deine Freunde sehen den Ort.", "Nur Freunde", apply); return; }
+    pubPrompt(ro, cur0, apply, v==="all"); return;
   }
+  if(cur0==="all"){ askConfirm(v==="priv" ? "Privat machen?" : "Veröffentlichung zurücknehmen?", "Weder deine Freunde noch andere Nutzer sehen den Ort dann.", v==="priv" ? "Privat machen" : "Zurücknehmen", apply); return; }
   if(cur0==="pub"){ askConfirm(v==="priv" ? "Privat machen?" : "Veröffentlichung zurücknehmen?", "Deine Freunde sehen den Ort dann nicht mehr.", v==="priv" ? "Privat machen" : "Zurücknehmen", apply); return; }
   if(cur0==="priv"){ askConfirm("Privat aufheben?", "Beobachter der Reise sehen den Ort dann mit Notizen, Fotos und Kommentaren.", "Aufheben", apply); return; }
   apply();
@@ -4038,7 +4065,7 @@ var PROF = null, FR = {inc:[], out:[], friends:[]}, frUnsub = [], frSearch = {q:
 function frWatch(){
   if(!fbDb || !acct.user || frUnsub.length) return;
   var uid0 = acct.user.uid;
-  fbDb.collection("profiles").doc(uid0).get().then(function(d){ PROF = d.exists ? d.data() : null; refreshSettings(); navAv(); if(profOpen) renderProfile(); }, function(){});
+  fbDb.collection("profiles").doc(uid0).get().then(function(d){ PROF = d.exists ? d.data() : null; refreshSettings(); navAv(); if(profOpen) renderProfile(); setTimeout(invCheck, 1200); }, function(){});
   var A = [], B = [], NAMES = {}, asked = {};
   var upd = function(){
     // Namen immer aktuell aus dem Profil, nicht den beim Anfragen gespeicherten
@@ -4089,7 +4116,7 @@ function setUsername(n){
       if(old && old!==low) tx.delete(fbDb.collection("usernames").doc(old));
       tx.set(fbDb.collection("profiles").doc(uid0), {name:n, nameLower:low});
     });
-  }).then(function(){ PROF = Object.assign({}, PROF||{}, {name:n, nameLower:low}); navAv(); if(profOpen) renderProfile(); unameEdit = false; unameMsg = ""; if(accView!=="search") accView = "main"; if(document.activeElement) document.activeElement.blur(); refreshSettings(); toast("Benutzername @"+n+" gespeichert", false); },
+  }).then(function(){ PROF = Object.assign({}, PROF||{}, {name:n, nameLower:low}); navAv(); setTimeout(invCheck, 800); if(profOpen) renderProfile(); unameEdit = false; unameMsg = ""; if(accView!=="search") accView = "main"; if(document.activeElement) document.activeElement.blur(); refreshSettings(); toast("Benutzername @"+n+" gespeichert", false); },
     function(e){ unameMsg = e && e.message==="taken" ? "@"+n+" ist schon vergeben." : "Speichern fehlgeschlagen."; refreshSettings(); });
 }
 var frTimer = null;
@@ -4126,6 +4153,33 @@ function frRequest(uid1, name1){
 function frAccept(id){
   var r = FR.inc.filter(function(x){ return x.id===id || x.from===id; })[0]; if(!r) return;
   fbDb.collection("friendReqs").doc(r.id).update({status:"accepted", toEmail:myMail(), toName:(PROF && PROF.name) || r.toName}).then(function(){ toast("Ihr seid jetzt befreundet", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); });
+}
+/* ---------- Einladungslink: …/?freund=name öffnet nach dem Anmelden die Frage nach einer Freundschaftsanfrage ---------- */
+var INVFR = (function(){ var m = /[?&]freund=([^&#]+)/.exec(location.search), v = "";
+  if(m){ try { v = decodeURIComponent(m[1]).replace(/^@/, "").toLowerCase(); } catch(e){} if(validName(v)) lsSet("rp-invfr", v); else v = "";
+    try { history.replaceState(null, "", location.pathname+location.search.replace(/([?&])freund=[^&#]*&?/, "$1").replace(/[?&]$/, "")+location.hash); } catch(e){} }
+  return v || lsGet("rp-invfr") || ""; })();
+function invLink(){ return location.origin+location.pathname+"?freund="+encodeURIComponent((PROF && PROF.nameLower) || ""); }
+function invShare(){
+  if(!PROF || !PROF.nameLower){ toast("Lege zuerst einen Benutzernamen fest", false); return; }
+  var u = invLink(), txt = "Lass uns in Reiseplan befreundet sein – dann siehst du meine Empfehlungen und wir können Reisen zusammen planen.";
+  if(navigator.share) navigator.share({title:"Reiseplan", text:txt, url:u}).catch(function(){});
+  else if(navigator.clipboard) navigator.clipboard.writeText(u).then(function(){ toast("Einladungslink kopiert", false); }, function(){ toast(u, false); });
+  else toast(u, false);
+}
+function invCheck(){
+  var v = INVFR; if(!v || !acct.user || !fbDb || !PROF) return;
+  INVFR = ""; try { localStorage.removeItem("rp-invfr"); } catch(e){}
+  if(v===PROF.nameLower) return;
+  fbDb.collection("usernames").doc(v).get().then(function(d){
+    var u = d.exists && d.data().uid; if(!u){ toast("@"+v+" wurde nicht gefunden", false); return; }
+    return fbDb.collection("profiles").doc(u).get().then(function(p){ var nm = (p.exists && p.data().name) || v, st = frState(u);
+      if(st==="friend") toast("Du bist schon mit @"+nm+" befreundet", false);
+      else if(st==="out") toast("Anfrage an @"+nm+" ist schon gesendet", false);
+      else if(st==="inc") askConfirm("Mit @"+nm+" befreunden?", "@"+nm+" hat dir schon eine Anfrage geschickt.", "Annehmen", function(){ frAccept(u); });
+      else askConfirm("Mit @"+nm+" befreunden?", "Du hast den Einladungslink von @"+nm+" geöffnet. Ihr seht dann gegenseitig eure Empfehlungen und könnt euch schreiben.", "Anfrage senden", function(){ frRequest(u, nm); });
+    });
+  }).catch(function(){ toast("Einladung konnte nicht geöffnet werden", false); });
 }
 function frRemove(id){ fbDb.collection("friendReqs").doc(id).delete(); }
 var accView = "main";
@@ -4173,6 +4227,7 @@ function friendsHTML(){
   FR.friends.forEach(function(f){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+f.id+"\" aria-label=\"Freundschaft beenden\">Entfernen</button></div>"; });
   FR.out.forEach(function(r){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((r.toName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.toName)+"</b><small>Anfrage gesendet</small></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Zurückziehen</button></div>"; });
   h += "<button type=\"button\" class=\"ag-row\" data-act=\"accview\" data-v=\"search\"><span><b>Freunde suchen</b><small>Über den Benutzernamen finden und anfragen</small></span><em class=\"chev\">›</em></button>";
+  h += "<button type=\"button\" class=\"ag-row\" data-act=\"invshare\"><span><b>Freunde einladen</b><small>Link verschicken – wer ihn öffnet, kann dir gleich eine Anfrage senden</small></span><em class=\"chev\">›</em></button>";
   return h+"</div>";
 }
 function profileHTML(){
@@ -4597,13 +4652,29 @@ function recCollect(){
       var phs = [].concat.apply([], vs.map(function(k){ return (t.photos||{})[k] || []; })).filter(function(x){ return !(t.privPh||{})[x] && (t.pubItem||{})["ph:"+x]; }).slice(-12);
       var key = tid.replace(/[^A-Za-z0-9_-]/g, "")+"_"+pid;
       var cm = ((t.pubCm||{})[pid] || []).map(function(c){ return {text:c.text, at:c.at||0, name:c.name||""}; }).slice(0, 20);
-      out[key] = {by:me, n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", rating:r, hl:isHl, note:note.slice(0, 3000), cm:cm, trip:t.name||"", ph:phs, at:(t.updatedAt||Date.now())};
+      out[key] = {by:me, n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", rating:r, hl:isHl, note:note.slice(0, 3000), cm:cm, trip:t.name||"", ph:phs, at:(t.updatedAt||Date.now()), all:!!(t.pubA && t.pubA[pid])};
     });
   });
   return out;
 }
 function recCmHTML(r, cls){ return (r.cm||[]).map(function(c){ return "<p"+(cls ? " class=\""+cls+"\"" : "")+">💬 "+(c.name ? "<b>@"+esc(c.name)+"</b> " : "")+esc(c.text)+"</p>"; }).join(""); }
-function recSig(r){ return JSON.stringify([r.n, r.c, r.la, r.lo, r.rating, r.hl, r.note, r.cm, r.trip, r.ph]); }
+function recSig(r){ return JSON.stringify([r.n, r.c, r.la, r.lo, r.rating, r.hl, r.note, r.cm, r.trip, r.ph, !!r.all]); }
+/* Öffentliche Empfehlungen: pub/{uid}_{Schlüssel}, mit Geohash (gh) für die Suche nach Gebiet */
+var GH32 = "0123456789bcdefghjkmnpqrstuvwxyz";
+function geohash(la, lo, prec){
+  var bits = 0, bit = 0, ch = 0, even = true, out = "", lat = [-90, 90], lon = [-180, 180];
+  while(out.length < (prec || 7)){
+    var r = even ? lon : lat, v = even ? lo : la, mid = (r[0] + r[1])/2;
+    if(v >= mid){ ch = ch*2 + 1; r[0] = mid; } else { ch = ch*2; r[1] = mid; }
+    even = !even; if(++bit===5){ out += GH32[ch]; bit = 0; ch = 0; }
+  }
+  return out;
+}
+function pubCol(){ return fbDb.collection("pub"); }
+function pubDoc(r, th){
+  var ph = th.slice(-4), tot = ph.reduce(function(a, x){ return a + x.length; }, 0); while(ph.length > 1 && tot > 420000){ tot -= ph.shift().length; }
+  return {by:r.by, name:(PROF && PROF.name)||"", n:r.n, c:r.c, la:r.la, lo:r.lo, gh:geohash(r.la, r.lo, 7), addr:r.addr, rating:r.rating, hl:r.hl, note:r.note, photos:ph, at:Date.now()};
+}
 function recSync(){
   if(!recShare || recBusy || !fbDb || !acct.user || !navigator.onLine) return;
   recBusy = true;
@@ -4615,13 +4686,18 @@ function recSync(){
       // Dokumentgröße begrenzen: so viele Fotos wie hineinpassen (neueste zuerst behalten)
       th = th.filter(Boolean); var tot = th.reduce(function(a, x){ return a + x.length; }, 0); while(th.length > 1 && tot > 850000){ tot -= th.shift().length; }
       var doc = {by:me, n:r.n, c:r.c, la:r.la, lo:r.lo, addr:r.addr, rating:r.rating, hl:r.hl, note:r.note, cm:r.cm||[], trip:r.trip, photos:th.filter(Boolean), at:Date.now(), name:(PROF && PROF.name)||""};
-      return recCol(me).doc(k).set(doc);
+      return recCol(me).doc(k).set(doc).then(function(){
+        // öffentlich: zusätzlich in pub (nicht öffentlich: dort entfernen, falls vorhanden)
+        return r.all ? pubCol().doc(me+"_"+k).set(pubDoc(r, doc.photos)) : pubCol().doc(me+"_"+k).delete().catch(function(){});
+      });
     }).catch(function(){ delete next[k]; }));
   });
-  Object.keys(prev).forEach(function(k){ if(!want[k]) jobs.push(recCol(me).doc(k).delete().catch(function(){ next[k] = prev[k]; })); });
+  Object.keys(prev).forEach(function(k){ if(!want[k]) jobs.push(recCol(me).doc(k).delete().then(function(){ return pubCol().doc(me+"_"+k).delete().catch(function(){}); }).catch(function(){ next[k] = prev[k]; })); });
   Promise.all(jobs).then(function(){ lsSet(SK, JSON.stringify(next)); recBusy = false; }, function(){ recBusy = false; });
 }
-function recWipe(){ if(!fbDb || !acct.user) return; var me = acct.user.uid; recCol(me).get().then(function(qs){ qs.docs.forEach(function(d){ d.ref.delete(); }); lsSet("rp-recs-"+me, "{}"); toast("Deine Empfehlungen sind nicht mehr für Freunde sichtbar.", false); }, function(){}); }
+function recWipe(){ if(!fbDb || !acct.user) return; var me = acct.user.uid;
+  pubCol().where("by", "==", me).get().then(function(qs){ qs.docs.forEach(function(d){ d.ref.delete(); }); }, function(){});
+  recCol(me).get().then(function(qs){ qs.docs.forEach(function(d){ d.ref.delete(); }); lsSet("rp-recs-"+me, "{}"); toast("Deine Empfehlungen sind nicht mehr für Freunde sichtbar.", false); }, function(){}); }
 
 /* ---------- Entdecken: Empfehlungen von Freunden am Reiseziel ---------- */
 var dcPage = false, dcScope = "here", dcSrc = lsGet("rp-dcsrc") || "all", DC = {items:[], byKey:{}, at:0, busy:false, err:""};
@@ -4631,8 +4707,38 @@ function dcLoad(){
   if(!fbDb || !acct.user){ renderDc(); return; }
   var fr = FR.friends.filter(function(f){ return f.uid; }); DC.busy = true; DC.err = ""; renderDc();
   Promise.all(fr.map(function(f){ return recCol(f.uid).orderBy("at", "desc").limit(150).get().then(function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.key = f.uid+"/"+d.id; v.fname = f.name || v.name || ""; return v; }); }, function(){ return []; }); }))
-    .then(function(all){ DC.items = [].concat.apply([], all); DC.byKey = {}; DC.items.forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); DC.busy = false; if(dcPage) renderDc(); if(SUG.tab==="fr" && $("catPop") && !$("catPop").hidden && $("catPop").querySelector(".sug-card")) renderSug();
+    .then(function(all){ DC.items = [].concat.apply([], all); DC.byKey = {}; DC.items.concat(PUB.items).forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); DC.busy = false; if(dcPage) renderDc(); if(SUG.tab==="fr" && $("catPop") && !$("catPop").hidden && $("catPop").querySelector(".sug-card")) renderSug();
       if(sel) renderCard(); if(jp && !jp.view && !$("jPop").hidden && !(document.activeElement && /^(cmIn|nText)$/.test(document.activeElement.id))) renderJPop(); });
+}
+/* Öffentliche Empfehlungen laden: rund um die Reise über Geohash-Zellen (9 Abfragen), sonst die neuesten */
+var PUB = {items:[], key:"", busy:false, err:"", at:0}, PUBHIDE = null;
+function pubHidden(){ if(!PUBHIDE){ try { PUBHIDE = JSON.parse(lsGet("rp-pubhide") || "{}") || {}; } catch(e){ PUBHIDE = {}; } } return PUBHIDE; }
+function pubCells(C){ var out = {}; [-1, 0, 1].forEach(function(dy){ [-1, 0, 1].forEach(function(dx){ out[geohash(C.la + dy*0.176, C.lo + dx*0.352, 4)] = 1; }); }); return Object.keys(out); }
+function pubLoad(force){
+  if(!fbDb || !acct.user) return; var C = tripCenter(), here = dcScope==="here" && C, key = here ? pubCells(C).join(",") : "neu";
+  if(!force && PUB.key===key && Date.now() - PUB.at < 120000) return;
+  PUB.key = key; PUB.busy = true; PUB.err = ""; var me = acct.user.uid;
+  var qs = here ? pubCells(C).map(function(c){ return pubCol().where("gh", ">=", c).where("gh", "<", c+"~").limit(80).get(); }) : [pubCol().orderBy("at", "desc").limit(60).get()];
+  Promise.all(qs).then(function(res){
+    if(PUB.key!==key) return; var seen = {}, out = [];
+    res.forEach(function(q){ q.docs.forEach(function(d){ var v = d.data(); if(!v || !v.by || v.by===me || seen[d.id]) return; seen[d.id] = 1;
+      v.pid = d.id; v.key = v.by+"/"+d.id.slice(v.by.length + 1); v.fname = v.name || ""; v.pub = 1; v.cm = v.cm || []; out.push(v); }); });
+    PUB.items = out; PUB.at = Date.now(); PUB.busy = false; out.forEach(function(r){ if(!DC.byKey[r.key]) DC.byKey[r.key] = r; }); if(dcPage) renderDc();
+  }, function(e){ if(PUB.key!==key) return; PUB.busy = false; PUB.err = "Öffentliche Empfehlungen konnten nicht geladen werden"+(e && e.code==="permission-denied" ? " (Regeln noch nicht aktiv?)" : "")+"."; if(dcPage) renderDc(); });
+}
+var DCREP = ["Unangemessen oder beleidigend", "Werbung oder Spam", "Falscher Ort oder falsche Angaben", "Persönliche Daten anderer"];
+function dcReport(k){
+  var r = DC.byKey[k]; if(!r || !r.pub) return;
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Beitrag melden\"><div class=\"pop-head\"><h4>Beitrag melden</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<p class=\"note\" style=\"margin:0 2px 10px\">„"+esc(r.n)+"“ von @"+esc(r.fname||"?")+". Was stimmt nicht? Der Beitrag wird für dich sofort ausgeblendet und geprüft.</p><div class=\"pop-list\">"+
+    DCREP.map(function(x, i){ return "<button type=\"button\" data-act=\"dcrepgo\" data-k=\""+esc(k)+"\" data-i=\""+i+"\">"+esc(x)+"</button>"; }).join("")+"</div></div>";
+  var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false;
+}
+function dcReportGo(k, i){
+  var r = DC.byKey[k]; closeCatPop(); if(!r || !r.pub || !fbDb || !acct.user) return; var me = acct.user.uid;
+  pubHidden()[r.pid] = Date.now(); lsSet("rp-pubhide", JSON.stringify(PUBHIDE)); renderDc();
+  fbDb.collection("reports").doc(me+"_"+r.pid).set({by:me, target:r.pid, owner:r.by, reason:DCREP[i] || "Sonstiges", n:String(r.n||"").slice(0, 80), at:Date.now()})
+    .then(function(){ toast("Danke – gemeldet. Der Beitrag ist für dich ausgeblendet.", false); }, function(){ toast("Ausgeblendet. Die Meldung konnte nicht gesendet werden.", false); });
 }
 function tripCenter(){
   var t = T(), pts = (t.hotels||[]).filter(hasLoc).concat((t.orte||[]).filter(hasLoc));
@@ -4648,26 +4754,31 @@ function renderDc(){
   h += "<div class=\"pf-seg dc-src\" role=\"tablist\" aria-label=\"Quelle\"><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"all\" aria-selected=\""+(dcSrc==="all")+"\">🌐 Alle</button><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"friends\" aria-selected=\""+(dcSrc==="friends")+"\">👥 Nur Freunde</button></div>";
   h += "<div class=\"nt-kinds\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"dcscope\" data-v=\"here\" aria-selected=\""+(dcScope==="here")+"\">Rund um „"+esc(T().name||"Reise")+"“</button><button type=\"button\" role=\"tab\" data-act=\"dcscope\" data-v=\"all\" aria-selected=\""+(dcScope==="all")+"\">Überall</button></div></div>";
   if(!acct.user){ el.innerHTML = h+"<p class=\"note nt-empty\">Melde dich an, um Empfehlungen zu sehen.</p></div>"; return; }
-  if(dcSrc==="all") h += "<div class=\"rvsoon dc-soon\"><b>Öffentliche Empfehlungen</b><p>Hier erscheinen künftig auch Empfehlungen aller Nutzer. Bis dahin siehst du die deiner Freunde.</p></div>";
-  if(!FR.friends.length){ el.innerHTML = h+"<p class=\"note nt-empty\">Noch keine Freunde. Füge Freunde hinzu – ihre besuchten und gut bewerteten Orte erscheinen dann hier.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div></div>"; return; }
-  var list = DC.items.slice();
+  if(dcSrc==="all"){ pubLoad(); if(PUB.err) h += "<p class=\"note nt-empty\">"+esc(PUB.err)+"</p>"; }
+  if(!FR.friends.length && dcSrc!=="all"){ el.innerHTML = h+"<p class=\"note nt-empty\">Noch keine Freunde. Füge Freunde hinzu – ihre besuchten und gut bewerteten Orte erscheinen dann hier.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div></div>"; return; }
+  var list = DC.items.slice(), hid = pubHidden();
+  if(dcSrc==="all") PUB.items.forEach(function(r){ if(!hid[r.pid] && !DC.items.some(function(x){ return x.key===r.key; })) list.push(r); });
   if(dcScope==="here" && C) list = list.filter(function(r){ return r.la && dist(C, r) < 40000; });
   list.sort(function(a, b){ var ra = a.hl ? 0 : (a.rating ? rateRank(a.rating) : 99), rb = b.hl ? 0 : (b.rating ? rateRank(b.rating) : 99); return ra - rb || (b.at||0) - (a.at||0); });
-  if(DC.busy && !DC.items.length) h += "<p class=\"note nt-empty\">Lädt Empfehlungen …</p>";
-  else if(!list.length) h += "<p class=\"note nt-empty\">"+(dcScope==="here" ? "Für dieses Reiseziel haben deine Freunde noch nichts empfohlen. Schau unter „Überall“." : "Deine Freunde haben noch keine Empfehlungen geteilt.")+"</p>";
+  // derselbe Ort von mehreren Freunden: eine Karte, „auch empfohlen von …“
+  var kept = []; list.forEach(function(r){ var k = r.la ? kept.filter(function(x){ return x.la && samePl(x, r); })[0] : null; if(k){ if(k.by!==r.by && !k.also.some(function(a){ return a.by===r.by; })) k.also.push(r); } else { r.also = []; kept.push(r); } }); list = kept;
+  if((DC.busy || (dcSrc==="all" && PUB.busy)) && !list.length) h += "<p class=\"note nt-empty\">Lädt Empfehlungen …</p>";
+  else if(!list.length) h += "<p class=\"note nt-empty\">"+(dcSrc==="all" ? (dcScope==="here" ? "Hier hat noch niemand etwas empfohlen. Schau unter „Überall“." : "Noch keine Empfehlungen.") : dcScope==="here" ? "Für dieses Reiseziel haben deine Freunde noch nichts empfohlen. Schau unter „Überall“." : "Deine Freunde haben noch keine Empfehlungen geteilt.")+"</p>";
   list.forEach(function(r){
     var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0], inT = dcInTrip(r), dd = C ? dist(C, r) : null;
     h += "<article class=\"dc-card\">"+
-      "<div class=\"dc-top\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><span class=\"dc-who\"><b>@"+esc(r.fname||"Freund")+"</b><small>"+esc([r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small></span>"+
+      "<div class=\"dc-top\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><span class=\"dc-who\"><b>@"+esc(r.fname||"Freund")+"</b><small>"+esc([r.pub ? "öffentlich" : "", r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small></span>"+
         (r.hl ? "<span class=\"dc-hl\">★ Highlight</span>" : "")+"</div>"+
       (r.photos && r.photos.length ? "<div class=\"dc-ph\">"+r.photos.map(function(u, i){ return "<img src=\""+u+"\" alt=\"\" loading=\"lazy\" data-act=\"dcfull\" data-k=\""+esc(r.key)+"\" data-i=\""+i+"\" role=\"button\" aria-label=\"Foto im Vollbild\">"; }).join("")+"</div>" : "")+
       "<div class=\"dc-body\"><div class=\"dc-name\"><span class=\"cic\" style=\"--cc:"+catCol(r.c)+"\">"+icon(r.c)+"</span><b>"+esc(r.n)+"</b></div>"+
         "<small class=\"dc-sub\">"+esc([CATNAME[r.c], r.addr, dd!=null && dcScope==="all" ? fmtDist(dd)+" vom Reiseziel" : ""].filter(Boolean).join(" · "))+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"</small>"+
         (r.note ? "<p class=\"dc-note\">„"+esc(r.note)+"“</p>" : "")+recCmHTML(r, "dc-note")+
+        (r.also.length ? "<p class=\"dc-also\">👥 <b>"+(r.also.length+1)+" Freunde</b> empfehlen das · auch "+r.also.map(function(a){ var A = RATES.filter(function(x){ return x[0]===a.rating; })[0]; return "@"+esc(a.fname||"Freund")+(A ? " <i style=\"color:"+A[2]+"\">"+A[1]+"</i>" : ""); }).join(", ")+"</p>" : "")+
         "<div class=\"dc-acts\">"+(inT ? "<span class=\"dc-in\">✓ In deiner Reise</span>" : (isRO() ? "" : "<button type=\"button\" class=\"btn g s\" data-act=\"dcwish\" data-k=\""+esc(r.key)+"\">＋ Wunschliste</button><button type=\"button\" class=\"btn s\" data-act=\"dcplan\" data-k=\""+esc(r.key)+"\">Einplanen …</button>"))+
-          (r.la ? zMkBtn({n:r.n, la:+r.la, lo:+r.lo}, "dcmerk", r.key, "dc-map") : "")+"<button type=\"button\" class=\"dc-map\" data-act=\"dcmap\" data-k=\""+esc(r.key)+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button></div></div></article>";
+          (r.la ? zMkBtn({n:r.n, la:+r.la, lo:+r.lo}, "dcmerk", r.key, "dc-map") : "")+"<button type=\"button\" class=\"dc-map\" data-act=\"dcmap\" data-k=\""+esc(r.key)+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button>"+
+          (r.pub ? "<button type=\"button\" class=\"dc-map dc-rep\" data-act=\"dcreport\" data-k=\""+esc(r.key)+"\" aria-label=\"Beitrag melden\" title=\"Melden\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 17.5V3.5M5 4h9.5l-2 3.5 2 3.5H5\"/></svg></button>" : "")+"</div></div></article>";
   });
-  if(DC.items.length) h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"dcreload\">Aktualisieren</button></div>";
+  h += "<div class=\"pf-acts\">"+(dcScope==="here" && !noTrip() ? "<button type=\"button\" class=\"btn g\" data-act=\"askopen\">Freunde nach Tipps fragen</button>" : "")+(list.length ? "<button type=\"button\" class=\"btn g\" data-act=\"dcreload\">Aktualisieren</button>" : "")+"</div>";
   el.innerHTML = h+"</div>";
 }
 /* ---------- Ziele: Orte für später merken, auch ohne geplante Reise ----------
@@ -4761,7 +4872,7 @@ function zMove(to){
   if(!dup) z1.places[p.id] = p;
   if(!zielHas(z1, p)) z1.orte.push({id:uid("o"), n:p.n, la:p.la, lo:p.lo, r:ZR});
   zLast = {zid:to, pid:dup || p.id}; save();
-  if(neu){ zOpen = to; zEdit = zEditFrom(to); profTab = "ziele"; if(profOpen) renderProfile(); else openProfile(); toast("Neues Ziel angelegt: gib ihm einen Namen", false); return; }
+  if(neu){ zOpen = to; zEdit = zEditFrom(to); profTab = "ziele"; if(profOpen) renderProfile(); else openProfile(); zRenderEdit(true); toast("Neues Ziel angelegt: gib ihm einen Namen", false); return; }
   toast("„"+p.n+"“ liegt jetzt in „"+z1.name+"“", false); if(profOpen) renderProfile();
 }
 /* Stand eines gemerkten Orts in den Reisen: geplant, besucht, Bewertung */
@@ -4840,12 +4951,12 @@ function zSearch(q){
 }
 function zResLabel(f){ var pr = f.properties || {}; return [pr.state && pr.state!==pr.name ? pr.state : "", pr.country && pr.country!==pr.name ? pr.country : ""].filter(Boolean).join(", "); }
 function zRenderRes(){
-  var el = document.querySelector("#profView .zres"); if(!el || !zEdit) return;
+  var el = document.querySelector("#catPop .zres"); if(!el || !zEdit) return;
   el.innerHTML = zEdit.busy ? "<p class=\"note\">Suche …</p>" : zEdit.res.map(function(f, i){ return "<button type=\"button\" class=\"ls-row\" data-act=\"zarea\" data-i=\""+i+"\"><span class=\"ls-t\"><b>"+esc((f.properties||{}).name || "Ort")+"</b><small>"+esc(zResLabel(f))+"</small></span><span class=\"ls-go\">＋</span></button>"; }).join("");
 }
 function zEditHTML(){
   var e = zEdit;
-  var h = "<div class=\"zhead\"><button type=\"button\" class=\"zback\" data-act=\"zback\" aria-label=\"Zurück\">‹</button><b>"+(e.zid ? "Ziel bearbeiten" : "Neues Ziel")+"</b></div>";
+  var h = "<div class=\"pop-card zpop\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+(e.zid ? "Ziel bearbeiten" : "Neues Ziel")+"\"><div class=\"pop-head\"><h4>"+(e.zid ? "Ziel bearbeiten" : "Neues Ziel")+"</h4><button type=\"button\" class=\"x\" data-act=\"zback\" aria-label=\"Schließen\">×</button></div>";
   h += "<div class=\"ag-grp zform\"><label class=\"tf-row\"><span>Name</span><input type=\"text\" id=\"zName\" value=\""+esc(e.n)+"\" maxlength=\"60\" placeholder=\"z. B. Toskana-Roadtrip\" autocomplete=\"off\"></label></div>";
   h += "<div class=\"nt-sec\">Gebiet</div><p class=\"note zhint\">Gemerkte Orte in diesem Gebiet landen automatisch hier. Mehrere Orte sind möglich, etwa Florenz und Siena.</p>";
   h += "<div class=\"ag-grp ls-list\">"+e.orte.map(function(o, i){ return "<div class=\"ls-row\"><span class=\"ls-t\"><b>"+esc(o.n || (o.la ? o.la.toFixed(3)+", "+o.lo.toFixed(3) : "Ort"))+"</b><small>"+(o.bb ? "ganzer Ort" : "Umkreis "+fmtDist(o.r || ZR))+"</small></span><button type=\"button\" class=\"btn g s\" data-act=\"zareadel\" data-i=\""+i+"\" aria-label=\"Gebiet entfernen\">Entfernen</button></div>"; }).join("")+
@@ -4853,22 +4964,28 @@ function zEditHTML(){
   if(e.err) h += "<p class=\"err\" role=\"alert\">"+esc(e.err)+"</p>";
   h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"zback\">Abbrechen</button><button type=\"button\" class=\"btn\" data-act=\"zsave\">"+(e.zid ? "Speichern" : "Ziel anlegen")+"</button></div>";
   if(e.zid) h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g warn\" data-act=\"zdel\" data-z=\""+esc(e.zid)+"\">"+(acct.user && META[e.zid] && META[e.zid].owner && META[e.zid].owner!==acct.user.uid ? "Ziel verlassen" : "Ziel löschen")+"</button></div>";
-  return h;
+  return h+"</div>";
+}
+/* Ziel anlegen/bearbeiten als zentriertes Fenster über dem Profil */
+function zRenderEdit(first){
+  if(!zEdit) return; var cp = $("catPop"), ae = document.activeElement, fid = ae && (ae.id==="zName" || ae.id==="zQ") ? ae.id : "";
+  if(first || cp.hidden){ cp.innerHTML = zEditHTML(); cp.hidden = false; } else catKeep(zEditHTML());
+  zRenderRes(); if(fid && $(fid)){ var i = $(fid); i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch(x){} }
 }
 function zSaveEdit(){
   var e = zEdit, n = ($("zName") ? $("zName").value : e.n).trim();
-  if(!n){ e.err = "Bitte gib dem Ziel einen Namen."; renderProfile(); return; }
-  if(!e.orte.length){ e.err = "Bitte wähle mindestens einen Ort für das Gebiet."; e.n = n; renderProfile(); return; }
+  if(!n){ e.err = "Bitte gib dem Ziel einen Namen."; zRenderEdit(); return; }
+  if(!e.orte.length){ e.err = "Bitte wähle mindestens einen Ort für das Gebiet."; e.n = n; zRenderEdit(); return; }
   var zid = e.zid;
   if(zid && Z(zid)){ S.trips[zid].name = n.slice(0, 60); S.trips[zid].orte = e.orte; }
   else zid = zielNew(n, null), S.trips[zid].orte = e.orte;
-  save(); zEdit = null; zOpen = zid; renderProfile(); toast(e.zid ? "Ziel gespeichert" : "Ziel „"+n+"“ angelegt", false);
+  save(); zEdit = null; zOpen = zid; closeCatPop(); renderProfile(); toast(e.zid ? "Ziel gespeichert" : "Ziel „"+n+"“ angelegt", false);
 }
 function zDel(zid){
   var z = Z(zid); if(!z) return;
   var m = META[zid], leave = !!(acct.user && m && m.owner && m.owner!==acct.user.uid);
   askConfirm(leave ? "Ziel verlassen?" : "Ziel löschen?", leave ? "„"+z.name+"“ verschwindet bei dir. Für die anderen bleibt es erhalten." : "„"+z.name+"“ und "+Object.keys(z.places).length+" gemerkte Orte werden entfernt"+(m && (m.members||[]).length > 1 ? ", auch für alle, mit denen du es teilst" : "")+". Deine Reisen bleiben unverändert.", leave ? "Verlassen" : "Löschen", function(){
-    delete S.trips[zid]; save(); zEdit = null; zOpen = ""; renderProfile(); toast("Ziel gelöscht", false); });
+    delete S.trips[zid]; save(); if(zEdit){ zEdit = null; closeCatPop(); } zOpen = ""; renderProfile(); toast("Ziel gelöscht", false); });
 }
 function zDelPlace(zid, pid){
   var z = Z(zid), p = z && z.places[pid]; if(!p) return;
@@ -4880,7 +4997,6 @@ function zStatusText(st){
   return st.done ? "✓ besucht"+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "") : (st.planned ? "eingeplant in „"+esc(tn)+"“" : "auf der Wunschliste von „"+esc(tn)+"“");
 }
 function zielsHTML(){
-  if(zEdit) return zEditHTML();
   if(zOpen && Z(zOpen)) return zDetailHTML(zOpen);
   zOpen = ""; zLk.zid = "";
   var ids = zielIds(), h = zLinkHTML()+"<div class=\"pf-grid\">";
@@ -4904,7 +5020,7 @@ function zDetailHTML(zid){
   var h = "<div class=\"zhead\"><button type=\"button\" class=\"zback\" data-act=\"zback\" aria-label=\"Zurück zu den Zielen\">‹</button><span class=\"zh-t\"><b>"+esc(z.name)+"</b><small>"+esc(area || "Gebiet noch nicht festgelegt")+"</small></span>"+
     "<button type=\"button\" class=\"zh-ed\" data-act=\"zedit\" data-z=\""+esc(zid)+"\" aria-label=\"Ziel bearbeiten\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M13.5 3.5l3 3L7 16H4v-3z\"/></svg></button></div>";
   if(zLk.zid!==zid) zLk = {q:"", res:[], msg:"", src:"", busy:false, zid:zid};
-  h += "<div class=\"pf-acts zacts\"><button type=\"button\" class=\"btn\" data-act=\"zplan\" data-z=\""+esc(zid)+"\">Reise hierhin planen</button></div>";
+  h += "<div class=\"pf-acts zacts\"><button type=\"button\" class=\"btn\" data-act=\"zplan\" data-z=\""+esc(zid)+"\">Reise hierhin planen</button>"+(acct.user && FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"askopen\" data-z=\""+esc(zid)+"\">Freunde fragen</button>" : "")+(ps.some(hasLoc) ? "<button type=\"button\" class=\"btn g\" data-act=\"lkzshare\" data-z=\""+esc(zid)+"\">Als Link teilen</button>" : "")+"</div>";
   h += zLinkHTML();
   h += "<div class=\"nt-sec\">Gemerkt · "+ps.length+"</div>";
   h += ps.length ? "<div class=\"ag-grp ls-list\">"+ps.map(function(p){ return zRow(zid, p, zStatus(zid, p)); }).join("")+"</div>" : "<p class=\"note\">Noch nichts gemerkt. Tippe auf der Karte, in Entdecken oder im Chat auf das Merken-Zeichen.</p>";
@@ -5507,6 +5623,40 @@ function chPhotoFrom(ph){
   return recThumb(ph).then(function(th){ if(th) o.th = th; return o; }, function(){ return o; });
 }
 /* Freunde-Auswahl im Pop-up: Suchzeile oben, bleibt beim Scrollen sichtbar */
+/* ---------- Freunde nach Tipps fragen: Nachricht im Chat an ausgewählte Freunde, Antworten (Orte) lassen sich im Chat direkt merken ---------- */
+var ASK = null;
+function chSendText(u, txt){
+  var me = acct.user.uid, cid = chId(me, u), now = Date.now(), names = {}, read = {};
+  names[me] = (PROF && PROF.name) || ""; names[u] = chName(u); read[me] = now;
+  var cref = fbDb.collection("chats").doc(cid), b = fbDb.batch();
+  b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:"", ph:false}, read:read}, {merge:true});
+  b.set(cref.collection("msgs").doc(), {from:me, t:txt, at:now});
+  return b.commit();
+}
+function openAsk(name, zid){
+  if(!acct.user){ toast("Melde dich an, um Freunde zu fragen", false); return; }
+  if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
+  ASK = {name:name, zid:zid || "", sel:{}, txt:"Ich plane gerade „"+name+"“ – hast du Tipps für mich? Schick mir gern Orte hier im Chat, ich merke sie mir direkt. 🙏"};
+  renderAsk(true);
+}
+function renderAsk(first){
+  if(!ASK) return; var n = Object.keys(ASK.sel).length, all = FR.friends.length && n===FR.friends.length;
+  var h = "<div class=\"pop-card ask-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Freunde nach Tipps fragen\"><div class=\"pop-head\"><h4>Freunde fragen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<textarea id=\"askT\" rows=\"3\" maxlength=\"1000\" aria-label=\"Nachricht\">"+esc(ASK.txt)+"</textarea>"+
+    "<div class=\"ask-h\"><span>An</span><button type=\"button\" class=\"tf-link\" data-act=\"askall\">"+(all ? "Keinen" : "Alle")+" auswählen</button></div>"+
+    "<div class=\"pop-list ask-list\">"+FR.friends.map(function(f){ var on = !!ASK.sel[f.uid]; return "<button type=\"button\" data-act=\"askpick\" data-uid=\""+esc(f.uid)+"\" aria-pressed=\""+on+"\">"+chAv(f.uid, "ask-av")+"<span>@"+esc(chName(f.uid))+"</span></button>"; }).join("")+"</div>"+
+    "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"asksend\""+(n ? "" : " disabled")+">"+(n ? "An "+n+(n===1 ? " Freund" : " Freunde")+" senden" : "Freunde auswählen")+"</button></div></div>";
+  if(first){ var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false; } else catKeep(h);
+}
+function askKeep(){ var t = $("askT"); if(t && ASK) ASK.txt = t.value; }
+function askSend(){
+  askKeep(); if(!ASK || !fbDb || !acct.user) return; var us = Object.keys(ASK.sel), txt = ASK.txt.trim().slice(0, 1000); if(!us.length || !txt) return;
+  closeCatPop(); var n = us.length;
+  Promise.all(us.map(function(u){ return chSendText(u, txt).then(function(){ return 1; }, function(){ return 0; }); })).then(function(r){
+    var ok = r.reduce(function(a, b){ return a + b; }, 0);
+    toast(ok===n ? "Frage an "+n+(n===1 ? " Freund" : " Freunde")+" geschickt – Antworten kommen im Chat" : "Nur "+ok+" von "+n+" Nachrichten gesendet", false); });
+  ASK = null;
+}
 function frPickHead(title){ return "<div class=\"frp-h\"><div class=\"dc-dh\">"+title+"</div><input type=\"search\" class=\"frp-q\" placeholder=\"Freunde suchen\" aria-label=\"Freunde suchen\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\"></div>"; }
 document.addEventListener("input", function(e){ var q = e.target; if(!q.classList || !q.classList.contains("frp-q")) return;
   var m = q.closest(".jpmenu"), v = q.value.trim().replace(/^@/, "").toLowerCase(), n = 0; if(!m) return;
@@ -5690,9 +5840,20 @@ function friendRecs(p){
 }
 function rvChips(p){
   var fr = friendRecs(p), best = fr.reduce(function(m, r){ return r.rating && (!m || rateRank(r.rating) < rateRank(m)) ? r.rating : m; }, 0), RR = RATES.filter(function(x){ return x[0]===best; })[0];
-  var g = gKey && gInfo[gK(p)], gr = g && g.d && g.d.rating;
+  var g = gKey && gInfo[gK(p)], gr = g && g.d && g.d.rating, nm0 = (p.n||"").toLowerCase().slice(0, 6), pn = PUB.items.filter(function(r){ var d = r.la ? dist(p, r) : 1e9; return !pubHidden()[r.pid] && (d < 40 || (d < 150 && (r.n||"").toLowerCase().slice(0, 6)===nm0)); });
   return "<div class=\"rvchips\"><button type=\"button\" class=\"rvc"+(fr.length?" on":"")+"\" data-act=\"rvopen\" data-v=\"friends\"><span class=\"rvi\">👥</span><span><b>Freunde</b><small>"+(fr.length ? (RR ? fr.length+" · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : fr.length+(fr.length===1?" Empfehlung":" Empfehlungen")) : "keine")+"</small></span></button>"+
-    "<button type=\"button\" class=\"rvc\" data-act=\"rvopen\" data-v=\"public\"><span class=\"rvi\">🌐</span><span><b>Öffentlich</b><small>"+(gr ? "★ "+String(gr).replace(".", ",")+" (Google)" : "bald")+"</small></span></button></div>";
+    "<button type=\"button\" class=\"rvc\" data-act=\"rvopen\" data-v=\"public\"><span class=\"rvi\">🌐</span><span><b>Öffentlich</b><small>"+(pn.length ? pn.length+(pn.length===1 ? " Empfehlung" : " Empfehlungen") : gr ? "★ "+String(gr).replace(".", ",")+" (Google)" : "bald")+"</small></span></button></div>";
+}
+/* „3 Freunde empfehlen das“: verschiedene Freunde mit guter Bewertung (ab „Nice“, Highlight oder ohne Bewertung veröffentlicht) */
+function frWho(p){
+  var seen = {}, out = [];
+  friendRecs(p).forEach(function(r){ var u = r.by || r.key.split("/")[0]; if(seen[u]) return; if(r.rating && rateRank(r.rating) > 4 && !r.hl) return; seen[u] = 1; out.push({uid:u, name:r.fname || r.name || "Freund", rating:r.rating, hl:r.hl}); });
+  return out;
+}
+function frLine(p){
+  var w = frWho(p); if(!w.length) return "";
+  var nm = w.map(function(x){ return "@"+x.name; }), txt = w.length===1 ? nm[0]+" empfiehlt das" : w.length===2 ? nm[0]+" und "+nm[1]+" empfehlen das" : "<b>"+w.length+" Freunde</b> empfehlen das";
+  return "<button type=\"button\" class=\"frl\" data-act=\"rvopen\" data-v=\"friends\"><span class=\"frl-av\">"+w.slice(0, 3).map(function(x){ return chAv(x.uid, "frl-a"); }).join("")+"</span><span class=\"frl-t\">"+(w.length===1 ? "<b>"+esc(nm[0])+"</b> empfiehlt das" : w.length===2 ? "<b>"+esc(nm[0])+"</b> und <b>"+esc(nm[1])+"</b> empfehlen das" : txt+"<small>"+esc(nm.slice(0, 3).join(", ")+(w.length > 3 ? " …" : ""))+"</small>")+"</span></button>";
 }
 function rvSection(p){
   var fr = friendRecs(p);
@@ -5909,7 +6070,7 @@ function avHTML(cls){ var ph = PROF && PROF.photo, nm = (PROF && PROF.name) || m
   return ph ? "<img class=\""+cls+"\" src=\""+ph+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
 function navAv(){ var e = $("tbAv"); if(!e) return; e.innerHTML = acct.user ? avHTML("tbimg") : "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/><path d=\"M6.2 18.4a7 7 0 0 1 11.6 0\"/></svg>"; }
 function openProfile(){ closeMenus(); closeChPage(); closeGsPage(); closeNtPage(); closeLsPage(); closeDcPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
-function closeProfile(){ if(!profOpen) return; profOpen = false; $("profView").hidden = true; if(!ntPage) document.body.classList.remove("profopen"); navActive(); }
+function closeProfile(){ if(!profOpen) return; profOpen = false; wmStop(); $("profView").hidden = true; if(!ntPage) document.body.classList.remove("profopen"); navActive(); }
 /* Titelbild einer Reise: gewähltes Foto, nur Buchstaben oder automatisch (neuestes Foto).
    Mitreisende speichern die Wahl in der Reise (für alle gleich), Beobachter nur auf ihrem Gerät. */
 var CV_COLS = ["#0A84FF","#5E5CE6","#BF5AF2","#FF375F","#FF9F0A","#30B0C7","#34C759","#8E8E93"];
@@ -5991,8 +6152,67 @@ function cvThumbs(root){
   cvIO = new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting && !e.target.getAttribute("src")){ cvQ.push(e.target); cvIO.unobserve(e.target); } }); cvPump(); }, {root:grid, rootMargin:"120px 0px"});
   imgs.forEach(function(im){ if(!im.getAttribute("src")) cvIO.observe(im); });
 }
+/* ---------- Weltkarte im Profil: besuchte Orte (abgehakt), Reiseorte, gemerkte Ziele; Länder über Photon (zwischengespeichert) ---------- */
+var PFMAP = null, PFMAPEL = null, WMCC = null, WMQ = {};
+function wmData(){
+  var tk = todayKeySafe(), vis = [], cities = {}, trips = 0, plan = [], zs = [];
+  Object.keys(S.trips).forEach(function(tid){
+    var t = S.trips[tid]; if(!t || isViewerOf(tid)) return;
+    if(t.ziel){ if(!t.arch) (t.orte||[]).filter(hasLoc).forEach(function(o){ zs.push({la:+o.la, lo:+o.lo, n:t.name}); }); return; }
+    var past = t.start && (!tk || t.start <= tk);
+    Object.keys(t.places||{}).forEach(function(pid){ var p = t.places[pid]; if(!p || !(t.done||{})[pid]) return; var q = p.of ? t.places[p.of] || p : p; if(hasLoc(q) && q.k!=="photo") vis.push({la:+q.la, lo:+q.lo, n:q.n}); });
+    var os = (t.orte||[]).filter(hasLoc).concat((t.hotels||[]).filter(hasLoc).slice(0, 1));
+    if(past){ trips++; (t.orte||[]).filter(hasLoc).forEach(function(o){ cities[norm(o.n||t.name)] = {la:+o.la, lo:+o.lo, n:o.n||t.name}; }); if(!(t.orte||[]).some(hasLoc) && os[0]) cities[norm(t.name)] = {la:+os[0].la, lo:+os[0].lo, n:t.name}; }
+    else os.slice(0, 1).forEach(function(o){ plan.push({la:+o.la, lo:+o.lo, n:t.name}); });
+  });
+  return {vis:vis, cities:Object.keys(cities).map(function(k){ return cities[k]; }), trips:trips, plan:plan, zs:zs};
+}
+function wmCC(){ if(!WMCC){ try { WMCC = JSON.parse(lsGet("rp-cc") || "{}") || {}; } catch(e){ WMCC = {}; } } return WMCC; }
+function wmCKey(p){ return (+p.la).toFixed(1)+","+(+p.lo).toFixed(1); }
+function wmCountry(p){
+  var C = wmCC(), k = wmCKey(p); if(C[k]) return C[k];
+  if(WMQ[k] || !navigator.onLine) return null; WMQ[k] = 1;
+  fetch("https://photon.komoot.io/reverse?lat="+p.la+"&lon="+p.lo+"&lang=de&limit=1").then(function(r){ return r.json(); }).then(function(j){
+    var pr = (j && j.features && j.features[0] || {}).properties || {}; if(!pr.country) return;
+    C[k] = {c:pr.country, cc:String(pr.countrycode||"").toUpperCase().slice(0, 2)}; lsSet("rp-cc", JSON.stringify(C)); if(profOpen && profTab==="welt") renderProfile();
+  }).catch(function(){});
+  return null;
+}
+function wmFlag(cc){ return /^[A-Z]{2}$/.test(cc||"") ? String.fromCodePoint(0x1F1E6 + cc.charCodeAt(0) - 65, 0x1F1E6 + cc.charCodeAt(1) - 65) : "🌍"; }
+function wmHTML(){
+  var D = wmData(), co = {};
+  D.cities.forEach(function(c){ var x = wmCountry(c); if(x){ if(!co[x.c]) co[x.c] = {cc:x.cc, n:[]}; co[x.c].n.push(c.n); } });
+  var cn = Object.keys(co).sort(function(a, b){ return co[b].n.length - co[a].n.length || a.localeCompare(b); });
+  var h = "<div class=\"wm\"><div class=\"pf-stats wm-stats\"><div><b>"+(cn.length || "–")+"</b><span>Länder</span></div><div><b>"+D.cities.length+"</b><span>Städte</span></div><div><b>"+D.vis.length+"</b><span>Orte besucht</span></div></div>"+
+    "<div class=\"wm-map\" id=\"pfMap\" role=\"img\" aria-label=\"Weltkarte deiner Reisen\"></div>"+
+    "<div class=\"wm-leg\"><span><i class=\"wm-d v\"></i>besucht</span><span><i class=\"wm-d p\"></i>geplant</span><span><i class=\"wm-d z\"></i>gemerkt</span></div>";
+  if(cn.length) h += "<div class=\"ag-grp ls-list wm-co\">"+cn.map(function(c){ return "<div class=\"ls-row\"><span class=\"ls-th wm-fl\">"+wmFlag(co[c].cc)+"</span><span class=\"ls-t\"><b>"+esc(c)+"</b><small>"+esc(co[c].n.join(", "))+"</small></span></div>"; }).join("")+"</div>";
+  else if(!D.cities.length) h += "<p class=\"note pf-empty\">Noch keine Reise begonnen. Besuchte Orte erscheinen hier auf der Karte.</p>";
+  return h+"</div>";
+}
+function wmGeo(list){ return {type:"FeatureCollection", features:list.map(function(p){ return {type:"Feature", properties:{n:p.n||""}, geometry:{type:"Point", coordinates:[p.lo, p.la]}}; })}; }
+function wmStop(){ if(PFMAP){ try { PFMAP.remove(); } catch(e){} } PFMAP = null; PFMAPEL = null; }
+function wmMount(){
+  var el = $("pfMap"); if(!el || !window.maplibregl) return;
+  if(PFMAP && PFMAPEL){ el.replaceWith(PFMAPEL); wmFill(); return; } // Karte beim Neuzeichnen des Profils behalten
+  var D = wmData(), all = D.vis.concat(D.cities, D.plan, D.zs);
+  var b = all.length ? all.reduce(function(a, p){ return [Math.min(a[0], p.lo), Math.min(a[1], p.la), Math.max(a[2], p.lo), Math.max(a[3], p.la)]; }, [180, 90, -180, -90]) : [-150, -50, 170, 70];
+  try {
+    PFMAP = new maplibregl.Map({container:el, style:STYLE_URL, bounds:[[b[0], b[1]], [b[2], b[3]]], fitBoundsOptions:{padding:40, maxZoom:4}, attributionControl:false, dragRotate:false, touchPitch:false, pitchWithRotate:false, maxPitch:0, renderWorldCopies:true, fadeDuration:0, maxTileCacheSize:40, pixelRatio:Math.min(2, window.devicePixelRatio || 1)});
+  } catch(e){ PFMAP = null; return; }
+  PFMAPEL = el;
+  PFMAP.on("load", wmFill);
+}
+function wmFill(){
+  var m = PFMAP; if(!m || !m.isStyleLoaded || !m.isStyleLoaded()) return; var D = wmData();
+  [["wmz", D.zs, "#AF52DE", 4, 0], ["wmp", D.plan, "#007AFF", 5, 0], ["wmc", D.cities, "#5E9970", 7, .35], ["wmv", D.vis, "#5E9970", 3.5, .9]].forEach(function(x){
+    var src = m.getSource(x[0]); if(src){ src.setData(wmGeo(x[1])); return; }
+    m.addSource(x[0], {type:"geojson", data:wmGeo(x[1])});
+    m.addLayer({id:x[0], type:"circle", source:x[0], paint:{"circle-radius":x[3], "circle-color":x[2], "circle-opacity":x[4] || .9, "circle-stroke-color":"#fff", "circle-stroke-width":x[0]==="wmv" ? 0 : 1.5}});
+  });
+}
 function renderProfile(){
-  var el = $("profView"); if(!el) return;
+  var el = $("profView"); if(!el) return; if(profTab!=="welt") wmStop();
   var h = "<div class=\"pf\">";
   if(!acct.user){
     h += "<div class=\"pf-head\">"+avHTML("pf-av")+"<div class=\"pf-id\"><b>Nicht angemeldet</b><small>Melde dich an, um ein Profil zu haben und Reisen zu teilen.</small></div></div>";
@@ -6006,8 +6226,8 @@ function renderProfile(){
   h += "<div class=\"pf-stats\"><button type=\"button\" data-act=\"pftab\" data-v=\"mine\"><b>"+mine.length+"</b><span>Reisen</span></button>"+
        "<button type=\"button\" data-act=\"pftab\" data-v=\"obs\"><b>"+obs.length+"</b><span>Beobachtet</span></button>"+
        "<button type=\"button\" data-act=\"openfriends\"><b>"+FR.friends.length+"</b><span>Freunde</span></button></div>";
-  h += "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"mine\" aria-selected=\""+(profTab==="mine")+"\">Meine Reisen</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"obs\" aria-selected=\""+(profTab==="obs")+"\">Beobachtet</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"ziele\" aria-selected=\""+(profTab==="ziele")+"\">Ziele</button></div>";
-  if(profTab==="ziele") h += "<div class=\"zl\">"+zielsHTML()+"</div>"; else {
+  h += "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"mine\" aria-selected=\""+(profTab==="mine")+"\">Reisen</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"obs\" aria-selected=\""+(profTab==="obs")+"\">Beobachtet</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"ziele\" aria-selected=\""+(profTab==="ziele")+"\">Ziele</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"welt\" aria-selected=\""+(profTab==="welt")+"\">Karte</button></div>";
+  if(profTab==="ziele") h += "<div class=\"zl\">"+zielsHTML()+"</div>"; else if(profTab==="welt") h += wmHTML(); else {
   var list = profTab==="obs" ? obs : mine;
   list.sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); });
   h += "<div class=\"pf-grid\">";
@@ -6030,8 +6250,8 @@ function renderProfile(){
   h += "<button type=\"button\" class=\"pf-demo\" data-act=\"demo\"><span class=\"pf-demo-ic\" aria-hidden=\"true\">▶</span><span><b>App-Demo ansehen</b><small>Kurze Einführung, ändert nichts an deinen Reisen</small></span></button>";
   h += "</div>";
   el.innerHTML = h; fillPhotos(el);
-  if(profTab==="ziele" && zEdit) zRenderRes();
-  if(profTab==="ziele" && !zEdit) zLinkRender();
+  if(profTab==="welt") wmMount();
+  if(profTab==="ziele") zLinkRender();
 }
 // Profilbild: quadratisch zugeschnitten, klein, im eigenen Profil gespeichert
 function setAvatar(file){
@@ -6082,7 +6302,7 @@ function refreshSettings(){
 }
 /* Anmeldefenster vor der App */
 function renderGate(force){
-  var g = $("gate"); if(!g) return;
+  var g = $("gate"); if(!g) return; setTimeout(lkCheck, 400);
   if(acct.verify){
     g.hidden = false; document.body.classList.add("gated");
     g.innerHTML = "<div class=\"gate-card\"><h1>E-Mail bestätigen</h1><p class=\"sub\">Wir haben dir einen Bestätigungslink an <b>"+esc(acct.verify.email)+"</b> geschickt. Tippe auf den Link in der E-Mail – danach geht es hier automatisch weiter.</p>"+
@@ -8731,7 +8951,7 @@ function poiCard(){
   c += "<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+cc+"\">"+icon(q.c)+"</span><div class=\"cht\"><h3>"+esc(q.n)+"</h3><p>"+esc([sub ? sub.charAt(0).toUpperCase()+sub.slice(1) : CATNAME[q.c], nbOf(q)].filter(Boolean).join(" · "))+"</p></div></div>";
   if(q.addr) c += "<p class=\"cnote\">"+esc(q.addr)+"</p>";
   // unabhängig vom Planungsstand: Bewertungen (Freunde / Öffentlich), ÖPNV
-  if(hasLoc(q)) c += rvChips(q);
+  if(hasLoc(q)) c += frLine(q)+rvChips(q);
   if(poiRv && hasLoc(q)) c += rvSection(q);
   if(hasLoc(q)) c += stationLine(q);
   var zr0 = q.zr ? {zid:q.zr.split("/")[0]} : (hasLoc(q) ? zFind(q) : null);
@@ -8929,7 +9149,7 @@ function renderCard(){
   c += "<div class=\"cchips\">"+dayChip(sel)+visBtn(sel, "cvis", true)+(grpName(p.g) ? "<button type=\"button\" class=\"gtag on\" data-act=\"grppick\" data-id=\""+sel+"\">▦ "+esc(grpName(p.g))+"</button>" : "")+"</div>";
   if(p.addr || p.note || noteOf(sel)) c += "<p class=\"cnote\">"+[p.addr ? esc(p.addr) : "", p.note ? esc(p.note) : "", noteOf(sel) ? "<span class=\"cmine\">"+esc(noteOf(sel).length > 140 ? noteOf(sel).slice(0,138)+" …" : noteOf(sel))+"</span>" : ""].filter(Boolean).join("<br>")+"</p>";
   if(hasLoc(p)) c += ohLine(p, dk);
-  if(hasLoc(p)) c += rvChips(p);
+  if(hasLoc(p)) c += frLine(p)+rvChips(p);
   if(hasLoc(p)) c += stationLine(p);
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   var dn = !!T().done[sel], ph = photosAll(sel).length, nc = (CMTS[sel]||[]).length;
@@ -9989,6 +10209,7 @@ function renderJPop(){
       [["priv", ILOCK+"Privat", "nur Mitreisende"], ["trip", VISTRIP+"Reise", "+ Beobachter"], ["pub", VISPUB+"Freunde", vis1 ? "veröffentlicht" : "nach Besuch"]].map(function(o){
         return "<button type=\"button\" role=\"radio\" data-act=\"vis\" data-v=\""+o[0]+"\" aria-checked=\""+(vv===o[0])+"\" class=\"vs-"+o[0]+(o[0]==="pub" && !vis1 ? " off" : "")+"\"><b>"+o[1]+"</b><small>"+o[2]+"</small></button>"; }).join("")+"</div>"+
       (vv==="priv" ? privToInline("p", jp.pid) : "")+
+      (vv==="pub" ? "<button type=\"button\" class=\"vis-all"+(isPubA(jp.pid) ? " on" : "")+"\" data-act=\"vis\" data-v=\""+(isPubA(jp.pid) ? "pub" : "all")+"\" aria-pressed=\""+isPubA(jp.pid)+"\">"+VISALL+"<span><b>Auch öffentlich</b><small>"+(isPubA(jp.pid) ? "alle Nutzer sehen den Ort in Entdecken" : "für alle Nutzer in Entdecken zeigen")+"</small></span><i>"+(isPubA(jp.pid) ? "✓" : "")+"</i></button>" : "")+
       (vv!=="priv" ? "<p class=\"note vis-hint\">"+(vv==="pub" ? "Freunde sehen Ort und Bewertung. Notiz und Fotos gibst du über das Auge einzeln für Freunde frei." : "Notiz und Fotos stellst du über das Auge einzeln auf Privat oder Reise.")+"</p>" : "")+
       (vv==="pub" && !recShare ? "<p class=\"note\" style=\"margin:6px 2px 0\">Teilen mit Freunden ist in den Einstellungen ausgeschaltet – der Ort wird erst geteilt, wenn du es wieder einschaltest.</p>" : "")+"</div>"; }
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : (function(){ var nv = itemVis("n", rootOf(jp.pid), jp.pid); return "<button type=\"button\" class=\"jp-pv vlv-"+nv+"\" data-act=\"itemvispick\" data-k=\"n\" data-key=\""+rootOf(jp.pid)+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit der Notiz: "+VISLBL[nv]+"\">"+IEYE+VISLBL[nv]+"</button>"; })()) : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+rootOf(jp.pid)+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
@@ -10594,6 +10815,58 @@ function openCount(lid){ return wishes().filter(function(w){ return (w.list||"no
 function nbKeys(){ return Object.keys(nbSel); }
 function nbMatch(p){ var k = nbKeys(); return !k.length || !!nbSel[nbOf(p)]; }
 function listPool(){ var t = T(); return activeList==="open" ? wishes() : Object.keys(t.places).map(P).filter(function(p){ return !p.of && !(p.park && !dayOf(p.id)) && (p.list||"none")===activeList; }); }
+/* ---------- Listen per Link teilen: Orte stecken komprimiert im Link (#liste=…), nichts wird auf einem Server gespeichert ---------- */
+var LKIN = null;
+function b64u(bytes){ var s = ""; for(var i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192)); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+function unb64u(s){ s = s.replace(/-/g, "+").replace(/_/g, "/"); while(s.length % 4) s += "="; var b = atob(s), u = new Uint8Array(b.length); for(var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+function lkPack(name, ps){
+  var d = {v:1, n:String(name||"Liste").slice(0, 60), by:(PROF && PROF.name) || "", p:ps.filter(hasLoc).slice(0, 80).map(function(p){ return [String(p.n||"").slice(0, 80), p.c||"sight", +(+p.la).toFixed(5), +(+p.lo).toFixed(5), String(p.addr||"").slice(0, 100), String(p.note||"").slice(0, 200)]; })};
+  var raw = new TextEncoder().encode(JSON.stringify(d));
+  if(!window.CompressionStream) return Promise.resolve("j"+b64u(raw));
+  var cs = new Blob([raw]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+  return new Response(cs).arrayBuffer().then(function(ab){ return "z"+b64u(new Uint8Array(ab)); });
+}
+function lkUnpack(s){
+  var kind = s[0], u; try { u = unb64u(s.slice(1)); } catch(e){ return Promise.reject(e); }
+  var txt = kind==="z" ? (window.DecompressionStream ? new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text() : Promise.reject(new Error("alt"))) : Promise.resolve(new TextDecoder().decode(u));
+  return txt.then(function(t){ var d = JSON.parse(t); if(!d || d.v!==1 || !Array.isArray(d.p)) throw new Error("form");
+    return {n:String(d.n||"Liste").slice(0, 60), by:String(d.by||"").slice(0, 20), p:d.p.slice(0, 80).map(function(r){ return {n:String(r[0]||"Ort").slice(0, 80), c:CATNAME[r[1]] ? r[1] : "sight", la:+r[2], lo:+r[3], addr:String(r[4]||"").slice(0, 100), note:String(r[5]||"").slice(0, 200)}; }).filter(function(p){ return isFinite(p.la) && isFinite(p.lo) && Math.abs(p.la) <= 90 && Math.abs(p.lo) <= 180; })}; });
+}
+function lkShare(name, ps){
+  ps = ps.filter(hasLoc); if(!ps.length){ toast("Keine Orte mit Adresse zum Teilen", false); return; }
+  lkPack(name, ps).then(function(code){
+    var u = location.origin+location.pathname+"#liste="+code, txt = "„"+name+"“ – "+ps.length+(ps.length===1 ? " Ort" : " Orte")+" in Reiseplan";
+    if(navigator.share) navigator.share({title:name, text:txt, url:u}).catch(function(){});
+    else if(navigator.clipboard) navigator.clipboard.writeText(u).then(function(){ toast("Link zur Liste kopiert", false); }, function(){ toast("Kopieren nicht möglich", false); });
+  }, function(){ toast("Link konnte nicht erstellt werden", false); });
+}
+function lkCheck(){
+  var m = /^#liste=([A-Za-z0-9_-]+)$/.exec(location.hash);
+  if(m){ lsSet("rp-lkin", m[1]); try { history.replaceState(null, "", location.pathname+location.search); } catch(e){} }
+  var code = lsGet("rp-lkin"), g = $("gate"); if(!code || (g && !g.hidden)) return; // erst nach dem Anmelden zeigen
+  try { localStorage.removeItem("rp-lkin"); } catch(e){}
+  lkUnpack(code).then(function(d){ if(!d.p.length) throw 0; LKIN = d; renderLkIn(); }, function(){ toast("Der Link zur Liste ist unvollständig oder beschädigt.", false); });
+}
+function renderLkIn(){
+  var d = LKIN; if(!d) return; var canW = !noTrip() && !isRO();
+  var h = "<div class=\"pop-card lk-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Geteilte Liste\"><div class=\"pop-head\"><h4>"+esc(d.n)+"</h4><button type=\"button\" class=\"x\" data-act=\"lkclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<p class=\"note\" style=\"margin:0 2px 10px\">"+(d.by ? "Geteilt von @"+esc(d.by)+" · " : "")+d.p.length+(d.p.length===1 ? " Ort" : " Orte")+"</p><ul class=\"srlist lk-list\">"+
+    d.p.map(function(p){ return "<li><span class=\"sric\" style=\"color:"+catCol(p.c)+"\">"+icon(p.c)+"</span><span class=\"srt\"><b>"+esc(p.n)+"</b><small>"+esc([CATNAME[p.c], p.addr, p.note].filter(Boolean).join(" · "))+"</small></span></li>"; }).join("")+"</ul>"+
+    "<div class=\"pf-acts\">"+(canW ? "<button type=\"button\" class=\"btn g\" data-act=\"lkwish\">In Wunschliste</button>" : "")+"<button type=\"button\" class=\"btn\" data-act=\"lkziel\">Als Ziel merken</button></div></div>";
+  var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false;
+}
+function lkTake(asZiel){
+  var d = LKIN; if(!d) return; LKIN = null; closeCatPop(); var n = 0;
+  if(asZiel){
+    var W = 180, S0 = 90, E = -180, N = -90; d.p.forEach(function(p){ W = Math.min(W, p.lo); E = Math.max(E, p.lo); S0 = Math.min(S0, p.la); N = Math.max(N, p.la); });
+    var zid = zielNew(d.n, {id:uid("o"), n:d.n, la:+((S0 + N)/2).toFixed(5), lo:+((W + E)/2).toFixed(5), bb:[W, S0, E, N].map(function(x){ return +x.toFixed(4); })});
+    d.p.forEach(function(p){ var q = Object.assign({}, p); if(d.by) q.rec = {by:"", name:d.by}; var r = zielAdd(zid, q); if(r && !r.dup) n++; });
+    save(); dirty(); renderAll(); toast(n+(n===1 ? " Ort" : " Orte")+" im Ziel „"+d.n+"“ gemerkt", false); return;
+  }
+  var t = T(), lid = uid("l"); t.lists.push({id:lid, name:d.n.slice(0, 40)});
+  d.p.forEach(function(p){ if(Object.keys(t.places).some(function(k){ return samePl(t.places[k], p); })) return; var id = uid("w"); t.places[id] = {id:id, n:p.n, c:p.c, la:p.la, lo:p.lo, addr:p.addr, note:p.note, list:lid}; if(d.by) t.places[id].rec = {by:"", name:d.by}; n++; });
+  save(); dirty(); tab = "wish"; renderAll(); toast(n+(n===1 ? " Ort" : " Orte")+" in der Liste „"+d.n+"“", false);
+}
 /* ---------- Tagesvorschlag: angezeigte Wünsche nach Nähe auf die (verbleibenden) Reisetage verteilen ---------- */
 var DSP = null;
 function dsPool(){ return listPool().filter(function(p){ return !dayOf(p.id) && !p.of && !p.park && p.k!=="hotel" && p.k!=="photo" && hasLoc(p) && catOk(p.c) && nbMatch(p) && grpOk(p) && qMatch(p); }); }
@@ -10669,7 +10942,8 @@ function renderWish(){
     (gs.length ? chip("grp", grpLbl, !!grpSel) : "")+
     (multi ? chip("list", activeList==="open" ? "Liste" : activeList==="none" ? "Ohne Liste" : listName(activeList), activeList!=="open") : "")+
     "<button type=\"button\" class=\"fchip sort\" data-act=\"wfilt\" data-k=\"sort\" aria-haspopup=\"dialog\"><span aria-hidden=\"true\">⇅</span> "+esc(sortLbl)+CHEV+"</button>"+
-    (!isRO() && days().length > 1 ? "<button type=\"button\" class=\"fchip dschip\" data-act=\"dsopen\" aria-haspopup=\"dialog\" title=\"Wünsche nach Nähe auf die Tage verteilen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3M7 12h2M11 12h2\"/></svg>Auf Tage verteilen</button>" : "")+"</div>";
+    (!isRO() && days().length > 1 ? "<button type=\"button\" class=\"fchip dschip\" data-act=\"dsopen\" aria-haspopup=\"dialog\" title=\"Wünsche nach Nähe auf die Tage verteilen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3M7 12h2M11 12h2\"/></svg>Auf Tage verteilen</button>" : "")+
+    "<button type=\"button\" class=\"fchip dschip\" data-act=\"lkshare\" title=\"Angezeigte Wünsche als Link teilen\" aria-label=\"Angezeigte Wünsche als Link teilen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5 10H4.5A1.5 1.5 0 0 0 3 11.5v4A1.5 1.5 0 0 0 4.5 17h11a1.5 1.5 0 0 0 1.5-1.5v-4a1.5 1.5 0 0 0-1.5-1.5H15\"/></svg>Teilen</button></div>";
   var anyF = keys.length || ck.length || grpSel || activeList!=="open" || wishQuery.trim();
   if(anyF){
     var wAll = wishes().length, wShown = listPool().filter(function(p){ return !dayOf(p.id) && catOk(p.c) && nbMatch(p) && grpOk(p) && qMatch(p); }).length;
@@ -10889,7 +11163,8 @@ function wishRow(p){
                  : (D ? "<button type=\"button\" class=\"wplan\" data-act=\"plan\" aria-label=\"Zu "+esc(D.lbl)+" hinzufügen\" title=\"Zu "+esc(D.lbl)+" hinzufügen\"><b>+</b><small>"+D.wd+"</small></button>" : "");
   if(p.park && !dk) right = "<button type=\"button\" class=\"wunpark\" data-act=\"wunpark\" aria-label=\"Wieder auf die Wunschliste\" title=\"Wieder auf die Wunschliste\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/></svg><small>Zurück</small></button>";
   var rf = distRef(), dm = rf && hasLoc(p) ? dist(rf.p, p) : null;
-  var meta = [p.park && !dk ? "<b class=\"wpk\">zurückgestellt</b>" : "", dm!=null ? "<b class=\"wdist\">"+fmtDist(dm)+"</b>" : "", nbOf(p) && nbKeys().length!==1 ? esc(nbOf(p)) : "", p.addr ? esc(p.addr) : "", grpName(p.g) ? "▦ "+esc(grpName(p.g)) : "", hasLoc(p) ? "" : "<b>ohne Ort</b>"].filter(Boolean).join(" · ");
+  var nfr = acct.user && hasLoc(p) && DC.items.length ? frWho(p).length : 0;
+  var meta = [nfr ? "<b class=\"wfr\" title=\""+nfr+(nfr===1 ? " Freund empfiehlt" : " Freunde empfehlen")+" das\">👥 "+nfr+"</b>" : "", p.park && !dk ? "<b class=\"wpk\">zurückgestellt</b>" : "", dm!=null ? "<b class=\"wdist\">"+fmtDist(dm)+"</b>" : "", nbOf(p) && nbKeys().length!==1 ? esc(nbOf(p)) : "", p.addr ? esc(p.addr) : "", grpName(p.g) ? "▦ "+esc(grpName(p.g)) : "", hasLoc(p) ? "" : "<b>ohne Ort</b>"].filter(Boolean).join(" · ");
   return "<li class=\"wi sw"+(dk?" planned":"")+(p.park && !dk ? " parked" : "")+"\" data-id=\""+p.id+"\"><button type=\"button\" class=\"swdel\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"swc\" data-act=\"wopen\"><span class=\"wic\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span><div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"wopen\">"+hl(p.n)+"</button>"+(meta ? "<div class=\"wmeta\">"+meta+"</div>" : "")+(p.note ? "<div class=\"wnote\">"+esc(p.note)+"</div>" : "")+"</div>"+right+"</div></li>";
 }
 function wishForm(){
@@ -11497,16 +11772,18 @@ document.addEventListener("click", function(e){
     case "rvtab": rvTab = t.getAttribute("data-v"); if(sel==="poi" && poiSel && !(jp && $("jPop") && !$("jPop").hidden)){ poiRv = rvTab; renderCard(); break; } renderJPop(); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"nearest"}); }, 0); break;
     case "navdisc": if(dcPage) closeDcPage(); else openDcPage(); break;
     case "dcsrc": dcSrc = t.getAttribute("data-v"); lsSet("rp-dcsrc", dcSrc); renderDc(); break;
+    case "dcreport": dcReport(t.getAttribute("data-k")); break;
+    case "dcrepgo": dcReportGo(t.getAttribute("data-k"), +t.getAttribute("data-i")); break;
     case "dcscope": dcScope = t.getAttribute("data-v"); renderDc(); break;
     case "dcwish": dcAdd(t.getAttribute("data-k"), null); break;
     case "zopen": closeGsPage(); closeDcPage(); closeChPage(); if(sel==="poi") select(null); openZiele(t.getAttribute("data-z")); break;
-    case "znew": zEdit = zEditFrom(""); zOpen = ""; renderProfile(); setTimeout(function(){ var zn = $("zName"); if(zn) zn.focus(); }, 0); break;
-    case "zback": if(zEdit){ var zeb = zEdit.zid; zEdit = null; zOpen = zeb && Z(zeb) ? zeb : ""; } else zOpen = ""; renderProfile(); break;
-    case "zedit": zEdit = zEditFrom(t.getAttribute("data-z")); renderProfile(); break;
+    case "znew": zEdit = zEditFrom(""); zRenderEdit(true); setTimeout(function(){ var zn = $("zName"); if(zn) zn.focus(); }, 0); break;
+    case "zback": if(zEdit){ zEdit = null; closeCatPop(); break; } zOpen = ""; renderProfile(); break;
+    case "zedit": zEdit = zEditFrom(t.getAttribute("data-z")); zRenderEdit(true); break;
     case "zsave": zSaveEdit(); break;
     case "zdel": zDel(t.getAttribute("data-z")); break;
-    case "zarea": var zf = zEdit && zEdit.res[+t.getAttribute("data-i")]; if(zf){ if($("zName")) zEdit.n = $("zName").value; zEdit.orte.push(zOrt(zf)); if(!zEdit.n.trim()) zEdit.n = (zf.properties||{}).name || ""; zEdit.q = ""; zEdit.res = []; zEdit.err = ""; renderProfile(); } break;
-    case "zareadel": if(zEdit){ if($("zName")) zEdit.n = $("zName").value; zEdit.orte.splice(+t.getAttribute("data-i"), 1); renderProfile(); } break;
+    case "zarea": var zf = zEdit && zEdit.res[+t.getAttribute("data-i")]; if(zf){ if($("zName")) zEdit.n = $("zName").value; zEdit.orte.push(zOrt(zf)); if(!zEdit.n.trim()) zEdit.n = (zf.properties||{}).name || ""; zEdit.q = ""; zEdit.res = []; zEdit.err = ""; zRenderEdit(); } break;
+    case "zareadel": if(zEdit){ if($("zName")) zEdit.n = $("zName").value; zEdit.orte.splice(+t.getAttribute("data-i"), 1); zRenderEdit(); } break;
     case "zshow": zShow(t.getAttribute("data-z"), t.getAttribute("data-pid")); break;
     case "zpldel": zDelPlace(t.getAttribute("data-z"), t.getAttribute("data-pid")); break;
     case "zplan": zPlanTrip(t.getAttribute("data-z")); break;
@@ -11536,7 +11813,7 @@ document.addEventListener("click", function(e){
     case "dcplan": var dk0 = t.getAttribute("data-k"); jpPopover("dc", t, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"dcday\" data-k=\""+esc(dk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "dcplan"); break;
     case "dcday": dcAdd(t.getAttribute("data-k"), t.getAttribute("data-day")); break;
     case "dcmap": var dcr = DC.byKey[t.getAttribute("data-k")]; if(dcr){ closeDcPage(); poiSel = {n:dcr.n, cls:"", sub:"", c:dcr.c || "sight", la:dcr.la, lo:dcr.lo, addr:dcr.addr || ""}; sel = null; select("poi"); renderCard(); revealPoint({la:dcr.la, lo:dcr.lo}, 16, true); } break;
-    case "dcreload": DC.at = 0; dcLoad(); break;
+    case "dcreload": DC.at = 0; dcLoad(); if(dcSrc==="all") pubLoad(true); break;
     case "recshare": recShare = !recShare; lsSet("rp-recshare", recShare ? "1" : "0"); if(recShare) recSyncSoon(); else recWipe(); openSettings(); break;
     case "navlist": if(lsPage) closeLsPage(); else openLsPage(); break;
     case "lstrip": var lst = t.getAttribute("data-trip"); if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
@@ -11659,6 +11936,16 @@ document.addEventListener("click", function(e){
     case "wgrp": grpSel = t.getAttribute("data-g"); renderSheet(); scheduleOverlay(); if(wfiltK==="grp" && !$("catPop").hidden) closeCatPop(); break;
     case "wfilt": openWFilt(t.getAttribute("data-k")); break;
     case "dsopen": closeMenus(); openDaySug(); break;
+    case "askopen": { var az = t.getAttribute("data-z"); openAsk(az && Z(az) ? Z(az).name : (T().orte[0] && T().orte[0].n) || T().name || "meine Reise", az || ""); break; }
+    case "askpick": askKeep(); if(ASK){ var au = t.getAttribute("data-uid"); if(ASK.sel[au]) delete ASK.sel[au]; else ASK.sel[au] = 1; renderAsk(); } break;
+    case "askall": askKeep(); if(ASK){ var aa = Object.keys(ASK.sel).length===FR.friends.length; ASK.sel = {}; if(!aa) FR.friends.forEach(function(f){ ASK.sel[f.uid] = 1; }); renderAsk(); } break;
+    case "asksend": askSend(); break;
+    case "invshare": invShare(); break;
+    case "lkshare": lkShare(activeList!=="open" && activeList!=="none" ? listName(activeList) : (T().name || "Wunschliste"), listPool().filter(function(p){ return !dayOf(p.id) && catOk(p.c) && nbMatch(p) && grpOk(p) && qMatch(p); })); break;
+    case "lkzshare": { var lz = Z(t.getAttribute("data-z")); if(lz) lkShare(lz.name, Object.keys(lz.places).map(function(k){ return lz.places[k]; }).filter(function(p){ return !p.of; })); break; }
+    case "lkclose": LKIN = null; closeCatPop(); break;
+    case "lkwish": lkTake(false); break;
+    case "lkziel": lkTake(true); break;
     case "dsapply": dsApply(); break;
     case "offload": offStart(); break;
     case "offstop": offStop(); break;
@@ -12415,6 +12702,7 @@ acctStart();
 document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="visible" && acct.user) acctPull(); });
 window.addEventListener("online", function(){ if(acct.user){ acctPull(); phFlush(); } });
 setNet(navigator.onLine);
+setTimeout(lkCheck, 600); window.addEventListener("hashchange", lkCheck);
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){});
 if("serviceWorker" in navigator) window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
 // Zugang für die automatischen Klicktests (tests/smoke.mjs) – nur mit ?rptest in der Adresse
