@@ -3450,6 +3450,9 @@ button.tf-pill{border:0;font:inherit;color:inherit}
 .shpop{z-index:61}
 .shpop .ag-card .sh-t{padding:2px 40px 0 2px;font:600 18px/1.25 var(--f-display,inherit)}
 .shpop .share{margin-top:6px}
+.shpop .share > h4{display:none}
+.shpop .sh-t b{display:block}
+.shpop .sh-t small{display:block;font:500 13px/1.3 var(--f-body);color:var(--muted);margin-top:2px}
 .cv-note{margin:10px 2px 8px}
 .cv-grid.cv-one{grid-template-columns:1fr 1fr}
 .cv-card .cv-ok{margin-top:12px}
@@ -4768,7 +4771,7 @@ function shareBlock(){
     if(uid0 && !(uid0 in INVN) && fbDb){ INVN[uid0] = ""; fbDb.collection("profiles").doc(uid0).get().then(function(d){ var pv = d.exists && d.data(); if(pv && pv.name){ INVN[uid0] = pv.name; if(tab==="trip") renderSheet(); } }, function(){}); }
     return (m.memberEmails||{})[uid0] || "Unbekannt"; };
   if(viewer) h += "<p class=\"note rolenote\">Du bist <b>Beobachter</b>: Du siehst Plan, Tagebuch und Fotos und kannst kommentieren, aber nichts ändern.</p>";
-  h += "<ul class=\"mlist\">"+(m.members||[]).map(function(uid0){ var nm = nameOf(uid0), me0 = uid0===acct.user.uid, isO = uid0===m.owner, isV = vw.indexOf(uid0) > -1;
+  var lst = "<ul class=\"mlist\">"+(m.members||[]).map(function(uid0){ var nm = nameOf(uid0), me0 = uid0===acct.user.uid, isO = uid0===m.owner, isV = vw.indexOf(uid0) > -1;
     return "<li><span class=\"mav\">"+esc((nm.replace("@","")[0]||"?").toUpperCase())+"</span><span class=\"mn\">"+esc(nm)+(me0?" <small>(du)</small>":"")+"<small class=\"role\">"+(isO?"Besitzer":isV?"Beobachter":"Mitreisende/r")+"</small>"+
       (own && !me0 ? roleSeg(isV?"viewer":"member", "mrole", " data-uid=\""+uid0+"\"") : "")+"</span>"+
       (own && !me0 ? "<button type=\"button\" class=\"btn g s\" data-act=\"mremove\" data-uid=\""+uid0+"\">Entfernen</button>" : "")+"</li>"; }).join("")+
@@ -4782,6 +4785,8 @@ function shareBlock(){
     h += "<form class=\"gnew\" id=\"invForm\"><input type=\"email\" id=\"invMail\" inputmode=\"email\" placeholder=\"oder E-Mail der Person\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Einladen</button></form>";
     h += "<p class=\"note\">Es wird keine E-Mail verschickt: Die Einladung erscheint in der App unter Menü → Reisen → Anfragen.</p>";
   }
+  // Einladen steht oben, die Personen darunter
+  h += (viewer ? "" : "<div class=\"ag-lbl invlbl\">Dabei</div>")+lst;
   if(!own) h += "<div class=\"row\"><button type=\"button\" class=\"btn g s warn\" data-act=\"mleave\">Reise verlassen</button></div>";
   return h+"</div>";
 }
@@ -5558,7 +5563,7 @@ function shRender(){
   if(!el){ el = document.createElement("div"); el.id = "shPop"; el.className = "acctpop shpop"; document.body.appendChild(el);
     el.addEventListener("click", function(e){ if(e.target===el) shClose(); }); }
   var card = el.querySelector(".ag-card"), st = card ? card.scrollTop : 0;
-  el.innerHTML = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mitreisende und Beobachter\"><button type=\"button\" class=\"ag-x\" data-act=\"shclose\" aria-label=\"Schließen\">×</button><div class=\"sh-t\"><b>"+esc(T().name||"Reise")+"</b></div>"+shareBlock()+"</div>";
+  el.innerHTML = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mitreisende und Beobachter\"><button type=\"button\" class=\"ag-x\" data-act=\"shclose\" aria-label=\"Schließen\">×</button><div class=\"sh-t\"><b>Mitreisende &amp; Beobachter</b><small>"+esc(T().name||"Reise")+"</small></div>"+shareBlock()+"</div>";
   el.hidden = false; card = el.querySelector(".ag-card"); if(card) card.scrollTop = st;
 }
 /* Zeitraum-Kalender: erster Tipp Anreise, zweiter Tipp Abreise, dazwischen markiert */

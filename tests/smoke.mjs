@@ -1466,6 +1466,15 @@ await test("Reise bearbeiten: „Reise löschen“ ganz unten, volle Breite, ged
   await page.locator("#tripPop [data-act=deltrip]").scrollIntoViewIfNeeded(); await shot("reise-loeschen-unten");
 });
 
+await test("Mitreisende & Beobachter: Einladen steht vor der Liste der Personen", async () => {
+  await seed();
+  await rp(`acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; META[S.cur] = {owner:"u_me", members:["u_me","u_b"], memberEmails:{u_b:"b@test.de"}, invites:["c@test.de"], viewers:[]}; shOpen(S.cur); true`); await page.waitForTimeout(200);
+  ok(await rp(`(function(){ var f = document.querySelector("#shPop #invForm"), l = document.querySelector("#shPop .mlist"); return !!(f && l) && !!(f.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING); })()`), "Einladen steht nicht vor der Liste");
+  ok(await rp(`(function(){ var r = document.querySelector("#shPop [data-act=invrole]"), l = document.querySelector("#shPop .mlist"); return !!(r.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING); })()`), "„Einladen als“ steht nicht vor der Liste");
+  await shot("mitreisende-popup");
+  await rp(`shClose(); true`);
+});
+
 await test("Neue Reise: Hotel „noch unklar“ ohne Fehler, später nachtragbar", async () => {
   await noTripUser();
   await rp(`tdraft = {mode:"new", name:"Lissabon", start:"2026-11-02", end:"2026-11-06", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"Lissabon", loc:"38.7200, -9.1400", from:"", to:""}], err:"", ok:"hotels.0"}; tab = "trip"; renderSheet(); true`); await page.waitForTimeout(150);
