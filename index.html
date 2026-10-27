@@ -11452,8 +11452,8 @@ function renderTrip(){
   h2 += "<div class=\"tf-lbl\">Reise</div><div class=\"tf-grp\"><label class=\"tf-row\"><span>Name</span><input type=\"text\" data-f=\"name\" value=\""+esc(d.name)+"\" maxlength=\"60\" placeholder=\"z. B. Boston &amp; New York\" autocomplete=\"off\"></label></div>";
   function pill(f, typ, ph, al){ var v = d[f] || ""; return "<label class=\"tf-pill "+typ+(v?" on":"")+"\"><b data-ph=\""+ph+"\">"+esc(v ? tfPillTxt(typ, v) : ph)+"</b><input type=\""+(typ==="d"?"date":"time")+"\" data-f=\""+f+"\" value=\""+esc(v)+"\" aria-label=\""+al+"\"></label>"; }
   h2 += "<div class=\"tf-lbl\">Zeitraum<small id=\"tfNights\">"+esc(tfNights(d))+"</small></div><div class=\"tf-grp\">"+
-    "<div class=\"tf-row tf-span\"><span>Anreise</span>"+pill("start", "d", "Datum", "Anreisedatum")+pill("arr", "t", "Ankunft", "Ankunftszeit")+"</div>"+
-    "<div class=\"tf-row tf-span\"><span>Abreise</span>"+pill("end", "d", "Datum", "Abreisedatum")+pill("dep", "t", "Abflug", "Abflugzeit")+"</div></div>";
+    "<div class=\"tf-row tf-span\"><span>Anreise</span>"+pill("start", "d", "Datum", "Anreisedatum")+pill("arr", "t", "Uhrzeit", "Ankunftszeit")+"</div>"+
+    "<div class=\"tf-row tf-span\"><span>Abreise</span>"+pill("end", "d", "Datum", "Abreisedatum")+pill("dep", "t", "Uhrzeit", "Abflugzeit")+"</div></div>";
   function items(kind, title, addLbl, searchPh, icon){
     var out = "<div class=\"tf-lbl\">"+title+"</div><div class=\"tf-grp\">";
     d[kind].forEach(function(x, i){

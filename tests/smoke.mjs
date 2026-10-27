@@ -1131,7 +1131,7 @@ await test("Neue Reise: Zeitraum kompakt mit Datum/Uhrzeit nebeneinander und Nä
   await rp(`var z = zielNew("Lissabon", {id:"o1", n:"Lissabon", la:38.72, lo:-9.14, r:20000}); save(); openZiele(z); true`); await page.waitForTimeout(200);
   await click("#zPop [data-act=zplan]"); await page.waitForTimeout(200);
   ok(await page.locator("#tForm .tf-span").count()===2, "Zeitraum nicht in zwei Zeilen");
-  ok((await page.locator("#tForm .tf-pill.t").first().innerText()).trim()==="Ankunft", "Platzhalter Ankunft fehlt");
+  ok((await page.locator("#tForm .tf-pill.t").first().innerText()).trim()==="Uhrzeit", "Platzhalter Uhrzeit fehlt");
   await page.fill("[data-f=start]", "2026-11-02"); await page.fill("[data-f=end]", "2026-11-06"); await page.fill("[data-f=arr]", "14:30");
   ok((await page.locator("#tForm .tf-pill.d").first().innerText()).includes("2. Nov"), "Datum nicht lesbar angezeigt");
   ok((await page.locator("#tForm .tf-pill.t").first().innerText()).trim()==="14:30", "Uhrzeit nicht angezeigt");
