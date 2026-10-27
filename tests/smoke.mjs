@@ -656,7 +656,7 @@ await test("Kartenebenen je Reiseziel: ÖPNV-Linien und Bezirke aus OpenStreetMa
     if(q.includes("is_in(")) el = [{type:"relation", id:100, tags:{name:"Lisboa", admin_level:"7", boundary:"administrative"}, bounds:{minlat:38.69, minlon:-9.23, maxlat:38.80, maxlon:-9.09}},
       {type:"relation", id:101, tags:{name:"Santa Maria Maior", admin_level:"8", boundary:"administrative"}, bounds:{minlat:38.709, minlon:-9.14, maxlat:38.716, maxlon:-9.13}},
       {type:"relation", id:1, tags:{name:"Portugal", admin_level:"2", boundary:"administrative"}, bounds:{minlat:36, minlon:-10, maxlat:42, maxlon:-6}}];
-    else if(q.includes("map_to_area")) el = [201, 202, 203].map((id, i) => ({type:"relation", id, tags:{name:["Estrela","Misericórdia","Alfama"][i], admin_level:"8"}, bounds:{minlat:38.70, minlon:-9.20+i*0.02, maxlat:38.71, maxlon:-9.19+i*0.02}}))
+    else if(q.includes("out tags bb")) el = [201, 202, 203].map((id, i) => ({type:"relation", id, tags:{name:["Estrela","Misericórdia","Alfama"][i], admin_level:"8"}, bounds:{minlat:38.70, minlon:-9.20+i*0.02, maxlat:38.71, maxlon:-9.19+i*0.02}}))
       .concat([{type:"relation", id:300, tags:{name:"Oeiras-Nachbar", admin_level:"8"}, bounds:{minlat:38.68, minlon:-9.30, maxlat:38.72, maxlon:-9.20}}]);
     else if(q.includes("rel(id:")) el = [adm(201, "Estrela", -9.20, 38.70), adm(202, "Misericórdia", -9.18, 38.70), adm(203, "Alfama", -9.16, 38.70)];
     else if(q.includes("subway")) el = [
@@ -716,6 +716,34 @@ await test("Kartenebenen je Reiseziel: ÖPNV-Linien und Bezirke aus OpenStreetMa
   await rp(`S.cur = "t_lis"; renderAll(); true`);
   await page.waitForFunction(() => window.__rp("!!(DEST && DEST.tr && DEST.nb && NB.length===3)"), null, {timeout:5000});
   ok(OVQ.length===n0 && await rp(`nbHi.Alfama && DL.metro`), "Ziel wird nicht aus dem Speicher geladen ("+(OVQ.length-n0)+" neue Abfragen)");
+});
+
+await test("Kartenebenen je Reiseziel: Zeitlimit und Fehler statt endlosem Laden (Tokio)", async () => {
+  let mode = "hang", n = 0;
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => { n++;
+    if(mode==="hang") return; // Server antwortet nie
+    if(mode==="remark") return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[{type:"relation", id:1, tags:{type:"route", route:"subway", ref:"G"}, members:[]}], remark:"runtime error: Query timed out in \"query\" at line 1 after 41 seconds."}) });
+    const q = decodeURIComponent((rt.request().postData()||"").replace(/^data=/, "").replace(/\+/g, " "));
+    const el = q.includes("subway") ? [{type:"relation", id:1, tags:{type:"route", route:"subway", ref:"G", colour:"#F39700"}, members:[{type:"way", ref:11}]}, {type:"way", id:11, geometry:[{lat:35.67, lon:139.70}, {lat:35.68, lon:139.76}]}] : [];
+    return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:el}) }); });
+  await seed();
+  await rp(`(function(){ OVTO = 1200; var t = newTripObj({id:"t_tyo", name:"Tokio", start:"2026-11-02", end:"2026-11-06", orte:[{id:"o8", n:"Tokio", la:35.6812, lo:139.7671, from:"2026-11-02", to:"2026-11-06"}]});
+    S.trips.t_tyo = t; S.cur = "t_tyo"; DL = {}; renderAll(); })()`);
+  ok(await rp(`!!DEST && DEST.r <= 10000`), "Suchradius zu groß");
+  await click("#layersBtn"); await click("#lTrBtn");
+  ok((await page.locator("#lTrDyn").innerText()).includes("wird geladen"), "Ladehinweis fehlt");
+  await page.waitForFunction(() => window.__rp("DEST.st.tr==='err' && DEST.st.nb==='err'"), null, {timeout:8000});
+  ok(n >= 4, "Ersatzserver wird nicht versucht ("+n+" Abfragen)");
+  ok(await page.locator("#lTrDyn [data-act=dretry]").isVisible() && await page.locator("#nbErr [data-act=dretry]").isVisible(), "Fehlermeldung mit „Erneut versuchen“ fehlt");
+  await shot("ziel-fehler");
+  // abgebrochene Abfrage mit unvollständigen Daten: Fehler, nichts gespeichert
+  mode = "remark"; await click("#lTrDyn [data-act=dretry]");
+  await page.waitForFunction(() => window.__rp("DEST.st.tr==='err'"), null, {timeout:5000});
+  ok(await rp(`!DEST.tr && !DMEM[DEST.k+":tr"]`), "Unvollständige Daten wurden übernommen");
+  // erneut versuchen, Server antwortet
+  mode = "ok"; await click("#lTrDyn [data-act=dretry]");
+  await page.waitForFunction(() => window.__rp("!!DEST.tr"), null, {timeout:5000}); await page.waitForTimeout(100);
+  ok((await page.locator("#lTrDyn").innerText()).includes("Metro"), "Nach „Erneut versuchen“ keine Linien");
 });
 
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
@@ -830,6 +858,56 @@ await test("Routenoptionen je Etappe: Zeit (Abfahrt/Ankunft) und bevorzugte Verk
   ok((await page.locator("#jpMenu [data-act=loptopen]").innerText()).includes("Ankunft bis 12:00"), "Optionen im Menü nicht sichtbar");
   await click("#jpMenu [data-act=loptopen]"); await click("#catPop [data-act=loptreset]"); await click("#catPop [data-act=loptsave]");
   ok(await rp(`legGet("legOpt", dayLegs(cur)[${li}][1])===undefined`), "Zurücksetzen löscht die Optionen nicht");
+});
+
+await test("Tickets: Fahrkarte je Etappe und Event-Ticket je Ort hinterlegen (Buchen noch nicht verfügbar)", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  await rp(`(function(){ var t = T(); t.places.p8 = {id:"p8", n:"Domino Park", c:"park", la:40.7144, lo:-73.9680, list:"l_main", note:"", addr:"River St"}; t.places.p9 = {id:"p9", n:"Kips Bay", c:"sight", la:40.7470, lo:-73.9760, list:"l_main", note:"", addr:"2nd Ave"}; t.order[cur] = ["p9","p8","p3"]; legsList = true; select(null); setSheet("full"); renderSheet(); })()`);
+  await page.waitForTimeout(200);
+  const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][0] && L[i][0].id==="p9" && L[i][1] && L[i][1].id==="p8") return i; } return -1; })()`);
+  ok(li > -1, "Etappe nicht gefunden");
+  await rp(`(function(){ var L = dayLegs(cur)[${li}]; setLegMode(L[0], L[1], "oepnv"); renderSheet(); })()`);
+  await page.locator(`[data-act=lmpick][data-leg="${li}"]`).click(); await page.waitForTimeout(150);
+  await click("#jpMenu [data-act=tkleg]");
+  ok(await visible("#catPop .tkpop"), "Ticket-Fenster fehlt");
+  ok((await page.locator("#catPop a.tkbook").getAttribute("href")).indexOf("omny.info") > -1, "OMNY-Link fehlt");
+  await click("#catPop [data-act=tkna]");
+  ok((await page.locator("#toast").innerText()).includes("noch nicht verfügbar"), "Hinweis „noch nicht verfügbar“ fehlt");
+  await click("#catPop [data-act=tknew]");
+  await page.locator("#tkN").fill("7-Tage-Pass"); await page.locator("#tkC").fill("ABC123"); await page.locator("#tkU").fill("omny.info");
+  await click("#catPop [data-act=tkst][data-v=ok]");
+  ok(await page.locator("#tkN").inputValue()==="7-Tage-Pass", "Eingabe geht beim Statuswechsel verloren");
+  await page.mouse.click(5, 5);
+  ok(await visible("#catPop .tkform"), "Tippen daneben verwirft das Formular");
+  await shot("ticket-form");
+  await click("#catPop [data-act=tksave]");
+  ok(await visible("#catPop .tkrow.ok"), "Gespeichertes Ticket fehlt in der Liste");
+  ok((await page.locator("#catPop a.tkopen").getAttribute("href"))==="https://omny.info", "Link zum Ticket fehlt");
+  const tk = await rp(`JSON.stringify(tkOn(tkLegOn(dayLegs(cur)[${li}][1])).map(function(x){ return [x.k, x.n, x.code, x.st, x.d===cur]; }))`);
+  ok(tk===JSON.stringify([["transit","7-Tage-Pass","ABC123","ok",true]]), "Ticket falsch gespeichert: "+tk);
+  ok(await rp(`privOf(T()) && pubOf(T()).tickets===undefined`), "Tickets dürfen nicht im öffentlichen Teil der Reise stehen");
+  await click("#catPop [data-act=tkclose]");
+  ok(await page.locator("#catPop").isHidden(), "Fenster schließt nicht");
+  ok(await page.locator(`[data-act=lmpick][data-leg="${li}"].tk`).count()===1, "Etappe zeigt nicht, dass ein Ticket hinterlegt ist");
+  // Ort: Event-Ticket über „Mehr“
+  await rp(`(function(){ setSheet("mid"); select("p3"); })()`); await page.waitForTimeout(250);
+  await click("#card [data-act=cardmore]");
+  await click("#jpMenu [data-act=tkplace]");
+  ok(await page.locator("#catPop a.tkbook").count()===0, "Bei Orten keine ÖPNV-Links");
+  await click("#catPop [data-act=tknew]");
+  await page.locator("#tkN").fill("Eintritt"); await page.locator("#tkT").fill("14:00");
+  await click("#catPop [data-act=tksave]");
+  ok(await rp(`tkOn("p:p3").length===1 && tkOn("p:p3")[0].k==="event" && tkOn("p:p3")[0].tm==="14:00"`), "Event-Ticket nicht gespeichert");
+  // Abbrechen führt zur Liste zurück, Löschen mit Rückfrage
+  await click("#catPop [data-act=tkedit]");
+  await click("#catPop .pf-acts [data-act=tkback]");
+  ok(await visible("#catPop [data-act=tknew]"), "Abbrechen führt nicht zur Liste zurück");
+  await click("#catPop [data-act=tkedit]"); await click("#catPop [data-act=tkdel]");
+  await click("#cfPop .cf-ok");
+  ok(await rp(`tkOn("p:p3").length===0 && tkOn(tkLegOn(dayLegs(cur)[${li}][1])).length===1`), "Löschen entfernt das falsche Ticket");
+  ok(await visible("#catPop .tkempty"), "Leere Liste nach dem Löschen fehlt");
+  await shot("ticket-liste");
 });
 
 await test("Linie wählen: bei mehreren möglichen Linien (z. B. A/C/E) eine bestimmte festlegen", async () => {

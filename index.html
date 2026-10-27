@@ -2580,6 +2580,21 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .lo-list [aria-checked="true"] .sw2{background:#34c759}
 .lo-list [aria-checked="true"] .sw2::after{transform:translateX(18px)}
 .lo-note{font-size:12.5px;color:var(--muted);margin:8px 4px 14px}
+.tkpop .lo-leg{margin-top:-4px}
+.tk-seg{grid-template-columns:repeat(2,1fr);margin:4px 0 10px}
+.tkform .tf-row > input{background:var(--fill);border:0;border-radius:10px}
+.tkform .tf-row > input[type=date],.tkform .tf-row > input[type=time]{-webkit-appearance:none;appearance:none;text-align:left;min-height:38px}
+.tkic{--cc:var(--muted)}
+.tkic svg{width:20px;height:20px}
+.tkrow.ok .tkic{--cc:#0b8a4b}
+a.ls-row{text-decoration:none}
+.tkopen{display:grid;place-items:center;color:var(--accent,#0a84ff)}
+.tkopen svg{width:18px;height:18px}
+.tkna small{font-style:italic}
+.tkempty{margin:0 4px 4px;font-size:13px}
+.pf-acts .btn .ii{width:16px;height:16px;vertical-align:-3px}
+.lm button.tk{position:relative}
+.lm button.tk::after{content:"";position:absolute;top:1px;right:1px;width:7px;height:7px;border-radius:50%;background:#0b8a4b;box-shadow:0 0 0 1.5px var(--sheet)}
 .lo-reset{width:100%;border:0;border-radius:14px;padding:13px;font:inherit;font-size:16px;font-weight:600;color:#0a84ff;background:color-mix(in srgb,var(--ink) 7%,transparent);cursor:pointer}
 .srloc{display:flex;gap:6px;margin:8px 0 2px;flex-wrap:wrap}
 .srloc button{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:6px 11px 6px 9px;font:inherit;font-size:13px;color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent);cursor:pointer;max-width:100%}
@@ -3551,6 +3566,7 @@ button.tf-pill{border:0;font:inherit;color:inherit}
   <label><input type="checkbox" id="lNb"><span class="sw" style="background:repeating-linear-gradient(90deg,var(--hi) 0 4px,transparent 4px 7px)"></span>Bezirke</label>
   <h4 style="margin-top:4px">Bezirk hervorheben</h4>
   <select id="nbAdd" aria-label="Bezirk hervorheben"></select>
+  <p class="note dnote" id="nbErr" hidden></p>
   <div class="hl-list" id="nbList"></div>
 </div>
 <input type="file" id="cphIn" accept="image/*,image/heic,image/heif" multiple hidden>
@@ -3620,7 +3636,8 @@ var IC = {
   sync:"<path d=\"M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2\"/>", // Abgleichen
   sort:"<path d=\"M6.5 16.5v-13M3.5 6.5l3-3 3 3M13.5 3.5v13M10.5 13.5l3 3 3-3\"/>", // Sortieren
   camera:"<path d=\"M3 6.5h3l1.5-2h5l1.5 2h3v9.5H3z\"/><circle cx=\"10\" cy=\"11\" r=\"3\"/>", // Foto
-  hotel:"<path d=\"M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5\"/><circle cx=\"5.8\" cy=\"9.6\" r=\"1.6\"/>" // Hotel
+  hotel:"<path d=\"M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5\"/><circle cx=\"5.8\" cy=\"9.6\" r=\"1.6\"/>", // Hotel
+  ticket:"<path d=\"M2.5 6h15v2.6a1.6 1.6 0 0 0 0 3.2V14.4h-15v-2.6a1.6 1.6 0 0 0 0-3.2z\"/><path d=\"M12.5 6.5v1.5M12.5 9.5v1.4M12.5 12.4v1.5\"/>" // Tickets (Fahrkarten, Eintritt)
 };
 // ic("send") – Linie; icf("like") – gefüllt (aktiv); cls z. B. "ii" für Symbole im Fließtext
 function ic(n, cls, fill){ return "<svg"+(cls ? " class=\""+cls+"\"" : "")+" viewBox=\"0 0 20 20\" fill=\""+(fill||"none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+IC[n]+"</svg>"; }
@@ -3833,12 +3850,12 @@ function renameLocal(){
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["places","done","times","journal","order","legMode","legAlt","legOpt","legLine","via","rating","notes","photos","groups","privP","privN","privPh","privTo","capt"];
+var MAPK = ["places","done","times","journal","order","legMode","legAlt","legOpt","legLine","via","rating","notes","photos","groups","privP","privN","privPh","privTo","capt","tickets"];
 /* ---------- Privat: Orte, Notizen und Fotos, die Beobachter nicht bekommen ----------
    Mitreisende lesen und schreiben die vollständige Reise in trips/{id}/priv/data;
    das Reise-Dokument selbst (für Beobachter lesbar) enthält nur den öffentlichen Teil. */
 function jclone(o){ return o===undefined ? undefined : JSON.parse(JSON.stringify(o)); }
-function privOf(t){ return !!(t && ["privP","privN","privPh"].some(function(k){ return t[k] && Object.keys(t[k]).length; })); }
+function privOf(t){ return !!(t && ["privP","privN","privPh","tickets"].some(function(k){ return t[k] && Object.keys(t[k]).length; })); }
 function privSet(t){ var P0 = t.privP || {}, out = Object.keys(P0).filter(function(id){ return t.places && t.places[id]; });
   Object.keys(t.places||{}).forEach(function(id){ var q = t.places[id]; if(q && q.of && P0[q.of] && out.indexOf(id)<0) out.push(id); }); return out; }
 function pubOf(M){
@@ -3858,14 +3875,14 @@ function pubOf(M){
     Object.keys(N0).forEach(function(pid){ if(c.notes) delete c.notes[pid]; });
     Object.keys(c.photos||{}).forEach(function(pid){ c.photos[pid] = (c.photos[pid]||[]).filter(function(x){ return !H0[x]; }); if(!c.photos[pid].length) delete c.photos[pid]; });
   }
-  delete c.privP; delete c.privN; delete c.privPh; delete c.privTo;
+  delete c.privP; delete c.privN; delete c.privPh; delete c.privTo; delete c.tickets; // Tickets nur für Mitreisende
   return c;
 }
 // private Teile aus „full“ in einen öffentlichen Stand zurückholen (falls jemand nur den öffentlichen Teil geschrieben hat)
 function privReadd(pub, full){
   var r = jclone(pub);
   if(!full || !privOf(full)) return r;
-  ["privP","privN","privPh","privTo"].forEach(function(k){ if(full[k]) r[k] = Object.assign({}, full[k], r[k]||{}); });
+  ["privP","privN","privPh","privTo","tickets"].forEach(function(k){ if(full[k]) r[k] = Object.assign({}, full[k], r[k]||{}); });
   r.places = r.places || {}; r.order = r.order || {};
   privSet(full).forEach(function(pid){
     if(!full.places[pid] || r.places[pid]) return;
@@ -8661,6 +8678,82 @@ function loptSave(){
   legSet("legAlt", lp[1], null);
   ALTCACHE = {}; LOPT = null; closeCatPop(); renderSheet(); scheduleOverlay();
 }
+/* ---------- Tickets (Vorbereitung): Fahrkarten je Etappe, Eintritt/Events je Ort hinterlegen; Buchen in der App folgt ----------
+   T().tickets[id] = {on:"l:<Tag>|><Ziel>" oder "p:<Ort>", k:"transit"|"event", n, prov, d, tm, code, url, price, note, st:"plan"|"ok", at}
+   Tickets enthalten Buchungsnummern: nur für Mitreisende (privater Teil der Reise, pubOf entfernt sie) */
+var TKST = [["plan", "Geplant"], ["ok", "Gebucht"]];
+function tkAll(){ var o = T().tickets; return o && typeof o==="object" ? o : {}; }
+function tkOn(on){ var A = tkAll();
+  return Object.keys(A).filter(function(id){ return A[id] && A[id].on===on; }).map(function(id){ return Object.assign({}, A[id], {id:id}); })
+    .sort(function(a, b){ return ((a.d||"9")+(a.tm||"")).localeCompare((b.d||"9")+(b.tm||"")) || (a.at||0) - (b.at||0); }); }
+function tkLegOn(b){ return "l:"+viaKey(b); }
+function tkPlaceOn(pid){ return "p:"+rootOf(pid); }
+function tkUrl(u){ u = String(u||"").trim(); if(!u) return ""; if(!/^https?:\/\//i.test(u)) u = "https://"+u.replace(/^\/+/, ""); return /^https?:\/\/[^\s\/]+\.[^\s]+$/i.test(u) ? u.slice(0, 500) : ""; }
+// Anbieter-Links nur, wo es sie wirklich gibt (New York); keine Anbieter-Schnittstellen, nur Weiterleitung
+function tkBook(k, m){
+  if(k!=="transit" || DEST) return [];
+  if(m==="ferry") return [["NYC Ferry", "Tickets in der NYC-Ferry-App oder am Automaten am Anleger", "https://www.ferry.nyc/"]];
+  if(m==="bike") return [["Citi Bike", "Einzelfahrt oder Tagespass in der Citi-Bike-App", "https://citibikenyc.com/pricing"]];
+  return [["OMNY", "U-Bahn & Bus: kontaktlos mit Karte oder Handy zahlen, kein Ticket nötig", "https://omny.info/"]];
+}
+var TK = null;
+function tkLegOpen(li){ var lp = dayLegs(cur)[li]; if(!lp) return;
+  TK = {on:tkLegOn(lp[1]), k:"transit", title:(lp[0].n||"Start")+" → "+(lp[1].n||"Ziel"), m:legMode(lp[0], lp[1]), d0:cur, ed:null}; renderTk(true); }
+function tkPlaceOpen(pid){ var p = P(pid); if(!p) return;
+  TK = {on:tkPlaceOn(pid), k:"event", title:p.n, m:"", d0:dayOf(pid)||"", ed:null}; renderTk(true); }
+var TKF = [["n", "tkN", "Name", "text", 80], ["prov", "tkP", "Anbieter", "text", 60], ["d", "tkD", "Datum", "date", 10], ["tm", "tkT", "Uhrzeit", "time", 5],
+  ["code", "tkC", "Code", "text", 80], ["url", "tkU", "Link", "url", 500], ["price", "tkPr", "Preis", "text", 30], ["note", "tkNo", "Notiz", "text", 200]];
+function tkKeep(){ if(!TK || !TK.ed) return; TKF.forEach(function(f){ var i = $(f[1]); if(i) TK.ed[f[0]] = i.value; }); }
+function tkHTML(){
+  var e = TK, I = function(n){ return "<span class=\"ls-th ico tkic\">"+ic(n)+"</span>"; };
+  var h = "<div class=\"pop-card zpop tkpop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Tickets\">";
+  if(e.ed){ var f = e.ed, ev = e.k==="event";
+    var ph = {n:ev ? "z. B. Eintritt, Konzert" : "z. B. 7-Tage-Pass", prov:ev ? "z. B. Ticketmaster" : "z. B. MTA, NYC Ferry", code:"Buchungsnummer", url:"https://…", price:"z. B. 34 $", note:"z. B. Einlass ab 19 Uhr"};
+    h += "<div class=\"pop-head\"><h4>"+(f.id ? "Ticket bearbeiten" : "Ticket hinterlegen")+"</h4><button type=\"button\" class=\"x\" data-act=\"tkback\" aria-label=\"Abbrechen\">×</button></div>";
+    h += "<p class=\"lo-leg\">"+esc(e.title)+"</p>";
+    h += "<div class=\"lo-seg tk-seg\" role=\"radiogroup\" aria-label=\"Status\">"+TKST.map(function(s){ return "<button type=\"button\" role=\"radio\" data-act=\"tkst\" data-v=\""+s[0]+"\" aria-checked=\""+(f.st===s[0])+"\">"+s[1]+"</button>"; }).join("")+"</div>";
+    h += "<div class=\"ag-grp zform tkform\">"+TKF.map(function(x){ return "<label class=\"tf-row\"><span>"+x[2]+"</span><input type=\""+x[3]+"\" id=\""+x[1]+"\" value=\""+esc(f[x[0]]||"")+"\" maxlength=\""+x[4]+"\""+(ph[x[0]] ? " placeholder=\""+esc(ph[x[0]])+"\"" : "")+" autocomplete=\"off\""+(x[3]==="url" || x[0]==="code" ? " autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"" : "")+"></label>"; }).join("")+"</div>";
+    if(f.err) h += "<p class=\"err\" role=\"alert\">"+esc(f.err)+"</p>";
+    h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"tkback\">Abbrechen</button><button type=\"button\" class=\"btn\" data-act=\"tksave\">Speichern</button></div>";
+    if(f.id) h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g warn\" data-act=\"tkdel\">Ticket löschen</button></div>";
+    return h+"</div>";
+  }
+  var L = tkOn(e.on), bk = tkBook(e.k, e.m);
+  h += "<div class=\"pop-head\"><h4>Tickets</h4><button type=\"button\" class=\"x\" data-act=\"tkclose\" aria-label=\"Schließen\">×</button></div>";
+  h += "<p class=\"lo-leg\">"+esc(e.title)+"</p>";
+  h += "<div class=\"nt-sec\">Buchen</div><div class=\"ag-grp ls-list\">"+bk.map(function(b){
+      return "<a class=\"ls-row tkbook\" href=\""+esc(b[2])+"\" target=\"_blank\" rel=\"noopener\">"+I("ext")+"<span class=\"ls-t\"><b>"+esc(b[0])+"</b><small>"+esc(b[1])+"</small></span></a>"; }).join("")+
+    "<button type=\"button\" class=\"ls-row tkna\" data-act=\"tkna\">"+I("ticket")+"<span class=\"ls-t\"><b>"+(e.k==="event" ? "Tickets in der App buchen" : "Fahrkarte in der App buchen")+"</b><small>Noch nicht verfügbar</small></span></button></div>";
+  h += "<div class=\"nt-sec\">Meine Tickets</div>";
+  if(!L.length) h += "<p class=\"note tkempty\">Noch nichts hinterlegt. Name, Code oder Link zum Ticket speichern – sichtbar nur für Mitreisende.</p>";
+  else h += "<div class=\"ag-grp ls-list tklist\">"+L.map(function(t){
+      var st = (TKST.filter(function(s){ return s[0]===t.st; })[0]||TKST[0])[1], u = tkUrl(t.url);
+      var sub = [st, t.d ? shortD(t.d) : "", t.tm || "", t.prov || "", t.code ? "Code "+t.code : "", t.price || ""].filter(Boolean).join(" · ");
+      return "<div class=\"ls-row zrow tkrow"+(t.st==="ok" ? " ok" : "")+"\"><button type=\"button\" class=\"zrow-main\" data-act=\"tkedit\" data-tk=\""+esc(t.id)+"\">"+I("ticket")+"<span class=\"ls-t\"><b>"+esc(t.n||"Ticket")+"</b><small>"+esc(sub)+"</small></span></button>"+
+        (u ? "<a class=\"zrow-x tkopen\" href=\""+esc(u)+"\" target=\"_blank\" rel=\"noopener\" aria-label=\"Ticket öffnen\">"+ic("ext")+"</a>" : "")+"</div>"; }).join("")+"</div>";
+  h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"tknew\">"+ic("add", "ii")+" Ticket hinterlegen</button></div>";
+  return h+"</div>";
+}
+function renderTk(first){
+  if(!TK) return; var cp = $("catPop"), ae = document.activeElement, fid = ae && ae.id && /^tk/.test(ae.id) ? ae.id : "";
+  if(first || cp.hidden){ cp.innerHTML = tkHTML(); cp.hidden = false; } else catKeep(tkHTML());
+  if(fid && $(fid)) $(fid).focus();
+}
+function tkEdit(id){ if(!TK) return; var A = tkAll(), t = id && A[id];
+  TK.ed = t ? Object.assign({}, t, {id:id}) : {st:"plan", d:parseD(TK.d0) ? TK.d0 : "", n:"", prov:""}; renderTk(); }
+function tkSave(){
+  if(!TK || !TK.ed) return; tkKeep(); var f = TK.ed, o = {on:TK.on, k:TK.k, st:f.st==="ok" ? "ok" : "plan", at:f.at || Date.now()};
+  TKF.forEach(function(x){ var v = String(f[x[0]]||"").trim().slice(0, x[4]); if(v) o[x[0]] = v; });
+  if(o.url){ var u = tkUrl(o.url); if(!u){ f.err = "Der Link sieht nicht gültig aus."; renderTk(); return; } o.url = u; }
+  if(o.d && !parseD(o.d)) delete o.d;
+  if(!o.n && !o.code && !o.url){ f.err = "Bitte mindestens Name, Code oder Link angeben."; renderTk(); return; }
+  var t = T(); t.tickets = t.tickets && typeof t.tickets==="object" ? t.tickets : {}; t.tickets[f.id || uid("tk")] = o;
+  save(); TK.ed = null; renderTk(); renderSheet(); renderCard();
+}
+function tkDel(){
+  if(!TK || !TK.ed || !TK.ed.id) return; var id = TK.ed.id, nm = TK.ed.n || "Ticket";
+  askConfirm("Ticket löschen?", "„"+nm+"“ wird entfernt.", "Löschen", function(){ var t = T(); if(t.tickets) delete t.tickets[id]; save(); if(TK){ TK.ed = null; renderTk(); } renderSheet(); renderCard(); });
+}
 var routeMode = "walk"; // nicht mehr global; jede Etappe hat ihre eigene Wahl
 function legKey(a, b){ return (a.id||((+a.la).toFixed(4)+","+(+a.lo).toFixed(4)))+">"+(b.id||((+b.la).toFixed(4)+","+(+b.lo).toFixed(4))); }
 function legMode(a, b){ var m = legGet("legMode", b); if(m) return m; if(dist(a, b) < 1100) return "walk"; return transit(a, b, cur).walk ? "walk" : "oepnv"; }
@@ -8715,7 +8808,9 @@ function saveNb(){ lsSet(NBKEY, JSON.stringify(Object.keys(nbHi))); }
 function applyNb(){
   var on = {}; nbActive().forEach(function(n){ on[n] = 1; });
   if(mapReady){ var f = ["in", ["get","n"], ["literal", Object.keys(on)]]; map.setFilter("nb-fill", f); map.setFilter("nb-hi", f); if(typeof applyPoi==="function") applyPoi(); }
-  var d = typeof DEST!=="undefined" && DEST, opts = "<option value=\"\">"+(d && !d.nb ? (d.st.nb==="err" ? "Bezirke konnten nicht geladen werden" : d.st.nb==="off" ? "Bezirke laden, sobald du online bist" : "Bezirke werden geladen …") : d && !NB.length ? "Keine Bezirke gefunden" : "Bezirk wählen …")+"</option>";
+  var d = typeof DEST!=="undefined" && DEST, opts = "<option value=\"\">"+(d && !d.nb ? (d.st.nb==="err" ? "Nicht geladen" : d.st.nb==="off" ? "Bezirke laden, sobald du online bist" : "Bezirke werden geladen …") : d && !NB.length ? "Keine Bezirke gefunden" : "Bezirk wählen …")+"</option>";
+  var ne = $("nbErr"), nm = d && !d.nb && d.st.nb==="err";
+  ne.hidden = !nm; ne.innerHTML = nm ? "Bezirke von "+esc(d.n || "diesem Ziel")+" kamen nicht an (Server ausgelastet oder zu viele Daten). <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"nb\">Erneut versuchen</button>" : "";
   var grp = d ? NB.map(function(x){ return x.b; }).filter(function(b, i, a){ return a.indexOf(b)===i; }) : ["Manhattan","Brooklyn","Queens"];
   grp.forEach(function(b){
     var o = NB.filter(function(x){ return x.b===b; }).map(function(x){ return x.n; }).sort(natCmp).map(function(n){ return "<option value=\""+esc(n)+"\""+(nbHi[n]?" disabled":"")+">"+esc(n)+"</option>"; }).join("");
@@ -8794,6 +8889,7 @@ var DRMODE = {subway:"metro", light_rail:"light", monorail:"light", tram:"tram",
 var DSTMODE = {subway:"metro", light_rail:"light", monorail:"light", funicular:"funi", train:"train"};
 var DCOL = {metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"};
 var DPAL = ["#C8102E","#0072CE","#E5A800","#00965E","#7D55C7","#E87722","#00A3AD","#A6192E","#5B7F95","#C6007E"];
+var DRMAX = 10000; // Suchradius höchstens 10 km: in großen Städten sonst zu viele Daten für Overpass und das iPhone
 var OVP = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 var DEST = null, NB_NYC = NB, NBKEY = "nyc-nb-hi", DOFF = {}, dQ = "", dOpen = {}, dWant = false, DMEM = {};
 var DL = (function(){ try { return JSON.parse(lsGet("rp-dl")||"{}") || {}; } catch(e){ return {}; } })();
@@ -8810,7 +8906,7 @@ function destNow(o0){
   if(!C || !hasLoc(C)) return null;
   var pts = (t.hotels||[]).concat(t.orte||[]).concat(Object.keys(t.places||{}).map(function(k){ return t.places[k]; })).filter(function(p){ return p && hasLoc(p) && dist(p, C) < 30000; }), r = 0;
   pts.forEach(function(p){ r = Math.max(r, dist(p, C)); });
-  return {la:+C.la.toFixed(4), lo:+C.lo.toFixed(4), r:Math.round(Math.min(14000, Math.max(6000, r + 2500))), n:String((o && o.n) || t.name || "").slice(0, 60), pts:pts.slice(0, 300).map(function(p){ return [p.la, p.lo]; })};
+  return {la:+C.la.toFixed(4), lo:+C.lo.toFixed(4), r:Math.round(Math.min(DRMAX, Math.max(5000, r + 2500))), n:String((o && o.n) || t.name || "").slice(0, 60), pts:pts.slice(0, 300).map(function(p){ return [p.la, p.lo]; })};
 }
 function destIdx(){ try { var a = JSON.parse(lsGet("rp-dest")||"[]"); return Array.isArray(a) ? a : []; } catch(e){ return []; } }
 function destNear(e, C){ return dist(e, C) < Math.max(3000, e.r*0.4); }
@@ -8821,7 +8917,7 @@ function destSync(){
   destSet(destOf(C), C.pts);
 }
 function destOf(C){ var hit = destIdx().filter(function(e){ return destNear(e, C); })[0];
-  return hit ? {k:hit.k, la:hit.la, lo:hit.lo, r:hit.r, n:hit.n} : {k:"d"+C.la.toFixed(3)+"_"+C.lo.toFixed(3), la:C.la, lo:C.lo, r:C.r, n:C.n}; }
+  return hit ? {k:hit.k, la:hit.la, lo:hit.lo, r:Math.min(hit.r, DRMAX), n:hit.n} : {k:"d"+C.la.toFixed(3)+"_"+C.lo.toFixed(3), la:C.la, lo:C.lo, r:C.r, n:C.n}; }
 /* alle Ziele der Reise außerhalb New Yorks (für den Offline-Download) */
 function destAll(){
   var t = T(); if(!t) return [];
@@ -8853,10 +8949,16 @@ function destWanted(part){ var on = DMODES.some(function(m){ return m[0]!=="bus"
 /* Zwischenspeicher: im Speicher und im Gerätespeicher (IndexedDB) */
 function destGet(id){ if(DMEM[id]) return Promise.resolve(DMEM[id]); return idbDo("readonly", function(st){ return st.get("dest:"+id); }).then(function(r){ var v = r && r.data && r.data.at ? r.data : null; if(v) DMEM[id] = v; return v; }).catch(function(){ return null; }); }
 function destPut(id, v){ DMEM[id] = v; idbDo("readwrite", function(st){ st.put({id:"dest:"+id, data:v}); }).catch(function(){}); }
+/* Overpass-Abfrage mit Zeitlimit: große Städte (z. B. Tokio) dürfen nicht endlos „laden“; Abbruch oder Serverfehler → Ersatzserver, dann Fehlermeldung.
+   Eine abgebrochene Abfrage („runtime error“, „Query timed out“) liefert unvollständige Daten: als Fehler werten, nicht speichern */
+var OVTO = 45000;
 function ovq(q, i){
   i = i || 0;
-  return fetch(OVP[i], {method:"POST", body:"data="+encodeURIComponent(q), headers:{"Content-Type":"application/x-www-form-urlencoded"}})
+  var ac = typeof AbortController==="function" ? new AbortController() : null, to = setTimeout(function(){ if(ac) ac.abort(); }, OVTO);
+  return fetch(OVP[i], {method:"POST", body:"data="+encodeURIComponent(q), headers:{"Content-Type":"application/x-www-form-urlencoded"}, signal:ac ? ac.signal : undefined})
     .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(j){ clearTimeout(to); if(j && j.remark && /error|timed out|out of memory/i.test(j.remark)) throw new Error("zu viele Daten"); return j; },
+      function(e){ clearTimeout(to); throw e; })
     .catch(function(e){ if(i+1 < OVP.length) return ovq(q, i+1); throw e; });
 }
 function destBB(d){ var a = d.r/111320, b = d.r/(111320*Math.cos(d.la*Math.PI/180)); return [(d.la-a).toFixed(4), (d.lo-b).toFixed(4), (d.la+a).toFixed(4), (d.lo+b).toFixed(4)].join(","); }
@@ -8878,8 +8980,8 @@ function txtCol(c){ var h = c.replace("#",""); if(h.length===3) h = h.replace(/.
 function natCmp(a, b){ return String(a).localeCompare(String(b), "de", {numeric:true}); }
 function trFetch(d, bus){
   var bb = destBB(d), q = bus
-    ? "[out:json][timeout:120];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out geom;"
-    : "[out:json][timeout:120];rel[type=route][route~\"^(subway|light_rail|monorail|tram|train|funicular|ferry)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out geom;"+
+    ? "[out:json][timeout:40];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;"
+    : "[out:json][timeout:40];(rel[type=route][route~\"^(subway|light_rail|monorail|tram|funicular|ferry)$\"]("+bb+");rel[type=route][route=train][service!~\"^(long_distance|high_speed|night|car_shuttle)$\"]("+bb+");)->.r;.r out body;way(r.r)("+bb+");out skel geom;"+
       "(way[railway=funicular]("+bb+");way[aerialway~\"^(cable_car|gondola)$\"]("+bb+"););out geom;node[railway=station][name]("+bb+");out;node[amenity=bicycle_rental]("+bb+");out;"+
       "rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+");out count;";
   return ovq(q).then(function(j){ return trParse(j); });
@@ -8888,7 +8990,7 @@ function trParse(j){
   var W = {}, used = {}, rels = [], st = [], bk = [], nbus = 0;
   (j.elements||[]).forEach(function(e){
     var tg = e.tags || {};
-    if(e.type==="way" && e.geometry) W[e.id] = {g:e.geometry.filter(Boolean).map(function(p){ return [+p.lon.toFixed(5), +p.lat.toFixed(5)]; }), t:tg};
+    if(e.type==="way" && e.geometry) W[e.id] = {g:simp(e.geometry.filter(Boolean).map(function(p){ return [+p.lon.toFixed(5), +p.lat.toFixed(5)]; }), 0.00003), t:tg};
     else if(e.type==="relation" && tg.type==="route") rels.push(e);
     else if(e.type==="node" && tg.amenity==="bicycle_rental"){ if(!tg.shop && tg.bicycle_rental!=="shop") bk.push([+e.lon.toFixed(5), +e.lat.toFixed(5), String(tg.name || tg.network || "").slice(0, 60)]); }
     else if(e.type==="node" && tg.railway==="station" && tg.name) st.push([+e.lon.toFixed(5), +e.lat.toFixed(5), String(tg.name).slice(0, 60), DSTMODE[tg.station] || "train"]);
@@ -8919,22 +9021,24 @@ function trParse(j){
 /* Bezirke: die kleinste Verwaltungseinheit, die (fast) alle Orte der Reise enthält, und deren nächste Unterteilung */
 function nbFetch(d){
   var pts = d.pts && d.pts.length ? d.pts : [[d.la, d.lo]];
-  return ovq("[out:json][timeout:30];is_in("+d.la+","+d.lo+")->.a;rel(pivot.a)[boundary=administrative][admin_level];out tags bb;").then(function(j){
+  return ovq("[out:json][timeout:25];is_in("+d.la+","+d.lo+")->.a;rel(pivot.a)[boundary=administrative][admin_level];out tags bb;").then(function(j){
     var cs = (j.elements||[]).filter(function(e){ var b = e.bounds, lv = +((e.tags||{}).admin_level); if(!b || !(lv >= 4 && lv <= 10)) return false;
       var n = pts.filter(function(p){ return p[0] >= b.minlat && p[0] <= b.maxlat && p[1] >= b.minlon && p[1] <= b.maxlon; }).length;
       return n >= pts.length*0.9 && dist({la:b.minlat, lo:b.minlon}, {la:b.maxlat, lo:b.maxlon}) > 4000; })
       .sort(function(a, b){ return b.tags.admin_level - a.tags.admin_level; });
     var tryC = function(i){
       if(i >= Math.min(cs.length, 3)) return {at:Date.now(), city:"", nb:[]};
-      var c = cs[i], lv = +c.tags.admin_level, b = c.bounds, tol = 0.003, lvs = []; for(var x = lv+1; x <= 11; x++) lvs.push(x);
-      return ovq("[out:json][timeout:60];rel("+c.id+");map_to_area->.c;rel(area.c)[boundary=administrative][admin_level~\"^("+lvs.join("|")+")$\"][name];out tags bb;").then(function(j2){
+      var c = cs[i], lv = +c.tags.admin_level, b = c.bounds, tol = 0.003, lvs = []; for(var x = lv+1; x <= 10; x++) lvs.push(x);
+      // nur Bezirke rund um die Reise (Suchgebiet), nicht die ganze Verwaltungseinheit (Tokio reicht bis zu den Ogasawara-Inseln)
+      var sb = destBB({la:d.la, lo:d.lo, r:d.r*1.3}).split(",").map(Number), qb = [Math.max(sb[0], b.minlat), Math.max(sb[1], b.minlon), Math.min(sb[2], b.maxlat), Math.min(sb[3], b.maxlon)].map(function(v){ return v.toFixed(4); }).join(",");
+      return ovq("[out:json][timeout:30];rel[boundary=administrative][admin_level~\"^("+lvs.join("|")+")$\"][name]("+qb+");out tags bb;").then(function(j2){
         var by = {};
         (j2.elements||[]).forEach(function(e){ var o = e.bounds; if(!o || e.id===c.id) return;
           if(o.minlat < b.minlat - tol || o.maxlat > b.maxlat + tol || o.minlon < b.minlon - tol || o.maxlon > b.maxlon + tol) return;
           (by[e.tags.admin_level] = by[e.tags.admin_level] || []).push(e.id); });
         var lk = Object.keys(by).map(Number).sort(function(a, b){ return a - b; }).filter(function(l){ return by[l].length >= 3 && by[l].length <= 120; })[0];
         if(!lk) return tryC(i+1);
-        return ovq("[out:json][timeout:120];rel(id:"+by[lk].join(",")+");out geom;").then(function(j3){ return nbParse(j3, String(c.tags.name || d.n || "").slice(0, 60)); });
+        return ovq("[out:json][timeout:40];rel(id:"+by[lk].join(",")+");out geom;").then(function(j3){ return nbParse(j3, String(c.tags.name || d.n || "").slice(0, 60)); });
       });
     };
     return tryC(0);
@@ -9065,7 +9169,7 @@ function destUi(){
   if(br) br.style.display = d && (!d.tr || !dBike().length) ? "none" : "";
   if(!d){ el.innerHTML = ""; trSync(); return; }
   var h = "", ms = dModes(), ro = isRO();
-  if(!d.tr) h += "<p class=\"note dnote\">"+(d.st.tr==="err" ? "ÖPNV von "+esc(d.n || "diesem Ziel")+" konnte nicht geladen werden. <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>"
+  if(!d.tr) h += "<p class=\"note dnote\">"+(d.st.tr==="err" ? "ÖPNV von "+esc(d.n || "diesem Ziel")+" kam nicht an (Server ausgelastet oder zu viele Daten). <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>"
     : d.st.tr==="off" ? "Offline: ÖPNV von "+esc(d.n || "diesem Ziel")+" lädt, sobald du wieder Internet hast." : "ÖPNV von "+esc(d.n || "diesem Ziel")+" wird geladen …")+"</p>";
   else if(!ms.length) h += "<p class=\"note dnote\">Keine ÖPNV-Linien in OpenStreetMap gefunden.</p>";
   if(!ro) ms.forEach(function(m){
@@ -10615,6 +10719,7 @@ function openCardMore(btn){
   if(dk===cur && !dn) h += row("unplan", I("<path d=\"M12 5l-5 5 5 5\"/>"), isHs ? "Zwischenstopp entfernen" : p.of ? "Diesen Besuch entfernen" : "Zurück in die Wunschliste", "Aus dem Tagesplan nehmen");
   if(!dk && !isHs && !p.of && !isRO()) h += p.park ? row("wunpark", I("<path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/>"), "Wieder auf die Wunschliste", "Zurückstellen aufheben", " data-pid=\""+sel+"\"")
     : row("wpark", I("<rect x=\"3\" y=\"4\" width=\"14\" height=\"4\" rx=\"1\"/><path d=\"M4.5 8v7.5h11V8M8 11h4\"/>"), "Zurückstellen", "Aus der Wunschliste nehmen, ohne zu löschen", " data-pid=\""+sel+"\"");
+  if(!isHs && !isRO()){ var ntk = tkOn(tkPlaceOn(sel)).length; h += row("tkplace", I(IC.ticket), "Tickets", ntk ? ntk+" hinterlegt" : "Eintritt oder Event hinterlegen, buchen"); }
   h += row("gmopen", I(IC.ext), "In Google Maps öffnen", "Öffnungszeiten, Bewertungen, Fotos");
   h += row("moredel", I(IC.del, "warn"), "Löschen", "Punkt aus der Reise entfernen", " class=\"del\"");
   jpPopover(sel, btn || document.querySelector("#card [data-act=cardmore]"), h, "cardmore");
@@ -10842,7 +10947,8 @@ function openLegModes(li, btn){
   var fa = ferryAlts(a, b, cur), fsub = fa===null ? "Fahrpläne werden geladen …" : !fa.length ? "Keine sinnvolle Fährverbindung" : mins(fa[0].secs)+" · "+esc(ferryLabel(fa[0]));
   var rows = [["walk", LMWALK, mins(wd/1.33)+" · "+fmtDist(wd)], ["oepnv", LMSUB, tr.walk ? "Kein Umstieg sinnvoll – zu Fuß schneller" : mins(tr.secs)], ["ferry", LMFERRY, fsub], ["car", LMCAR, (function(){ var cp = carPath(a, b, legVia(a, b)), ce = cp || carEst(a, b, legVia(a, b)); return (cp ? "" : "ca. ")+mins(ce.secs)+" · "+fmtDist(ce.d)+" · ohne Verkehr"; })()], ["bike", LMBIKE, br.wait ? (CB.err ? "Daten nicht erreichbar" : "Stationen werden geladen …") : br.none ? "Keine passende Station in der Nähe" : mins(br.secs)+" · inkl. Wege zur Station"]];
   jpPopover("lm"+li, btn, "<div class=\"vp-h\">Unterwegs auf dieser Etappe</div>"+rows.map(function(r){ return "<button type=\"button\" role=\"menuitemradio\" data-act=\"lmode\" data-leg=\""+li+"\" data-mode=\""+r[0]+"\" aria-checked=\""+(m===r[0])+"\"><span class=\"ai lmi\">"+r[1]+"</span><span class=\"cm-t\"><b>"+LMNAME[r[0]]+"</b><small>"+r[2]+"</small></span>"+(m===r[0] ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("")+
-    "<button type=\"button\" role=\"menuitem\" class=\"lm-opt\" data-act=\"loptopen\" data-leg=\""+li+"\"><span class=\"ai lmi\">"+LOICO+"</span><span class=\"cm-t\"><b>Routenoptionen</b><small>"+esc(loptSum(legOptOf(b)).replace(/^Optionen: /, ""))+"</small></span></button>", "lmodes");
+    "<button type=\"button\" role=\"menuitem\" class=\"lm-opt\" data-act=\"loptopen\" data-leg=\""+li+"\"><span class=\"ai lmi\">"+LOICO+"</span><span class=\"cm-t\"><b>Routenoptionen</b><small>"+esc(loptSum(legOptOf(b)).replace(/^Optionen: /, ""))+"</small></span></button>"+
+    (m!=="walk" && m!=="car" ? (function(){ var nt = tkOn(tkLegOn(b)).length; return "<button type=\"button\" role=\"menuitem\" class=\"lm-opt\" data-act=\"tkleg\" data-leg=\""+li+"\"><span class=\"ai lmi\">"+ic("ticket")+"</span><span class=\"cm-t\"><b>Tickets</b><small>"+(nt ? nt+" hinterlegt" : "Fahrkarte hinterlegen oder buchen")+"</small></span></button>"; })() : ""), "lmodes");
 }
 var CB_BASE = "https://gbfs.lyft.com/gbfs/1.1/bkn/en/", CBCOL = "#0A6CDB", BIKE = 4.2; // Fahrgeschwindigkeit in m/s (ca. 15 km/h)
 var CB = {st:[], byId:{}, infoAt:0, statAt:0, busy:false, err:""};
@@ -11479,7 +11585,8 @@ function renderDay(){
     var pre = a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#007AFF\">●</span><span><b>Mein Standort</b> <span class=\"sub\">Start zum nächsten Ziel</span></span></li>"
             : (a.id && T().done[a.id]) ? "<li class=\"leg\"><span class=\"sub\">ab "+esc(a.n)+" (zuletzt erledigt)</span></li>" : "";
     var lh = legHidden(a, b), ev = "<button type=\"button\" class=\"leye\" data-act=\"legvis\" data-leg=\""+i+"\" aria-pressed=\""+!lh+"\" title=\""+(lh?"Etappe auf der Karte einblenden":"Etappe auf der Karte ausblenden")+"\" aria-label=\"Etappe auf der Karte zeigen\">"+(lh?EYEOFF:EYE)+"</button>";
-    var sw = "<span class=\"lm one\"><button type=\"button\" data-act=\"lmpick\" data-leg=\""+i+"\" aria-haspopup=\"menu\" aria-pressed=\"true\" title=\"Unterwegs: "+LMNAME[m]+" – tippen zum Wechseln\" aria-label=\"Unterwegs: "+LMNAME[m]+", ändern\">"+(m==="bike" ? LMBIKE : m==="walk" ? LMWALK : m==="ferry" ? LMFERRY : m==="car" ? LMCAR : LMSUB)+"</button></span>";
+    var ntk = m!=="walk" && m!=="car" ? tkOn(tkLegOn(b)).length : 0;
+    var sw = "<span class=\"lm one\"><button type=\"button\""+(ntk ? " class=\"tk\"" : "")+" data-act=\"lmpick\" data-leg=\""+i+"\" aria-haspopup=\"menu\" aria-pressed=\"true\" title=\"Unterwegs: "+LMNAME[m]+(ntk ? " · "+ntk+(ntk===1 ? " Ticket" : " Tickets") : "")+" – tippen zum Wechseln\" aria-label=\"Unterwegs: "+LMNAME[m]+", ändern\">"+(m==="bike" ? LMBIKE : m==="walk" ? LMWALK : m==="ferry" ? LMFERRY : m==="car" ? LMCAR : LMSUB)+"</button></span>";
     if(m==="bike"){ var br = bikeRoute(a, b), bsum;
       if(br.wait) bsum = "<b>Citi Bike</b> · "+(CB.err ? esc(CB.err) : "Stationen werden geladen …");
       else if(br.none) bsum = "<b>Kein Citi Bike</b> · "+(!br.s1 ? "keine Station mit freien Rädern in der Nähe" : !br.s2 ? "keine Station mit freien Plätzen am Ziel" : "Start und Ziel an derselben Station")+" – besser zu Fuß";
@@ -13120,7 +13227,7 @@ function openDayPop(forId, mv){
   $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
 }
-function closeCatPop(){ $("catPop").hidden = true; locSt = null; }
+function closeCatPop(){ $("catPop").hidden = true; locSt = null; TK = null; }
 function endPick(){ pick = null; $("pick").hidden = true; if(viaPick) endViaPick(); if(vmPick) endVmPick(); }
 /* Wegpunkt per Karte einer Strecke zuordnen: die beiden Punkte antippen, zwischen denen er liegen soll */
 var vmPick = null;
@@ -13165,7 +13272,7 @@ document.addEventListener("pointerdown", function(e){ bgDown = e.target; }, true
 document.addEventListener("click", function(e){
   if(e.target && e.target.id && /^(zPop|catPop|acctPop|suPop|tripPop|srchPop|jPop)$/.test(e.target.id) && bgDown && bgDown!==e.target) return;
   if(e.target.id==="zPop"){ zClosePop(); return; }
-  if(e.target.id==="catPop"){ if(lpPt){ if(Date.now()-lpAt > 900) lpClose(); } else closeCatPop(); return; }
+  if(e.target.id==="catPop"){ if(TK && TK.ed) return; /* Ticket-Formular: nur × oder Abbrechen schließen */ if(lpPt){ if(Date.now()-lpAt > 900) lpClose(); } else closeCatPop(); return; }
   if(e.target.id==="acctPop"){ closeSettings(); return; }
   if(e.target.id==="suPop"){ closeSignup(); return; }
   if(e.target.id==="tripPop"){ if(!tdraft) closeTrip(); return; } // Formular: nur × oder Abbrechen schließen, ein Fehltipp verwirft keine Eingaben
@@ -13615,6 +13722,16 @@ document.addEventListener("click", function(e){
     case "lmpick": openLegModes(parseInt(t.getAttribute("data-leg"), 10), t); break;
     case "loptopen": closeJpMore(); openLopt(parseInt(t.getAttribute("data-leg"),10)); break;
     case "loptclose": LOPT = null; closeCatPop(); break;
+    case "tkleg": closeJpMore(); tkLegOpen(parseInt(t.getAttribute("data-leg"),10)); break;
+    case "tkplace": closeJpMore(); tkPlaceOpen(sel); break;
+    case "tkclose": TK = null; closeCatPop(); break;
+    case "tknew": tkEdit(null); break;
+    case "tkedit": tkEdit(t.getAttribute("data-tk")); break;
+    case "tkback": if(TK && TK.ed){ TK.ed = null; renderTk(); } else { TK = null; closeCatPop(); } break;
+    case "tkst": tkKeep(); if(TK && TK.ed){ TK.ed.st = t.getAttribute("data-v"); renderTk(); } break;
+    case "tksave": tkSave(); break;
+    case "tkdel": tkKeep(); tkDel(); break;
+    case "tkna": toast("Buchen in der App ist noch nicht verfügbar", false); break;
     case "loptt": loptKeepTime(); if(LOPT){ LOPT.t = t.getAttribute("data-v"); if(LOPT.t!=="now" && !LOPT.tm) LOPT.tm = loptDefTime(); renderLopt(); } break;
     case "loptp": loptKeepTime(); if(LOPT){ var lv = t.getAttribute("data-v"), lx = LOPT.p.indexOf(lv); if(lx > -1) LOPT.p.splice(lx, 1); else LOPT.p.push(lv); renderLopt(); } break;
     case "loptreset": if(LOPT){ LOPT.t = "now"; LOPT.tm = ""; LOPT.p = []; renderLopt(); } break;
