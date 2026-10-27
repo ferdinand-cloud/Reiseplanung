@@ -2326,6 +2326,57 @@ const pfStatsSide = async (n) => {
 await test("Profil: Zähler klein rechts neben dem Profilbild", async () => { await pfStatsSide("hoch"); });
 await test("Profil: Zähler rechts neben dem Profilbild im Querformat", async () => { await pfStatsSide("quer"); }, QUER);
 
+/* Profilbild: nach der Auswahl runder Zuschneide-Rahmen, verschieben (ein Finger) und zoomen (zwei Finger/Mausrad); Antippen → Vollbild */
+const avCropTest = async (n) => {
+  await seed();
+  await rp(`acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; PROF = {name:"ferdi"}; window.__avSet = null;
+    var mk = function(path){ var o = {collection:function(n){ return mk(path+"/"+n); }, doc:function(id){ return mk(path+"/"+id); },
+      set:function(d){ if(path.indexOf("/profiles/")===0 && d.photo) window.__avSet = d; return Promise.resolve(); }, delete:function(){ return Promise.resolve(); },
+      where:function(){ return o; }, orderBy:function(){ return o; }, limit:function(){ return o; }, onSnapshot:function(){ return function(){}; },
+      get:function(){ return Promise.resolve({docs:[], exists:false, data:function(){ return {}; }}); }}; return o; };
+    fbDb = Object.assign(mk(""), {batch:function(){ return {set:function(){}, delete:function(){}, commit:function(){ return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }});
+    var c = document.createElement("canvas"); c.width = 400; c.height = 200; var x = c.getContext("2d"); x.fillStyle = "#f00"; x.fillRect(0, 0, 200, 200); x.fillStyle = "#00f"; x.fillRect(200, 0, 200, 200);
+    var b = atob(c.toDataURL("image/png").split(",")[1]), u = new Uint8Array(b.length); for(var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+    setAvatar(new File([u], "a.png", {type:"image/png"})); true`);
+  const st = page.locator("#avcSt"); await st.waitFor({state:"visible"});
+  const bb = await st.boundingBox(), vp = page.viewportSize();
+  ok(bb.x >= 0 && bb.y >= 0 && bb.x + bb.width <= vp.width && bb.y + bb.height <= vp.height, "Rahmen nicht ganz im Bild: "+JSON.stringify(bb));
+  const cb = await page.locator("#avCrop .cf-ok").boundingBox(); ok(cb && cb.y + cb.height <= vp.height, "Fertig-Knopf nicht sichtbar");
+  ok(await rp(`getComputedStyle(document.querySelector("#avCrop .avc-m")).borderRadius==="50%"`), "kein runder Rahmen");
+  // Mitte: Grenze rot/blau; mit einem Finger nach rechts ziehen → linker (roter) Teil
+  await page.mouse.move(bb.x + bb.width/2, bb.y + bb.height/2); await page.mouse.down();
+  await page.mouse.move(bb.x + bb.width, bb.y + bb.height/2, {steps:6}); await page.mouse.up();
+  // zwei Finger auseinander → größer
+  const sc0 = await rp(`new DOMMatrix(getComputedStyle($("avcImg")).transform).a`);
+  await rp(`var st = $("avcSt"), r = st.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top + r.height/2, f = function(t, id, x){ st.dispatchEvent(new PointerEvent(t, {pointerId:id, clientX:x, clientY:cy, bubbles:true, cancelable:true})); };
+    f("pointerdown", 11, cx - 20); f("pointerdown", 12, cx + 20); f("pointermove", 11, cx - 60); f("pointermove", 12, cx + 60); f("pointerup", 11, cx - 60); f("pointerup", 12, cx + 60); true`);
+  const sc1 = await rp(`new DOMMatrix(getComputedStyle($("avcImg")).transform).a`);
+  ok(sc1 > sc0*2.5, "Zwei-Finger-Zoom wirkt nicht: "+sc0+" → "+sc1);
+  await shot("profilbild-zuschneiden-"+n);
+  await page.locator("#avCrop .cf-ok").click();
+  await page.waitForFunction(() => window.__rp(`!!window.__avSet`));
+  const px = await rp(`new Promise(function(res){ var im = new Image(); im.onload = function(){ var c = document.createElement("canvas"); c.width = im.width; c.height = im.height; var x = c.getContext("2d"); x.drawImage(im, 0, 0); res([im.width, Array.from(x.getImageData(im.width/2, im.height/2, 1, 1).data)]); }; im.src = window.__avSet.photo; })`);
+  ok(px[0]===480, "Größe des Profilbilds: "+px[0]);
+  ok(px[1][0] > 200 && px[1][2] < 60, "Ausschnitt nicht verschoben (Mitte sollte rot sein): "+px[1]);
+  ok(await rp(`$("avCrop").hidden && PROF.photo===window.__avSet.photo`), "Dialog nicht zu oder Bild nicht übernommen");
+  // Abbrechen speichert nichts
+  await rp(`window.__avSet = null; var c = document.createElement("canvas"); c.width = 50; c.height = 50; var b = atob(c.toDataURL("image/png").split(",")[1]), u = new Uint8Array(b.length); for(var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); setAvatar(new File([u], "b.png", {type:"image/png"})); true`);
+  await st.waitFor({state:"visible"}); await page.locator("#avCrop .cf-no").click();
+  ok(await rp(`$("avCrop").hidden && !window.__avSet`), "Abbrechen hat gespeichert");
+  // Antippen im Profil → Vollbild, × schließt, Profil bleibt offen
+  await rp(`openProfile(); true`); await page.waitForTimeout(300);
+  await page.locator("#profView img.pf-av").click();
+  await page.locator("#avFull img").waitFor({state:"visible"});
+  const fb = await page.locator("#avFull img").boundingBox(); ok(fb.width >= Math.min(vp.width, vp.height) - 120, "Vollbild zu klein: "+fb.width);
+  ok(await rp(`$("avFull").querySelector("img").getAttribute("src")===PROF.photo`), "falsches Bild im Vollbild");
+  await shot("profilbild-vollbild-"+n);
+  await page.locator("#avFull .avf-x").click();
+  ok(await rp(`$("avFull").hidden && profOpen`), "Vollbild nicht geschlossen oder Profil zu");
+  await rp(`fbDb = null; true`);
+};
+await test("Profilbild: zuschneiden im runden Rahmen, verschieben, zoomen, Vollbild", async () => { await avCropTest("hoch"); });
+await test("Profilbild: zuschneiden im Querformat", async () => { await avCropTest("quer"); }, QUER);
+
 /* Tastatur in Pop-ups (Tastatur über visualViewport nachgestellt). Regel: passt die Karte an ihrer Stelle über die Tastatur, bleibt sie;
    sonst Unterkante knapp über der Tastatur, Oberkante höchstens bis oben, Rest scrollt innen. Hintergrund bleibt über die ganze Seite.
    pan0: iOS verschiebt die Seite beim Fokus um offsetTop – gerechnet wird in Bildschirm-Koordinaten (Layout-y minus offsetTop).
