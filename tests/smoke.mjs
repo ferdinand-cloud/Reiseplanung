@@ -1226,6 +1226,34 @@ await test("Fußweg mit Wegpunkten: echter Weg auch wenn ein Teilstück fehlt, b
   } finally { globalThis.FOOTMOCK = false; }
 });
 
+await test("Unterkunftsliste: Ort als Unterkunft vormerken, eigene Liste, als Hotel übernehmen, Abbrechen führt zurück", async () => {
+  await seed();
+  await rp(`select("p7")`); await page.waitForTimeout(200);
+  await click("#card [data-act=cardmore]");
+  await click("#jpMenu [data-act=staymark]"); await page.waitForTimeout(200);
+  ok(await rp(`T().places.p7.c==="hotel" && T().places.p7.c0==="park"`), "Ort wird nicht als Unterkunft markiert");
+  await rp(`select(null); tab = "wish"; setSheet("full"); renderSheet();`); await page.waitForTimeout(300);
+  await click("#body .fchip[data-k=list]");
+  ok(await visible("#catPop [data-act=wlist][data-l=stay]"), "Liste „Unterkünfte“ fehlt in der Listenauswahl");
+  await click("#catPop [data-act=wlist][data-l=stay]"); await page.waitForTimeout(200);
+  await shot("unterkunftsliste");
+  ok(await rp(`activeList==="stay" && document.querySelectorAll("#wishRes li.wi").length===1 && !!document.querySelector('#wishRes li[data-id="p7"]')`), "Unterkunftsliste zeigt nicht nur die Unterkunft");
+  ok((await page.locator("#body .wadd").getAttribute("aria-label")).includes("Unterkunft"), "+ legt keine Unterkunft an");
+  ok(await rp(`CATS.some(function(c){ return c[0]==="hotel" && c[1]==="Unterkunft"; })`), "Kategorie Unterkunft fehlt");
+  await click("#wishRes li[data-id=p7] [data-act=stay2h]"); await page.waitForTimeout(300);
+  ok(await rp(`tab==="trip" && tdraft && tdraft.hotels.some(function(h){ return h.src==="p7" && h.n==="High Line"; })`), "Als Hotel übernehmen füllt das Reise-Fenster nicht");
+  await click("#tripPop [data-act=tcancel]"); await page.waitForTimeout(250);
+  ok(await rp(`tab==="wish" && activeList==="stay" && !T().hotels.some(function(h){ return h.src==="p7"; })`), "Abbrechen führt nicht zur Unterkunftsliste zurück");
+  await click("#wishRes li[data-id=p7] [data-act=stay2h]"); await page.waitForTimeout(300);
+  await rp(`document.getElementById("tForm").requestSubmit()`); await page.waitForTimeout(500);
+  ok(await rp(`T().hotels.some(function(h){ return h.src==="p7" && h.n==="High Line"; }) && T().hotels.some(function(h){ return h.id==="h1"; })`), "Unterkunft wurde nicht als Hotel gespeichert");
+  await rp(`tab = "wish"; activeList = "stay"; renderSheet();`); await page.waitForTimeout(200);
+  await shot("unterkunft-gewaehlt");
+  ok(await visible("#wishRes li[data-id=p7] .wsel") && await page.locator("#wishRes li[data-id=p7] [data-act=stay2h]").count()===0, "Gewählte Unterkunft nicht als Hotel der Reise gekennzeichnet");
+  await rp(`stayMark("p7")`);
+  ok(await rp(`T().places.p7.c==="park" && !T().places.p7.c0`), "Markierung lässt sich nicht zurücknehmen");
+});
+
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
   await seed();
   await rp(`select("p6")`); await page.waitForTimeout(200);
