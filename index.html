@@ -6470,20 +6470,30 @@ function ensureVis(el){
     var kb = kbh > 120 && isTypeField(ae);
     body.classList.toggle("kb", kb); de.style.setProperty("--kbh", (kb ? Math.max(0, kbh - (vv ? vv.offsetTop : 0)) : 0)+"px");
     document.querySelectorAll(".kbpin").forEach(function(ov){
-      if(!(ae && ov.contains(ae) && isTypeField(ae))){ ov.classList.remove("kbpin"); return; }
-      // nur wenn über der Tastatur kaum Platz bleibt: Karte so weit hoch, dass das Feld sichtbar ist
-      var vh = vv ? vv.offsetTop + vv.height : window.innerHeight, pt = parseFloat(ov.style.getPropertyValue("--pint")) || 0;
-      if(kb && vh - pt < 120) ov.style.setProperty("--pint", Math.max(8, Math.round(vh - 120))+"px");
+      var card = ov._kbc;
+      if(!(ae && ov.contains(ae) && isTypeField(ae)) || !card || card.parentElement!==ov){ kbMove(ov, card, function(){ ov.classList.remove("kbpin"); }); return; }
+      // Passt die Karte nicht mehr über die Tastatur, wächst sie nach oben bis unter die Statusleiste (nie nach unten).
+      // Gerechnet wird ohne offsetTop: verschiebt iOS die Seite, bleibt die Karte, wo sie ist.
+      var top0 = +ov.dataset.pin0 || 0, want = top0;
+      if(kb){ var bot = (vv ? vv.height : window.innerHeight) - 10, need = card.scrollHeight + card.offsetHeight - card.clientHeight;
+        if(top0 + need > bot) want = Math.min(top0, Math.max(safeTop() + 8, bot - need)); }
+      if(Math.abs(want - (parseFloat(ov.style.getPropertyValue("--pint")) || 0)) > 1) kbMove(ov, card, function(){ ov.style.setProperty("--pint", Math.round(want)+"px"); });
     });
     body.classList.toggle("kb-sheet", kb && !!(ae && ae.closest && ae.closest(".sheet")));
     if(kb) setTimeout(function(){ ensureVis(document.activeElement); }, 60);
   }
   if(vv){ vv.addEventListener("resize", upd); vv.addEventListener("scroll", upd); }
+  var satEl = null;
+  function safeTop(){ if(!satEl){ satEl = document.createElement("div"); satEl.style.cssText = "position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none"; body.appendChild(satEl); } return satEl.offsetHeight; }
+  // Karte gleitet an die neue Stelle, statt zu springen
+  function kbMove(ov, card, change){ var a = card && card.parentElement===ov ? card.getBoundingClientRect().top : null; change();
+    if(a===null || !card.animate || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
+    var d = a - card.getBoundingClientRect().top; if(Math.abs(d) > 1) card.animate([{transform:"translateY("+d+"px)"}, {transform:"none"}], {duration:240, easing:"cubic-bezier(.2,.8,.2,1)"}); }
   // Pop-up beim Antippen eines Felds an seiner jetzigen Stelle festhalten, damit es beim Öffnen der Tastatur nicht springt
   function kbPin(el){ var ov = el.closest && el.closest(".pop,.acctpop,.supop"); if(!ov || ov.classList.contains("kbpin")) return;
     var card = el; while(card.parentElement && card.parentElement!==ov) card = card.parentElement; if(card.parentElement!==ov) return;
     var t = card.offsetTop;   // ohne laufende Einblend-Animation (transform)
-    ov.style.setProperty("--pint", Math.max(0, Math.round(t))+"px"); ov.classList.add("kbpin"); }
+    t = Math.max(0, Math.round(t)); ov.dataset.pin0 = t; ov._kbc = card; ov.style.setProperty("--pint", t+"px"); ov.classList.add("kbpin"); }
   document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; kbPin(el); setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
   document.addEventListener("focusout", function(){ setTimeout(upd, 80); });
   upd(); })();
