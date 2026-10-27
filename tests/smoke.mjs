@@ -336,7 +336,17 @@ await test("Entdecken: Foto öffnet Vollbild mit allen Fotos, ohne Sichern", asy
   await rp(`(function(){ var u = PHC.ph_a, u2 = PHC.ph_b; var r = {key:"u_anna/r1", by:"u_anna", fname:"anna", n:"Katz Deli", c:"essen", la:40.7223, lo:-73.9874, photos:[u, u2], note:"Bestes Pastrami", cm:[], at:Date.now()};
     DC.items = [r]; DC.byKey = {}; DC.byKey[r.key] = r; DC.at = Date.now(); dcScope = "all"; openDcPage(); })()`);
   await page.waitForTimeout(300);
-  await click("#dcView img[data-act=dcfull]");
+  await click("#dcView .dc-reel .dc-ph img");
+  ok(await page.evaluate(() => { const L = document.getElementById("pvLayer"); return !L || L.hidden; }), "Antippen im Feed öffnet Vollbild");
+  ok(await rp(`dcLong(DC.byKey["u_anna/r1"])===false`) && await page.locator("#dcView .dc-more").count()===0, "„mehr anzeigen“ bei kurzem Text");
+  await rp(`DC.byKey["u_anna/r1"].note = "Bestes Pastrami der Stadt. Früh kommen, sonst lange Schlange – und unbedingt die Pickles probieren, die gibt es gratis dazu."; DCSIG = ""; renderDc(); true`); await page.waitForTimeout(200);
+  const nh = async () => page.locator("#dcView .dc-note").evaluate(e => e.getBoundingClientRect().height);
+  const h0 = await nh();
+  await click("#dcView .dc-more"); await page.waitForTimeout(100);
+  ok((await nh()) > h0 + 5 && (await page.locator("#dcView .dc-more").innerText()).includes("weniger"), "Text klappt nicht auf");
+  await click("#dcView .dc-more"); await page.waitForTimeout(100);
+  ok(Math.abs((await nh()) - h0) < 2 && (await page.locator("#dcView .dc-more").innerText()).includes("mehr anzeigen"), "Text klappt nicht wieder ein");
+  await rp(`dcFull("u_anna/r1", 0); true`); await page.waitForTimeout(200);
   ok(await page.locator("#pvLayer .pv-slide").count()===2, "Nicht alle Fotos des Spots im Vollbild");
   ok(await page.locator("#pvLayer [data-act=dcvsave], #pvLayer [data-act=phsave]").count()===0, "Fotos von Freunden lassen sich herunterladen");
   ok(await page.locator("#pvLayer .pv-side [data-act=dcvcm]").count()===1, "Kommentare fehlen");
@@ -365,7 +375,7 @@ await test("Entdecken: Reels-Feed mit Auswahl Reise/Ziel/Inspiration, Like, Übe
     return {snap:getComputedStyle(f).scrollSnapType, h:r.height, fh:b.height, bottom:b.bottom, vh:innerHeight}; });
   ok(fd.snap.includes("y") && fd.h >= fd.fh - 1 && fd.fh > 500, "Kein Vollbild-Feed: "+JSON.stringify(fd));
   ok(fd.bottom <= fd.vh - 8, "Feed reicht bis an den unteren Rand: "+JSON.stringify(fd));
-  ok(await page.locator("#dcView .dc-reel img[data-act=dcfull]").count()===2, "Fotos des sichtbaren Vorschlags fehlen");
+  ok(await page.locator("#dcView .dc-reel .dc-ph img").count()===2, "Fotos des sichtbaren Vorschlags fehlen");
   ok((await page.locator("#dcView .dc-avg").innerText()).includes("Must Have"), "Durchschnittsbewertung falsch (Outstanding + Nice ≈ Must Have)");
   await page.waitForTimeout(300);
   ok((await page.locator("#dcView .dc-like").innerText()).trim()==="4" && (await page.locator("#dcView .dc-take").innerText()).trim()==="7", "Like-/Übernahme-Zähler nicht geladen");

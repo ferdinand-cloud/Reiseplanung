@@ -1941,6 +1941,12 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .dc-avg i,.dc-rt{font-style:normal;font-weight:700;color:color-mix(in srgb,var(--rc) 55%,#fff)}
 .dc-avg small{font-weight:500;color:rgba(255,255,255,.75);font-size:12px}
 .dc-reel .dc-note{margin:0;font-size:14px;line-height:1.35;color:#fff;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
+.dc-more{align-self:flex-start;border:0;padding:2px 0;background:none;color:#fff;font:600 13px/1.2 var(--f-body);opacity:.85;cursor:pointer;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.dc-info.open{pointer-events:auto;max-height:62%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.dc-info.open .dc-note{-webkit-line-clamp:unset;display:block;white-space:pre-line}
+.dc-info.open ~ .dc-side{z-index:3}
+.dc-rc:has(.dc-info.open) .dc-grad{height:100%;background:linear-gradient(to top,rgba(0,0,0,.88),rgba(0,0,0,.55) 60%,rgba(0,0,0,.2))}
+.dc-reel .dc-cm{margin:0;font-size:13.5px;line-height:1.35;color:rgba(255,255,255,.92)}
 .dc-reel .dc-also{margin:0;color:rgba(255,255,255,.8);font-size:12.5px}.dc-reel .dc-also b{color:#9fe0b0}
 .dc-side{position:absolute;right:10px;bottom:14px;z-index:3;display:flex;flex-direction:column;gap:12px;align-items:center}
 .dc-sb{width:46px;border:0;padding:0;background:none;color:#fff;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font:600 12px/1 var(--f-body);text-shadow:0 1px 3px rgba(0,0,0,.5)}
@@ -5228,12 +5234,18 @@ function dcInfoHTML(r){
     "<small class=\"dc-sub\">"+esc([CATNAME[r.c], r.addr, dd!=null && dd > 2000 && !tg.z ? fmtDist(dd)+" vom Reiseziel" : ""].filter(Boolean).join(" · "))+"</small>"+
     (A ? "<button type=\"button\" class=\"dc-avg\" data-act=\"dcrate\" data-k=\""+esc(r.key)+"\"><span>Ø</span><i style=\"--rc:"+A.R[2]+"\">"+A.R[1]+"</i>"+(A.n > 1 ? "<small>"+A.n+" Bewertungen</small>" : "")+"</button>" : RR ? "<i class=\"dc-rt\" style=\"--rc:"+RR[2]+"\">"+RR[1]+"</i>" : "")+
     (r.note ? "<p class=\"dc-note\">„"+esc(r.note)+"“</p>" : "")+
-    (r.also.length ? "<p class=\"dc-also\">👥 <b>"+(r.also.length+1)+" empfehlen das</b> · auch "+r.also.map(function(a){ return "@"+esc(a.fname||"Freund"); }).join(", ")+"</p>" : "");
+    (r.also.length ? "<p class=\"dc-also\">👥 <b>"+(r.also.length+1)+" empfehlen das</b> · auch "+r.also.map(function(a){ return "@"+esc(a.fname||"Freund"); }).join(", ")+"</p>" : "")+
+    (DCX[r.key] ? recCmHTML(r, "dc-cm") : "")+
+    (dcLong(r) ? "<button type=\"button\" class=\"dc-more\" data-act=\"dcx\" data-k=\""+esc(r.key)+"\" aria-expanded=\""+!!DCX[r.key]+"\">"+(DCX[r.key] ? "weniger anzeigen" : "mehr anzeigen")+"</button>" : "");
 }
-function dcPhHTML(r){ return (r.photos||[]).slice(-6).map(function(u, i, a){ return "<img src=\""+u+"\" alt=\"\" decoding=\"async\" data-act=\"dcfull\" data-k=\""+esc(r.key)+"\" data-i=\""+((r.photos.length - a.length) + i)+"\" role=\"button\" aria-label=\"Foto im Vollbild\">"; }).join(""); }
+// Text am Vorschlag: eingeklappt bleiben die ersten 2 Zeilen sichtbar, „mehr anzeigen“ klappt auf
+var DCX = {};
+function dcLong(r){ return (r.note||"").length > 70 || (r.cm||[]).length > 0; }
+function dcToggleX(key){ DCX[key] = !DCX[key]; var el = dcReelEl(key); if(el) el.querySelector(".dc-info").classList.toggle("open", !!DCX[key]); dcReelRefresh(key); }
+function dcPhHTML(r){ return (r.photos||[]).slice(-6).map(function(u, i, a){ return "<img src=\""+u+"\" alt=\"\" decoding=\"async\" draggable=\"false\">"; }).join(""); }
 function dcReelEl(key){ var f = $("dcFeed"); if(!f) return null; var a = f.querySelectorAll(".dc-reel"); for(var i = 0; i < a.length; i++) if(a[i].getAttribute("data-k")===key) return a[i]; return null; }
 function dcReelRefresh(key){ if(!dcPage) return; var el = dcReelEl(key), r = DCL.filter(function(x){ return x.key===key; })[0]; if(!el || !r) return;
-  el.querySelector(".dc-side").innerHTML = dcSideHTML(r); el.querySelector(".dc-info").innerHTML = dcInfoHTML(r); }
+  el.querySelector(".dc-side").innerHTML = dcSideHTML(r); var inf = el.querySelector(".dc-info"); inf.innerHTML = dcInfoHTML(r); inf.classList.toggle("open", !!DCX[key]); }
 // nur der sichtbare Vorschlag und seine Nachbarn tragen Fotos (Speicher auf dem iPhone)
 function dcFill(){
   var f = $("dcFeed"); if(!f) return; var h = Math.max(1, f.clientHeight), idx = Math.round(f.scrollTop / h); DCI = idx;
@@ -5260,7 +5272,7 @@ function renderDc(){
     var n = Math.min(6, (r.photos||[]).length);
     h += "<article class=\"dc-card dc-reel\" data-k=\""+esc(r.key)+"\"><div class=\"dc-rc"+(n ? "" : " noph")+"\" style=\"--cc:"+catCol(r.c)+"\">"+
       (n ? "<div class=\"dc-ph\"></div>"+(n > 1 ? "<span class=\"dc-pn\">1/"+n+"</span>" : "") : "<div class=\"dc-big\">"+icon(r.c)+"</div>")+
-      "<div class=\"dc-grad\"></div><div class=\"dc-info\">"+dcInfoHTML(r)+"</div><div class=\"dc-side\">"+dcSideHTML(r)+"</div></div></article>";
+      "<div class=\"dc-grad\"></div><div class=\"dc-info"+(DCX[r.key] ? " open" : "")+"\">"+dcInfoHTML(r)+"</div><div class=\"dc-side\">"+dcSideHTML(r)+"</div></div></article>";
   });
   var msg = busy && !list.length ? "Lädt Vorschläge …" : !list.length ? (dcSrc!=="all" && !FR.friends.length ? "Noch keine Freunde. Füge Freunde hinzu – ihre veröffentlichten Orte erscheinen dann hier." : tg ? "Für „"+dcTgtName(tg)+"“ gibt es noch keine Vorschläge"+(dcSrc==="friends" ? " von Freunden" : "")+". Schau unter „Inspiration“." : "Noch keine Vorschläge.") : "Das war’s"+(tg ? " für „"+dcTgtName(tg)+"“" : "")+".";
   h += "<div class=\"dc-end\"><p class=\"note\">"+esc(msg)+(PUB.err && dcSrc==="all" ? "<br>"+esc(PUB.err) : "")+"</p><div class=\"pf-acts\">"+
@@ -12532,6 +12544,7 @@ document.addEventListener("click", function(e){
     case "dcwish": dcAdd(t.getAttribute("data-k"), null); break;
     case "dclike": spotLike(DC.byKey[t.getAttribute("data-k")]); break;
     case "dctake": dcTake(t.getAttribute("data-k")); break;
+    case "dcx": dcToggleX(t.getAttribute("data-k")); break;
     case "dcdemo": lsSet("rp-dcdemo", dcDemoOn() ? "0" : "1"); DCSIG = ""; renderDc(); break;
     case "dcrate": dcRatings(t.getAttribute("data-k")); break;
     case "dcmore": dcMore(t.getAttribute("data-k"), t); break;
