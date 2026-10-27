@@ -2533,6 +2533,9 @@ await test("Freundesgruppen: anlegen, am Freund zuordnen, Schnellauswahl beim Fr
   ok(await rp(`FG.length===1 && FG[0].n==="Familie" && FG[0].m.join()==="u_anna,u_ludwig"`), "Gruppe falsch gespeichert: "+await rp(`JSON.stringify(FG)`));
   ok(await rp(`__fgw.some(function(w){ return w[0]==="set" && /^users\\/u_me\\/fgroups\\/g/.test(w[1]) && w[2].n==="Familie" && w[2].m.length===2; })`), "Nicht im eigenen privaten Bereich gespeichert: "+await rp(`JSON.stringify(__fgw)`));
   ok(await rp(`document.getElementById("catPop").hidden && /Familie/.test(document.querySelector("#acctPop .fg-grp").textContent) && /2 Personen/.test(document.querySelector("#acctPop .fg-grp").textContent)`), "Gruppe fehlt auf der Freunde-Seite");
+  await tapS("#acctPop [data-act=fgnew]"); await page.waitForTimeout(250);
+  ok(await rp(`document.getElementById("fgName").value===""`), "Neue Gruppe übernimmt den Namen der vorigen: "+await rp(`document.getElementById("fgName").value`));
+  await rp(`closeCatPop(); true`);
   // Zweite Gruppe, Clara am Freund selbst zuordnen – auch in mehreren Gruppen
   await rp(`fgPut({id:"gk", n:"Enger Kreis", m:["u_anna"]}); $("toast").hidden = true; true`); await page.waitForTimeout(100);
   await tapS('#acctPop [data-act=fgfor][data-uid="u_clara"]'); await page.waitForTimeout(200);

@@ -4687,7 +4687,8 @@ function openFgEd(id, uid0){
 }
 function fgKeep(){ var i = $("fgName"); if(i && FGED) FGED.n = i.value; }
 function renderFgEd(first){
-  if(!FGED) return; fgKeep(); var us = Object.keys(FGED.sel), n = us.length;
+  if(!FGED) return; if(!first) fgKeep();   // beim Öffnen nicht den Namen aus dem zuletzt offenen (nur versteckten) Fenster übernehmen
+  var us = Object.keys(FGED.sel), n = us.length;
   var h = "<div class=\"pop-card ask-card fg-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppe\"><div class=\"pop-head\"><h4>"+(FGED.id ? "Gruppe bearbeiten" : "Neue Gruppe")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
     "<label class=\"fg-name\"><span class=\"fg-ic\">"+FGICO+"</span><input type=\"text\" id=\"fgName\" maxlength=\"40\" value=\""+esc(FGED.n)+"\" placeholder=\"Name, z. B. Familie\" autocomplete=\"off\" enterkeyhint=\"done\" aria-label=\"Name der Gruppe\"></label>"+
     "<div class=\"ask-h\"><span>"+(n ? n+(n===1 ? " Person" : " Personen") : "Noch niemand in der Gruppe")+"</span><span>nur für dich sichtbar</span></div>"+
