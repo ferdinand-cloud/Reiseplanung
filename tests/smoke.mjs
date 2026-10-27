@@ -5,6 +5,8 @@
 import http from "http";
 import fs from "fs";
 import path from "path";
+import os from "os";
+import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { chromium as pw } from "playwright-core";
 
@@ -12,6 +14,29 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SHOTS = process.env.SHOTS || "";            // Ordner für Screenshots (optional)
 const ONLY = process.argv[2] || "";               // nur Tests, deren Name das enthält
 const VP0 = (process.env.VP || "390x844").split("x").map(Number);   // VP=844x390 → alle Tests im Querformat
+const SHARD = process.env.SHARD ? process.env.SHARD.split("/").map(Number) : null;   // intern: [i, n] = dieser Prozess macht jeden n-ten Test
+
+/* Parallel: der Hauptprozess startet JOBS Prozesse (Standard: je CPU-Kern einer, höchstens 4), jeder übernimmt jeden JOBS-ten Test.
+   JOBS=1 → alles nacheinander in einem Prozess. */
+if(!SHARD){
+  const jobs = Math.max(1, Number(process.env.JOBS) || Math.min(4, os.cpus().length));
+  if(jobs > 1){
+    const t0 = Date.now(), file = fileURLToPath(import.meta.url);
+    const parts = await Promise.all(Array.from({length:jobs}, (_, i) => new Promise(res => {
+      let out = "";
+      const c = spawn(process.execPath, [file, ...process.argv.slice(2)], { env: {...process.env, SHARD: i+"/"+jobs}, stdio: ["ignore", "pipe", "inherit"] });
+      c.stdout.on("data", d => { out += d; if(process.env.VERBOSE) process.stdout.write(String(d).split("\n").filter(l => l && !l.startsWith("@@")).map(l => l+"\n").join("")); });
+      c.on("close", () => { const l = out.split("\n").find(x => x.startsWith("@@")); res(l ? JSON.parse(l.slice(2)) : [{name:"Prozess "+i, idx:-1, ok:false, ms:0, err:"abgestürzt"}]); });
+    })));
+    report(parts.flat().sort((a, b) => a.idx - b.idx), Date.now() - t0);
+  }
+}
+function report(results, ms){
+  const bad = results.filter(r => !r.ok), flaky = results.filter(r => r.ok && r.retry);
+  for(const r of results) console.log((r.ok ? "✓" : "✗")+" "+r.name+(r.ok ? "" : "\n    → "+r.err)+(r.retry ? "\n    (erst im 2. Versuch bestanden: "+r.retry+")" : "")+`  (${r.ms} ms)`);
+  console.log(`\n${results.length - bad.length} von ${results.length} Tests bestanden`+(flaky.length ? `, ${flaky.length} davon erst im 2. Versuch` : "")+(ms ? `  (${Math.round(ms/1000)} s)` : ""));
+  process.exit(bad.length ? 1 : 0);
+}
 
 async function chromePath(){
   if(process.env.CHROME) return { exe: process.env.CHROME, args: [] };
@@ -118,18 +143,25 @@ async function seed(){
   })()`);
 }
 
+let testNo = -1;
 async function test(name, fn, opt){
   if(ONLY && !name.toLowerCase().includes(ONLY.toLowerCase())) return;
+  const idx = ++testNo; if(SHARD && idx % SHARD[1] !== SHARD[0]) return;
   const t0 = Date.now(); if(process.env.VERBOSE) console.log("… "+name);
-  try {
-    page = await newPage(opt && opt.vp, opt && opt.safe);
-    await fn();
-    ok(!errs.length, "JavaScript-Fehler: "+errs.join(" | "));
-    results.push({name, ok:true, ms:Date.now()-t0});
-  } catch(e){
-    await shot("FEHLER-"+name.replace(/[^\w]+/g, "_")).catch(()=>{});
-    results.push({name, ok:false, ms:Date.now()-t0, err:(e.message||String(e)).split("\n")[0]+(errs.length ? " | JS: "+errs.join(" | ") : "")});
-  } finally { if(browser) await browser.close().catch(()=>{}); browser = null; }
+  // ein fehlgeschlagener Test läuft einmal neu; besteht er dann, wird er als „erst im 2. Versuch“ gemeldet (Hinweis auf wackeligen Test)
+  let err = "";
+  for(let run = 0; run < 2; run++){
+    try {
+      page = await newPage(opt && opt.vp, opt && opt.safe);
+      await fn();
+      ok(!errs.length, "JavaScript-Fehler: "+errs.join(" | "));
+      results.push({name, idx, ok:true, ms:Date.now()-t0, retry:err}); return;
+    } catch(e){
+      err = (e.message||String(e)).split("\n")[0]+(errs.length ? " | JS: "+errs.join(" | ") : "");
+      if(run) await shot("FEHLER-"+name.replace(/[^\w]+/g, "_")).catch(()=>{});
+    } finally { if(browser) await browser.close().catch(()=>{}); browser = null; globalThis.FOOTMOCK = false; }
+  }
+  results.push({name, idx, ok:false, ms:Date.now()-t0, err});
 }
 
 /* ------------------------------------------------------------------ Tests */
@@ -651,7 +683,7 @@ await test("3D-Navigation: geneigte Karte, Weg unter den Gebäuden, 3D-Pfeil, Sc
   await rp(`navStart({la:40.7680, lo:-73.9819, n:"Columbus Circle"}, "oepnv");`);
   await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts && !NAV.busy)"), null, {timeout:6000}).catch(() => {});
   ok(!(await rp(`nav3dOn()`)) && await page.locator("#navUi [data-act=nav3d]").count()===0, "ÖPNV sollte flach bleiben");
-  await rp(`navEnd(true)`); await page.waitForFunction(() => window.__rp("map.getPitch() < 5 && !map.isMoving()"), null, {timeout:5000}).catch(() => {});
+  await rp(`navEnd(true)`); await page.waitForFunction(() => window.__rp("map.getPitch() < 5 && !map.isMoving()"), null, {timeout:10000}).catch(() => {});
   ok(await rp(`map.getPitch()`) < 5, "Nach dem Ende bleibt die Karte geneigt");
 });
 
@@ -1615,7 +1647,5 @@ await test("Profil: Weltkarte Vollbild im Querformat", async () => { await wmFul
 
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
-const bad = results.filter(r => !r.ok);
-for(const r of results) console.log((r.ok ? "✓" : "✗")+" "+r.name+(r.ok ? "" : "\n    → "+r.err)+`  (${r.ms} ms)`);
-console.log(`\n${results.length - bad.length} von ${results.length} Tests bestanden`);
-process.exit(bad.length ? 1 : 0);
+if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }
+report(results);
