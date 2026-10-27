@@ -275,6 +275,45 @@ await test("Chat: nach rechts wischen führt zurück zur Übersicht, Position un
   await cdp.detach(); await rp(`closeChPage(); CH.byId = {}; CH.list = []; true`);
 });
 
+await test("Chat: Plus öffnet neuen Chat mit Empfängerfeld, bekannter Name zeigt Verlauf, neuer Name beginnt Chat", async () => {
+  await seed();
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FR.friends = [{uid:"u1", name:"anna"}, {uid:"u2", name:"bert"}, {uid:"u3", name:"annika"}];
+    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], names:{u1:"anna"}, at:1000, last:{t:"Hallo alt", from:"u1", at:1000}}}; CH.list = [CH.byId.u1_u_me]; CH.got = true;
+    window.__subs = []; chSubMsgs = function(cid){ window.__subs.push(cid); chMsgs = cid==="u1_u_me" ? [{id:"m1", from:"u1", t:"Hallo alt", at:Date.now()}] : []; renderChMsgs(true); };
+    openChPage(); true`);
+  await page.waitForTimeout(250);
+  ok(await page.locator("#chView .ch-newbox, #chView input[type=search]").count()===0, "Übersicht zeigt noch eine Suchleiste");
+  await page.tap("#chView [data-act=chnewtog]"); await page.waitForTimeout(250);
+  ok(await rp(`chNewOn && !chOpen && $("chView").classList.contains("conv") && document.activeElement===$("chNewIn")`), "Plus öffnet nicht direkt den Chat mit fokussiertem Empfängerfeld");
+  ok((await page.locator("#chView .ch-to label").innerText()).trim()==="An:", "Empfängerfeld ohne „An:“");
+  ok(await page.locator("#chIn").count()===1, "Nachrichtenfeld fehlt im neuen Chat");
+  const head0 = await page.evaluate(() => document.querySelector("#chView .ch-head").getBoundingClientRect().top);
+  await page.evaluate(() => { window.__inp = document.getElementById("chNewIn"); });
+  await page.keyboard.type("ann"); await page.waitForTimeout(150);
+  ok(await rp(`!chOpen && document.querySelectorAll("#chNewRes [data-act=chnew]").length===2 && $("chMsgs").hidden`), "Vorschläge für „ann“ falsch");
+  await page.keyboard.type("a"); await page.waitForTimeout(150);
+  ok(await rp(`chOpen==="u1_u_me" && $("chNewRes").hidden && !$("chMsgs").hidden && $("chMsgs").textContent.includes("Hallo alt")`), "Bestehender Chat: Verlauf erscheint nicht sofort");
+  await shot("chat-neu-empfaenger");
+  await page.keyboard.press("Control+A"); await page.keyboard.type("Bert"); await page.waitForTimeout(150);
+  ok(await rp(`chOpen==="u2_u_me" && window.__subs.join()==="u1_u_me,u2_u_me" && !!document.querySelector("#chMsgs .ch-empty")`), "Neuer Name beginnt keinen leeren Chat");
+  ok(await page.evaluate(() => document.activeElement===window.__inp && document.getElementById("chNewIn")===window.__inp), "Empfängerfeld wurde beim Tippen neu gezeichnet (Fokus verloren)");
+  ok(Math.abs(await page.evaluate(() => document.querySelector("#chView .ch-head").getBoundingClientRect().top) - head0) <= 1, "Kopf springt beim Tippen");
+  // Vorschlag antippen: Name übernommen, weiter zur Nachricht
+  await page.keyboard.press("Control+A"); await page.keyboard.type("anni"); await page.waitForTimeout(150);
+  await page.tap("#chNewRes [data-act=chnew]"); await page.waitForTimeout(150);
+  ok(await rp(`chOpen==="u3_u_me" && $("chNewIn").value==="annika" && document.activeElement===$("chIn")`), "Vorschlag übernimmt Namen nicht oder springt nicht zur Nachricht");
+  // ohne Empfänger wird nichts gesendet
+  await rp(`$("chNewIn").value = "xyz"; chNewQ = "xyz"; renderChNew(); $("chIn").value = "Hi"; chSend(); true`);
+  ok(await rp(`chNewOn && !chOpen && !chSending`), "Senden ohne Empfänger");
+  // Zurück: wieder die Übersicht an derselben Stelle
+  await page.tap("#chView [data-act=chback]"); await page.waitForTimeout(300);
+  ok(await rp(`chPage && !chNewOn && !chOpen && !!document.querySelector("#chView .ch-list") && !(history.state && history.state.rpch)`), "Zurück führt nicht zur Übersicht");
+  await page.tap("#chView [data-act=chnewtog]"); await page.waitForTimeout(200);
+  await page.evaluate(() => history.back()); await page.waitForTimeout(400);
+  ok(await rp(`chPage && !chNewOn && !!document.querySelector("#chView .ch-list")`), "Safari-Zurück führt nicht zur Übersicht");
+  await rp(`closeChPage(); CH.byId = {}; CH.list = []; FR.friends = []; true`);
+});
+
 await test("Foto im Chat schicken: Freunde-Suche filtert, Menü bleibt offen", async () => {
   await seed();
   await rp(`openJPop("p4", dayOf("p4"), "ph_a")`); await page.waitForTimeout(300);

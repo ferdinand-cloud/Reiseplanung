@@ -1864,9 +1864,11 @@ form.gnew{position:relative}
 .ch-plus{width:38px;height:38px;flex:0 0 38px;border:0;border-radius:50%;background:var(--fill);color:var(--ink);display:grid;place-items:center;cursor:pointer;transition:transform .2s}
 .ch-plus svg{width:19px;height:19px}
 .ch-plus.on{transform:rotate(45deg)}
-.ch-newbox{margin-top:2px}
-#chNewRes{margin-top:8px}
-.ch-newnote{margin:4px 2px 2px}
+.ch-to{display:flex;align-items:center;gap:6px;flex:1;min-width:0;height:36px;padding:0 12px;border-radius:18px;background:var(--fill)}
+.ch-to label{font:500 15px/1 var(--f-body);color:var(--muted);flex:0 0 auto}
+.ch-to input{flex:1;min-width:0;border:0;background:none;color:var(--ink);font:600 16px/1.2 var(--f-body);padding:0;outline:none;-webkit-appearance:none;appearance:none}
+.ch-newres{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:8px 12px}
+.ch-newnote{margin:8px 4px 2px}
 .ch-newlist .ls-row{padding:8px 12px}
 .ch-dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
 .chview.conv{padding:0;overflow:hidden;display:flex;flex-direction:column}
@@ -7175,14 +7177,17 @@ function chOpenConv(cid){
   var cv = $("chView"); CHRET.sc = cv && chPage && !chOpen && !cv.classList.contains("conv") ? cv.scrollTop : CHRET.sc;
   // eigener Verlaufseintrag: Safaris Zurück (auch Wischen vom linken Rand) führt so genau zur Chat-Übersicht
   try { if(history.state && history.state.rpch) history.replaceState({rpch:cid}, ""); else history.pushState({rpch:cid}, ""); } catch(e){}
-  chOpen = cid; chMsgs = []; chMsgErr = false; chPickOn = false; renderCh(true);
+  chNewOn = false; chNewQ = ""; chOpen = cid; chMsgs = []; chMsgErr = false; chPickOn = false; renderCh(true);
+  chSubMsgs(cid);
+}
+function chSubMsgs(cid){
   var me = acct.user && acct.user.uid; if(!me || !fbDb) return;
   chMsgUnsub = fbDb.collection("chats").doc(cid).collection("msgs").orderBy("at").limitToLast(300).onSnapshot(function(qs){
     chMsgs = qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); chMsgs.forEach(function(m){ if(m.place) CHPL[m.id] = m.place; chNorm(m); if(m.photo) CHPH[m.id] = m.photo; if(m.place) CHPL[m.id] = m.place; });
     if(chOpen===cid){ renderChMsgs(true); if(chUnread(CH.byId[cid] || {})) chMarkRead(cid); }
   }, function(){ chMsgs = []; chMsgErr = true; if(chOpen===cid) renderChMsgs(); });
 }
-function chCloseConv(){ if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } if(chOpen && !chPopping && history.state && history.state.rpch){ chPopIgn = true; setTimeout(function(){ chPopIgn = false; }, 600); try { history.back(); } catch(e){ chPopIgn = false; } } chOpen = null; chMsgs = []; chPickOn = false; chVV(); }
+function chCloseConv(){ if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } if((chOpen || chNewOn) && !chPopping && history.state && history.state.rpch){ chPopIgn = true; setTimeout(function(){ chPopIgn = false; }, 600); try { history.back(); } catch(e){ chPopIgn = false; } } chOpen = null; chNewOn = false; chNewQ = ""; chMsgs = []; chPickOn = false; chVV(); }
 function chWith(u){ var me = acct.user && acct.user.uid; if(!me || !u) return null; return chId(me, u); }
 function chMatch(pl){ var out = null; Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; if(t.ziel) return false; return Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = {tid:tid, pid:pid}; return true; } return false; }); }); return out; }
 function chPhotoCard(ph, key, draft){
@@ -7358,26 +7363,27 @@ function chPickHTML(){
 }
 // Chat-Übersicht als HTML (auch für die Ansicht unter dem Chat beim Zurückwischen)
 function chListHTML(){ var me = acct.user && acct.user.uid;
-    var h = "<div class=\"pf ch-page\"><div class=\"ls-head dc-head\"><div class=\"dc-title ch-title\"><b>Chats</b>"+(me ? "<button type=\"button\" class=\"ch-plus"+(chNewOn?" on":"")+"\" data-act=\"chnewtog\" aria-label=\"Neuer Chat\" aria-expanded=\""+chNewOn+"\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M10 4v12M4 10h12\"/></svg></button>" : "")+"</div>"+
-      (me && chNewOn ? "<div class=\"gs-box ch-newbox\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"chNewIn\" placeholder=\"Name des Freundes\" autocomplete=\"off\" autocapitalize=\"off\" value=\""+esc(chNewQ)+"\"></div><div id=\"chNewRes\"></div>" : "")+"</div>";
+    var h = "<div class=\"pf ch-page\"><div class=\"ls-head dc-head\"><div class=\"dc-title ch-title\"><b>Chats</b>"+(me ? "<button type=\"button\" class=\"ch-plus\" data-act=\"chnewtog\" aria-label=\"Neuer Chat\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M10 4v12M4 10h12\"/></svg></button>" : "")+"</div>"+
+      "</div>";
     if(!me) return h+"<p class=\"note nt-empty\">Melde dich an, um mit Freunden zu chatten.</p></div>";
     if(CH.list.length){
       h += "<div class=\"ag-grp ls-list ch-list\">"+CH.list.map(function(c){ var u = chOther(c), L = c.last || {}, un = chUnread(c);
         return "<button type=\"button\" class=\"ls-row"+(un?" un":"")+"\" data-act=\"chopen\" data-v=\""+esc(c.id)+"\">"+chAv(u, "ch-av")+"<span class=\"ls-t\"><b>@"+esc(chName(u))+"</b><small>"+(L.from===me ? "Du: " : "")+esc(L.t || (L.place ? (L.ph ? "📷 " : "📍 ")+L.place : ""))+"</small></span><span class=\"ch-meta\"><small>"+chTime(L.at)+"</small>"+(un ? "<i class=\"ch-dot\"></i>" : "")+"</span></button>"; }).join("")+"</div>";
-    } else if(CH.got && !chNewOn) h += "<p class=\"note nt-empty\">Noch keine Chats. Tippe auf ＋, um einen Chat mit einem Freund zu beginnen.</p>";
+    } else if(CH.got) h += "<p class=\"note nt-empty\">Noch keine Chats. Tippe auf ＋, um einen Chat mit einem Freund zu beginnen.</p>";
     if(!FR.friends.length) h += "<p class=\"note nt-empty\">Chatten kannst du mit Freunden – Leuten, denen du folgst und die dir folgen.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Leute finden</button></div>";
     return h+"</div>";
 }
 function renderCh(full){
   var el = $("chView"); if(!el) return; var me = acct.user && acct.user.uid;
-  if(!chOpen){
+  if(!chOpen && !chNewOn){
     el.classList.remove("conv"); chVV();
-    el.innerHTML = chListHTML(); if(me) renderChNew(); return;
+    el.innerHTML = chListHTML(); return;
   }
-  var c = CH.byId[chOpen], u = c ? chOther(c) : chOpen.split("_").filter(function(x){ return x!==me; })[0];
-  if(full || !$("chMsgs")){
+  var u = chOpen ? chPartner(chOpen) : "";
+  if(full || !$("chMsgs") || (chNewOn && !$("chNewIn"))){
     el.classList.add("conv");
-    el.innerHTML = "<div class=\"ch-conv\"><div class=\"ch-head\"><button type=\"button\" class=\"ch-back\" data-act=\"chback\" aria-label=\"Zurück zu den Chats\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.5 4.5 7 10l5.5 5.5\"/></svg></button>"+chAv(u, "ch-av sm")+"<b>@"+esc(chName(u))+"</b></div>"+
+    el.innerHTML = "<div class=\"ch-conv\"><div class=\"ch-head\">"+chHeadIn(u)+"</div>"+
+      (chNewOn ? "<div class=\"ch-newres\" id=\"chNewRes\"></div>" : "")+
       "<div class=\"ch-msgs\" id=\"chMsgs\"></div>"+
       "<div class=\"ch-pick\" id=\"chPick\" hidden><div class=\"ch-pickh\"><div class=\"gs-box\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"chPickIn\" placeholder=\"Ort aus deinen Reisen teilen\" autocomplete=\"off\"></div><button type=\"button\" class=\"btn g s\" data-act=\"chpick\">Fertig</button></div><div class=\"ag-grp ls-list\" id=\"chPickRes\"></div></div>"+
       "<div class=\"ch-draft\" id=\"chDraftBox\"></div>"+
@@ -7385,18 +7391,47 @@ function renderCh(full){
       "<textarea id=\"chIn\" rows=\"1\" placeholder=\"Nachricht\" enterkeyhint=\"send\"></textarea><button type=\"button\" class=\"ch-send\" data-act=\"chsend\" aria-label=\"Senden\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 19V5M5.5 11.5 12 5l6.5 6.5\"/></svg></button></div></div>";
     chVV();
   }
+  if(chNewOn) renderChNew();
   renderChMsgs(true); renderChDraft();
   var pk = $("chPick"); if(pk){ pk.hidden = !chPickOn; if(chPickOn) $("chPickRes").innerHTML = chPickHTML(); }
 }
+var CHBACK = "<button type=\"button\" class=\"ch-back\" data-act=\"chback\" aria-label=\"Zurück zu den Chats\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.5 4.5 7 10l5.5 5.5\"/></svg></button>";
+function chPartner(cid){ var me = acct.user && acct.user.uid, c = CH.byId[cid]; return c ? chOther(c) : String(cid).split("_").filter(function(x){ return x!==me; })[0]; }
+// Kopf: im neuen Chat das Empfängerfeld („An:“), sonst Bild und Name
+function chHeadIn(u){ return CHBACK+(chNewOn ? "<div class=\"ch-to\"><label for=\"chNewIn\">An:</label><input type=\"text\" id=\"chNewIn\" placeholder=\"Name\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" enterkeyhint=\"next\" value=\""+esc(chNewQ)+"\"></div>" : chAv(u, "ch-av sm")+"<b>@"+esc(chName(u))+"</b>"); }
+/* Neuer Chat: wer infrage kommt – Freunde und alle, mit denen es schon einen Chat gibt */
+function chCands(){ var seen = {}, out = [];
+  FR.friends.forEach(function(f){ if(f.uid && !seen[f.uid]){ seen[f.uid] = 1; out.push(f.uid); } });
+  CH.list.forEach(function(c){ var u = chOther(c); if(u && !seen[u]){ seen[u] = 1; out.push(u); } });
+  return out; }
+// Name genau getroffen → dieser Chat (vorhandener Verlauf erscheint sofort, sonst beginnt er leer)
+var chNewU = "";
+function chNewMatch(){ var q = norm(chNewQ.trim().replace(/^@/, "")); if(!q) return "";
+  if(chNewU && norm(chName(chNewU))===q) return chNewU;
+  var hit = chCands().filter(function(u){ return norm(chName(u))===q; }); return hit.length===1 ? hit[0] : ""; }
+function chNewSet(u){ var cid = u ? chWith(u) : null; if(cid===chOpen) return;
+  if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } chOpen = cid; chMsgs = []; chMsgErr = false;
+  if(cid) chSubMsgs(cid); }
 function renderChNew(){
-  var r = $("chNewRes"); if(!r) return; var me = acct.user && acct.user.uid, q = norm(chNewQ.trim().replace(/^@/, ""));
-  var fr = FR.friends.filter(function(f){ return f.uid && (!q || norm(chName(f.uid)).indexOf(q) > -1); });
-  if(!FR.friends.length){ r.innerHTML = "<p class=\"note ch-newnote\">Du hast noch keine Freunde. Chatten kannst du nur mit Leuten, denen du folgst und die dir folgen.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Leute finden</button></div>"; return; }
+  var r = $("chNewRes"), box = $("chMsgs"); if(!r) return; var me = acct.user && acct.user.uid, q = norm(chNewQ.trim().replace(/^@/, ""));
+  chNewSet(chNewMatch());
+  if(chOpen){ r.hidden = true; if(box) box.hidden = false; renderChMsgs(true); return; }
+  r.hidden = false; if(box) box.hidden = true;
+  var cands = chCands(), fr = cands.filter(function(u){ return !q || norm(chName(u)).indexOf(q) > -1; });
+  if(!cands.length){ r.innerHTML = "<p class=\"note ch-newnote\">Du hast noch keine Freunde. Chatten kannst du nur mit Leuten, denen du folgst und die dir folgen.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Leute finden</button></div>"; return; }
   if(!q){ r.innerHTML = "<p class=\"note ch-newnote\">Gib den Namen eines Freundes ein.</p>"; return; }
-  r.innerHTML = fr.length ? "<div class=\"ag-grp ls-list ch-newlist\">"+fr.slice(0, 20).map(function(f){ var ex = CH.byId[chId(me, f.uid)];
-    return "<button type=\"button\" class=\"ls-row\" data-act=\"chnew\" data-uid=\""+esc(f.uid)+"\">"+chAv(f.uid, "ch-av sm")+"<span class=\"ls-t\"><b>@"+esc(chName(f.uid))+"</b><small>"+(ex ? "Chat öffnen" : "Neuer Chat")+"</small></span></button>"; }).join("")+"</div>"
+  r.innerHTML = fr.length ? "<div class=\"ag-grp ls-list ch-newlist\">"+fr.slice(0, 30).map(function(u){ var ex = CH.byId[chId(me, u)];
+    return "<button type=\"button\" class=\"ls-row\" data-act=\"chnew\" data-uid=\""+esc(u)+"\">"+chAv(u, "ch-av sm")+"<span class=\"ls-t\"><b>@"+esc(chName(u))+"</b><small>"+(ex ? "Chat öffnen" : "Neuer Chat")+"</small></span></button>"; }).join("")+"</div>"
     : "<p class=\"note ch-newnote\">Kein Freund mit diesem Namen. Chatten kannst du nur mit Freunden.</p>";
 }
+function chNewStart(){ var el = $("chView"); if(!el || !acct.user) return;
+  CHRET.sc = chPage && !chOpen && !el.classList.contains("conv") ? el.scrollTop : CHRET.sc;
+  try { if(history.state && history.state.rpch) history.replaceState({rpch:"new"}, ""); else history.pushState({rpch:"new"}, ""); } catch(e){}
+  if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } chOpen = null; chMsgs = []; chNewOn = true; chNewQ = ""; chNewU = ""; chDraft = null; chPickOn = false; renderCh(true);
+  var i = $("chNewIn"); if(i) try { i.focus({preventScroll:true}); } catch(e){ i.focus(); } }
+// Vorschlag angetippt: Name übernehmen, weiter zur Nachricht
+function chNewPick(u){ var i = $("chNewIn"); chNewU = u; chNewQ = chName(u); if(i) i.value = chNewQ; renderChNew();
+  var m = $("chIn"); if(m) try { m.focus({preventScroll:true}); } catch(e){ m.focus(); } }
 function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; b.innerHTML = chDraft ? "<div class=\"ch-dr\">"+(chIsPhoto(chDraft) ? chPhotoCard(chDraft, "", true) : chPlaceCard(chDraft, "", true))+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; }
 /* Foto-Nachricht = geteiltes Foto (Kennung + Reise + Ort); ein Ort mit Vorschaubild hat in .ph Bilddaten und ist KEIN Foto */
 // ältere Nachrichten: als Foto gespeicherte Orte (mit Vorschaubild) wieder als Ort behandeln
@@ -7410,8 +7445,11 @@ function chPlaceFrom(tid, pid){
 }
 function chSend(){
   var me = acct.user && acct.user.uid, inp = $("chIn"), txt = inp ? inp.value.trim().slice(0, 4000) : "";
+  if(me && chNewOn && !chOpen && (txt || chDraft)){ toast("Gib zuerst oben den Namen eines Freundes ein", false); var ni = $("chNewIn"); if(ni) try { ni.focus({preventScroll:true}); } catch(e){} return; }
   if(!me || !chOpen || chSending || (!txt && !chDraft)) return;
-  var c = CH.byId[chOpen], u = c ? chOther(c) : chOpen.split("_").filter(function(x){ return x!==me; })[0];
+  var u = chPartner(chOpen);
+  // erste Nachricht im neuen Chat: Kopf wird zum normalen Chat-Kopf, Eingabe und Tastatur bleiben
+  if(chNewOn){ chNewOn = false; chNewQ = ""; var hd = document.querySelector("#chView .ch-head"); if(hd) hd.innerHTML = chHeadIn(u); var nr = $("chNewRes"); if(nr) nr.remove(); }
   var now = Date.now(), msg = {from:me, t:txt, at:now}, pl = chDraft, isPh = chIsPhoto(pl); if(pl){ if(isPh) msg.photo = pl; else msg.place = pl; }
   var names = {}; names[me] = (PROF && PROF.name) || ""; names[u] = chName(u);
   var read = {}; read[me] = now;
@@ -7437,7 +7475,7 @@ function chKbGuess(){ var v = 0; try { v = +(JSON.parse(localStorage.getItem("rp
 function chKbSave(h){ try { var o = JSON.parse(localStorage.getItem("rp-chkb") || "{}"); o[chKbKey()] = Math.round(h); localStorage.setItem("rp-chkb", JSON.stringify(o)); } catch(e){} }
 var chSbEl = null;
 function chSafeB(){ if(!chSbEl){ chSbEl = document.createElement("div"); chSbEl.style.cssText = "position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none"; document.body.appendChild(chSbEl); } return chSbEl.offsetHeight; }
-function chTyping(){ var el = $("chView"), ae = document.activeElement; return !!(el && chPage && chOpen && ae && el.contains(ae) && isTypeField(ae)); }
+function chTyping(){ var el = $("chView"), ae = document.activeElement; return !!(el && chPage && (chOpen || chNewOn) && ae && el.contains(ae) && isTypeField(ae)); }
 /* Höhe des Chat-Inhalts setzen – gleitend wie die iOS-Tastatur statt in einem Sprung. Beim ersten Antippen steht die Zielhöhe
    im selben Moment fest (iOS misst das Feld beim Fokus und verschiebt die Seite nur, wenn es unter der Tastatur läge);
    gezeichnet wird ab dem nächsten Bild die Bewegung von der alten zur neuen Höhe. */
@@ -7457,7 +7495,7 @@ function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualVie
     var off = function(){ if(CHKB.on) return; CHKB.cur = 0; el.classList.remove("kbt"); el.style.removeProperty("--chh"); el.style.removeProperty("--cht"); };
     // Tastatur geht zu: Eingabe gleitet mit ihr nach unten
     // Ziel = volle Höhe minus unterem Sicherheitsrand: dann steht die Eingabe am Ende genau dort, wo sie ohne Tastatur steht (kein Nachrücken)
-    if(chPage && chOpen && el.classList.contains("kbt")) chSetH(el, el.clientHeight - chSafeB(), 260, off); else { cancelAnimationFrame(CHKB.raf); off(); }
+    if(chPage && (chOpen || chNewOn) && el.classList.contains("kbt")) chSetH(el, el.clientHeight - chSafeB(), 260, off); else { cancelAnimationFrame(CHKB.raf); off(); }
     return; }
   var first = !CHKB.on;
   if(first){ CHKB.on = true; CHKB.h0 = el.clientHeight || innerHeight; CHKB.got = vv.height < CHKB.h0 - 120; clearTimeout(CHKB.t);
@@ -7473,31 +7511,35 @@ function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualVie
 // iOS scrollt beim Fokus auch Behälter mit overflow:hidden, um das Feld zu zeigen – die Chat-Fläche selbst bleibt immer oben
 document.addEventListener("scroll", function(e){ var el = e.target; if(el && el.id==="chView" && el.classList.contains("conv") && el.scrollTop) el.scrollTop = 0; }, true);
 if(window.visualViewport){ ["resize", "scroll"].forEach(function(n){ window.visualViewport.addEventListener(n, function(){ if(CHKB.on) chVV(); }); }); }
-document.addEventListener("focusin", function(e){ if(chPage && chOpen && e.target && isTypeField(e.target) && $("chView").contains(e.target)) chVV(); });
+document.addEventListener("focusin", function(e){ if(chPage && (chOpen || chNewOn) && e.target && isTypeField(e.target) && $("chView").contains(e.target)) chVV(); });
 document.addEventListener("focusout", function(){ if(CHKB.on) setTimeout(chVV, 0); });
 // Senden-Knopf nimmt dem Feld den Fokus nicht – die Tastatur bleibt offen wie in Nachrichten-Apps
-document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send") && chTyping()) e.preventDefault(); }, true);
+document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send, #chNewRes [data-act=chnew]") && chTyping()) e.preventDefault(); }, true);
 document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn") chGrow(); if(e.target.id==="chNewIn"){ chNewQ = e.target.value; renderChNew(); } if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
-document.addEventListener("keydown", function(e){ if(e.target && e.target.id==="chIn" && e.key==="Enter" && !e.shiftKey && !e.isComposing && !("ontouchstart" in window)){ e.preventDefault(); chSend(); } });
+document.addEventListener("keydown", function(e){
+  // Empfängerfeld: Eingabetaste übernimmt den (einzigen) Vorschlag und springt zur Nachricht
+  if(e.target && e.target.id==="chNewIn" && e.key==="Enter" && !e.isComposing){ e.preventDefault(); var rows = document.querySelectorAll("#chNewRes [data-act=chnew]"), m = $("chIn");
+    if(chOpen){ if(m) try { m.focus({preventScroll:true}); } catch(x){} } else if(rows.length===1) chNewPick(rows[0].getAttribute("data-uid")); return; }
+  if(e.target && e.target.id==="chIn" && e.key==="Enter" && !e.shiftKey && !e.isComposing && !("ontouchstart" in window)){ e.preventDefault(); chSend(); } });
 /* Zurück zur Chat-Übersicht: dieselbe Scrollposition wie vorher, der Chat, aus dem man kommt, ist sichtbar und kurz markiert */
 var CHRET = {sc:0}, chPopIgn = false, chPopping = false, chSwOn = false;
-function chBackToList(fromPop){ var el = $("chView"), cid = chOpen; if(!el || !chPage || !cid) return;
+function chBackToList(fromPop){ var el = $("chView"), nw = chNewOn, cid = nw ? null : chOpen; if(!el || !chPage || (!cid && !nw)) return;
   chPopping = !!fromPop; if(document.activeElement && el.contains(document.activeElement)) document.activeElement.blur();
   chCloseConv(); chPopping = false; renderCh();
-  el.scrollTop = CHRET.sc || 0;
+  el.scrollTop = CHRET.sc || 0; if(!cid) return;
   var row = el.querySelector("[data-act=chopen][data-v=\""+(window.CSS && CSS.escape ? CSS.escape(cid) : cid)+"\"]"); if(!row) return;
   var r = row.getBoundingClientRect(), top = parseFloat(getComputedStyle(el).paddingTop) || 0, bot = el.clientHeight - 12;
   if(r.top < top) el.scrollTop += r.top - top - 8; else if(r.bottom > bot) el.scrollTop += r.bottom - bot;
   row.classList.add("ch-ret"); try { row.focus({preventScroll:true}); } catch(e){}
   setTimeout(function(){ row.classList.remove("ch-ret"); }, 1700); }
-window.addEventListener("popstate", function(e){ if(chPopIgn){ chPopIgn = false; return; } if(chPage && chOpen && !(e.state && e.state.rpch)) chBackToList(true); });
+window.addEventListener("popstate", function(e){ if(chPopIgn){ chPopIgn = false; return; } if(chPage && (chOpen || chNewOn) && !(e.state && e.state.rpch)) chBackToList(true); });
 /* Im Chat von links nach rechts wischen = zurück. Der Chat folgt dem Finger, darunter liegt schon die Übersicht.
    In Safari bleibt der äußerste linke Rand frei: dort wischt Safari selbst zurück (führt dank Verlaufseintrag ebenfalls zur Übersicht). */
 (function(){ var x0 = 0, y0 = 0, t0 = 0, dx = 0, mode = 0, conv = null, under = null;
   var standalone = function(){ return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone; };
   function reset(){ chSwOn = false; mode = 0; if(conv){ conv.style.translate = ""; conv.style.transition = ""; conv.classList.remove("sw"); } if(under) under.remove(); conv = under = null; }
   document.addEventListener("touchstart", function(e){ mode = 0; var el = $("chView"), t = e.touches[0];
-    if(e.touches.length!==1 || !chPage || !chOpen || !el || !el.classList.contains("conv") || !el.contains(e.target)) { mode = -1; return; }
+    if(e.touches.length!==1 || !chPage || !(chOpen || chNewOn) || !el || !el.classList.contains("conv") || !el.contains(e.target)) { mode = -1; return; }
     if(e.target.closest && e.target.closest(".ch-comp,.ch-pick,.ch-draft,textarea,input")){ mode = -1; return; }
     if(!standalone() && t.clientX < 24){ mode = -1; return; }
     x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); dx = 0; }, {passive:true, capture:true});
@@ -8152,7 +8194,7 @@ function ensureVis(el){
   // auch Textfelder in Pop-ups: deren Lage regelt kbPin/kbPlace (Karte knapp über der Tastatur), iOS muss nichts verschieben.
   // Nur Texteingaben – Auswahl- und Datumsfelder öffnen ihren iOS-Wähler nur beim echten Antippen.
   function textish(el){ return el.tagName==="TEXTAREA" || (el.tagName==="INPUT" && !/^(date|time|datetime-local|month|week|color|range|file|checkbox|radio|button|submit|hidden)$/.test(el.type)); }
-  function mine(el){ return !!(el && isTypeField(el) && textish(el) && !el.disabled && !el.readOnly && (el.id==="chIn" || (el.closest && el.closest("#gate, .pop, .acctpop, .supop")))); }
+  function mine(el){ return !!(el && isTypeField(el) && textish(el) && !el.disabled && !el.readOnly && (el.id==="chIn" || el.id==="chNewIn" || (el.closest && el.closest("#gate, .pop, .acctpop, .supop")))); }
   document.addEventListener("touchstart", function(e){ var t = e.touches[0]; sx = t.clientX; sy = t.clientY; moved = false; }, {passive:true, capture:true});
   document.addEventListener("touchmove", function(e){ var t = e.touches[0]; if(Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) moved = true; }, {passive:true, capture:true});
   document.addEventListener("touchend", function(e){ var el = e.target;
@@ -14659,11 +14701,11 @@ document.addEventListener("click", function(e){
     case "wunpark": setPark(t.getAttribute("data-pid") || id || sel, false); break;
     case "srchopen": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); openSearch(); break;
     case "navmap": closeChPage(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); closeMenus(); break;
-    case "navchat": if(chPage && !chOpen) closeChPage(); else openChPage(); break;
+    case "navchat": if(chPage && !chOpen && !chNewOn) closeChPage(); else openChPage(); break;
     case "chgo": $("toast").hidden = true; openChPage(t.getAttribute("data-v")); break;
     case "chopen": chOpenConv(t.getAttribute("data-v")); break;
-    case "chnew": var chu = chWith(t.getAttribute("data-uid")); chNewOn = false; chNewQ = ""; if(chu) chOpenConv(chu); break;
-    case "chnewtog": chNewOn = !chNewOn; chNewQ = ""; renderCh(); if(chNewOn) setTimeout(function(){ var i = $("chNewIn"); if(i) i.focus(); }, 40); break;
+    case "chnew": chNewPick(t.getAttribute("data-uid")); break;
+    case "chnewtog": chNewStart(); break;
     case "chback": chBackToList(); break;
     case "chsend": chSend(); break;
     case "chpick": chPickOn = !chPickOn; chPickQ = ""; var chpk = $("chPick"); if(chpk){ chpk.hidden = !chPickOn; if(chPickOn){ $("chPickIn").value = ""; $("chPickRes").innerHTML = chPickHTML(); } } break;
