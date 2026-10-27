@@ -1622,8 +1622,13 @@ const kbPop = async (open, ovSel, name) => {
   await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); visualViewport.dispatchEvent(new Event("resize")); }, H - kbH);
   await page.waitForTimeout(450);
   ok(await rp(`document.body.classList.contains("kb")`), name+": Tastatur nicht erkannt");
-  const after = await page.locator(card).first().boundingBox(), ov = await page.locator(ovSel).boundingBox(), f = await page.locator(fld).first().boundingBox();
-  ok(Math.abs(after.y - before.y) <= 1, name+": Karte springt beim Fokus ("+before.y+" → "+after.y+")");
+  const ov = await page.locator(ovSel).boundingBox(), f = await page.locator(fld).first().boundingBox();
+  await page.waitForTimeout(300);   // Gleiten nach oben abwarten
+  const after = await page.locator(card).first().boundingBox(), clip = await page.evaluate(s => { const c = document.querySelector(s); return c.scrollHeight > c.clientHeight + 1; }, card);
+  ok(after.y <= before.y + 1, name+": Karte rutscht beim Fokus nach unten ("+before.y+" → "+after.y+")");
+  ok(!clip || after.y <= 9, name+": Karte gekürzt, obwohl oben noch Platz ist (oben "+after.y+") "+await page.evaluate(s => { const c = document.querySelector(s), o = c.parentElement; return [o.dataset.pin0, o.style.getPropertyValue("--pint"), c.scrollHeight, c.clientHeight, getComputedStyle(c).maxHeight, getComputedStyle(o).paddingTop, c.offsetTop].join(","); }, card));
+  ok(clip || after.y + after.height >= H - kbH - 12 || Math.abs(after.y - before.y) <= 1, name+": Karte bewegt sich, obwohl sie passt");
+  ok(after.y >= 7, name+": Karte reicht unter die Statusleiste");
   ok(ov.y <= 0.5 && ov.y + ov.height >= H - 0.5, name+": Hintergrund reicht nicht bis unten: "+JSON.stringify(ov));
   ok(after.y + after.height <= H - kbH + 1, name+": Karte reicht unter die Tastatur");
   ok(f.y >= 0 && f.y + f.height <= H - kbH, name+": Feld verdeckt");
@@ -1632,11 +1637,12 @@ const kbPop = async (open, ovSel, name) => {
   await page.evaluate(() => { Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => 90}); visualViewport.dispatchEvent(new Event("scroll")); });
   await page.waitForTimeout(150);
   const pan = await page.locator(card).first().boundingBox(), ov2 = await page.locator(ovSel).boundingBox();
-  ok(Math.abs(pan.y - before.y) <= 1, name+": Karte springt beim Verschieben der Seite ("+before.y+" → "+pan.y+")");
+  ok(Math.abs(pan.y - after.y) <= 1, name+": Karte springt beim Verschieben der Seite ("+after.y+" → "+pan.y+")");
   ok(ov2.y <= 0.5, name+": Lücke über dem Pop-up-Hintergrund: "+ov2.y);
   await page.evaluate(() => { document.activeElement.blur(); delete visualViewport.height; delete visualViewport.offsetTop; visualViewport.dispatchEvent(new Event("scroll")); visualViewport.dispatchEvent(new Event("resize")); });
   await page.waitForTimeout(300);
   ok(!(await rp(`!!document.querySelector(".kbpin") || document.body.classList.contains("kb")`)), name+": Tastatur-Zustand bleibt hängen");
+  await page.waitForTimeout(300);
   const back = await page.locator(card).first().boundingBox();
   ok(Math.abs(back.y - before.y) <= 1, name+": Karte steht nach dem Schließen woanders ("+before.y+" → "+back.y+")");
 };
@@ -1645,6 +1651,11 @@ await test("Tastatur im Pop-up: Profil bearbeiten springt nicht, Hintergrund ble
 });
 await test("Tastatur im Pop-up: mittige Karte (Neues Ziel) springt nicht", async () => {
   await kbPop(`openZiele(); zEdit = zEditFrom(""); zRenderEdit(true); true`, "#catPop", "ziel");
+});
+await test("Tastatur im Pop-up: hohe Karte (Ziel mit Freunde-Suche) nutzt den Platz bis oben", async () => {
+  await kbPop(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FR.friends = [{id:"r1", uid:"u1", name:"anna", email:"a@x.de"}];
+    var z = zielNew("Lissabon", {id:"o1", n:"Lissabon", la:38.72, lo:-9.14, r:30000}); META[z] = {owner:"u_me", members:["u_me"], invites:[]}; save(); openZiele(z); true`, "#zPop", "ziel-hoch");
+  const r = await page.locator("#zPop > *").first().boundingBox();
 });
 
 await test("Freunde: Suche statt Liste bei 200 Freunden (Ziel teilen)", async () => {
