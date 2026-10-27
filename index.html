@@ -2070,6 +2070,13 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .fr-tile small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fr-badge{position:absolute;top:6px;right:8px;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;background:#FF3B30;color:#fff;font:700 12px/20px var(--f-body);font-style:normal;text-align:center}
 .fr-tile:has(.fr-badge){padding-right:34px}
+.ag-card[data-fr] .ag-title{padding-right:44px;font-size:23px}
+.fr-bar{display:flex;align-items:center;gap:8px;margin:6px 0 4px}
+.fr-bar .fr-seg{flex:1;min-width:0;margin:0}
+.fr-seg em{font-style:normal;color:var(--muted);font-weight:500;margin-left:3px}
+.fr-ib{position:relative;flex:0 0 36px;width:36px;height:36px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--ink);cursor:pointer}
+.fr-ib svg{width:19px;height:19px}
+.fr-ib .fr-badge{top:-4px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:18px;box-shadow:0 0 0 2px var(--card,var(--bg))}
 .fr-filt{margin:0 0 8px}
 .fr-none{margin:8px 4px}
 .fr-pop .ag-lbl:first-of-type{margin-top:4px}
@@ -4680,13 +4687,13 @@ function tripsPageHTML(){
 }
 var frTab = "fol", FRRMICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.5 16.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M12.5 8.5h5\"/></svg>";
 function friendsPageHTML(){
-  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Follower und Gefolgt\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Follower &amp; Gefolgt</h3>";
+  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Follower und Gefolgt\" data-fr=\"1\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Follower &amp; Gefolgt</h3>";
   if(!acct.user) return h+"<p class=\"note\">Melde dich an, um anderen zu folgen.</p></div>";
   return h+frTilesHTML()+friendsHTML()+"</div>";
 }
 function friendsHTML(){
   var ing = frTab==="ing", list = ing ? FR.following : FR.followers, q = norm(frFilt.trim().replace(/^@/, ""));
-  var h = "<div class=\"pf-seg fr-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"fol\" aria-selected=\""+!ing+"\">Follower · "+FR.followers.length+"</button><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"ing\" aria-selected=\""+ing+"\">Gefolgt · "+FR.following.length+"</button></div>";
+  var h = "";
   if(list.length > 1) h += "<label class=\"frs-q fr-filt\">"+FRSICO+"<input type=\"search\" id=\"frFilt\" value=\""+esc(frFilt)+"\" placeholder=\""+(ing ? "Gefolgt durchsuchen" : "Follower durchsuchen")+"\" aria-label=\""+(ing ? "Gefolgt durchsuchen" : "Follower durchsuchen")+"\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\" enterkeyhint=\"search\"></label>";
   h += "<div class=\"ag-grp\">";
   if(!list.length) h += "<p class=\"note\">"+(ing ? "Du folgst noch niemandem. Such Leute über ihren Benutzernamen." : "Dir folgt noch niemand. Schick deinen Einladungslink.")+"</p>";
@@ -4768,10 +4775,10 @@ function frReadKey(){ return "rp-frread-"+(acct.user ? acct.user.uid : ""); }
 function frUnread(){ var rd = {}; try { rd = JSON.parse(lsGet(frReadKey())||"{}") || {}; } catch(e){} return FR.inc.filter(function(r){ return !rd[r.id]; }).length; }
 function frMarkRead(){ var rd = {}; FR.inc.forEach(function(r){ rd[r.id] = 1; }); lsSet(frReadKey(), JSON.stringify(rd)); }
 function frTilesHTML(){
-  var u = frUnread();
-  return "<div class=\"fr-tiles\"><button type=\"button\" class=\"fr-tile\" data-act=\"fglist\"><span class=\"fg-ic\">"+FGICO+"</span><span><b>Gruppen</b><small>"+(FG.length ? FG.length+(FG.length===1 ? " Gruppe" : " Gruppen") : "nur für dich")+"</small></span></button>"+
-    "<button type=\"button\" class=\"fr-tile\" data-act=\"frreqs\"><span class=\"fg-ic\">"+FRREQICO+"</span><span><b>Neue Follower</b><small>"+(FR.inc.length ? FR.inc.length+" offen" : "keine offen")+"</small></span>"+
-    (u ? "<i class=\"fr-badge\" aria-label=\""+u+" neue Follower\">"+u+"</i>" : "")+"</button></div>";
+  var u = frUnread(), ing = frTab==="ing", gl = FG.length ? FG.length+(FG.length===1 ? " Gruppe" : " Gruppen") : "keine Gruppen";
+  return "<div class=\"fr-bar\"><div class=\"pf-seg fr-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"fol\" aria-selected=\""+!ing+"\">Follower <em>"+FR.followers.length+"</em></button><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"ing\" aria-selected=\""+ing+"\">Gefolgt <em>"+FR.following.length+"</em></button></div>"+
+    "<button type=\"button\" class=\"fr-ib\" data-act=\"fglist\" aria-label=\"Gruppen · "+gl+"\" title=\"Gruppen · "+gl+"\">"+FGICO+"</button>"+
+    "<button type=\"button\" class=\"fr-ib\" data-act=\"frreqs\" aria-label=\"Neue Follower"+(FR.inc.length ? " · "+FR.inc.length+" offen" : "")+"\" title=\"Neue Follower\">"+FRREQICO+(u ? "<i class=\"fr-badge\">"+u+"</i>" : "")+"</button></div>";
 }
 function frReqHTML(){
   var h = "<div class=\"pop-card fr-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Neue Follower\"><div class=\"pop-head\"><h4>Neue Follower</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
