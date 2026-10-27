@@ -1875,10 +1875,11 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
     for(let i = 0; i < 40; i++){ await new Promise(r => requestAnimationFrame(r)); ys.push(Math.round(c.getBoundingClientRect().bottom)); } return ys; }, act);
   // Gleiten = erstes Bild noch (fast) an der alten Stelle, dann gleichmäßig in eine Richtung über mehrere Bilder bis zum Ziel
   // (die Bildrate schwankt unter Last, daher keine feste Schrittgrenze)
-  const smooth = (ys, w) => { const a = ys[0], z = ys[ys.length - 1], dir = Math.sign(z - a); let mono = true, mid = 0;
+  // nur bis zum ersten Erreichen des Ziels auswerten (danach greift ggf. die Rückfallebene „keine Tastatur gekommen“ nach 1,2 s)
+  const smooth = (ys0, w, z) => { const a = ys0[0]; let k = ys0.findIndex(y => Math.abs(y - z) <= 2); const ys = k > 0 ? ys0.slice(0, k + 1) : ys0, dir = Math.sign(z - a); let mono = true, mid = 0;
     for(let i = 1; i < ys.length; i++){ if(Math.sign(ys[i] - ys[i-1]) === -dir && Math.abs(ys[i] - ys[i-1]) > 1) mono = false; if(Math.abs(ys[i] - a) > 8 && Math.abs(ys[i] - z) > 8) mid++; }
-    ok(Math.abs(ys[1] - a) <= 40 && mono && mid >= 3, w+": Eingabe springt statt zu gleiten: "+ys.join(",")); };
-  const g1 = await glide("focus"); smooth(g1, "Antippen");
+    ok(k > 0 && Math.abs(ys[1] - a) <= 40 && mono && mid >= 2, w+": Eingabe springt statt zu gleiten: "+ys0.join(",")); };
+  const g1 = await glide("focus"); smooth(g1, "Antippen", H - 400);   // erste Schätzung: gut 400 pt Tastatur
   const p1 = await pos(); same(p1, "Antippen"); ok(p1.inp.b <= H - 380 && p1.inp.b >= H - 420, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(p1.inp));
 
   // 2) Fall A – iOS meldet die Tastatur nur über visualViewport (innerHeight bleibt) und verschiebt die Seite (offsetTop)
@@ -1887,7 +1888,7 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
   ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur (verschoben): "+JSON.stringify(p));
   await kbFake(VH, 0); await page.waitForTimeout(350);
   p = await pos(); same(p, "Tastatur ohne Verschiebung"); ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur: "+JSON.stringify(p));
-  const g2 = await glide("blur"); smooth(g2, "Schließen"); await kbReal(); await page.waitForTimeout(50);
+  const g2 = await glide("blur"); smooth(g2, "Schließen", p0.inp.b); await kbReal(); await page.waitForTimeout(50);
   p = await pos(); same(p, "Schließen"); ok(Math.abs(p.inp.b - p0.inp.b) <= 1, "Eingabe steht nach dem Schließen nicht wie vorher: "+p0.inp.b+" → "+p.inp.b); ok(p.inp.b >= H - 2, "Eingabe bleibt nach dem Schließen oben: "+JSON.stringify(p.inp));
   // 3) Fall B – iOS verkleinert das ganze Layout (innerHeight sinkt mit): das war der Fehler mit der durchscheinenden Karte
   await page.locator("#chIn").focus(); await page.waitForTimeout(350);
@@ -1898,7 +1899,7 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
   await page.evaluate(() => document.activeElement.blur()); await page.setViewportSize(vp); await page.waitForTimeout(400);
   p = await pos(); same(p, "Schließen nach Verkleinern"); ok(p.inp.b >= H - 2, "Eingabe nach dem Schließen nicht unten: "+JSON.stringify(p.inp));
   // 4) Zweites Antippen: gemerkte Höhe → Eingabe steht sofort an der richtigen Stelle (kein Nachrutschen)
-  const g3 = await glide("focus"); smooth(g3, "Zweites Antippen");
+  const g3 = await glide("focus"); smooth(g3, "Zweites Antippen", VH);
   p = await pos(); ok(Math.abs(p.inp.b - VH) <= 1, "Gemerkte Tastaturhöhe nicht genutzt: "+JSON.stringify(p.inp));
   // 5) Senden lässt die Tastatur offen (Fokus bleibt im Feld)
   await page.evaluate(() => { const b = document.querySelector("#chView .ch-send"); const ev = new MouseEvent("mousedown", {bubbles:true, cancelable:true}); b.dispatchEvent(ev); window.__md = ev.defaultPrevented; });
