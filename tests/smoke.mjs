@@ -1750,6 +1750,29 @@ const wmFullTest = async (n, vp) => {
 await test("Profil: Weltkarte groß, Zahlen auf der Karte, Vollbild an und aus", async () => { await wmFullTest("hoch", {width:390, height:844}); });
 await test("Profil: Weltkarte Vollbild im Querformat", async () => { await wmFullTest("quer", {width:844, height:390}); }, QUER);
 
+await test("Lösch-X sitzt im Suchfeld, auch nach Scrollen (Profil → Ziele, Suche)", async () => {
+  await seed();
+  const xIn = async (fld, what) => {
+    const f = await page.locator(fld).first().boundingBox(), x = await page.locator("#clrX").boundingBox();
+    ok(x && await visible("#clrX"), what+": X fehlt");
+    const cx = x.x + x.width/2, cy = x.y + x.height/2;
+    ok(cx > f.x + f.width - 40 && cx < f.x + f.width && Math.abs(cy - (f.y + f.height/2)) <= 3, what+": X verschoben "+JSON.stringify([f, x]));
+  };
+  await rp(`zielNew("Lissabon", {id:"o1", n:"Lissabon", la:38.72, lo:-9.14, r:20000}); save(); openZiele(); true`); await page.waitForTimeout(300);
+  const zl = "#profView #zLink";
+  ok(await page.locator(zl).count()===1, "Linkfeld im Profil fehlt");
+  await page.locator(zl).fill("Lissabon"); await page.waitForTimeout(500);
+  await xIn(zl, "Ziele");
+  await page.evaluate(() => { const v = document.querySelector("#profView"); const sc = [v].concat([].slice.call(v.querySelectorAll("*"))).find(e => e.scrollHeight > e.clientHeight + 40 && /auto|scroll/.test(getComputedStyle(e).overflowY)); if(sc){ sc.scrollTop += 60; sc.dispatchEvent(new Event("scroll")); } });
+  await page.waitForTimeout(200);
+  if(await page.locator(zl).isVisible()) await xIn(zl, "Ziele nach Scrollen");
+  await shot("loesch-x-ziele");
+  await rp(`closeProfile(); openSearch(); true`); await page.waitForTimeout(300);
+  const sf = "#srchPop input[type=search]";
+  await page.locator(sf).first().fill("Katz"); await page.waitForTimeout(400);
+  await xIn(sf, "Suche");
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }
