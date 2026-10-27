@@ -6591,7 +6591,7 @@ function chGrow(){ var i = $("chIn"); if(!i) return; i.style.height = "auto"; i.
    (das war der Fehler: wenn iOS innerHeight mitverkleinert, blieb der Chat auf der geschätzten halben Höhe stehen).
    Beim Antippen sitzt die Eingabe sofort an der erwarteten Stelle über der Tastatur (Höhe vom letzten Mal, sonst vorsichtig
    geschätzt), damit iOS die Seite gar nicht erst verschiebt; sobald iOS die echte Höhe meldet, gilt nur noch die. */
-var CHKB = {on:false, h0:0, got:false, t:0, cur:0, raf:0, closing:false};
+var CHKB = {on:false, h0:0, got:false, t:0, cur:0, raf:0, closing:false, fb:1200};
 function chKbKey(){ return (matchMedia("(display-mode: standalone)").matches || navigator.standalone ? "a" : "b")+Math.round(innerWidth)+"x"+Math.round(CHKB.h0); }
 // erste Schätzung (noch nie gemessen): iPhone-Tastatur mit Wortvorschlägen und Formularleiste ist hochkant gut 380 pt hoch – lieber etwas zu viel
 function chKbGuess(){ var v = 0; try { v = +(JSON.parse(localStorage.getItem("rp-chkb") || "{}")[chKbKey()] || 0); } catch(e){}
@@ -6603,15 +6603,16 @@ function chTyping(){ var el = $("chView"), ae = document.activeElement; return !
 /* Höhe des Chat-Inhalts setzen – gleitend wie die iOS-Tastatur statt in einem Sprung. Beim ersten Antippen steht die Zielhöhe
    im selben Moment fest (iOS misst das Feld beim Fokus und verschiebt die Seite nur, wenn es unter der Tastatur läge);
    gezeichnet wird ab dem nächsten Bild die Bewegung von der alten zur neuen Höhe. */
-function chSetH(el, h, dur, done, pre){ cancelAnimationFrame(CHKB.raf);
+function chSetH(el, h, dur, done, pre){ cancelAnimationFrame(CHKB.raf); CHKB.anim = false;
   var box = $("chMsgs"), end = !box || box.scrollHeight - box.scrollTop - box.clientHeight < 80, from = CHKB.cur || (el.clientHeight - chSafeB());
   var put = function(v){ CHKB.cur = v; el.style.setProperty("--chh", Math.round(v)+"px"); if(box && end) box.scrollTop = box.scrollHeight; };
   if(pre || !dur) put(h);   // pre: Zielhöhe sofort festlegen (für die Messung von iOS), gezeichnet wird trotzdem ab der alten
   if(!dur || Math.abs(from - h) < 2 || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)){ put(h); if(done) done(); return; }
   var t0 = 0, ease = function(x){ return 1 - Math.pow(1 - x, 3); };
+  CHKB.anim = true;
   CHKB.raf = requestAnimationFrame(function step(ts){ if(!t0){ t0 = ts; put(from); }
     var k = Math.min(1, (ts - t0) / dur); put(from + (h - from) * ease(k));
-    if(k < 1) CHKB.raf = requestAnimationFrame(step); else if(done) done(); }); }
+    if(k < 1) CHKB.raf = requestAnimationFrame(step); else { CHKB.anim = false; if(done) done(); } }); }
 function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualViewport, de = document.documentElement;
   var typ = chTyping() && !!vv;
   if(!typ){ if(!CHKB.on) return; CHKB.on = false; clearTimeout(CHKB.t); de.style.removeProperty("--chtop"); document.body.classList.remove("chkb"); el.style.setProperty("--cht", "0px");
@@ -6623,7 +6624,7 @@ function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualVie
   var first = !CHKB.on;
   if(first){ CHKB.on = true; CHKB.h0 = el.clientHeight || innerHeight; CHKB.got = vv.height < CHKB.h0 - 120; clearTimeout(CHKB.t);
     // kommt keine Tastatur (Hardware-Tastatur), gilt nach einer Weile einfach die sichtbare Höhe
-    CHKB.t = setTimeout(function(){ if(CHKB.on && !CHKB.got){ CHKB.got = true; chVV(); } }, 1200); }
+    CHKB.t = setTimeout(function(){ if(CHKB.on && !CHKB.got){ CHKB.got = true; chVV(); } }, CHKB.fb); }
   if(!CHKB.got && vv.height < CHKB.h0 - 120){ CHKB.got = true; }
   var h = CHKB.got ? vv.height : Math.min(vv.height, chKbGuess()), t = CHKB.got ? Math.max(0, vv.offsetTop) : 0;
   if(CHKB.got && vv.height < CHKB.h0 - 120) chKbSave(vv.height);

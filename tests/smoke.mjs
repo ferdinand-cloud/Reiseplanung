@@ -2081,7 +2081,7 @@ await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, 
 
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {
   await seed();
-  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); try { localStorage.removeItem("rp-chkb"); } catch(e){} if(typeof KBPRED!=="undefined") KBPRED = true; true`);
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); try { localStorage.removeItem("rp-chkb"); } catch(e){} if(typeof KBPRED!=="undefined") KBPRED = true; CHKB.fb = 60000; true`);   // Rückfallebene „keine Tastatur“ (1,2 s) würde unter Last vorzeitig greifen
   await page.waitForTimeout(1000);   // Zeitgeber vorheriger Tests (Fokus) abwarten
   ok(await page.locator("#chIn").count()===1, "Chat-Eingabe fehlt");
   const vp = page.viewportSize(), H = vp.height, VH = H - 380;
@@ -2112,9 +2112,8 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
     for(let i = 1; i < ys.length; i++){ if(Math.sign(ys[i] - ys[i-1]) === -dir && Math.abs(ys[i] - ys[i-1]) > 1) mono = false; if(Math.abs(ys[i] - a) > 8 && Math.abs(ys[i] - z) > 8) mid++; }
     ok(Math.abs(ys[1] - a) <= 40 && mono && mid >= 2, w+": Eingabe springt statt zu gleiten: "+ys0.join(",")); };
   const g1 = await glide("focus"); smooth(g1, "Antippen", H - 400);   // erste Schätzung: gut 400 pt Tastatur
-  // Rückfallebene „keine Tastatur gekommen“ (1,2 s) hier abschalten und auf das Ende der Bewegung warten – unter Last dauert sie länger
-  await rp(`clearTimeout(CHKB.t); true`);
-  await page.waitForFunction(() => { const b = Math.round(document.querySelector("#chView .ch-comp").getBoundingClientRect().bottom), o = window.__lb; window.__lb = b; return o === b; }, null, {polling:100, timeout:3000});
+  // auf das Ende der Bewegung warten – unter Last dauert sie länger
+  for(let i = 0; i < 60 && await rp(`CHKB.anim`); i++) await page.waitForTimeout(50);
   const p1 = await pos(); same(p1, "Antippen"); ok(p1.inp.b <= H - 380 && p1.inp.b >= H - 420, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(p1.inp));
 
   // 2) Fall A – iOS meldet die Tastatur nur über visualViewport (innerHeight bleibt) und verschiebt die Seite (offsetTop)
@@ -2139,7 +2138,7 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
   // 5) Senden lässt die Tastatur offen (Fokus bleibt im Feld)
   await page.evaluate(() => { const b = document.querySelector("#chView .ch-send"); const ev = new MouseEvent("mousedown", {bubbles:true, cancelable:true}); b.dispatchEvent(ev); window.__md = ev.defaultPrevented; });
   ok(await page.evaluate(() => window.__md), "Senden-Knopf nimmt dem Feld den Fokus (Tastatur ginge zu)");
-  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50);
+  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50); await rp(`CHKB.fb = 1200; true`);
 });
 
 await test("Anmeldung: Hintergrund bleibt ganz, beim Antippen und mit Tastatur bewegt sich nichts", async () => {
