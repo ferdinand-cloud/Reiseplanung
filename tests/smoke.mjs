@@ -299,6 +299,27 @@ await test("Rückblick: seitlich wischen wechselt den Tag", async () => {
   ok(k > Y, "Wischen nach links wechselt nicht zum nächsten Tag ("+k+")");
 });
 
+async function dayHeadOk(where){
+  await rp(`(function(){ sugOpen = false; select(null); setSheet("full"); renderSheet(); })()`); await page.waitForTimeout(250);
+  const r = await page.evaluate(() => { const q = s => { const e = document.querySelector("#body .dhx "+s); if(!e) return null; const b = e.getBoundingClientRect(); return {t:b.top, b:b.bottom, l:b.left, r:b.right}; };
+    const row = document.querySelector("#body .dhx").getBoundingClientRect(), body = document.getElementById("body").getBoundingClientRect();
+    return {row:{t:row.top, b:row.bottom, h:row.height, r:row.right}, body:{r:body.right}, day:q(".dhd"), rc:q("[data-act=recap]"), sug:q("[data-act=sugtoggle]"), ring:!!document.querySelector("#body .dhx .dring[role=progressbar]"), old:!!document.querySelector("#body .fold[data-act=sugtoggle]")}; });
+  ok(r.day && r.rc && r.sug, where+": Tag, Vorschau oder Vorschläge fehlen in der Zeile "+JSON.stringify(r));
+  ok(r.row.h <= 64, where+": Tageskopf zu hoch ("+Math.round(r.row.h)+" px)");
+  ok(Math.abs((r.rc.t+r.rc.b)/2 - (r.sug.t+r.sug.b)/2) < 2 && r.rc.t >= r.row.t - 1 && r.sug.b <= r.row.b + 1, where+": Knöpfe nicht in einer Zeile "+JSON.stringify(r));
+  ok(r.day.r <= r.rc.l && r.rc.r <= r.sug.l && r.sug.r <= r.body.r + 1, where+": Reihenfolge/Überlappung falsch "+JSON.stringify(r));
+  ok(r.ring && !r.old, where+": Fortschrittsring fehlt oder alte Vorschlagszeile noch da");
+  await click("#body .dhx [data-act=sugtoggle]"); await page.waitForTimeout(200);
+  ok(await page.locator("#body .dsugs .sug").count() > 0, where+": Vorschläge klappen nicht auf");
+  ok(await page.evaluate(() => document.querySelector("#body .dhx [data-act=sugtoggle]").getAttribute("aria-expanded"))==="true", where+": Vorschlagsknopf nicht als offen markiert");
+  await shot("tageskopf-"+where);
+  await click("#body .dhx [data-act=sugtoggle]"); await page.waitForTimeout(200);
+  ok(await page.locator("#body .dsugs").count()===0, where+": Vorschläge klappen nicht zu");
+  await click("#body .dhx [data-act=recap]"); await page.waitForTimeout(400);
+  ok(await visible("#rc"), where+": Tagesvorschau öffnet nicht");
+}
+await test("Tageskopf: Tag, Tagesvorschau und Vorschläge in einer Zeile (hoch)", async () => { await seed(); await dayHeadOk("hoch"); });
+await test("Tageskopf: Tag, Tagesvorschau und Vorschläge in einer Zeile (quer)", async () => { await seed(); await dayHeadOk("quer"); }, {vp:{width:844, height:390}, safe:{left:47, right:47, bottom:21}});
 await test("Kartenebenen: Besuchte Orte & Fotospots ausblenden", async () => {
   await seed();
   await click("#layersBtn");
