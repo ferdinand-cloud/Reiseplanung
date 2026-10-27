@@ -279,7 +279,9 @@ await test("Rückblick: Foto nach unten wegziehen schließt und bleibt im Rückb
 await test("Rückblick: seitlich wischen wechselt den Tag", async () => {
   await seed();
   const Y = await rp(`dayOf("p4")`);
-  await rp(`openRecap("${Y}")`); await page.waitForTimeout(900);
+  await rp(`openRecap("${Y}")`);
+  // warten, bis die Einblendung (Deckkraft/Zoom) fertig ist – unter Last dauert das länger als die nominalen 0,5 s
+  await page.waitForFunction(() => { const el = document.getElementById("rc"), cs = el && getComputedStyle(el); return el && el.classList.contains("on") && cs.opacity==="1" && cs.transform==="none" && !el.getAnimations({subtree:false}).length; }, null, {timeout:10000});
   await page.evaluate(() => {
     const el = document.getElementById("rc"), tg = el.querySelector(".rc-hero") || el;
     const T = (x, y) => new Touch({identifier:1, target:tg, clientX:x, clientY:y});
