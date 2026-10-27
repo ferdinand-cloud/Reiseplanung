@@ -22,10 +22,10 @@ if(!SHARD){
   const jobs = Math.max(1, Number(process.env.JOBS) || Math.min(4, os.cpus().length));
   if(jobs > 1){
     const t0 = Date.now(), file = fileURLToPath(import.meta.url);
-    await chromePath();   // Chromium einmal vorab entpacken, sonst entpacken alle Prozesse gleichzeitig (spawn ETXTBSY)
+    const ch = await chromePath();   // Chromium einmal hier entpacken und den Prozessen mitgeben, sonst entpacken alle gleichzeitig (spawn ETXTBSY)
     const parts = await Promise.all(Array.from({length:jobs}, (_, i) => new Promise(res => {
       let out = "";
-      const c = spawn(process.execPath, [file, ...process.argv.slice(2)], { env: {...process.env, SHARD: i+"/"+jobs}, stdio: ["ignore", "pipe", "inherit"] });
+      const c = spawn(process.execPath, [file, ...process.argv.slice(2)], { env: {...process.env, SHARD: i+"/"+jobs, CHROME: ch.exe, CHROME_ARGS: JSON.stringify(ch.args)}, stdio: ["ignore", "pipe", "inherit"] });
       c.stdout.on("data", d => { out += d; if(process.env.VERBOSE) process.stdout.write(String(d).split("\n").filter(l => l && !l.startsWith("@@")).map(l => l+"\n").join("")); });
       c.on("close", () => { const l = out.split("\n").find(x => x.startsWith("@@")); res(l ? JSON.parse(l.slice(2)) : [{name:"Prozess "+i, idx:-1, ok:false, ms:0, err:"abgestürzt"}]); });
     })));
@@ -40,7 +40,7 @@ function report(results, ms){
 }
 
 async function chromePath(){
-  if(process.env.CHROME) return { exe: process.env.CHROME, args: [] };
+  if(process.env.CHROME) return { exe: process.env.CHROME, args: process.env.CHROME_ARGS ? JSON.parse(process.env.CHROME_ARGS) : [] };
   try { const c = (await import("@sparticuz/chromium")).default; return { exe: await c.executablePath(), args: c.args }; }
   catch(e){ throw new Error("Kein Chromium gefunden: CHROME=/pfad/zu/chrome setzen oder @sparticuz/chromium installieren"); }
 }
