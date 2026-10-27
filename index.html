@@ -2981,18 +2981,25 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .pf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border:0;padding:0;margin:6px 0 18px}
 .pf-stats button{background:var(--fill);border-radius:16px;padding:12px 6px}
 .pf-stats b{font-size:20px}
-/* Profilkopf kompakt: Bild, Name, Zahlenzeile (ohne Kacheln) */
-.pf-head{padding-right:0;align-items:center;gap:16px;margin:6px 0 14px}
-.pf-head .pf-av{width:72px;height:72px;flex:0 0 72px}
-.pf-head .pf-av.init{font-size:28px}
-.pf-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
-.pf-side .pf-id{padding-right:44px;justify-content:center}
-.pf-side .pf-id b{font-size:18px;white-space:nowrap}
-.pf-side .pf-stats{display:flex;justify-content:space-between;gap:8px;margin:0 40px 0 0;padding:0;border:0;align-self:flex-start}
-.pf-side .pf-stats button{background:none;border-radius:8px;padding:0;gap:0;min-width:0;align-items:flex-start}
-.pf-side .pf-stats b{font-size:16px;line-height:1.15}
-.pf-side .pf-stats span{font-size:12px;white-space:nowrap}
-.pf-gear{width:36px;height:36px}
+/* Profilkopf: ruhig, ohne Zahlenzeile – Name, Follower-Kapsel, Zahnrad in einer Zeile mit dem Bild */
+.pf-head{padding-right:0;align-items:center;gap:14px;margin:4px 0 16px}
+.pf-head .pf-av{width:64px;height:64px;flex:0 0 64px;box-shadow:0 0 0 .5px var(--glass-bd,var(--line)),var(--sh1,0 2px 8px rgba(0,0,0,.2))}
+.pf-head .pf-av.init{font-size:26px;background:color-mix(in srgb,var(--accent) 70%,var(--fill))}
+.pf-side{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+.pf-side .pf-id{padding-right:0;justify-content:center;max-width:100%}
+.pf-side .pf-id b{font:650 19px/1.2 var(--f-body);letter-spacing:-.2px;white-space:nowrap}
+.pf-side .pf-stats{display:inline-flex;align-items:center;gap:0;margin:0;padding:0 4px 0 9px;height:30px;border:.5px solid var(--glass-bd,var(--line));border-radius:999px;background:var(--glass,var(--fill));-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);max-width:100%}
+.pf-side .pf-stats .pf-fi{width:15px;height:15px;flex:0 0 15px;color:var(--muted);margin-right:2px}
+.pf-side .pf-stats i{width:.5px;height:14px;background:var(--line);flex:0 0 auto}
+.pf-side .pf-stats button{flex-direction:row;align-items:baseline;gap:4px;background:none;border-radius:999px;padding:0 8px;height:28px;min-width:0;align-items:center}
+.pf-side .pf-stats button:active{background:var(--fill)}
+.pf-side .pf-stats b{font:650 14px/1 var(--f-body);font-variant-numeric:tabular-nums}
+.pf-side .pf-stats span{font-size:13px;color:var(--muted);white-space:nowrap}
+.pf-head .pf-gear{position:static;flex:0 0 36px;width:36px;height:36px;align-self:flex-start;margin-top:-2px;background:var(--glass,var(--fill));border:.5px solid var(--glass-bd,var(--line));-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);color:var(--muted)}
+.pf-head .pf-gear svg{width:19px;height:19px}
+.pf-head+.pf-seg button{flex:1 1 auto;padding:7px 6px}
+.pf-seg .pf-n{margin-left:2px;font:600 11.5px/1 var(--f-body);color:var(--muted);opacity:.8;font-variant-numeric:tabular-nums}
+.pf-seg button[aria-selected="true"] .pf-n{color:var(--accent);opacity:1}
 .pf-grid{gap:14px}
 .pf-tw{position:relative;min-width:0}
 .pf-trip{position:relative;display:block;aspect-ratio:4/5;border-radius:22px;overflow:hidden;background:var(--fill);box-shadow:0 6px 18px rgba(0,0,0,.18);transition:transform .15s ease}
@@ -7387,14 +7394,14 @@ function renderProfile(){
     el.innerHTML = h; return;
   }
   var ids = liveIds(), mine = ids.filter(function(id){ return !isViewerOf(id); }), obs = ids.filter(function(id){ return isViewerOf(id); });
-  h += "<button type=\"button\" class=\"pf-gear\" data-act=\"openacct\" aria-label=\"Konto &amp; Einstellungen\" title=\"Konto &amp; Einstellungen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg></button>";
+  var cnt = function(n){ return " <small class=\"pf-n\">"+n+"</small>"; }, tb = function(v, l, n){ return "<button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\""+v+"\" aria-selected=\""+(profTab===v)+"\">"+l+(n==null ? "" : cnt(n))+"</button>"; };
+  // Profilkopf: Bild, Name, Follower-Kapsel, Zahnrad; Reisen/Beobachtet zählen in den Reitern (keine Zahlenzeile)
   h += "<div class=\"pf-head\">"+avHTML("pf-av")+
-       "<div class=\"pf-side\"><div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b></div>";
-  h += "<div class=\"pf-stats\"><button type=\"button\" data-act=\"pftab\" data-v=\"mine\"><b>"+mine.length+"</b><span>Reisen</span></button>"+
-       "<button type=\"button\" data-act=\"pftab\" data-v=\"obs\"><b>"+obs.length+"</b><span>Beobachtet</span></button>"+
-       "<button type=\"button\" data-act=\"openfriends\" data-v=\"fol\"><b>"+FR.followers.length+"</b><span>Follower</span></button>"+
-       "<button type=\"button\" data-act=\"openfriends\" data-v=\"ing\"><b>"+FR.following.length+"</b><span>Gefolgt</span></button></div></div></div>";
-  h += "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"mine\" aria-selected=\""+(profTab==="mine")+"\">Reisen</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"obs\" aria-selected=\""+(profTab==="obs")+"\">Beobachtet</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"ziele\" aria-selected=\""+(profTab==="ziele")+"\">Ziele</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"welt\" aria-selected=\""+(profTab==="welt")+"\">Karte</button></div>";
+       "<div class=\"pf-side\"><div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b></div>"+
+       "<div class=\"pf-stats\">"+ic("friends", "pf-fi")+"<button type=\"button\" data-act=\"openfriends\" data-v=\"fol\"><b>"+FR.followers.length+"</b><span>Follower</span></button><i></i>"+
+       "<button type=\"button\" data-act=\"openfriends\" data-v=\"ing\"><b>"+FR.following.length+"</b><span>Gefolgt</span></button></div></div>"+
+       "<button type=\"button\" class=\"pf-gear\" data-act=\"openacct\" aria-label=\"Konto &amp; Einstellungen\" title=\"Konto &amp; Einstellungen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg></button></div>";
+  h += "<div class=\"pf-seg\" role=\"tablist\">"+tb("mine", "Reisen", mine.length)+tb("obs", "Beobachtet", obs.length)+tb("ziele", "Ziele")+tb("welt", "Karte")+"</div>";
   if(profTab==="ziele") h += "<div class=\"zl\">"+zielsHTML()+"</div>"; else if(profTab==="welt") h += wmHTML(); else {
   var list = profTab==="obs" ? obs : mine, all0 = list.length;
   list.sort(function(a, b){ return nowFirst(S.trips[a], S.trips[b]) || ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); });
