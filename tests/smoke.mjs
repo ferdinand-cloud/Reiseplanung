@@ -2743,6 +2743,51 @@ await test("Follower-Seite: Follower/Gefolgt, neue Follower mit rotem Zähler, z
   await rp(`closeProfile(); fbDb = null; FR = {inc:[], followers:[], following:[], friends:[]}; true`);
 });
 
+await test("Follower-Seite: Unterfenster (Leute suchen, Gruppen, Gruppe, neue Follower, Gruppe zuordnen) führen beim Schließen zurück", async () => {
+  await seed();
+  await rp(`var fq = function(path){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(path+"/"+id); }, add:function(){ return Promise.resolve({}); }}; return q; },
+      fd = function(path){ return {id:path, collection:function(c){ return fq(path+"/"+c); }, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }, set:function(){ return Promise.resolve(); }, update:function(){ return Promise.resolve(); }, delete:function(){ return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }}; };
+    fbDb = {collection:function(c){ return fq(c); }, batch:function(){ return {set:function(){}, update:function(){}, delete:function(){}, commit:function(){ return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }};
+    acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; PROF = {name:"ich", nameLower:"ich"}; FG = [{id:"g1", n:"Familie", m:["u_anna"]}];
+    FR.followers = [{id:"u_anna_u_me", uid:"u_anna", name:"anna", mutual:true}, {id:"u_x_u_me", uid:"u_x", name:"xaver"}];
+    FR.following = [{id:"u_me_u_anna", uid:"u_anna", name:"anna"}];
+    FR.friends = FR.followers.slice(0, 1); FR.inc = FR.followers.slice(1); frTab = "fol"; frFilt = "";
+    closeMenus(); openProfile(); true`);
+  await page.waitForTimeout(300);
+  await rp(`accView = "friends"; openSettings(); true`); await page.waitForTimeout(200);
+  const onFriends = async (w) => { await page.waitForTimeout(250); ok(await rp(`!document.getElementById("acctPop").hidden && accView==="friends" && !!document.querySelector("#acctPop .fr-tiles")`), w+": nicht zurück auf der Follower-Seite"); };
+  // Leute suchen: × und Tipp daneben
+  await tapS('#acctPop [data-act=accview][data-v="search"]'); await page.waitForTimeout(200);
+  ok(await rp(`accView==="search"`), "Leute suchen öffnet nicht");
+  await tapS("#acctPop .ag-x"); await onFriends("Leute suchen ×");
+  await tapS('#acctPop [data-act=accview][data-v="search"]'); await page.waitForTimeout(200);
+  await page.mouse.click(5, 5); await onFriends("Leute suchen daneben");
+  await tapS('#acctPop [data-act=accview][data-v="search"]'); await page.waitForTimeout(200);
+  await tapS('#acctPop .back[data-v="friends"]'); await onFriends("Leute suchen ‹");
+  // Gruppen-Pop-up, Gruppe bearbeiten, neue Gruppe
+  await tapS("#acctPop [data-act=fglist]"); await page.waitForTimeout(200);
+  await tapS('#catPop [data-act=fgopen][data-g="g1"]'); await page.waitForTimeout(200);
+  await tapS("#catPop .fg-card [data-act=fgcancel]"); await page.waitForTimeout(200);
+  ok(await visible("#catPop .fr-pop .fg-grp"), "Gruppe × führt nicht zur Gruppenliste zurück");
+  await tapS("#catPop [data-act=fgnew]"); await page.waitForTimeout(200);
+  await page.mouse.click(5, 5); await page.waitForTimeout(200);
+  ok(await visible("#catPop .fr-pop .fg-grp"), "Neue Gruppe daneben führt nicht zur Gruppenliste zurück");
+  await tapS("#catPop .fr-pop .x"); await onFriends("Gruppen ×");
+  ok(await rp(`document.getElementById("catPop").hidden`), "Gruppen-Pop-up bleibt offen");
+  // Neue Follower
+  await tapS("#acctPop [data-act=frreqs]"); await page.waitForTimeout(200);
+  await page.mouse.click(5, 5); await onFriends("Neue Follower daneben");
+  // Gruppe zuordnen am Freund
+  await tapS('#acctPop [data-act=fgfor][data-uid="u_anna"]'); await page.waitForTimeout(200);
+  ok(await visible("#jpMenu"), "Gruppen-Auswahl am Freund öffnet nicht");
+  await page.mouse.click(5, 5); await onFriends("Gruppe zuordnen daneben");
+  ok(!(await rp(`!!document.getElementById("jpMenu")`)), "Gruppen-Auswahl bleibt offen");
+  // Follower-Seite selbst schließen → Profil bleibt
+  await tapS("#acctPop .ag-x"); await page.waitForTimeout(200);
+  ok(await rp(`document.getElementById("acctPop").hidden && profOpen`), "Follower-Seite schließen führt nicht zum Profil zurück");
+  await rp(`closeProfile(); fbDb = null; FR.friends = []; FR.followers = []; FR.following = []; FR.inc = []; FG = []; true`);
+});
+
 await test("Follower: bestehende Freundschaften werden einmalig zu gegenseitigem Folgen, sonst nichts geändert", async () => {
   await seed();
   await rp(`window.__w = []; window.__snap = {}; window.__fmig = {"u_old_u_me":1};

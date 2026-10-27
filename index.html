@@ -4798,12 +4798,13 @@ function openFgEd(id, uid0){
   frSearchDone("fg"); renderFgEd(true);
   if(!g) setTimeout(function(){ var i = $("fgName"); if(i) i.focus(); }, 60);
 }
+function fgCancel(){ var cp = $("catPop"); if(!FGED || cp.hidden || !cp.querySelector(".fg-card")) return false; var bk = FGED.back; FGED = null; fgBack(bk); return true; }
 function fgBack(bk){ if(bk){ FRPOP = "grp"; frPopRender(true); } else { FRPOP = ""; closeCatPop(); } }
 function fgKeep(){ var i = $("fgName"); if(i && FGED) FGED.n = i.value; }
 function renderFgEd(first){
   if(!FGED) return; if(!first) fgKeep();   // beim Öffnen nicht den Namen aus dem zuletzt offenen (nur versteckten) Fenster übernehmen
   var us = Object.keys(FGED.sel), n = us.length;
-  var h = "<div class=\"pop-card ask-card fg-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppe\"><div class=\"pop-head\"><h4>"+(FGED.id ? "Gruppe bearbeiten" : "Neue Gruppe")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+  var h = "<div class=\"pop-card ask-card fg-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppe\"><div class=\"pop-head\"><h4>"+(FGED.id ? "Gruppe bearbeiten" : "Neue Gruppe")+"</h4><button type=\"button\" class=\"x\" data-act=\"fgcancel\" aria-label=\"Schließen\">×</button></div>"+
     "<label class=\"fg-name\"><span class=\"fg-ic\">"+FGICO+"</span><input type=\"text\" id=\"fgName\" maxlength=\"40\" value=\""+esc(FGED.n)+"\" placeholder=\"Name, z. B. Familie\" autocomplete=\"off\" enterkeyhint=\"done\" aria-label=\"Name der Gruppe\"></label>"+
     "<div class=\"ask-h\"><span>"+(n ? n+(n===1 ? " Person" : " Personen") : "Noch niemand in der Gruppe")+"</span><span>nur für dich sichtbar</span></div>"+
     (n ? "<div class=\"frs-sel\">"+us.map(function(u){ return "<button type=\"button\" class=\"frs-chip\" data-act=\"fgtog\" data-uid=\""+esc(u)+"\" aria-label=\"@"+esc(chName(u))+" entfernen\">@"+esc(chName(u))+"<i aria-hidden=\"true\">×</i></button>"; }).join("")+"</div>" : "")+
@@ -7478,7 +7479,7 @@ function avFull(src){
 document.addEventListener("click", function(e){ var t = e.target.closest && e.target.closest(AVTAP); if(!t || !t.getAttribute("src")) return; e.preventDefault(); e.stopPropagation(); avFull(t.getAttribute("src")); }, true);
 document.addEventListener("change", function(e){ if(e.target.id==="avIn" && e.target.files && e.target.files[0]){ setAvatar(e.target.files[0]); e.target.value = ""; } });
 // Neuaufbau bei offenem Fenster (z. B. neue Daten): gleiche Ansicht ohne erneutes Aufklappen und ohne Sprung nach oben
-function openSettings(){ var el = $("acctPop"), c0 = !el.hidden && el.getAttribute("data-v")===accView && el.querySelector(".ag-card"), st = c0 ? c0.scrollTop : 0, fid = c0 && document.activeElement && document.activeElement.id==="frFilt";
+function openSettings(){ if($("acctPop").hidden) ACCSTK = []; var el = $("acctPop"), c0 = !el.hidden && el.getAttribute("data-v")===accView && el.querySelector(".ag-card"), st = c0 ? c0.scrollTop : 0, fid = c0 && document.activeElement && document.activeElement.id==="frFilt";
   el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); var c1 = el.querySelector(".ag-card"); if(c0 && c1){ c1.style.animation = "none"; c1.scrollTop = st; } if(fid && $("frFilt")){ var fi0 = $("frFilt"); fi0.focus(); try { fi0.setSelectionRange(fi0.value.length, fi0.value.length); } catch(e){} }
   el.setAttribute("data-v", accView); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
 /* Tastatur: alles am sichtbaren Bereich ausrichten und das aktive Feld im Blick halten */
@@ -7594,7 +7595,11 @@ if(/[?&]kbdiag/.test(location.search)) (function(){ var vv = window.visualViewpo
   if(vv){ vv.addEventListener("resize", function(){ log("vresize"); }); vv.addEventListener("scroll", function(){ log("vscroll"); }); }
   window.addEventListener("resize", function(){ log("wresize"); });
   log("start"); })();
-function closeSettings(){ accView = "main"; unameMsg = ""; $("acctPop").hidden = true; if($("tripPop").hidden) document.body.classList.remove("glass"); }
+/* Unteransichten im Konto-Fenster (z. B. Follower → Leute suchen): × und Tipp daneben führen zur Ansicht zurück, aus der sie geöffnet wurden */
+var ACCSTK = [];
+function accGo(v){ if(ACCSTK.length && ACCSTK[ACCSTK.length-1]===v) ACCSTK.pop(); else if(v!==accView && !$("acctPop").hidden) ACCSTK.push(accView); accView = v; }
+function accBack(){ if(!ACCSTK.length){ closeSettings(); return; } accView = ACCSTK.pop(); unameMsg = ""; openSettings(); }
+function closeSettings(){ ACCSTK = []; accView = "main"; unameMsg = ""; $("acctPop").hidden = true; if($("tripPop").hidden) document.body.classList.remove("glass"); }
 function refreshSettings(){
   if($("acctPop").hidden) return;
   var ae = document.activeElement;
@@ -11965,7 +11970,9 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h,.fg-keep")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lstrippick],[data-act=lsvispick],[data-act=pfstatpick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=dcmore],[data-act=dctgt],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend],[data-act=fgfor]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h,.fg-keep")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lstrippick],[data-act=lsvispick],[data-act=pfstatpick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=dcmore],[data-act=dctgt],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend],[data-act=fgfor]")) return;
+  if(m.getAttribute("data-kind")==="fgfor"){ e.stopPropagation(); e.preventDefault(); }   // Tipp daneben schließt nur die Auswahl, nicht die Follower-Seite darunter
+  closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -13621,8 +13628,8 @@ document.addEventListener("pointerdown", function(e){ bgDown = e.target; }, true
 document.addEventListener("click", function(e){
   if(e.target && e.target.id && /^(zPop|catPop|acctPop|suPop|tripPop|srchPop|jPop)$/.test(e.target.id) && bgDown && bgDown!==e.target) return;
   if(e.target.id==="zPop"){ zClosePop(); return; }
-  if(e.target.id==="catPop"){ if(TK && TK.ed) return; /* Ticket-Formular: nur × oder Abbrechen schließen */ if(lpPt){ if(Date.now()-lpAt > 900) lpClose(); } else closeCatPop(); return; }
-  if(e.target.id==="acctPop"){ closeSettings(); return; }
+  if(e.target.id==="catPop"){ if(TK && TK.ed) return; /* Ticket-Formular: nur × oder Abbrechen schließen */ if(lpPt){ if(Date.now()-lpAt > 900) lpClose(); } else if(!fgCancel()) closeCatPop(); return; }
+  if(e.target.id==="acctPop"){ accBack(); return; }
   if(e.target.id==="suPop"){ closeSignup(); return; }
   if(e.target.id==="tripPop"){ if(!tdraft) closeTrip(); return; } // Formular: nur × oder Abbrechen schließen, ein Fehltipp verwirft keine Eingaben
   if(e.target.id==="srchPop"){ closeSearch(); return; }
@@ -13844,19 +13851,20 @@ document.addEventListener("click", function(e){
     case "poiadd": closeJpMore(); poiAdd(t.getAttribute("data-to"), null, null, t.getAttribute("data-list") || ""); break;
     case "poimore": openPoiMore(t); break;
     case "poigm": closeJpMore(); if(poiSel) window.open(gmInfoUrl(poiSel), "_blank", "noopener"); break;
-    case "acctclose": closeSettings(); break;
+    case "acctclose": accBack(); break;
     case "bell": closeMenus(); $("toast").hidden = true; if(ntPage) closeNtPage(); else openNtPage(); break;
     case "ntkind": ntKind = t.getAttribute("data-v"); renderNt(); break;
     case "ntgo": ntOpen(t.getAttribute("data-v")); break;
     case "ntread": NT.items.forEach(function(x){ x.read = true; }); ntSave(); ntBadge(); if(ntPage) renderNt(); else openSettings(); break;
     case "ntclear": NT.items = []; ntSave(); ntBadge(); ntKind = "all"; if(ntPage) renderNt(); else openSettings(); break;
-    case "accview": accView = t.getAttribute("data-v"); unameMsg = ""; openSettings(); var fi = $(accView==="search" ? "frQ" : "unIn"); if(fi && accView!=="main") fi.focus(); break;
+    case "accview": accGo(t.getAttribute("data-v")); unameMsg = ""; openSettings(); var fi = $(accView==="search" ? "frQ" : "unIn"); if(fi && accView!=="main") fi.focus(); break;
     case "folfol": folFollow(t.getAttribute("data-uid"), t.getAttribute("data-name")); if(gsPage) setTimeout(renderGs, 600); break;
     case "folunf": folUnfollow(t.getAttribute("data-uid")); break;
     case "folrm": folRemove(t.getAttribute("data-uid")); break;
     case "frtab": frTab = t.getAttribute("data-v")==="ing" ? "ing" : "fol"; frFilt = ""; refreshSettings(); break;
     case "fgopen": openFgEd(t.getAttribute("data-g")); break;
     case "fglist": openFrPop("grp"); break;
+    case "fgcancel": fgCancel(); break;
     case "frreqs": openFrPop("req"); break;
     case "fgnew": closeJpMore(); openFgEd("", t.getAttribute("data-uid")); break;
     case "fgtog": if(FGED){ var fgu = t.getAttribute("data-uid"); if(FGED.sel[fgu]) delete FGED.sel[fgu]; else FGED.sel[fgu] = 1; renderFgEd(); } break;
@@ -14318,7 +14326,7 @@ document.addEventListener("submit", function(e){
 document.addEventListener("keydown", function(e){
   if(e.key==="Enter" && e.target && e.target.hasAttribute && e.target.hasAttribute("data-geo")){ e.preventDefault(); var gp = e.target.getAttribute("data-geo"); if((geoRes[gp]||[]).length) geoPick(gp, 0); else geoSearch(gp, e.target.value); }
 });
-document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if($("suPop")) closeSignup(); else if(!$("srchPop").hidden) closeSearch(); else if(tab==="trip" && $("jPop").hidden && $("acctPop").hidden && $("catPop").hidden) closeTrip(); else if(!$("jPop").hidden) closeJPop(); else if(!$("acctPop").hidden) closeSettings(); else if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
+document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if($("suPop")) closeSignup(); else if(!$("srchPop").hidden) closeSearch(); else if(tab==="trip" && $("jPop").hidden && $("acctPop").hidden && $("catPop").hidden) closeTrip(); else if(!$("jPop").hidden) closeJPop(); else if(!$("catPop").hidden){ if(!fgCancel()) closeCatPop(); } else if(!$("acctPop").hidden) accBack(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
 desktop.addEventListener("change", function(){ syncSide(); resize(); });
 // Drehen: iOS meldet die neuen Maße teils erst nach dem resize-Ereignis, daher kurz danach noch einmal alles neu setzen
 quer.addEventListener("change", function(){ resize(); tbPillSync(); });
