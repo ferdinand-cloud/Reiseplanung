@@ -3044,13 +3044,14 @@ await test("Bewegung: Foto fliegt aus dem Vorschaubild ins Vollbild und zurück,
   ok(await rp(`[].every.call(document.querySelectorAll("#jPop img[data-ph]"), function(i){ return !i.style.visibility; }) && !document.querySelector("#fxL > *")`), "Vorschaubild bleibt versteckt oder Reste bleiben");
   // herunterziehen: fliegt ebenfalls zurück
   await page.locator("#jPop [data-act=phview]").first().click(); await page.waitForTimeout(700);
+  ok(await visible("#pvLayer"), "Foto öffnet nach dem Zurückfliegen nicht erneut");
   const cdp = await page.context().newCDPSession(page);
-  r = rec(); await rp(`FX.last = null`);
+  await rp(`FX.last = null`);
   await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:200, y:420}]});
   for(const d of [20, 60, 120, 180, 220]){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:200, y:420 + d}]}); await page.waitForTimeout(16); }
   await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]});
-  ws = await r;
-  ok(await rp(`$("pvLayer").hidden && !$("pvLayer").style.background`), "Herunterziehen schließt nicht sauber");
+  await page.waitForFunction(() => window.__rp("FX.last"), null, {timeout:3000}).catch(() => {});
+  ok(await rp(`$("pvLayer").hidden && !$("pvLayer").style.background`), "Herunterziehen schließt nicht sauber: "+JSON.stringify(await rp(`[$("pvLayer").hidden, $("pvLayer").style.background, FX.last]`)));
   la = await rp(`FX.last`);
   ok(la && la.d==="out" && la.to > 0 && la.to < 120 && la.from < 390, "Nach dem Herunterziehen fliegt das Foto nicht zurück: "+JSON.stringify(la));
 });
@@ -3077,12 +3078,29 @@ await test("Bewegung: Wischen unter den Reitern wechselt den Reiter (Profil, Lis
   for(const d of [20, 50, 90]) { await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:205, y:y + d}]}); await page.waitForTimeout(16); }
   await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); await page.waitForTimeout(300);
   ok(await rp(`profTab`)==="mine", "Senkrechtes Wischen wechselt den Reiter");
+  // angetippt: Auswahl gleitet, Inhalt kommt aus der Richtung des Reiters
+  await page.locator("#profView [role=tab][data-v=ziele]").click();
+  const pl = await page.evaluate(() => ({p:document.querySelectorAll("#profView .fx-pill").length, seg:!!document.querySelector("#profView .fx-seg")}));
+  ok(pl.p===1 && pl.seg, "Auswahl gleitet nicht: "+JSON.stringify(pl));
+  await page.waitForTimeout(600);
+  ok(await page.evaluate(() => !document.querySelector(".fx-pill,.fx-seg")), "Gleit-Auswahl bleibt zurück");
   await rp(`openLsPage()`); await page.waitForTimeout(400);
   const ly = await page.evaluate(() => Math.round(document.querySelector("#lsView [role=tablist]").getBoundingClientRect().bottom + 80));
   const t0 = await page.evaluate(() => document.querySelector("#lsView [role=tab][aria-selected=true]").getAttribute("data-v"));
   await swipe(300, 100, ly);
   const t1 = await page.evaluate(() => document.querySelector("#lsView [role=tab][aria-selected=true]").getAttribute("data-v"));
   ok(t0!==t1, "Wischen in der Liste wechselt den Reiter nicht: "+t0+" → "+t1);
+});
+
+await test("Design: Seiten der Leiste als mattes Glas, darunter keine Knöpfe als Schemen, Chats deckend", async () => {
+  await seed(); await rp(`openProfile()`); await page.waitForTimeout(400);
+  const g = await page.evaluate(() => { const cs = getComputedStyle(document.getElementById("profView")); return {bg:cs.backgroundColor, bf:cs.backdropFilter || cs.webkitBackdropFilter || ""}; });
+  ok(/blur/.test(g.bf) && /(rgba|color\(srgb|oklab|color-mix)/.test(g.bg) && !/, 1\)$/.test(g.bg), "Profil ist kein mattes Glas: "+JSON.stringify(g));
+  ok(await page.evaluate(() => ["sheet", "ctrl"].every(id => getComputedStyle(document.getElementById(id)).visibility==="hidden")), "Planung/Knöpfe scheinen unter der Seite durch");
+  await click("#tbMap");
+  ok(await page.evaluate(() => getComputedStyle(document.getElementById("sheet")).visibility==="visible"), "Planung nach dem Schließen der Seite unsichtbar");
+  await rp(`openChPage()`); await page.waitForTimeout(300);
+  ok(await page.evaluate(() => !/blur/.test(getComputedStyle(document.getElementById("chView")).backdropFilter || "")), "Chats sollen deckend bleiben");
 });
 
 /* ------------------------------------------------------------------ Ergebnis */
