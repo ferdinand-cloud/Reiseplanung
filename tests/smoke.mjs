@@ -1831,31 +1831,49 @@ await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, 
 
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {
   await seed();
-  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); true`);
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); try { localStorage.removeItem("rp-chkb"); } catch(e){} if(typeof KBPRED!=="undefined") KBPRED = true; true`);
   await page.waitForTimeout(400);
   ok(await page.locator("#chIn").count()===1, "Chat-Eingabe fehlt");
-  const H = await page.evaluate(() => innerHeight), VH = H - 380;
-  const bar0 = await page.locator(".tabbar").first().boundingBox(), head0 = await page.locator("#chView .ch-head, #chView header, #chView .ls-head").first().boundingBox();
-  await rp(`KBPRED = true; KBVH = [${VH}, 0]; true`);
-  await page.locator("#chIn").focus(); await page.waitForTimeout(100); await kbSettle();
-  const inp = await page.locator("#chIn").boundingBox();
-  ok(inp.y + inp.height <= VH, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(inp));
-  await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); visualViewport.dispatchEvent(new Event("resize")); }, VH);
-  await page.waitForTimeout(300);
-  const inp2 = await page.locator("#chIn").boundingBox(), bar1 = await page.locator(".tabbar").first().boundingBox(), head1 = head0 ? await page.locator("#chView .ch-head, #chView header, #chView .ls-head").first().boundingBox() : null;
-  ok(Math.abs(inp2.y - inp.y) <= 1, "Eingabe springt beim Öffnen der Tastatur ("+inp.y+" → "+inp2.y+")");
-  ok(bar1 && Math.abs(bar1.y - bar0.y) <= 1 && await page.locator(".tabbar").first().isVisible(), "Hauptleiste verschwindet oder verrutscht");
-  if(head0) ok(Math.abs(head1.y - head0.y) <= 1, "Chat-Kopf verrutscht");
+  const vp = page.viewportSize(), H = vp.height, VH = H - 380;
+  // Lagen in BILDSCHIRM-Koordinaten (getBoundingClientRect zählt ab Layout-Oberkante, iOS verschiebt um offsetTop)
+  const pos = () => page.evaluate(() => { const r = s => { const e = document.querySelector(s); if(!e) return null; const b = e.getBoundingClientRect(), t = visualViewport.offsetTop; return {y:Math.round(b.top - t), b:Math.round(b.bottom - t)}; };
+    // überall im sichtbaren Bereich muss Chat (oder die Leiste) liegen – nie die Karte
+    const vv = visualViewport, hole = []; for(let y = vv.offsetTop + 5; y < vv.offsetTop + vv.height; y += 20){ const e = document.elementFromPoint(innerWidth/2, y); if(!e || !e.closest("#chView,.top")) hole.push(Math.round(y)); }
+    return {bar:r(".tabbar"), head:r("#chView .ch-head"), inp:r("#chView .ch-comp"), vt:vv.offsetTop, vh:vv.height, hole}; });
+  const kbFake = (h, top) => page.evaluate(([h, top]) => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => top});
+    visualViewport.dispatchEvent(new Event("resize")); visualViewport.dispatchEvent(new Event("scroll")); }, [h, top]);
+  const kbReal = () => page.evaluate(() => { delete visualViewport.height; delete visualViewport.offsetTop; visualViewport.dispatchEvent(new Event("resize")); });
+  const p0 = await pos();
+  ok(!p0.hole.length && p0.inp.b >= H - 2, "Chat ohne Tastatur nicht bildschirmfüllend: "+JSON.stringify(p0));
+  const same = (p, w) => { ok(Math.abs(p.bar.y - p0.bar.y) <= 1, w+": Hauptleiste verrutscht ("+p0.bar.y+" → "+p.bar.y+")"); ok(Math.abs(p.head.y - p0.head.y) <= 1, w+": Chat-Kopf verrutscht ("+p0.head.y+" → "+p.head.y+")");
+    ok(!p.hole.length, w+": Karte scheint durch bei y="+p.hole.join(",")); };
+  // 1) Antippen: Eingabe sofort über der (geschätzten) Tastatur, nichts darunter durchsichtig
+  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
+  const p1 = await pos(); same(p1, "Antippen"); ok(p1.inp.b <= Math.round(H * 0.5) + 1, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(p1.inp));
+
+  // 2) Fall A – iOS meldet die Tastatur nur über visualViewport (innerHeight bleibt) und verschiebt die Seite (offsetTop)
+  await kbFake(VH, 120); await page.waitForTimeout(50);
+  let p = await pos(); same(p, "Tastatur mit Seitenverschiebung");
+  ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur (verschoben): "+JSON.stringify(p));
+  await kbFake(VH, 0); await page.waitForTimeout(50);
+  p = await pos(); same(p, "Tastatur ohne Verschiebung"); ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur: "+JSON.stringify(p));
+  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50); await kbReal(); await page.waitForTimeout(50);
+  p = await pos(); same(p, "Schließen"); ok(p.inp.b >= H - 2, "Eingabe bleibt nach dem Schließen oben: "+JSON.stringify(p.inp));
+  // 3) Fall B – iOS verkleinert das ganze Layout (innerHeight sinkt mit): das war der Fehler mit der durchscheinenden Karte
+  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
+  await page.setViewportSize({width:vp.width, height:VH}); await page.waitForTimeout(150);
+  p = await pos(); same(p, "Layout verkleinert"); ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur (Layout verkleinert): "+JSON.stringify(p));
+  ok(await rp(`JSON.parse(localStorage.getItem("rp-chkb") || "{}") && true`), "Tastaturhöhe nicht gemerkt");
   await shot("tastatur-chat");
-  // Schließen: iOS meldet den resize oft spät – die Eingabe geht trotzdem sofort mit der Tastatur nach unten (keine leere Fläche)
-  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(100); await kbSettle();
-  const inp3 = await page.locator("#chIn").boundingBox(), bar2 = await page.locator(".tabbar").first().boundingBox();
-  ok(inp3.y + inp3.height > H - 120, "Eingabe bleibt nach dem Verlassen oben stehen: "+JSON.stringify(inp3));
-  ok(Math.abs(bar2.y - bar0.y) <= 1, "Hauptleiste verrutscht beim Schließen");
-  await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
-  await page.waitForTimeout(100); await kbSettle();
-  const inp4 = await page.locator("#chIn").boundingBox();
-  ok(Math.abs(inp4.y - inp3.y) <= 1, "Eingabe bewegt sich beim späten resize noch einmal ("+inp3.y+" → "+inp4.y+")");
+  await page.evaluate(() => document.activeElement.blur()); await page.setViewportSize(vp); await page.waitForTimeout(150);
+  p = await pos(); same(p, "Schließen nach Verkleinern"); ok(p.inp.b >= H - 2, "Eingabe nach dem Schließen nicht unten: "+JSON.stringify(p.inp));
+  // 4) Zweites Antippen: gemerkte Höhe → Eingabe steht sofort an der richtigen Stelle (kein Nachrutschen)
+  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
+  p = await pos(); ok(Math.abs(p.inp.b - VH) <= 1, "Gemerkte Tastaturhöhe nicht genutzt: "+JSON.stringify(p.inp));
+  // 5) Senden lässt die Tastatur offen (Fokus bleibt im Feld)
+  await page.evaluate(() => { const b = document.querySelector("#chView .ch-send"); const ev = new MouseEvent("mousedown", {bubbles:true, cancelable:true}); b.dispatchEvent(ev); window.__md = ev.defaultPrevented; });
+  ok(await page.evaluate(() => window.__md), "Senden-Knopf nimmt dem Feld den Fokus (Tastatur ginge zu)");
+  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50);
 });
 
 await test("Freunde: Suche statt Liste bei 200 Freunden (Ziel teilen)", async () => {

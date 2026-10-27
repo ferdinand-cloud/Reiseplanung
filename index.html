@@ -1818,9 +1818,10 @@ form.gnew{position:relative}
 .ch-newlist .ls-row{padding:8px 12px}
 .ch-dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
 .chview.conv{padding:0;overflow:hidden;display:flex;flex-direction:column}
-/* Tastatur offen: Bereich zwischen Eingabezeile und Tastatur (Safari-Leisten) in Chat-Farbe statt der App darunter */
-.chview.conv{box-shadow:0 var(--vvh,100vh) 0 var(--sheet);transition:height .28s cubic-bezier(.2,.8,.2,1)}
-@media (prefers-reduced-motion: reduce){ .chview.conv{transition:none} }
+/* Tippen: #chView bleibt bildschirmfüllend, nur der Inhalt folgt dem sichtbaren Bereich (Höhe/Oberkante aus chVV) */
+.chview.conv.kbt .ch-conv{flex:0 0 auto;height:var(--chh,100%);transform:translateY(var(--cht,0px))}
+.chview.conv.kbt .ch-comp{padding-bottom:8px}
+body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-conv{display:flex;flex-direction:column;height:100%;max-width:640px;width:100%;margin:0 auto;padding-top:calc(env(safe-area-inset-top,0px) + 72px);box-sizing:border-box}
 .ch-head{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:.5px solid var(--sep,var(--line))}
 .ch-head b{font:700 16px/1.2 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -6270,18 +6271,40 @@ function chSend(){
   b.commit().then(function(){ chSending = false; if(chMsgErr && chOpen){ var dr = chDraft; chOpenConv(chOpen); chDraft = dr; renderChDraft(); } }, function(e){ chSending = false; if(inp && !inp.value) inp.value = keepT; chDraft = keepP; renderChDraft(); toast("Senden fehlgeschlagen: "+((e && e.code)==="permission-denied" ? "keine Berechtigung (Firestore-Regeln für Chats ergänzen?)" : (e && e.message) || ""), false); });
 }
 function chGrow(){ var i = $("chIn"); if(!i) return; i.style.height = "auto"; i.style.height = Math.min(120, i.scrollHeight)+"px"; }
-/* Chat-Höhe bei Tastatur: oben bleibt alles fest (top 0), nur die Höhe folgt der Tastatur – und zwar gleitend (CSS-Übergang).
-   Feld im Chat aktiv: sichtbare Höhe (vor dem Öffnen auf iOS schon die erwartete). Sonst sofort volle Höhe, auch wenn iOS
-   den resize erst spät meldet – so bleibt beim Schließen keine leere Fläche stehen. */
-function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualViewport;
-  if(!(chPage && chOpen && vv)){ el.style.top = ""; el.style.height = ""; el.style.bottom = ""; return; }
-  var ae = document.activeElement, foc = ae && el.contains(ae) && isTypeField(ae), up = window.innerHeight - vv.height > 120;
-  var h = !foc ? window.innerHeight : up ? vv.height : KBPRED ? Math.min(vv.height, kbPredH()) : vv.height;
-  var box = $("chMsgs"), end = box && box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-  el.style.top = "0px"; el.style.bottom = "auto"; if(Math.abs((parseFloat(el.style.height) || 0) - h) > 1) el.style.height = Math.round(h)+"px";
-  if(end){ box.scrollTop = box.scrollHeight; setTimeout(function(){ var b = $("chMsgs"); if(b) b.scrollTop = b.scrollHeight; }, 320); } }
-if(window.visualViewport){ window.visualViewport.addEventListener("resize", function(){ if(chPage && chOpen) chVV(); }); }
-document.addEventListener("focusout", function(e){ if(chPage && chOpen && e.target && e.target.id==="chIn") setTimeout(chVV, 0); });
+/* Chat und Tastatur (iOS). Grundsatz: Die Chat-Fläche (#chView) deckt IMMER den ganzen Bildschirm ab – es kann nie die Karte
+   durchscheinen. Nur der Inhalt (.ch-conv: Kopf, Verlauf, Eingabe) bekommt beim Tippen die Höhe des sichtbaren Bereichs
+   (visualViewport.height) und sitzt an dessen Oberkante (offsetTop). Damit stimmt die Lage, egal ob iOS die Seite verschiebt,
+   die Höhe des Layouts mitändert oder gar nichts meldet. Ob die Tastatur offen ist, wird NICHT aus innerHeight geschlossen
+   (das war der Fehler: wenn iOS innerHeight mitverkleinert, blieb der Chat auf der geschätzten halben Höhe stehen).
+   Beim Antippen sitzt die Eingabe sofort an der erwarteten Stelle über der Tastatur (Höhe vom letzten Mal, sonst vorsichtig
+   geschätzt), damit iOS die Seite gar nicht erst verschiebt; sobald iOS die echte Höhe meldet, gilt nur noch die. */
+var CHKB = {on:false, h0:0, got:false, t:0};
+function chKbKey(){ return (matchMedia("(display-mode: standalone)").matches || navigator.standalone ? "a" : "b")+Math.round(innerWidth)+"x"+Math.round(CHKB.h0); }
+function chKbGuess(){ var v = 0; try { v = +(JSON.parse(localStorage.getItem("rp-chkb") || "{}")[chKbKey()] || 0); } catch(e){}
+  return v > 100 && v < CHKB.h0 - 100 ? v : Math.round(CHKB.h0 * (innerWidth > innerHeight ? 0.4 : 0.5)); }
+function chKbSave(h){ try { var o = JSON.parse(localStorage.getItem("rp-chkb") || "{}"); o[chKbKey()] = Math.round(h); localStorage.setItem("rp-chkb", JSON.stringify(o)); } catch(e){} }
+function chTyping(){ var el = $("chView"), ae = document.activeElement; return !!(el && chPage && chOpen && ae && el.contains(ae) && isTypeField(ae)); }
+function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualViewport, de = document.documentElement;
+  var typ = chTyping() && !!vv;
+  if(!typ){ CHKB.on = false; clearTimeout(CHKB.t); el.classList.remove("kbt"); document.body.classList.remove("chkb"); el.style.removeProperty("--chh"); el.style.removeProperty("--cht"); de.style.removeProperty("--chtop"); return; }
+  if(!CHKB.on){ CHKB.on = true; CHKB.h0 = el.clientHeight || innerHeight; CHKB.got = vv.height < CHKB.h0 - 120; clearTimeout(CHKB.t);
+    // kommt keine Tastatur (Hardware-Tastatur), gilt nach einer Weile einfach die sichtbare Höhe
+    CHKB.t = setTimeout(function(){ if(CHKB.on && !CHKB.got){ CHKB.got = true; chVV(); } }, 1200); }
+  if(!CHKB.got && vv.height < CHKB.h0 - 120){ CHKB.got = true; }
+  var h = CHKB.got ? vv.height : Math.min(vv.height, chKbGuess()), t = CHKB.got ? Math.max(0, vv.offsetTop) : 0;
+  if(CHKB.got && vv.height < CHKB.h0 - 120) chKbSave(vv.height);
+  var box = $("chMsgs"), end = !box || box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  el.classList.add("kbt"); document.body.classList.add("chkb");
+  el.style.setProperty("--chh", Math.round(h)+"px"); el.style.setProperty("--cht", Math.round(t)+"px"); de.style.setProperty("--chtop", Math.round(t)+"px");
+  if(box && end) box.scrollTop = box.scrollHeight;
+  if(el.scrollTop) el.scrollTop = 0; }
+// iOS scrollt beim Fokus auch Behälter mit overflow:hidden, um das Feld zu zeigen – die Chat-Fläche selbst bleibt immer oben
+document.addEventListener("scroll", function(e){ var el = e.target; if(el && el.id==="chView" && el.classList.contains("conv") && el.scrollTop) el.scrollTop = 0; }, true);
+if(window.visualViewport){ ["resize", "scroll"].forEach(function(n){ window.visualViewport.addEventListener(n, function(){ if(CHKB.on) chVV(); }); }); }
+document.addEventListener("focusin", function(e){ if(chPage && chOpen && e.target && isTypeField(e.target) && $("chView").contains(e.target)) chVV(); });
+document.addEventListener("focusout", function(){ if(CHKB.on) setTimeout(chVV, 0); });
+// Senden-Knopf nimmt dem Feld den Fokus nicht – die Tastatur bleibt offen wie in Nachrichten-Apps
+document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send") && chTyping()) e.preventDefault(); }, true);
 document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn") chGrow(); if(e.target.id==="chNewIn"){ chNewQ = e.target.value; renderChNew(); } if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
 document.addEventListener("keydown", function(e){ if(e.target && e.target.id==="chIn" && e.key==="Enter" && !e.shiftKey && !e.isComposing && !("ontouchstart" in window)){ e.preventDefault(); chSend(); } });
 /* Ort aus dem Ort-Fenster im Chat teilen: erst Freund wählen */
@@ -6780,7 +6803,6 @@ function ensureVis(el){
     // iOS schiebt die ganze Seite hoch, wenn das Feld sonst unter der Tastatur läge: dann rutschen die Hauptleiste und Köpfe aus dem Bild.
     // Die App-Seite selbst scrollt nie – also sofort zurück; Pop-ups und Chat sitzen ohnehin über der Tastatur.
     if(kbh > 120 && (window.scrollY > 0 || window.pageYOffset > 0)) window.scrollTo(0, 0);
-    if(!kb && chPage && chOpen) chVV();   // Vorhersage im Chat zurücknehmen, falls keine Tastatur kam
     document.querySelectorAll(".kbpin").forEach(function(ov){
       var card = ov._kbc;
       // Feld verlassen: festhalten, bis die Tastatur wirklich zu ist – dann Lage und Größe in EINER Bewegung zurück
@@ -6824,9 +6846,7 @@ function ensureVis(el){
       // Feld innerhalb der Karte gleich in den künftig sichtbaren Teil scrollen (Abstände relativ zur Karte, Animation egal)
       var rel = el.getBoundingClientRect().top - card.getBoundingClientRect().top, fh = Math.min(el.offsetHeight, 140);
       if(rel + fh > pmax - 16) card.scrollTop += rel + fh - (pmax - 16); else if(rel < 8) card.scrollTop += rel - 8; } }
-  // Chat (keine Pop-up-Seite): Eingabezeile schon beim Antippen über die erwartete Tastatur, damit iOS nichts verschieben muss
-  function kbPredChat(el){ if(el.id==="chIn" && chPage && chOpen) chVV(); }
-  document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; kbPin(el); kbPredChat(el); setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
+  document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; kbPin(el); setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
   document.addEventListener("focusout", function(){ setTimeout(upd, 80); });
   upd(); })();
 function closeSettings(){ accView = "main"; unameMsg = ""; $("acctPop").hidden = true; if($("tripPop").hidden) document.body.classList.remove("glass"); }
