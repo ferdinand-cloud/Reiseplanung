@@ -1848,6 +1848,16 @@ await test("Tastatur im Pop-up: hohe Karte (Ziel) sitzt knapp über der Tastatur
 await test("Tastatur im Pop-up: iOS verschiebt die Seite beim Fokus – Karte trotzdem knapp über der Tastatur", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-pan", {pan0:120}); });
 await test("Tastatur im Pop-up: Vorhersage beim Antippen (iOS) – beim Öffnen bewegt sich nichts mehr", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-pred", {pred:true}); });
 await test("Tastatur im Pop-up: Tastatur erkannt, auch wenn iOS innerHeight mitverkleinert", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-inner", {shrink:true}); });
+await test("Tastatur im Pop-up: Antippen fokussiert ohne iOS-Verschiebung (preventScroll), Feldwechsel klappt", async () => {
+  await seed(); await rp(KB_PROFIL); await page.waitForTimeout(300); await kbSettle();
+  await page.evaluate(() => { window.__fo = []; const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = function(o){ window.__fo.push((this.id||this.tagName)+":"+!!(o && o.preventScroll)); return f.call(this, o); }; });
+  await page.tap("#acctPop #unIn"); await page.waitForTimeout(100);
+  const fo = await page.evaluate(() => { const r = window.__fo; delete HTMLElement.prototype.focus; return {r, a:document.activeElement && document.activeElement.id}; });
+  ok(fo.a==="unIn", "Tippen ins Feld fokussiert es nicht: "+fo.a);
+  ok(fo.r.includes("unIn:true"), "Pop-up-Feld nicht ohne Verschieben fokussiert: "+fo.r.join(" "));
+  await page.tap("#acctPop #unIn"); await page.waitForTimeout(50);
+  ok(await page.evaluate(() => document.activeElement.id)==="unIn", "Erneutes Tippen ins aktive Feld verliert den Fokus");
+});
 await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-quer"); }, QUER);
 
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {

@@ -7046,7 +7046,10 @@ function ensureVis(el){
    zurück, obwohl das Feld frei über der Tastatur lag – das war das Springen. Die Lage stimmt hier schon von selbst
    (Anmeldung: Karte oben; Chat: Eingabe über der Tastatur), also braucht es das Verschieben nicht. */
 (function(){ var sx = 0, sy = 0, moved = false;
-  function mine(el){ return !!(el && isTypeField(el) && !el.disabled && !el.readOnly && (el.id==="chIn" || (el.closest && el.closest("#gate")))); }
+  // auch Textfelder in Pop-ups: deren Lage regelt kbPin/kbPlace (Karte knapp über der Tastatur), iOS muss nichts verschieben.
+  // Nur Texteingaben – Auswahl- und Datumsfelder öffnen ihren iOS-Wähler nur beim echten Antippen.
+  function textish(el){ return el.tagName==="TEXTAREA" || (el.tagName==="INPUT" && !/^(date|time|datetime-local|month|week|color|range|file|checkbox|radio|button|submit|hidden)$/.test(el.type)); }
+  function mine(el){ return !!(el && isTypeField(el) && textish(el) && !el.disabled && !el.readOnly && (el.id==="chIn" || (el.closest && el.closest("#gate, .pop, .acctpop, .supop")))); }
   document.addEventListener("touchstart", function(e){ var t = e.touches[0]; sx = t.clientX; sy = t.clientY; moved = false; }, {passive:true, capture:true});
   document.addEventListener("touchmove", function(e){ var t = e.touches[0]; if(Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) moved = true; }, {passive:true, capture:true});
   document.addEventListener("touchend", function(e){ var el = e.target;
