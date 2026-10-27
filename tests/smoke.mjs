@@ -1778,7 +1778,9 @@ const kbPop = async (open, ovSel, name, o = {}) => {
   await page.locator(fld).first().focus();
   let predBox = null;
   if(o.pred){ await page.waitForTimeout(50); await kbSettle(); predBox = await page.locator(card).first().boundingBox(); }
-  await page.evaluate(([h, t]) => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); if(t) Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => t}); visualViewport.dispatchEvent(new Event("resize")); }, [VH, pan0]);
+  await page.evaluate(([h, t, sh]) => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); if(t) Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => t});
+    if(sh){ window.__ihD = Object.getOwnPropertyDescriptor(window, "innerHeight"); Object.defineProperty(window, "innerHeight", {configurable:true, get:() => h}); }   // manche iOS-Versionen verkleinern innerHeight mit
+    visualViewport.dispatchEvent(new Event("resize")); }, [VH, pan0, !!o.shrink]);
   await page.waitForTimeout(450); await kbSettle();
   ok(await rp(`document.body.classList.contains("kb")`), name+": Tastatur nicht erkannt");
   const ov = await page.locator(ovSel).boundingBox(), fb = await page.locator(fld).first().boundingBox(), lb = await page.locator(card).first().boundingBox();
@@ -1810,7 +1812,7 @@ const kbPop = async (open, ovSel, name, o = {}) => {
   await page.evaluate(() => { delete visualViewport.offsetTop; visualViewport.dispatchEvent(new Event("scroll")); }); await page.waitForTimeout(200);
   const mid = await page.locator(card).first().boundingBox();
   ok(Math.abs(mid.y - pre.y) <= 1 && Math.abs(mid.height - pre.height) <= 1, name+": Karte ändert sich schon, bevor die Tastatur zu ist ("+JSON.stringify([pre.y, pre.height])+" → "+JSON.stringify([mid.y, mid.height])+")");
-  await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
+  await page.evaluate(() => { delete visualViewport.height; if(window.__ihD){ Object.defineProperty(window, "innerHeight", window.__ihD); delete window.__ihD; } visualViewport.dispatchEvent(new Event("resize")); });
   await page.waitForTimeout(300);
   const hs = await page.evaluate(() => { window.__kbRO.disconnect(); return window.__kbH.filter((h, i, a) => i===0 || h!==a[i-1]); });
   ok(hs.length <= 2, name+": Größe ändert sich beim Schließen mehrmals: "+hs.join(" → "));
@@ -1827,6 +1829,7 @@ await test("Tastatur im Pop-up: mittige Karte (Neues Ziel) springt nicht", async
 await test("Tastatur im Pop-up: hohe Karte (Ziel) sitzt knapp über der Tastatur und nutzt den Platz bis oben", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-hoch"); });
 await test("Tastatur im Pop-up: iOS verschiebt die Seite beim Fokus – Karte trotzdem knapp über der Tastatur", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-pan", {pan0:120}); });
 await test("Tastatur im Pop-up: Vorhersage beim Antippen (iOS) – beim Öffnen bewegt sich nichts mehr", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-pred", {pred:true}); });
+await test("Tastatur im Pop-up: Tastatur erkannt, auch wenn iOS innerHeight mitverkleinert", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-inner", {shrink:true}); });
 await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-quer"); }, QUER);
 
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {

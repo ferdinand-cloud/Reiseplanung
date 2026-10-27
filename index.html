@@ -6777,7 +6777,7 @@ function setAvatar(file){
 document.addEventListener("change", function(e){ if(e.target.id==="avIn" && e.target.files && e.target.files[0]){ setAvatar(e.target.files[0]); e.target.value = ""; } });
 function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
 /* Tastatur: alles am sichtbaren Bereich ausrichten und das aktive Feld im Blick halten */
-var KBPRED = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints > 1), KBVH = [0, 0];
+var KBPRED = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints > 1), KBVH = [0, 0], VVBASE = [0, 0];
 // erwartete sichtbare Höhe bei offener Tastatur: vom letzten Öffnen, sonst vorsichtig geschätzt (lieber zu klein als zu groß)
 function kbPredH(){ var q = innerWidth > innerHeight ? 1 : 0; return KBVH[q] || Math.round(innerHeight * (q ? 0.4 : 0.5)); }
 // Die App-Seite selbst scrollt nie. Schiebt iOS sie für die Tastatur hoch, sofort zurück – sonst rutschen Leiste und Köpfe aus dem Bild.
@@ -6796,7 +6796,12 @@ function ensureVis(el){
 (function(){ var vv = window.visualViewport, de = document.documentElement, body = document.body;
   function upd(){
     if(vv){ de.style.setProperty("--vvh", vv.height+"px"); de.style.setProperty("--vvt", vv.offsetTop+"px"); }
-    var ae = document.activeElement, kbh = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+    // Tastaturhöhe gegen die volle Höhe ohne Tastatur messen. Nicht nur innerHeight: iOS verkleinert innerHeight teils mit,
+    // dann wäre die Differenz 0 und die Tastatur bliebe unerkannt. Grundwert = größte sichtbare Höhe ohne aktives Feld (je Ausrichtung);
+    // nur wachsen lassen, sonst würde er beim Schließen (Feld schon weg, Tastatur noch da) zu klein.
+    var ae = document.activeElement, q = innerWidth > innerHeight ? 1 : 0;
+    if(vv && (!isTypeField(ae) || !VVBASE[q])) VVBASE[q] = Math.max(VVBASE[q], vv.height);
+    var kbh = vv ? Math.max(0, Math.max(window.innerHeight, VVBASE[q]) - vv.height) : 0;
     var kb = kbh > 120 && isTypeField(ae);
     body.classList.toggle("kb", kb); de.style.setProperty("--kbh", (kb ? Math.max(0, kbh - (vv ? vv.offsetTop : 0)) : 0)+"px");
     if(kb && vv) KBVH[innerWidth > innerHeight ? 1 : 0] = vv.height;   // für die Vorhersage beim nächsten Antippen
