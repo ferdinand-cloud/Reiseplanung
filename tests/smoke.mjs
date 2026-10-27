@@ -1522,6 +1522,29 @@ await test("ÖPNV-Navigation: in der Bahn bleibt die Verbindung samt Ausstieg, n
   ok(await rp(`NAV.pts!==window.__pts || NAV.busy`), "Bei echtem Abweichen wird nicht neu berechnet");
   await rp(`navEnd(true)`);
 });
+await test("Tagesplan unterwegs: Etappe ab Standort behält Bus/Bahn und Ausstieg während der Fahrt", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  const r0 = await rp(`(function(){ var t = T(); t.places.p8 = {id:"p8", n:"Museum of Natural History", c:"kultur", la:40.7813, lo:-73.9740, list:"l_main", note:"", addr:"W 79th St"}; t.order[cur] = ["p8"]; t.done = {};
+    legSet("legMode", P("p8"), "oepnv"); legSet("legOpt", P("p8"), {p:["bus"]}); me = {la:40.7735, lo:-73.9515, acc:10}; meA = null; var a = meAnchor(), lg = dayLegs(cur)[0], r = legRoute(lg[0], lg[1], cur);
+    var rides = r && !r.walk ? r.legs.filter(function(l){ return l.t==="ride"; }) : []; window.__a = a; window.__rd = rides[rides.length - 1];
+    return {from:lg[0]===a, rides:rides.length, bus:rides.some(function(l){ return isBus(l.r); }), exit:rides.length ? NET.s[rides[rides.length-1].to][0] : ""}; })()`);
+  ok(r0.from && r0.rides > 0, "Etappe ab Standort ohne Fahrt: " + JSON.stringify(r0));
+  ok(r0.bus, "Testetappe sollte einen Bus nutzen: " + JSON.stringify(r0));
+  // in der Bahn/im Bus: mehrere Meldungen entlang der Fahrt, 100 m neben der Linie, langsam
+  for(const f of [0.3, 0.5, 0.7]){
+    const r = await rp(`(function(){ var P0 = ridePath(window.__rd), q = P0[Math.floor((P0.length - 1) * ${f})]; me = {la:q.la, lo:q.lo + 0.0012, acc:30, spd:3};
+      var a = meAnchor(), lg = dayLegs(cur)[0], r = legRoute(lg[0], lg[1], cur), rides = r.legs.filter(function(l){ return l.t==="ride"; });
+      return {same:a===window.__a, exit:NET.s[rides[rides.length-1].to][0]}; })()`);
+    ok(r.same, "Etappe wird während der Fahrt vom neuen Standort aus neu berechnet");
+    ok(r.exit===r0.exit, "Ausstieg geht während der Fahrt verloren: " + r.exit + " statt " + r0.exit);
+  }
+  // nach dem Ausstieg: Weg ab Standort
+  ok(await rp(`(function(){ var q = stLL(window.__rd.to); me = {la:q.la + 0.0003, lo:q.lo, acc:10}; return meAnchor()!==window.__a; })()`), "Nach dem Ausstieg zählt der Standort nicht wieder");
+  // echtes Abweichen: 2 km weg
+  await rp(`me = {la:40.7735, lo:-73.9515, acc:10}; meA = window.__a;`);
+  ok(await rp(`(function(){ me = {la:40.7000, lo:-73.9500, acc:10}; return meAnchor()!==window.__a; })()`), "Bei echtem Abweichen wird nicht neu berechnet");
+});
 await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abhaken", async () => {
   await seed();
   await rp(`nav3d = false; me = {la:40.7215, lo:-73.9890, acc:8}; openGo("p2");`); await page.waitForTimeout(200); // prüft die flache 2D-Ansicht

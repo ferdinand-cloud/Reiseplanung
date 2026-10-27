@@ -9692,7 +9692,36 @@ function legHidden(a, b){ return !!legHid[legKey(a, b)]; }
 function routeAnyVisible(){ return !!layers.route && dayLegs(cur).some(function(pr){ return !legHidden(pr[0], pr[1]); }); }
 function saveLegHid(){ lsSet("nyc-leg-hid", JSON.stringify(legHid)); }
 var meA = null;
-function meAnchor(){ if(!me) return null; if(!meA || dist(meA, me) > 40) meA = {la:+me.la.toFixed(5), lo:+me.lo.toFixed(5), id:"me", n:"Mein Standort"}; return meA; }
+var meHoldBusy = false, meHoldM = null, meHoldA = null, meHoldK = false;
+function meAnchor(){
+  if(!me) return null; if(meHoldBusy) return meA;
+  if(meA && dist(meA, me) > 40){
+    // je Standortmeldung nur einmal prüfen (meAnchor läuft bei jedem Zeichnen oft)
+    if(meHoldM!==me || meHoldA!==meA){ meHoldBusy = true; meHoldM = me; meHoldA = meA; meHoldK = false; try { meHoldK = meRideHold(meA); } catch(e){} meHoldBusy = false; }
+    if(meHoldK) return meA; }
+  if(!meA || dist(meA, me) > 40) meA = {la:+me.la.toFixed(5), lo:+me.lo.toFixed(5), id:"me", n:"Mein Standort", t:Date.now()};
+  return meA;
+}
+/* Unterwegs mit U-Bahn, Bus oder Fähre: die Etappe ab „Mein Standort“ nicht vom neuen Standort aus neu berechnen, solange man auf der
+   gewählten Verbindung ist (Weg zur Haltestelle oder in der Bahn) – sonst gingen Linie und Ausstieg verloren. Erst nach dem Ausstieg
+   oder bei echtem Abweichen (> 400 m von der Verbindung) zählt wieder der aktuelle Standort. */
+function meRideHold(a){
+  var k = todayKey(); if(cur!==k || (a.t && Date.now() - a.t > 4*3600000)) return false;
+  var lg = dayLegs(k).filter(function(x){ return x[0]===a; })[0]; if(!lg) return false;
+  var md = legMode(a, lg[1]); if(md!=="oepnv" && md!=="ferry") return false;
+  var r = legRoute(a, lg[1], k); if(!r || r.walk || !r.legs) return false;
+  var pts = [a], lastRide = -1;
+  r.legs.forEach(function(l){
+    if(l.t==="ride"){ (ridePath(l) || []).forEach(function(q){ pts.push(q); }); lastRide = pts.length - 1; }
+    else if(l.t==="xfer") pts.push(stLL(l.to));
+    else if(l.t==="walk" && l.st!=null) pts.push(stLL(l.st));
+  });
+  if(lastRide < 1) return false; pts.push(lg[1]);
+  var bd = 1e9, bi = -1; for(var i = 0; i < pts.length - 1; i++){ var d = navSegD(pts[i], pts[i+1]); if(d < bd){ bd = d; bi = i; } }
+  // nach dem Ausstieg (Ende der letzten Fahrt erreicht): wieder vom Standort aus
+  if(bi >= lastRide || (bi===lastRide - 1 && dist(me, pts[lastRide]) < 120)) return false;
+  return bd < 400 + 2*(me.acc||0);
+}
 function dayLegs(k){
   var D = dayByKey(k); if(!D) return [];
   // Route nur über offene Ziele: Start am Standort (heute) bzw. am vorherigen Ziel im Plan, zuletzt zurück zum Hotel
@@ -12388,9 +12417,15 @@ function navProgress(){
   N.inRide = null;
   (N.segs||[]).some(function(sg){ var e = sg.o + sg.n - 1;
     if(sg.kind!=="ride" || N.pi > e) return false;
-    if(!(N.pi >= sg.o - 1 || N.cum[sg.o] - (N.cum[N.pi]||0) < 150 || (me.spd!=null && me.spd > 6))) return true;
     var rb = -1, rd = 1e9; for(var k = Math.max(sg.o, N.pi - 1); k <= e; k++){ var dk = navSegD(P0[k], P0[Math.min(e, k + 1)]); if(dk < rd){ rd = dk; rb = k; } }
-    if(rb >= 0 && rd < 400 + 2*(me.acc||0)){ N.inRide = sg; if(bd > 45){ bi = rb; bd = rd; } }
+    // eingestiegen: einmal erkannt bleibt es dabei; sonst an der Einstiegsstation, schnell unterwegs (Bus in der Stadt oft nur 15–25 km/h)
+    // oder zwei Meldungen hintereinander dicht an der Linie und dabei vorwärts (auch wenn man nicht über den Fußweg zur Haltestelle kam)
+    var C = N.rideC, fw = C && C.sg===sg && rd < 80 && rb > C.rb;
+    N.rideC = rd < 80 ? {sg:sg, rb:Math.max(rb, C && C.sg===sg ? C.rb : -1)} : null;
+    if(!(N.board===sg || fw || N.pi >= sg.o - 1 || N.cum[sg.o] - (N.cum[N.pi]||0) < 150 || (me.spd!=null && me.spd > 4))) return true;
+    if(rb >= 0 && rd < 400 + 2*(me.acc||0)){ N.inRide = N.board = sg;
+      // der nächste Wegpunkt liegt woanders (z. B. auf dem Fußweg nach dem Ausstieg, an dem die Linie vorbeiführt): in der Bahn bleiben
+      if(bd > 45 || ((bi < sg.o - 1 || bi > e + 1) && rd <= bd + 40)){ bi = rb; bd = rd; } }
     return true;
   });
   N.pi = Math.max(N.pi, bi); N.offD = bd;
