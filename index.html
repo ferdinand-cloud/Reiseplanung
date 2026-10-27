@@ -3555,6 +3555,10 @@ button.tf-pill{border:0;font:inherit;color:inherit}
 .profview.fx-pgc > *{animation:fxPg .34s cubic-bezier(.2,.8,.2,1) backwards}
 @keyframes fxPg{from{opacity:0;transform:translateX(var(--fxx,0px))}}
 #fxL,#fxL *{pointer-events:none !important}
+.fx-seg{position:relative}
+.fx-seg > [role=tab]{position:relative;z-index:1}
+.fx-seg > [role=tab][aria-selected="true"]{background:transparent !important;box-shadow:none !important}
+.fx-pill{position:absolute;z-index:0;pointer-events:none;display:block}
 .fx-pgbg{z-index:21 !important;overflow:hidden !important}
 #pvLayer.fx-flying .pv-track img{opacity:0}
 .fx-fly{position:fixed;z-index:68;overflow:hidden;pointer-events:none;will-change:left,top,width,height}
@@ -3565,6 +3569,13 @@ button.tf-pill{border:0;font:inherit;color:inherit}
 #pvLayer .pv-amb,.fx-pvbg .pv-amb{position:absolute;left:50%;top:50%;width:26vw;height:26vh;object-fit:cover;transform:translate(-50%,-50%) scale(4.4);filter:blur(7px) saturate(1.4) brightness(.55);opacity:.9;pointer-events:none;transition:opacity .25s ease}
 #pvLayer .pv-amb:not([src]){display:none}
 @media (prefers-reduced-motion: reduce){ .pop.fx-in > *,.acctpop.fx-in > *,.supop.fx-in > *,.cfpop.fx-in > *,.tripmenu.fx-in,.addmenu.fx-in,.layers.fx-in,.profview.fx-pg,.profview.fx-pgc > *{animation:none !important} }
+/* ---------- Seiten der Leiste als mattes Glas über der Karte: die Karte schimmert nur als Farbe durch (stark weichgezeichnet),
+   oben etwas lichter, nach unten fast deckend – Text liegt immer auf ruhiger Fläche. Chats bleiben deckend. ---------- */
+.profview:not(.chview){background:color-mix(in srgb,var(--sheet) 80%,transparent);-webkit-backdrop-filter:blur(40px) saturate(180%);backdrop-filter:blur(40px) saturate(180%)}
+.lsview .ls-head{background:color-mix(in srgb,var(--sheet) 80%,transparent);-webkit-backdrop-filter:blur(40px) saturate(180%);backdrop-filter:blur(40px) saturate(180%);box-shadow:0 8px 12px -10px rgba(0,0,0,.25)}
+.lsview .ls-head::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:120px;background:inherit;-webkit-backdrop-filter:inherit;backdrop-filter:inherit}
+/* unter einer offenen Seite nur die Karte durchscheinen lassen, keine Knöpfe oder Planung als Schemen */
+body.profopen #sheet,body.profopen #sheetOpen,body.profopen .ctrl,body.profopen #rail,body.profopen #card,body.profopen #edgeBtn,body.profopen #mapnote,body.profopen #attr,body.profopen .navtools{visibility:hidden}
 </style>
 </head>
 <body>
@@ -3854,7 +3865,7 @@ var FX = (function(){
   function phOut(L){
     var c = cur(L), bg = L.style.background, m = /rgba?\([^)]*,\s*([\d.]+)\)/.exec(bg || ""), a0 = m ? +m[1] : 1;
     L.style.background = ""; L.classList.remove("fx-flying");
-    if(off() || !c || !c.img.naturalWidth || !L.offsetWidth) return;
+    if(off() || !c || !c.img.naturalWidth || !L.offsetWidth){ api.last = {d:"skip", why:off() ? "off" : !c ? "nocur" : !c.img.naturalWidth ? "noimg" : "nolayer"}; return; }
     var from = contain(c.img.getBoundingClientRect(), c.img.naturalWidth / c.img.naturalHeight);
     var bd = document.createElement("div"); bd.className = "fx-pvbg"; var am = L.querySelector(".pv-amb");
     if(am && am.getAttribute("src")){ var ac = am.cloneNode(false); ac.removeAttribute("id"); bd.appendChild(ac); }
@@ -3889,7 +3900,18 @@ var FX = (function(){
   // angetippt oder gewischt: nach dem Neuzeichnen hereingleiten lassen
   document.addEventListener("click", function(e){ var b = e.target.closest && e.target.closest("[role=tab][data-act]"), box = b && boxOf(b); if(!box) return;
     var T = tabsIn(box); if(!T || T.tabs.indexOf(b) < 0) return; var a = selIdx(T), n = T.tabs.indexOf(b); if(a < 0 || a===n) return;
-    var dir = n > a ? 1 : -1; setTimeout(function(){ var bx = box.isConnected ? box : boxOf(document.querySelector("[role=tab][aria-selected=true][data-act=\""+b.getAttribute("data-act")+"\"]")); if(bx) slideIn(bx, dir); }, 0); }, true);
+    var dir = n > a ? 1 : -1, act = b.getAttribute("data-act"), lr = T.list.getBoundingClientRect(), or = T.tabs[a].getBoundingClientRect();
+    var rel = {x:or.left - lr.left, y:or.top - lr.top, w:or.width, h:or.height};
+    setTimeout(function(){ var nb = document.querySelector("[role=tab][aria-selected=true][data-act=\""+act+"\"]"), bx = box.isConnected ? box : boxOf(nb);
+      if(bx) slideIn(bx, dir); if(nb) pill(nb.closest("[role=tablist]"), nb, rel); }, 0); }, true);
+  // Auswahl im Reiter gleitet vom alten zum neuen Reiter (statt umzuspringen)
+  function pill(list, sel, r0){ if(off() || !list || !sel.animate) return;
+    var cs = getComputedStyle(sel); if(!cs.backgroundColor || cs.backgroundColor==="rgba(0, 0, 0, 0)" || cs.backgroundColor==="transparent") return;
+    var lr = list.getBoundingClientRect(), nr = sel.getBoundingClientRect(), p = document.createElement("i"); p.className = "fx-pill"; p.setAttribute("aria-hidden", "true");
+    p.style.cssText = "left:"+(nr.left - lr.left - list.clientLeft)+"px;top:"+(nr.top - lr.top - list.clientTop)+"px;width:"+nr.width+"px;height:"+nr.height+"px;background:"+cs.backgroundColor+";border-radius:"+cs.borderRadius+";box-shadow:"+cs.boxShadow;
+    list.classList.add("fx-seg"); list.insertBefore(p, list.firstChild);
+    var a = p.animate([{transform:"translate("+(r0.x - (nr.left - lr.left))+"px,"+(r0.y - (nr.top - lr.top))+"px)", width:r0.w+"px", height:r0.h+"px"}, {transform:"none", width:nr.width+"px", height:nr.height+"px"}], {duration:300, easing:"cubic-bezier(.3,1.25,.4,1)"});
+    var end = function(){ if(p.parentNode) p.parentNode.removeChild(p); list.classList.remove("fx-seg"); }; a.onfinish = end; setTimeout(end, 500); }
   // horizontal scrollbare Bereiche, Eingaben, Karten und Zeilen mit eigener Wischgeste bleiben unberührt
   function blocked(t, box){ if(t.closest("input,textarea,select,[contenteditable],canvas,.maplibregl-map,.wm-box,.swc,.stc,.grip,.pv-track,[role=tablist],[role=slider],.dc-reel")) return true;
     for(var n = t; n && n!==box; n = n.parentElement){ if(n.scrollWidth > n.clientWidth + 2){ var ox = getComputedStyle(n).overflowX; if(ox==="auto" || ox==="scroll") return true; } } return false; }
