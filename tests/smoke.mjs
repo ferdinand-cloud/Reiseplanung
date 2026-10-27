@@ -376,6 +376,14 @@ await test("Entdecken: Reels-Feed mit Auswahl Reise/Ziel/Inspiration, Like, Übe
   await click("#dcView [data-act=dctake]"); await page.waitForTimeout(150);
   ok(await rp(`Object.keys(T().places).some(function(k){ var p = T().places[k]; return p.n==="Kiosk Zett" && p.rec; })`), "Nicht in die Wunschliste der Reise übernommen");
   ok(await rp(`window.__log.some(function(x){ return (x[0].slice(-10)==="/adds/u_me"); })`) && (await page.locator("#dcView .dc-take").innerText()).trim()==="8", "Übernahme nicht gezählt");
+  await click("#dcView [data-act=dctake]"); await page.waitForTimeout(150);
+  ok(await rp(`!Object.keys(T().places).some(function(k){ return T().places[k].n==="Kiosk Zett"; })`) && (await page.locator("#dcView .dc-take").innerText()).trim()==="7", "Erneutes Tippen nimmt die Übernahme nicht zurück");
+  ok(await rp(`window.__log.some(function(x){ return x[0].slice(-10)==="/adds/u_me" && x[1]==="del"; })`), "Übernahme-Merker nicht gelöscht");
+  await click("#dcView [data-act=dctake]"); await page.waitForTimeout(150);
+  ok(await rp(`Object.keys(T().places).some(function(k){ return T().places[k].n==="Kiosk Zett"; })`), "Zweites Übernehmen klappt nicht");
+  await rp(`var k = Object.keys(T().places).filter(function(k){ return T().places[k].n==="Kiosk Zett"; })[0]; T().order[days()[1].key] = (T().order[days()[1].key]||[]).concat([k]); $("toast").hidden = true; true`);
+  await click("#dcView [data-act=dctake]"); await page.waitForTimeout(150);
+  ok(await rp(`Object.keys(T().places).some(function(k){ return T().places[k].n==="Kiosk Zett"; })`) && (await page.locator("#toast").innerText()).includes("eingeplant"), "Eingeplanter Ort wird ohne Rückfrage entfernt");
   await click("#dcView .dc-avg");
   const rt = await page.locator("#catPop .dc-rpop").innerText();
   ok(rt.includes("@anna") && rt.includes("@Ludwig") && rt.includes("Outstanding") && rt.includes("Nice") && rt.includes("Stimmt!") && rt.includes("Teuer"), "Einzelbewertungen/Kommentare fehlen: "+rt);

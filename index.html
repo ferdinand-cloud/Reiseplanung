@@ -4965,11 +4965,29 @@ function dcQ(r){ return {n:r.n, c:r.c, la:+r.la, lo:+r.lo, addr:r.addr||"", note
 // Vorschlag übernehmen: in die Wunschliste der gewählten Reise oder ins gewählte Ziel; bei „Inspiration“ merken (passendes oder neues Ziel)
 function dcTake(key){
   var r = DC.byKey[key]; if(!r || !r.la) return; var tg = dcTgt();
-  if(dcHas(r, tg)){ toast("„"+r.n+"“ ist schon "+(tg ? "in „"+dcTgtName(tg)+"“" : "gemerkt"), false); return; }
+  if(dcHas(r, tg)){ dcUntake(r, tg); return; }
   if(tg && tg.z){ var a = zielAdd(tg.id, dcQ(r)); if(!a) return; save(); zLast = {zid:tg.id, pid:a.id}; zToast("„"+r.n+"“ übernommen in „"+dcTgtName(tg)+"“", zLast); spotAdd(r); }
   else if(tg){ if(isViewerOf(tg.id)){ toast("Diese Reise kannst du nur ansehen.", false); return; } dcAdd(key, null, tg.id); }
   else { merken(dcQ(r)); spotAdd(r); }
   dcReelRefresh(key);
+}
+// erneutes Tippen nimmt den Vorschlag wieder heraus – aber nur, solange er nur auf der Wunschliste bzw. im Ziel liegt
+function dcUntake(r, tg){
+  var q = {n:r.n, la:+r.la, lo:+r.lo}, t = null, pid = "";
+  var inT = function(t0){ return Object.keys(t0.places).filter(function(id){ var p = t0.places[id]; return p && hasLoc(p) && dist(p, q) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(q.n||"").toLowerCase().slice(0, 6); })[0] || ""; };
+  if(tg){ t = tg.t; pid = tg.z ? Object.keys(t.places).filter(function(k){ return samePl(t.places[k], q); })[0] || "" : inT(t); }
+  else { var f = zFind(q); if(f){ t = S.trips[f.zid]; pid = f.pid; } else if(dcInTrip(q)){ t = T(); pid = inT(t); } }
+  if(!t || !pid) return;
+  if(!t.ziel){
+    if(isViewerOf(t.id)){ toast("Diese Reise kannst du nur ansehen.", false); return; }
+    var busy = (t.done||{})[pid] || Object.keys(t.order||{}).some(function(k){ return (t.order[k]||[]).indexOf(pid) > -1; }) || Object.keys(t.places).some(function(k){ return t.places[k] && t.places[k].of===pid; });
+    if(busy){ toast("„"+r.n+"“ ist schon eingeplant oder besucht – entfernen kannst du ihn in der Reise.", false); return; }
+  }
+  if(t.id===S.cur) undoSnap = snapshot();
+  delete t.places[pid]; save(); spotUnadd(r);
+  if(t.id===S.cur){ dirty(); renderSheet(); scheduleOverlay(); }
+  toast("„"+r.n+"“ wieder entfernt aus „"+(t.name||"Reise")+"“", t.id===S.cur);
+  dcReelRefresh(r.key);
 }
 /* Likes und Übernahmen je Ort (über alle Empfehlungen desselben Orts): spots/{id} mit Zählern, je Konto ein Merker in likes/{uid} bzw. adds/{uid}.
    Die Kennung ist ein Hash aus Gebiet und Name – sie verrät weder Ort noch Empfehlende. */
@@ -5001,6 +5019,13 @@ function spotLike(r){
   if(on) b.set(ref.collection("likes").doc(me), {at:Date.now()}); else b.delete(ref.collection("likes").doc(me));
   b.set(ref, {likes:FV.increment(on ? 1 : -1)}, {merge:true});
   b.commit().then(function(){ s.busy = false; }, function(e){ s.busy = false; s.me = !on; s.likes = Math.max(0, s.likes + (on ? -1 : 1)); setMyLike(s.id, !on); dcReelRefresh(r.key); toast("Like konnte nicht gespeichert werden"+spotErr(e)+".", false); });
+}
+function spotUnadd(r){
+  if(!r || !r.la) return; var s = spotOf(r); if(!s.meAdd) return; s.meAdd = false; s.adds = Math.max(0, (s.adds||0) - 1);
+  if(s.demo || !fbDb || !acct.user) return;
+  var me = acct.user.uid, FV = window.firebase.firestore.FieldValue, ref = spotRef(s.id), b = fbDb.batch();
+  b.delete(ref.collection("adds").doc(me)); b.set(ref, {adds:FV.increment(-1)}, {merge:true});
+  b.commit().then(function(){}, function(){ s.meAdd = true; s.adds++; dcReelRefresh(r.key); });
 }
 // Übernahme zählen: je Konto und Ort einmal
 function spotAdd(r){
@@ -5066,7 +5091,7 @@ function dcCnt(n){ return n==null ? "" : n >= 10000 ? Math.round(n/1000)+"k" : n
 function dcSideHTML(r){
   var s = spotOf(r), k = esc(r.key), tg = dcTgt(), has = dcHas(r, tg), nr = dcRevs(r).length, cmn = dcCmN(r);
   return "<button type=\"button\" class=\"dc-sb dc-like"+(s.me ? " on" : "")+"\" data-act=\"dclike\" data-k=\""+k+"\" aria-pressed=\""+s.me+"\" aria-label=\"Gefällt mir\">"+dcSV(DCHEART, s.me ? "currentColor" : "none")+"<span>"+dcCnt(s.likes)+"</span></button>"+
-    "<button type=\"button\" class=\"dc-sb dc-take"+(has ? " on" : "")+"\" data-act=\"dctake\" data-k=\""+k+"\" aria-label=\""+(has ? "Schon übernommen" : esc(tg ? "In Wunschliste von „"+dcTgtName(tg)+"“ übernehmen" : "Merken – passendes oder neues Ziel"))+"\" title=\""+(s.adds ? s.adds+"× in Wunschlisten übernommen" : "In Wunschliste übernehmen")+"\">"+dcSV(has ? "<path d=\"m5 12.5 4.5 4.5L19 7.5\"/>" : "<path d=\"M12 5v14M5 12h14\"/>")+"<span>"+dcCnt(s.adds)+"</span></button>"+
+    "<button type=\"button\" class=\"dc-sb dc-take"+(has ? " on" : "")+"\" data-act=\"dctake\" data-k=\""+k+"\" aria-label=\""+(has ? "Übernommen – tippen zum Entfernen" : esc(tg ? "In Wunschliste von „"+dcTgtName(tg)+"“ übernehmen" : "Merken – passendes oder neues Ziel"))+"\" title=\""+(s.adds ? s.adds+"× in Wunschlisten übernommen" : "In Wunschliste übernehmen")+"\">"+dcSV(has ? "<path d=\"m5 12.5 4.5 4.5L19 7.5\"/>" : "<path d=\"M12 5v14M5 12h14\"/>")+"<span>"+dcCnt(s.adds)+"</span></button>"+
     "<button type=\"button\" class=\"dc-sb\" data-act=\"dcrate\" data-k=\""+k+"\" aria-label=\"Bewertungen und Kommentare\">"+dcSV("<path d=\"M4.5 5.5h15v10h-8l-4.5 3.5v-3.5h-2.5z\"/>")+"<span>"+(nr + cmn > 1 || cmn ? dcCnt(Math.max(nr, cmn)) : "")+"</span></button>"+
     "<button type=\"button\" class=\"dc-sb\" data-act=\"dcmore\" data-k=\""+k+"\" aria-label=\"Mehr\">"+dcSV("<circle cx=\"5.5\" cy=\"12\" r=\".6\"/><circle cx=\"12\" cy=\"12\" r=\".6\"/><circle cx=\"18.5\" cy=\"12\" r=\".6\"/>")+"</button>";
 }
