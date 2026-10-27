@@ -1597,6 +1597,32 @@ await test("Hotel-Pop-up: Zwischenstopp einplanen, beliebig oft, kein Knopf mehr
   ok(await page.locator("#sheet li", {hasText:"Zwischenstopp im Hotel"}).count() >= 3, "Zwischenstopps fehlen im Tagesplan");
 });
 
+await test("Tagesplan: Hotel verschieben – Ziele nach dem Hotel, Vorlage zurück", async () => {
+  await seed();
+  await rp(`me = null; meA = null; cur = todayKey(); tab = "day"; renderAll();`); await page.waitForTimeout(200);
+  ok(await page.locator("ol.plan li.hx .grip").count()===2, "Start- und End-Hotel lassen sich nicht ziehen");
+  await shot("hotel-vorlage");
+  ok(await rp(`(function(){ var L = dayLegs(cur); return L[0][0]===dayByKey(cur).hotel && L[L.length-1][1]===dayByKey(cur).hotel; })()`), "Vorlage: Hotel ist nicht Start und Ende");
+  // End-Hotel per Pfeiltaste vor MoMA ziehen
+  await page.locator("ol.plan li.hx[data-id='@he'] .grip").focus(); await page.keyboard.press("ArrowUp"); await page.waitForTimeout(200);
+  ok(await rp(`hFree(cur)`), "Tag ist nach dem Verschieben nicht frei");
+  await shot("hotel-frei");
+  ok(await rp(`(function(){ var o = ord(cur); return o.length===5 && isHStop(o[0]) && o[1]==="p1" && o[2]==="p2" && isHStop(o[3]) && o[4]==="p3"; })()`), "Reihenfolge falsch: "+await rp(`ord(cur).map(function(x){ return isHStop(x) ? "H" : x; }).join(",")`));
+  ok(await rp(`(function(){ var L = dayLegs(cur), last = L[L.length-1]; return L.length===4 && last[0].k==="hotel" && last[1].id==="p3"; })()`), "Route endet nicht am Ziel nach dem Hotel");
+  ok(await page.locator("ol.plan li.hx").count()===0 && await page.locator("#sheet li.st", {hasText:"Start im Hotel"}).count()===1, "Hotel-Stopps fehlen im Tagesplan");
+  // neues Ziel landet am Ende (nach dem Hotel steht schon MoMA)
+  await rp(`plan("p6", cur); renderAll();`); await page.waitForTimeout(150);
+  ok(await rp(`ord(cur)[ord(cur).length-1]==="p6"`), "Neues Ziel nicht am Ende");
+  // Erledigt: Start-Hotel davor gilt als verlassen
+  await rp(`T().done.p1 = true; doneMove("p1", cur); renderAll();`); await page.waitForTimeout(150);
+  ok(await rp(`!!T().done[ord(cur)[0]] && isHStop(ord(cur)[0])`), "Start-Hotel nicht als verlassen markiert");
+  // zurück zur Vorlage: Hotel vorn und hinten → wieder normales Start-/End-Hotel
+  await rp(`(function(){ var t = T(), hs = ord(cur).filter(isHStop); delete t.done.p1; delete t.done[hs[0]]; t.order[cur] = [hs[0], "p1", "p2", "p3", hs[1], "p6"]; renderAll(); })()`); await page.waitForTimeout(150);
+  await page.locator("ol.plan li.st[data-id='p6'] .grip").focus(); await page.keyboard.press("ArrowUp"); await page.waitForTimeout(200);
+  ok(await rp(`!hFree(cur) && ord(cur).join(",")==="p1,p2,p3,p6" && !Object.keys(T().places).some(function(k){ return T().places[k].k==="hotel"; })`), "Vorlage nicht wiederhergestellt: "+await rp(`ord(cur).join(",")`));
+  ok(await page.locator("ol.plan li.hx").count()===2, "Start-/End-Hotel fehlen nach dem Zurückschieben");
+});
+
 await test("Liste: besuchte Orte nach Sichtbarkeit filtern", async () => {
   await seed();
   // gestern besucht: p4, p5; p4 privat, p5 für Freunde; dazu heute p1 besucht (Reise)
