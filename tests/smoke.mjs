@@ -1592,6 +1592,38 @@ const pfStatsSide = async (n) => {
 await test("Profil: Zähler klein rechts neben dem Profilbild", async () => { await pfStatsSide("hoch"); });
 await test("Profil: Zähler rechts neben dem Profilbild im Querformat", async () => { await pfStatsSide("quer"); }, QUER);
 
+/* Tastatur in Pop-ups: Karte bleibt stehen, unscharfer Hintergrund reicht bis ganz unten (Tastatur wird über visualViewport nachgestellt) */
+const kbPop = async (open, ovSel, name) => {
+  await seed(); await rp(open); await page.waitForTimeout(300);
+  await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect && a.effect.getComputedTiming().endTime !== Infinity).map(a => a.finished.catch(() => 0))));
+  const fld = ovSel+" input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden])";
+  ok(await page.locator(fld).count() > 0, name+": kein Eingabefeld");
+  const card = ovSel+" > *";
+  const before = await page.locator(card).first().boundingBox();
+  await page.locator(fld).first().focus();
+  const H = await page.evaluate(() => innerHeight), kbH = 380;
+  await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); visualViewport.dispatchEvent(new Event("resize")); }, H - kbH);
+  await page.waitForTimeout(450);
+  ok(await rp(`document.body.classList.contains("kb")`), name+": Tastatur nicht erkannt");
+  const after = await page.locator(card).first().boundingBox(), ov = await page.locator(ovSel).boundingBox(), f = await page.locator(fld).first().boundingBox();
+  ok(Math.abs(after.y - before.y) <= 1, name+": Karte springt beim Fokus ("+before.y+" → "+after.y+")");
+  ok(ov.y <= 0.5 && ov.y + ov.height >= H - 0.5, name+": Hintergrund reicht nicht bis unten: "+JSON.stringify(ov));
+  ok(after.y + after.height <= H - kbH + 1, name+": Karte reicht unter die Tastatur");
+  ok(f.y >= 0 && f.y + f.height <= H - kbH, name+": Feld verdeckt");
+  await shot("tastatur-"+name);
+  await page.evaluate(() => { document.activeElement.blur(); delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
+  await page.waitForTimeout(300);
+  ok(!(await rp(`!!document.querySelector(".kbpin") || document.body.classList.contains("kb")`)), name+": Tastatur-Zustand bleibt hängen");
+  const back = await page.locator(card).first().boundingBox();
+  ok(Math.abs(back.y - before.y) <= 1, name+": Karte steht nach dem Schließen woanders ("+before.y+" → "+back.y+")");
+};
+await test("Tastatur im Pop-up: Profil bearbeiten springt nicht, Hintergrund bleibt unscharf", async () => {
+  await kbPop(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; PROF = {name:"Ferdinand_V"}; accView = "profile"; openSettings(); true`, "#acctPop", "profil");
+});
+await test("Tastatur im Pop-up: mittige Karte (Neues Ziel) springt nicht", async () => {
+  await kbPop(`openZiele(); zEdit = zEditFrom(""); zRenderEdit(true); true`, "#catPop", "ziel");
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }
