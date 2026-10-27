@@ -2918,6 +2918,89 @@ await test("Liste: Reise-Auswahl als Dropdown mit Suche statt Chips (30 Reisen)"
   ok((await page.locator("#lsView .ls-tripdd").innerText()).includes("Tokio"), "Dropdown zeigt die neue Reise nicht");
 });
 
+await test("Bewegung: Pop-up geht am Knopf auf, schließt als Kopie ohne IDs, Seiten mit Richtung", async () => {
+  await seed(); await rp(`select("p6")`); await page.waitForTimeout(200);
+  await click("#card [data-act=planpick]");
+  const o = await page.evaluate(() => { const e = document.getElementById("planPop"), c = e.firstElementChild; return {fx:e.classList.contains("fx-in"), dx:c.style.getPropertyValue("--fxdx"), s:c.style.getPropertyValue("--fxs")}; });
+  ok(o.fx && o.s===".78" && o.dx!=="", "Pop-up geht nicht am Knopf auf: "+JSON.stringify(o));
+  await page.waitForTimeout(500);
+  ok(await rp(`!$("planPop").classList.contains("fx-in")`), "Einblend-Klasse bleibt hängen (Neuzeichnen würde wieder animieren)");
+  await page.locator("#planPop [data-act=plancancel]").click();
+  const g = await page.evaluate(() => { const L = document.getElementById("fxL"), k = L && L.firstElementChild;
+    return {n:L ? L.children.length : 0, ids:L ? L.querySelectorAll("[id]").length : -1, inert:!!(L && L.inert), orig:document.getElementById("planPop").hidden, cls:k ? k.className : ""}; });
+  ok(g.n===1 && g.ids===0 && g.inert && g.orig && g.cls.includes("cfpop"), "Ausblend-Kopie falsch: "+JSON.stringify(g));
+  await page.waitForTimeout(350);
+  ok(await page.evaluate(() => document.getElementById("fxL").children.length)===0, "Ausblend-Kopie wird nicht entfernt");
+  // Seiten: Profil → Entdecken (Reiter weiter links) gleitet von links, die leere Fläche des Profils entfällt sofort
+  await rp(`openProfile()`); await page.waitForTimeout(450);
+  await click("#tbDisc");
+  const pg = await page.evaluate(() => ({c:document.getElementById("dcView").classList.contains("fx-pgc"), x:document.getElementById("dcView").style.getPropertyValue("--fxx"), bg:document.querySelectorAll("#fxL .fx-pgbg").length}));
+  ok(pg.c && pg.x==="-28px" && pg.bg===0, "Seitenwechsel ohne Richtung: "+JSON.stringify(pg));
+  await click("#tbChat");
+  ok(await rp(`$("chView").style.getPropertyValue("--fxx")`)==="28px", "Reiter weiter rechts gleitet nicht von rechts");
+  // Bewegung reduzieren: keine Kopien, keine Klassen
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await click("#tbMap"); await rp(`select("p6")`); await page.waitForTimeout(200);
+  await click("#card [data-act=planpick]");
+  ok(await rp(`!$("planPop").classList.contains("fx-in")`), "Bewegung trotz „Bewegung reduzieren“");
+  await click("#planPop [data-act=plancancel]");
+  ok(await page.evaluate(() => document.getElementById("fxL").children.length)===0, "Kopie trotz „Bewegung reduzieren“");
+});
+
+await test("Bewegung: Foto fliegt aus dem Vorschaubild ins Vollbild und zurück, Ränder mit weichem Foto", async () => {
+  await seed();
+  await rp(`openJPop("p4", dayOf("p4"))`); await page.waitForTimeout(500);
+  const rec = () => page.evaluate(() => new Promise(res => { const ws = []; const t0 = performance.now(); (function f(){ const e = document.querySelector(".fx-fly"); if(e) ws.push(Math.round(e.getBoundingClientRect().width)); if(performance.now() - t0 < 900) requestAnimationFrame(f); else res(ws); })(); }));
+  let r = rec(); await page.locator("#jPop [data-act=phview]").first().click(); let ws = await r, la = await rp(`FX.last`);
+  ok(ws.length && la && la.d==="in" && la.from < 120 && la.to > 300, "Foto fliegt nicht aus dem Vorschaubild: "+JSON.stringify(la)+" "+ws.join(","));
+  ok(await rp(`!$("pvLayer").classList.contains("fx-flying") && !document.querySelector(".fx-fly")`), "Flug räumt nicht auf");
+  ok(await rp(`!!document.querySelector("#pvLayer .pv-amb[src]")`), "Weicher Fotohintergrund fehlt");
+  r = rec(); await click("#pvLayer [data-act=phback]"); ws = await r; la = await rp(`FX.last`);
+  ok(ws.length && la.d==="out" && la.from > 300 && la.to > 0 && la.to < 120, "Foto fliegt nicht zurück: "+JSON.stringify(la)+" "+ws.join(","));
+  ok(await rp(`[].every.call(document.querySelectorAll("#jPop img[data-ph]"), function(i){ return !i.style.visibility; }) && !document.querySelector("#fxL > *")`), "Vorschaubild bleibt versteckt oder Reste bleiben");
+  // herunterziehen: fliegt ebenfalls zurück
+  await page.locator("#jPop [data-act=phview]").first().click(); await page.waitForTimeout(700);
+  const cdp = await page.context().newCDPSession(page);
+  r = rec(); await rp(`FX.last = null`);
+  await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:200, y:420}]});
+  for(const d of [20, 60, 120, 180, 220]){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:200, y:420 + d}]}); await page.waitForTimeout(16); }
+  await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]});
+  ws = await r;
+  ok(await rp(`$("pvLayer").hidden && !$("pvLayer").style.background`), "Herunterziehen schließt nicht sauber");
+  la = await rp(`FX.last`);
+  ok(la && la.d==="out" && la.to > 0 && la.to < 120 && la.from < 390, "Nach dem Herunterziehen fliegt das Foto nicht zurück: "+JSON.stringify(la));
+});
+
+await test("Bewegung: Wischen unter den Reitern wechselt den Reiter (Profil, Liste)", async () => {
+  await seed(); await rp(`openProfile()`); await page.waitForTimeout(500);
+  const cdp = await page.context().newCDPSession(page);
+  const swipe = async (x0, x1, y) => { await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:x0, y}]});
+    for(let i = 1; i <= 6; i++){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:x0 + (x1-x0)*i/6, y:y + i}]}); await page.waitForTimeout(16); }
+    await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); await page.waitForTimeout(400); };
+  const y = await page.evaluate(() => Math.round(document.querySelector("#profView [role=tablist]").getBoundingClientRect().bottom + 60));
+  ok(await rp(`profTab`)==="mine", "Start nicht bei Reisen");
+  await swipe(300, 100, y);
+  ok(await rp(`profTab`)==="obs", "Nach links wischen wechselt nicht zu „Beobachtet“: "+await rp(`profTab`));
+  await swipe(100, 300, y);
+  ok(await rp(`profTab`)==="mine", "Nach rechts wischen führt nicht zurück");
+  await swipe(100, 300, y);
+  ok(await rp(`profTab`)==="mine", "Am ersten Reiter darf Wischen nichts ändern");
+  // kurzer Zug: bleibt, Inhalt springt zurück
+  await swipe(250, 210, y);
+  ok(await rp(`profTab`)==="mine" && await page.evaluate(() => [].every.call(document.querySelectorAll("#profView > *"), n => !n.style.transform)), "Kurzer Zug wechselt oder lässt Verschiebung zurück");
+  // senkrecht: kein Wechsel
+  await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:200, y}]});
+  for(const d of [20, 50, 90]) { await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:205, y:y + d}]}); await page.waitForTimeout(16); }
+  await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); await page.waitForTimeout(300);
+  ok(await rp(`profTab`)==="mine", "Senkrechtes Wischen wechselt den Reiter");
+  await rp(`openLsPage()`); await page.waitForTimeout(400);
+  const ly = await page.evaluate(() => Math.round(document.querySelector("#lsView [role=tablist]").getBoundingClientRect().bottom + 80));
+  const t0 = await page.evaluate(() => document.querySelector("#lsView [role=tab][aria-selected=true]").getAttribute("data-v"));
+  await swipe(300, 100, ly);
+  const t1 = await page.evaluate(() => document.querySelector("#lsView [role=tab][aria-selected=true]").getAttribute("data-v"));
+  ok(t0!==t1, "Wischen in der Liste wechselt den Reiter nicht: "+t0+" → "+t1);
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }
