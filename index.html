@@ -5311,8 +5311,8 @@ function dcFill(){
 function renderDc(){
   var el = $("dcView"); if(!el) return;
   var tg = dcTgt(), tc = tg ? tripColor(tg.id) : "var(--accent)";
-  var head = "<div class=\"dc-bar\"><div class=\"pf-seg dc-src\" role=\"tablist\" aria-label=\"Quelle\"><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"all\" aria-selected=\""+(dcSrc==="all")+"\">🌐 Alle</button><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"friends\" aria-selected=\""+(dcSrc==="friends")+"\">👥 Freunde</button></div>"+
-    "<button type=\"button\" class=\"dc-tgt\" data-act=\"dctgt\" aria-haspopup=\"menu\" aria-label=\"Vorschläge für: "+esc(dcTgtName(tg))+"\"><span class=\"dc-tgd"+(tg ? (tg.z ? " z" : "") : " in")+"\" style=\"--cc:"+tc+"\">"+(tg ? (tg.z ? ZBM : "") : "✦")+"</span><span class=\"dc-tgn\">"+esc(dcTgtName(tg))+"</span>"+dcSV("<path d=\"m7 10 5 5 5-5\"/>")+"</button></div>";
+  var head = "<div class=\"dc-bar\"><button type=\"button\" class=\"dc-tgt\" data-act=\"dctgt\" aria-haspopup=\"menu\" aria-label=\"Vorschläge für: "+esc(dcTgtName(tg))+"\"><span class=\"dc-tgd"+(tg ? (tg.z ? " z" : "") : " in")+"\" style=\"--cc:"+tc+"\">"+(tg ? (tg.z ? ZBM : "") : "✦")+"</span><span class=\"dc-tgn\">"+esc(dcTgtName(tg))+"</span>"+dcSV("<path d=\"m7 10 5 5 5-5\"/>")+"</button>"+
+    "<div class=\"pf-seg dc-src\" role=\"tablist\" aria-label=\"Quelle\"><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"all\" aria-selected=\""+(dcSrc==="all")+"\">🌐 Alle</button><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"friends\" aria-selected=\""+(dcSrc==="friends")+"\">👥 Freunde</button></div></div>";
   if(!acct.user){ DCSIG = ""; el.innerHTML = "<div class=\"dc-page\">"+head+"<p class=\"note nt-empty\">Melde dich an, um Vorschläge zu sehen.</p></div>"; return; }
   if(dcSrc==="all") pubLoad();
   var list = dcList(), busy = DC.busy || (dcSrc==="all" && PUB.busy);

@@ -376,6 +376,7 @@ await test("Entdecken: Reels-Feed mit Auswahl Reise/Ziel/Inspiration, Like, Übe
   const fd = await page.evaluate(() => { const f = document.getElementById("dcFeed"), r = f.querySelector(".dc-reel").getBoundingClientRect(), b = f.getBoundingClientRect();
     return {snap:getComputedStyle(f).scrollSnapType, h:r.height, fh:b.height, bottom:b.bottom, vh:innerHeight}; });
   ok(fd.snap.includes("y") && fd.h >= fd.fh - 1 && fd.fh > 500, "Kein Vollbild-Feed: "+JSON.stringify(fd));
+  ok(await page.evaluate(() => document.querySelector("#dcView .dc-tgt").getBoundingClientRect().right <= document.querySelector("#dcView .dc-src").getBoundingClientRect().left), "Auswahl Reise/Ziel steht nicht links");
   ok(fd.bottom <= fd.vh - 8, "Feed reicht bis an den unteren Rand: "+JSON.stringify(fd));
   ok(await page.locator("#dcView .dc-reel .dc-ph img").count()===2, "Fotos des sichtbaren Vorschlags fehlen");
   ok((await page.locator("#dcView .dc-avg").innerText()).includes("Must Have"), "Durchschnittsbewertung falsch (Outstanding + Nice ≈ Must Have)");
