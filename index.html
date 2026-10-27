@@ -455,6 +455,17 @@ body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0
 .tf-head{padding-right:44px;margin-bottom:6px}
 .tf-head h2{margin:0;font:700 22.5px/1.1 var(--f-display)}
 .tf-head p{margin:3px 0 0;color:var(--muted);font-size:14px}
+.tf-optg{margin-top:12px}
+.tf-row.tf-opt > .tf-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;color:inherit;font-size:inherit}
+.tf-opt .tf-t b{font-weight:600;font-size:15px}
+.tf-opt .tf-t small{color:var(--muted);font-size:12.5px}
+.tf-opt .sw2{position:relative;width:46px;height:28px;border-radius:999px;background:var(--line);transition:background .15s;flex:0 0 auto}
+.tf-opt .sw2::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.tf-opt[aria-checked="true"] .sw2{background:var(--ok,#34C759)}
+.tf-opt[aria-checked="true"] .sw2::after{transform:translateX(18px)}
+.tst{font-style:normal;font-weight:600}
+.tst-now{color:var(--ok,#2e9b5a)}
+.tst-opt{color:#AF52DE}
 .tf-lbl{margin:18px 4px 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .tf-grp{border-radius:16px;background:color-mix(in srgb,var(--ink) 5%,transparent);overflow:hidden}
 .tf-grp.ov{margin-top:12px}
@@ -3700,14 +3711,22 @@ function rangeLabel(a, b){
   if(A.getUTCMonth()===B.getUTCMonth()) return A.getUTCDate()+".–"+B.getUTCDate()+". "+MON[B.getUTCMonth()].slice(0,3)+".";
   return shortD(a)+"–"+shortD(b);
 }
+/* Reise-Status: Option (ohne Termin) · In Planung · Aktuell · Abgeschlossen (Enddatum vorbei) */
+var TSTAT = {opt:"Option", plan:"In Planung", now:"Aktuell", done:"Abgeschlossen"};
+function tripStatus(t){ if(!t) return "plan"; if(t.opt) return "opt"; var tk = todayKey(); if(!parseD(t.start) || !parseD(t.end)) return "plan"; return t.end < tk ? "done" : t.start <= tk ? "now" : "plan"; }
+function tstatHTML(t){ var k = tripStatus(t); return "<em class=\"tst tst-"+k+"\">"+TSTAT[k]+"</em>"; }
+// Zeitraum oder „Option“ (ohne Termin)
+function tripRange(t){ return t && t.opt ? "Option · ohne Termin" : rangeLabel(t.start, t.end); }
+// Sortierung: Option-Reisen ans Ende
+function tripCmp(a, b){ return (a.opt?1:0) - (b.opt?1:0) || String(a.start||"").localeCompare(String(b.start||"")); }
 function todayKey(){ var n = new Date(); return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0"); }
 
 /* ---------- Zustand (Prototyp: nur dieses Gerät) ---------- */
 var KEY = "nyc-karte-proto-v4";
 var S; // {trips:{id:trip}, cur:tripId}
 function newTripObj(o){
-  return {id:o.id||uid("t"), name:o.name, start:o.start, end:o.end, arr:o.arr||"", dep:o.dep||"",
-          hotels:o.hotels||[], orte:o.orte||[], journal:{}, places:{}, lists:[{id:"l_main", name:"Wunschliste"}], order:{}, done:{}, times:{}};
+  return Object.assign({id:o.id||uid("t"), name:o.name, start:o.start, end:o.end, arr:o.arr||"", dep:o.dep||"",
+          hotels:o.hotels||[], orte:o.orte||[], journal:{}, places:{}, lists:[{id:"l_main", name:"Wunschliste"}], order:{}, done:{}, times:{}}, o.opt ? {opt:true} : {});
 }
 function nycTrip(){
   var t = newTripObj({id:"t_nyc", name:"New York", start:"2026-10-21", end:"2026-10-27", arr:"14:00", dep:"21:00",
@@ -4564,12 +4583,12 @@ function tripsPageHTML(){
     return h+"<p class=\"note\">Wiederhergestellte Reisen erscheinen wieder in deiner Reiseliste – bei gemeinsamen Reisen auch für alle Mitreisenden.</p></div>";
   }
   var sh = tripsTab==="shared";
-  var list = liveIds().map(function(k){ return S.trips[k]; }).filter(function(x){ return !(x.starter && x.seed) && isShared(x.id)===sh; }).sort(function(a,b){ return a.start<b.start?-1:1; });
+  var list = liveIds().map(function(k){ return S.trips[k]; }).filter(function(x){ return !(x.starter && x.seed) && isShared(x.id)===sh; }).sort(tripCmp);
   if(list.length){
     h += "<div class=\"ag-grp\">";
     list.forEach(function(x){
       var mm = META[x.id], nm2 = mm ? (mm.members||[]).length : 1, curT = x.id===S.cur;
-      h += "<button type=\"button\" class=\"ag-row\" data-act=\""+(curT?"tripdetails":"trip")+"\" data-trip=\""+x.id+"\"><span><b>"+esc(x.name)+(curT?" <em class=\"curtag\">Aktiv</em>":"")+"</b><small>"+esc(rangeLabel(x.start,x.end))+(nm2>1?" · mit "+(nm2-1)+(nm2===2?" Person":" Personen"):"")+(isViewerOf(x.id) ? " · du beobachtest" : "")+(mm && (mm.invites||[]).length ? " · "+mm.invites.length+(mm.invites.length===1?" Einladung offen":" Einladungen offen"):"")+(curT?" · Details ansehen":"")+"</small></span><em class=\"chev\">›</em></button>";
+      h += "<button type=\"button\" class=\"ag-row\" data-act=\""+(curT?"tripdetails":"trip")+"\" data-trip=\""+x.id+"\"><span><b>"+esc(x.name)+(curT?" <em class=\"curtag\">Aktiv</em>":"")+"</b><small>"+tstatHTML(x)+esc(x.opt ? "" : " · "+rangeLabel(x.start,x.end))+(nm2>1?" · mit "+(nm2-1)+(nm2===2?" Person":" Personen"):"")+(isViewerOf(x.id) ? " · du beobachtest" : "")+(mm && (mm.invites||[]).length ? " · "+mm.invites.length+(mm.invites.length===1?" Einladung offen":" Einladungen offen"):"")+(curT?" · Details ansehen":"")+"</small></span><em class=\"chev\">›</em></button>";
     });
     h += "</div>";
   } else h += "<p class=\"note\">"+(sh ? "Noch keine gemeinsamen Reisen. Öffne eine Reise und lade unter „Mitreisende“ Freunde ein." : (liveIds().length ? "Keine privaten Reisen." : "Noch keine eigene Reise erstellt."))+"</p>";
@@ -6876,8 +6895,8 @@ function lsGoMap(pid){
   if(!desktop.matches && hasLoc(p)){ setSheet("min"); setTimeout(function(){ revealPoint(p, 16, true); }, 60); } else revealPoint(p, 16, true);
 }
 /* Reise-Auswahl der Liste: ein Dropdown statt Chips nebeneinander (bei 30+ Reisen sonst unübersichtlich), ab 6 Reisen mit Suche */
-function lsTripIds(){ return liveIds().filter(function(id){ return !isViewerOf(id); }).sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); }); }
-function lsTripSub(t){ return t.start && t.end ? shortD(t.start)+"–"+shortD(t.end)+(t.end.slice(0, 4) ? " "+t.end.slice(0, 4) : "") : ""; }
+function lsTripIds(){ return liveIds().filter(function(id){ return !isViewerOf(id); }).sort(function(a, b){ var A = S.trips[a]||{}, B = S.trips[b]||{}; return (B.opt?1:0) - (A.opt?1:0) || (B.start||"").localeCompare(A.start||""); }); }
+function lsTripSub(t){ return TSTAT[tripStatus(t)]+(!t.opt && t.start && t.end ? " · "+shortD(t.start)+"–"+shortD(t.end)+(t.end.slice(0, 4) ? " "+t.end.slice(0, 4) : "") : ""); }
 function lsTripDD(cur){ var t = cur && S.trips[cur];
   return "<div class=\"ls-dds ls-tripdds\"><button type=\"button\" class=\"ls-dd ls-tripdd\" data-act=\"lstrippick\" aria-haspopup=\"menu\" aria-label=\"Reise wählen\">"+
     (t ? "<i class=\"dc-tdot\" style=\"--cc:"+tripColor(cur)+"\"></i><span class=\"ls-ddn\">"+esc(t.name||"Reise")+"</span>"+(lsTripSub(t) ? "<small>"+esc(lsTripSub(t))+"</small>" : "") : "<span class=\"ls-ddn\">Reise wählen</span>")+CHEV+"</button></div>"; }
@@ -6895,7 +6914,7 @@ function renderLs(){
     el.innerHTML = h+"</div><p class=\"note nt-empty\">Die Liste gibt es nur für deine eigenen Reisen. Wähle oben eine aus.</p></div>"; return;
   }
   if(ids.length > 1) h += lsTripDD(S.cur);
-  else h += "<p class=\"ls-trip1\"><b>"+esc(t.name||"Reise")+"</b>"+(t.start && t.end ? " · "+shortD(t.start)+"–"+shortD(t.end) : "")+"</p>";
+  else h += "<p class=\"ls-trip1\"><b>"+esc(t.name||"Reise")+"</b>"+(!t.opt && t.start && t.end ? " · "+shortD(t.start)+"–"+shortD(t.end) : "")+" "+tstatHTML(t)+"</p>";
   // besuchte Orte je Tag
   var visited = [], nPh = 0;
   ds.forEach(function(D){ (t.order[D.key]||[]).forEach(function(id){ var p = P(id); if(p && t.done[id] && p.k!=="hotel") visited.push({id:id, D:D}); }); });
@@ -7010,7 +7029,7 @@ function renderAcct(){
   var h = "<div class=\"dh\"><div><h2>Mein Konto</h2><p>"+(acct.user ? esc(acct.user.email||"") : "Nicht angemeldet")+"</p></div></div>";
   h += acctBlock();
   var n = liveIds().length;
-  h += "<div class=\"sec\"><h4>Meine Reisen</h4><div class=\"tripsum\">"+liveIds().map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).map(function(x){ return "<div><b>"+esc(x.name)+"</b> · "+esc(rangeLabel(x.start,x.end))+(x.id===S.cur?" · <span class=\"sub\">gerade geöffnet</span>":"")+"</div>"; }).join("")+"</div><p class=\"note\">"+n+(n===1?" Reise":" Reisen")+" in deinem Konto. Wechseln über den Reisenamen oben.</p></div>";
+  h += "<div class=\"sec\"><h4>Meine Reisen</h4><div class=\"tripsum\">"+liveIds().map(function(k){ return S.trips[k]; }).sort(tripCmp).map(function(x){ return "<div><b>"+esc(x.name)+"</b> · "+esc(tripRange(x))+(x.id===S.cur?" · <span class=\"sub\">gerade geöffnet</span>":"")+"</div>"; }).join("")+"</div><p class=\"note\">"+n+(n===1?" Reise":" Reisen")+" in deinem Konto. Wechseln über den Reisenamen oben.</p></div>";
   h += googleBlock();
   h += "<div class=\"sec\"><h4>Sicherung</h4><div class=\"backup\"><button type=\"button\" class=\"btn g s\" data-act=\"export\">Plan als Datei sichern</button><label class=\"btn g s\" for=\"impFile\">Sicherung laden</label><input type=\"file\" id=\"impFile\" accept=\"application/json,.json\"></div></div>";
   return h;
@@ -7257,7 +7276,7 @@ function renderProfile(){
          "<button type=\"button\" class=\"pf-trip"+(id===S.cur?" cur":"")+"\" data-act=\"pfopen\" data-trip=\""+esc(id)+"\">"+
          "<span class=\"pf-cov"+(cov ? "" : " lt")+"\" style=\"--cc:"+tripColor(id)+"\">"+(cov ? "<img data-ph=\""+cov+"\" alt=\"\">" : "<i>"+esc(tripInitials(t.name))+"</i>")+"</span>"+
          (id===S.cur ? "<em class=\"pf-act\">Aktiv</em>" : "")+
-         "<span class=\"pf-tt\"><b>"+esc(t.name||"Reise")+"</b><small>"+esc([t.start && t.end ? shortD(t.start)+"–"+shortD(t.end) : "", role].filter(Boolean).join(" · "))+"</small></span></button>"+
+         "<span class=\"pf-tt\"><b>"+esc(t.name||"Reise")+"</b><small>"+tstatHTML(t)+esc([!t.opt && t.start && t.end ? shortD(t.start)+"–"+shortD(t.end) : "", role].filter(Boolean).map(function(x){ return " · "+x; }).join(""))+"</small></span></button>"+
          "<button type=\"button\" class=\"pf-more\" data-act=\"pfmore\" data-trip=\""+esc(id)+"\" aria-haspopup=\"menu\" aria-label=\"Optionen für "+esc(t.name||"Reise")+"\">"+MORE+"</button></div>";
   });
   if(profTab==="mine" && list.length) h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-new\" data-act=\"pfnew\"><span class=\"pf-plus\" aria-hidden=\"true\">＋</span><b>Neue Reise</b><small>Ziel, Zeitraum, Hotel</small></button></div>";
@@ -11625,10 +11644,10 @@ function cbCard(id){
 var CHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 6l4 4 4-4\"/></svg>";
 function renderTop(){
   var t = T();
-  $("tripBtn").innerHTML = "<b>"+esc(t.name)+"</b><span>"+esc(rangeLabel(t.start,t.end))+"</span>"+CHEV; tripFit(); requestAnimationFrame(tripFit);
+  $("tripBtn").innerHTML = "<b>"+esc(t.name)+"</b><span>"+esc(t.opt ? "Option" : rangeLabel(t.start,t.end))+"</span>"+CHEV; tripFit(); requestAnimationFrame(tripFit);
   var h = "";
-  liveIds().map(function(k){ return S.trips[k]; }).sort(function(a,b){ return a.start<b.start?-1:1; }).forEach(function(x){
-    h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur)+"\"><span>"+esc(x.name)+"</span><small>"+esc(rangeLabel(x.start,x.end))+"</small></button>";
+  liveIds().map(function(k){ return S.trips[k]; }).sort(tripCmp).forEach(function(x){
+    h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur)+"\"><span>"+esc(x.name)+"</span><small>"+tstatHTML(x)+esc(x.opt ? "" : " · "+rangeLabel(x.start,x.end))+"</small></button>";
   });
   h += "<hr>"+
        (acct.user && isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Reise-Details</span><small>Mitglieder</small></button>" : "<button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button>")+"<button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
@@ -11655,6 +11674,7 @@ function viaBtn(i, v){ return isRO() ? "" : "<button type=\"button\" class=\"via
 var SUGICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7.3 14.5h5.4M8 17h4M10 2.8a5 5 0 0 0-3 9c.6.5.9 1 .9 1.7v1h4.2v-1c0-.7.3-1.2.9-1.7a5 5 0 0 0-3-9z\"/></svg>";
 function renderDay(){
   var D = dayByKey(cur);
+  if(!D && T().opt) return "<p class=\"empty\">Option ohne Termin: Sammle Orte in der Wunschliste. Für Tagespläne unter „Reise bearbeiten“ die Option ausschalten und An- und Abreise eintragen.</p>";
   if(!D) return "<p class=\"empty\">Diese Reise hat noch keine gültigen Daten. Trage im Reiter „Reise“ An- und Abreise ein.</p>";
   var ids = ord(cur), pts = routePts(cur), HT = D.hotel, km = 0;
   if(pts.length){ var all = (HT?[HT]:[]).concat(pts, HT?[HT]:[]); for(var i=0;i<all.length-1;i++) km += dist(all[i],all[i+1]); }
@@ -12861,7 +12881,7 @@ function parseLoc(s){
 /* ---------- Inhalt: Reise ---------- */
 function locStr(p){ return hasLoc(p) ? p.la.toFixed(5)+", "+p.lo.toFixed(5) : ""; }
 function tripToDraft(t, mode){
-  return {mode:mode, name:t.name, start:t.start, end:t.end, arr:t.arr, dep:t.dep, err:"",
+  return {mode:mode, opt:!!t.opt, name:t.name, start:t.start, end:t.end, arr:t.arr, dep:t.dep, err:"",
     hotels:t.hotels.map(function(h){ return {id:h.id, n:h.n, loc:locStr(h), from:h.from, to:h.to}; }),
     orte:t.orte.map(function(o){ return {id:o.id, n:o.n, loc:locStr(o), from:o.from||"", to:o.to||""}; })};
 }
@@ -12918,11 +12938,11 @@ function renderTrip(){
   var t = T();
   if(!tdraft){
     var ro = acct.user && isViewerOf(S.cur);
-    var h = "<div class=\"tf-head\"><h2>"+esc(t.name)+"</h2><p>"+esc(rangeLabel(t.start,t.end))+" · "+days().length+" Tage</p></div>";
+    var h = "<div class=\"tf-head\"><h2>"+esc(t.name)+"</h2><p>"+tstatHTML(t)+esc(t.opt ? " · noch ohne Termin" : " · "+rangeLabel(t.start,t.end)+" · "+days().length+" Tage")+"</p></div>";
     h += "<div class=\"tf-grp ov\">";
-    h += "<div class=\"tf-row\"><span>Anreise</span><b>"+esc(dayByKey(t.start) ? dayByKey(t.start).title : t.start)+(t.arr?" · "+esc(t.arr):"")+"</b></div>";
-    h += "<div class=\"tf-row\"><span>Abreise</span><b>"+esc(dayByKey(t.end) ? dayByKey(t.end).title : t.end)+(t.dep?" · "+esc(t.dep):"")+"</b></div>";
-    (t.hotels.length ? t.hotels : [null]).forEach(function(x, i){ h += "<div class=\"tf-row\"><span>"+(i===0?(t.hotels.length>1?"Hotels":"Hotel"):"")+"</span><b>"+(x ? esc(x.n)+"<small>"+shortD(x.from)+"–"+shortD(x.to)+"</small>" : "noch keins")+"</b></div>"; });
+    if(!t.opt) h += "<div class=\"tf-row\"><span>Anreise</span><b>"+esc(dayByKey(t.start) ? dayByKey(t.start).title : t.start)+(t.arr?" · "+esc(t.arr):"")+"</b></div>";
+    if(!t.opt) h += "<div class=\"tf-row\"><span>Abreise</span><b>"+esc(dayByKey(t.end) ? dayByKey(t.end).title : t.end)+(t.dep?" · "+esc(t.dep):"")+"</b></div>";
+    (t.hotels.length ? t.hotels : t.opt ? [] : [null]).forEach(function(x, i){ h += "<div class=\"tf-row\"><span>"+(i===0?(t.hotels.length>1?"Hotels":"Hotel"):"")+"</span><b>"+(x ? esc(x.n)+"<small>"+shortD(x.from)+"–"+shortD(x.to)+"</small>" : "noch keins")+"</b></div>"; });
     t.orte.forEach(function(x, i){ h += "<div class=\"tf-row\"><span>"+(i===0?(t.orte.length>1?"Orte":"Ort"):"")+"</span><b>"+esc(x.n)+(x.from?"<small>"+shortD(x.from)+"–"+shortD(x.to)+"</small>":"")+"</b></div>"; });
     if(!ro) h += "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"tripedit\">Reise bearbeiten</button>";
     h += "</div>";
@@ -12946,10 +12966,12 @@ function renderTrip(){
   var d = tdraft;
   if(d.ok===undefined){ d.ok = d.mode==="new" ? "orte.0" : ""; d.hotels.forEach(function(x,i){ if(!d.ok && !x.tbd && (!(x.n||"").trim() || !(x.loc||"").trim())) d.ok = "hotels."+i; }); }
   var h2 = "<form class=\"tf\" id=\"tForm\" novalidate><div class=\"tf-head\"><h2>"+(d.mode==="new"?"Neue Reise":"Reise bearbeiten")+"</h2></div>";
+  // Option: Reise ohne Termin, nur Name und mindestens ein Ort
+  h2 += "<div class=\"tf-grp tf-optg\"><button type=\"button\" class=\"tf-row tf-opt\" data-act=\"topt\" role=\"switch\" aria-checked=\""+!!d.opt+"\"><span class=\"tf-t\"><b>Option</b><small>"+(d.opt ? (d.mode==="edit" && T() && Object.keys(T().order||{}).some(function(k){ return (T().order[k]||[]).length; }) ? "Ohne Termin – geplante Tage wandern beim Speichern zurück in die Wunschliste" : "Ohne Termin – nur Name und Reiseziel nötig") : "Noch nicht fest? Ohne Termin anlegen")+"</small></span><span class=\"sw2\" aria-hidden=\"true\"></span></button></div>";
   h2 += "<div class=\"tf-lbl\">Reise</div><div class=\"tf-grp\"><label class=\"tf-row\"><span>Name</span><input type=\"text\" data-f=\"name\" value=\""+esc(d.name)+"\" maxlength=\"60\" placeholder=\"z. B. Boston &amp; New York\" autocomplete=\"off\"></label></div>";
   function pill(f, typ, ph, al){ var v = d[f] || "";
     if(typ==="d") return "<button type=\"button\" class=\"tf-pill d"+(v?" on":"")+"\" data-act=\"rngopen\" data-f=\""+f+"\" aria-label=\""+al+(v ? ": "+esc(tfPillTxt("d", v)) : "")+"\" aria-haspopup=\"dialog\"><b>"+esc(v ? tfPillTxt("d", v) : ph)+"</b></button>"; return "<label class=\"tf-pill "+typ+(v?" on":"")+"\"><b data-ph=\""+ph+"\">"+esc(v ? tfPillTxt(typ, v) : ph)+"</b><input type=\""+(typ==="d"?"date":"time")+"\" data-f=\""+f+"\" value=\""+esc(v)+"\" aria-label=\""+al+"\"></label>"; }
-  h2 += "<div class=\"tf-lbl\">Zeitraum<small id=\"tfNights\">"+esc(tfNights(d))+"</small></div><div class=\"tf-grp\">"+
+  if(!d.opt) h2 += "<div class=\"tf-lbl\">Zeitraum<small id=\"tfNights\">"+esc(tfNights(d))+"</small></div><div class=\"tf-grp\">"+
     "<div class=\"tf-row tf-span\"><span>Anreise</span>"+pill("start", "d", "Datum", "Anreisedatum")+pill("arr", "t", "Uhrzeit", "Ankunftszeit")+"</div>"+
     "<div class=\"tf-row tf-span\"><span>Abreise</span>"+pill("end", "d", "Datum", "Abreisedatum")+pill("dep", "t", "Uhrzeit", "Abflugzeit")+"</div></div>";
   function dbtn(f, v, ph){ return "<button type=\"button\" class=\"tf-pill d"+(v?" on":"")+"\" data-act=\"rngopen\" data-f=\""+f+"\" aria-haspopup=\"dialog\"><b>"+esc(v ? tfPillTxt("d", v) : ph)+"</b></button>"; }
@@ -12963,12 +12985,12 @@ function renderTrip(){
         if(open) out += "<div class=\"tf-body\"><div class=\"tf-acts\"><button type=\"button\" class=\"tf-link\" data-act=\"htbd\" data-i=\""+i+"\">Hotel jetzt eintragen</button><button type=\"button\" class=\"tf-link warn\" data-act=\"tdel\" data-path=\"hotels\" data-i=\""+i+"\">Entfernen</button></div></div>";
         out += "</div>"; return;
       }
-      var sub = (x.from ? shortD(x.from)+"–"+shortD(x.to||x.from) : (kind==="orte" ? "ganze Reise" : "")) ;
+      var sub = d.opt ? "" : (x.from ? shortD(x.from)+"–"+shortD(x.to||x.from) : (kind==="orte" ? "ganze Reise" : "")) ;
       out += "<div class=\"tf-item"+(open?" open":"")+"\"><button type=\"button\" class=\"tf-row tf-sum\" data-act=\"tfopen\" data-k=\""+k+"\" aria-expanded=\""+open+"\"><span class=\"tf-ic\">"+icon+"</span><span class=\"tf-t\"><b>"+esc(nm || (kind==="hotels" ? "Neues Hotel" : "Neuer Ort"))+"</b><small>"+esc(sub)+(sub?" · ":"")+(has ? "<i class=\"ok\">Lage gesetzt</i>" : "<i class=\"miss\">Lage fehlt</i>")+"</small></span><em class=\"chev\">"+(open?"⌄":"›")+"</em></button>";
       if(open){
         out += "<div class=\"tf-body\">"+geoField(k, searchPh)+
           "<label class=\"tf-f\"><span>Name</span><input type=\"text\" data-f=\""+k+".n\" value=\""+esc(x.n)+"\" maxlength=\"80\" autocomplete=\"off\"></label>"+
-          "<div class=\"tf-two\"><div class=\"tf-f\"><span>"+(kind==="hotels"?"Check-in":"Von")+"</span>"+dbtn(k+".from", x.from, kind==="hotels" ? "Datum" : "Reisebeginn")+"</div><div class=\"tf-f\"><span>"+(kind==="hotels"?"Check-out":"Bis")+"</span>"+dbtn(k+".to", x.to, kind==="hotels" ? "Datum" : "Reiseende")+"</div></div>"+
+          (d.opt ? "" : "<div class=\"tf-two\"><div class=\"tf-f\"><span>"+(kind==="hotels"?"Check-in":"Von")+"</span>"+dbtn(k+".from", x.from, kind==="hotels" ? "Datum" : "Reisebeginn")+"</div><div class=\"tf-f\"><span>"+(kind==="hotels"?"Check-out":"Bis")+"</span>"+dbtn(k+".to", x.to, kind==="hotels" ? "Datum" : "Reiseende")+"</div></div>")+
           "<details class=\"tf-loc\""+(has?"":" open")+"><summary>Lage "+(has?"<small>"+esc(x.loc)+"</small>":"eingeben")+"</summary><input type=\"text\" data-f=\""+k+".loc\" value=\""+esc(x.loc)+"\" placeholder=\"Maps-Link oder Koordinaten, z. B. 40.7561, -73.9930\" autocomplete=\"off\"></details>"+
           "<div class=\"tf-acts\"><button type=\"button\" class=\"tf-link\" data-act=\"pick\" data-target=\""+k+".loc\">Auf der Karte wählen</button>"+(kind==="hotels" && !has ? "<button type=\"button\" class=\"tf-link\" data-act=\"htbd\" data-i=\""+i+"\">Noch unklar</button>" : "")+"<button type=\"button\" class=\"tf-link warn\" data-act=\"tdel\" data-path=\""+kind+"\" data-i=\""+i+"\">Entfernen</button></div></div>";
       }
@@ -12977,7 +12999,7 @@ function renderTrip(){
     out += "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"tadd\" data-path=\""+kind+"\">+ "+addLbl+"</button></div>";
     return out;
   }
-  h2 += items("hotels", "Hotels", "Hotel hinzufügen", "Hotel oder Adresse suchen …", "H");
+  if(!d.opt) h2 += items("hotels", "Hotels", "Hotel hinzufügen", "Hotel oder Adresse suchen …", "H");
   h2 += items("orte", d.mode==="new" ? "Reiseziel" : "Orte", "Ort hinzufügen", "Stadt suchen, z. B. Boston …", ic("pin", "ii"));
   if(d.err) h2 += "<p class=\"err\" role=\"alert\">"+esc(d.err)+"</p>";
   h2 += "<div class=\"tf-foot\"><button class=\"btn g\" type=\"button\" data-act=\"tcancel\">Abbrechen</button><button class=\"btn\" type=\"submit\">"+(d.mode==="new"?"Reise anlegen":"Speichern")+"</button></div></form>";
@@ -12989,6 +13011,7 @@ function renderTrip(){
 function saveTrip(){
   var d = tdraft, name = (d.name||"").trim();
   if(!name) return "Bitte gib der Reise einen Namen.";
+  if(d.opt) return saveOptTrip(d, name);
   if(!parseD(d.start) || !parseD(d.end)) return "Bitte trage An- und Abreise ein.";
   if(d.end < d.start) return "Die Abreise liegt vor der Anreise.";
   tfClampItems();
@@ -13015,12 +13038,32 @@ function saveTrip(){
     S.trips[t.id] = t; S.cur = t.id;
   } else {
     var t2 = T();
-    t2.name = name.slice(0,60); t2.start = d.start; t2.end = d.end; t2.arr = d.arr; t2.dep = d.dep; t2.hotels = hotels; t2.orte = orte;
+    delete t2.opt; t2.name = name.slice(0,60); t2.start = d.start; t2.end = d.end; t2.arr = d.arr; t2.dep = d.dep; t2.hotels = hotels; t2.orte = orte;
     Object.keys(t2.order).forEach(function(k){ if(k < d.start || k > d.end) delete t2.order[k]; }); // Stopps außerhalb wandern zurück in die Wunschliste
   }
   return null;
 }
 
+// Option speichern: ohne Termin, Hotels bleiben unverändert, nur Orte mit Namen
+function saveOptTrip(d, name){
+  var orte = [], err = null;
+  d.orte.forEach(function(x, i){
+    if(err) return; var nm = (x.n||"").trim(); if(!nm && !(x.loc||"").trim()) return;
+    var loc = parseLoc(x.loc); if(loc===false){ err = "Ort "+(i+1)+": Lage nicht erkannt."; return; }
+    var o = {id:x.id||uid("o"), n:nm.slice(0,60)||"Ort "+(i+1), from:"", to:""}; if(loc){ o.la = loc.la; o.lo = loc.lo; } orte.push(o);
+  });
+  if(err) return err;
+  if(!orte.length) return "Bitte trage mindestens einen Ort ein.";
+  if(d.mode==="new"){
+    var t = newTripObj({name:name.slice(0,60), start:"", end:"", hotels:[], orte:orte, opt:true});
+    Object.keys(S.trips).forEach(function(k){ if(S.trips[k].starter && S.trips[k].seed) delete S.trips[k]; });
+    S.trips[t.id] = t; S.cur = t.id;
+  } else {
+    var t2 = T(); t2.opt = true; t2.name = name.slice(0,60); t2.start = ""; t2.end = ""; t2.arr = ""; t2.dep = ""; t2.orte = orte;
+    t2.order = {}; // ohne Tage: geplante Stopps zurück in die Wunschliste
+  }
+  return null;
+}
 function renderWishPop(){
   var el = $("wishPop");
   if(!draft.open || pick){ el.hidden = true; return; }
@@ -13574,6 +13617,7 @@ document.addEventListener("click", function(e){
     case "trip": closeSettings(); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); break;
     case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
+    case "topt": if(tdraft){ tdraft.opt = !tdraft.opt; tdraft.err = ""; if(tdraft.opt && /^hotels/.test(tdraft.ok||"")) tdraft.ok = ""; renderSheet(); } break;
     case "tcancel": if(noTrip() || (tdraft && (tdraft.mode==="new" || tdraft.back))){ closeTrip(); break; } tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
     case "tadd": var arr = tdraft[t.getAttribute("data-path")]; arr.push({n:"", loc:"", from:tdraft.start||"", to:tdraft.end||""}); tdraft.ok = t.getAttribute("data-path")+"."+(arr.length-1); renderSheet(); var gi = document.querySelector("#tripPop [data-geo=\""+tdraft.ok+"\"]"); if(gi) gi.focus(); break;
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); tdraft.ok = ""; renderSheet(); break;
