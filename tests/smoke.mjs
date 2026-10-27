@@ -2533,8 +2533,10 @@ await test("Freundesgruppen: anlegen, am Freund zuordnen, Schnellauswahl beim Fr
     FR.friends = [{id:"r1", uid:"u_anna", name:"anna", email:"a@x.de"}, {id:"r2", uid:"u_ludwig", name:"Ludwig", email:"l@x.de"}, {id:"r3", uid:"u_clara", name:"Clara", email:"c@x.de"}];
     closeMenus(); accView = "friends"; openSettings(); true`);
   await page.waitForTimeout(200);
-  ok(await visible("#acctPop [data-act=fgnew]"), "„Neue Gruppe“ fehlt auf der Freunde-Seite");
-  await tapS("#acctPop [data-act=fgnew]"); await page.waitForTimeout(250);
+  ok(!(await rp(`!!document.querySelector("#acctPop [data-act=fgnew]")`)), "Gruppen stehen noch als Liste auf der Freunde-Seite");
+  await tapS("#acctPop [data-act=fglist]"); await page.waitForTimeout(250);
+  ok(await visible("#catPop .fr-pop [data-act=fgnew]"), "Gruppen-Pop-up mit „Neue Gruppe“ öffnet nicht");
+  await tapS("#catPop [data-act=fgnew]"); await page.waitForTimeout(250);
   ok(await visible("#catPop .fg-card"), "Gruppen-Fenster öffnet nicht");
   await tapS("#catPop [data-act=fgsave]"); await page.waitForTimeout(150);
   ok(await rp(`FG.length===0 && !!document.querySelector("#catPop .fg-card")`), "Gruppe ohne Namen gespeichert");
@@ -2547,8 +2549,9 @@ await test("Freundesgruppen: anlegen, am Freund zuordnen, Schnellauswahl beim Fr
   await tapS("#catPop [data-act=fgsave]"); await page.waitForTimeout(250);
   ok(await rp(`FG.length===1 && FG[0].n==="Familie" && FG[0].m.join()==="u_anna,u_ludwig"`), "Gruppe falsch gespeichert: "+await rp(`JSON.stringify(FG)`));
   ok(await rp(`__fgw.some(function(w){ return w[0]==="set" && /^users\\/u_me\\/fgroups\\/g/.test(w[1]) && w[2].n==="Familie" && w[2].m.length===2; })`), "Nicht im eigenen privaten Bereich gespeichert: "+await rp(`JSON.stringify(__fgw)`));
-  ok(await rp(`document.getElementById("catPop").hidden && /Familie/.test(document.querySelector("#acctPop .fg-grp").textContent) && /2 Personen/.test(document.querySelector("#acctPop .fg-grp").textContent)`), "Gruppe fehlt auf der Freunde-Seite");
-  await tapS("#acctPop [data-act=fgnew]"); await page.waitForTimeout(250);
+  ok(await rp(`var g = document.querySelector("#catPop .fr-pop .fg-grp"); !!g && /Familie/.test(g.textContent) && /2 Personen/.test(g.textContent)`), "Nach dem Speichern nicht zurück in der Gruppenliste");
+  ok(await rp(`/1 Gruppe/.test(document.querySelector("#acctPop [data-act=fglist]").textContent)`), "Gruppen-Knopf zählt nicht");
+  await tapS("#catPop [data-act=fgnew]"); await page.waitForTimeout(250);
   ok(await rp(`document.getElementById("fgName").value===""`), "Neue Gruppe übernimmt den Namen der vorigen: "+await rp(`document.getElementById("fgName").value`));
   await rp(`closeCatPop(); true`);
   // Zweite Gruppe, Clara am Freund selbst zuordnen – auch in mehreren Gruppen
@@ -2584,13 +2587,50 @@ await test("Freundesgruppen: anlegen, am Freund zuordnen, Schnellauswahl beim Fr
   await rp(`closeCatPop(); closeProfile(); true`);
   // Löschen nur mit Bestätigung, rot
   await rp(`closeMenus(); accView = "friends"; openSettings(); $("toast").hidden = true; true`); await page.waitForTimeout(200);
-  await tapS('#acctPop [data-act=fgopen][data-g="gk"]'); await page.waitForTimeout(200);
+  await tapS("#acctPop [data-act=fglist]"); await page.waitForTimeout(250);
+  await tapS('#catPop [data-act=fgopen][data-g="gk"]'); await page.waitForTimeout(200);
   ok(await rp(`var c = getComputedStyle(document.querySelector("#catPop [data-act=fgdel]")).color.match(/\\d+/g).map(Number); c[0] > c[1] + 40`), "Löschen-Knopf nicht rot");
   await tapS("#catPop [data-act=fgdel]"); await page.waitForTimeout(200);
   ok(await visible("#cfPop .cf-card") && await rp(`FG.length===2`), "Löschen ohne Rückfrage");
   await tapS("#cfPop .cf-ok"); await page.waitForTimeout(200);
   ok(await rp(`FG.length===1 && !fgGet("gk") && __fgw.some(function(w){ return w[0]==="del" && /fgroups\\/gk$/.test(w[1]); })`), "Gruppe nicht gelöscht");
+  ok(await visible("#catPop .fr-pop .fg-grp") && !(await rp(`!!document.querySelector('#catPop [data-g="gk"]')`)), "Nach dem Löschen nicht zurück in der aktualisierten Liste");
   await rp(`closeCatPop(); closeSettings(); fbDb = null; FR.friends = []; FG = []; true`);
+});
+
+await test("Freunde-Seite: Anfragen-Knopf mit rotem Zähler, annehmen/ablehnen im Pop-up, Freunde durchsuchen", async () => {
+  await seed();
+  await rp(`window.__upd = []; var fq = function(path){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(path+"/"+id); }, add:function(){ return Promise.resolve({}); }}; return q; },
+      fd = function(path){ return {id:path, collection:function(c){ return fq(path+"/"+c); }, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }, set:function(){ return Promise.resolve(); }, update:function(v){ __upd.push(["upd", path, v.status]); return Promise.resolve(); }, delete:function(){ __upd.push(["del", path]); return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }}; };
+    fbDb = {collection:function(c){ return fq(c); }, batch:function(){ return {set:function(){}, update:function(){}, delete:function(){}, commit:function(){ return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }};
+    acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FG = []; try { localStorage.removeItem(frReadKey()); } catch(e){}
+    FR.friends = [{id:"r1", uid:"u_anna", name:"anna"}, {id:"r2", uid:"u_ludwig", name:"Ludwig"}, {id:"r3", uid:"u_clara", name:"Clara"}];
+    FR.inc = [{id:"u_x_u_me", from:"u_x", fromName:"xaver", status:"pending"}, {id:"u_y_u_me", from:"u_y", fromName:"yvonne", status:"pending"}];
+    FR.out = [{id:"u_me_u_z", to:"u_z", toName:"zora", status:"pending"}];
+    closeMenus(); accView = "friends"; openSettings(); true`);
+  await page.waitForTimeout(200);
+  ok(!(await rp(`!!document.querySelector("#acctPop [data-act=fracc]")`)), "Anfragen stehen noch in der Freundesliste");
+  ok((await page.locator("#acctPop [data-act=frreqs] .fr-badge").textContent()).trim()==="2", "Roter Zähler fehlt oder falsch");
+  ok(await rp(`var b = document.querySelector("#acctPop .fr-badge"), t = document.querySelector("#acctPop [data-act=frreqs]"), r = b.getBoundingClientRect(), q = t.getBoundingClientRect(); getComputedStyle(b).backgroundColor==="rgb(255, 59, 48)" && r.right > q.right - 30 && r.top < q.top + 20`), "Zähler nicht rot oben rechts");
+  await shot("freunde-seite");
+  await tapS("#acctPop [data-act=frreqs]"); await page.waitForTimeout(250);
+  ok(await page.locator("#catPop .fr-pop [data-act=fracc]").count()===2 && await page.locator("#catPop .fr-pop [data-act=frdel]").count()===3, "Anfragen-Pop-up unvollständig");
+  ok(!(await rp(`!!document.querySelector("#acctPop .fr-badge")`)), "Zähler bleibt nach dem Ansehen");
+  await shot("freunde-anfragen");
+  await tapS('#catPop [data-act=fracc][data-uid="u_x_u_me"]'); await page.waitForTimeout(150);
+  ok(await rp(`__upd.some(function(u){ return u[0]==="upd" && /u_x_u_me$/.test(u[1]) && u[2]==="accepted"; })`), "Annehmen schreibt nicht");
+  await tapS('#catPop [data-act=frdel][data-id="u_y_u_me"]'); await page.waitForTimeout(150);
+  ok(await rp(`__upd.some(function(u){ return u[0]==="del" && /u_y_u_me$/.test(u[1]); })`), "Ablehnen löscht nicht");
+  await rp(`closeCatPop(); FR.inc.push({id:"u_w_u_me", from:"u_w", fromName:"wim", status:"pending"}); openSettings(); true`); await page.waitForTimeout(150);
+  ok((await page.locator("#acctPop .fr-badge").textContent()).trim()==="1", "Neue Anfrage wird nicht als ungelesen gezählt");
+  // Freunde durchsuchen
+  await page.fill("#frFilt", "lu"); await page.waitForTimeout(100);
+  ok(await rp(`[].filter.call(document.querySelectorAll("#acctPop [data-frn]"), function(r){ return !r.hidden; }).map(function(r){ return r.getAttribute("data-frn"); }).join()==="ludwig"`), "Suche filtert die Freunde nicht");
+  await rp(`openSettings(); true`);
+  ok(await rp(`document.activeElement.id==="frFilt" && [].filter.call(document.querySelectorAll("#acctPop [data-frn]"), function(r){ return !r.hidden; }).length===1`), "Suche geht beim Aktualisieren verloren");
+  await page.fill("#frFilt", "qqq"); await page.waitForTimeout(100);
+  ok(await visible("#acctPop .fr-none"), "Kein Hinweis bei leerer Suche");
+  await rp(`closeSettings(); frFilt = ""; fbDb = null; FR.friends = []; FR.inc = []; FR.out = []; true`);
 });
 
 const wmFullTest = async (n, vp) => {

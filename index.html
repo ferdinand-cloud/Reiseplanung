@@ -2052,6 +2052,16 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .fg-ic svg{width:18px;height:18px}
 .ag-grp .fg-row{cursor:pointer;justify-content:flex-start}
 .fg-row .fn b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fr-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 2px}
+.fr-tile{position:relative;display:flex;align-items:center;gap:10px;min-width:0;padding:10px 12px;border:0;border-radius:16px;background:var(--fill);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.fr-tile > span:last-of-type{display:grid;min-width:0}
+.fr-tile b{font-weight:600;font-size:15px}
+.fr-tile small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fr-badge{position:absolute;top:6px;right:8px;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;background:#FF3B30;color:#fff;font:700 12px/20px var(--f-body);font-style:normal;text-align:center}
+.fr-tile:has(.fr-badge){padding-right:34px}
+.fr-filt{margin:0 0 8px}
+.fr-none{margin:8px 4px}
+.fr-pop .ag-lbl:first-of-type{margin-top:4px}
 .fg-for{width:32px;height:32px;flex:0 0 32px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--muted);cursor:pointer}
 .fg-for.on{color:var(--accent)}
 .fg-for svg{width:17px;height:17px}
@@ -4465,7 +4475,7 @@ function frWatch(){
     setNavDot(INVITES.length > 0 || FR.inc.length > 0);
     var fb = $("frBadge"); if(fb){ fb.hidden = !FR.inc.length; fb.textContent = FR.inc.length; }
     frNotify();
-    refreshSettings(); if(tab==="trip") renderSheet();
+    refreshSettings(); if(FRPOP==="req") frPopRender(); if(tab==="trip") renderSheet();
   };
   // Meldungen: neue Anfrage an mich / meine Anfrage wurde angenommen – je Anfrage nur einmal
   var SK = "rp-frseen-"+uid0, seen = null; try { seen = JSON.parse(localStorage.getItem(SK)||"null"); } catch(e){}
@@ -4604,15 +4614,16 @@ function tripsPageHTML(){
 function friendsPageHTML(){
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Freunde\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Freunde</h3>";
   if(!acct.user) return h+"<p class=\"note\">Melde dich an, um Freunde hinzuzufügen.</p></div>";
-  return h+fgListHTML()+friendsHTML()+(FR.friends.length||FR.inc.length||FR.out.length ? "" : "<p class=\"note\">Noch keine Freunde. Suche jemanden über seinen Benutzernamen – mit Freunden kannst du Reisen gemeinsam planen.</p>")+"</div>";
+  return h+frTilesHTML()+friendsHTML()+(FR.friends.length||FR.inc.length||FR.out.length ? "" : "<p class=\"note\">Noch keine Freunde. Suche jemanden über seinen Benutzernamen – mit Freunden kannst du Reisen gemeinsam planen.</p>")+"</div>";
 }
 function friendsHTML(){
-  var h = "<div class=\"ag-lbl\">"+(FR.inc.length ? "Anfragen & Freunde" : "Deine Freunde")+(FR.friends.length?" · "+FR.friends.length:"")+"</div><div class=\"ag-grp\">";
-  FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.fromName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.fromName)+"</b><small>möchte mit dir befreundet sein</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+r.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Ablehnen</button></span></div>"; });
-  FR.friends.forEach(function(f){ var gs = f.uid ? fgOf(f.uid) : [];
-    h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b>"+(gs.length ? "<small>"+esc(gs.map(function(g){ return g.n; }).join(" · "))+"</small>" : "")+"</span>"+
+  var h = "<div class=\"ag-lbl\">Deine Freunde"+(FR.friends.length?" · "+FR.friends.length:"")+"</div>", q = norm(frFilt.trim().replace(/^@/, ""));
+  if(FR.friends.length > 1) h += "<label class=\"frs-q fr-filt\">"+FRSICO+"<input type=\"search\" id=\"frFilt\" value=\""+esc(frFilt)+"\" placeholder=\"Freunde suchen\" aria-label=\"Deine Freunde durchsuchen\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\" enterkeyhint=\"search\"></label>";
+  h += "<div class=\"ag-grp\">";
+  FR.friends.forEach(function(f){ var gs = f.uid ? fgOf(f.uid) : [], fn = norm(f.name||"");
+    h += "<div class=\"ag-row\" data-frn=\""+esc(fn)+"\""+(q && fn.indexOf(q) < 0 ? " hidden" : "")+"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b>"+(gs.length ? "<small>"+esc(gs.map(function(g){ return g.n; }).join(" · "))+"</small>" : "")+"</span>"+
       (f.uid ? "<button type=\"button\" class=\"fg-for"+(gs.length ? " on" : "")+"\" data-act=\"fgfor\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Gruppen für @"+esc(f.name)+"\">"+FGICO+"</button>" : "")+"<button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+f.id+"\" aria-label=\"Freundschaft beenden\">Entfernen</button></div>"; });
-  FR.out.forEach(function(r){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((r.toName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.toName)+"</b><small>Anfrage gesendet</small></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Zurückziehen</button></div>"; });
+  if(FR.friends.length > 1) h += "<p class=\"note fr-none\""+(q && !FR.friends.some(function(f){ return norm(f.name||"").indexOf(q) > -1; }) ? "" : " hidden")+">Kein Freund mit diesem Namen.</p>";
   h += "<button type=\"button\" class=\"ag-row\" data-act=\"accview\" data-v=\"search\"><span><b>Freunde suchen</b><small>Über den Benutzernamen finden und anfragen</small></span><em class=\"chev\">›</em></button>";
   h += "<button type=\"button\" class=\"ag-row\" data-act=\"invshare\"><span><b>Freunde einladen</b><small>Link verschicken – wer ihn öffnet, kann dir gleich eine Anfrage senden</small></span><em class=\"chev\">›</em></button>";
   return h+"</div>";
@@ -4668,7 +4679,7 @@ function fgPut(g){
 function fgDel(id){
   FG = FG.filter(function(g){ return g.id!==id; }); if(acct.user) lsSet("rp-fg-"+acct.user.uid, JSON.stringify(FG));
   if(fbDb && acct.user) fgCol().doc(id).delete().catch(function(){});
-  closeCatPop(); FGED = null; fgRefresh(); toast("Gruppe gelöscht", false);
+  var bk = FGED && FGED.back; FGED = null; fgBack(bk); fgRefresh(); toast("Gruppe gelöscht", false);
 }
 function fgRefresh(){
   refreshSettings();
@@ -4676,21 +4687,57 @@ function fgRefresh(){
   if(!cp.hidden && FGED && cp.querySelector(".fg-card") && !(ae && ae.tagName==="INPUT" && cp.contains(ae))) renderFgEd();
   if(ASK && !cp.hidden && cp.querySelector(".ask-card")) renderAsk();
   if(FRSP && !cp.hidden && cp.querySelector(".frs-pop")) frsPopRender();
+  if(FRPOP==="grp") frPopRender();
 }
+/* Freunde-Seite: Knöpfe „Gruppen“ und „Anfragen“ (roter Zähler = noch nicht angesehene Anfragen), Suchfeld über der Liste */
+var frFilt = "", FRPOP = "";
+var FRREQICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.5 16.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M15 6v5M12.5 8.5h5\"/></svg>";
+function frReadKey(){ return "rp-frread-"+(acct.user ? acct.user.uid : ""); }
+function frUnread(){ var rd = {}; try { rd = JSON.parse(lsGet(frReadKey())||"{}") || {}; } catch(e){} return FR.inc.filter(function(r){ return !rd[r.id]; }).length; }
+function frMarkRead(){ var rd = {}; FR.inc.forEach(function(r){ rd[r.id] = 1; }); lsSet(frReadKey(), JSON.stringify(rd)); }
+function frTilesHTML(){
+  var u = frUnread(), n = FR.inc.length + FR.out.length;
+  return "<div class=\"fr-tiles\"><button type=\"button\" class=\"fr-tile\" data-act=\"fglist\"><span class=\"fg-ic\">"+FGICO+"</span><span><b>Gruppen</b><small>"+(FG.length ? FG.length+(FG.length===1 ? " Gruppe" : " Gruppen") : "nur für dich")+"</small></span></button>"+
+    "<button type=\"button\" class=\"fr-tile\" data-act=\"frreqs\"><span class=\"fg-ic\">"+FRREQICO+"</span><span><b>Anfragen</b><small>"+(FR.inc.length ? FR.inc.length+" offen" : n ? FR.out.length+" gesendet" : "keine offen")+"</small></span>"+
+    (u ? "<i class=\"fr-badge\" aria-label=\""+u+" neue Anfragen\">"+u+"</i>" : "")+"</button></div>";
+}
+function frReqHTML(){
+  var h = "<div class=\"pop-card fr-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Anfragen\"><div class=\"pop-head\"><h4>Anfragen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
+  if(!FR.inc.length && !FR.out.length) return h+"<p class=\"note\">Keine offenen Anfragen.</p></div>";
+  if(FR.inc.length){ h += "<div class=\"ag-lbl\">Erhalten · "+FR.inc.length+"</div><div class=\"ag-grp\">";
+    FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.fromName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.fromName)+"</b><small>möchte mit dir befreundet sein</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+r.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Ablehnen</button></span></div>"; });
+    h += "</div>"; }
+  if(FR.out.length){ h += "<div class=\"ag-lbl\">Gesendet · "+FR.out.length+"</div><div class=\"ag-grp\">";
+    FR.out.forEach(function(r){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((r.toName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.toName)+"</b><small>Anfrage gesendet</small></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Zurückziehen</button></div>"; });
+    h += "</div>"; }
+  return h+"</div>";
+}
+function openFrPop(kind){ FRPOP = kind; if(kind==="req") frMarkRead(); frPopRender(true); refreshSettings(); }
+function frPopRender(first){
+  var cp = $("catPop"); if(!FRPOP) return;
+  if(!first && (cp.hidden || !cp.querySelector(".fr-pop"))){ FRPOP = ""; return; }
+  if(FRPOP==="req") frMarkRead();
+  var h = FRPOP==="req" ? frReqHTML() : "<div class=\"pop-card fr-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppen\"><div class=\"pop-head\"><h4>Gruppen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+fgListHTML()+"<p class=\"note\">Nur für dich sichtbar.</p></div>";
+  if(first){ cp.innerHTML = h; cp.hidden = false; } else catKeep(h);
+}
+document.addEventListener("input", function(e){ var q = e.target; if(q.id!=="frFilt") return; frFilt = q.value; var v = norm(frFilt.trim().replace(/^@/, "")), n = 0, card = q.closest(".ag-card"); if(!card) return;
+  card.querySelectorAll("[data-frn]").forEach(function(r){ var on = !v || r.getAttribute("data-frn").indexOf(v) > -1; r.hidden = !on; if(on) n++; });
+  var e0 = card.querySelector(".fr-none"); if(e0) e0.hidden = !!n; });
 function fgListHTML(){
-  if(!FR.friends.length) return "";
-  var h = "<div class=\"ag-lbl\">Gruppen"+(FG.length ? " · "+FG.length : "")+"</div><div class=\"ag-grp fg-grp\">";
+  if(!FR.friends.length) return "<p class=\"note\">Füge zuerst Freunde hinzu.</p>";
+  var h = "<div class=\"ag-grp fg-grp\">";
   FG.forEach(function(g){ var n = fgMem(g).length;
     h += "<button type=\"button\" class=\"ag-row fg-row\" data-act=\"fgopen\" data-g=\""+esc(g.id)+"\"><span class=\"fg-ic\">"+FGICO+"</span><span class=\"fn\"><b>"+esc(g.n)+"</b><small>"+(n===1 ? "1 Person" : n+" Personen")+"</small></span><em class=\"chev\">›</em></button>"; });
   h += "<button type=\"button\" class=\"ag-row fg-row\" data-act=\"fgnew\"><span class=\"fg-ic add\">"+FRSADD+"</span><span class=\"fn\"><b>Neue Gruppe</b>"+(FG.length ? "" : "<small>Nur für dich sichtbar – z. B. Familie, enger Freundeskreis</small>")+"</span></button>";
   return h+"</div>";
 }
 function openFgEd(id, uid0){
-  var g = id && fgGet(id); FGED = {id:g ? g.id : "", n:g ? g.n : "", sel:{}};
+  var g = id && fgGet(id), cp = $("catPop"); FGED = {id:g ? g.id : "", n:g ? g.n : "", sel:{}, back:!cp.hidden && !!cp.querySelector(".fr-pop")};   // back: aus der Gruppenliste geöffnet
   (g ? fgMem(g) : uid0 ? [uid0] : []).forEach(function(u){ FGED.sel[u] = 1; });
   frSearchDone("fg"); renderFgEd(true);
   if(!g) setTimeout(function(){ var i = $("fgName"); if(i) i.focus(); }, 60);
 }
+function fgBack(bk){ if(bk){ FRPOP = "grp"; frPopRender(true); } else { FRPOP = ""; closeCatPop(); } }
 function fgKeep(){ var i = $("fgName"); if(i && FGED) FGED.n = i.value; }
 function renderFgEd(first){
   if(!FGED) return; if(!first) fgKeep();   // beim Öffnen nicht den Namen aus dem zuletzt offenen (nur versteckten) Fenster übernehmen
@@ -4708,7 +4755,7 @@ function fgSave(){
   if(!nm){ toast("Gib der Gruppe einen Namen", false); var i = $("fgName"); if(i) i.focus(); return; }
   var g = {id:FGED.id || "g"+Date.now().toString(36)+Math.random().toString(36).slice(2, 6), n:nm, m:Object.keys(FGED.sel).slice(0, 2000)};
   var old = FGED.id && fgGet(FGED.id); if(old) g.m = g.m.concat(old.m.filter(function(u){ return !fgMem(old).some(function(x){ return x===u; }); }));   // Ehemalige Freunde nicht stillschweigend verlieren
-  FGED = null; closeCatPop(); fgPut(g); toast(old ? "Gruppe gespeichert" : "Gruppe „"+nm+"“ angelegt", false);
+  var bk = FGED.back; FGED = null; fgBack(bk); fgPut(g); toast(old ? "Gruppe gespeichert" : "Gruppe „"+nm+"“ angelegt", false);
 }
 document.addEventListener("keydown", function(e){ if(e.target && e.target.id==="fgName" && e.key==="Enter" && !e.isComposing){ e.preventDefault(); e.target.blur(); } });
 // Gruppen eines Freundes direkt am Freund umschalten (Pop-up am Knopf)
@@ -7301,7 +7348,7 @@ function renderProfile(){
   if(profTab==="mine" && list.length) h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-new\" data-act=\"pfnew\"><span class=\"pf-plus\" aria-hidden=\"true\">＋</span><b>Neue Reise</b><small>Ziel, Zeitraum, Hotel</small></button></div>";
   h += "</div>"; }
   if(INVITES.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"opentrips\" data-v=\"req\">"+ic("mail", "ii")+" "+INVITES.length+(INVITES.length===1 ? " Einladung zu einer Reise" : " Einladungen zu Reisen")+" ›</button>";
-  if(FR.inc.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"openfriends\">"+ic("useradd", "ii")+" "+FR.inc.length+(FR.inc.length===1 ? " Freundschaftsanfrage" : " Freundschaftsanfragen")+" ›</button>";
+  if(FR.inc.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"openfriends\" data-v=\"req\">"+ic("useradd", "ii")+" "+FR.inc.length+(FR.inc.length===1 ? " Freundschaftsanfrage" : " Freundschaftsanfragen")+" ›</button>";
   h += "<button type=\"button\" class=\"pf-demo\" data-act=\"demo\"><span class=\"pf-demo-ic\" aria-hidden=\"true\">▶</span><span><b>App-Demo ansehen</b><small>Kurze Einführung, ändert nichts an deinen Reisen</small></span></button>";
   h += "</div>";
   el.innerHTML = h; fillPhotos(el);
@@ -7324,8 +7371,8 @@ function setAvatar(file){
 }
 document.addEventListener("change", function(e){ if(e.target.id==="avIn" && e.target.files && e.target.files[0]){ setAvatar(e.target.files[0]); e.target.value = ""; } });
 // Neuaufbau bei offenem Fenster (z. B. neue Daten): gleiche Ansicht ohne erneutes Aufklappen und ohne Sprung nach oben
-function openSettings(){ var el = $("acctPop"), c0 = !el.hidden && el.getAttribute("data-v")===accView && el.querySelector(".ag-card"), st = c0 ? c0.scrollTop : 0;
-  el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); var c1 = el.querySelector(".ag-card"); if(c0 && c1){ c1.style.animation = "none"; c1.scrollTop = st; }
+function openSettings(){ var el = $("acctPop"), c0 = !el.hidden && el.getAttribute("data-v")===accView && el.querySelector(".ag-card"), st = c0 ? c0.scrollTop : 0, fid = c0 && document.activeElement && document.activeElement.id==="frFilt";
+  el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); var c1 = el.querySelector(".ag-card"); if(c0 && c1){ c1.style.animation = "none"; c1.scrollTop = st; } if(fid && $("frFilt")){ var fi0 = $("frFilt"); fi0.focus(); try { fi0.setSelectionRange(fi0.value.length, fi0.value.length); } catch(e){} }
   el.setAttribute("data-v", accView); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
 /* Tastatur: alles am sichtbaren Bereich ausrichten und das aktive Feld im Blick halten */
 var KBPRED = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints > 1), KBVH = [0, 0], VVBASE = [0, 0];
@@ -13681,6 +13728,8 @@ document.addEventListener("click", function(e){
     case "fracc": frAccept(t.getAttribute("data-uid")); break;
     case "frdel": frRemove(t.getAttribute("data-id")); break;
     case "fgopen": openFgEd(t.getAttribute("data-g")); break;
+    case "fglist": openFrPop("grp"); break;
+    case "frreqs": openFrPop("req"); break;
     case "fgnew": closeJpMore(); openFgEd("", t.getAttribute("data-uid")); break;
     case "fgtog": if(FGED){ var fgu = t.getAttribute("data-uid"); if(FGED.sel[fgu]) delete FGED.sel[fgu]; else FGED.sel[fgu] = 1; renderFgEd(); } break;
     case "fgsave": fgSave(); break;
@@ -13820,7 +13869,7 @@ document.addEventListener("click", function(e){
     case "opentrips": closeMenus(); $("toast").hidden = true; accView = "trips"; if(t.getAttribute("data-v")) tripsTab = t.getAttribute("data-v"); else tripsTab = isShared(S.cur) ? "shared" : "priv"; openSettings(); break;
     case "tripstab": tripsTab = t.getAttribute("data-v"); openSettings(); break;
     case "tripdetails": closeSettings(); tab = "trip"; renderSheet(); scheduleOverlay(); break;
-    case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; openSettings(); break;
+    case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; openSettings(); if(t.getAttribute("data-v")==="req") openFrPop("req"); break;
     case "opentrip": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeSettings();
       var otr = t.getAttribute("data-trip"); if(otr && S.trips[otr] && otr!==S.cur){ grpSel = ""; S.cur = otr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); }
       tab = "trip"; tdraft = isViewerOf(S.cur) ? null : tripToDraft(T(), "edit"); renderSheet(); scheduleOverlay();
