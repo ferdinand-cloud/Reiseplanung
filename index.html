@@ -1720,6 +1720,8 @@ body.profopen .toprow{display:none}
 .pf-stats span{font-size:12.5px;color:var(--muted)}
 .pf-seg{display:flex;gap:2px;padding:2px;border-radius:10px;background:var(--fill);margin-bottom:14px}
 .pf-seg button{flex:1;border:0;background:none;border-radius:8px;padding:7px 8px;font:600 13.5px/1.2 var(--f-body);color:var(--muted);cursor:pointer}
+.pf-seg button{white-space:nowrap}
+.pf-seg button .ii{margin-right:1px;opacity:.85}
 .pf-seg button[aria-selected="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .pf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .pf-tw{position:relative;min-width:0}
@@ -6901,8 +6903,8 @@ function renderLs(){
   var tops = visited.filter(function(v){ var r = rateOf(v.id); return r===1 || r===2; });
   var phs = []; ds.forEach(function(D){ (t.order[D.key]||[]).forEach(function(id){ (photosOf(id)||[]).forEach(function(ph){ phs.push({ph:ph, id:id, D:D}); }); }); });
   Object.keys(t.photos||{}).forEach(function(id){ if(!dayOf(id) && !isRO()) (t.photos[id]||[]).forEach(function(ph){ phs.push({ph:ph, id:id, D:null}); }); });
-  h += "<div class=\"pf-seg\" role=\"tablist\">"+[["places","Orte · "+visited.length],["hl","Highlights · "+(hls.length+tops.length)],["photos","Fotos · "+phs.length]].map(function(x){
-    return "<button type=\"button\" role=\"tab\" data-act=\"lstab\" data-v=\""+x[0]+"\" aria-selected=\""+(lsTab===x[0])+"\">"+x[1]+"</button>"; }).join("")+"</div>";
+  h += "<div class=\"pf-seg\" role=\"tablist\">"+[["places","Orte · "+visited.length, ic("pin", "ii")],["hl","Highlights · "+(hls.length+tops.length), icf("star", "ii")],["photos","Fotos · "+phs.length, ic("camera", "ii")]].map(function(x){
+    return "<button type=\"button\" role=\"tab\" data-act=\"lstab\" data-v=\""+x[0]+"\" aria-selected=\""+(lsTab===x[0])+"\">"+x[2]+" "+x[1]+"</button>"; }).join("")+"</div>";
   var unr0 = visited.filter(function(v){ return !rateOf(v.id); });
   // Filter in einer Zeile als zwei Dropdowns: Status (alle / noch nicht bewertet) und Sichtbarkeit
   if(lsTab==="places" && visited.length){

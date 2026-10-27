@@ -503,6 +503,12 @@ await test("Symbole: gleiche Funktion = gleiches Symbol (Schicken, Karte, Merken
   await shot("symbole-ort-menue");
   // Foto-Vollbild und Entdecken-Leiste nutzen dieselben Symbole
   ok(await rp(`var h = dcSideHTML(DC.byKey["u_anna/x"]); h.indexOf(IC.like) > -1 && h.indexOf(IC.save) > -1 && h.indexOf(IC.comment) > -1 && h.indexOf(IC.more) > -1`), "Entdecken-Leiste nutzt nicht die zentralen Symbole");
+  await rp(`closeJpMore(); openLsPage(); true`); await page.waitForTimeout(250);
+  const tabs = await page.evaluate(() => [...document.querySelectorAll("#lsView [data-act=lstab]")].map(b => { const s = b.querySelector("svg"); return s ? s.innerHTML : ""; }));
+  ok(tabs.length===3 && tabs[0]===await norm(IC.pin) && tabs[1]===await norm(IC.star) && tabs[2]===await norm(IC.camera), "Liste: Umschalter Orte/Highlights/Fotos ohne passende Symbole");
+  ok(await page.evaluate(() => [...document.querySelectorAll("#lsView [data-act=lstab]")].every(b => b.scrollWidth <= b.clientWidth + 1)), "Liste: Umschalter-Text abgeschnitten");
+  await shot("symbole-liste-umschalter");
+  await rp(`closeLsPage(); true`);
   ok(await rp(`[MAPICO, MAPGO].every(function(s){ return s===ic("map"); }) && visIco("pub")===ic("friends") && visIco("all")===ic("globe") && visIco("trip")===ic("trip")`), "Karten-/Sichtbarkeits-Symbole uneinheitlich");
 });
 
