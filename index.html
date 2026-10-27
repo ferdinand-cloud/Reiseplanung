@@ -1818,9 +1818,10 @@ form.gnew{position:relative}
 .ch-newlist .ls-row{padding:8px 12px}
 .ch-dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
 .chview.conv{padding:0;overflow:hidden;display:flex;flex-direction:column}
-/* Tastatur offen: Bereich zwischen Eingabezeile und Tastatur (Safari-Leisten) in Chat-Farbe statt der App darunter */
-.chview.conv{box-shadow:0 var(--vvh,100vh) 0 var(--sheet);transition:height .28s cubic-bezier(.2,.8,.2,1)}
-@media (prefers-reduced-motion: reduce){ .chview.conv{transition:none} }
+/* Tippen: #chView bleibt bildschirmfüllend, nur der Inhalt folgt dem sichtbaren Bereich (Höhe/Oberkante aus chVV) */
+.chview.conv.kbt .ch-conv{flex:0 0 auto;height:var(--chh,100%);transform:translateY(var(--cht,0px))}
+.chview.conv.kbt .ch-comp{padding-bottom:8px}
+body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-conv{display:flex;flex-direction:column;height:100%;max-width:640px;width:100%;margin:0 auto;padding-top:calc(env(safe-area-inset-top,0px) + 72px);box-sizing:border-box}
 .ch-head{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:.5px solid var(--sep,var(--line))}
 .ch-head b{font:700 16px/1.2 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2008,6 +2009,23 @@ form.gnew{position:relative}
 .frs-sel{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
 .frs-chip{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;background:var(--fill);color:var(--ink);font:600 13px/1 var(--f-body);padding:7px 8px 7px 11px;cursor:pointer}
 .frs-chip i{font-style:normal;color:var(--muted);font-size:15px}
+.fg-ic{width:32px;height:32px;flex:0 0 32px;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--accent)}
+.fg-ic svg{width:18px;height:18px}
+.ag-grp .fg-row{cursor:pointer;justify-content:flex-start}
+.fg-row .fn b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fg-for{width:32px;height:32px;flex:0 0 32px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--muted);cursor:pointer}
+.fg-for.on{color:var(--accent)}
+.fg-for svg{width:17px;height:17px}
+.fg-name{display:flex;align-items:center;gap:10px;margin:2px 0 4px;padding:4px 12px 4px 6px;border-radius:12px;background:var(--fill)}
+.fg-name input{flex:1;min-width:0;border:0;background:none !important;font:inherit;font-size:16px;font-weight:600;color:var(--ink);outline:none;padding:10px 0 !important}
+.fg-acts{display:flex;gap:8px;justify-content:flex-end}
+.fg-q{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:6px 0 2px;padding:1px}
+.fg-q::-webkit-scrollbar{display:none}
+.fg-chip{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;border:.5px solid var(--glass-bd,var(--line));border-radius:999px;background:var(--fill);color:var(--ink);font:600 13px/1 var(--f-body);padding:7px 11px 7px 9px;cursor:pointer}
+.fg-chip svg{width:16px;height:16px;color:var(--accent)}
+.fg-chip small{font-weight:600;color:var(--muted);font-size:12px}
+.fg-chip.on{background:var(--accent);color:#fff;border-color:transparent}
+.fg-chip.on svg,.fg-chip.on small{color:#fff}
 .zl .zlk,.zdpop .zlk{margin:0 0 16px}
 #zPop{z-index:62}
 .zhead .zx{width:32px;height:32px;flex:0 0 32px;border:0;background:var(--chip);border-radius:50%;font-size:17px;color:var(--ink);cursor:pointer}
@@ -3344,8 +3362,8 @@ body.ro .navtools [data-act="addpop"]{display:none}
 :root{--del:#C4462F}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--del:#F0766A} }
 :root[data-theme="dark"]{--del:#F0766A}
-:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="frdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],[data-ai="del"],.btn.warn,.tf-link.warn){color:var(--del) !important}
-.btn:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="frdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],.warn){background:color-mix(in srgb,var(--del) 13%,transparent) !important;border-color:color-mix(in srgb,var(--del) 30%,transparent) !important}
+:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="frdel"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],[data-ai="del"],.btn.warn,.tf-link.warn){color:var(--del) !important}
+.btn:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="frdel"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],.warn){background:color-mix(in srgb,var(--del) 13%,transparent) !important;border-color:color-mix(in srgb,var(--del) 30%,transparent) !important}
 :is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) :is(b,.ai){color:var(--del) !important}
 :is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) .ai{background:color-mix(in srgb,var(--del) 12%,transparent) !important}
 
@@ -4301,9 +4319,9 @@ function frWatch(){
   var rows = function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); };
   frUnsub.push(fbDb.collection("friendReqs").where("to", "==", uid0).onSnapshot(function(qs){ var n0 = A.filter(function(r){ return r.status==="pending"; }).length; A = rows(qs); upd(); var n1 = FR.inc.length; gotA = true; upd(); }, function(){}));
   frUnsub.push(fbDb.collection("friendReqs").where("from", "==", uid0).onSnapshot(function(qs){ B = rows(qs); gotB = true; upd(); }, function(){}));
-  chWatch();
+  chWatch(); fgWatch();
 }
-function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; chStopAll(); if(chPage) closeChPage(); PROF = null; FR = {inc:[], out:[], friends:[]}; navAv(); }
+function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; fgStop(); chStopAll(); if(chPage) closeChPage(); PROF = null; FR = {inc:[], out:[], friends:[]}; navAv(); }
 function validName(n){ return /^[a-zA-Z0-9._-]{3,20}$/.test(n); }
 function setUsername(n){
   n = (n||"").trim().replace(/^@/, "");
@@ -4421,12 +4439,14 @@ function tripsPageHTML(){
 function friendsPageHTML(){
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Freunde\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Freunde</h3>";
   if(!acct.user) return h+"<p class=\"note\">Melde dich an, um Freunde hinzuzufügen.</p></div>";
-  return h+friendsHTML()+(FR.friends.length||FR.inc.length||FR.out.length ? "" : "<p class=\"note\">Noch keine Freunde. Suche jemanden über seinen Benutzernamen – mit Freunden kannst du Reisen gemeinsam planen.</p>")+"</div>";
+  return h+fgListHTML()+friendsHTML()+(FR.friends.length||FR.inc.length||FR.out.length ? "" : "<p class=\"note\">Noch keine Freunde. Suche jemanden über seinen Benutzernamen – mit Freunden kannst du Reisen gemeinsam planen.</p>")+"</div>";
 }
 function friendsHTML(){
   var h = "<div class=\"ag-lbl\">"+(FR.inc.length ? "Anfragen & Freunde" : "Deine Freunde")+(FR.friends.length?" · "+FR.friends.length:"")+"</div><div class=\"ag-grp\">";
   FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.fromName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.fromName)+"</b><small>möchte mit dir befreundet sein</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+r.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Ablehnen</button></span></div>"; });
-  FR.friends.forEach(function(f){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+f.id+"\" aria-label=\"Freundschaft beenden\">Entfernen</button></div>"; });
+  FR.friends.forEach(function(f){ var gs = f.uid ? fgOf(f.uid) : [];
+    h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b>"+(gs.length ? "<small>"+esc(gs.map(function(g){ return g.n; }).join(" · "))+"</small>" : "")+"</span>"+
+      (f.uid ? "<button type=\"button\" class=\"fg-for"+(gs.length ? " on" : "")+"\" data-act=\"fgfor\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Gruppen für @"+esc(f.name)+"\">"+FGICO+"</button>" : "")+"<button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+f.id+"\" aria-label=\"Freundschaft beenden\">Entfernen</button></div>"; });
   FR.out.forEach(function(r){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((r.toName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.toName)+"</b><small>Anfrage gesendet</small></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Zurückziehen</button></div>"; });
   h += "<button type=\"button\" class=\"ag-row\" data-act=\"accview\" data-v=\"search\"><span><b>Freunde suchen</b><small>Über den Benutzernamen finden und anfragen</small></span><em class=\"chev\">›</em></button>";
   h += "<button type=\"button\" class=\"ag-row\" data-act=\"invshare\"><span><b>Freunde einladen</b><small>Link verschicken – wer ihn öffnet, kann dir gleich eine Anfrage senden</small></span><em class=\"chev\">›</em></button>";
@@ -4454,6 +4474,111 @@ function searchHTML(){
   }
   h += "<input type=\"search\" id=\"frQ\" class=\"frq\" placeholder=\"Benutzername eingeben\" autocomplete=\"off\" autocapitalize=\"off\" value=\""+esc(frSearch.q)+"\"><div id=\"frRes\" class=\"ag-grp frres\">"+frResHTML()+"</div>";
   return h+"</div>";
+}
+
+/* ---------- Freundesgruppen: nur für dich sichtbar (users/{uid}/fgroups/{id}: n = Name, m = Konto-IDs) ---------- */
+var FG = [], fgUnsub = null, FGED = null,
+  FGICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"7.5\" cy=\"7\" r=\"2.6\"/><circle cx=\"13.6\" cy=\"7.8\" r=\"2.1\"/><path d=\"M2.6 16c.5-2.7 2.4-4.1 4.9-4.1s4.4 1.4 4.9 4.1M12.6 11.9c2.4-.3 4.3.9 4.8 3.4\"/></svg>";
+function fgCol(){ return fbDb.collection("users").doc(acct.user.uid).collection("fgroups"); }
+function fgSort(a, b){ return String(a.n).localeCompare(b.n, "de", {sensitivity:"base"}); }
+function fgWatch(){
+  if(fgUnsub || !fbDb || !acct.user) return; var k = "rp-fg-"+acct.user.uid;
+  try { FG = JSON.parse(lsGet(k)||"[]") || []; } catch(e){ FG = []; }
+  fgUnsub = fgCol().onSnapshot(function(qs){
+    FG = qs.docs.map(function(d){ var v = d.data()||{}; return {id:d.id, n:String(v.n||""), m:Array.isArray(v.m) ? v.m : []}; }).sort(fgSort);
+    lsSet(k, JSON.stringify(FG)); fgRefresh();
+  }, function(){});
+}
+function fgStop(){ if(fgUnsub) fgUnsub(); fgUnsub = null; FG = []; FGED = null; }
+function fgGet(id){ return FG.filter(function(g){ return g.id===id; })[0]; }
+// Mitglieder, die (noch) Freunde sind
+function fgMem(g){ var ok = {}; FR.friends.forEach(function(f){ if(f.uid) ok[f.uid] = 1; }); return g.m.filter(function(u){ return ok[u]; }); }
+function fgOf(uid0){ return FG.filter(function(g){ return g.m.indexOf(uid0) > -1; }); }
+function fgPut(g){
+  var i = FG.map(function(x){ return x.id; }).indexOf(g.id); if(i > -1) FG[i] = g; else FG.push(g); FG.sort(fgSort);
+  if(acct.user) lsSet("rp-fg-"+acct.user.uid, JSON.stringify(FG));
+  if(fbDb && acct.user) fgCol().doc(g.id).set({n:g.n, m:g.m, at:Date.now()}).catch(function(e){ toast("Gruppe nicht gespeichert: "+(e && e.message), false); });
+  fgRefresh();
+}
+function fgDel(id){
+  FG = FG.filter(function(g){ return g.id!==id; }); if(acct.user) lsSet("rp-fg-"+acct.user.uid, JSON.stringify(FG));
+  if(fbDb && acct.user) fgCol().doc(id).delete().catch(function(){});
+  closeCatPop(); FGED = null; fgRefresh(); toast("Gruppe gelöscht", false);
+}
+function fgRefresh(){
+  refreshSettings();
+  var cp = $("catPop"), ae = document.activeElement;
+  if(!cp.hidden && FGED && cp.querySelector(".fg-card") && !(ae && ae.tagName==="INPUT" && cp.contains(ae))) renderFgEd();
+  if(ASK && !cp.hidden && cp.querySelector(".ask-card")) renderAsk();
+  if(FRSP && !cp.hidden && cp.querySelector(".frs-pop")) frsPopRender();
+}
+function fgListHTML(){
+  if(!FR.friends.length) return "";
+  var h = "<div class=\"ag-lbl\">Gruppen"+(FG.length ? " · "+FG.length : "")+"</div><div class=\"ag-grp fg-grp\">";
+  FG.forEach(function(g){ var n = fgMem(g).length;
+    h += "<button type=\"button\" class=\"ag-row fg-row\" data-act=\"fgopen\" data-g=\""+esc(g.id)+"\"><span class=\"fg-ic\">"+FGICO+"</span><span class=\"fn\"><b>"+esc(g.n)+"</b><small>"+(n===1 ? "1 Person" : n+" Personen")+"</small></span><em class=\"chev\">›</em></button>"; });
+  h += "<button type=\"button\" class=\"ag-row fg-row\" data-act=\"fgnew\"><span class=\"fg-ic add\">"+FRSADD+"</span><span class=\"fn\"><b>Neue Gruppe</b>"+(FG.length ? "" : "<small>Nur für dich sichtbar – z. B. Familie, enger Freundeskreis</small>")+"</span></button>";
+  return h+"</div>";
+}
+function openFgEd(id, uid0){
+  var g = id && fgGet(id); FGED = {id:g ? g.id : "", n:g ? g.n : "", sel:{}};
+  (g ? fgMem(g) : uid0 ? [uid0] : []).forEach(function(u){ FGED.sel[u] = 1; });
+  frSearchDone("fg"); renderFgEd(true);
+  if(!g) setTimeout(function(){ var i = $("fgName"); if(i) i.focus(); }, 60);
+}
+function fgKeep(){ var i = $("fgName"); if(i && FGED) FGED.n = i.value; }
+function renderFgEd(first){
+  if(!FGED) return; fgKeep(); var us = Object.keys(FGED.sel), n = us.length;
+  var h = "<div class=\"pop-card ask-card fg-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppe\"><div class=\"pop-head\"><h4>"+(FGED.id ? "Gruppe bearbeiten" : "Neue Gruppe")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<label class=\"fg-name\"><span class=\"fg-ic\">"+FGICO+"</span><input type=\"text\" id=\"fgName\" maxlength=\"40\" value=\""+esc(FGED.n)+"\" placeholder=\"Name, z. B. Familie\" autocomplete=\"off\" enterkeyhint=\"done\" aria-label=\"Name der Gruppe\"></label>"+
+    "<div class=\"ask-h\"><span>"+(n ? n+(n===1 ? " Person" : " Personen") : "Noch niemand in der Gruppe")+"</span><span>nur für dich sichtbar</span></div>"+
+    (n ? "<div class=\"frs-sel\">"+us.map(function(u){ return "<button type=\"button\" class=\"frs-chip\" data-act=\"fgtog\" data-uid=\""+esc(u)+"\" aria-label=\"@"+esc(chName(u))+" entfernen\">@"+esc(chName(u))+"<i aria-hidden=\"true\">×</i></button>"; }).join("")+"</div>" : "")+
+    frSearchHTML("fg", FR.friends.filter(function(f){ return f.uid; }).map(function(f){ return {uid:f.uid, name:chName(f.uid), email:f.email}; }), "fgtog", "", FGED.sel, true)+
+    "<div class=\"pf-acts fg-acts\">"+(FGED.id ? "<button type=\"button\" class=\"btn g\" data-act=\"fgdel\" data-g=\""+esc(FGED.id)+"\">Löschen</button>" : "")+"<button type=\"button\" class=\"btn\" data-act=\"fgsave\">Fertig</button></div></div>";
+  if(first){ var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false; } else catKeep(h);
+}
+function fgSave(){
+  fgKeep(); if(!FGED) return; var nm = FGED.n.trim().replace(/\s+/g, " ").slice(0, 40);
+  if(!nm){ toast("Gib der Gruppe einen Namen", false); var i = $("fgName"); if(i) i.focus(); return; }
+  var g = {id:FGED.id || "g"+Date.now().toString(36)+Math.random().toString(36).slice(2, 6), n:nm, m:Object.keys(FGED.sel).slice(0, 2000)};
+  var old = FGED.id && fgGet(FGED.id); if(old) g.m = g.m.concat(old.m.filter(function(u){ return !fgMem(old).some(function(x){ return x===u; }); }));   // Ehemalige Freunde nicht stillschweigend verlieren
+  FGED = null; closeCatPop(); fgPut(g); toast(old ? "Gruppe gespeichert" : "Gruppe „"+nm+"“ angelegt", false);
+}
+document.addEventListener("keydown", function(e){ if(e.target && e.target.id==="fgName" && e.key==="Enter" && !e.isComposing){ e.preventDefault(); e.target.blur(); } });
+// Gruppen eines Freundes direkt am Freund umschalten (Pop-up am Knopf)
+function fgForHTML(uid0){
+  return "<div class=\"dc-dh\">Gruppen für @"+esc(chName(uid0))+"</div>"+FG.map(function(g){ var on = g.m.indexOf(uid0) > -1;
+    return "<button type=\"button\" class=\"fg-keep\" data-act=\"fgset\" data-g=\""+esc(g.id)+"\" data-uid=\""+esc(uid0)+"\" role=\"menuitemcheckbox\" aria-checked=\""+on+"\"><span class=\"ai"+(on ? " on" : "")+"\">"+(on ? "✓" : "")+"</span><span>"+esc(g.n)+"</span></button>"; }).join("")+
+    "<button type=\"button\" data-act=\"fgnew\" data-uid=\""+esc(uid0)+"\" role=\"menuitem\"><span class=\"ai\">"+FRSADD+"</span><span>Neue Gruppe …</span></button>";
+}
+function fgSet(gid, uid0){
+  var g = fgGet(gid); if(!g) return; var m = g.m.indexOf(uid0) > -1 ? g.m.filter(function(u){ return u!==uid0; }) : g.m.concat([uid0]);
+  fgPut({id:g.id, n:g.n, m:m}); var mm = $("jpMenu"); if(mm && mm.getAttribute("data-kind")==="fgfor") mm.innerHTML = fgForHTML(uid0);
+}
+// Schnellauswahl in Freunde-Auswahlen: Gruppen, von denen mindestens eine Person zur Wahl steht
+function fgQuickHTML(cand, act, sel){
+  var ok = {}; cand.forEach(function(f){ if(f.uid) ok[f.uid] = 1; });
+  var gs = FG.map(function(g){ return {g:g, u:g.m.filter(function(u){ return ok[u]; })}; }).filter(function(x){ return x.u.length; });
+  if(!gs.length) return "";
+  return "<div class=\"fg-q\" role=\"group\" aria-label=\"Gruppen\">"+gs.map(function(x){ var on = sel && x.u.every(function(u){ return sel[u]; });
+    return "<button type=\"button\" class=\"fg-chip"+(on ? " on" : "")+"\" data-act=\""+act+"\" data-g=\""+esc(x.g.id)+"\" aria-pressed=\""+!!on+"\">"+FGICO+"<span>"+esc(x.g.n)+"</span><small>"+x.u.length+"</small></button>"; }).join("")+"</div>";
+}
+function askGrp(gid){
+  var g = fgGet(gid); if(!g || !ASK) return; var ok = {}; FR.friends.forEach(function(f){ if(f.uid) ok[f.uid] = 1; });
+  var us = g.m.filter(function(u){ return ok[u]; }), all = us.length && us.every(function(u){ return ASK.sel[u]; });
+  us.forEach(function(u){ if(all) delete ASK.sel[u]; else ASK.sel[u] = 1; }); renderAsk();
+}
+// Ganze Gruppe einladen: dieselbe Aktion wie beim Antippen einzelner Freunde, nach einer Rückfrage
+function fgInvite(gid){
+  var g = fgGet(gid), b = FRSP && FRSP.build(); if(!g || !b) return;
+  var c = b.cand.filter(function(f){ return f.uid && g.m.indexOf(f.uid) > -1; }); if(!c.length) return;
+  askConfirm(c.length===1 ? "@"+c[0].name+" einladen?" : c.length+" Personen aus „"+g.n+"“ einladen?", c.map(function(f){ return "@"+f.name; }).join(", "), "Einladen", function(){
+    var cp = $("catPop");
+    c.forEach(function(f){ var w = document.createElement("div"); w.hidden = true;
+      w.innerHTML = "<button type=\"button\" data-act=\""+b.act+"\" data-uid=\""+esc(f.uid)+"\" data-mail=\""+esc(f.email||"")+"\" data-name=\""+esc(f.name||"")+"\""+b.attrs+"></button>";
+      cp.appendChild(w); w.firstChild.click(); w.remove(); });
+    if(c.length > 1) setTimeout(function(){ toast(c.length+" Personen aus „"+g.n+"“ eingeladen", false); }, 400);
+  });
 }
 
 /* ---------- Einladungen & Mitreisende ---------- */
@@ -6095,6 +6220,7 @@ function renderAsk(first){
   var h = "<div class=\"pop-card ask-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Freunde nach Tipps fragen\"><div class=\"pop-head\"><h4>Freunde fragen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
     "<textarea id=\"askT\" rows=\"3\" maxlength=\"1000\" aria-label=\"Nachricht\">"+esc(ASK.txt)+"</textarea>"+
     "<div class=\"ask-h\"><span>An</span><button type=\"button\" class=\"tf-link\" data-act=\"askall\">"+(all ? "Keinen" : "Alle")+" auswählen</button></div>"+
+    fgQuickHTML(FR.friends, "askgrp", ASK.sel)+
     (n ? "<div class=\"frs-sel\">"+Object.keys(ASK.sel).map(function(u){ return "<button type=\"button\" class=\"frs-chip\" data-act=\"askpick\" data-uid=\""+esc(u)+"\" aria-label=\"@"+esc(chName(u))+" entfernen\">@"+esc(chName(u))+"<i aria-hidden=\"true\">×</i></button>"; }).join("")+"</div>" : "")+
     frSearchHTML("ask", FR.friends.filter(function(f){ return f.uid; }).map(function(f){ return {uid:f.uid, name:chName(f.uid), email:f.email}; }), "askpick", "", ASK.sel, true)+
     "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"asksend\""+(n ? "" : " disabled")+">"+(n ? "An "+n+(n===1 ? " Freund" : " Freunde")+" senden" : "Freunde auswählen")+"</button></div></div>";
@@ -6143,7 +6269,7 @@ function frsPopRender(first){
   if(!first && (cp.hidden || !cp.querySelector(".frs-pop"))){ FRSP = null; return; }
   var res = cp.querySelector(".frs-big"), st = res && !first ? res.scrollTop : 0, ae = document.activeElement, kf = !first && ae && ae.classList && ae.classList.contains("frs-in");
   var h = "<div class=\"pop-card frs-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+esc(FRSP.title)+"\"><div class=\"pop-head\"><h4>"+esc(FRSP.title)+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
-    frSearchHTML(FRSP.key, b.cand, b.act, b.attrs, null, true)+"</div>";
+    fgQuickHTML(b.cand, "fginv", null)+frSearchHTML(FRSP.key, b.cand, b.act, b.attrs, null, true)+"</div>";
   cp.innerHTML = h; cp.hidden = false;
   var r2 = cp.querySelector(".frs-big"); if(r2) r2.scrollTop = st;
   if(kf){ var i = cp.querySelector(".frs-in"); if(i) i.focus(); }
@@ -6295,18 +6421,40 @@ function chSend(){
   b.commit().then(function(){ chSending = false; if(chMsgErr && chOpen){ var dr = chDraft; chOpenConv(chOpen); chDraft = dr; renderChDraft(); } }, function(e){ chSending = false; if(inp && !inp.value) inp.value = keepT; chDraft = keepP; renderChDraft(); toast("Senden fehlgeschlagen: "+((e && e.code)==="permission-denied" ? "keine Berechtigung (Firestore-Regeln für Chats ergänzen?)" : (e && e.message) || ""), false); });
 }
 function chGrow(){ var i = $("chIn"); if(!i) return; i.style.height = "auto"; i.style.height = Math.min(120, i.scrollHeight)+"px"; }
-/* Chat-Höhe bei Tastatur: oben bleibt alles fest (top 0), nur die Höhe folgt der Tastatur – und zwar gleitend (CSS-Übergang).
-   Feld im Chat aktiv: sichtbare Höhe (vor dem Öffnen auf iOS schon die erwartete). Sonst sofort volle Höhe, auch wenn iOS
-   den resize erst spät meldet – so bleibt beim Schließen keine leere Fläche stehen. */
-function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualViewport;
-  if(!(chPage && chOpen && vv)){ el.style.top = ""; el.style.height = ""; el.style.bottom = ""; return; }
-  var ae = document.activeElement, foc = ae && el.contains(ae) && isTypeField(ae), up = window.innerHeight - vv.height > 120;
-  var h = !foc ? window.innerHeight : up ? vv.height : KBPRED ? Math.min(vv.height, kbPredH()) : vv.height;
-  var box = $("chMsgs"), end = box && box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-  el.style.top = "0px"; el.style.bottom = "auto"; if(Math.abs((parseFloat(el.style.height) || 0) - h) > 1) el.style.height = Math.round(h)+"px";
-  if(end){ box.scrollTop = box.scrollHeight; setTimeout(function(){ var b = $("chMsgs"); if(b) b.scrollTop = b.scrollHeight; }, 320); } }
-if(window.visualViewport){ window.visualViewport.addEventListener("resize", function(){ if(chPage && chOpen) chVV(); }); }
-document.addEventListener("focusout", function(e){ if(chPage && chOpen && e.target && e.target.id==="chIn") setTimeout(chVV, 0); });
+/* Chat und Tastatur (iOS). Grundsatz: Die Chat-Fläche (#chView) deckt IMMER den ganzen Bildschirm ab – es kann nie die Karte
+   durchscheinen. Nur der Inhalt (.ch-conv: Kopf, Verlauf, Eingabe) bekommt beim Tippen die Höhe des sichtbaren Bereichs
+   (visualViewport.height) und sitzt an dessen Oberkante (offsetTop). Damit stimmt die Lage, egal ob iOS die Seite verschiebt,
+   die Höhe des Layouts mitändert oder gar nichts meldet. Ob die Tastatur offen ist, wird NICHT aus innerHeight geschlossen
+   (das war der Fehler: wenn iOS innerHeight mitverkleinert, blieb der Chat auf der geschätzten halben Höhe stehen).
+   Beim Antippen sitzt die Eingabe sofort an der erwarteten Stelle über der Tastatur (Höhe vom letzten Mal, sonst vorsichtig
+   geschätzt), damit iOS die Seite gar nicht erst verschiebt; sobald iOS die echte Höhe meldet, gilt nur noch die. */
+var CHKB = {on:false, h0:0, got:false, t:0};
+function chKbKey(){ return (matchMedia("(display-mode: standalone)").matches || navigator.standalone ? "a" : "b")+Math.round(innerWidth)+"x"+Math.round(CHKB.h0); }
+function chKbGuess(){ var v = 0; try { v = +(JSON.parse(localStorage.getItem("rp-chkb") || "{}")[chKbKey()] || 0); } catch(e){}
+  return v > 100 && v < CHKB.h0 - 100 ? v : Math.round(CHKB.h0 * (innerWidth > innerHeight ? 0.4 : 0.5)); }
+function chKbSave(h){ try { var o = JSON.parse(localStorage.getItem("rp-chkb") || "{}"); o[chKbKey()] = Math.round(h); localStorage.setItem("rp-chkb", JSON.stringify(o)); } catch(e){} }
+function chTyping(){ var el = $("chView"), ae = document.activeElement; return !!(el && chPage && chOpen && ae && el.contains(ae) && isTypeField(ae)); }
+function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualViewport, de = document.documentElement;
+  var typ = chTyping() && !!vv;
+  if(!typ){ CHKB.on = false; clearTimeout(CHKB.t); el.classList.remove("kbt"); document.body.classList.remove("chkb"); el.style.removeProperty("--chh"); el.style.removeProperty("--cht"); de.style.removeProperty("--chtop"); return; }
+  if(!CHKB.on){ CHKB.on = true; CHKB.h0 = el.clientHeight || innerHeight; CHKB.got = vv.height < CHKB.h0 - 120; clearTimeout(CHKB.t);
+    // kommt keine Tastatur (Hardware-Tastatur), gilt nach einer Weile einfach die sichtbare Höhe
+    CHKB.t = setTimeout(function(){ if(CHKB.on && !CHKB.got){ CHKB.got = true; chVV(); } }, 1200); }
+  if(!CHKB.got && vv.height < CHKB.h0 - 120){ CHKB.got = true; }
+  var h = CHKB.got ? vv.height : Math.min(vv.height, chKbGuess()), t = CHKB.got ? Math.max(0, vv.offsetTop) : 0;
+  if(CHKB.got && vv.height < CHKB.h0 - 120) chKbSave(vv.height);
+  var box = $("chMsgs"), end = !box || box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  el.classList.add("kbt"); document.body.classList.add("chkb");
+  el.style.setProperty("--chh", Math.round(h)+"px"); el.style.setProperty("--cht", Math.round(t)+"px"); de.style.setProperty("--chtop", Math.round(t)+"px");
+  if(box && end) box.scrollTop = box.scrollHeight;
+  if(el.scrollTop) el.scrollTop = 0; }
+// iOS scrollt beim Fokus auch Behälter mit overflow:hidden, um das Feld zu zeigen – die Chat-Fläche selbst bleibt immer oben
+document.addEventListener("scroll", function(e){ var el = e.target; if(el && el.id==="chView" && el.classList.contains("conv") && el.scrollTop) el.scrollTop = 0; }, true);
+if(window.visualViewport){ ["resize", "scroll"].forEach(function(n){ window.visualViewport.addEventListener(n, function(){ if(CHKB.on) chVV(); }); }); }
+document.addEventListener("focusin", function(e){ if(chPage && chOpen && e.target && isTypeField(e.target) && $("chView").contains(e.target)) chVV(); });
+document.addEventListener("focusout", function(){ if(CHKB.on) setTimeout(chVV, 0); });
+// Senden-Knopf nimmt dem Feld den Fokus nicht – die Tastatur bleibt offen wie in Nachrichten-Apps
+document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send") && chTyping()) e.preventDefault(); }, true);
 document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn") chGrow(); if(e.target.id==="chNewIn"){ chNewQ = e.target.value; renderChNew(); } if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
 document.addEventListener("keydown", function(e){ if(e.target && e.target.id==="chIn" && e.key==="Enter" && !e.shiftKey && !e.isComposing && !("ontouchstart" in window)){ e.preventDefault(); chSend(); } });
 /* Ort aus dem Ort-Fenster im Chat teilen: erst Freund wählen */
@@ -6779,7 +6927,7 @@ function setAvatar(file){
 document.addEventListener("change", function(e){ if(e.target.id==="avIn" && e.target.files && e.target.files[0]){ setAvatar(e.target.files[0]); e.target.value = ""; } });
 function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
 /* Tastatur: alles am sichtbaren Bereich ausrichten und das aktive Feld im Blick halten */
-var KBPRED = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints > 1), KBVH = [0, 0];
+var KBPRED = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints > 1), KBVH = [0, 0], VVBASE = [0, 0];
 // erwartete sichtbare Höhe bei offener Tastatur: vom letzten Öffnen, sonst vorsichtig geschätzt (lieber zu klein als zu groß)
 function kbPredH(){ var q = innerWidth > innerHeight ? 1 : 0; return KBVH[q] || Math.round(innerHeight * (q ? 0.4 : 0.5)); }
 // Die App-Seite selbst scrollt nie. Schiebt iOS sie für die Tastatur hoch, sofort zurück – sonst rutschen Leiste und Köpfe aus dem Bild.
@@ -6798,14 +6946,18 @@ function ensureVis(el){
 (function(){ var vv = window.visualViewport, de = document.documentElement, body = document.body;
   function upd(){
     if(vv){ de.style.setProperty("--vvh", vv.height+"px"); de.style.setProperty("--vvt", vv.offsetTop+"px"); }
-    var ae = document.activeElement, kbh = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
+    // Tastaturhöhe gegen die volle Höhe ohne Tastatur messen. Nicht nur innerHeight: iOS verkleinert innerHeight teils mit,
+    // dann wäre die Differenz 0 und die Tastatur bliebe unerkannt. Grundwert = größte sichtbare Höhe ohne aktives Feld (je Ausrichtung);
+    // nur wachsen lassen, sonst würde er beim Schließen (Feld schon weg, Tastatur noch da) zu klein.
+    var ae = document.activeElement, q = innerWidth > innerHeight ? 1 : 0;
+    if(vv && (!isTypeField(ae) || !VVBASE[q])) VVBASE[q] = Math.max(VVBASE[q], vv.height);
+    var kbh = vv ? Math.max(0, Math.max(window.innerHeight, VVBASE[q]) - vv.height) : 0;
     var kb = kbh > 120 && isTypeField(ae);
     body.classList.toggle("kb", kb); de.style.setProperty("--kbh", (kb ? Math.max(0, kbh - (vv ? vv.offsetTop : 0)) : 0)+"px");
     if(kb && vv) KBVH[innerWidth > innerHeight ? 1 : 0] = vv.height;   // für die Vorhersage beim nächsten Antippen
     // iOS schiebt die ganze Seite hoch, wenn das Feld sonst unter der Tastatur läge: dann rutschen die Hauptleiste und Köpfe aus dem Bild.
     // Die App-Seite selbst scrollt nie – also sofort zurück; Pop-ups und Chat sitzen ohnehin über der Tastatur.
     if(kbh > 120 && (window.scrollY > 0 || window.pageYOffset > 0)) window.scrollTo(0, 0);
-    if(!kb && chPage && chOpen) chVV();   // Vorhersage im Chat zurücknehmen, falls keine Tastatur kam
     document.querySelectorAll(".kbpin").forEach(function(ov){
       var card = ov._kbc;
       // Feld verlassen: festhalten, bis die Tastatur wirklich zu ist – dann Lage und Größe in EINER Bewegung zurück
@@ -6849,9 +7001,7 @@ function ensureVis(el){
       // Feld innerhalb der Karte gleich in den künftig sichtbaren Teil scrollen (Abstände relativ zur Karte, Animation egal)
       var rel = el.getBoundingClientRect().top - card.getBoundingClientRect().top, fh = Math.min(el.offsetHeight, 140);
       if(rel + fh > pmax - 16) card.scrollTop += rel + fh - (pmax - 16); else if(rel < 8) card.scrollTop += rel - 8; } }
-  // Chat (keine Pop-up-Seite): Eingabezeile schon beim Antippen über die erwartete Tastatur, damit iOS nichts verschieben muss
-  function kbPredChat(el){ if(el.id==="chIn" && chPage && chOpen) chVV(); }
-  document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; kbPin(el); kbPredChat(el); setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
+  document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; kbPin(el); setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
   document.addEventListener("focusout", function(){ setTimeout(upd, 80); });
   upd(); })();
 function closeSettings(){ accView = "main"; unameMsg = ""; $("acctPop").hidden = true; if($("tripPop").hidden) document.body.classList.remove("glass"); }
@@ -9821,6 +9971,7 @@ var CONFIRM = {
   mleave:["Reise verlassen?", "Die Reise verschwindet von deinen Geräten. Wieder hinein kommst du nur mit einer neuen Einladung.", "Verlassen"],
   minvdel:["Einladung zurückziehen?", "", "Zurückziehen"],
   frdel:["Freund entfernen?", "", "Entfernen"],
+  fgdel:["Gruppe löschen?", "Die Personen bleiben deine Freunde – nur die Gruppe verschwindet.", "Löschen"],
   gkeydel:["Google-Schlüssel entfernen?", "", "Entfernen"]
 };
 function askConfirm(title, text, ok, fn){
@@ -10665,7 +10816,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lsvispick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=dcmore],[data-act=dctgt],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h,.fg-keep")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lsvispick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=dcmore],[data-act=dctgt],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend],[data-act=fgfor]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -12492,6 +12643,15 @@ document.addEventListener("click", function(e){
     case "frreq": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); break;
     case "fracc": frAccept(t.getAttribute("data-uid")); break;
     case "frdel": frRemove(t.getAttribute("data-id")); break;
+    case "fgopen": openFgEd(t.getAttribute("data-g")); break;
+    case "fgnew": closeJpMore(); openFgEd("", t.getAttribute("data-uid")); break;
+    case "fgtog": if(FGED){ var fgu = t.getAttribute("data-uid"); if(FGED.sel[fgu]) delete FGED.sel[fgu]; else FGED.sel[fgu] = 1; renderFgEd(); } break;
+    case "fgsave": fgSave(); break;
+    case "fgdel": fgDel(t.getAttribute("data-g")); break;
+    case "fgfor": if(!FG.length){ openFgEd("", t.getAttribute("data-uid")); break; } jpPopover("", t, fgForHTML(t.getAttribute("data-uid")), "fgfor"); break;
+    case "fgset": fgSet(t.getAttribute("data-g"), t.getAttribute("data-uid")); break;
+    case "askgrp": askKeep(); askGrp(t.getAttribute("data-g")); break;
+    case "fginv": fgInvite(t.getAttribute("data-g")); break;
     case "invfriend": t.disabled = true; var fe = t.getAttribute("data-mail"); tripRef(S.cur).update(invUpd(fe)).then(function(){ invLocal(fe); toast("@"+t.getAttribute("data-name")+" eingeladen", false); renderSheet(); frsPopRender(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); }); break;
     case "invrole": invRole = t.getAttribute("data-v"); renderSheet(); break;
     case "mrole": var mu = t.getAttribute("data-uid"), mv = t.getAttribute("data-v")==="viewer", FV3 = window.firebase.firestore.FieldValue;

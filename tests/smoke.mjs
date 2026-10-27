@@ -1510,9 +1510,11 @@ await test("Öffnungszeiten (online): Warnung bei später Uhrzeit, Anzeige in de
   // Bewusst im Seitenkontext statt page.fill/locator.blur – Google Chrome (Action) verhielt sich dabei anders als Chromium.
   ok(await rp(`var i = document.querySelector("#jPop input[data-act=time]"); i.focus(); i.value = "19:30";
     i.dispatchEvent(new Event("input", {bubbles:true})); i.dispatchEvent(new Event("change", {bubbles:true}));
-    var early = timeOf("p3")==="19:30" && document.activeElement===i; i.blur(); !early`), "Uhrzeit schon während der Eingabe gespeichert (iOS-Rad würde schließen)");
+    var early = timeOf("p3")==="19:30" && document.activeElement===i; i.blur();
+    // Google Chrome ohne Fensterfokus (Action, mehrere Prozesse) schickt bei blur() kein blur-Ereignis – wie das iPhone beim Schließen des Rads selbst auslösen
+    i.dispatchEvent(new FocusEvent("blur")); !early`), "Uhrzeit schon während der Eingabe gespeichert (iOS-Rad würde schließen)");
   await page.waitForTimeout(300);
-  ok(await rp(`timeOf("p3")==="19:30"`), "Uhrzeit nicht gespeichert");
+  ok(await rp(`timeOf("p3")==="19:30"`), "Uhrzeit nicht gespeichert: "+await rp(`JSON.stringify({t:timeOf("p3"), v:(document.querySelector("#jPop input[data-act=time]")||{}).value, ae:document.activeElement && document.activeElement.tagName, foc:document.hasFocus()})`));
   const tt = await page.locator("#toast").innerText();
   ok(tt.includes("19:30") && tt.includes("zu"), "Keine Warnung bei Uhrzeit außerhalb der Öffnungszeiten: "+tt);
   ok((await page.locator("#jPop .jp-info").innerText()).includes("Um 19:30 geschlossen"), "Detailansicht zeigt nicht, dass um 19:30 zu ist");
@@ -1784,7 +1786,9 @@ const kbPop = async (open, ovSel, name, o = {}) => {
   await page.locator(fld).first().focus();
   let predBox = null;
   if(o.pred){ await page.waitForTimeout(50); await kbSettle(); predBox = await page.locator(card).first().boundingBox(); }
-  await page.evaluate(([h, t]) => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); if(t) Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => t}); visualViewport.dispatchEvent(new Event("resize")); }, [VH, pan0]);
+  await page.evaluate(([h, t, sh]) => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); if(t) Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => t});
+    if(sh){ window.__ihD = Object.getOwnPropertyDescriptor(window, "innerHeight"); Object.defineProperty(window, "innerHeight", {configurable:true, get:() => h}); }   // manche iOS-Versionen verkleinern innerHeight mit
+    visualViewport.dispatchEvent(new Event("resize")); }, [VH, pan0, !!o.shrink]);
   await page.waitForTimeout(450); await kbSettle();
   ok(await rp(`document.body.classList.contains("kb")`), name+": Tastatur nicht erkannt");
   const ov = await page.locator(ovSel).boundingBox(), fb = await page.locator(fld).first().boundingBox(), lb = await page.locator(card).first().boundingBox();
@@ -1816,7 +1820,7 @@ const kbPop = async (open, ovSel, name, o = {}) => {
   await page.evaluate(() => { delete visualViewport.offsetTop; visualViewport.dispatchEvent(new Event("scroll")); }); await page.waitForTimeout(200);
   const mid = await page.locator(card).first().boundingBox();
   ok(Math.abs(mid.y - pre.y) <= 1 && Math.abs(mid.height - pre.height) <= 1, name+": Karte ändert sich schon, bevor die Tastatur zu ist ("+JSON.stringify([pre.y, pre.height])+" → "+JSON.stringify([mid.y, mid.height])+")");
-  await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
+  await page.evaluate(() => { delete visualViewport.height; if(window.__ihD){ Object.defineProperty(window, "innerHeight", window.__ihD); delete window.__ihD; } visualViewport.dispatchEvent(new Event("resize")); });
   await page.waitForTimeout(300);
   const hs = await page.evaluate(() => { window.__kbRO.disconnect(); return window.__kbH.filter((h, i, a) => i===0 || h!==a[i-1]); });
   ok(hs.length <= 2, name+": Größe ändert sich beim Schließen mehrmals: "+hs.join(" → "));
@@ -1833,35 +1837,54 @@ await test("Tastatur im Pop-up: mittige Karte (Neues Ziel) springt nicht", async
 await test("Tastatur im Pop-up: hohe Karte (Ziel) sitzt knapp über der Tastatur und nutzt den Platz bis oben", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-hoch"); });
 await test("Tastatur im Pop-up: iOS verschiebt die Seite beim Fokus – Karte trotzdem knapp über der Tastatur", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-pan", {pan0:120}); });
 await test("Tastatur im Pop-up: Vorhersage beim Antippen (iOS) – beim Öffnen bewegt sich nichts mehr", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-pred", {pred:true}); });
+await test("Tastatur im Pop-up: Tastatur erkannt, auch wenn iOS innerHeight mitverkleinert", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-inner", {shrink:true}); });
 await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-quer"); }, QUER);
 
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {
   await seed();
-  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); true`);
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); try { localStorage.removeItem("rp-chkb"); } catch(e){} if(typeof KBPRED!=="undefined") KBPRED = true; true`);
   await page.waitForTimeout(400);
   ok(await page.locator("#chIn").count()===1, "Chat-Eingabe fehlt");
-  const H = await page.evaluate(() => innerHeight), VH = H - 380;
-  const bar0 = await page.locator(".tabbar").first().boundingBox(), head0 = await page.locator("#chView .ch-head, #chView header, #chView .ls-head").first().boundingBox();
-  await rp(`KBPRED = true; KBVH = [${VH}, 0]; true`);
-  await page.locator("#chIn").focus(); await page.waitForTimeout(100); await kbSettle();
-  const inp = await page.locator("#chIn").boundingBox();
-  ok(inp.y + inp.height <= VH, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(inp));
-  await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); visualViewport.dispatchEvent(new Event("resize")); }, VH);
-  await page.waitForTimeout(300);
-  const inp2 = await page.locator("#chIn").boundingBox(), bar1 = await page.locator(".tabbar").first().boundingBox(), head1 = head0 ? await page.locator("#chView .ch-head, #chView header, #chView .ls-head").first().boundingBox() : null;
-  ok(Math.abs(inp2.y - inp.y) <= 1, "Eingabe springt beim Öffnen der Tastatur ("+inp.y+" → "+inp2.y+")");
-  ok(bar1 && Math.abs(bar1.y - bar0.y) <= 1 && await page.locator(".tabbar").first().isVisible(), "Hauptleiste verschwindet oder verrutscht");
-  if(head0) ok(Math.abs(head1.y - head0.y) <= 1, "Chat-Kopf verrutscht");
+  const vp = page.viewportSize(), H = vp.height, VH = H - 380;
+  // Lagen in BILDSCHIRM-Koordinaten (getBoundingClientRect zählt ab Layout-Oberkante, iOS verschiebt um offsetTop)
+  const pos = () => page.evaluate(() => { const r = s => { const e = document.querySelector(s); if(!e) return null; const b = e.getBoundingClientRect(), t = visualViewport.offsetTop; return {y:Math.round(b.top - t), b:Math.round(b.bottom - t)}; };
+    // überall im sichtbaren Bereich muss Chat (oder die Leiste) liegen – nie die Karte
+    const vv = visualViewport, hole = []; for(let y = vv.offsetTop + 5; y < vv.offsetTop + vv.height; y += 20){ const e = document.elementFromPoint(innerWidth/2, y); if(!e || !e.closest("#chView,.top")) hole.push(Math.round(y)); }
+    return {bar:r(".tabbar"), head:r("#chView .ch-head"), inp:r("#chView .ch-comp"), vt:vv.offsetTop, vh:vv.height, hole}; });
+  const kbFake = (h, top) => page.evaluate(([h, top]) => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => top});
+    visualViewport.dispatchEvent(new Event("resize")); visualViewport.dispatchEvent(new Event("scroll")); }, [h, top]);
+  const kbReal = () => page.evaluate(() => { delete visualViewport.height; delete visualViewport.offsetTop; visualViewport.dispatchEvent(new Event("resize")); });
+  const p0 = await pos();
+  ok(!p0.hole.length && p0.inp.b >= H - 2, "Chat ohne Tastatur nicht bildschirmfüllend: "+JSON.stringify(p0));
+  const same = (p, w) => { ok(Math.abs(p.bar.y - p0.bar.y) <= 1, w+": Hauptleiste verrutscht ("+p0.bar.y+" → "+p.bar.y+")"); ok(Math.abs(p.head.y - p0.head.y) <= 1, w+": Chat-Kopf verrutscht ("+p0.head.y+" → "+p.head.y+")");
+    ok(!p.hole.length, w+": Karte scheint durch bei y="+p.hole.join(",")); };
+  // 1) Antippen: Eingabe sofort über der (geschätzten) Tastatur, nichts darunter durchsichtig
+  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
+  const p1 = await pos(); same(p1, "Antippen"); ok(p1.inp.b <= Math.round(H * 0.5) + 1, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(p1.inp));
+
+  // 2) Fall A – iOS meldet die Tastatur nur über visualViewport (innerHeight bleibt) und verschiebt die Seite (offsetTop)
+  await kbFake(VH, 120); await page.waitForTimeout(50);
+  let p = await pos(); same(p, "Tastatur mit Seitenverschiebung");
+  ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur (verschoben): "+JSON.stringify(p));
+  await kbFake(VH, 0); await page.waitForTimeout(50);
+  p = await pos(); same(p, "Tastatur ohne Verschiebung"); ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur: "+JSON.stringify(p));
+  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50); await kbReal(); await page.waitForTimeout(50);
+  p = await pos(); same(p, "Schließen"); ok(p.inp.b >= H - 2, "Eingabe bleibt nach dem Schließen oben: "+JSON.stringify(p.inp));
+  // 3) Fall B – iOS verkleinert das ganze Layout (innerHeight sinkt mit): das war der Fehler mit der durchscheinenden Karte
+  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
+  await page.setViewportSize({width:vp.width, height:VH}); await page.waitForTimeout(150);
+  p = await pos(); same(p, "Layout verkleinert"); ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur (Layout verkleinert): "+JSON.stringify(p));
+  ok(await rp(`JSON.parse(localStorage.getItem("rp-chkb") || "{}") && true`), "Tastaturhöhe nicht gemerkt");
   await shot("tastatur-chat");
-  // Schließen: iOS meldet den resize oft spät – die Eingabe geht trotzdem sofort mit der Tastatur nach unten (keine leere Fläche)
-  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(100); await kbSettle();
-  const inp3 = await page.locator("#chIn").boundingBox(), bar2 = await page.locator(".tabbar").first().boundingBox();
-  ok(inp3.y + inp3.height > H - 120, "Eingabe bleibt nach dem Verlassen oben stehen: "+JSON.stringify(inp3));
-  ok(Math.abs(bar2.y - bar0.y) <= 1, "Hauptleiste verrutscht beim Schließen");
-  await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
-  await page.waitForTimeout(100); await kbSettle();
-  const inp4 = await page.locator("#chIn").boundingBox();
-  ok(Math.abs(inp4.y - inp3.y) <= 1, "Eingabe bewegt sich beim späten resize noch einmal ("+inp3.y+" → "+inp4.y+")");
+  await page.evaluate(() => document.activeElement.blur()); await page.setViewportSize(vp); await page.waitForTimeout(150);
+  p = await pos(); same(p, "Schließen nach Verkleinern"); ok(p.inp.b >= H - 2, "Eingabe nach dem Schließen nicht unten: "+JSON.stringify(p.inp));
+  // 4) Zweites Antippen: gemerkte Höhe → Eingabe steht sofort an der richtigen Stelle (kein Nachrutschen)
+  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
+  p = await pos(); ok(Math.abs(p.inp.b - VH) <= 1, "Gemerkte Tastaturhöhe nicht genutzt: "+JSON.stringify(p.inp));
+  // 5) Senden lässt die Tastatur offen (Fokus bleibt im Feld)
+  await page.evaluate(() => { const b = document.querySelector("#chView .ch-send"); const ev = new MouseEvent("mousedown", {bubbles:true, cancelable:true}); b.dispatchEvent(ev); window.__md = ev.defaultPrevented; });
+  ok(await page.evaluate(() => window.__md), "Senden-Knopf nimmt dem Feld den Fokus (Tastatur ginge zu)");
+  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50);
 });
 
 await test("Freunde: Suche statt Liste bei 200 Freunden (Ziel teilen)", async () => {
@@ -1885,6 +1908,72 @@ await test("Freunde: Suche statt Liste bei 200 Freunden (Ziel teilen)", async ()
   ok(await page.locator("#catPop .frs-row").count()===1, "Suche nach Zoe findet nicht genau einen Treffer");
   await shot("freunde-suche");
   await rp(`fbDb = null; FR.friends = []; true`);
+});
+
+await test("Freundesgruppen: anlegen, am Freund zuordnen, Schnellauswahl beim Fragen und Einladen, löschen", async () => {
+  await seed();
+  await rp(`window.__fgw = []; var fq = function(path){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(path+"/"+id); }, add:function(){ return Promise.resolve({}); }}; return q; },
+      fd = function(path){ return {id:path, collection:function(c){ return fq(path+"/"+c); }, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }, set:function(v){ __fgw.push(["set", path, v]); return Promise.resolve(); }, update:function(){ return Promise.resolve(); }, delete:function(){ __fgw.push(["del", path]); return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }}; };
+    fbDb = {collection:function(c){ return fq(c); }, batch:function(){ return {set:function(){}, update:function(){}, delete:function(){}, commit:function(){ return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }};
+    acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FG = [];
+    FR.friends = [{id:"r1", uid:"u_anna", name:"anna", email:"a@x.de"}, {id:"r2", uid:"u_ludwig", name:"Ludwig", email:"l@x.de"}, {id:"r3", uid:"u_clara", name:"Clara", email:"c@x.de"}];
+    closeMenus(); accView = "friends"; openSettings(); true`);
+  await page.waitForTimeout(200);
+  ok(await visible("#acctPop [data-act=fgnew]"), "„Neue Gruppe“ fehlt auf der Freunde-Seite");
+  await page.tap("#acctPop [data-act=fgnew]"); await page.waitForTimeout(250);
+  ok(await visible("#catPop .fg-card"), "Gruppen-Fenster öffnet nicht");
+  await page.tap("#catPop [data-act=fgsave]"); await page.waitForTimeout(150);
+  ok(await rp(`FG.length===0 && !!document.querySelector("#catPop .fg-card")`), "Gruppe ohne Namen gespeichert");
+  await page.fill("#fgName", "Familie");
+  await page.tap('#catPop .frs-row[data-uid="u_anna"]'); await page.waitForTimeout(120);
+  await page.tap('#catPop .frs-row[data-uid="u_ludwig"]'); await page.waitForTimeout(120);
+  ok(await rp(`document.getElementById("fgName").value`)==="Familie", "Name geht beim Auswählen verloren");
+  ok(await page.locator("#catPop .frs-chip").count()===2, "Ausgewählte erscheinen nicht oben");
+  await shot("fg-bearbeiten");
+  await page.tap("#catPop [data-act=fgsave]"); await page.waitForTimeout(250);
+  ok(await rp(`FG.length===1 && FG[0].n==="Familie" && FG[0].m.join()==="u_anna,u_ludwig"`), "Gruppe falsch gespeichert: "+await rp(`JSON.stringify(FG)`));
+  ok(await rp(`__fgw.some(function(w){ return w[0]==="set" && /^users\\/u_me\\/fgroups\\/g/.test(w[1]) && w[2].n==="Familie" && w[2].m.length===2; })`), "Nicht im eigenen privaten Bereich gespeichert: "+await rp(`JSON.stringify(__fgw)`));
+  ok(await rp(`document.getElementById("catPop").hidden && /Familie/.test(document.querySelector("#acctPop .fg-grp").textContent) && /2 Personen/.test(document.querySelector("#acctPop .fg-grp").textContent)`), "Gruppe fehlt auf der Freunde-Seite");
+  // Zweite Gruppe, Clara am Freund selbst zuordnen – auch in mehreren Gruppen
+  await rp(`fgPut({id:"gk", n:"Enger Kreis", m:["u_anna"]}); true`); await page.waitForTimeout(100);
+  await page.tap('#acctPop [data-act=fgfor][data-uid="u_clara"]'); await page.waitForTimeout(200);
+  ok(await page.locator("#jpMenu [data-act=fgset]").count()===2, "Gruppen-Auswahl am Freund fehlt");
+  await page.tap('#jpMenu [data-act=fgset]:has-text("Familie")'); await page.waitForTimeout(150);
+  await page.tap('#jpMenu [data-act=fgset]:has-text("Enger Kreis")'); await page.waitForTimeout(150);
+  ok(await visible("#jpMenu"), "Auswahl schließt nach dem Antippen");
+  ok(await rp(`fgOf("u_clara").length===2 && fgOf("u_anna").length===2`), "Person nicht in mehreren Gruppen");
+  await shot("fg-am-freund");
+  await page.tap("#acctPop .ag-title"); await page.waitForTimeout(150);
+  ok(await rp(`/Enger Kreis · Familie/.test(document.querySelector('#acctPop [data-uid="u_clara"]').closest(".ag-row").textContent)`), "Gruppen stehen nicht beim Freund");
+  // Schnellauswahl: Freunde fragen
+  await rp(`closeSettings(); openAsk("Rom"); true`); await page.waitForTimeout(200);
+  ok(await page.locator("#catPop .ask-card .fg-chip").count()===2, "Gruppen fehlen beim Freunde-Fragen");
+  await shot("fg-fragen");
+  await page.tap('#catPop .fg-chip:has-text("Familie")'); await page.waitForTimeout(150);
+  ok(await rp(`Object.keys(ASK.sel).sort().join()==="u_anna,u_clara,u_ludwig"`), "Gruppe wählt nicht alle aus");
+  await page.tap('#catPop .fg-chip:has-text("Familie")'); await page.waitForTimeout(150);
+  ok(await rp(`Object.keys(ASK.sel).length===0`), "Zweites Antippen hebt die Auswahl nicht auf");
+  await rp(`closeCatPop(); ASK = null; true`);
+  // Schnellauswahl: Ziel teilen (einladen) mit Rückfrage
+  await rp(`var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); META[z] = {owner:"u_me", members:["u_me"], invites:["a@x.de"]}; window.__z = z; save(); openZiele(z); true`);
+  await page.waitForTimeout(300);
+  await page.tap("#zPop [data-act=zinvpop]"); await page.waitForTimeout(300);
+  ok((await page.locator('#catPop .fg-chip[data-act=fginv]:has-text("Familie")').textContent()).replace(/\s/g, "")==="Familie2", "Gruppe zählt bereits Eingeladene mit");
+  await page.tap('#catPop .fg-chip:has-text("Familie")'); await page.waitForTimeout(200);
+  ok(await visible("#cfPop .cf-card"), "Keine Rückfrage vor dem Einladen der Gruppe");
+  await page.tap("#cfPop .cf-ok"); await page.waitForTimeout(300);
+  ok(await rp(`META[__z].invites.slice().sort().join()==="a@x.de,c@x.de,l@x.de"`), "Gruppe nicht eingeladen: "+await rp(`JSON.stringify(META[__z].invites)`));
+  ok(await rp(`!document.querySelector("#catPop .fg-chip[data-act=fginv]")`), "Gruppe bleibt trotz eingeladener Personen zur Auswahl");
+  await rp(`closeCatPop(); closeProfile(); true`);
+  // Löschen nur mit Bestätigung, rot
+  await rp(`closeMenus(); accView = "friends"; openSettings(); true`); await page.waitForTimeout(200);
+  await page.tap('#acctPop [data-act=fgopen][data-g="gk"]'); await page.waitForTimeout(200);
+  ok(await rp(`var c = getComputedStyle(document.querySelector("#catPop [data-act=fgdel]")).color.match(/\\d+/g).map(Number); c[0] > c[1] + 40`), "Löschen-Knopf nicht rot");
+  await page.tap("#catPop [data-act=fgdel]"); await page.waitForTimeout(200);
+  ok(await visible("#cfPop .cf-card") && await rp(`FG.length===2`), "Löschen ohne Rückfrage");
+  await page.tap("#cfPop .cf-ok"); await page.waitForTimeout(200);
+  ok(await rp(`FG.length===1 && !fgGet("gk") && __fgw.some(function(w){ return w[0]==="del" && /fgroups\\/gk$/.test(w[1]); })`), "Gruppe nicht gelöscht");
+  await rp(`closeCatPop(); closeSettings(); fbDb = null; FR.friends = []; FG = []; true`);
 });
 
 const wmFullTest = async (n, vp) => {
