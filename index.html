@@ -1897,7 +1897,26 @@ form.gnew{position:relative}
 .zh-t small{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .zh-ed{width:34px;height:34px;flex:0 0 34px;border:0;border-radius:50%;background:var(--fill);color:var(--accent);display:grid;place-items:center;cursor:pointer}
 .zh-ed svg{width:17px;height:17px}
-.zacts{margin-top:0}
+.zacts{margin:0 0 14px}
+/* Freunde-Suche */
+.frs{margin:6px 0 4px}
+.frs-q{display:flex;align-items:center;gap:8px;padding:0 12px;min-height:44px;border-radius:12px;background:var(--fill);color:var(--muted);cursor:text}
+.frs-q svg{width:17px;height:17px;flex:0 0 17px}
+.frs-q input{flex:1;min-width:0;border:0;background:none !important;font:inherit;font-size:16px;color:var(--ink);outline:none;padding:10px 0 !important}
+.frs-res:empty{display:none}
+.frs-res{margin-top:6px;display:grid;gap:2px}
+.frs-row{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:7px 6px;border-radius:12px;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.frs-row:active{background:var(--fill)}
+.frs-row b{flex:1;min-width:0;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frs-av{width:32px;height:32px;flex:0 0 32px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;font-weight:700;font-size:14px;overflow:hidden;object-fit:cover}
+.frs-add{width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--accent);font-weight:700}
+.frs-add svg{width:16px;height:16px}
+.frs-row.on .frs-add{background:var(--accent);color:#fff}
+.frs-none{margin:6px 4px 0;font-size:13px}
+.frs-sel{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+.frs-chip{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;background:var(--fill);color:var(--ink);font:600 13px/1 var(--f-body);padding:7px 8px 7px 11px;cursor:pointer}
+.frs-chip i{font-style:normal;color:var(--muted);font-size:15px}
+.zl .zlk,.zdpop .zlk{margin:0 0 16px}
 #zPop{z-index:62}
 .zhead .zx{width:32px;height:32px;flex:0 0 32px;border:0;background:var(--chip);border-radius:50%;font-size:17px;color:var(--ink);cursor:pointer}
 /* Ziel-Fenster mittig statt von unten */
@@ -2213,7 +2232,21 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .vis-all svg{width:20px;height:20px;color:#AF52DE;flex:0 0 auto}.vis-all span{flex:1;min-width:0}.vis-all small{display:block;color:var(--muted);font-size:12px}
 .vis-all i{font-style:normal;font-weight:700;color:#AF52DE}.vis-all.on{border-color:#AF52DE;background:color-mix(in srgb,#AF52DE 10%,transparent)}
 .wm-stats div{display:flex;flex-direction:column;align-items:center}
-.wm-map{height:240px;border-radius:16px;overflow:hidden;margin:4px 0 6px;background:var(--fill)}
+.wm-box{position:relative;height:min(62vh,460px);border-radius:18px;overflow:hidden;margin:2px 0 14px;background:var(--fill)}
+.wm-box .wm-map{position:absolute;inset:0;height:auto;margin:0;border-radius:0}
+.wm-box.full{position:fixed;inset:0;height:auto;margin:0;border-radius:0;z-index:95}
+body.wmfull .tabbar{display:none}
+.wm-stats{position:absolute;top:10px;left:10px;display:flex;gap:2px;padding:6px 4px;border-radius:14px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%);border:.5px solid var(--glass-bd,var(--line));box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.wm-stats div{display:flex;flex-direction:column;align-items:center;padding:0 10px;background:none !important;border-radius:0 !important}
+.wm-stats div + div{border-left:.5px solid var(--sep,var(--line))}
+.wm-stats b{font:700 16px/1.1 var(--f-body);color:var(--ink)}
+.wm-stats span{font-size:11px;color:var(--muted)}
+.wm-fs{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:12px;border:.5px solid var(--glass-bd,var(--line));background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);color:var(--ink);display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.wm-fs svg{width:19px;height:19px}
+.wm-box.full .wm-stats{top:calc(env(safe-area-inset-top,0px) + 12px);left:calc(env(safe-area-inset-left,0px) + 12px)}
+.wm-box.full .wm-fs{top:calc(env(safe-area-inset-top,0px) + 12px);right:calc(env(safe-area-inset-right,0px) + 12px)}
+.wm-box .wm-leg{position:absolute;left:10px;bottom:10px;margin:0;padding:5px 10px;border-radius:999px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);font-size:11.5px;gap:10px}
+.wm-box.full .wm-leg{bottom:calc(env(safe-area-inset-bottom,0px) + 28px);left:calc(env(safe-area-inset-left,0px) + 12px)}
 .wm-leg{display:flex;gap:14px;justify-content:center;font-size:12px;color:var(--muted);margin-bottom:10px}.wm-leg span{display:inline-flex;align-items:center;gap:5px}
 .wm-d{width:9px;height:9px;border-radius:50%;display:inline-block}.wm-d.v{background:#5E9970}.wm-d.p{background:#007AFF}.wm-d.z{background:#AF52DE}
 .wm-fl{font-size:22px;display:grid;place-items:center;background:none}
@@ -2734,16 +2767,20 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .pf-head{gap:18px}
 .pf-av{box-shadow:0 0 0 3px var(--sheet),0 0 0 5px color-mix(in srgb,var(--accent) 55%,transparent)}
 .pf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border:0;padding:0;margin:6px 0 18px}
-.pf-stats button,.wm-stats div{background:var(--fill);border-radius:16px;padding:12px 6px}
+.pf-stats button{background:var(--fill);border-radius:16px;padding:12px 6px}
 .pf-stats b{font-size:20px}
-/* Zähler klein rechts neben dem Profilbild */
-.pf-head{padding-right:0;align-items:flex-start}
-.pf-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
-.pf-side .pf-id{padding-right:48px;min-height:40px;justify-content:center}
-.pf-side .pf-stats{margin:0;gap:6px}
-.pf-side .pf-stats button{padding:6px 2px;border-radius:12px;gap:1px;min-width:0}
-.pf-side .pf-stats b{font-size:16px}
-.pf-side .pf-stats span{font-size:11px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Profilkopf kompakt: Bild, Name, Zahlenzeile (ohne Kacheln) */
+.pf-head{padding-right:0;align-items:center;gap:16px;margin:6px 0 14px}
+.pf-head .pf-av{width:72px;height:72px;flex:0 0 72px}
+.pf-head .pf-av.init{font-size:28px}
+.pf-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.pf-side .pf-id{padding-right:44px;justify-content:center}
+.pf-side .pf-id b{font-size:18px;white-space:nowrap}
+.pf-side .pf-stats{display:flex;justify-content:flex-start;gap:18px;margin:0;padding:0;border:0;align-self:flex-start}
+.pf-side .pf-stats button{background:none;border-radius:8px;padding:0;gap:0;min-width:0;align-items:flex-start}
+.pf-side .pf-stats b{font-size:16px;line-height:1.15}
+.pf-side .pf-stats span{font-size:12px;white-space:nowrap}
+.pf-gear{width:36px;height:36px}
 .pf-grid{gap:14px}
 .pf-tw{position:relative;min-width:0}
 .pf-trip{position:relative;display:block;aspect-ratio:4/5;border-radius:22px;overflow:hidden;background:var(--fill);box-shadow:0 6px 18px rgba(0,0,0,.18);transition:transform .15s ease}
@@ -4420,7 +4457,7 @@ function shareBlock(){
     h += "<div class=\"ag-lbl invlbl\">Einladen als</div>"+roleSeg(invRole, "invrole")+
       "<p class=\"note\">"+(invRole==="viewer" ? "Beobachter sehen alles und können kommentieren, aber nichts ändern." : "Mitreisende planen mit: Stopps, Wunschliste, Tagebuch, Fotos und Kommentare.")+"</p>";
     var cand = FR.friends.filter(function(f){ return f.email && (m.members||[]).indexOf(f.uid)<0 && (m.invites||[]).indexOf(f.email)<0; });
-    if(cand.length) h += "<div class=\"chips small\">"+cand.map(function(f){ return "<button type=\"button\" class=\"chip\" data-act=\"invfriend\" data-mail=\""+esc(f.email)+"\" data-name=\""+esc(f.name)+"\">+ @"+esc(f.name)+"</button>"; }).join("")+"</div>";
+    if(FR.friends.length) h += frSearchHTML("invtrip", cand, "invfriend", "");
     h += "<form class=\"gnew\" id=\"invForm\"><input type=\"email\" id=\"invMail\" inputmode=\"email\" placeholder=\"oder E-Mail der Person\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Einladen</button></form>";
     h += "<p class=\"note\">Es wird keine E-Mail verschickt: Die Einladung erscheint in der App unter Menü → Reisen → Anfragen.</p>";
   }
@@ -5056,7 +5093,10 @@ function zDetailHTML(zid){
   var h = "<div class=\"zhead\"><span class=\"zh-t\"><b>"+esc(z.name)+"</b><small>"+esc(area || "Gebiet noch nicht festgelegt")+"</small></span>"+
     "<button type=\"button\" class=\"zh-ed\" data-act=\"zedit\" data-z=\""+esc(zid)+"\" aria-label=\"Ziel bearbeiten\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M13.5 3.5l3 3L7 16H4v-3z\"/></svg></button><button type=\"button\" class=\"x zx\" data-act=\"zback\" aria-label=\"Schließen\">×</button></div>";
   if(zLk.zid!==zid) zLk = {q:"", res:[], msg:"", src:"", busy:false, zid:zid};
-  h += "<div class=\"pf-acts zacts\"><button type=\"button\" class=\"btn\" data-act=\"zplan\" data-z=\""+esc(zid)+"\">Reise hierhin planen</button>"+(acct.user && FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"askopen\" data-z=\""+esc(zid)+"\">Freunde fragen</button>" : "")+(ps.some(hasLoc) ? "<button type=\"button\" class=\"btn g\" data-act=\"lkzshare\" data-z=\""+esc(zid)+"\">Als Link teilen</button>" : "")+"</div>";
+  var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
+  h += "<div class=\"jp-tiles zacts\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"zplan\" data-z=\""+esc(zid)+"\" aria-label=\"Reise hierhin planen\">"+I("<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/>")+"<span>Reise planen</span></button>"+
+    (acct.user && FR.friends.length ? "<button type=\"button\" class=\"jp-tile\" data-act=\"askopen\" data-z=\""+esc(zid)+"\" aria-label=\"Freunde nach Tipps fragen\">"+I("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/><path d=\"M8.6 7.6a1.5 1.5 0 1 1 1.9 1.5c-.4.1-.5.4-.5.8\"/><circle cx=\"10\" cy=\"11.3\" r=\".5\" fill=\"currentColor\"/>")+"<span>Tipps holen</span></button>" : "")+
+    (ps.some(hasLoc) ? "<button type=\"button\" class=\"jp-tile\" data-act=\"lkzshare\" data-z=\""+esc(zid)+"\" aria-label=\"Als Link teilen\">"+I("<path d=\"M10 12.5V3M6.5 6.5L10 3l3.5 3.5\"/><path d=\"M5 9.5H4.5v7h11v-7H15\"/>")+"<span>Link teilen</span></button>" : "")+"</div>";
   h += zLinkHTML();
   h += "<div class=\"nt-sec\">Gemerkt · "+ps.length+"</div>";
   h += ps.length ? "<div class=\"ag-grp ls-list\">"+ps.map(function(p){ return zRow(zid, p, zStatus(zid, p)); }).join("")+"</div>" : "<p class=\"note\">Noch nichts gemerkt. Tippe auf der Karte, in Entdecken oder im Chat auf das Merken-Zeichen.</p>";
@@ -5155,8 +5195,7 @@ function zShareHTML(zid){
       return "<div class=\"ls-row\"><span class=\"ls-th gsav\">✉</span><span class=\"ls-t\"><b>"+esc(f ? "@"+f.name : em)+"</b><small>eingeladen</small></span><button type=\"button\" class=\"btn g s\" data-act=\"zinvdel\" data-z=\""+esc(zid)+"\" data-mail=\""+esc(em)+"\">Zurückziehen</button></div>"; }));
   if(rows.length) h += "<div class=\"ag-grp ls-list\">"+rows.join("")+"</div>";
   var cand = FR.friends.filter(function(f){ return f.email && (m.members||[]).indexOf(f.uid) < 0 && inv.indexOf(f.email) < 0; });
-  if(cand.length) h += "<div class=\"chips small zinv\">"+cand.map(function(f){ return "<button type=\"button\" class=\"chip\" data-act=\"zinv\" data-z=\""+esc(zid)+"\" data-mail=\""+esc(f.email)+"\" data-name=\""+esc(f.name)+"\">+ @"+esc(f.name)+"</button>"; }).join("")+"</div>";
-  else if(!FR.friends.length) h += "<p class=\"note zhint\">Noch keine Freunde. Füge Freunde im Profil hinzu, um Ziele zu teilen.</p>";
+  h += frSearchHTML("zinv", cand, "zinv", " data-z=\""+esc(zid)+"\"");
   return h;
 }
 function zInvite(zid, mail, name){
@@ -5407,37 +5446,10 @@ function ohLoad(){
       if(warn.length) toast("Laut OpenStreetMap geschlossen: "+warn.join(", "), false);
     }, function(){ OHFAIL = Date.now(); });
 }
-/* Öffnungszeiten aus der Notiz zum Ort lesen („Di–Sa 10:00–18:00“, „Montags geschlossen“, „täglich ab 9:00“, „Mo–Sa 8:00–20:00, So bis 19:00“).
-   Ergebnis: je Wochentag Zeitfenster, [] = geschlossen, null = unbekannt; null, wenn nichts erkannt */
-var OHDE = ["mo","di","mi","do","fr","sa","so"], OHDW = ["montags","dienstags","mittwochs","donnerstags","freitags","samstags","sonntags"];
-function ohNote(s){
-  s = String(s||"").replace(/\bca\.\s*/gi, "").replace(/\s+Uhr\b/gi, ""); if(!/\d{1,2}[:.]\d{2}|geschlossen/i.test(s)) return null;
-  var D = "(?:Mo|Di|Mi|Do|Fr|Sa|So)", DW = "(?:montags|dienstags|mittwochs|donnerstags|freitags|samstags|sonntags)", T = "(?:\\d{1,2}[:.]\\d{2}\\s*[–-]\\s*\\d{1,2}[:.]\\d{2}|(?:ab|bis)\\s+\\d{1,2}[:.]\\d{2})";
-  var DS = "(?:"+D+"(?:\\s*[–-]\\s*"+D+")?(?:\\s*(?:\\+|,|und)\\s*"+D+"(?:\\s*[–-]\\s*"+D+")?)*|"+DW+"(?:\\s*(?:\\+|,|und)\\s*"+DW+")*|täglich)";
-  var re = new RegExp("^(nur\\s+)?("+DS+")\\s+("+T+"(?:\\s*(?:,|und)\\s*"+T+")*|geschlossen)$", "i");
-  var W = [null,null,null,null,null,null,null], hit = [], timed = false;
-  s.split(/\s*;\s*|\.\s+|\.$|,\s*(?=(?:Mo|Di|Mi|Do|Fr|Sa|So|täglich|montags|dienstags|mittwochs|donnerstags|freitags|samstags|sonntags)\b)/i).forEach(function(c){
-    c = c.trim(); var m = re.exec(c); if(!m && c.indexOf(",") > 0){ c = c.split(/\s*,\s*/)[0]; m = re.exec(c); } if(!m) return;
-    var ds = [], sel = m[2].toLowerCase();
-    if(sel==="täglich") ds = [0,1,2,3,4,5,6];
-    else sel.split(/\s*(?:\+|,|und)\s*/).forEach(function(x){ var ab = x.split(/\s*[–-]\s*/), a = OHDE.indexOf(ab[0].slice(0, 2)), b = ab[1] ? OHDE.indexOf(ab[1].slice(0, 2)) : a; if(OHDW.indexOf(ab[0]) > -1) a = b = OHDW.indexOf(ab[0]); if(a < 0 || b < 0) return; for(var i = a, n = 0; n < 7; i = (i+1)%7, n++){ ds.push(i); if(i===b) break; } });
-    if(!ds.length) return;
-    var iv = [];
-    if(!/geschlossen/i.test(m[3])){ timed = true;
-      m[3].split(/\s*(?:,|und)\s*/).forEach(function(t){ var q = /(\d{1,2})[:.](\d{2})\s*[–-]\s*(\d{1,2})[:.](\d{2})/.exec(t), q2 = /^(ab|bis)\s+(\d{1,2})[:.](\d{2})/i.exec(t);
-        if(q){ var a = +q[1]*60 + +q[2], b = +q[3]*60 + +q[4]; if(b <= a) b += 1440; iv.push([a, b]); }
-        else if(q2){ var mm = +q2[2]*60 + +q2[3]; iv.push(/ab/i.test(q2[1]) ? [mm, 1440] : [0, mm]); } }); }
-    ds.forEach(function(d){ W[d] = iv.slice(); }); hit.push(c);
-  });
-  if(!hit.length) return null;
-  if(timed) W = W.map(function(x){ return x==null ? [] : x; }); // „Di–Sa 10:00–18:00“: übrige Tage geschlossen
-  return {W:W, txt:hit.join("; ")};
-}
-/* Öffnungszeiten eines Orts: zuerst OpenStreetMap, sonst aus der Notiz */
+/* Öffnungszeiten eines Orts: nur aus den Online-Daten (OpenStreetMap), nie aus der Notiz */
 function ohInfo(p){
   if(!p || p.k==="hotel") return null;
-  var e = ohOf(p); if(e && e.o) return {o:e.o, W:e.o, src:"OpenStreetMap"};
-  var n = p.note && ohNote(p.note); return n ? {o:n.txt, W:n.W, src:"Notiz"} : null;
+  var e = ohOf(p); return e && e.o ? {o:e.o, W:e.o, src:"OpenStreetMap"} : null;
 }
 /* Warnung, wenn ein eingeplanter Ort zur gewählten Zeit (oder am Tag) geschlossen hat */
 function ohWarn(id){
@@ -5485,9 +5497,8 @@ function ohRowMark(id){
 function ohLine(p, k, full){
   if(!p) return ""; ohWant(p); var e = ohInfo(p); if(!e) return "";
   var w = k && ohCheck(e.W, k, k ? timeOf(p.id) : ""), D = k && dayByKey(k);
-  if(e.src==="Notiz" && !full && !(w && D)) return ""; // steht schon in der Notiz darüber
   var head = w && D ? (w.closed ? "<b class=\"ohx\">Am "+esc(D.wd)+" geschlossen</b>" : w.late ? "<b class=\"ohx\">Um "+esc(timeOf(p.id))+" geschlossen</b> · "+esc(D.wd)+" "+esc(w.txt) : "Am "+esc(D.wd)+" geöffnet "+esc(w.txt)) : "";
-  return "<p class=\"ohl\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 5.5V10l3 2\"/></svg><span>"+(head ? head+(e.src==="Notiz" ? "" : "<small>"+esc(e.o)+"</small>") : "Öffnungszeiten: "+esc(e.o))+"</span></p>";
+  return "<p class=\"ohl\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 5.5V10l3 2\"/></svg><span>"+(head ? head+"<small>"+esc(e.o)+"</small>" : "Öffnungszeiten: "+esc(e.o))+"</span></p>";
 }
 /* ---------- Vorschläge entlang einer Gehroute: aus der Wunschliste und öffentliche Orte (OpenStreetMap) ---------- */
 var SUG = {li:-1, tab:"wish", cat:"", pub:{}, busy:false, err:""}, SUGR = 250;
@@ -5728,7 +5739,8 @@ function renderAsk(first){
   var h = "<div class=\"pop-card ask-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Freunde nach Tipps fragen\"><div class=\"pop-head\"><h4>Freunde fragen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
     "<textarea id=\"askT\" rows=\"3\" maxlength=\"1000\" aria-label=\"Nachricht\">"+esc(ASK.txt)+"</textarea>"+
     "<div class=\"ask-h\"><span>An</span><button type=\"button\" class=\"tf-link\" data-act=\"askall\">"+(all ? "Keinen" : "Alle")+" auswählen</button></div>"+
-    "<div class=\"pop-list ask-list\">"+FR.friends.map(function(f){ var on = !!ASK.sel[f.uid]; return "<button type=\"button\" data-act=\"askpick\" data-uid=\""+esc(f.uid)+"\" aria-pressed=\""+on+"\">"+chAv(f.uid, "ask-av")+"<span>@"+esc(chName(f.uid))+"</span></button>"; }).join("")+"</div>"+
+    (n ? "<div class=\"frs-sel\">"+Object.keys(ASK.sel).map(function(u){ return "<button type=\"button\" class=\"frs-chip\" data-act=\"askpick\" data-uid=\""+esc(u)+"\" aria-label=\"@"+esc(chName(u))+" entfernen\">@"+esc(chName(u))+"<i aria-hidden=\"true\">×</i></button>"; }).join("")+"</div>" : "")+
+    frSearchHTML("ask", FR.friends.filter(function(f){ return f.uid; }).map(function(f){ return {uid:f.uid, name:chName(f.uid), email:f.email}; }), "askpick", "", ASK.sel)+
     "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"asksend\""+(n ? "" : " disabled")+">"+(n ? "An "+n+(n===1 ? " Freund" : " Freunde")+" senden" : "Freunde auswählen")+"</button></div></div>";
   if(first){ var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false; } else catKeep(h);
 }
@@ -5741,6 +5753,28 @@ function askSend(){
     toast(ok===n ? "Frage an "+n+(n===1 ? " Freund" : " Freunde")+" geschickt – Antworten kommen im Chat" : "Nur "+ok+" von "+n+" Nachrichten gesendet", false); });
   ASK = null;
 }
+/* Freunde per Suche auswählen (auch bei Hunderten Freunden): Suchfeld, Treffer antippen. Kandidaten je Feld in FRS[key] */
+var FRS = {}, FRSICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"9\" r=\"5.5\"/><path d=\"M13.2 13.2L17 17\"/></svg>",
+  FRSADD = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M10 4.5v11M4.5 10h11\"/></svg>";
+// key: Name des Felds · cand: Freunde · act: Aktion beim Antippen · attrs: weitere data-Attribute · sel: ausgewählte uids (Häkchen)
+function frSearchHTML(key, cand, act, attrs, sel){
+  var o = FRS[key] = Object.assign(FRS[key] || {q:""}, {cand:cand, act:act, attrs:attrs || "", sel:sel || null});
+  if(!FR.friends.length) return "<p class=\"note zhint\">Noch keine Freunde. Füge Freunde im Profil hinzu.</p>";
+  return "<div class=\"frs\" data-frs=\""+key+"\"><label class=\"frs-q\">"+FRSICO+"<input type=\"search\" class=\"frs-in\" data-frs=\""+key+"\" value=\""+esc(o.q)+"\" placeholder=\"Freunde suchen ("+FR.friends.length+")\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\" enterkeyhint=\"search\"></label><div class=\"frs-res\">"+frSearchRes(key)+"</div></div>";
+}
+function frSearchRes(key){
+  var o = FRS[key]; if(!o) return ""; var q = norm(o.q.trim().replace(/^@/, ""));
+  if(!q) return "";
+  var hit = o.cand.filter(function(f){ return norm(f.name||"").indexOf(q) > -1 || (f.email && f.email.toLowerCase().indexOf(q) === 0); });
+  if(!hit.length) return "<p class=\"note frs-none\">Kein Freund mit diesem Namen.</p>";
+  hit.sort(function(a, b){ var x = norm(a.name||"").indexOf(q), y = norm(b.name||"").indexOf(q); return (x===0 ? 0 : 1) - (y===0 ? 0 : 1) || String(a.name).localeCompare(b.name); });
+  return hit.slice(0, 8).map(function(f){ var on = o.sel && o.sel[f.uid];
+    return "<button type=\"button\" class=\"frs-row"+(on ? " on" : "")+"\" data-act=\""+o.act+"\" data-uid=\""+esc(f.uid||"")+"\" data-mail=\""+esc(f.email||"")+"\" data-name=\""+esc(f.name||"")+"\""+o.attrs+" aria-pressed=\""+!!on+"\">"+(f.uid ? chAv(f.uid, "frs-av") : "<span class=\"frs-av\">"+esc((f.name||"?")[0].toUpperCase())+"</span>")+"<b>@"+esc(f.name)+"</b><span class=\"frs-add\">"+(on ? "✓" : FRSADD)+"</span></button>"; }).join("")+
+    (hit.length > 8 ? "<p class=\"note frs-none\">"+(hit.length - 8)+" weitere – tippe mehr Buchstaben</p>" : "");
+}
+document.addEventListener("input", function(e){ var q = e.target; if(!q.classList || !q.classList.contains("frs-in")) return;
+  var k = q.getAttribute("data-frs"), o = FRS[k]; if(!o) return; o.q = q.value; var r = q.closest(".frs").querySelector(".frs-res"); if(r) r.innerHTML = frSearchRes(k); });
+function frSearchDone(key){ if(FRS[key]) FRS[key].q = ""; }
 function frPickHead(title){ return "<div class=\"frp-h\"><div class=\"dc-dh\">"+title+"</div><input type=\"search\" class=\"frp-q\" placeholder=\"Freunde suchen\" aria-label=\"Freunde suchen\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\"></div>"; }
 document.addEventListener("input", function(e){ var q = e.target; if(!q.classList || !q.classList.contains("frp-q")) return;
   var m = q.closest(".jpmenu"), v = q.value.trim().replace(/^@/, "").toLowerCase(), n = 0; if(!m) return;
@@ -6267,25 +6301,34 @@ function wmHTML(){
   var D = wmData(), co = {};
   D.cities.forEach(function(c){ var x = wmCountry(c); if(x){ if(!co[x.c]) co[x.c] = {cc:x.cc, n:[]}; co[x.c].n.push(c.n); } });
   var cn = Object.keys(co).sort(function(a, b){ return co[b].n.length - co[a].n.length || a.localeCompare(b); });
-  var h = "<div class=\"wm\"><div class=\"pf-stats wm-stats\"><div><b>"+(cn.length || "–")+"</b><span>Länder</span></div><div><b>"+D.cities.length+"</b><span>Städte</span></div><div><b>"+D.vis.length+"</b><span>Orte besucht</span></div></div>"+
-    "<div class=\"wm-map\" id=\"pfMap\" role=\"img\" aria-label=\"Weltkarte deiner Reisen\"></div>"+
-    "<div class=\"wm-leg\"><span><i class=\"wm-d v\"></i>besucht</span><span><i class=\"wm-d p\"></i>geplant</span><span><i class=\"wm-d z\"></i>gemerkt</span></div>";
+  var FS = WMFULL ? "<path d=\"M8 3.5v4.5H3.5M12 3.5v4.5h4.5M8 16.5V12H3.5M12 16.5V12h4.5\"/>" : "<path d=\"M3.5 8V3.5H8M16.5 8V3.5H12M3.5 12v4.5H8M16.5 12v4.5H12\"/>";
+  var h = "<div class=\"wm\"><div class=\"wm-box"+(WMFULL ? " full" : "")+"\"><div class=\"wm-map\" id=\"pfMap\" role=\"img\" aria-label=\"Weltkarte deiner Reisen\"></div>"+
+    "<div class=\"wm-stats\"><div><b>"+(cn.length || "–")+"</b><span>"+(cn.length===1 ? "Land" : "Länder")+"</span></div><div><b>"+D.cities.length+"</b><span>"+(D.cities.length===1 ? "Stadt" : "Städte")+"</span></div><div><b>"+D.vis.length+"</b><span>Orte</span></div></div>"+
+    "<button type=\"button\" class=\"wm-fs\" data-act=\"wmfull\" aria-pressed=\""+WMFULL+"\" aria-label=\""+(WMFULL ? "Vollbild verlassen" : "Karte im Vollbild")+"\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+FS+"</svg></button>"+
+    "<div class=\"wm-leg\"><span><i class=\"wm-d v\"></i>besucht</span><span><i class=\"wm-d p\"></i>geplant</span><span><i class=\"wm-d z\"></i>gemerkt</span></div></div>";
   if(cn.length) h += "<div class=\"ag-grp ls-list wm-co\">"+cn.map(function(c){ return "<div class=\"ls-row\"><span class=\"ls-th wm-fl\">"+wmFlag(co[c].cc)+"</span><span class=\"ls-t\"><b>"+esc(c)+"</b><small>"+esc(co[c].n.join(", "))+"</small></span></div>"; }).join("")+"</div>";
   else if(!D.cities.length) h += "<p class=\"note pf-empty\">Noch keine Reise begonnen. Besuchte Orte erscheinen hier auf der Karte.</p>";
   return h+"</div>";
 }
 function wmGeo(list){ return {type:"FeatureCollection", features:list.map(function(p){ return {type:"Feature", properties:{n:p.n||""}, geometry:{type:"Point", coordinates:[p.lo, p.la]}}; })}; }
-function wmStop(){ if(PFMAP){ try { PFMAP.remove(); } catch(e){} } PFMAP = null; PFMAPEL = null; }
+var WMFULL = false;
+function wmFull(on){ WMFULL = on; var b = document.querySelector("#profView .wm-box"); if(!b) return;
+  b.classList.toggle("full", on); document.body.classList.toggle("wmfull", on);
+  var fb = b.querySelector(".wm-fs"); if(fb){ fb.setAttribute("aria-pressed", on); fb.setAttribute("aria-label", on ? "Vollbild verlassen" : "Karte im Vollbild");
+    fb.querySelector("svg").innerHTML = on ? "<path d=\"M8 3.5v4.5H3.5M12 3.5v4.5h4.5M8 16.5V12H3.5M12 16.5V12h4.5\"/>" : "<path d=\"M3.5 8V3.5H8M16.5 8V3.5H12M3.5 12v4.5H8M16.5 12v4.5H12\"/>"; }
+  if(PFMAP) setTimeout(function(){ try { PFMAP.resize(); } catch(e){} }, 30); }
+function wmStop(){ if(WMFULL){ WMFULL = false; document.body.classList.remove("wmfull"); } if(PFMAP){ try { PFMAP.remove(); } catch(e){} } PFMAP = null; PFMAPEL = null; }
 function wmMount(){
   var el = $("pfMap"); if(!el || !window.maplibregl) return;
-  if(PFMAP && PFMAPEL){ el.replaceWith(PFMAPEL); wmFill(); return; } // Karte beim Neuzeichnen des Profils behalten
+  if(PFMAP && PFMAPEL){ el.replaceWith(PFMAPEL); try { PFMAP.resize(); } catch(e){} wmFill(); return; } // Karte beim Neuzeichnen des Profils behalten
   var D = wmData(), all = D.vis.concat(D.cities, D.plan, D.zs);
   var b = all.length ? all.reduce(function(a, p){ return [Math.min(a[0], p.lo), Math.min(a[1], p.la), Math.max(a[2], p.lo), Math.max(a[3], p.la)]; }, [180, 90, -180, -90]) : [-150, -50, 170, 70];
   try {
     PFMAP = new maplibregl.Map({container:el, style:STYLE_URL, bounds:[[b[0], b[1]], [b[2], b[3]]], fitBoundsOptions:{padding:40, maxZoom:4}, attributionControl:false, dragRotate:false, touchPitch:false, pitchWithRotate:false, maxPitch:0, renderWorldCopies:true, fadeDuration:0, maxTileCacheSize:40, pixelRatio:Math.min(2, window.devicePixelRatio || 1)});
   } catch(e){ PFMAP = null; return; }
   PFMAPEL = el;
-  PFMAP.on("load", wmFill);
+  PFMAP.on("load", function(){ try { PFMAP.resize(); } catch(e){} wmFill(); });
+  setTimeout(function(){ if(PFMAP) try { PFMAP.resize(); } catch(e){} }, 60);
 }
 function wmFill(){
   var m = PFMAP; if(!m || !m.isStyleLoaded || !m.isStyleLoaded()) return; var D = wmData();
@@ -6306,7 +6349,7 @@ function renderProfile(){
   var ids = liveIds(), mine = ids.filter(function(id){ return !isViewerOf(id); }), obs = ids.filter(function(id){ return isViewerOf(id); });
   h += "<button type=\"button\" class=\"pf-gear\" data-act=\"openacct\" aria-label=\"Konto &amp; Einstellungen\" title=\"Konto &amp; Einstellungen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg></button>";
   h += "<div class=\"pf-head\">"+avHTML("pf-av")+
-       "<div class=\"pf-side\"><div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b><small>"+esc(myMail())+"</small></div>";
+       "<div class=\"pf-side\"><div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b></div>";
   h += "<div class=\"pf-stats\"><button type=\"button\" data-act=\"pftab\" data-v=\"mine\"><b>"+mine.length+"</b><span>Reisen</span></button>"+
        "<button type=\"button\" data-act=\"pftab\" data-v=\"obs\"><b>"+obs.length+"</b><span>Beobachtet</span></button>"+
        "<button type=\"button\" data-act=\"openfriends\"><b>"+FR.friends.length+"</b><span>Freunde</span></button></div></div></div>";
@@ -11638,7 +11681,7 @@ function plan(id, k, at){
   undoSnap = snapshot(); if(T().places[id]) delete T().places[id].park;
   var idx = at!=null && at >= 0 && at <= ord(k).length ? at : insertIdx(k, p);
   ord(k).splice(idx, 0, id);
-  var oe = ohInfo(p), ow = oe && ohCheck(oe.W, k, ""); if(!ohOf(p) && !oe){ OHNEW[id] = 1; ohWant(p); }
+  var oe = ohInfo(p), ow = oe && ohCheck(oe.W, k, ""); if(!ohOf(p)){ OHNEW[id] = 1; ohWant(p); }
   save(); toast(p.n+" ist jetzt Stopp "+stopNo(id, k)+" am "+dayByKey(k).lbl+(ow && ow.closed ? " – laut "+oe.src+" an dem Tag geschlossen" : ""), true);
 }
 /* Einplanen von der Karte: ans Ende oder zwischen zwei Punkte des Tages */
@@ -11888,7 +11931,7 @@ document.addEventListener("click", function(e){
     case "zplan": zPlanTrip(t.getAttribute("data-z")); break;
     case "zchg": zChoose(); break;
     case "zlkadd": zLinkAdd(+t.getAttribute("data-i")); break;
-    case "zinv": zInvite(t.getAttribute("data-z"), t.getAttribute("data-mail"), t.getAttribute("data-name")); break;
+    case "zinv": frSearchDone("zinv"); zInvite(t.getAttribute("data-z"), t.getAttribute("data-mail"), t.getAttribute("data-name")); break;
     case "zinvdel": zInviteDel(t.getAttribute("data-z"), t.getAttribute("data-mail")); break;
     case "zmrem": zMemRemove(t.getAttribute("data-z"), t.getAttribute("data-uid")); break;
     case "zmove": zMove(t.getAttribute("data-z")); break;
@@ -11954,6 +11997,7 @@ document.addEventListener("click", function(e){
     case "cvletters": if(CVP){ var cvid2 = CVP.id, cvc = CVP.col; $("cvPop").hidden = true; CVP = null; coverSave(cvid2, {txt:1, col:cvc}); toast("Titelbild gespeichert", false); } break;
     case "cvclose": $("cvPop").hidden = true; CVP = null; break;
     case "pftab": profTab = t.getAttribute("data-v"); renderProfile(); break;
+    case "wmfull": wmFull(!WMFULL); break;
     case "pfopen": closeProfile(); var pft = t.getAttribute("data-trip"); if(S.trips[pft]){ closeSettings(); grpSel = ""; S.cur = pft; save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
     case "demo": openDemo(); break;
     case "pfnew": closeProfile(); var tnb = document.createElement("button"); tnb.setAttribute("data-act", "tripnew"); tnb.hidden = true; document.body.appendChild(tnb); tnb.click(); tnb.remove(); break;
@@ -12008,7 +12052,7 @@ document.addEventListener("click", function(e){
     case "frreq": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); break;
     case "fracc": frAccept(t.getAttribute("data-uid")); break;
     case "frdel": frRemove(t.getAttribute("data-id")); break;
-    case "invfriend": var fe = t.getAttribute("data-mail"); tripRef(S.cur).update(invUpd(fe)).then(function(){ invLocal(fe); toast("@"+t.getAttribute("data-name")+" eingeladen", false); renderSheet(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); }); break;
+    case "invfriend": frSearchDone("invtrip"); var fe = t.getAttribute("data-mail"); tripRef(S.cur).update(invUpd(fe)).then(function(){ invLocal(fe); toast("@"+t.getAttribute("data-name")+" eingeladen", false); renderSheet(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); }); break;
     case "invrole": invRole = t.getAttribute("data-v"); renderSheet(); break;
     case "mrole": var mu = t.getAttribute("data-uid"), mv = t.getAttribute("data-v")==="viewer", FV3 = window.firebase.firestore.FieldValue;
       tripRef(S.cur).update({viewers: mv ? FV3.arrayUnion(mu) : FV3.arrayRemove(mu)}).then(function(){ var m3 = META[S.cur]; if(m3){ m3.viewers = (m3.viewers||[]).filter(function(x){ return x!==mu; }); if(mv) m3.viewers.push(mu); } toast(mv ? "Jetzt Beobachter" : "Jetzt Mitreisende/r", false); renderSheet(); }, function(e3){ toast("Ändern fehlgeschlagen: "+(e3 && e3.message), false); }); break;

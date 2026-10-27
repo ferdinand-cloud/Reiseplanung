@@ -1180,6 +1180,8 @@ await test("Ziele: mit Freunden teilen, Tipps von Freunden erkennbar", async () 
   const txt = await page.locator("#zPop .zdpop").innerText();
   ok(/mit freunden teilen/i.test(txt) && txt.includes("@anna"), "Teilen-Bereich oder Mitglied fehlt");
   ok(txt.includes("Tipp von @anna"), "Tipp eines Freundes nicht erkennbar");
+  ok(await page.locator("#zPop [data-act=zinv]").count()===0, "Freunde stehen ohne Suche als Liste da");
+  await page.fill("#zPop .frs-in", "lud"); await page.waitForTimeout(150);
   await click("#zPop [data-act=zinv][data-name=Ludwig]"); await page.waitForTimeout(200);
   ok(await rp(`!!(window.__zup && window.__zup.invites)`), "Einladung nicht gespeichert");
   ok((await page.locator("#zPop .zdpop").innerText()).includes("eingeladen"), "Einladung nicht angezeigt");
@@ -1334,12 +1336,10 @@ await test("Öffnungszeiten: OSM-Regeln lesen, geschlossenen Tag im Plan und in 
   ok((await page.locator("#card .ohl").innerText()).includes("geschlossen"), "Öffnungszeiten fehlen in der Karte");
   await shot("oh-karte");
 });
-await test("Öffnungszeiten aus der Notiz: Warnung bei später Uhrzeit, Anzeige in der Detailansicht", async () => {
+await test("Öffnungszeiten (online): Warnung bei später Uhrzeit, Anzeige in der Detailansicht, Notiz wird ignoriert", async () => {
   await seed();
-  ok(await rp(`var a = ohNote("Kunstgalerie. Di–Sa 10:00–18:00."), b = ohNote("Argentinisch. Sonntags geschlossen."), c = ohNote("Coffee Shop. Mo–Sa 8:00–20:00, So bis 19:00."), d = ohNote("Nur samstags 8:00–14:00, also am 24.10.");
-    a.W[0].length===0 && a.W[1][0][1]===1080 && b.W[6].length===0 && b.W[2]===null && c.W[6][0][1]===1140 && d.W[5][0][0]===480 && d.W[4].length===0 && ohNote("Brunch nur Sa + So ab 11:00.")===null`), "Notiz falsch gelesen");
-  // Ort ohne OSM-Daten, Notiz wie im Beispiel; an einem Tag Di–Sa einplanen
-  await rp(`var p = P("p3"); p.note = "Kunstgalerie. Di–Sa 10:00–18:00."; ohCache()[ohKey(p)] = {o:"", at:Date.now()};
+  // Online-Daten (OSM) Di–Sa 10–18 Uhr; die Notiz nennt andere Zeiten und darf nicht zählen
+  await rp(`var p = P("p3"); p.note = "Kunstgalerie. Täglich 08:00–23:00."; ohCache()[ohKey(p)] = {o:"Tu-Sa 10:00-18:00", at:Date.now()};
     var k = days().map(function(d){ return d.key; }).filter(function(x){ var w = parseD(x).getUTCDay(); return w>=2 && w<=6; })[0];
     if(dayOf("p3")!==k){ Object.keys(T().order).forEach(function(d){ T().order[d] = T().order[d].filter(function(x){ return x!=="p3"; }); }); ord(k).push("p3"); }
     save(); openJPop("p3", k); true`); await page.waitForTimeout(300);
@@ -1351,6 +1351,8 @@ await test("Öffnungszeiten aus der Notiz: Warnung bei später Uhrzeit, Anzeige 
   ok(tt.includes("19:30") && tt.includes("zu"), "Keine Warnung bei Uhrzeit außerhalb der Öffnungszeiten: "+tt);
   ok((await page.locator("#jPop .jp-info").innerText()).includes("Um 19:30 geschlossen"), "Detailansicht zeigt nicht, dass um 19:30 zu ist");
   await shot("oh-notiz-detail");
+  await rp(`var p = P("p4"); p.note = "Di–Sa 10:00–18:00."; ohCache()[ohKey(p)] = {o:"", at:Date.now()}; true`);
+  ok(await rp(`ohInfo(P("p4"))===null`), "Öffnungszeiten aus der Notiz übernommen");
   await rp(`closeJPop(); cur = dayOf("p3"); tab = "plan"; renderAll(); true`); await page.waitForTimeout(300);
   ok(await rp(`var r = document.querySelector('.st[data-id="p3"] .ohx'); !!r && /zu/.test(r.textContent)`), "Hinweis im Tagesplan fehlt");
 });
@@ -1414,7 +1416,11 @@ await test("Social: Freunde nach Tipps für ein Ziel fragen", async () => {
   await click("#zPop [data-act=askopen]");
   ok((await page.locator("#askT").inputValue()).includes("„Rom“"), "Nachricht nennt das Ziel nicht");
   ok(await page.locator("#catPop [data-act=asksend][disabled]").count()===1, "Senden ohne Auswahl möglich");
+  ok(await page.locator("#catPop .frs-row").count()===0, "Freunde stehen ohne Suche als Liste da");
+  await page.fill("#catPop .frs-in", "ann"); await page.waitForTimeout(150);
   await click("#catPop [data-act=askpick][data-uid=u_anna]");
+  ok(await page.locator("#catPop .frs-chip[data-uid=u_anna]").count()===1, "Ausgewählter Freund nicht oben angezeigt");
+  await page.fill("#catPop .frs-in", "cla"); await page.waitForTimeout(150);
   await click("#catPop [data-act=askpick][data-uid=u_clara]");
   await shot("social-fragen");
   await click("#catPop [data-act=asksend]"); await page.waitForTimeout(250);
@@ -1459,7 +1465,7 @@ await test("Profil: Weltkarte mit besuchten Orten und Städten", async () => {
   await seed();
   await rp(`openProfile(); profTab = "welt"; renderProfile(); true`); await page.waitForTimeout(800);
   const st = await page.locator("#profView .wm-stats").innerText();
-  ok(/1\s*Städte/.test(st) && /2\s*Orte besucht/.test(st), "Zahlen der Weltkarte falsch: "+st.replace(/\s+/g, " "));
+  ok(/1\s*Stadt/.test(st) && /2\s*Orte/.test(st), "Zahlen der Weltkarte falsch: "+st.replace(/\s+/g, " "));
   ok(await page.locator("#pfMap canvas").count()===1, "Karte fehlt");
   const same = await rp(`var a = document.querySelector("#pfMap"); renderProfile(); a===document.querySelector("#pfMap")`);
   ok(same, "Karte wird bei jedem Neuzeichnen neu geladen");
@@ -1583,7 +1589,10 @@ const pfStatsSide = async (n) => {
   const av = await page.locator("#profView .pf-av").first().boundingBox(), st = await page.locator("#profView .pf-stats").boundingBox(), gr = await page.locator("#profView .pf-gear").boundingBox();
   ok(st.x >= av.x + av.width, "Zähler nicht rechts vom Profilbild: "+JSON.stringify([av, st]));
   ok(st.y < av.y + av.height, "Zähler liegen unter dem Profilbild");
-  ok(st.height <= 60, "Zähler zu groß: "+st.height);
+  ok(st.height <= 44, "Zähler zu groß: "+st.height);
+  const sd = await page.locator("#profView .pf-side").boundingBox();
+  ok(sd.y >= av.y - 2 && sd.y + sd.height <= av.y + av.height + 2, "Name und Zähler höher als das Profilbild: "+JSON.stringify([av, sd]));
+  ok(!(await page.locator("#profView .pf-head").innerText()).includes("@test.de"), "E-Mail steht noch im Profilkopf");
   ok(!(gr.y + gr.height > st.y && gr.x < st.x + st.width), "Zahnrad überdeckt die Zähler");
   const ov = await rp(`[].slice.call(document.querySelectorAll("#profView .pf-stats span")).filter(function(x){ return x.scrollWidth > x.clientWidth + 1; }).length`);
   ok(ov===0, "Beschriftung abgeschnitten");
@@ -1623,6 +1632,50 @@ await test("Tastatur im Pop-up: Profil bearbeiten springt nicht, Hintergrund ble
 await test("Tastatur im Pop-up: mittige Karte (Neues Ziel) springt nicht", async () => {
   await kbPop(`openZiele(); zEdit = zEditFrom(""); zRenderEdit(true); true`, "#catPop", "ziel");
 });
+
+await test("Freunde: Suche statt Liste bei 200 Freunden (Ziel teilen)", async () => {
+  await seed();
+  await rp(`var fq = function(){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(id); }, add:function(){ return Promise.resolve({}); }}; return q; },
+      fd = function(id){ return {id:id, collection:function(){ return fq(); }, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }, set:function(){ return Promise.resolve(); }, update:function(){ return Promise.resolve(); }, delete:function(){ return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }}; };
+    fbDb = {collection:function(){ return fq(); }, batch:function(){ return {set:function(){}, update:function(){}, delete:function(){}, commit:function(){ return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }};
+    acct.user = acct.user || {uid:"u_me", email:"me@test.de"};
+    FR.friends = []; for(var i = 0; i < 200; i++) FR.friends.push({id:"r"+i, uid:"u"+i, name:"freund"+i, email:"f"+i+"@x.de"});
+    FR.friends.push({id:"rz", uid:"u_zoe", name:"Zoe", email:"zoe@x.de"});
+    var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); META[z] = {owner:"u_me", members:["u_me"], invites:[]}; save(); openZiele(z); true`);
+  await page.waitForTimeout(300);
+  ok(await page.locator("#zPop .frs-row").count()===0, "Ohne Suche werden Freunde aufgelistet");
+  await page.fill("#zPop .frs-in", "freund1"); await page.waitForTimeout(150);
+  const n = await page.locator("#zPop .frs-row").count();
+  ok(n===8, "Trefferliste nicht begrenzt: "+n);
+  ok((await page.locator("#zPop .frs-res").innerText()).includes("weitere"), "Hinweis auf weitere Treffer fehlt");
+  await page.fill("#zPop .frs-in", "zo"); await page.waitForTimeout(150);
+  ok(await page.locator("#zPop .frs-row").count()===1, "Suche nach Zoe findet nicht genau einen Treffer");
+  await shot("freunde-suche");
+  await rp(`fbDb = null; FR.friends = []; true`);
+});
+
+const wmFullTest = async (n, vp) => {
+  await seed();
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; profTab = "welt"; openProfile(); true`); await page.waitForTimeout(800);
+  const bx = await page.locator("#profView .wm-box").boundingBox();
+  ok(bx.height >= 300 || n==="quer", "Weltkarte zu klein: "+bx.height);
+  ok(await visible("#profView .wm-box .wm-stats") && await visible("#profView .wm-box .wm-fs"), "Zahlen oder Vollbild-Knopf fehlen auf der Karte");
+  ok(await rp(`var c = PFMAP && PFMAP.getCanvas(), b = document.querySelector("#profView .wm-box"); !!c && Math.abs(c.clientHeight - b.clientHeight) < 3`), "Karte füllt den Rahmen nicht");
+  await shot("weltkarte-"+n);
+  await page.tap("#profView .wm-fs"); await page.waitForTimeout(400);
+  const fb = await page.locator("#profView .wm-box").boundingBox();
+  ok(Math.abs(fb.x) < 1 && Math.abs(fb.y) < 1 && Math.abs(fb.width - vp.width) < 2 && Math.abs(fb.height - vp.height) < 2, "Kein Vollbild: "+JSON.stringify(fb));
+  const top = await page.evaluate(() => { const b = document.querySelector("#profView .wm-fs").getBoundingClientRect(); const e = document.elementFromPoint(b.x + b.width/2, b.y + b.height/2); return e && e.closest(".wm-fs") ? "" : (e ? (e.id || e.className || e.tagName) + "/" + ((e.closest("[id]")||{}).id||"") : "nichts"); });
+  ok(!top, "Vollbild-Knopf verdeckt von "+top);
+  ok(await rp(`var c = PFMAP && PFMAP.getCanvas(); !!c && Math.abs(c.clientHeight - window.innerHeight) < 3`), "Karte füllt das Vollbild nicht");
+  await shot("weltkarte-voll-"+n);
+  await page.tap("#profView .wm-fs"); await page.waitForTimeout(300);
+  const bb = await page.locator("#profView .wm-box").boundingBox();
+  ok(Math.abs(bb.height - bx.height) < 2, "Vollbild lässt sich nicht verlassen");
+  await rp(`closeProfile(); true`);
+};
+await test("Profil: Weltkarte groß, Zahlen auf der Karte, Vollbild an und aus", async () => { await wmFullTest("hoch", {width:390, height:844}); });
+await test("Profil: Weltkarte Vollbild im Querformat", async () => { await wmFullTest("quer", {width:844, height:390}); }, QUER);
 
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
