@@ -1458,9 +1458,6 @@ li.st .sub{margin-top:1px}
 /* Hotel und Standort auf derselben Achse */
 .ht{padding:6px 0 6px 13px;gap:12px;min-height:44px}
 .ht .h{width:30px;height:30px;border-radius:9px;font:700 14px/1 var(--f-round)}
-.hsbtn{display:inline-flex;align-items:center;gap:6px;margin-left:auto;border:0;border-radius:999px;padding:5px 11px 5px 6px;background:var(--fill);color:var(--ink);font:600 13px/1.2 var(--f-body);flex:0 0 auto;cursor:pointer}
-.hsbtn svg{width:14px;height:14px;padding:3px;border-radius:6px;background:var(--ink);color:var(--sheet)}
-.rhead .hsbtn + .rtog{margin-left:6px}
 .rhead .rtog + .rtog{margin-left:10px}
 .viab{position:relative;flex:0 0 auto;width:30px;height:30px;border:0;border-radius:50%;background:none;color:var(--muted);display:grid;place-items:center;padding:0;cursor:pointer}
 .viab svg{width:17px;height:17px}
@@ -9388,7 +9385,8 @@ function renderCard(){
   }
   var h = hotelById(sel);
   if(h){
-    el.innerHTML = x+"<h3>"+esc(h.n)+"</h3><p>Hotel · "+shortD(h.from)+"–"+shortD(h.to)+"</p>"+stationLine(h)+(hasLoc(h) && !isRO() ? "<div class=\"jp-tiles ctiles\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"navpick\" data-hotel=\""+esc(h.id)+"\">"+NAVGOICO+"<span>Navigieren</span></button></div>" : "");
+    el.innerHTML = x+"<h3>"+esc(h.n)+"</h3><p>Hotel · "+shortD(h.from)+"–"+shortD(h.to)+"</p>"+stationLine(h)+(hasLoc(h) && !isRO() ? "<div class=\"jp-tiles ctiles\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"navpick\" data-hotel=\""+esc(h.id)+"\">"+NAVGOICO+"<span>Navigieren</span></button>"+
+      (dayByKey(cur) && dayByKey(cur).hotel && dayByKey(cur).hotel.id===h.id ? "<button type=\"button\" class=\"jp-tile\" data-act=\"hotelstopadd\" title=\"Als Zwischenstopp am "+esc(dayByKey(cur).lbl)+" einplanen\">"+HSICO+"<span>Zwischenstopp</span></button>" : "")+"</div>" : "");
     el.hidden = false; placeFloating(); return;
   }
   var p = P(sel); if(!p){ sel = null; el.hidden = true; return; }
@@ -10205,6 +10203,7 @@ function subCard(i){
     "<div class=\"jp-tiles ctiles\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"navpick\" data-sub=\""+i+"\">"+NAVGOICO+"<span>Navigieren</span></button>"+
     (sis.length ? "<button type=\"button\" class=\"jp-tile\" data-act=\"depopen\" data-st=\""+key+"\" aria-expanded=\""+open+"\">"+"<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 6v4l2.6 1.8\"/></svg><span>"+(open ? "Ausblenden" : "Abfahrten")+"</span></button>" : "")+"</div>";
 }
+var HSICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5\"/><circle cx=\"5.8\" cy=\"9.6\" r=\"1.6\"/></svg>";
 var NAVGOICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/></svg>";
 function cbAvail(s){ return s.known ? (s.b + s.e)+(s.b + s.e===1 ? " Rad" : " Räder")+(s.e ? " ("+s.e+" E-Bike"+(s.e===1?"":"s")+")" : "")+" · "+s.d+(s.d===1 ? " freier Platz" : " freie Plätze") : "Verfügbarkeit wird geladen …"; }
 function cbCard(id){
@@ -10285,7 +10284,7 @@ function renderDay(){
   }
 
   var hn = HT ? esc(HT.n) : "";
-  h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>"+(isRO() ? "Stopps" : "Route")+"</h4>"+(HT && !isRO() ? "<button type=\"button\" class=\"hsbtn\" data-act=\"hotelstopadd\" title=\"Zwischenstopp im "+hn+"\">"+icon("hotel")+"Zwischenstopp</button>" : "")+(isRO() ? "" : "<button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+routeAnyVisible()+"\" aria-label=\"Alle Etappen auf der Karte ein- oder ausblenden\">"+(routeAnyVisible()?EYE:EYEOFF)+"<span>Karte</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>"+
+  h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>"+(isRO() ? "Stopps" : "Route")+"</h4>"+(isRO() ? "" : "<button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+routeAnyVisible()+"\" aria-label=\"Alle Etappen auf der Karte ein- oder ausblenden\">"+(routeAnyVisible()?EYE:EYEOFF)+"<span>Karte</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>"+
        "<button type=\"button\" class=\"rtog\" data-act=\"legslist\" role=\"switch\" aria-checked=\""+legsList+"\" aria-label=\"Wege zwischen den Stopps im Tagesplan ein- oder ausblenden\"><span>Wege</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>")+"</div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
   var LG = isRO() ? [] : dayLegs(cur); // Beobachter sehen keine Etappen und Verbindungen
   var legLi0 = function(a, b, i){
@@ -11984,7 +11983,7 @@ document.addEventListener("click", function(e){
     case "movepick": closeCatPop(); var mvId = dayPopFor, mvTo = t.getAttribute("data-day"); dayPopFor = null; dayPopMove = false;
       if(mvTo!==dayOf(mvId) && moveToDay(mvId, mvTo)){ renderAll(); if(jp && jp.pid===mvId && !$("jPop").hidden){ jp.dk = mvTo; renderJPop(); } } break;
     case "hotelstopadd": closeAddMenu(); var hdone = ord(cur).filter(function(x){ return T().done[x]; }), hlast = hdone[hdone.length-1];
-      hotelStop(cur, hlast); tab = "day"; renderAll(); break;
+      hotelStop(cur, hlast); if(hotelById(sel)) sel = null; tab = "day"; renderAll(); break;
     case "hotelafter": var hpid = t.getAttribute("data-pid") || id; closeCatPop(); hotelStop(dayOf(hpid), hpid); renderAll(); break;
     case "revisit": closeMenus(); openDayPop(t.getAttribute("data-pid") || id || sel); break;
     case "wplanned": wPlannedOpen = !wPlannedOpen; renderSheet(); break;
