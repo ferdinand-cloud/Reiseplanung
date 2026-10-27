@@ -1,0 +1,28 @@
+{
+  "appId": "app.reiseplan.TODO",
+  "appName": "Reiseplan",
+  "webDir": "www",
+  "backgroundColor": "#17212c",
+  "ios": {
+    "contentInset": "never"
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#17212c"
+    },
+    "Keyboard": {
+      "resize": "none"
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  }
+}
