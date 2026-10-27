@@ -1233,6 +1233,7 @@ await test("Unterkunftsliste: Ort als Unterkunft vormerken, eigene Liste, als Ho
   await click("#jpMenu [data-act=staymark]"); await page.waitForTimeout(200);
   ok(await rp(`T().places.p7.c==="hotel" && T().places.p7.c0==="park"`), "Ort wird nicht als Unterkunft markiert");
   await rp(`select(null); tab = "wish"; setSheet("full"); renderSheet();`); await page.waitForTimeout(300);
+  ok(await rp(`document.querySelector("#body .fchips .fchip").getAttribute("data-k")==="list"`), "Listen-Kachel (Unterkünfte) steht nicht ganz links");
   await click("#body .fchip[data-k=list]");
   ok(await visible("#catPop [data-act=wlist][data-l=stay]"), "Liste „Unterkünfte“ fehlt in der Listenauswahl");
   await click("#catPop [data-act=wlist][data-l=stay]"); await page.waitForTimeout(200);

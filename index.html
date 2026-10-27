@@ -12760,10 +12760,10 @@ function renderWish(){
   var sortLbl = wView==="grp" ? "Gruppe" : wView==="dist" ? (wDistDir==="asc" ? "Nächste zuerst" : "Weiteste zuerst") : "Kategorie";
   var chip = function(k, lbl, on){ return "<button type=\"button\" class=\"fchip"+(on?" on":"")+"\" data-act=\"wfilt\" data-k=\""+k+"\" aria-haspopup=\"dialog\">"+esc(lbl)+CHEV+"</button>"; };
   h += "<div class=\"fchips\" role=\"group\" aria-label=\"Filter\">"+
+    (multi ? chip("list", activeList==="open" ? "Liste" : activeList==="none" ? "Ohne Liste" : activeList==="stay" ? "Unterkünfte" : listName(activeList), activeList!=="open") : "")+
     chip("nb", !keys.length ? "Bezirke" : keys.length===1 ? keys[0] : keys.length+" Bezirke", keys.length>0)+
     chip("cat", catLbl, ck.length>0)+
     (gs.length ? chip("grp", grpLbl, !!grpSel) : "")+
-    (multi ? chip("list", activeList==="open" ? "Liste" : activeList==="none" ? "Ohne Liste" : activeList==="stay" ? "Unterkünfte" : listName(activeList), activeList!=="open") : "")+
     "<button type=\"button\" class=\"fchip sort\" data-act=\"wfilt\" data-k=\"sort\" aria-haspopup=\"dialog\">"+ic("sort", "ii")+" "+esc(sortLbl)+CHEV+"</button>"+
     (!isRO() && days().length > 1 ? "<button type=\"button\" class=\"fchip dschip\" data-act=\"dsopen\" aria-haspopup=\"dialog\" title=\"Wünsche nach Nähe auf die Tage verteilen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3M7 12h2M11 12h2\"/></svg>Auf Tage verteilen</button>" : "")+
     "<button type=\"button\" class=\"fchip dschip\" data-act=\"lkshare\" title=\"Angezeigte Wünsche als Link teilen\" aria-label=\"Angezeigte Wünsche als Link teilen\">"+ic("share")+"Teilen</button></div>";
