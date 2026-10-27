@@ -4205,7 +4205,7 @@ var FX = (function(){
   document.addEventListener("click", function(e){ if(Date.now() - eatClick < 350 && e.isTrusted){ e.stopPropagation(); e.preventDefault(); } }, true);
   // Fokus in ein gerade aufgehendes Pop-up (Suchfeld u. ä.): sofort an die Endposition und nur einblenden, damit iOS das Feld
   // nicht an der Zwischenposition der Animation sucht und die Seite verschiebt (siehe kbPin)
-  document.addEventListener("focusin", function(e){ var ov = e.target && e.target.closest && e.target.closest(".fx-in"); if(ov) ov.classList.add("fx-fade"), later(ov, "fx-fade", 460); }, true);
+  document.addEventListener("focusin", function(e){ var t = e.target, ov = t && t.closest && /^(INPUT|TEXTAREA)$/.test(t.tagName) && !/^(button|submit|checkbox|radio|range|file|color)$/.test(t.type) && t.closest(".fx-in"); if(ov) ov.classList.add("fx-fade"), later(ov, "fx-fade", 460); }, true);
   // hidden abfangen: vor dem Verstecken die Kopie anlegen, nach dem Zeigen die Einblendung starten
   var HD = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "hidden");
   if(HD && HD.set && HD.configurable) Object.defineProperty(HTMLElement.prototype, "hidden", {configurable:true, enumerable:HD.enumerable, get:HD.get, set:function(v){

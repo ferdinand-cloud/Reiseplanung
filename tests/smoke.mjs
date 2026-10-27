@@ -2460,7 +2460,7 @@ const avCropTest = async (n) => {
   // Abbrechen speichert nichts
   await rp(`window.__avSet = null; var c = document.createElement("canvas"); c.width = 50; c.height = 50; var b = atob(c.toDataURL("image/png").split(",")[1]), u = new Uint8Array(b.length); for(var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); setAvatar(new File([u], "b.png", {type:"image/png"})); true`);
   await st.waitFor({state:"visible"}); await page.locator("#avCrop .cf-no").click();
-  ok(await rp(`$("avCrop").hidden && !window.__avSet`), "Abbrechen hat gespeichert");
+  ok(await rp(`$("avCrop").hidden && !window.__avSet`), "Abbrechen hat gespeichert: "+await rp(`JSON.stringify([$("avCrop").hidden, !!window.__avSet, $("avCrop").className])`));
   // Antippen im Profil → Vollbild, × schließt, Profil bleibt offen
   await rp(`openProfile(); true`); await page.waitForTimeout(300);
   await page.locator("#profView img.pf-av").click();
@@ -3079,9 +3079,9 @@ await test("Bewegung: Wischen unter den Reitern wechselt den Reiter (Profil, Lis
   await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); await page.waitForTimeout(300);
   ok(await rp(`profTab`)==="mine", "Senkrechtes Wischen wechselt den Reiter");
   // angetippt: Auswahl gleitet, Inhalt kommt aus der Richtung des Reiters
+  const plw = page.waitForFunction(() => document.querySelectorAll("#profView .fx-pill").length===1 && !!document.querySelector("#profView .fx-seg"), null, {polling:"raf", timeout:2000}).then(() => true, () => false);
   await page.locator("#profView [role=tab][data-v=ziele]").click();
-  const pl = await page.evaluate(() => ({p:document.querySelectorAll("#profView .fx-pill").length, seg:!!document.querySelector("#profView .fx-seg")}));
-  ok(pl.p===1 && pl.seg, "Auswahl gleitet nicht: "+JSON.stringify(pl));
+  ok(await plw, "Auswahl gleitet nicht");
   await page.waitForTimeout(600);
   ok(await page.evaluate(() => !document.querySelector(".fx-pill,.fx-seg")), "Gleit-Auswahl bleibt zurück");
   await rp(`openLsPage()`); await page.waitForTimeout(400);
