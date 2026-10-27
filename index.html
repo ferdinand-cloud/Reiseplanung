@@ -6270,6 +6270,12 @@ function zGuess(q){
     }, function(){ return fb; });
   }).catch(function(){ return fb; });
 }
+/* Ort der Reise fürs nächste Mal merken (besucht oder Wunschliste): im passenden Ziel, Reise-Ort wird mit zl verknüpft */
+function pZiel(pid){ var p = T().places[pid]; if(!p) return null;
+  if(p.zl){ var a = p.zl.split("/"), z = Z(a[0]); if(z && z.places[a[1]]) return {zid:a[0], pid:a[1]}; }
+  return hasLoc(p) ? zFind(p) : null; }
+function pMerk(pid){ var p = T().places[pid]; closeJpMore(); if(!p) return;
+  merken({n:p.n, c:p.c, la:p.la, lo:p.lo, addr:p.addr||"", note:p.note||"", gid:p.gid, rec:p.rec, from:pid, tid:S.cur}); }
 var zBusy = false;
 function merken(q){
   if(!q || !hasLoc(q)){ toast("Dieser Ort hat keine Lage und kann nicht gemerkt werden.", false); return; }
@@ -6280,6 +6286,7 @@ function merken(q){
 }
 function zielMerk(zid, q, neu){
   var r = zielAdd(zid, q); if(!r) return;
+  var ft = q.from && S.trips[q.tid], fp = ft && ft.places[q.from]; if(fp && !isViewerOf(q.tid)) fp.zl = zid+"/"+r.id;
   save(); zLast = {zid:zid, pid:r.id};
   zToast("„"+q.n+"“ gemerkt in „"+Z(zid).name+"“"+(neu ? " · neues Ziel" : ""), zLast);
   if(profOpen) renderProfile(); if(dcPage) renderDc(); if(sel==="poi" && poiSel) renderCard(); if(chOpen) renderChMsgs(false);
@@ -6305,7 +6312,10 @@ function zMove(to){
   var dup = Object.keys(z1.places).filter(function(k){ return samePl(z1.places[k], p); })[0];
   if(!dup) z1.places[p.id] = p;
   if(!zielHas(z1, p)) z1.orte.push({id:uid("o"), n:p.n, la:p.la, lo:p.lo, r:ZR});
-  zLast = {zid:to, pid:dup || p.id}; save();
+  zLast = {zid:to, pid:dup || p.id};
+  var oref = L.zid+"/"+L.pid, nref = to+"/"+(dup || p.id);
+  Object.keys(S.trips).forEach(function(tid){ var t = S.trips[tid]; if(t && !t.ziel) Object.keys(t.places||{}).forEach(function(k){ if(t.places[k] && t.places[k].zl===oref) t.places[k].zl = nref; }); });
+  save();
   if(neu){ zOpen = to; zEdit = zEditFrom(to); profTab = "ziele"; if(profOpen) renderProfile(); else openProfile(); zRenderEdit(true); toast("Neues Ziel angelegt: gib ihm einen Namen", false); return; }
   toast("„"+p.n+"“ liegt jetzt in „"+z1.name+"“", false); if(profOpen) renderProfile();
 }
@@ -11915,6 +11925,9 @@ function openCardMore(btn){
     if(p.c==="hotel" && !stayHotel(sel) && hasLoc(p)) as += row("stay2h", I(IC.hotel), "Als Hotel übernehmen", "", "Als Hotel der Reise übernehmen, Zeitraum im Reise-Fenster prüfen", " data-pid=\""+sel+"\"");
     if(canStay(p)) as += row("staymark", I(IC.hotel), p.c==="hotel" ? "Keine Unterkunft" : "Als Unterkunft vormerken", "", p.c==="hotel" ? "Aus der Unterkunftsliste nehmen" : "In die Unterkunftsliste der Reise", " data-pid=\""+sel+"\"");
   }
+  if(!isHs && hasLoc(p)){ var zg = pZiel(p.of || sel);
+    as += zg ? row("pzopen", "<span class=\"ai\">"+ZBM+"</span>", "Gemerkt", esc(Z(zg.zid).name), "Liegt fürs nächste Mal im Ziel bereit", " data-z=\""+esc(zg.zid)+"\"")
+      : row("pmerk", "<span class=\"ai\">"+ZBM+"</span>", "Fürs nächste Mal merken", "", "Im Ziel merken, damit der Ort bei der nächsten Reise dorthin bereitliegt", " data-pid=\""+(p.of || sel)+"\""); }
   if(!isHs && !isRO()){ var ntk = tkOn(tkPlaceOn(sel)).length; as += row("tkplace", I(IC.ticket), "Tickets", ntk ? String(ntk) : "", "Eintritt oder Event hinterlegen, buchen"); }
   inf += row("gmopen", I(IC.ext), "In Google Maps öffnen", "", "Öffnungszeiten, Bewertungen, Fotos");
   var sec = function(t, x){ return x ? "<div class=\"vp-h cm-h\">"+t+"</div>"+x : ""; };
@@ -15032,6 +15045,8 @@ document.addEventListener("click", function(e){
     case "lphotel": lpToHotel(); break;
     case "stay2h": stayToHotel(t.getAttribute("data-pid")); break;
     case "staymark": stayMark(t.getAttribute("data-pid")); break;
+    case "pmerk": pMerk(t.getAttribute("data-pid")); break;
+    case "pzopen": closeJpMore(); var pzz = t.getAttribute("data-z"); select(null); openZiele(pzz); break;
     case "lpvia": lpToVia(); break;
     case "tovia": var tvid = t.getAttribute("data-pid") || (jp && jp.pid) || sel; closeCatPop(); closeJpMore(); if(jp) closeJPop(); stopToVia(tvid); break;
     case "vcheck": acct.vmsg = "Prüfe …"; renderGate(true); verifyCheck(true); break;

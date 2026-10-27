@@ -1444,6 +1444,38 @@ await test("Ort-Menü (Mehr): Gruppen Planen/Zuordnen/Infos, einzeilige Zeilen, 
   ok(await visible("#card"), "Nach Abbrechen ist die Ort-Karte weg");
 });
 
+await test("Fürs nächste Mal merken: besuchter Ort und Wunschliste-Ort aus der Reise im Ziel, Ziel bietet sie bei neuer Reise an", async () => {
+  await seed();
+  await rp(`zielNew("New York", {id:"o1", n:"New York", la:40.75, lo:-73.98, r:30000}); save(); true`);
+  const vis = await rp(`(function(){ var k = Object.keys(T().places).filter(function(k){ return dayOf(k) && P(k).k!=="hotel" && hasLoc(P(k)); })[0]; T().done[k] = true; save(); return k; })()`);
+  const wish = await rp(`Object.keys(T().places).filter(function(k){ return !dayOf(k) && P(k).k!=="hotel" && hasLoc(P(k)); })[0]`);
+  ok(!!vis && !!wish, "Kein besuchter oder Wunschliste-Ort im Testplan");
+  for(const id of [vis, wish]){
+    await rp(`(function(){ setSheet("mid"); select("${id}"); })()`); await page.waitForTimeout(250);
+    await click("#card [data-act=cardmore]");
+    ok(await page.locator("#jpMenu [data-act=pmerk]").count()===1, "„Fürs nächste Mal merken“ fehlt im Ort-Menü");
+    if(id===vis) await shot("naechstes-mal-menue");
+    await click("#jpMenu [data-act=pmerk]"); await page.waitForTimeout(200);
+    ok((await page.locator("#toast").innerText()).includes("gemerkt in „New York“"), "Hinweis nach dem Merken fehlt");
+    ok(await rp(`(function(){ var a = (P("${id}").zl||"").split("/"), z = Z(a[0]); return !!(z && z.name==="New York" && z.places[a[1]] && z.places[a[1]].n===P("${id}").n); })()`), "Ort nicht mit dem Ziel verknüpft");
+    await click("#card [data-act=cardmore]");
+    ok(await page.locator("#jpMenu [data-act=pmerk]").count()===0 && (await page.locator("#jpMenu [data-act=pzopen]").innerText()).includes("New York"), "Menü zeigt nicht „Gemerkt · New York“");
+    await rp(`closeJpMore(); true`);
+  }
+  const zid = await rp(`zielIds()[0]`);
+  ok(await rp(`Object.keys(Z("${zid}").places).length`)===2, "Ziel hat nicht genau zwei gemerkte Orte");
+  ok(await rp(`zStatus("${zid}", Z("${zid}").places[P("${vis}").zl.split("/")[1]]).done`), "Besuch erscheint nicht im Ziel");
+  ok(await rp(`zVisited("${zid}").every(function(x){ return x.p.id!=="${vis}"; })`), "Gemerkter Ort steht zusätzlich unter „besucht, nicht gemerkt“");
+  // Pop-up öffnet das Ziel
+  await rp(`select("${vis}")`); await page.waitForTimeout(200);
+  await click("#card [data-act=cardmore]"); await click("#jpMenu [data-act=pzopen]"); await page.waitForTimeout(300);
+  ok(await page.locator("#zPop .zrow").count()===2, "Ziel zeigt die gemerkten Orte nicht");
+  await shot("naechstes-mal");
+  // neue Reise dorthin bietet beide an
+  const nt = await rp(`(function(){ var t = newTripObj({id:"tNeu", name:"NY 2027", start:"2027-05-01", end:"2027-05-04", orte:[{n:"New York", la:40.75, lo:-73.98}]}); S.trips[t.id] = t; return zOfferItems(t.id).length; })()`);
+  ok(nt===2, "Neue Reise bietet die gemerkten Orte nicht an ("+nt+")");
+});
+
 await test("Unterkunftsliste: Ort als Unterkunft vormerken, eigene Liste, als Hotel übernehmen, Abbrechen führt zurück", async () => {
   await seed();
   // Park aus der Suche: keine Unterkunft-Option; selbst gesetzter Ort (z. B. Ferienwohnung): Option da
