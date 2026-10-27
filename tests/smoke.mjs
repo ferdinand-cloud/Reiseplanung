@@ -1372,6 +1372,11 @@ await test("Öffnungszeiten: OSM-Regeln lesen, geschlossenen Tag im Plan und in 
   await shot("oh-tag");
   await rp(`select("p3"); renderCard(); true`); await page.waitForTimeout(200);
   ok((await page.locator("#card .ohl").innerText()).includes("geschlossen"), "Öffnungszeiten fehlen in der Karte");
+  ok(await page.locator("#card .ohl small").count()===0, "Wochenliste in der Karte nicht eingeklappt");
+  await click("#card [data-act=ohopen]"); await page.waitForTimeout(150);
+  ok(await page.locator("#card .ohl small").count()===1, "Wochenliste lässt sich nicht aufklappen");
+  await click("#card [data-act=ohopen]"); await page.waitForTimeout(150);
+  ok(await page.locator("#card .ohl small").count()===0, "Wochenliste lässt sich nicht wieder einklappen");
   await shot("oh-karte");
 });
 await test("Öffnungszeiten (online): Warnung bei später Uhrzeit, Anzeige in der Detailansicht, Notiz wird ignoriert", async () => {

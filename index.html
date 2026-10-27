@@ -2288,6 +2288,12 @@ body.wmfull .tabbar{display:none}
 .ohl{display:flex;gap:7px;align-items:flex-start;margin:6px 0 0;font-size:13px;color:var(--muted)}
 .ohl svg{flex:0 0 15px;width:15px;height:15px;margin-top:1px}
 .ohl span{min-width:0}.ohl small{display:block;font-size:11.5px;opacity:.8;overflow-wrap:anywhere}
+.ohbox{display:block}
+.ohsum{display:flex;gap:7px;align-items:center;width:100%;border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.ohsum span{flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ohsum > svg:last-child{width:13px;height:13px;flex:0 0 13px;margin:0;transition:transform .15s}
+.ohbox.open .ohsum > svg:last-child{transform:rotate(180deg)}
+.ohbox > small{margin:4px 0 0 22px;line-height:1.55}
 .sug-card .pf-seg{margin-bottom:6px}
 .sug-card .pf-seg button{padding:7px 4px;font-size:13px}
 .sugcats{margin:4px -4px 8px;padding:0 4px 2px}
@@ -5535,12 +5541,17 @@ function ohRowMark(id){
   var e = ohInfo(p), w = e && ohCheck(e.W, k, timeOf(id)); if(!w) return "";
   return w.closed ? "<span class=\"ohx\" title=\"Laut "+e.src+": "+esc(e.o)+"\">geschlossen</span> · " : w.late ? "<span class=\"ohx\" title=\"Geöffnet "+esc(w.txt)+"\">um "+esc(timeOf(id))+" zu</span> · " : "";
 }
-/* Zeile in der Ortskarte */
+/* Zeile in der Ortskarte: nur der geplante Tag, die ganze Woche zum Aufklappen (Detailansicht: immer alles) */
+var ohOpen = null;
 function ohLine(p, k, full){
   if(!p) return ""; ohWant(p); var e = ohInfo(p); if(!e) return "";
   var w = k && ohCheck(e.W, k, k ? timeOf(p.id) : ""), D = k && dayByKey(k);
   var head = w && D ? (w.closed ? "<b class=\"ohx\">Am "+esc(D.wd)+" geschlossen</b>" : w.late ? "<b class=\"ohx\">Um "+esc(timeOf(p.id))+" geschlossen</b> · "+esc(D.wd)+" "+esc(w.txt) : "Am "+esc(D.wd)+" geöffnet "+esc(w.txt)) : "";
-  return "<p class=\"ohl\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 5.5V10l3 2\"/></svg><span>"+(head ? head+"<small>"+esc(e.o)+"</small>" : "Öffnungszeiten: "+esc(e.o))+"</span></p>";
+  var ic = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 5.5V10l3 2\"/></svg>";
+  var week = e.o.split(/;\s*/).map(esc).join("<br>");
+  if(full) return "<p class=\"ohl\">"+ic+"<span>"+(head ? head+"<small>"+week+"</small>" : "Öffnungszeiten<small>"+week+"</small>")+"</span></p>";
+  var open = ohOpen===p.id;
+  return "<div class=\"ohl ohbox"+(open?" open":"")+"\"><button type=\"button\" class=\"ohsum\" data-act=\"ohopen\" data-id=\""+esc(p.id)+"\" aria-expanded=\""+open+"\">"+ic+"<span>"+(head || "Öffnungszeiten")+"</span>"+CHEV+"</button>"+(open ? "<small>"+week+"</small>" : "")+"</div>";
 }
 /* ---------- Vorschläge entlang einer Gehroute: aus der Wunschliste und öffentliche Orte (OpenStreetMap) ---------- */
 var SUG = {li:-1, tab:"wish", cat:"", pub:{}, busy:false, err:""}, SUGR = 250;
@@ -12268,6 +12279,7 @@ document.addEventListener("click", function(e){
     case "acsync": acctPull(); break;
     case "geopick": geoPick(t.getAttribute("data-path"), +t.getAttribute("data-i")); break;
     case "tropen": trOpen = !trOpen; renderCard(); break;
+    case "ohopen": ohOpen = ohOpen===t.getAttribute("data-id") ? null : t.getAttribute("data-id"); renderCard(); break;
     case "depopen": var dsi = t.getAttribute("data-st"); depOpen[dsi] = !depOpen[dsi]; renderCard(); break;
     case "jtoggle": jOpen = !jOpen; lsSet("nyc-j-open", jOpen?"1":"0"); renderSheet(); break;
     case "jins": jAppend([id], true); break;
