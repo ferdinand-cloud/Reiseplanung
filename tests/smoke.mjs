@@ -1317,11 +1317,13 @@ await test("Ort-Menü (Mehr): Gruppen Planen/Zuordnen/Infos, einzeilige Zeilen, 
   await rp(`(function(){ setSheet("mid"); select("${id}"); })()`); await page.waitForTimeout(250);
   await click("#card [data-act=cardmore]");
   ok(await visible("#jpMenu"), "Menü öffnet nicht");
+  await page.waitForFunction(() => { const el = document.querySelector("#jpMenu"); return el && !el.getAnimations().some(a => a.playState==="running"); }, null, {timeout:3000}).catch(() => {});
   const m = await page.evaluate(() => { const el = document.querySelector("#jpMenu"), r = el.getBoundingClientRect(), kids = [...el.children];
     const rows = kids.filter(x => x.tagName==="BUTTON" && !x.classList.contains("cm-del")), del = el.querySelector(".cm-del");
     return { heads: [...el.querySelectorAll(".cm-h")].map(x => x.textContent), last: kids[kids.length-1]===del, delAct: del && del.getAttribute("data-act"),
-      delFull: del ? Math.abs(del.getBoundingClientRect().width - (r.width - 12)) < 3 : false,
-      maxH: Math.max(...rows.map(x => x.getBoundingClientRect().height)), subs: el.querySelectorAll(".cm-t small").length,
+      // Layout-Maße (offset/client) statt getBoundingClientRect: das Pop-up skaliert beim Aufgehen kurz
+      delFull: del ? Math.abs(del.offsetWidth - (el.clientWidth - 12)) < 3 : false,
+      maxH: Math.max(...rows.map(x => x.offsetHeight)), subs: el.querySelectorAll(".cm-t small").length,
       inView: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth,
       first: kids[0].classList.contains("cm-h"), order: rows.map(x => x.getAttribute("data-act")) }; });
   ok(m.heads.join("|")==="Planen|Zuordnen|Infos", "Gruppen-Überschriften falsch: "+m.heads.join("|"));
