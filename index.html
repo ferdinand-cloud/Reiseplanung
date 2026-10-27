@@ -3446,6 +3446,14 @@ body.ro .navtools [data-act="addpop"]{display:none}
   .rng-g i{padding:0 0 2px}
 }
 button.tf-pill{border:0;font:inherit;color:inherit}
+/* Mitreisende & Beobachter als Pop-up */
+.shpop{z-index:61}
+.shpop .ag-card .sh-t{padding:2px 40px 0 2px;font:600 18px/1.25 var(--f-display,inherit)}
+.shpop .share{margin-top:6px}
+.cv-note{margin:10px 2px 8px}
+.cv-grid.cv-one{grid-template-columns:1fr 1fr}
+.cv-card .cv-ok{margin-top:12px}
+.cv-card .cv-ok:disabled{background:var(--fill) !important;color:var(--muted) !important;opacity:1}
 </style>
 </head>
 <body>
@@ -5534,6 +5542,25 @@ function zShow(zid, pid){
   poiSel = {n:p.n, c:p.c, la:p.la, lo:p.lo, addr:p.addr||"", zr:zid+"/"+pid}; sel = null; select("poi");
   if(map) revealPoint(poiSel, 15, true);
 }
+/* Reise eines anderen Eintrags zur aktuellen machen (wie „Reise öffnen“), ohne Ansichten zu schließen */
+function tripSwitch(id){ if(!S.trips[id] || id===S.cur) return; grpSel = ""; S.cur = id; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
+function tripEditFrom(id, fromProf){
+  if(!S.trips[id] || isViewerOf(id)) return; tripSwitch(id); closeMenus(); closeSettings();
+  tdraft = tripToDraft(T(), "edit"); if(fromProf) tdraft.back = "prof"; tab = "trip"; renderSheet(); scheduleOverlay();
+}
+/* Mitreisende & Beobachter als eigenes Pop-up (aus dem ⋯-Menü der Kachel und aus „Reise bearbeiten“) */
+var shIsOpen = false;
+function shOpen(id){ if(id && id!==S.cur) tripSwitch(id); shIsOpen = true; shRender(); }
+function shClose(){ shIsOpen = false; var el = $("shPop"); if(el){ el.hidden = true; el.innerHTML = ""; } }
+function shSummary(){ var m = META[S.cur]; if(!acct.user || !m) return "Freunde einladen"; var n = (m.members||[]).length - 1, iv = (m.invites||[]).length; return n > 0 ? n+(n===1 ? " Person" : " Personen")+(iv ? " · "+iv+" eingeladen" : "") : iv ? iv+" eingeladen" : "Freunde einladen, Rollen verwalten"; }
+function shRender(){
+  if(!shIsOpen) return; var el = $("shPop");
+  if(!el){ el = document.createElement("div"); el.id = "shPop"; el.className = "acctpop shpop"; document.body.appendChild(el);
+    el.addEventListener("click", function(e){ if(e.target===el) shClose(); }); }
+  var card = el.querySelector(".ag-card"), st = card ? card.scrollTop : 0;
+  el.innerHTML = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mitreisende und Beobachter\"><button type=\"button\" class=\"ag-x\" data-act=\"shclose\" aria-label=\"Schließen\">×</button><div class=\"sh-t\"><b>"+esc(T().name||"Reise")+"</b></div>"+shareBlock()+"</div>";
+  el.hidden = false; card = el.querySelector(".ag-card"); if(card) card.scrollTop = st;
+}
 /* Zeitraum-Kalender: erster Tipp Anreise, zweiter Tipp Abreise, dazwischen markiert */
 var rng = null;
 function rngKey(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
@@ -6928,18 +6955,18 @@ function openPfMore(id, btn){
   var t = S.trips[id]; if(!t) return; var c = coverSet(id) || {}, nph = tripPhotos(id).length;
   var I = function(d){ return "<span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg></span>"; };
   var row = function(act, ic, tx, sub, v, on){ return "<button type=\"button\" role=\"menuitem\" data-act=\""+act+"\" data-trip=\""+esc(id)+"\""+(v ? " data-v=\""+v+"\"" : "")+">"+ic+"<span class=\"cm-t\"><b>"+tx+"</b>"+(sub?"<small>"+sub+"</small>":"")+"</span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>"; };
-  var h = "<div class=\"vp-h\">Titelbild</div>";
-  h += row("pfcover", I("<rect x=\"3\" y=\"4\" width=\"14\" height=\"12\" rx=\"2\"/><circle cx=\"7.5\" cy=\"8.5\" r=\"1.4\"/><path d=\"M3.5 14.5l4-4 3 3 2-2 4 3.5\"/>"), "Foto wählen …", nph ? nph+(nph===1 ? " Foto in der Reise" : " Fotos in der Reise") : "Noch keine Fotos in der Reise", "photo", !!c.ph);
-  h += row("pfcover", I("<path d=\"M5 15.5 9.2 4.5h1.6L15 15.5M6.6 11.5h6.8\"/>"), "Nur Buchstaben …", esc(tripInitials(t.name))+" mit Farbe deiner Wahl", "letters", !!c.txt);
-  h += row("pfcover", I("<path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/>"), "Automatisch", "Neuestes Foto der Reise", "auto", !c.ph && !c.txt);
-  if(!isViewerOf(id)) h += "<div class=\"vp-h\" style=\"margin-top:4px\">Reise</div>"+row("opentrip", I("<circle cx=\"7.5\" cy=\"7\" r=\"2.8\"/><path d=\"M2.5 16c.5-2.8 2.5-4.3 5-4.3s4.5 1.5 5 4.3M15 6.5v5M12.5 9h5\"/>"), "Mitreisende &amp; Beobachter", "Freunde einladen, Rollen verwalten");
-  h += row("pfopen", I("<path d=\"M9 4 3.5 6v10L9 14l6 2 1.5-.5\"/><path d=\"M12 8h6M15 5l3 3-3 3\"/>"), "Reise öffnen", esc(t.start && t.end ? shortD(t.start)+"–"+shortD(t.end) : ""));
+  var cvNow = c.ph ? "Eigenes Foto" : c.txt ? "Buchstaben "+esc(tripInitials(t.name)) : "Automatisch: neuestes Foto";
+  var h = row("pfcvopen", I("<rect x=\"3\" y=\"4\" width=\"14\" height=\"12\" rx=\"2\"/><circle cx=\"7.5\" cy=\"8.5\" r=\"1.4\"/><path d=\"M3.5 14.5l4-4 3 3 2-2 4 3.5\"/>"), "Titelbild ändern", cvNow);
+  if(!isViewerOf(id)){
+    h += row("pfedit", I("<path d=\"M12.8 4.2l3 3L7.5 15.5H4.5v-3z\"/><path d=\"M11 6l3 3\"/>"), "Reise bearbeiten", "Name, Zeitraum, Hotels, Orte");
+    h += row("pfshare", I("<circle cx=\"7.5\" cy=\"7\" r=\"2.8\"/><path d=\"M2.5 16c.5-2.8 2.5-4.3 5-4.3s4.5 1.5 5 4.3M15 6.5v5M12.5 9h5\"/>"), "Mitreisende &amp; Beobachter", "Freunde einladen, Rollen verwalten");
+  }
   jpPopover(id, btn, h, "pfmore");
 }
 var CVP = null;
 function openCoverPick(id, mode){
   closeJpMore(); var t = S.trips[id]; if(!t) return;
-  var c = coverSet(id) || {}; CVP = {id:id, mode:mode, col:c.col || tripColor(id)};
+  var c = coverSet(id) || {}; CVP = {id:id, mode:mode || (c.ph ? "photo" : c.txt ? "letters" : "auto"), col:c.col || tripColor(id)};
   var el = $("cvPop"); if(!el){ el = document.createElement("div"); el.id = "cvPop"; el.className = "cfpop"; document.body.appendChild(el);
     el.addEventListener("click", function(e){ if(e.target===el){ el.hidden = true; CVP = null; } }); }
   renderCoverPick();
@@ -6947,8 +6974,13 @@ function openCoverPick(id, mode){
 function renderCoverPick(){
   var el = $("cvPop"); if(!el || !CVP) return; var t = S.trips[CVP.id], c = coverSet(CVP.id) || {};
   var h = "<div class=\"cf-card cv-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Titelbild\"><div class=\"cv-h\"><b>Titelbild</b><button type=\"button\" class=\"x\" data-act=\"cvclose\" aria-label=\"Schließen\">×</button></div>"+
-    "<div class=\"pf-seg cv-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"cvmode\" data-v=\"photo\" aria-selected=\""+(CVP.mode==="photo")+"\">Foto</button><button type=\"button\" role=\"tab\" data-act=\"cvmode\" data-v=\"letters\" aria-selected=\""+(CVP.mode==="letters")+"\">Buchstaben</button></div>";
-  if(CVP.mode==="photo"){
+    "<div class=\"pf-seg cv-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"cvmode\" data-v=\"auto\" aria-selected=\""+(CVP.mode==="auto")+"\">Automatisch</button><button type=\"button\" role=\"tab\" data-act=\"cvmode\" data-v=\"photo\" aria-selected=\""+(CVP.mode==="photo")+"\">Foto</button><button type=\"button\" role=\"tab\" data-act=\"cvmode\" data-v=\"letters\" aria-selected=\""+(CVP.mode==="letters")+"\">Buchstaben</button></div>";
+  if(CVP.mode==="auto"){
+    var la = tripPhotos(CVP.id).slice(-1)[0], on = !c.ph && !c.txt;
+    h += "<p class=\"note cv-note\">Das Titelbild ist immer das neueste Foto der Reise und wechselt mit jedem neuen Foto.</p>"+
+      (la ? "<div class=\"cv-grid cv-one\"><button type=\"button\" class=\"on\" data-act=\"cvauto\"><img data-cvth=\""+la+"\" alt=\"\"></button></div>" : "<div class=\"cv-prev\" style=\"--cc:"+tripColor(CVP.id)+"\"><i>"+esc(tripInitials(t.name))+"</i><b>Noch keine Fotos – bis dahin Buchstaben</b></div>")+
+      "<button type=\"button\" class=\"btn cv-ok\" data-act=\"cvauto\""+(on ? " disabled" : "")+">"+(on ? "Ist eingestellt" : "Automatisch verwenden")+"</button>";
+  } else if(CVP.mode==="photo"){
     var all = tripPhotos(CVP.id).slice().reverse();
     h += all.length ? "<div class=\"cv-grid\">"+all.map(function(x){ return "<button type=\"button\" data-act=\"cvph\" data-ph=\""+x+"\""+(c.ph===x ? " class=\"on\"" : "")+"><img data-cvth=\""+x+"\" alt=\"\"></button>"; }).join("")+"</div>"
       : "<p class=\"note\">In dieser Reise gibt es noch keine Fotos. Wähle stattdessen Buchstaben.</p>";
@@ -12572,7 +12604,7 @@ function renderTrip(){
   h2 += items("orte", d.mode==="new" ? "Reiseziel" : "Orte", "Ort hinzufügen", "Stadt suchen, z. B. Boston …", "◎");
   if(d.err) h2 += "<p class=\"err\" role=\"alert\">"+esc(d.err)+"</p>";
   h2 += "<div class=\"tf-foot\"><button class=\"btn g\" type=\"button\" data-act=\"tcancel\">Abbrechen</button><button class=\"btn\" type=\"submit\">"+(d.mode==="new"?"Reise anlegen":"Speichern")+"</button></div></form>";
-  if(d.mode==="edit") h2 += shareBlock();
+  if(d.mode==="edit") h2 += "<div class=\"tf-lbl\">Teilen</div><div class=\"tf-grp\"><button type=\"button\" class=\"tf-row tf-sum\" data-act=\"shopen\"><span class=\"tf-ic\">"+"<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"7.5\" cy=\"7\" r=\"2.8\"/><path d=\"M2.5 16c.5-2.8 2.5-4.3 5-4.3s4.5 1.5 5 4.3M15 6.5v5M12.5 9h5\"/></svg>"+"</span><span class=\"tf-t\"><b>Mitreisende &amp; Beobachter</b><small>"+shSummary()+"</small></span><em class=\"chev\">›</em></button></div>";
   // Löschen immer ganz unten, über die volle Breite
   h2 += (d.mode==="edit" && canDelTrip(S.cur) ? "<div class=\"row tf-del\"><button type=\"button\" class=\"btn deltrip\" data-act=\"deltrip\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6M8.6 9v4.5M11.4 9v4.5\"/></svg>Reise löschen</button></div>" : "");
   return h2;
@@ -12620,7 +12652,7 @@ function renderWishPop(){
 }
 var sheetTab = "day";
 /* aus einem Ziel geöffnet („Reise planen“): Schließen führt zurück zum Ziel-Pop-up im Profil */
-function closeTrip(){ if(tab!=="trip") return; var back = tdraft && tdraft.back; tab = sheetTab; tdraft = null; renderSheet(); scheduleOverlay(); if(back && Z(back)) openZiele(back); }
+function closeTrip(){ if(tab!=="trip") return; var back = tdraft && tdraft.back; tab = sheetTab; tdraft = null; renderSheet(); scheduleOverlay(); if(back==="prof") openProfile(); else if(back && Z(back)) openZiele(back); }
 function wishTab(){
   var wAll = wishes().length, wPool = listPool().filter(function(p){ return !dayOf(p.id) && catOk(p.c) && nbMatch(p) && grpOk(p) && qMatch(p); }).length;
   var wFilt = wPool!==wAll || activeList!=="open";
@@ -12649,7 +12681,7 @@ function renderSheet(){
     fillPhotos(tp);
   } else if(!tp.hidden){ tp.hidden = true; tp.innerHTML = ""; if($("acctPop").hidden) document.body.classList.remove("glass"); }
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
-  renderWishPop();
+  renderWishPop(); shRender();
 }
 var RO_ACTS = {"lpphoto":1,"placevis":1,"placevispick":1,"itemvis":1,"itemvispick":1,"vis":1,"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"wpark":1,"wunpark":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
 function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
@@ -13135,6 +13167,12 @@ document.addEventListener("click", function(e){
     case "cvcol": if(CVP){ CVP.col = t.getAttribute("data-v"); renderCoverPick(); } break;
     case "cvph": if(CVP){ var cvid = CVP.id; $("cvPop").hidden = true; CVP = null; coverSave(cvid, {ph:t.getAttribute("data-ph")}); toast("Titelbild gespeichert", false); } break;
     case "cvletters": if(CVP){ var cvid2 = CVP.id, cvc = CVP.col; $("cvPop").hidden = true; CVP = null; coverSave(cvid2, {txt:1, col:cvc}); toast("Titelbild gespeichert", false); } break;
+    case "cvauto": if(CVP){ var cva = CVP.id; $("cvPop").hidden = true; CVP = null; coverSave(cva, null); toast("Titelbild: automatisch", false); } break;
+    case "pfcvopen": closeJpMore(); openCoverPick(t.getAttribute("data-trip")); break;
+    case "pfedit": closeJpMore(); tripEditFrom(t.getAttribute("data-trip"), true); break;
+    case "pfshare": closeJpMore(); shOpen(t.getAttribute("data-trip")); break;
+    case "shopen": shOpen(S.cur); break;
+    case "shclose": shClose(); break;
     case "cvclose": $("cvPop").hidden = true; CVP = null; break;
     case "pftab": profTab = t.getAttribute("data-v"); renderProfile(); break;
     case "wmfull": wmFull(!WMFULL); break;
@@ -13152,7 +13190,7 @@ document.addEventListener("click", function(e){
     case "trip": closeSettings(); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); break;
     case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
-    case "tcancel": if(noTrip() || (tdraft && tdraft.mode==="new")){ closeTrip(); break; } tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
+    case "tcancel": if(noTrip() || (tdraft && (tdraft.mode==="new" || tdraft.back))){ closeTrip(); break; } tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
     case "tadd": var arr = tdraft[t.getAttribute("data-path")]; arr.push({n:"", loc:"", from:tdraft.start||"", to:tdraft.end||""}); tdraft.ok = t.getAttribute("data-path")+"."+(arr.length-1); renderSheet(); var gi = document.querySelector("#tripPop [data-geo=\""+tdraft.ok+"\"]"); if(gi) gi.focus(); break;
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); tdraft.ok = ""; renderSheet(); break;
     case "tfopen": var tk2 = t.getAttribute("data-k"); tdraft.ok = tdraft.ok===tk2 ? "" : tk2; renderSheet(); break;

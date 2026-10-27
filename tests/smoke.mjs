@@ -510,20 +510,51 @@ await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kac
   ok(await page.locator("#profView .pf-new").count()===1, "Neue Reise ist keine Kachel");
   ok(await page.locator("#profView .pf-cov.lt i").first().innerText()==="M", "Buchstaben-Kachel ohne Initialen");
   await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
-  ok(await page.locator("#jpMenu [data-act=opentrip]").count()===1, "Mitreisende einladen fehlt im ⋯-Menü");
-  await click("#jpMenu [data-act=pfcover][data-v=photo]");
+  ok(await page.locator("#jpMenu [data-act=pfshare]").count()===1, "Mitreisende & Beobachter fehlt im ⋯-Menü");
+  ok(await page.locator("#jpMenu [data-act=pfedit]").count()===1, "Reise bearbeiten fehlt im ⋯-Menü");
+  ok(await page.locator("#jpMenu [data-act=pfopen]").count()===0, "„Reise öffnen“ steht noch im ⋯-Menü");
+  ok(await page.locator("#jpMenu [data-act=pfcvopen]").count()===1 && await page.locator("#jpMenu [data-act=pfcover]").count()===0, "Titelbild nicht als ein Eintrag „Titelbild ändern“");
+  await click("#jpMenu [data-act=pfcvopen]");
+  ok(await page.locator("#cvPop .cv-seg [data-act=cvmode]").count()===3, "Titelbild-Pop-up ohne die drei Optionen");
+  await shot("titelbild-popup");
+  await click("#cvPop [data-act=cvmode][data-v=photo]");
   ok(await visible("#cvPop .cv-grid"), "Foto-Auswahl öffnet nicht");
   await page.locator("#cvPop [data-act=cvph]").last().click(); await page.waitForTimeout(200);
   ok(!!(await rp(`S.trips.t_test.cover && S.trips.t_test.cover.ph`)), "Titelbild wird nicht gespeichert");
   await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
-  await click("#jpMenu [data-act=pfcover][data-v=letters]");
+  await click("#jpMenu [data-act=pfcvopen]");
+  ok(await page.locator("#cvPop .cv-grid button.on").count()===1, "Gewähltes Foto nicht markiert");
+  await click("#cvPop [data-act=cvmode][data-v=letters]");
   await page.locator("#cvPop [data-act=cvcol]").nth(2).click();
   await click("#cvPop [data-act=cvletters]");
   ok(await rp(`!!(S.trips.t_test.cover && S.trips.t_test.cover.txt)`), "Buchstaben-Modus wird nicht gespeichert");
   ok(await page.locator("#profView .pf-tw:has([data-trip=t_test]) .pf-cov.lt").count()===1, "Kachel zeigt nach Buchstaben-Wahl noch ein Foto");
   await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
-  await click("#jpMenu [data-act=pfcover][data-v=auto]");
+  await click("#jpMenu [data-act=pfcvopen]");
+  await click("#cvPop [data-act=cvmode][data-v=auto]");
+  await click("#cvPop .cv-ok[data-act=cvauto]");
   ok(await rp(`!S.trips.t_test.cover`), "Automatisch setzt nicht zurück");
+  // Mitreisende & Beobachter als eigenes Pop-up
+  await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
+  await click("#jpMenu [data-act=pfshare]"); await page.waitForTimeout(150);
+  ok(await visible("#shPop .share"), "Mitreisende & Beobachter öffnet kein eigenes Pop-up");
+  await click("#shPop [data-act=shclose]"); ok(!(await visible("#shPop")), "Pop-up schließt nicht");
+  // Reise bearbeiten aus dem Menü: Knopf statt Liste, Schließen führt zurück zum Profil
+  await page.locator("#profView [data-act=pfmore][data-trip=t_mal]").click();
+  await click("#jpMenu [data-act=pfedit]"); await page.waitForTimeout(200);
+  ok(await visible("#tripPop #tForm") && await rp(`S.cur==="t_mal" && tdraft.mode==="edit"`), "Reise bearbeiten öffnet nicht für diese Reise");
+  ok(await page.locator("#tripPop .share").count()===0 && await page.locator("#tripPop [data-act=shopen]").count()===1, "Bearbeiten zeigt die Liste statt des Knopfs");
+  await click("#tripPop [data-act=shopen]"); await page.waitForTimeout(150);
+  ok(await visible("#shPop .share"), "Knopf in „Reise bearbeiten“ öffnet das Pop-up nicht");
+  await click("#shPop [data-act=shclose]");
+  await click("#tripPop [data-act=tcancel]"); await page.waitForTimeout(200);
+  ok(!(await visible("#tripPop")) && await visible("#profView"), "Abbrechen führt nicht zurück zum Profil");
+  for(const how of ["#tripPop [data-act=tripclose]", "backdrop"]){
+    await page.locator("#profView [data-act=pfmore][data-trip=t_mal]").click(); await click("#jpMenu [data-act=pfedit]"); await page.waitForTimeout(200);
+    if(how==="backdrop") await page.mouse.click(5, 5); else await click(how);
+    await page.waitForTimeout(200);
+    ok(!(await visible("#tripPop")) && await visible("#profView") && await rp(`profTab`)==="mine", how+": nicht zurück zum Profil");
+  }
 });
 
 await test("Titelbild-Auswahl: viele Fotos als sauberes Raster, nur sichtbare geladen", async () => {
@@ -531,7 +562,7 @@ await test("Titelbild-Auswahl: viele Fotos als sauberes Raster, nur sichtbare ge
   await rp(`(function(){ var t = S.trips.t_test, ids = []; for(var i = 0; i < 90; i++){ var id = "phx"+i; ids.push(id); PHC[id] = PHC["ph_"+["a","b","c"][i%3]]; } t.photos.p4 = t.photos.p4.concat(ids); PROF = {name:"tester"}; openProfile(); })()`);
   await page.waitForTimeout(300);
   await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
-  await click("#jpMenu [data-act=pfcover][data-v=photo]");
+  await click("#jpMenu [data-act=pfcvopen]"); await click("#cvPop [data-act=cvmode][data-v=photo]");
   await page.waitForTimeout(900);
   const g = await page.evaluate(() => { const b = [...document.querySelectorAll("#cvPop .cv-grid button")].slice(0, 6).map(x => x.getBoundingClientRect());
     return {n: document.querySelectorAll("#cvPop .cv-grid button").length, w: b[0].width, h: b[0].height, row2: b[3].top - b[0].top, loaded: document.querySelectorAll("#cvPop .cv-grid img[src]").length}; });
