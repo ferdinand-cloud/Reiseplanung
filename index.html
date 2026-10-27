@@ -1534,6 +1534,16 @@ li.st .sub{margin-top:1px}
 .cf-no{background:var(--fill);color:var(--ink)}
 .cf-no small{display:block;margin-top:2px;font-size:11px;font-weight:500;color:var(--muted)}
 .cf-ok{background:var(--ink);color:var(--sheet)}
+/* Profilbild zuschneiden + Vollbild */
+.avc-st{position:relative;width:min(100%,calc(100vh - 210px));aspect-ratio:1/1;margin:12px auto 0;overflow:hidden;border-radius:12px;background:#000;touch-action:none;-webkit-user-select:none;user-select:none;cursor:grab}
+.avc-st img{position:absolute;left:0;top:0;max-width:none;transform-origin:0 0;will-change:transform;pointer-events:none;-webkit-user-drag:none}
+.avc-m{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.5);border:1.5px solid rgba(255,255,255,.85);pointer-events:none}
+.avc-card p{font-size:13px}
+img.pf-av,img.pe-img,.ag-av img,.ch-head img.ch-av,.gsav img{cursor:zoom-in}
+.avfull{position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.92);display:grid;place-items:center;padding:max(48px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+.avfull[hidden]{display:none}
+.avfull img{width:min(100%,calc(100vh - 96px));aspect-ratio:1/1;object-fit:cover;display:block}
+.avf-x{position:absolute;top:max(10px,env(safe-area-inset-top));right:12px;width:38px;height:38px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font:400 26px/1 var(--f-body);cursor:pointer}
 /* rot nur, wenn der Knopf löscht oder entfernt */
 .cf-ok.del{background:#D9534F;color:#fff}
 body.ro .lrow:has(#lSub),body.ro .lrow:has(#lBus),body.ro label:has(#lWish),body.ro label:has(#lSub),body.ro label:has(#lBus),body.ro label:has(#lFerry),body.ro #subLines,body.ro #busLines,body.ro #tabWish{display:none}
@@ -2801,6 +2811,7 @@ body.dyn .layers .nyc{display:none!important}
 .lcats.shut{display:none}
 .lcats{margin:0 0 6px 34px !important}
 #cfPop{z-index:99}
+#avCrop{z-index:99}
 
 /* ---------- Tagesrückblick: immersive Tagesansicht mit Karte, Route, Fotos und Tagebuch ---------- */
 #rc{position:fixed;inset:0;z-index:90;background:#06080c;color:#f3f5f9;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;--dc:#0A84FF;opacity:0;transform:scale(1.04);transition:opacity .35s ease,transform .5s cubic-bezier(.2,.8,.2,1)}
@@ -7405,19 +7416,64 @@ function renderProfile(){
   zRenderPop();
   if(profTab==="ziele") zLinkRender();
 }
-// Profilbild: quadratisch zugeschnitten, klein, im eigenen Profil gespeichert
+// Profilbild: nach der Auswahl runder Zuschneide-Rahmen (wie die Anzeige); ein Finger verschiebt, zwei Finger oder Mausrad zoomen
+var AVZ = 480;
 function setAvatar(file){
   if(!acct.user || !fbDb) return;
   if(!PROF || !PROF.name){ toast("Lege zuerst einen Benutzernamen fest (Profil bearbeiten).", false); return; }
   var url = URL.createObjectURL(file), im = new Image();
-  im.onload = function(){ var z = 240, w = im.naturalWidth, hh = im.naturalHeight, k = z / Math.min(w, hh), c = document.createElement("canvas"); c.width = z; c.height = z;
-    c.getContext("2d").drawImage(im, (z - w*k)/2, (z - hh*k)/2, w*k, hh*k); URL.revokeObjectURL(url);
-    var d = c.toDataURL("image/jpeg", .82);
-    fbDb.collection("profiles").doc(acct.user.uid).set({photo:d}, {merge:true}).then(function(){ PROF = Object.assign({}, PROF, {photo:d}); navAv(); refreshSettings(); if(profOpen) renderProfile(); toast("Profilbild gespeichert", false); },
-      function(e){ toast("Profilbild nicht gespeichert: "+(e && e.message), false); }); };
+  im.onload = function(){ avCrop(im, url); };
   im.onerror = function(){ URL.revokeObjectURL(url); toast("Bild konnte nicht gelesen werden.", false); };
   im.src = url;
 }
+function avSave(d){
+  fbDb.collection("profiles").doc(acct.user.uid).set({photo:d}, {merge:true}).then(function(){ PROF = Object.assign({}, PROF, {photo:d}); navAv(); refreshSettings(); if(profOpen) renderProfile(); toast("Profilbild gespeichert", false); },
+    function(e){ toast("Profilbild nicht gespeichert: "+(e && e.message), false); });
+}
+function avCrop(im, url){
+  var el = $("avCrop"); if(!el){ el = document.createElement("div"); el.id = "avCrop"; el.className = "cfpop avc"; document.body.appendChild(el); }
+  el.innerHTML = "<div class=\"cf-card avc-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"avcT\"><b id=\"avcT\">Ausschnitt wählen</b>"+
+    "<div class=\"avc-st\" id=\"avcSt\"><img id=\"avcImg\" alt=\"\" draggable=\"false\"><i class=\"avc-m\" aria-hidden=\"true\"></i></div>"+
+    "<p>Mit einem Finger verschieben, mit zwei Fingern zoomen.</p>"+
+    "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\">Abbrechen</button><button type=\"button\" class=\"cf-ok\">Fertig</button></div></div>";
+  el.hidden = false;
+  var st = $("avcSt"), img = $("avcImg"), W = im.naturalWidth, H = im.naturalHeight, z = 0, s0 = 1, s = 1, x = 0, y = 0, P = {}, g = null;
+  img.style.width = W+"px"; img.style.height = H+"px"; img.src = url;
+  function fit(){ var z1 = st.clientWidth || 1, cx = z ? (z/2 - x)/s : W/2, cy = z ? (z/2 - y)/s : H/2, k = z ? s/s0 : 1;
+    z = z1; s0 = z/Math.min(W, H); s = s0*k; x = z/2 - cx*s; y = z/2 - cy*s; draw(); }
+  function zs(v){ return Math.max(s0, Math.min(v, s0*8)); }
+  function draw(){ x = Math.min(0, Math.max(z - W*s, x)); y = Math.min(0, Math.max(z - H*s, y)); img.style.transform = "translate("+x+"px,"+y+"px) scale("+s+")"; }
+  function pt(ev){ var r = st.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; }
+  function two(){ var k = Object.keys(P), a = P[k[0]], b = P[k[1]] || a; return {n:k.length, mx:(a[0]+b[0])/2, my:(a[1]+b[1])/2, d:Math.hypot(a[0]-b[0], a[1]-b[1]) || 1}; }
+  function base(){ g = Object.keys(P).length ? Object.assign(two(), {s:s, x:x, y:y}) : null; }
+  st.onpointerdown = function(ev){ ev.preventDefault(); try { st.setPointerCapture(ev.pointerId); } catch(e){} P[ev.pointerId] = pt(ev); base(); };
+  st.onpointermove = function(ev){ if(!P[ev.pointerId] || !g) return; ev.preventDefault(); P[ev.pointerId] = pt(ev); var c = two(), ns = zs(c.n > 1 && g.n > 1 ? g.s*c.d/g.d : g.s);
+    x = c.mx - (g.mx - g.x)*ns/g.s; y = c.my - (g.my - g.y)*ns/g.s; s = ns; draw(); };
+  st.onpointerup = st.onpointercancel = function(ev){ if(!P[ev.pointerId]) return; delete P[ev.pointerId]; base(); };
+  st.onwheel = function(ev){ ev.preventDefault(); var p = pt(ev), ns = zs(s*Math.exp(-ev.deltaY/300)); x = p[0] - (p[0] - x)*ns/s; y = p[1] - (p[1] - y)*ns/s; s = ns; draw(); };
+  var noG = function(ev){ ev.preventDefault(); };
+  st.addEventListener("gesturestart", noG); st.addEventListener("gesturechange", noG);
+  var close = function(){ el.hidden = true; el.innerHTML = ""; URL.revokeObjectURL(url); document.removeEventListener("keydown", key, true); window.removeEventListener("resize", fit); };
+  var key = function(ev){ if(ev.key==="Escape"){ ev.stopPropagation(); close(); } };
+  document.addEventListener("keydown", key, true); window.addEventListener("resize", fit);
+  el.onclick = function(ev){ ev.stopPropagation(); if(ev.target===el || ev.target.closest(".cf-no")){ close(); return; }
+    if(!ev.target.closest(".cf-ok")) return;
+    var c = document.createElement("canvas"); c.width = AVZ; c.height = AVZ; var cx = c.getContext("2d"); cx.imageSmoothingQuality = "high";
+    cx.drawImage(im, -x/s, -y/s, z/s, z/s, 0, 0, AVZ, AVZ); var d = c.toDataURL("image/jpeg", .82); close(); avSave(d); };
+  fit();
+}
+// Profilbild antippen: im Vollbild ansehen (eigenes und das anderer); Ändern geht über den eigenen Knopf in „Profil bearbeiten“
+var AVTAP = "img.pf-av, img.pe-img, .ag-av img, .ch-head img.ch-av, .gsav img";
+function avFull(src){
+  var el = $("avFull"); if(!el){ el = document.createElement("div"); el.id = "avFull"; el.className = "avfull"; document.body.appendChild(el); }
+  el.innerHTML = "<button type=\"button\" class=\"avf-x\" aria-label=\"Schließen\">×</button><img src=\""+esc(src)+"\" alt=\"Profilbild\">";
+  el.hidden = false;
+  var close = function(){ el.hidden = true; el.innerHTML = ""; document.removeEventListener("keydown", key, true); };
+  var key = function(ev){ if(ev.key==="Escape"){ ev.stopPropagation(); close(); } };
+  document.addEventListener("keydown", key, true);
+  el.onclick = function(ev){ ev.stopPropagation(); close(); };
+}
+document.addEventListener("click", function(e){ var t = e.target.closest && e.target.closest(AVTAP); if(!t || !t.getAttribute("src")) return; e.preventDefault(); e.stopPropagation(); avFull(t.getAttribute("src")); }, true);
 document.addEventListener("change", function(e){ if(e.target.id==="avIn" && e.target.files && e.target.files[0]){ setAvatar(e.target.files[0]); e.target.value = ""; } });
 // Neuaufbau bei offenem Fenster (z. B. neue Daten): gleiche Ansicht ohne erneutes Aufklappen und ohne Sprung nach oben
 function openSettings(){ var el = $("acctPop"), c0 = !el.hidden && el.getAttribute("data-v")===accView && el.querySelector(".ag-card"), st = c0 ? c0.scrollTop : 0, fid = c0 && document.activeElement && document.activeElement.id==="frFilt";
@@ -12750,10 +12806,10 @@ function renderWish(){
   var sortLbl = wView==="grp" ? "Gruppe" : wView==="dist" ? (wDistDir==="asc" ? "Nächste zuerst" : "Weiteste zuerst") : "Kategorie";
   var chip = function(k, lbl, on){ return "<button type=\"button\" class=\"fchip"+(on?" on":"")+"\" data-act=\"wfilt\" data-k=\""+k+"\" aria-haspopup=\"dialog\">"+esc(lbl)+CHEV+"</button>"; };
   h += "<div class=\"fchips\" role=\"group\" aria-label=\"Filter\">"+
+    (multi ? chip("list", activeList==="open" ? "Liste" : activeList==="none" ? "Ohne Liste" : activeList==="stay" ? "Unterkünfte" : listName(activeList), activeList!=="open") : "")+
     chip("nb", !keys.length ? "Bezirke" : keys.length===1 ? keys[0] : keys.length+" Bezirke", keys.length>0)+
     chip("cat", catLbl, ck.length>0)+
     (gs.length ? chip("grp", grpLbl, !!grpSel) : "")+
-    (multi ? chip("list", activeList==="open" ? "Liste" : activeList==="none" ? "Ohne Liste" : activeList==="stay" ? "Unterkünfte" : listName(activeList), activeList!=="open") : "")+
     "<button type=\"button\" class=\"fchip sort\" data-act=\"wfilt\" data-k=\"sort\" aria-haspopup=\"dialog\">"+ic("sort", "ii")+" "+esc(sortLbl)+CHEV+"</button>"+
     (!isRO() && days().length > 1 ? "<button type=\"button\" class=\"fchip dschip\" data-act=\"dsopen\" aria-haspopup=\"dialog\" title=\"Wünsche nach Nähe auf die Tage verteilen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3M7 12h2M11 12h2\"/></svg>Auf Tage verteilen</button>" : "")+
     "<button type=\"button\" class=\"fchip dschip\" data-act=\"lkshare\" title=\"Angezeigte Wünsche als Link teilen\" aria-label=\"Angezeigte Wünsche als Link teilen\">"+ic("share")+"Teilen</button></div>";
