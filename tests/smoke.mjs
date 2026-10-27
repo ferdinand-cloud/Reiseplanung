@@ -22,6 +22,7 @@ if(!SHARD){
   const jobs = Math.max(1, Number(process.env.JOBS) || Math.min(4, os.cpus().length));
   if(jobs > 1){
     const t0 = Date.now(), file = fileURLToPath(import.meta.url);
+    await chromePath();   // Chromium einmal vorab entpacken, sonst entpacken alle Prozesse gleichzeitig (spawn ETXTBSY)
     const parts = await Promise.all(Array.from({length:jobs}, (_, i) => new Promise(res => {
       let out = "";
       const c = spawn(process.execPath, [file, ...process.argv.slice(2)], { env: {...process.env, SHARD: i+"/"+jobs}, stdio: ["ignore", "pipe", "inherit"] });
