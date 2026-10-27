@@ -1916,6 +1916,15 @@ form.gnew{position:relative}
 .frs-q input{flex:1;min-width:0;border:0;background:none !important;font:inherit;font-size:16px;color:var(--ink);outline:none;padding:10px 0 !important}
 .frs-res:empty{display:none}
 .frs-res{margin-top:6px}
+.frs-big{display:grid;gap:2px;align-content:start;height:min(52vh,440px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:4px;border-radius:14px;background:var(--fill)}
+.ask-card .frs-big{height:min(36vh,300px)}
+.frs-pop .frs{margin-top:4px}
+.frs-open{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:10px 12px;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.frs-open b{flex:1;font-weight:600;font-size:15px}
+.frs-oic{width:32px;height:32px;flex:0 0 32px;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--accent)}
+.frs-oic svg{width:18px;height:18px}
+.frs-open .chev{font-style:normal;color:var(--muted);font-size:20px}
+.frs-wrap{margin:6px 0}
 .frs-dd{display:grid;gap:2px;max-height:min(264px,40vh);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:4px;border-radius:14px;background:var(--glass-hi,var(--sheet));border:.5px solid var(--glass-bd,var(--line));box-shadow:0 8px 24px rgba(0,0,0,.12)}
 .frs-row{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:7px 6px;border-radius:12px;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
 .frs-row:active{background:var(--fill)}
@@ -4469,7 +4478,7 @@ function shareBlock(){
     h += "<div class=\"ag-lbl invlbl\">Einladen als</div>"+roleSeg(invRole, "invrole")+
       "<p class=\"note\">"+(invRole==="viewer" ? "Beobachter sehen alles und können kommentieren, aber nichts ändern." : "Mitreisende planen mit: Stopps, Wunschliste, Tagebuch, Fotos und Kommentare.")+"</p>";
     var cand = FR.friends.filter(function(f){ return f.email && (m.members||[]).indexOf(f.uid)<0 && (m.invites||[]).indexOf(f.email)<0; });
-    if(FR.friends.length) h += frSearchHTML("invtrip", cand, "invfriend", "");
+    if(FR.friends.length) h += "<div class=\"ag-grp ls-list frs-wrap\">"+frsPopBtn("Freunde einladen", "invtrippop", "")+"</div>";
     h += "<form class=\"gnew\" id=\"invForm\"><input type=\"email\" id=\"invMail\" inputmode=\"email\" placeholder=\"oder E-Mail der Person\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">Einladen</button></form>";
     h += "<p class=\"note\">Es wird keine E-Mail verschickt: Die Einladung erscheint in der App unter Menü → Reisen → Anfragen.</p>";
   }
@@ -5223,14 +5232,15 @@ function zShareHTML(zid){
       return "<div class=\"ls-row\"><span class=\"ls-th gsav\">✉</span><span class=\"ls-t\"><b>"+esc(f ? "@"+f.name : em)+"</b><small>eingeladen</small></span><button type=\"button\" class=\"btn g s\" data-act=\"zinvdel\" data-z=\""+esc(zid)+"\" data-mail=\""+esc(em)+"\">Zurückziehen</button></div>"; }));
   if(rows.length) h += "<div class=\"ag-grp ls-list\">"+rows.join("")+"</div>";
   var cand = FR.friends.filter(function(f){ return f.email && (m.members||[]).indexOf(f.uid) < 0 && inv.indexOf(f.email) < 0; });
-  h += frSearchHTML("zinv", cand, "zinv", " data-z=\""+esc(zid)+"\"");
+  if(FR.friends.length) h += "<div class=\"ag-grp ls-list\">"+frsPopBtn("Freunde einladen", "zinvpop", " data-z=\""+esc(zid)+"\"")+"</div>";
+  else h += "<p class=\"note zhint\">Noch keine Freunde. Füge Freunde im Profil hinzu, um Ziele zu teilen.</p>";
   return h;
 }
 function zInvite(zid, mail, name){
   var FV = window.firebase.firestore.FieldValue;
   tripRef(zid).update({invites:FV.arrayUnion(mail), viewInvites:FV.arrayRemove(mail)}).then(function(){
     var m = META[zid]; if(m){ m.invites = m.invites || []; if(m.invites.indexOf(mail) < 0) m.invites.push(mail); }
-    toast("@"+name+" zum Ziel eingeladen", false); if(profOpen) renderProfile();
+    toast("@"+name+" zum Ziel eingeladen", false); if(profOpen) renderProfile(); frsPopRender();
   }, function(e){ toast("Einladen fehlgeschlagen: "+(e && e.message), false); });
 }
 function zInviteDel(zid, mail){
@@ -5768,7 +5778,7 @@ function renderAsk(first){
     "<textarea id=\"askT\" rows=\"3\" maxlength=\"1000\" aria-label=\"Nachricht\">"+esc(ASK.txt)+"</textarea>"+
     "<div class=\"ask-h\"><span>An</span><button type=\"button\" class=\"tf-link\" data-act=\"askall\">"+(all ? "Keinen" : "Alle")+" auswählen</button></div>"+
     (n ? "<div class=\"frs-sel\">"+Object.keys(ASK.sel).map(function(u){ return "<button type=\"button\" class=\"frs-chip\" data-act=\"askpick\" data-uid=\""+esc(u)+"\" aria-label=\"@"+esc(chName(u))+" entfernen\">@"+esc(chName(u))+"<i aria-hidden=\"true\">×</i></button>"; }).join("")+"</div>" : "")+
-    frSearchHTML("ask", FR.friends.filter(function(f){ return f.uid; }).map(function(f){ return {uid:f.uid, name:chName(f.uid), email:f.email}; }), "askpick", "", ASK.sel)+
+    frSearchHTML("ask", FR.friends.filter(function(f){ return f.uid; }).map(function(f){ return {uid:f.uid, name:chName(f.uid), email:f.email}; }), "askpick", "", ASK.sel, true)+
     "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"asksend\""+(n ? "" : " disabled")+">"+(n ? "An "+n+(n===1 ? " Freund" : " Freunde")+" senden" : "Freunde auswählen")+"</button></div></div>";
   if(first){ var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false; } else catKeep(h);
 }
@@ -5785,24 +5795,41 @@ function askSend(){
 var FRS = {}, FRSICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"9\" r=\"5.5\"/><path d=\"M13.2 13.2L17 17\"/></svg>",
   FRSADD = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M10 4.5v11M4.5 10h11\"/></svg>";
 // key: Name des Felds · cand: Freunde · act: Aktion beim Antippen · attrs: weitere data-Attribute · sel: ausgewählte uids (Häkchen)
-function frSearchHTML(key, cand, act, attrs, sel){
-  var o = FRS[key] = Object.assign(FRS[key] || {q:""}, {cand:cand, act:act, attrs:attrs || "", sel:sel || null});
+function frSearchHTML(key, cand, act, attrs, sel, big){
+  var o = FRS[key] = Object.assign(FRS[key] || {q:""}, {cand:cand, act:act, attrs:attrs || "", sel:sel || null, big:!!big});
   if(!FR.friends.length) return "<p class=\"note zhint\">Noch keine Freunde. Füge Freunde im Profil hinzu.</p>";
   return "<div class=\"frs\" data-frs=\""+key+"\"><label class=\"frs-q\">"+FRSICO+"<input type=\"search\" class=\"frs-in\" data-frs=\""+key+"\" value=\""+esc(o.q)+"\" placeholder=\"Freunde suchen ("+FR.friends.length+")\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\" enterkeyhint=\"search\"></label><div class=\"frs-res\">"+frSearchRes(key)+"</div></div>";
 }
 function frSearchRes(key){
   var o = FRS[key]; if(!o) return ""; var q = norm(o.q.trim().replace(/^@/, ""));
-  if(!q) return "";
+  if(!q && !o.big) return "";
+  if(!o.cand.length) return "<p class=\"note frs-none\">"+(o.big && FRSP && FRSP.empty || "Keine Freunde mehr zum Hinzufügen.")+"</p>";
   var hit = o.cand.filter(function(f){ return norm(f.name||"").indexOf(q) > -1 || (f.email && f.email.toLowerCase().indexOf(q) === 0); });
   if(!hit.length) return "<p class=\"note frs-none\">Kein Freund mit diesem Namen.</p>";
   hit.sort(function(a, b){ var x = norm(a.name||"").indexOf(q), y = norm(b.name||"").indexOf(q); return (x===0 ? 0 : 1) - (y===0 ? 0 : 1) || String(a.name).localeCompare(b.name); });
-  return "<div class=\"frs-dd\" role=\"listbox\">"+hit.map(function(f){ var on = o.sel && o.sel[f.uid];
+  return "<div class=\""+(o.big ? "frs-big" : "frs-dd")+"\" role=\"listbox\">"+hit.map(function(f){ var on = o.sel && o.sel[f.uid];
     return "<button type=\"button\" class=\"frs-row"+(on ? " on" : "")+"\" data-act=\""+o.act+"\" data-uid=\""+esc(f.uid||"")+"\" data-mail=\""+esc(f.email||"")+"\" data-name=\""+esc(f.name||"")+"\""+o.attrs+" aria-pressed=\""+!!on+"\">"+(f.uid ? chAv(f.uid, "frs-av") : "<span class=\"frs-av\">"+esc((f.name||"?")[0].toUpperCase())+"</span>")+"<b>@"+esc(f.name)+"</b><span class=\"frs-add\">"+(on ? "✓" : FRSADD)+"</span></button>"; }).join("")+
     "</div>";
 }
 document.addEventListener("input", function(e){ var q = e.target; if(!q.classList || !q.classList.contains("frs-in")) return;
   var k = q.getAttribute("data-frs"), o = FRS[k]; if(!o) return; o.q = q.value; var r = q.closest(".frs").querySelector(".frs-res"); if(r) r.innerHTML = frSearchRes(k); });
 function frSearchDone(key){ if(FRS[key]) FRS[key].q = ""; }
+/* Freunde hinzufügen als eigenes Fenster: Suchfeld oben, darunter alle Treffer in einem hohen, scrollbaren Bereich.
+   build() liefert jeweils aktuelle Kandidaten, damit Eingeladene nach dem Antippen verschwinden */
+var FRSP = null;
+function frsPopBtn(label, act, attrs){ return "<button type=\"button\" class=\"frs-open\" data-act=\""+act+"\""+(attrs||"")+">"+
+  "<span class=\"frs-oic\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.8 16c.6-2.8 2.7-4.3 5.2-4.3s4.6 1.5 5.2 4.3M15.5 6.5v5M13 9h5\"/></svg></span><b>"+label+"</b><em class=\"chev\">›</em></button>"; }
+function frsPopOpen(title, key, build, empty){ FRSP = {title:title, key:key, build:build, empty:empty||""}; if(FRS[key]) FRS[key].q = ""; frsPopRender(true); }
+function frsPopRender(first){
+  if(!FRSP) return; var b = FRSP.build(), cp = $("catPop");
+  if(!first && (cp.hidden || !cp.querySelector(".frs-pop"))){ FRSP = null; return; }
+  var res = cp.querySelector(".frs-big"), st = res && !first ? res.scrollTop : 0, ae = document.activeElement, kf = !first && ae && ae.classList && ae.classList.contains("frs-in");
+  var h = "<div class=\"pop-card frs-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+esc(FRSP.title)+"\"><div class=\"pop-head\"><h4>"+esc(FRSP.title)+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    frSearchHTML(FRSP.key, b.cand, b.act, b.attrs, null, true)+"</div>";
+  cp.innerHTML = h; cp.hidden = false;
+  var r2 = cp.querySelector(".frs-big"); if(r2) r2.scrollTop = st;
+  if(kf){ var i = cp.querySelector(".frs-in"); if(i) i.focus(); }
+}
 function frPickHead(title){ return "<div class=\"frp-h\"><div class=\"dc-dh\">"+title+"</div><input type=\"search\" class=\"frp-q\" placeholder=\"Freunde suchen\" aria-label=\"Freunde suchen\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\"></div>"; }
 document.addEventListener("input", function(e){ var q = e.target; if(!q.classList || !q.classList.contains("frp-q")) return;
   var m = q.closest(".jpmenu"), v = q.value.trim().replace(/^@/, "").toLowerCase(), n = 0; if(!m) return;
@@ -11958,7 +11985,11 @@ document.addEventListener("click", function(e){
     case "zplan": zPlanTrip(t.getAttribute("data-z")); break;
     case "zchg": zChoose(); break;
     case "zlkadd": zLinkAdd(+t.getAttribute("data-i")); break;
-    case "zinv": frSearchDone("zinv"); zInvite(t.getAttribute("data-z"), t.getAttribute("data-mail"), t.getAttribute("data-name")); break;
+    case "zinvpop": { var zpz = t.getAttribute("data-z"); frsPopOpen("Freunde einladen", "zinv", function(){ var m = META[zpz] || {}, inv = m.invites||[];
+        return {cand:FR.friends.filter(function(f){ return f.email && (m.members||[]).indexOf(f.uid) < 0 && inv.indexOf(f.email) < 0; }), act:"zinv", attrs:" data-z=\""+esc(zpz)+"\""}; }, "Alle Freunde sind schon eingeladen."); break; }
+    case "invtrippop": frsPopOpen("Freunde einladen", "invtrip", function(){ var m = META[S.cur] || {};
+        return {cand:FR.friends.filter(function(f){ return f.email && (m.members||[]).indexOf(f.uid)<0 && (m.invites||[]).indexOf(f.email)<0; }), act:"invfriend", attrs:""}; }, "Alle Freunde sind schon eingeladen."); break;
+    case "zinv": t.disabled = true; zInvite(t.getAttribute("data-z"), t.getAttribute("data-mail"), t.getAttribute("data-name")); break;
     case "zinvdel": zInviteDel(t.getAttribute("data-z"), t.getAttribute("data-mail")); break;
     case "zmrem": zMemRemove(t.getAttribute("data-z"), t.getAttribute("data-uid")); break;
     case "zmove": zMove(t.getAttribute("data-z")); break;
@@ -12079,7 +12110,7 @@ document.addEventListener("click", function(e){
     case "frreq": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); break;
     case "fracc": frAccept(t.getAttribute("data-uid")); break;
     case "frdel": frRemove(t.getAttribute("data-id")); break;
-    case "invfriend": frSearchDone("invtrip"); var fe = t.getAttribute("data-mail"); tripRef(S.cur).update(invUpd(fe)).then(function(){ invLocal(fe); toast("@"+t.getAttribute("data-name")+" eingeladen", false); renderSheet(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); }); break;
+    case "invfriend": t.disabled = true; var fe = t.getAttribute("data-mail"); tripRef(S.cur).update(invUpd(fe)).then(function(){ invLocal(fe); toast("@"+t.getAttribute("data-name")+" eingeladen", false); renderSheet(); frsPopRender(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); }); break;
     case "invrole": invRole = t.getAttribute("data-v"); renderSheet(); break;
     case "mrole": var mu = t.getAttribute("data-uid"), mv = t.getAttribute("data-v")==="viewer", FV3 = window.firebase.firestore.FieldValue;
       tripRef(S.cur).update({viewers: mv ? FV3.arrayUnion(mu) : FV3.arrayRemove(mu)}).then(function(){ var m3 = META[S.cur]; if(m3){ m3.viewers = (m3.viewers||[]).filter(function(x){ return x!==mu; }); if(mv) m3.viewers.push(mu); } toast(mv ? "Jetzt Beobachter" : "Jetzt Mitreisende/r", false); renderSheet(); }, function(e3){ toast("Ändern fehlgeschlagen: "+(e3 && e3.message), false); }); break;
