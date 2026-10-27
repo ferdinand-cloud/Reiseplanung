@@ -2506,7 +2506,7 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 #pvLayer .pvi.pv-vis.vlv-pub{background:rgba(10,132,255,.9);color:#fff}
 .privmk{display:inline-flex;align-items:center;gap:3px;margin-left:7px;padding:2px 7px 2px 5px;border-radius:999px;background:#E5A100;color:#1a1300;font:700 11px/1.2 var(--f-body);vertical-align:2px;text-decoration:none;letter-spacing:.01em;white-space:nowrap}
 .privmk .lk{margin:0;width:12px;height:12px;color:#1a1300}
-.btn.deltrip{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:#FF3B30 !important;color:#fff !important;border-color:#FF3B30 !important}
+.btn.deltrip{display:flex;width:100%;align-items:center;justify-content:center;gap:7px;color:var(--del) !important;background:color-mix(in srgb,var(--del) 13%,transparent) !important;border-color:color-mix(in srgb,var(--del) 30%,transparent) !important}
 .btn.deltrip svg{width:18px;height:18px;flex:0 0 18px}
 .phmv-lbl{font:600 12px/1.2 var(--f-body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:10px 4px 6px}
 .phmv-lbl:first-child{margin-top:2px}
@@ -2722,7 +2722,7 @@ body.navon .top,body.navon #rail{visibility:hidden}
 body.mving #gl{cursor:grabbing}
 @keyframes mvLift{from{transform:rotate(-45deg) scale(.4);opacity:0}to{transform:rotate(-45deg) scale(1);opacity:1}}
 @keyframes mvDrop{to{transform:rotate(-45deg) translate(-12px,12px) scale(.6);opacity:0}}
-.tf-del{margin-top:22px;padding-top:14px;border-top:.5px solid var(--line);justify-content:center}
+.tf-del{margin-top:22px;padding-top:14px;border-top:.5px solid var(--line);justify-content:center;display:flex}
 .lrow > label{flex:1;min-width:0}
 .lfbtn{margin-left:auto;position:relative;width:32px;height:32px;flex:0 0 32px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;padding:0;cursor:pointer}
 .lfbtn[hidden]{display:none}
@@ -12204,9 +12204,10 @@ function renderTrip(){
   h2 += items("hotels", "Hotels", "Hotel hinzufügen", "Hotel oder Adresse suchen …", "H");
   h2 += items("orte", d.mode==="new" ? "Reiseziel" : "Orte", "Ort hinzufügen", "Stadt suchen, z. B. Boston …", "◎");
   if(d.err) h2 += "<p class=\"err\" role=\"alert\">"+esc(d.err)+"</p>";
-  h2 += "<div class=\"tf-foot\"><button class=\"btn g\" type=\"button\" data-act=\"tcancel\">Abbrechen</button><button class=\"btn\" type=\"submit\">"+(d.mode==="new"?"Reise anlegen":"Speichern")+"</button></div></form>"+
-    (d.mode==="edit" && canDelTrip(S.cur) ? "<div class=\"row tf-del\"><button type=\"button\" class=\"btn deltrip\" data-act=\"deltrip\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6M8.6 9v4.5M11.4 9v4.5\"/></svg>Reise löschen</button></div>" : "");
+  h2 += "<div class=\"tf-foot\"><button class=\"btn g\" type=\"button\" data-act=\"tcancel\">Abbrechen</button><button class=\"btn\" type=\"submit\">"+(d.mode==="new"?"Reise anlegen":"Speichern")+"</button></div></form>";
   if(d.mode==="edit") h2 += shareBlock();
+  // Löschen immer ganz unten, über die volle Breite
+  h2 += (d.mode==="edit" && canDelTrip(S.cur) ? "<div class=\"row tf-del\"><button type=\"button\" class=\"btn deltrip\" data-act=\"deltrip\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6M8.6 9v4.5M11.4 9v4.5\"/></svg>Reise löschen</button></div>" : "");
   return h2;
 }
 function saveTrip(){

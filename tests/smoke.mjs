@@ -1299,6 +1299,16 @@ await test("Neue Reise: Zeitraum kompakt mit Datum/Uhrzeit nebeneinander und Nä
   await shot("neue-reise-zeitraum");
 });
 
+await test("Reise bearbeiten: „Reise löschen“ ganz unten, volle Breite, gedämpft rot", async () => {
+  await seed();
+  await rp(`acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; META[S.cur] = {owner:"u_me", members:["u_me"], roles:{u_me:"owner"}}; tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); true`); await page.waitForTimeout(200);
+  ok(await page.locator("#tripPop [data-act=deltrip]").count()===1, "Reise löschen fehlt");
+  ok(await rp(`(function(){ var b = document.querySelector("#tripPop [data-act=deltrip]"), all = document.querySelectorAll("#tripPop button, #tripPop input, #tripPop select"), last = all[all.length-1]; return last===b || b.compareDocumentPosition(last) & Node.DOCUMENT_POSITION_PRECEDING; })()`), "Reise löschen steht nicht ganz unten");
+  ok(await rp(`(function(){ var b = document.querySelector("#tripPop [data-act=deltrip]").getBoundingClientRect(), f = document.querySelector("#tripPop .tf-foot").getBoundingClientRect(); return b.width >= f.width - 50; })()`), "Reise löschen nicht über die volle Breite");
+  ok(await page.locator("#tripPop [data-act=deltrip]").evaluate(e => { const m = getComputedStyle(e).backgroundColor.match(/[\d.]+/g).map(Number); return m.length===4 && m[3] < 0.5; }), "Reise löschen knallrot statt gedämpft");
+  await page.locator("#tripPop [data-act=deltrip]").scrollIntoViewIfNeeded(); await shot("reise-loeschen-unten");
+});
+
 await test("Neue Reise: Hotel „noch unklar“ ohne Fehler, später nachtragbar", async () => {
   await noTripUser();
   await rp(`tdraft = {mode:"new", name:"Lissabon", start:"2026-11-02", end:"2026-11-06", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"Lissabon", loc:"38.7200, -9.1400", from:"", to:""}], err:"", ok:"hotels.0"}; tab = "trip"; renderSheet(); true`); await page.waitForTimeout(150);
