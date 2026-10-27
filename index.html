@@ -7037,6 +7037,18 @@ function ensureVis(el){
   document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; kbPin(el); setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
   document.addEventListener("focusout", function(){ setTimeout(upd, 80); });
   upd(); })();
+/* Felder auf der Anmeldeseite und die Chat-Eingabe selbst fokussieren, ohne dass iOS die Seite verschiebt. Gemessen am iPhone
+   (?kbdiag): beim Wechsel E-Mail → Passwort schob iOS die Seite um 48 pt hoch (innerHeight 714→666, offsetTop 48) und 30 ms später
+   zurück, obwohl das Feld frei über der Tastatur lag – das war das Springen. Die Lage stimmt hier schon von selbst
+   (Anmeldung: Karte oben; Chat: Eingabe über der Tastatur), also braucht es das Verschieben nicht. */
+(function(){ var sx = 0, sy = 0, moved = false;
+  function mine(el){ return !!(el && isTypeField(el) && !el.disabled && !el.readOnly && (el.id==="chIn" || (el.closest && el.closest("#gate")))); }
+  document.addEventListener("touchstart", function(e){ var t = e.touches[0]; sx = t.clientX; sy = t.clientY; moved = false; }, {passive:true, capture:true});
+  document.addEventListener("touchmove", function(e){ var t = e.touches[0]; if(Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) moved = true; }, {passive:true, capture:true});
+  document.addEventListener("touchend", function(e){ var el = e.target;
+    if(moved || e.touches.length || !mine(el) || document.activeElement===el) return;   // schon aktiv: normal (Cursor setzen, Text markieren)
+    e.preventDefault(); try { el.focus({preventScroll:true}); } catch(x){ el.focus(); } }, {passive:false, capture:true});
+})();
 /* Diagnose für echte iPhones: mit ?kbdiag in der Adresse zeigt die App oben links, was iOS beim Tippen meldet (Zeit seit Fokus,
    Fensterhöhe, sichtbare Höhe/Oberkante, Seiten-Scroll, Lage des aktiven Felds). Nur zum Fehlersuchen. */
 if(/[?&]kbdiag/.test(location.search)) (function(){ var vv = window.visualViewport, box = document.createElement("pre"), L = [], f0 = Date.now();
