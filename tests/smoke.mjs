@@ -1502,9 +1502,11 @@ await test("Öffnungszeiten (online): Warnung bei später Uhrzeit, Anzeige in de
   // Bewusst im Seitenkontext statt page.fill/locator.blur – Google Chrome (Action) verhielt sich dabei anders als Chromium.
   ok(await rp(`var i = document.querySelector("#jPop input[data-act=time]"); i.focus(); i.value = "19:30";
     i.dispatchEvent(new Event("input", {bubbles:true})); i.dispatchEvent(new Event("change", {bubbles:true}));
-    var early = timeOf("p3")==="19:30" && document.activeElement===i; i.blur(); !early`), "Uhrzeit schon während der Eingabe gespeichert (iOS-Rad würde schließen)");
+    var early = timeOf("p3")==="19:30" && document.activeElement===i; i.blur();
+    // Google Chrome ohne Fensterfokus (Action, mehrere Prozesse) schickt bei blur() kein blur-Ereignis – wie das iPhone beim Schließen des Rads selbst auslösen
+    i.dispatchEvent(new FocusEvent("blur")); !early`), "Uhrzeit schon während der Eingabe gespeichert (iOS-Rad würde schließen)");
   await page.waitForTimeout(300);
-  ok(await rp(`timeOf("p3")==="19:30"`), "Uhrzeit nicht gespeichert");
+  ok(await rp(`timeOf("p3")==="19:30"`), "Uhrzeit nicht gespeichert: "+await rp(`JSON.stringify({t:timeOf("p3"), v:(document.querySelector("#jPop input[data-act=time]")||{}).value, ae:document.activeElement && document.activeElement.tagName, foc:document.hasFocus()})`));
   const tt = await page.locator("#toast").innerText();
   ok(tt.includes("19:30") && tt.includes("zu"), "Keine Warnung bei Uhrzeit außerhalb der Öffnungszeiten: "+tt);
   ok((await page.locator("#jPop .jp-info").innerText()).includes("Um 19:30 geschlossen"), "Detailansicht zeigt nicht, dass um 19:30 zu ist");
