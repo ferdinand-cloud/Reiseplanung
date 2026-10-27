@@ -5008,7 +5008,7 @@ function zPlanTrip(zid){
   var o = (z.orte||[]).filter(hasLoc).map(function(x){ return {n:x.n || z.name, loc:locStr(x), from:"", to:""}; });
   tdraft = {mode:"new", name:z.name, start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:o.length ? o : [{n:"", loc:"", from:"", to:""}], err:""};
   closeMenus(); closeSettings(); tab = "trip"; renderSheet(); if(!desktop.matches) setSheet("mid");
-  var f = document.querySelector("[data-f=start]"); if(f) f.focus();
+  /* kein Fokus aufs Datumsfeld: iOS öffnet sonst sofort den Datumswähler */
 }
 /* Ziel anlegen und bearbeiten: Name frei, Gebiet über die Ortssuche */
 function zEditFrom(zid){ var z = zid && Z(zid); return {zid:zid || "", n:z ? z.name : "", orte:z ? jclone(z.orte||[]) : [], q:"", res:[], busy:false}; }

@@ -1118,6 +1118,14 @@ await test("Ziele: neue Reise bietet gemerkte Orte an, Besuch erscheint sofort i
   await shot("ziel-besucht");
   ok(await rp(`zOfferItems(S.cur).length`)===0, "Bereits übernommene Orte würden erneut angeboten");
 });
+await test("Ziele: „Reise planen“ öffnet Formular ohne Datumswähler", async () => {
+  await noTripUser();
+  await rp(`var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); save(); openZiele(z); true`); await page.waitForTimeout(200);
+  await click("#zPop [data-act=zplan]"); await page.waitForTimeout(200);
+  ok(await page.locator("[data-f=start]").count()===1, "Reiseformular nicht geöffnet");
+  ok(await rp(`!document.activeElement || document.activeElement.type!=="date"`), "Datumsfeld hat sofort den Fokus (iOS öffnet den Datumswähler)");
+});
+
 await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise und Entdecken", async () => {
   await seed();
   await rp(`openZiele()`); await page.waitForTimeout(150);
