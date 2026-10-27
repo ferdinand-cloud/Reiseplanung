@@ -183,6 +183,35 @@ await test("Wunsch-Pop-up → Zur Planung: Tagesauswahl vollständig im Bild", a
   ok(!(await visible("#planPop")), "Einplanen-Pop-up schließt nicht");
 });
 
+await test("Wunschliste-Plus: fragt Tag und Position, Abbrechen bleibt an derselben Stelle", async () => {
+  await seed(); await rp(`select(null); cur = todayKey(); tab = "wish"; setSheet("full"); renderSheet();`); await page.waitForTimeout(300);
+  const b = page.locator("#sheet .wplan[data-pid=p6]");
+  ok(await b.count()===1, "Plus für Joe's Pizza fehlt");
+  await b.click();
+  const sc0 = await rp(`$("sheet").querySelector(".wplan[data-pid=p6]").getBoundingClientRect().top`);
+  ok(await visible("#planPop"), "Wunschliste-Plus öffnet die Einplanen-Frage nicht");
+  ok(await page.locator("#planPop [data-act=plankday]").count() > 1, "Tagesauswahl fehlt");
+  ok(await page.locator("#planPop [data-act=planins]").count()===1, "„Dazwischen einschieben“ fehlt");
+  ok(await rp(`!dayOf("p6")`), "Ort wurde ohne Rückfrage eingeplant");
+  await click("#planPop [data-act=plancancel]");
+  ok(!(await visible("#planPop")), "Abbrechen schließt nicht");
+  ok(await rp(`tab==="wish" && !dayOf("p6")`), "Abbrechen verlässt die Wunschliste oder plant ein");
+  const sc1 = await rp(`$("sheet").querySelector(".wplan[data-pid=p6]").getBoundingClientRect().top`);
+  ok(Math.abs(sc1 - sc0) < 2, "Wunschliste springt nach Abbrechen ("+sc0+" → "+sc1+")");
+  // anderer Tag, ans Ende
+  await b.click();
+  const k2 = await rp(`days()[days().length-1].key`);
+  await click(`#planPop [data-act=plankday][data-day="${k2}"]`);
+  await click("#planPop [data-act=planend]");
+  ok(await rp(`dayOf("p6")===${JSON.stringify(k2)} && ord(${JSON.stringify(k2)}).slice(-1)[0]==="p6"`), "Nicht am gewählten Tag am Ende eingeplant");
+  // dazwischen: heute zwischen Stopp 1 und 2
+  await page.locator("#sheet .wplan[data-pid=p7]").click();
+  await click("#planPop [data-act=planins]");
+  await page.waitForSelector("#catPop [data-act=planinspick]");
+  await click("#catPop [data-act=planinspick][data-i=\"1\"]"); await click("#catPop [data-act=planinspick][data-i=\"2\"]");
+  ok(await rp(`ord(todayKey()).indexOf("p7")===1`), "Dazwischen einschieben aus der Wunschliste klappt nicht");
+});
+
 await test("Neuer Ort (POI): Kacheln, Freunde/Öffentlich, keine Weg-Zeile", async () => {
   await seed();
   await rp(`poiSel = {n:"Test Café", cls:"cafe", sub:"cafe", c:"cafe", la:40.7290, lo:-74.0010, addr:"Bleecker St 1"}; sel = null; select("poi"); poiSel = poiSel || null; renderCard();`);

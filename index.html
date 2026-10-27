@@ -14070,7 +14070,7 @@ function wishRow(p){
   var dk = dayOf(p.id), D = dayByKey(cur), dd = dk && dayByKey(dk);
   var vs = dk ? visitsOf(p.id) : [];
   var right = dd ? "<span class=\"vpills\">"+vs.map(function(v){ var d2 = dayByKey(v.k); return "<button type=\"button\" class=\"pill"+yel(d2)+"\" style=\"background:"+dayColor(d2)+"\" data-act=\"gotoday\" data-day=\""+v.k+"\">Tag "+d2.n+"</button>"; }).join("")+"<button type=\"button\" class=\"pill add\" data-act=\"revisit\" data-pid=\""+p.id+"\" aria-label=\"An einem weiteren Tag einplanen\">+ Tag</button></span>"
-                 : (D ? "<button type=\"button\" class=\"wplan\" data-act=\"plan\" aria-label=\"Zu "+esc(D.lbl)+" hinzufügen\" title=\"Zu "+esc(D.lbl)+" hinzufügen\"><b>+</b><small>"+D.wd+"</small></button>" : "");
+                 : (D ? "<button type=\"button\" class=\"wplan\" data-act=\"planpick\" data-pid=\""+p.id+"\" aria-label=\"Zu "+esc(D.lbl)+" hinzufügen\" title=\"Zu "+esc(D.lbl)+" hinzufügen\"><b>+</b><small>"+D.wd+"</small></button>" : "");
   var hs = p.c==="hotel" && stayHotel(p.id);
   if(p.c==="hotel" && !dk && !p.park && !hs && !isRO()) right = "<button type=\"button\" class=\"wunpark wstay\" data-act=\"stay2h\" data-pid=\""+p.id+"\" aria-label=\"Als Hotel der Reise übernehmen\" title=\"Als Hotel der Reise übernehmen\">"+ic("hotel")+"<small>Als Hotel</small></button>";
   if(p.park && !dk) right = "<button type=\"button\" class=\"wunpark\" data-act=\"wunpark\" aria-label=\"Wieder auf die Wunschliste\" title=\"Wieder auf die Wunschliste\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/></svg><small>Zurück</small></button>";
