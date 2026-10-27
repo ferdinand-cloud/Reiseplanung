@@ -1835,7 +1835,7 @@ await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, 
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {
   await seed();
   await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); try { localStorage.removeItem("rp-chkb"); } catch(e){} if(typeof KBPRED!=="undefined") KBPRED = true; true`);
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(1000);   // Zeitgeber vorheriger Tests (Fokus) abwarten
   ok(await page.locator("#chIn").count()===1, "Chat-Eingabe fehlt");
   const vp = page.viewportSize(), H = vp.height, VH = H - 380;
   // Lagen in BILDSCHIRM-Koordinaten (getBoundingClientRect zählt ab Layout-Oberkante, iOS verschiebt um offsetTop)
@@ -1851,32 +1851,66 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
   const same = (p, w) => { ok(Math.abs(p.bar.y - p0.bar.y) <= 1, w+": Hauptleiste verrutscht ("+p0.bar.y+" → "+p.bar.y+")"); ok(Math.abs(p.head.y - p0.head.y) <= 1, w+": Chat-Kopf verrutscht ("+p0.head.y+" → "+p.head.y+")");
     ok(!p.hole.length, w+": Karte scheint durch bei y="+p.hole.join(",")); };
   // 1) Antippen: Eingabe sofort über der (geschätzten) Tastatur, nichts darunter durchsichtig
-  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
-  const p1 = await pos(); same(p1, "Antippen"); ok(p1.inp.b <= Math.round(H * 0.5) + 1, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(p1.inp));
+  // Gleiten statt Springen: Bild für Bild mitschreiben, wo die Eingabe steht
+  const glide = (act) => page.evaluate(async (act) => { const c = document.querySelector("#chView .ch-comp"), ys = [Math.round(c.getBoundingClientRect().bottom)];
+    if(act==="focus") document.getElementById("chIn").focus(); else document.activeElement.blur();
+    for(let i = 0; i < 40; i++){ await new Promise(r => requestAnimationFrame(r)); ys.push(Math.round(c.getBoundingClientRect().bottom)); } return ys; }, act);
+  // Gleiten = erstes Bild noch (fast) an der alten Stelle, dann gleichmäßig in eine Richtung über mehrere Bilder bis zum Ziel
+  // (die Bildrate schwankt unter Last, daher keine feste Schrittgrenze)
+  const smooth = (ys, w) => { const a = ys[0], z = ys[ys.length - 1], dir = Math.sign(z - a); let mono = true, mid = 0;
+    for(let i = 1; i < ys.length; i++){ if(Math.sign(ys[i] - ys[i-1]) === -dir && Math.abs(ys[i] - ys[i-1]) > 1) mono = false; if(Math.abs(ys[i] - a) > 8 && Math.abs(ys[i] - z) > 8) mid++; }
+    ok(Math.abs(ys[1] - a) <= 40 && mono && mid >= 3, w+": Eingabe springt statt zu gleiten: "+ys.join(",")); };
+  const g1 = await glide("focus"); smooth(g1, "Antippen");
+  const p1 = await pos(); same(p1, "Antippen"); ok(p1.inp.b <= H - 380 && p1.inp.b >= H - 420, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(p1.inp));
 
   // 2) Fall A – iOS meldet die Tastatur nur über visualViewport (innerHeight bleibt) und verschiebt die Seite (offsetTop)
-  await kbFake(VH, 120); await page.waitForTimeout(50);
+  await kbFake(VH, 120); await page.waitForTimeout(350);
   let p = await pos(); same(p, "Tastatur mit Seitenverschiebung");
   ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur (verschoben): "+JSON.stringify(p));
-  await kbFake(VH, 0); await page.waitForTimeout(50);
+  await kbFake(VH, 0); await page.waitForTimeout(350);
   p = await pos(); same(p, "Tastatur ohne Verschiebung"); ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur: "+JSON.stringify(p));
-  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50); await kbReal(); await page.waitForTimeout(50);
-  p = await pos(); same(p, "Schließen"); ok(p.inp.b >= H - 2, "Eingabe bleibt nach dem Schließen oben: "+JSON.stringify(p.inp));
+  const g2 = await glide("blur"); smooth(g2, "Schließen"); await kbReal(); await page.waitForTimeout(50);
+  p = await pos(); same(p, "Schließen"); ok(Math.abs(p.inp.b - p0.inp.b) <= 1, "Eingabe steht nach dem Schließen nicht wie vorher: "+p0.inp.b+" → "+p.inp.b); ok(p.inp.b >= H - 2, "Eingabe bleibt nach dem Schließen oben: "+JSON.stringify(p.inp));
   // 3) Fall B – iOS verkleinert das ganze Layout (innerHeight sinkt mit): das war der Fehler mit der durchscheinenden Karte
-  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
-  await page.setViewportSize({width:vp.width, height:VH}); await page.waitForTimeout(150);
+  await page.locator("#chIn").focus(); await page.waitForTimeout(350);
+  await page.setViewportSize({width:vp.width, height:VH}); await page.waitForTimeout(350);
   p = await pos(); same(p, "Layout verkleinert"); ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur (Layout verkleinert): "+JSON.stringify(p));
   ok(await rp(`JSON.parse(localStorage.getItem("rp-chkb") || "{}") && true`), "Tastaturhöhe nicht gemerkt");
   await shot("tastatur-chat");
-  await page.evaluate(() => document.activeElement.blur()); await page.setViewportSize(vp); await page.waitForTimeout(150);
+  await page.evaluate(() => document.activeElement.blur()); await page.setViewportSize(vp); await page.waitForTimeout(400);
   p = await pos(); same(p, "Schließen nach Verkleinern"); ok(p.inp.b >= H - 2, "Eingabe nach dem Schließen nicht unten: "+JSON.stringify(p.inp));
   // 4) Zweites Antippen: gemerkte Höhe → Eingabe steht sofort an der richtigen Stelle (kein Nachrutschen)
-  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
+  const g3 = await glide("focus"); smooth(g3, "Zweites Antippen");
   p = await pos(); ok(Math.abs(p.inp.b - VH) <= 1, "Gemerkte Tastaturhöhe nicht genutzt: "+JSON.stringify(p.inp));
   // 5) Senden lässt die Tastatur offen (Fokus bleibt im Feld)
   await page.evaluate(() => { const b = document.querySelector("#chView .ch-send"); const ev = new MouseEvent("mousedown", {bubbles:true, cancelable:true}); b.dispatchEvent(ev); window.__md = ev.defaultPrevented; });
   ok(await page.evaluate(() => window.__md), "Senden-Knopf nimmt dem Feld den Fokus (Tastatur ginge zu)");
   await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50);
+});
+
+await test("Anmeldung: Hintergrund bleibt ganz, beim Antippen und mit Tastatur bewegt sich nichts", async () => {
+  await seed();
+  await rp(`acct.user = null; acct.verify = null; acct.ready = true; acct.state = "out"; renderGate(true); true`);
+  await page.waitForTimeout(200);
+  ok(await visible("#gate #acMail"), "Anmeldefenster fehlt");
+  const H = page.viewportSize().height;
+  const st = () => page.evaluate(() => { const vv = visualViewport, t = vv.offsetTop, c = document.querySelector("#gate .gate-card").getBoundingClientRect(), pw = document.getElementById("acPw").getBoundingClientRect(), hole = [];
+    for(let y = t + 3; y < t + vv.height; y += 20) for(const x of [5, innerWidth/2, innerWidth - 5]){ const e = document.elementFromPoint(x, y); if(!e || !e.closest("#gate")) hole.push(Math.round(x)+"/"+Math.round(y)); }
+    return {card:Math.round(c.top - t), pw:Math.round(pw.bottom - t), hole}; });
+  const s0 = await st();
+  ok(!s0.hole.length, "Hintergrund nicht überall: "+s0.hole.join(" "));
+  ok(s0.pw <= H - 400, "Passwortfeld läge unter der Tastatur (iOS müsste verschieben): "+s0.pw);
+  await page.locator("#acMail").focus(); await page.waitForTimeout(200);
+  const chk = async (w) => { const s1 = await st(); ok(Math.abs(s1.card - s0.card) <= 1, w+": Karte springt ("+s0.card+" → "+s1.card+")"); ok(!s1.hole.length, w+": Hintergrund nicht überall: "+s1.hole.join(" ")); };
+  await chk("Antippen");
+  await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); visualViewport.dispatchEvent(new Event("resize")); }, H - 400);
+  await page.waitForTimeout(200); await chk("Tastatur offen");
+  await page.locator("#acPw").focus(); await page.waitForTimeout(200); await chk("Zweites Feld");
+  await page.setViewportSize({width:page.viewportSize().width, height:H - 400}); await page.waitForTimeout(200);
+  const s2 = await st(); ok(Math.abs(s2.card - s0.card) <= 1, "Layout verkleinert: Karte springt"); ok(!s2.hole.length, "Layout verkleinert: Hintergrund nicht überall");
+  await page.evaluate(() => { delete visualViewport.height; document.activeElement.blur(); visualViewport.dispatchEvent(new Event("resize")); });
+  await page.setViewportSize({width:page.viewportSize().width, height:H}); await page.waitForTimeout(200);
+  await shot("anmeldung");
 });
 
 await test("Freunde: Suche statt Liste bei 200 Freunden (Ziel teilen)", async () => {
