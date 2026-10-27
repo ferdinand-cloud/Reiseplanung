@@ -580,6 +580,14 @@ await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kac
     await page.waitForTimeout(200);
     ok(!(await visible("#tripPop")) && await visible("#profView") && await rp(`profTab`)==="mine", how+": nicht zurück zum Profil");
   }
+  // Neue Reise aus dem Profil: Abbrechen zurück ins Profil, Anlegen springt zur Karte
+  await click("#profView [data-act=pfnew]"); await page.waitForTimeout(200);
+  ok(await visible("#tripPop #tForm"), "Neue Reise öffnet nicht");
+  await click("#tripPop [data-act=tcancel]"); await page.waitForTimeout(200);
+  ok(!(await visible("#tripPop")) && await visible("#profView"), "Neue Reise abbrechen führt nicht zurück zum Profil");
+  await click("#profView [data-act=pfnew]"); await page.waitForTimeout(200);
+  await rp(`tdraft.name = "Porto"; tdraft.start = "2027-06-01"; tdraft.end = "2027-06-03"; tdraft.orte = [{n:"Porto", loc:"41.1500, -8.6100", from:"", to:""}]; document.getElementById("tForm").requestSubmit(); true`); await page.waitForTimeout(600);
+  ok(!(await visible("#profView")) && await rp(`T().name==="Porto"`), "Nach dem Anlegen nicht auf der Karte");
 });
 
 await test("Titelbild-Auswahl: viele Fotos als sauberes Raster, nur sichtbare geladen", async () => {
