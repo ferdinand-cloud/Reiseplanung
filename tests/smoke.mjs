@@ -1186,6 +1186,17 @@ await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise u
   ok(await rp(`zielIds().length===0 && !!S.trips.t_test`), "Ziel nicht gelöscht oder Reise betroffen");
 });
 
+await test("Löschen/Entfernen ist rötlich markiert (Ziel bearbeiten)", async () => {
+  await noTripUser();
+  await rp(`var z = zielNew("Lissabon", {id:"o1", n:"Lissabon", la:38.72, lo:-9.14, r:20000}); save(); openZiele(z); true`); await page.waitForTimeout(200);
+  await click("#zPop [data-act=zedit]"); await page.waitForTimeout(150);
+  const red = async sel => page.locator(sel).first().evaluate(e => { const m = getComputedStyle(e).color.match(/\d+/g).map(Number); return m[0] > m[1] + 60 && m[0] > m[2] + 60; });
+  ok(await red("#catPop [data-act=zdel]"), "„Ziel löschen“ nicht rot");
+  ok(await red("#catPop [data-act=zareadel]"), "Gebiet „Entfernen“ nicht rot");
+  ok(!(await red("#catPop [data-act=zsave]")), "Speichern fälschlich rot");
+  await shot("loeschen-rot");
+});
+
 await test("Ziele: Ort über Google-Maps-Link, Instagram-Link oder Namen merken", async () => {
   await noTripUser();
   await rp(`var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); save(); openZiele(z); true`); await page.waitForTimeout(200);

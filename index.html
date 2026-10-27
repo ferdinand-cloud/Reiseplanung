@@ -3269,6 +3269,14 @@ body.ro .navtools [data-act="addpop"]{display:none}
   .nav-ui .nav-hero{padding:10px 14px 10px 10px}
   body.navon .navtools{display:grid;left:auto;right:calc(max(12px,env(safe-area-inset-right,0px)) + 52px);top:calc(env(safe-area-inset-top,0px) + 8px) !important}
 }
+/* Löschen/Entfernen überall gedämpft rot markiert, damit es sich von anderen Funktionen abhebt */
+:root{--del:#C4462F}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--del:#F0766A} }
+:root[data-theme="dark"]{--del:#F0766A}
+:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="frdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],[data-ai="del"],.btn.warn,.tf-link.warn){color:var(--del) !important}
+.btn:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="frdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],.warn){background:color-mix(in srgb,var(--del) 13%,transparent) !important;border-color:color-mix(in srgb,var(--del) 30%,transparent) !important}
+:is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) :is(b,.ai){color:var(--del) !important}
+:is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) .ai{background:color-mix(in srgb,var(--del) 12%,transparent) !important}
 </style>
 </head>
 <body>
