@@ -1658,6 +1658,40 @@ await test("ÖPNV-Navigation: Linie(n) zum Einsteigen sichtbar (Kachel, Fußleis
   ok((await page.locator("#navUi .nav-line").innerText()).includes("Aussteigen an"), "Während der Fahrt fehlt der Ausstiegshinweis");
 });
 
+await test("ÖPNV-Wegbeschreibung: Route je Teilschritt starten, Ein-/Ausstieg auf der Karte antippbar", async () => {
+  await seed();
+  await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; window.__trt = transit({la:40.7215, lo:-73.9890, id:"me"}, {la:40.7680, lo:-73.9819, n:"Columbus Circle"}, todayKey());
+    var d = document.createElement("div"); d.id = "rtTest"; d.innerHTML = transitSteps(__trt, {la:40.7215, lo:-73.9890, id:"me"}, {la:40.7680, lo:-73.9819, n:"Columbus Circle"}, {day:todayKey()}); document.body.appendChild(d);`);
+  ok(await rp(`!__trt.walk`), "Testverbindung ohne Fahrt");
+  const nSteps = await rp(`__trt.legs.filter(function(l){ return l.t==="walk" || l.t==="xfer" || l.t==="ride"; }).length`);
+  ok(await page.locator("#rtTest .rt-go").count()===nSteps, "Nicht jeder Teilschritt hat einen Route-Knopf");
+  // erster Schritt: zu Fuß zur Einstiegsstation
+  const st = await rp(`(function(){ var l = __trt.legs.filter(function(x){ return x.t==="ride"; })[0]; return NET.s[l.from][0]; })()`);
+  await page.locator("#rtTest .rt-walk .rt-go").first().dispatchEvent("click"); await page.waitForTimeout(150);
+  ok(await rp(`!!NAV && NAV.mode==="walk" && NAV.tgt.n===${JSON.stringify(st)}`), "Fußroute zur Einstiegsstation startet nicht: "+await rp(`NAV && NAV.mode+" "+NAV.tgt.n`));
+  await rp(`navEnd(true)`);
+  await page.locator("#rtTest .rt-ride .rt-go").first().dispatchEvent("click"); await page.waitForTimeout(150);
+  ok(await rp(`!!NAV && (NAV.mode==="oepnv" || NAV.mode==="ferry")`), "Fahrt-Schritt startet keine ÖPNV-Route");
+  await rp(`navEnd(true); document.getElementById("rtTest").remove();`);
+  // Karte: Ein-/Ausstieg einer ÖPNV-Etappe antippen → Karte mit „Navigieren“
+  await rp(`cur = todayKey(); tab = "day"; layers.route = true; var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ var r0 = transit(L[i][0], L[i][1], cur); if(!r0.walk){ setLegMode(L[i][0], L[i][1], "oepnv"); window.__li = i; break; } } renderAll(); fitPoints([L[__li][0], L[__li][1]], 1); scheduleOverlay();`);
+  await page.waitForFunction(() => window.__rp("RTMK.length > 0"), null, {timeout:4000}).catch(() => {});
+  ok(await rp(`RTMK.length > 0`), "Keine antippbaren Ein-/Ausstiegspunkte auf der Karte");
+  await rp(`legOpen[cur+"|"+__li] = true; setSheet("full"); renderSheet();`); await page.waitForTimeout(300);
+  ok(await page.locator("#sheet ol.rt .rt-go").count() > 1, "Route-Knöpfe fehlen in der Wegbeschreibung im Tagesplan");
+  await rp(`(function(){ var e = document.querySelector("#sheet ol.rt"); if(e) e.scrollIntoView({block:"center"}); })()`); await shot("rt-teilschritte");
+  await rp(`setSheet("min"); scheduleOverlay();`); await page.waitForTimeout(300);
+  await rp(`var m = RTMK[0]; tap(m.x, m.y);`); await page.waitForTimeout(200);
+  ok(await rp(`sel==="rtst" || /^sub:/.test(sel || "")`), "Antippen des Einstiegs öffnet keine Stationskarte: "+await rp(`sel`));
+  const nb = page.locator("#card [data-act=navpick]");
+  ok(await nb.count()===1, "Stationskarte ohne „Navigieren“");
+  await nb.click(); await page.waitForTimeout(150);
+  ok(await page.locator("#jpMenu [data-act=navgo][data-mode=walk]").count()===1, "Navigieren-Menü fehlt");
+  await page.locator("#jpMenu [data-act=navgo][data-mode=walk]").click(); await page.waitForTimeout(150);
+  ok(await rp(`!!NAV && NAV.mode==="walk"`), "Route zur Station startet nicht");
+  await rp(`navEnd(true)`);
+});
+
 await test("Tagesplan: alles erledigt und ausgeblendet – Weg zum Hotel bleibt mit Details", async () => {
   await seed();
   await rp(`me = {la:40.7215, lo:-73.9890, acc:8}; meA = null; T().done.p1 = 1; T().done.p2 = 1; T().done.p3 = 1; hideDone = true; cur = todayKey(); tab = "day"; renderSheet();`); await page.waitForTimeout(200);

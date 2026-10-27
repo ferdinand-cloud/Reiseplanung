@@ -2295,6 +2295,10 @@ ol.rt li{display:grid;grid-template-columns:44px 18px 1fr;column-gap:8px;align-i
 .rt-mid summary::after{content:"›";font-size:15px;transition:transform .15s}
 .rt-mid[open] summary::after{transform:rotate(90deg)}
 .rt-mid span{display:block;margin-top:4px;line-height:1.55}
+/* Route zu einem Teilschritt starten (Knopf rechts in der Zeile) */
+ol.rt li:has(> .rt-go){grid-template-columns:44px 18px 1fr 32px}
+.rt-go{align-self:center;width:30px;height:30px;margin:0 0 6px;padding:0;border:0;border-radius:50%;background:var(--fill);color:var(--accent);display:grid;place-items:center;cursor:pointer}
+.rt-go svg{width:15px;height:15px}
 .rt-note{margin:6px 0 0;font-size:11.5px;color:var(--muted)}
 .rt-note a{color:var(--accent);text-decoration:none;font-weight:600}
 ol.rt{color:var(--ink)}
@@ -9494,12 +9498,17 @@ function transitSteps(r, a, b, ctx){
   var now = nyNow(), day = (ctx && ctx.day) || cur, t = ctx && ctx.base!=null ? ctx.base : (day===now.key ? now.secs : null);
   var T0 = function(x){ return x==null ? "" : hhmm(x); };
   var nm = function(p){ return p && p.n ? p.n : (p && p.id==="me" ? "Mein Standort" : "Start"); };
+  // Knopf je Teilschritt: Navigation bis zum Ende dieses Schritts (Station, Wegpunkt, Ziel) starten
+  var go = function(q, n, m, pid){ if(!q || !hasLoc(q) || isRO()) return ""; var how = m==="walk" ? "zu Fuß" : m==="ferry" ? "mit der Fähre" : "mit U-Bahn & Bus";
+    return "<button type=\"button\" class=\"rt-go\" data-act=\"rtgo\" data-la=\""+(+q.la).toFixed(6)+"\" data-lo=\""+(+q.lo).toFixed(6)+"\" data-n=\""+esc(n)+"\" data-m=\""+m+"\""+(pid ? " data-pid=\""+esc(pid)+"\"" : "")+" aria-label=\"Route "+how+" zu „"+esc(n)+"“ starten\" title=\"Route "+how+" starten\">"+ic("route")+"</button>"; };
   var h = "<ol class=\"rt\">";
   h += "<li class=\"rt-pt end\"><span class=\"rt-t\">"+T0(t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(nm(a))+"</b></span></li>";
   r.legs.forEach(function(l, lix){
     if(l.t==="walk" || l.t==="xfer"){
       var lbl = l.t==="xfer" ? "Umsteigen" : "Gehen";
-      h += "<li class=\"rt-walk\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\"><span class=\"rt-ic\">"+WI+"</span>"+lbl+" · "+mins(l.secs)+" Min."+(l.d ? "<small>"+fmtDist(l.d)+"</small>" : "")+"</span></li>";
+      var wq = l.t==="xfer" ? stLL(l.to) : l.pt ? l.pt : l.to==="Ziel" ? b : l.st!=null ? stLL(l.st) : null;
+      var wn = l.t==="xfer" ? NET.s[l.to][0] : l.wp ? "Wegpunkt "+l.wp : l.to==="Ziel" ? nm(b) : l.st!=null ? NET.s[l.st][0] : "";
+      h += "<li class=\"rt-walk\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\"><span class=\"rt-ic\">"+WI+"</span>"+lbl+" · "+mins(l.secs)+" Min."+(l.d ? "<small>"+fmtDist(l.d)+"</small>" : "")+"</span>"+go(wq, wn, "walk", l.to==="Ziel" && !l.wp && b && b.id && P(b.id) ? b.id : "")+"</li>";
       if(t!=null) t += l.secs||0;
       if(l.wp) h += "<li class=\"rt-pt rt-wp\"><span class=\"rt-t\">"+T0(t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>Wegpunkt "+l.wp+"</b></span></li>";
     } else if(l.t==="ride"){
@@ -9511,7 +9520,7 @@ function transitSteps(r, a, b, ctx){
       h += "<li class=\"rt-pt\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\">"+T0(dep!=null ? dep : t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(NET.s[l.from][0])+"</b><small>einsteigen</small></span></li>";
       h += "<li class=\"rt-ride\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\">"+(ctx && ctx.li!=null ? "<button type=\"button\" class=\"rt-lines rt-lpick\" data-act=\"lnmenu\" data-leg=\""+ctx.li+"\" data-ri=\""+lix+"\" aria-haspopup=\"menu\" aria-label=\"Linie: ganze Strecke zeigen"+((l.lines0 || rs).length > 1 ? " oder Linie wählen" : "")+"\">"+rs.map(lineBul).join("")+"<span class=\"rt-lw\">"+((l.lines0 || rs).length > 1 ? (l.lines0 ? "Linie ändern" : "Linie wählen") : l.ext ? "Strecke" : "Ganze Linie")+"</span></button>" : "<span class=\"rt-lines\">"+rs.map(lineBul).join("")+"</span>")+
            "<span class=\"rt-dir\">"+(kind ? kind+" " : "")+"Richtung "+esc(l.hd)+"</span>"+
-           (mid.length ? "<details class=\"rt-mid\"><summary>"+nLbl+" · "+mins(l.secs)+" Min.</summary><span>"+mid.map(esc).join("<br>")+"</span></details>" : "<small>"+nLbl+" · "+mins(l.secs)+" Min.</small>")+"</span></li>";
+           (mid.length ? "<details class=\"rt-mid\"><summary>"+nLbl+" · "+mins(l.secs)+" Min.</summary><span>"+mid.map(esc).join("<br>")+"</span></details>" : "<small>"+nLbl+" · "+mins(l.secs)+" Min.</small>")+"</span>"+go(stLL(l.to), NET.s[l.to][0], isFerry(l.r) ? "ferry" : "oepnv")+"</li>";
       h += "<li class=\"rt-pt\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\">"+T0(arr)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(NET.s[l.to][0])+"</b><small>aussteigen</small></span></li>";
       if(t!=null) t = arr;
     }
@@ -10175,7 +10184,7 @@ function f1(n){ return n.toFixed(1); }
 
 /* ---------- Kartenmarker ---------- */
 function catCol(c){ return CATCOL[c] || CATCOL.sight; }
-var THUMB = {}, thumbBusy = {}, thumbTry = {}, PHMK = [], VIAMK = [];
+var THUMB = {}, thumbBusy = {}, thumbTry = {}, PHMK = [], VIAMK = [], RTMK = [];
 /* kleine runde Vorschaubilder für die Karte (96 px), einmal erzeugt und zwischengespeichert */
 function thumbOf(ph){
   if(THUMB[ph]) return THUMB[ph];
@@ -10268,7 +10277,7 @@ function drawOverlay(){
     });
   }
   // Route des Tages: Hotel → Stopps → Hotel (Fußweg oder ÖPNV)
-  var HT = D && hRim(D), pts = D ? routePts(cur) : [], col = dayColor(cur), viaSvg = ""; VIAMK = [];
+  var HT = D && hRim(D), pts = D ? routePts(cur) : [], col = dayColor(cur), viaSvg = ""; VIAMK = []; RTMK = [];
   if(!layers.route || isRO() || (NAV && NAV.pts)){ /* Route ausgeblendet; Beobachter sehen keine Routen; während der Navigation (auch ausgeblendet) nur deren Weg */ }
   else if(pts.length){
     var labels = "";
@@ -10322,7 +10331,7 @@ function drawOverlay(){
         else if(l.t==="xfer"){ var tx = stLL(l.to); seg([at, tx], "var(--ink)", "1 6", 3); at = tx; }
         else if(l.t==="ride"){
           var ll = l.stops.map(stLL); seg(ridePath(l), NET.r[l.r][1], "", 5.5); at = ll[ll.length-1];
-          ll.forEach(function(q, j){ if(j===0 || j===ll.length-1){ var z = pt(q); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"4.5\" fill=\"var(--land)\" stroke=\""+NET.r[l.r][1]+"\" stroke-width=\"2.5\" opacity=\""+op+"\"/>"; } });
+          ll.forEach(function(q, j){ if(j===0 || j===ll.length-1){ var z = pt(q); RTMK.push({x:z[0], y:z[1], si:j ? l.to : l.from, r:l.r}); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"4.5\" fill=\"var(--land)\" stroke=\""+NET.r[l.r][1]+"\" stroke-width=\"2.5\" opacity=\""+op+"\"/>"; } });
           if(op===1){
             var m = pt(ll[Math.floor(ll.length/2)]), rr = NET.r[l.r];
             labels += lineBadge(m, l.r);
@@ -11168,6 +11177,9 @@ function tap(x, y){
   if(lhit){ toast("@"+lhit.nm+" war hier · "+locAgo(lhit.at), false); return; }
   var vhit = !isRO() && VIAMK.filter(function(m){ return Math.hypot(m.x-x, m.y-y) < 16; }).sort(function(a, b){ return Math.hypot(a.x-x, a.y-y) - Math.hypot(b.x-x, b.y-y); })[0];
   if(vhit){ openViaPop(vhit.li, vhit.vi); return; }
+  // Ein- und Ausstieg einer ÖPNV-Etappe: Stationskarte mit „Navigieren“
+  var rhit = !isRO() && RTMK.filter(function(m){ return Math.hypot(m.x-x, m.y-y) < 18; }).sort(function(a, b){ return Math.hypot(a.x-x, a.y-y) - Math.hypot(b.x-x, b.y-y); })[0];
+  if(rhit){ rtStop(rhit.si, rhit.r); return; }
   var best = null, bd = 24, D = dayByKey(cur);
   function test(id, p, rad){ if(!hasLoc(p)) return; var q = pt(p), d = Math.hypot(q[0]-x, q[1]-y); if(d < Math.max(rad, bd) && (!best || d < bd)){ best = id; bd = d; } }
   if(D) ord(cur).forEach(function(id){ test(id, P(id), 20); });
@@ -11794,6 +11806,7 @@ function renderCard(){
   if(sel==="poi" && poiSel){ el.innerHTML = poiCard(); el.hidden = false; placeFloating(); return; }
   if(sel.indexOf("cb:")===0){ el.innerHTML = cbCard(sel.slice(3)); el.hidden = false; placeFloating(); return; }
   if(sel.indexOf("sub:")===0){ el.innerHTML = subCard(+sel.slice(4)); el.hidden = false; placeFloating(); return; }
+  if(sel==="rtst" && RTST){ el.innerHTML = rtCard(); el.hidden = false; placeFloating(); return; }
   var x = "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>";
   if(sel.indexOf("nb:")===0){
     var nn = sel.slice(3), i = nbByName(nn), all = Object.keys(T().places).map(P).filter(function(p){ return !p.of && nbOf(p)===nn; });
@@ -12746,6 +12759,20 @@ function navSvg(){
   return s;
 }
 function subLL(st){ return {la: LAT0 - st[2]/KM, lo: st[1]/(COS*KM) - 74}; }
+/* Ein-/Ausstieg einer Etappe auf der Karte angetippt: U-Bahn → Stationskarte, sonst (Bus, Fähre, Fernverkehr) eigene kleine Karte */
+var RTST = null;
+function rtStop(si, r){
+  var s0 = NET.s[si]; if(!s0) return;
+  if(typeof si==="number" && !isBus(r) && !isFerry(r)){ var bi = -1, bd = 150; TRANSIT.stations.forEach(function(st, i){ var d = Math.hypot(st[1]-s0[1], st[2]-s0[2]); if(d < bd){ bd = d; bi = i; } }); if(bi > -1){ select("sub:"+bi); return; } }
+  var q = stLL(si); RTST = {la:q.la, lo:q.lo, n:s0[0], r:r}; select("rtst");
+}
+function rtCard(){
+  var q = RTST, d = me ? dist(me, q) : null, k = isFerry(q.r) ? "Anleger" : isBus(q.r) ? "Haltestelle" : "Station";
+  return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>"+
+    "<div class=\"ch\"><span class=\"cic\" style=\"--cc:#17212c\">"+TICSUB+"</span><div class=\"cht\"><h3>"+esc(q.n)+"</h3><p>"+k+(d!=null ? " · "+fmtDist(d)+" entfernt" : "")+"</p></div></div>"+
+    "<p class=\"tline\"><span class=\"tlx\">"+lineBul(q.r)+"</span></p>"+
+    "<div class=\"jp-tiles ctiles\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"navpick\" data-rt=\"1\">"+NAVGOICO+"<span>Navigieren</span></button></div>";
+}
 function subCard(i){
   var st = TRANSIT.stations[i]; if(!st) return "";
   var sis = []; NET.s.forEach(function(s2, k){ if(Math.hypot(s2[1]-st[1], s2[2]-st[2]) < 150) sis.push(k); });
@@ -14746,10 +14773,12 @@ document.addEventListener("click", function(e){
       var npT = null, npX = "";
       if(t.hasAttribute("data-sub")){ var nst = TRANSIT.stations[+t.getAttribute("data-sub")]; if(nst){ npT = subLL(nst); npT.n = nst[0]; npX = "nosub"; } }
       else if(t.hasAttribute("data-cb")){ var ncb = CB.byId[t.getAttribute("data-cb")]; if(ncb) npT = {la:ncb.la, lo:ncb.lo, n:cbSysOf(ncb).n+" · "+ncb.n}; }
+      else if(t.hasAttribute("data-rt")){ if(RTST) npT = {la:RTST.la, lo:RTST.lo, n:RTST.n}; }
       else if(t.hasAttribute("data-poi")){ if(poiSel) npT = {la:poiSel.la, lo:poiSel.lo, n:poiSel.n}; }
       else if(t.hasAttribute("data-hotel")){ var nh = hotelById(t.getAttribute("data-hotel")); if(nh) npT = {la:nh.la, lo:nh.lo, n:nh.n}; }
       if(npT) navPick(npT, t, npX); break;
     case "navgo": closeJpMore(); if(NAVPICK) navStart(NAVPICK, t.getAttribute("data-mode")); break;
+    case "rtgo": var rgp = t.getAttribute("data-pid"); navStart(rgp && P(rgp) ? P(rgp) : {la:+t.getAttribute("data-la"), lo:+t.getAttribute("data-lo"), n:t.getAttribute("data-n")}, t.getAttribute("data-m")); break;
     case "navsub": var nsb = TRANSIT.stations[+t.getAttribute("data-sub")]; if(nsb){ var nq = subLL(nsb); nq.n = nsb[0]; navStart(nq, "walk"); } break;
     case "navstart": if(goSt && P(goSt.id)) navStart(P(goSt.id), t.getAttribute("data-mode")); break;
     case "navend": navEnd(); break;
