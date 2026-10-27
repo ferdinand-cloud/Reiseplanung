@@ -3416,6 +3416,7 @@ body.ro .navtools [data-act="addpop"]{display:none}
 .dhi.rc-open.ph svg{position:absolute;right:3px;bottom:3px;width:13px;height:13px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
 .dsugs h5{margin:0 0 6px;font:600 12px/1.2 var(--f-body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 /* Zeitraum-Kalender */
+.rng-d.off{color:var(--muted);opacity:.35;cursor:default}
 .tf-two .tf-pill.d{display:flex;width:100%;height:40px;margin-top:4px}
 .zoffer{display:block;width:100%;margin:8px 0;padding:10px 12px;border:0;border-radius:12px;background:var(--fill);color:var(--ink);font:500 14px/1.3 var(--f-body);text-align:left;cursor:pointer}
 .tf-item.tbd .tf-t small{color:var(--muted)}
@@ -5617,7 +5618,8 @@ function rngOpen(which){
   var fs = it ? it+".from" : "start", fe = it ? it+".to" : "end", s = rngGet(fs), e = rngGet(fe); which = /(end|to)$/.test(which) ? "end" : "start";
   if(it && !s && !e && tdraft.start){ var base0 = tdraft.start; }
   var base = new Date(((which==="end" && e) || s || e || base0 || rngKey(new Date()))+"T12:00");
-  rng = {s:s, e:e, fs:fs, fe:fe, it:it, y:base.getFullYear(), m:base.getMonth(), ph:(which==="end" && s) ? "end" : "start"};
+  rng = {s:s, e:e, fs:fs, fe:fe, it:it, y:base.getFullYear(), m:base.getMonth(), ph:(which==="end" && s) ? "end" : "start",
+    lo:it ? tdraft.start || "" : "", hi:it ? tdraft.end || "" : ""}; // Hotel/Ort: nur innerhalb der Reise
   var el = $("rngPop"); if(!el){ el = document.createElement("div"); el.id = "rngPop"; el.className = "cfpop rngpop"; document.body.appendChild(el);
     el.onclick = function(ev){ ev.stopPropagation(); var b = ev.target.closest("[data-r]");
       if(ev.target===el) return rngClose(true);
@@ -5632,14 +5634,28 @@ function rngOpen(which){
   el.hidden = false; rngRender();
 }
 function rngPick(k){
+  if((rng.lo && k < rng.lo) || (rng.hi && k > rng.hi)) return;
   if(rng.ph==="start" || !rng.s){ rng.s = k; rng.e = ""; rng.ph = "end"; rngRender(); return; }
   if(k < rng.s){ rng.s = k; rngRender(); return; }
   rng.e = k; rngRender(); setTimeout(function(){ if(rng) rngClose(true); }, 260);
 }
 function rngClose(apply){
   var el = $("rngPop"); if(el){ el.hidden = true; el.innerHTML = ""; }
-  if(apply && rng && tdraft){ var oe = rngGet(rng.fe); setPath(tdraft, rng.fs, rng.s); setPath(tdraft, rng.fe, rng.e || (rng.s && oe && oe >= rng.s ? oe : "")); renderSheet(); }
+  if(apply && rng && tdraft){ var oe = rngGet(rng.fe); setPath(tdraft, rng.fs, rng.s); setPath(tdraft, rng.fe, rng.e || (rng.s && oe && oe >= rng.s ? oe : ""));
+    if(!rng.it && tfClampItems()) toast("Zeiträume von Hotels/Orten an die Reise angepasst", false);
+    renderSheet(); }
   rng = null;
+}
+/* Von/Bis von Hotels und Orten in den Reisezeitraum ziehen; ganz außerhalb: leeren (= ganze Reise) */
+function tfClampItems(){
+  var d = tdraft, a = d && d.start, b = d && d.end, ch = false; if(!a || !b) return false;
+  ["hotels","orte"].forEach(function(kind){ (d[kind]||[]).forEach(function(x){
+    var f = x.from || "", t = x.to || "", f2 = f, t2 = t;
+    if((f && f > b) || (t && t < a)){ f2 = ""; t2 = ""; }
+    else { if(f && f < a) f2 = a; if(t && t > b) t2 = b; }
+    if(f2!==f || t2!==t){ x.from = f2; x.to = t2; ch = true; }
+  }); });
+  return ch;
 }
 function rngRender(){
   var el = $("rngPop"); if(!el || !rng) return;
@@ -5651,7 +5667,8 @@ function rngRender(){
     if(k===rng.s) c += " s"; if(k===rng.e) c += " e"; if(rng.s && rng.e && k > rng.s && k < rng.e) c += " in";
     if(rng.s && rng.e && rng.s!==rng.e) c += k===rng.s ? " rs" : k===rng.e ? " re" : "";
     if(k===today) c += " today";
-    g += "<button type=\"button\" class=\""+c+"\" data-r=\""+k+"\" aria-pressed=\""+(k===rng.s || k===rng.e)+"\">"+d+"</button>";
+    var off = (rng.lo && k < rng.lo) || (rng.hi && k > rng.hi); if(off) c += " off";
+    g += "<button type=\"button\" class=\""+c+"\" data-r=\""+k+"\" aria-pressed=\""+(k===rng.s || k===rng.e)+"\""+(off ? " disabled" : "")+">"+d+"</button>";
   }
   var mt = first.toLocaleDateString("de-DE", {month:"long", year:"numeric"});
   var isH = rng.it.indexOf("hotels")===0, l1 = rng.it ? (isH ? "Check-in" : "Von") : "Anreise", l2 = rng.it ? (isH ? "Check-out" : "Bis") : "Abreise";
@@ -12667,6 +12684,7 @@ function saveTrip(){
   if(!name) return "Bitte gib der Reise einen Namen.";
   if(!parseD(d.start) || !parseD(d.end)) return "Bitte trage An- und Abreise ein.";
   if(d.end < d.start) return "Die Abreise liegt vor der Anreise.";
+  tfClampItems();
   if((parseD(d.end)-parseD(d.start))/864e5 > 59) return "Eine Reise kann im Prototyp höchstens 60 Tage haben.";
   var hotels = [], orte = [], err = null;
   d.hotels.forEach(function(x,i){

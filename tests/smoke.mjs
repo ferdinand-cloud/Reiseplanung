@@ -1511,6 +1511,12 @@ await test("Neue Reise: Von/Bis bei Ort und Hotel über den Kalender, Eingaben b
   await click(`#rngPop [data-r="2026-11-03"]`); await click(`#rngPop [data-r="2026-11-05"]`); await page.waitForTimeout(500);
   ok(await rp(`tdraft.orte[0].from==="2026-11-03" && tdraft.orte[0].to==="2026-11-05" && tdraft.start==="2026-11-02" && tdraft.name==="Lissabon" && tdraft.hotels[0].n==="Hotel Avenida"`), "Zeitraum des Orts nicht übernommen oder andere Eingaben verloren");
   ok(await visible("#tripPop #tForm"), "Formular nach dem Kalender geschlossen");
+  // nur innerhalb der Reise wählbar; verkürzte Reise zieht Ortsdaten mit
+  await click("#tripPop [data-act=rngopen][data-f='orte.0.to']"); await page.waitForTimeout(150);
+  ok(await rp(`document.querySelector('#rngPop [data-r="2026-11-01"]').disabled && document.querySelector('#rngPop [data-r="2026-11-09"]').disabled && !document.querySelector('#rngPop [data-r="2026-11-08"]').disabled`), "Tage außerhalb der Reise wählbar");
+  await rp(`rngClose(false); true`);
+  await click("#tripPop [data-act=rngopen][data-f=start]"); await click(`#rngPop [data-r="2026-11-04"]`); await click(`#rngPop [data-r="2026-11-06"]`); await page.waitForTimeout(500);
+  ok(await rp(`tdraft.orte[0].from==="2026-11-04" && tdraft.orte[0].to==="2026-11-05"`), "Ortsdaten nicht an verkürzte Reise angepasst: "+await rp(`JSON.stringify(tdraft.orte[0])`));
   // Fehltipp: Finger setzt im Formular auf, lässt auf dem Hintergrund los – Formular bleibt
   await rp(`document.querySelector("#tripPop [data-f='orte.0.n']").dispatchEvent(new PointerEvent("pointerdown", {bubbles:true})); document.getElementById("tripPop").click(); true`);
   await page.mouse.click(5, 5); await page.waitForTimeout(200);
