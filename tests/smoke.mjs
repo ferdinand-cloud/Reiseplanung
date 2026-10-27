@@ -2111,6 +2111,30 @@ await test("Tastatur im Pop-up: Antippen fokussiert ohne iOS-Verschiebung (preve
   await page.tap("#acctPop #unIn"); await page.waitForTimeout(50);
   ok(await page.evaluate(() => document.activeElement.id)==="unIn", "Erneutes Tippen ins aktive Feld verliert den Fokus");
 });
+await test("Tastatur im Pop-up: Feld weiter unten (Neue Reise) wird über Tastatur und Fußleiste gescrollt", async () => {
+  await seed(); await rp(`zPlanTrip(zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000})); true`); await page.waitForTimeout(300); await kbSettle();
+  const H = await page.evaluate(() => innerHeight), VH = H - 380;
+  // Suchfeld fürs Reiseziel – liegt wie in Ferdinands Fall unten in der Karte, unter den Hotels
+  // Tastatur ist schon offen (Wechsel aus einem anderen Feld), Karte entsprechend niedrig
+  await page.evaluate(() => { const o = document.querySelector("#tripPop input[type=text]"); o.focus({preventScroll:true}); });
+  await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); visualViewport.dispatchEvent(new Event("resize")); }, VH);
+  await page.waitForTimeout(900); await kbSettle();
+  // wie im Screenshot: Feld liegt genau hinter der festen Fußleiste („Abbrechen · Reise anlegen“), aber noch innerhalb der Karte
+  const id = await page.evaluate(() => { const f = document.querySelector("#tripPop input[type=search]"), c = document.querySelector("#tripPop .ag-card"), ft = document.querySelector("#tripPop .tf-foot"); if(!f || !c || !ft) return "";
+    c.scrollTop += f.getBoundingClientRect().top - (ft.getBoundingClientRect().top + 6);
+    f.id = f.id || "kbLow"; f.focus({preventScroll:true}); return document.activeElement===f ? f.id : ""; });
+  ok(id, "kein Textfeld in „Neue Reise“");
+  await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); visualViewport.dispatchEvent(new Event("resize")); }, VH);
+  await page.waitForTimeout(1100); await kbSettle();
+  const r = await page.evaluate(([id, vh]) => { const f = document.getElementById(id), b = f.getBoundingClientRect(), x = b.left + Math.min(b.width/2, 40), y = b.top + b.height/2, hit = document.elementFromPoint(x, y);
+    const foot = document.querySelector("#tripPop .tf-foot"), fr = foot ? foot.getBoundingClientRect() : null;
+    return {top:b.top, bot:b.bottom, hit:!!hit && (hit===f || f.contains(hit) || hit.contains(f)), hitDesc:hit ? (hit.className || hit.tagName) : "", footTop:fr ? fr.top : null, vh}; }, [id, VH]);
+  ok(r.bot <= VH && r.top >= 0, "Feld nicht über der Tastatur: "+JSON.stringify(r));
+  ok(r.footTop===null || r.bot <= r.footTop + 1, "Feld hinter der Fußleiste: "+JSON.stringify(r));
+  ok(r.hit, "Feld verdeckt (getroffen: "+r.hitDesc+") "+JSON.stringify(r));
+  await shot("tastatur-neue-reise");
+  await page.evaluate(() => { document.activeElement.blur(); delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
+});
 await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-quer"); }, QUER);
 
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {

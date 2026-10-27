@@ -7207,14 +7207,19 @@ function kbPredH(){ var q = innerWidth > innerHeight ? 1 : 0; return KBVH[q] || 
 window.addEventListener("scroll", function(){ if(window.scrollY > 0 || window.pageYOffset > 0) window.scrollTo(0, 0); }, {passive:true});
 function isTypeField(el){ if(!el || !el.tagName) return false; var tg = el.tagName; if(tg==="TEXTAREA" || tg==="SELECT") return true; if(tg!=="INPUT") return false; return !/^(checkbox|radio|button|submit|range|file|color|hidden)$/.test(el.type); }
 function scrollParent(el){ for(var n = el.parentElement; n && n!==document.body; n = n.parentElement){ var oy = getComputedStyle(n).overflowY; if((oy==="auto" || oy==="scroll") && n.scrollHeight > n.clientHeight) return n; } return null; }
+/* feste Kopf-/Fußleisten (position:sticky) im Scrollbereich – sie verdecken oben/unten einen Streifen (z. B. „Abbrechen · Reise anlegen“) */
+function stickyInsets(c, el){ var r = {top:0, bot:0};
+  [].forEach.call(c.querySelectorAll("*"), function(n){ if(n.contains(el) || !n.offsetHeight) return; var cs = getComputedStyle(n); if(cs.position!=="sticky") return;
+    if(cs.bottom!=="auto") r.bot = Math.max(r.bot, n.offsetHeight); else if(cs.top!=="auto") r.top = Math.max(r.top, n.offsetHeight); });
+  return r; }
 function ensureVis(el){
   if(!el || !document.contains(el)) return;
   var vv = window.visualViewport, vt = vv ? vv.offsetTop : 0, vb = vv ? vv.offsetTop + vv.height : window.innerHeight;
   var c = scrollParent(el); if(!c) return;
-  var cr = c.getBoundingClientRect(), top = Math.max(cr.top, vt) + 12, bot = Math.min(cr.bottom, vb) - 12, er = el.getBoundingClientRect();
+  var si = stickyInsets(c, el), cr = c.getBoundingClientRect(), top = Math.max(cr.top + si.top, vt) + 12, bot = Math.min(cr.bottom - si.bot, vb) - 12, er = el.getBoundingClientRect();
   if(er.top >= top && er.bottom <= bot) return;
-  var want = (er.top + Math.min(er.height, 140)/2) - (top + Math.min(bot-top, 400)/2);
-  c.scrollTop += want;
+  var want = (er.top + Math.min(er.height, 140)/2) - (top + Math.min(bot-top, 400)/2), to = c.scrollTop + want;
+  if(c.scrollTo && !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) c.scrollTo({top:to, behavior:"smooth"}); else c.scrollTop = to;
 }
 (function(){ var vv = window.visualViewport, de = document.documentElement, body = document.body;
   function upd(){
@@ -7273,7 +7278,8 @@ function ensureVis(el){
       var pmax = kbPlace(ov, card, vt, kbPredH());
       // Feld innerhalb der Karte gleich in den künftig sichtbaren Teil scrollen (Abstände relativ zur Karte, Animation egal)
       var rel = el.getBoundingClientRect().top - card.getBoundingClientRect().top, fh = Math.min(el.offsetHeight, 140);
-      if(rel + fh > pmax - 16) card.scrollTop += rel + fh - (pmax - 16); else if(rel < 8) card.scrollTop += rel - 8; } }
+      var si = stickyInsets(card, el), lo = pmax - 16 - si.bot, hi = 8 + si.top;
+      if(rel + fh > lo) card.scrollTop += rel + fh - lo; else if(rel < hi) card.scrollTop += rel - hi; } }
   document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; kbPin(el); setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
   document.addEventListener("focusout", function(){ setTimeout(upd, 80); });
   upd(); })();
