@@ -3277,6 +3277,28 @@ body.ro .navtools [data-act="addpop"]{display:none}
 .btn:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="frdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],.warn){background:color-mix(in srgb,var(--del) 13%,transparent) !important;border-color:color-mix(in srgb,var(--del) 30%,transparent) !important}
 :is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) :is(b,.ai){color:var(--del) !important}
 :is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) .ai{background:color-mix(in srgb,var(--del) 12%,transparent) !important}
+
+/* Tageskopf kompakt: Tag, Vorschau und Vorschläge in einer Zeile */
+.dh.dhx{display:flex;align-items:center;gap:8px;cursor:default}
+.dh.dhx:active{opacity:1}
+.dhd{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:0;background:none;padding:2px 0;color:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
+.dhd:active{opacity:.6}
+.dring{flex:0 0 auto;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--ok,#5E9970) var(--p),var(--fill) 0)}
+.dh.dhx .dring .b{width:30px;height:30px;margin:0;font-size:15px;box-shadow:0 0 0 2px var(--sheet)}
+.dht{flex:1;min-width:0}
+.dh.dhx h2{font:700 19px/1.15 var(--f-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dh.dhx .dhchev{width:15px;height:15px;margin-left:3px;vertical-align:-1px}
+.dh.dhx p{margin:1px 0 0;font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dhi{flex:0 0 auto;position:relative;height:38px;min-width:38px;padding:0 9px;border:0;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:var(--fill);color:var(--ink);-webkit-tap-highlight-color:transparent;transition:background .2s,color .2s}
+.dhi svg{width:19px;height:19px;flex:0 0 auto}
+.dhi:active{transform:scale(.94)}
+.dhi b{font:600 13.5px/1 var(--f-body);font-variant-numeric:tabular-nums}
+.dhi.dsug[aria-expanded="true"]{background:color-mix(in srgb,var(--ok,#5E9970) 22%,var(--fill));color:var(--ink)}
+.dhi.rc-open{width:38px;margin:0;padding:0;overflow:hidden;color:#fff;background:radial-gradient(90% 90% at 0% 0%,color-mix(in srgb,var(--dc) 85%,transparent),transparent 70%),radial-gradient(90% 90% at 100% 100%,rgba(191,90,242,.75),transparent 70%),#1a1f28;box-shadow:none}
+.dhi.rc-open::before,.dhi.rc-open::after{display:none}
+.dhi.rc-open img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:0;border-radius:0;margin:0;box-shadow:none}
+.dhi.rc-open.ph svg{position:absolute;right:3px;bottom:3px;width:13px;height:13px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.dsugs h5{margin:0 0 6px;font:600 12px/1.2 var(--f-body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 </style>
 </head>
 <body>
@@ -10227,24 +10249,27 @@ $("tripBtn").addEventListener("click", function(){ var open = $("tripMenu").hidd
 var legsList = lsGet("rp-legs")!=="0";
 var VIAICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"4.5\" cy=\"15.5\" r=\"2\"/><circle cx=\"15.5\" cy=\"4.5\" r=\"2\"/><circle cx=\"11\" cy=\"12\" r=\"1.6\" fill=\"currentColor\"/><path d=\"M6 14c2-1 3.5-1.3 5-2M12.3 10.8c1-1.7 1.8-3.5 2.2-4.6\"/></svg>";
 function viaBtn(i, v){ return isRO() ? "" : "<button type=\"button\" class=\"viab"+(v.length?" on":"")+"\" data-act=\"viaedit\" data-leg=\""+i+"\" title=\"Weg über Wegpunkte lenken\" aria-label=\"Wegpunkte setzen"+(v.length ? ", "+v.length+" gesetzt" : "")+"\">"+VIAICO+(v.length ? "<b>"+v.length+"</b>" : "")+"</button>"; }
+var SUGICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7.3 14.5h5.4M8 17h4M10 2.8a5 5 0 0 0-3 9c.6.5.9 1 .9 1.7v1h4.2v-1c0-.7.3-1.2.9-1.7a5 5 0 0 0-3-9z\"/></svg>";
 function renderDay(){
   var D = dayByKey(cur);
   if(!D) return "<p class=\"empty\">Diese Reise hat noch keine gültigen Daten. Trage im Reiter „Reise“ An- und Abreise ein.</p>";
   var ids = ord(cur), pts = routePts(cur), HT = D.hotel, km = 0;
   if(pts.length){ var all = (HT?[HT]:[]).concat(pts, HT?[HT]:[]); for(var i=0;i<all.length-1;i++) km += dist(all[i],all[i+1]); }
-  var meta = ["Tag "+D.n, ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps") : "noch leer"];
+  var meta = [ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps") : "noch leer"];
   var nDone = ids.filter(function(x){ return T().done[x]; }).length;
-  if(ids.length) meta.push(nDone+" von "+ids.length+" erledigt");
-  if(pts.length) meta.push(fmtDist(km)+(HT?" ab Hotel":""));
+  if(ids.length) meta.push(nDone+"/"+ids.length+" erledigt");
+  if(pts.length) meta.push(fmtDist(km));
   if(D.hint) meta.push(D.hint);
-  var h = "<div class=\"dh\" data-act=\"daypop\" role=\"button\" tabindex=\"0\" aria-label=\"Tag wechseln\"><span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span><div style=\"flex:1;min-width:0\"><h2>"+esc(D.title)+"<svg class=\"dhchev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></h2><p>"+esc(meta.join(" · "))+"</p>"+(ids.length?"<div class=\"dprog\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\""+ids.length+"\" aria-valuenow=\""+nDone+"\"><i style=\"width:"+Math.round(nDone/ids.length*100)+"%\"></i></div>":"")+"</div></div>";
-
+  // Eine kompakte Zeile: Tag (mit Fortschrittsring) · Vorschau/Rückblick · Vorschläge
+  var dd = parseD(D.key), pct = ids.length ? Math.round(nDone/ids.length*100) : 0;
+  var h = "<div class=\"dh dhx\"><button type=\"button\" class=\"dhd\" data-act=\"daypop\" aria-label=\""+esc(D.title)+" – Tag wechseln\"><span class=\"dring\""+(ids.length ? " role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\""+ids.length+"\" aria-valuenow=\""+nDone+"\"" : "")+" style=\"--p:"+pct+"%\"><span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span></span><span class=\"dht\"><h2>"+esc(D.wd+", "+dd.getUTCDate()+". "+MON[dd.getUTCMonth()].slice(0,3))+"<svg class=\"dhchev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></h2><p>"+esc(meta.join(" · "))+"</p></span></button>";
   h += rcEntry(D);
+  var RO = isRO(), sug = RO ? [] : suggest(cur, 3), sugT = ids.length ? "Passt zu diesem Tag" : (HT ? "Nah am Hotel" : "Vorschläge");
+  if(!RO) h += "<button type=\"button\" class=\"dhi dsug\" data-act=\"sugtoggle\" aria-expanded=\""+sugOpen+"\" title=\""+sugT+"\" aria-label=\""+sugT+": "+sug.length+" Vorschläge\">"+SUGICO+"<b>"+sug.length+"</b></button>";
+  h += "</div>";
   if(isViewerOf(S.cur)) h += "<p class=\"note rolenote\">👁 Du beobachtest diese Reise – ansehen und kommentieren, aber nichts ändern.</p>";
-  if(!isRO()){ // Beobachter sehen keine Wunschliste und keine Vorschläge daraus
-  var sug = suggest(cur, 3);
-  h += "<div class=\"sec\"><button type=\"button\" class=\"fold\" data-act=\"sugtoggle\" aria-expanded=\""+sugOpen+"\"><h4>"+(ids.length?"Passt zu diesem Tag":(HT?"Nah am Hotel":"Vorschläge"))+"</h4><span class=\"cnt\">"+sug.length+" Vorschläge</span>"+CHEV+"</button>";
-  if(sugOpen){
+  if(!RO && sugOpen){ // Beobachter sehen keine Wunschliste und keine Vorschläge daraus
+    h += "<div class=\"sec dsugs\"><h5>"+sugT+"</h5>";
     if(!sug.length){ h += "<p class=\"empty\">Keine offenen Wünsche mit Ort. Lege in der Wunschliste neue Wünsche an.</p>"; }
     else {
       h += "<div class=\"sugs\">";
@@ -10255,10 +10280,9 @@ function renderDay(){
              "<button type=\"button\" class=\"btn s\" data-act=\"plan\">Hinzufügen</button></div>";
       });
       h += "</div>";
-  }
     }
+    h += "</div>";
   }
-  h += "</div>";
 
   var hn = HT ? esc(HT.n) : "";
   h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>"+(isRO() ? "Stopps" : "Route")+"</h4>"+(HT && !isRO() ? "<button type=\"button\" class=\"hsbtn\" data-act=\"hotelstopadd\" title=\"Zwischenstopp im "+hn+"\">"+icon("hotel")+"Zwischenstopp</button>" : "")+(isRO() ? "" : "<button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+routeAnyVisible()+"\" aria-label=\"Alle Etappen auf der Karte ein- oder ausblenden\">"+(routeAnyVisible()?EYE:EYEOFF)+"<span>Karte</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>"+
@@ -12618,13 +12642,13 @@ function rcKm(D, list){
   return m;
 }
 /* Einstieg im Tagesplan */
+var RCICO = "<svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M8 2.5l1.3 3.7 3.7 1.3-3.7 1.3L8 12.5 6.7 8.8 3 7.5l3.7-1.3zM14.5 11l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z\"/></svg>";
 function rcEntry(D){
   var s = rcStops(D.key); if(!s.all.length) return "";
-  var ph = rcPhotos(s.list), stk = ph.slice(0, 3).map(function(x){ return "<img data-ph=\""+x.ph+"\" alt=\"\">"; }).join("");
-  if(!stk) stk = "<span>🗺️</span><span>✨</span>";
+  var ph = rcPhotos(s.list);
   var lbl = s.pre ? "Tagesvorschau" : D.key===todayKey() ? "Dein Tag bisher" : "Tagesrückblick";
-  var sub = s.list.length+(s.list.length===1?" Ort":" Orte")+(ph.length ? " · "+ph.length+(ph.length===1?" Foto":" Fotos") : "")+" · Karte & Route";
-  return "<button type=\"button\" class=\"rc-open\" data-act=\"recap\" data-day=\""+D.key+"\" style=\"--dc:"+rcColor(D)+"\"><span class=\"stk\">"+stk+"</span><span class=\"tx\"><b>"+lbl+"</b><small>"+esc(sub)+"</small></span><span class=\"ar\">›</span></button>";
+  var sub = s.list.length+(s.list.length===1?" Ort":" Orte")+(ph.length ? ", "+ph.length+(ph.length===1?" Foto":" Fotos") : "");
+  return "<button type=\"button\" class=\"dhi rc-open"+(ph.length?" ph":"")+"\" data-act=\"recap\" data-day=\""+D.key+"\" style=\"--dc:"+rcColor(D)+"\" title=\""+lbl+"\" aria-label=\""+lbl+": "+esc(sub)+"\">"+(ph.length ? "<img data-ph=\""+ph[0].ph+"\" alt=\"\">" : "")+RCICO+"</button>";
 }
 function rcHTML(k){
   var D = dayByKey(k), ds = days(), s = rcStops(k), list = s.list, ph = rcPhotos(list), J = (T().journal||{})[k] || {};
