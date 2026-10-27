@@ -449,7 +449,7 @@ body.kb .gate{top:var(--vvt,0px);bottom:auto;height:var(--vvh,100%);place-items:
    nur ihr unteres Ende wird bei Bedarf bis zum sichtbaren Bereich gekürzt. Später geöffnete Pop-ups mitteln sich im sichtbaren Bereich ein. */
 body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0px) !important}
 .pop.kbpin,.acctpop.kbpin,.supop.kbpin{place-items:start center !important;align-items:flex-start !important;padding-top:var(--pint,0px) !important}
-.pop.kbpin > *,.acctpop.kbpin > *,.supop.kbpin > *{max-height:calc(var(--vvt,0px) + var(--vvh,100vh) - var(--pint,0px) - 10px) !important}
+.pop.kbpin > *,.acctpop.kbpin > *,.supop.kbpin > *{max-height:calc(var(--vvh,100vh) - var(--pint,0px) - 10px) !important}
 .wdist{display:inline-block;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;margin-right:2px}
 .wref{margin:4px 2px 2px}
 /* Reise: Übersicht & Bearbeiten */
@@ -6471,7 +6471,10 @@ function ensureVis(el){
     body.classList.toggle("kb", kb); de.style.setProperty("--kbh", (kb ? Math.max(0, kbh - (vv ? vv.offsetTop : 0)) : 0)+"px");
     document.querySelectorAll(".kbpin").forEach(function(ov){
       var card = ov._kbc;
-      if(!(ae && ov.contains(ae) && isTypeField(ae)) || !card || card.parentElement!==ov){ kbMove(ov, card, function(){ ov.classList.remove("kbpin"); }); return; }
+      // Feld verlassen: festhalten, bis die Tastatur wirklich zu ist – dann Lage und Größe in EINER Bewegung zurück (sonst passt sich die Karte zweimal an)
+      var open = kbh > 120, inOv = ae && ov.contains(ae) && isTypeField(ae), other = ae && isTypeField(ae) && !inOv;
+      if(!card || card.parentElement!==ov || other || (!inOv && !open)){ kbMove(ov, card, function(){ ov.classList.remove("kbpin"); }); return; }
+      if(!kb) return;
       // Passt die Karte nicht mehr über die Tastatur, wächst sie nach oben bis unter die Statusleiste (nie nach unten).
       // Gerechnet wird ohne offsetTop: verschiebt iOS die Seite, bleibt die Karte, wo sie ist.
       var top0 = +ov.dataset.pin0 || 0, want = top0;

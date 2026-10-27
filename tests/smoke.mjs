@@ -1656,8 +1656,18 @@ const kbPop = async (open, ovSel, name) => {
   const pan = await page.locator(card).first().boundingBox(), ov2 = await page.locator(ovSel).boundingBox();
   ok(Math.abs(pan.y - after.y) <= 1, name+": Karte springt beim Verschieben der Seite ("+after.y+" → "+pan.y+")");
   ok(ov2.y <= 0.5, name+": Lücke über dem Pop-up-Hintergrund: "+ov2.y);
-  await page.evaluate(() => { document.activeElement.blur(); delete visualViewport.height; delete visualViewport.offsetTop; visualViewport.dispatchEvent(new Event("scroll")); visualViewport.dispatchEvent(new Event("resize")); });
+  // Schließen wie auf iOS: erst verlässt der Fokus das Feld, dann schiebt iOS die Seite zurück, zuletzt ist die Tastatur weg.
+  // Die Karte darf sich dabei nur EINMAL ändern (Lage und Größe zusammen), nicht zweimal.
+  const pre = await page.locator(card).first().boundingBox();
+  await page.evaluate(s => { window.__kbH = []; const c = document.querySelector(s); window.__kbRO = new ResizeObserver(() => window.__kbH.push(Math.round(c.getBoundingClientRect().height))); window.__kbRO.observe(c); }, card);
+  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(200);
+  await page.evaluate(() => { delete visualViewport.offsetTop; visualViewport.dispatchEvent(new Event("scroll")); }); await page.waitForTimeout(200);
+  const mid = await page.locator(card).first().boundingBox();
+  ok(Math.abs(mid.y - pre.y) <= 1 && Math.abs(mid.height - pre.height) <= 1, name+": Karte ändert sich schon, bevor die Tastatur zu ist ("+JSON.stringify([pre.y, pre.height])+" → "+JSON.stringify([mid.y, mid.height])+")");
+  await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
   await page.waitForTimeout(300);
+  const hs = await page.evaluate(() => { window.__kbRO.disconnect(); return window.__kbH.filter((h, i, a) => i===0 || h!==a[i-1]); });
+  ok(hs.length <= 2, name+": Größe ändert sich beim Schließen mehrmals: "+hs.join(" → "));
   ok(!(await rp(`!!document.querySelector(".kbpin") || document.body.classList.contains("kb")`)), name+": Tastatur-Zustand bleibt hängen");
   await page.waitForTimeout(300);
   const back = await page.locator(card).first().boundingBox();
