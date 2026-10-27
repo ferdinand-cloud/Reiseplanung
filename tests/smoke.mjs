@@ -2723,6 +2723,7 @@ await test("Follower-Seite: Follower/Gefolgt, neue Follower mit rotem Zähler, z
   // Gefolgt: entfolgen mit Rückfrage
   await tapS('#acctPop [data-act=frtab][data-v="ing"]'); await page.waitForTimeout(150);
   ok(await page.locator("#acctPop [data-frn]").count()===3 && await page.locator("#acctPop [data-act=folunf]").count()===3, "Gefolgt-Liste falsch");
+  ok(!(await rp(`!!document.querySelector("#acctPop [data-act=fgfor]")`)), "Gruppen-Knopf steht auch bei Gefolgt");
   await tapS('#acctPop [data-act=folunf][data-uid="u_z"]'); await page.waitForTimeout(200);
   ok(await visible("#cfPop .cf-card"), "Entfolgen ohne Rückfrage");
   await tapS("#cfPop .cf-ok"); await page.waitForTimeout(150);
