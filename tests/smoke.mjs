@@ -1644,35 +1644,46 @@ const pfStatsSide = async (n) => {
 await test("Profil: Zähler klein rechts neben dem Profilbild", async () => { await pfStatsSide("hoch"); });
 await test("Profil: Zähler rechts neben dem Profilbild im Querformat", async () => { await pfStatsSide("quer"); }, QUER);
 
-/* Tastatur in Pop-ups: Karte bleibt stehen, unscharfer Hintergrund reicht bis ganz unten (Tastatur wird über visualViewport nachgestellt) */
-const kbPop = async (open, ovSel, name) => {
-  await seed(); await rp(open); await page.waitForTimeout(300);
-  await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect && a.effect.getComputedTiming().endTime !== Infinity).map(a => a.finished.catch(() => 0))));
+/* Tastatur in Pop-ups (Tastatur über visualViewport nachgestellt). Regel: passt die Karte an ihrer Stelle über die Tastatur, bleibt sie;
+   sonst Unterkante knapp über der Tastatur, Oberkante höchstens bis oben, Rest scrollt innen. Hintergrund bleibt über die ganze Seite.
+   pan0: iOS verschiebt die Seite beim Fokus um offsetTop – gerechnet wird in Bildschirm-Koordinaten (Layout-y minus offsetTop).
+   pred: iOS-Vorhersage – Karte steht schon beim Antippen richtig, beim echten Öffnen bewegt sich nichts mehr. */
+const kbSettle = () => page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect && a.effect.getComputedTiming().endTime !== Infinity).map(a => a.finished.catch(() => 0))));
+const kbPop = async (open, ovSel, name, o = {}) => {
+  const pan0 = o.pan0 || 0;
+  await seed(); await rp(open); await page.waitForTimeout(300); await kbSettle();
   const fld = ovSel+" input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden])";
   ok(await page.locator(fld).count() > 0, name+": kein Eingabefeld");
   const card = ovSel+" > *";
   const before = await page.locator(card).first().boundingBox();
+  const H = await page.evaluate(() => innerHeight), kbH = H > 600 ? 380 : 230, VH = H - kbH;
+  if(o.pred) await rp(`KBPRED = true; KBVH = [${VH}, 0]; true`);
   await page.locator(fld).first().focus();
-  const H = await page.evaluate(() => innerHeight), kbH = 380;
-  await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); visualViewport.dispatchEvent(new Event("resize")); }, H - kbH);
-  await page.waitForTimeout(450);
+  let predBox = null;
+  if(o.pred){ await page.waitForTimeout(50); await kbSettle(); predBox = await page.locator(card).first().boundingBox(); }
+  await page.evaluate(([h, t]) => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); if(t) Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => t}); visualViewport.dispatchEvent(new Event("resize")); }, [VH, pan0]);
+  await page.waitForTimeout(450); await kbSettle();
   ok(await rp(`document.body.classList.contains("kb")`), name+": Tastatur nicht erkannt");
-  const ov = await page.locator(ovSel).boundingBox(), f = await page.locator(fld).first().boundingBox();
-  await page.waitForTimeout(300);   // Gleiten nach oben abwarten
-  const after = await page.locator(card).first().boundingBox(), clip = await page.evaluate(s => { const c = document.querySelector(s); return c.scrollHeight > c.clientHeight + 1; }, card);
-  ok(after.y <= before.y + 1, name+": Karte rutscht beim Fokus nach unten ("+before.y+" → "+after.y+")");
-  ok(!clip || after.y <= 9, name+": Karte gekürzt, obwohl oben noch Platz ist (oben "+after.y+") "+await page.evaluate(s => { const c = document.querySelector(s), o = c.parentElement; return [o.dataset.pin0, o.style.getPropertyValue("--pint"), c.scrollHeight, c.clientHeight, getComputedStyle(c).maxHeight, getComputedStyle(o).paddingTop, c.offsetTop].join(","); }, card));
-  ok(clip || after.y + after.height >= H - kbH - 12 || Math.abs(after.y - before.y) <= 1, name+": Karte bewegt sich, obwohl sie passt");
-  ok(after.y >= 7, name+": Karte reicht unter die Statusleiste");
-  ok(ov.y <= 0.5 && ov.y + ov.height >= H - 0.5, name+": Hintergrund reicht nicht bis unten: "+JSON.stringify(ov));
-  ok(after.y + after.height <= H - kbH + 1, name+": Karte reicht unter die Tastatur");
-  ok(f.y >= 0 && f.y + f.height <= H - kbH, name+": Feld verdeckt");
+  const ov = await page.locator(ovSel).boundingBox(), fb = await page.locator(fld).first().boundingBox(), lb = await page.locator(card).first().boundingBox();
+  const after = {y: lb.y - pan0, height: lb.height}, f = {y: fb.y - pan0, height: fb.height};   // Bildschirm-Koordinaten
+  const clip = await page.evaluate(s => { const c = document.querySelector(s); return c.scrollHeight > c.clientHeight + 1; }, card);
+  const fits = before.y + before.height <= VH - 10 + 1, info = JSON.stringify({before:[before.y, before.height], after:[after.y, after.height], clip, VH});
+  if(fits) ok(Math.abs(after.y - before.y) <= 1 && Math.abs(after.height - before.height) <= 1, name+": Karte passt, bewegt sich aber "+info);
+  else {
+    ok(Math.abs(after.y + after.height - (VH - 10)) <= 2, name+": Unterkante nicht knapp über der Tastatur "+info);
+    ok(after.y <= before.y + 1, name+": Karte rutscht nach unten "+info);
+    ok(!clip || after.y <= 9, name+": Karte gekürzt, obwohl oben noch Platz ist "+info);
+  }
+  ok(after.y >= 7, name+": Karte reicht über den oberen Rand "+info);
+  ok(ov.y <= 0.5 && ov.y + ov.height >= H - 0.5, name+": Hintergrund reicht nicht über die ganze Seite: "+JSON.stringify(ov));
+  ok(f.y >= after.y - 1 && f.y + f.height <= VH, name+": Feld verdeckt "+JSON.stringify(f));
+  if(predBox) ok(Math.abs(predBox.y - lb.y) <= 1 && Math.abs(predBox.height - lb.height) <= 1, name+": Vorhersage beim Antippen weicht ab ("+predBox.y+" → "+lb.y+")");
   await shot("tastatur-"+name);
-  // iOS schiebt die Seite beim Fokus/Verlassen ein Stück hoch (offsetTop): das Pop-up darf dem nicht nachspringen (sonst blitzt oben die Leiste auf)
-  await page.evaluate(() => { Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => 90}); visualViewport.dispatchEvent(new Event("scroll")); });
-  await page.waitForTimeout(150);
+  // iOS verschiebt die Seite (offsetTop ändert sich): Karte bleibt auf dem BILDSCHIRM an derselben Stelle, Hintergrund ohne Lücke oben
+  await page.evaluate(t => { Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => t}); visualViewport.dispatchEvent(new Event("scroll")); }, pan0 + 60);
+  await page.waitForTimeout(150); await kbSettle();
   const pan = await page.locator(card).first().boundingBox(), ov2 = await page.locator(ovSel).boundingBox();
-  ok(Math.abs(pan.y - after.y) <= 1, name+": Karte springt beim Verschieben der Seite ("+after.y+" → "+pan.y+")");
+  ok(Math.abs(pan.y - (pan0 + 60) - after.y) <= 1, name+": Karte verrutscht auf dem Bildschirm beim Verschieben der Seite ("+after.y+" → "+(pan.y - pan0 - 60)+")");
   ok(ov2.y <= 0.5, name+": Lücke über dem Pop-up-Hintergrund: "+ov2.y);
   // Schließen wie auf iOS: erst verlässt der Fokus das Feld, dann schiebt iOS die Seite zurück, zuletzt ist die Tastatur weg.
   // Die Karte darf sich dabei nur EINMAL ändern (Lage und Größe zusammen), nicht zweimal.
@@ -1687,20 +1698,42 @@ const kbPop = async (open, ovSel, name) => {
   const hs = await page.evaluate(() => { window.__kbRO.disconnect(); return window.__kbH.filter((h, i, a) => i===0 || h!==a[i-1]); });
   ok(hs.length <= 2, name+": Größe ändert sich beim Schließen mehrmals: "+hs.join(" → "));
   ok(!(await rp(`!!document.querySelector(".kbpin") || document.body.classList.contains("kb")`)), name+": Tastatur-Zustand bleibt hängen");
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(300); await kbSettle();
   const back = await page.locator(card).first().boundingBox();
   ok(Math.abs(back.y - before.y) <= 1, name+": Karte steht nach dem Schließen woanders ("+before.y+" → "+back.y+")");
 };
-await test("Tastatur im Pop-up: Profil bearbeiten springt nicht, Hintergrund bleibt unscharf", async () => {
-  await kbPop(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; PROF = {name:"Ferdinand_V"}; accView = "profile"; openSettings(); true`, "#acctPop", "profil");
-});
-await test("Tastatur im Pop-up: mittige Karte (Neues Ziel) springt nicht", async () => {
-  await kbPop(`openZiele(); zEdit = zEditFrom(""); zRenderEdit(true); true`, "#catPop", "ziel");
-});
-await test("Tastatur im Pop-up: hohe Karte (Ziel mit Freunde-Suche) nutzt den Platz bis oben", async () => {
-  await kbPop(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FR.friends = [{id:"r1", uid:"u1", name:"anna", email:"a@x.de"}];
-    var z = zielNew("Lissabon", {id:"o1", n:"Lissabon", la:38.72, lo:-9.14, r:30000}); META[z] = {owner:"u_me", members:["u_me"], invites:[]}; save(); openZiele(z); true`, "#zPop", "ziel-hoch");
-  const r = await page.locator("#zPop > *").first().boundingBox();
+const KB_PROFIL = `acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; PROF = {name:"Ferdinand_V"}; accView = "profile"; openSettings(); true`;
+const KB_ZIEL = `acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FR.friends = [{id:"r1", uid:"u1", name:"anna", email:"a@x.de"}];
+    var z = zielNew("Lissabon", {id:"o1", n:"Lissabon", la:38.72, lo:-9.14, r:30000}); zielMerk(z, {n:"Belém", c:"sight", la:38.69, lo:-9.21}, false); META[z] = {owner:"u_me", members:["u_me"], invites:[]}; save(); openZiele(z); true`;
+await test("Tastatur im Pop-up: Profil bearbeiten springt nicht, Hintergrund bleibt unscharf", async () => { await kbPop(KB_PROFIL, "#acctPop", "profil"); });
+await test("Tastatur im Pop-up: mittige Karte (Neues Ziel) springt nicht", async () => { await kbPop(`openZiele(); zEdit = zEditFrom(""); zRenderEdit(true); true`, "#catPop", "ziel"); });
+await test("Tastatur im Pop-up: hohe Karte (Ziel) sitzt knapp über der Tastatur und nutzt den Platz bis oben", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-hoch"); });
+await test("Tastatur im Pop-up: iOS verschiebt die Seite beim Fokus – Karte trotzdem knapp über der Tastatur", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-pan", {pan0:120}); });
+await test("Tastatur im Pop-up: Vorhersage beim Antippen (iOS) – beim Öffnen bewegt sich nichts mehr", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-pred", {pred:true}); });
+await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-quer"); }, QUER);
+
+await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {
+  await seed();
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); true`);
+  await page.waitForTimeout(400);
+  ok(await page.locator("#chIn").count()===1, "Chat-Eingabe fehlt");
+  const H = await page.evaluate(() => innerHeight), VH = H - 380;
+  const bar0 = await page.locator(".tabbar").first().boundingBox(), head0 = await page.locator("#chView .ch-head, #chView header, #chView .ls-head").first().boundingBox();
+  await rp(`KBPRED = true; KBVH = [${VH}, 0]; true`);
+  await page.locator("#chIn").focus(); await page.waitForTimeout(100);
+  const inp = await page.locator("#chIn").boundingBox();
+  ok(inp.y + inp.height <= VH, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(inp));
+  await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); visualViewport.dispatchEvent(new Event("resize")); }, VH);
+  await page.waitForTimeout(300);
+  const inp2 = await page.locator("#chIn").boundingBox(), bar1 = await page.locator(".tabbar").first().boundingBox(), head1 = head0 ? await page.locator("#chView .ch-head, #chView header, #chView .ls-head").first().boundingBox() : null;
+  ok(Math.abs(inp2.y - inp.y) <= 1, "Eingabe springt beim Öffnen der Tastatur ("+inp.y+" → "+inp2.y+")");
+  ok(bar1 && Math.abs(bar1.y - bar0.y) <= 1 && await page.locator(".tabbar").first().isVisible(), "Hauptleiste verschwindet oder verrutscht");
+  if(head0) ok(Math.abs(head1.y - head0.y) <= 1, "Chat-Kopf verrutscht");
+  await shot("tastatur-chat");
+  await page.evaluate(() => { document.activeElement.blur(); delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
+  await page.waitForTimeout(300);
+  const inp3 = await page.locator("#chIn").boundingBox();
+  ok(inp3.y + inp3.height > H - 120, "Eingabe nach dem Schließen nicht wieder unten");
 });
 
 await test("Freunde: Suche statt Liste bei 200 Freunden (Ziel teilen)", async () => {

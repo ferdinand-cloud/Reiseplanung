@@ -444,12 +444,11 @@ body.kb-sheet .sheet{top:var(--vvt,0px) !important;bottom:auto !important;height
 body.kb-sheet .sheet{padding-top:env(safe-area-inset-top,0px)}
 body.kb-sheet .top,body.kb-sheet #rail,body.kb-sheet .rail,body.kb-sheet .ctrl,body.kb-sheet .menubtn,body.kb-sheet .tripmenu{visibility:hidden}
 body.kb .gate{top:var(--vvt,0px);bottom:auto;height:var(--vvh,100%);place-items:start center}
-/* Tastatur offen: Pop-up-Hintergrund bleibt über die ganze Seite (auch unter der Tastatur durchgehend unscharf) und folgt NICHT dem
-   sichtbaren Ausschnitt (--vvt): verschiebt iOS die Seite, bewegt sich alles gemeinsam, statt nachzuspringen. Die Karte bleibt, wo sie war (kbpin),
-   nur ihr unteres Ende wird bei Bedarf bis zum sichtbaren Bereich gekürzt. Später geöffnete Pop-ups mitteln sich im sichtbaren Bereich ein. */
+/* Tastatur offen: Pop-up-Hintergrund deckt fest die ganze Seite ab (auch unter der Tastatur durchgehend unscharf). Die Karte wird
+   per JS (kbpin) platziert: --pint = Oberkante, --pmax = Höhe bis knapp über die Tastatur. */
 body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0px) !important}
 .pop.kbpin,.acctpop.kbpin,.supop.kbpin{place-items:start center !important;align-items:flex-start !important;padding-top:var(--pint,0px) !important}
-.pop.kbpin > *,.acctpop.kbpin > *,.supop.kbpin > *{max-height:calc(var(--vvh,100vh) - var(--pint,0px) - 10px) !important}
+.pop.kbpin > *,.acctpop.kbpin > *,.supop.kbpin > *{max-height:var(--pmax,calc(var(--vvh,100vh) - var(--pint,0px) - 10px)) !important}
 .wdist{display:inline-block;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;margin-right:2px}
 .wref{margin:4px 2px 2px}
 /* Reise: Übersicht & Bearbeiten */
@@ -1822,6 +1821,8 @@ form.gnew{position:relative}
 .ch-newlist .ls-row{padding:8px 12px}
 .ch-dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
 .chview.conv{padding:0;overflow:hidden;display:flex;flex-direction:column}
+/* Tastatur offen: Bereich zwischen Eingabezeile und Tastatur (Safari-Leisten) in Chat-Farbe statt der App darunter */
+.chview.conv{box-shadow:0 var(--vvh,100vh) 0 var(--sheet)}
 .ch-conv{display:flex;flex-direction:column;height:100%;max-width:640px;width:100%;margin:0 auto;padding-top:calc(env(safe-area-inset-top,0px) + 72px);box-sizing:border-box}
 .ch-head{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:.5px solid var(--sep,var(--line))}
 .ch-head b{font:700 16px/1.2 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -6467,6 +6468,7 @@ function setAvatar(file){
 document.addEventListener("change", function(e){ if(e.target.id==="avIn" && e.target.files && e.target.files[0]){ setAvatar(e.target.files[0]); e.target.value = ""; } });
 function openSettings(){ var el = $("acctPop"); el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
 /* Tastatur: alles am sichtbaren Bereich ausrichten und das aktive Feld im Blick halten */
+var KBPRED = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints > 1), KBVH = [0, 0];
 function isTypeField(el){ if(!el || !el.tagName) return false; var tg = el.tagName; if(tg==="TEXTAREA" || tg==="SELECT") return true; if(tg!=="INPUT") return false; return !/^(checkbox|radio|button|submit|range|file|color|hidden)$/.test(el.type); }
 function scrollParent(el){ for(var n = el.parentElement; n && n!==document.body; n = n.parentElement){ var oy = getComputedStyle(n).overflowY; if((oy==="auto" || oy==="scroll") && n.scrollHeight > n.clientHeight) return n; } return null; }
 function ensureVis(el){
@@ -6484,18 +6486,17 @@ function ensureVis(el){
     var ae = document.activeElement, kbh = vv ? Math.max(0, window.innerHeight - vv.height) : 0;
     var kb = kbh > 120 && isTypeField(ae);
     body.classList.toggle("kb", kb); de.style.setProperty("--kbh", (kb ? Math.max(0, kbh - (vv ? vv.offsetTop : 0)) : 0)+"px");
+    if(kb && vv) KBVH[innerWidth > innerHeight ? 1 : 0] = vv.height;   // für die Vorhersage beim nächsten Antippen
+    // iOS schiebt die ganze Seite hoch, wenn das Feld sonst unter der Tastatur läge: dann rutschen die Hauptleiste und Köpfe aus dem Bild.
+    // Die App-Seite selbst scrollt nie – also sofort zurück; Pop-ups und Chat sitzen ohnehin über der Tastatur.
+    if(kbh > 120 && (window.scrollY > 0 || window.pageYOffset > 0)) window.scrollTo(0, 0);
+    if(!kb && chPage && chOpen) chVV();   // Vorhersage im Chat zurücknehmen, falls keine Tastatur kam
     document.querySelectorAll(".kbpin").forEach(function(ov){
       var card = ov._kbc;
-      // Feld verlassen: festhalten, bis die Tastatur wirklich zu ist – dann Lage und Größe in EINER Bewegung zurück (sonst passt sich die Karte zweimal an)
+      // Feld verlassen: festhalten, bis die Tastatur wirklich zu ist – dann Lage und Größe in EINER Bewegung zurück
       var open = kbh > 120, inOv = ae && ov.contains(ae) && isTypeField(ae), other = ae && isTypeField(ae) && !inOv;
       if(!card || card.parentElement!==ov || other || (!inOv && !open)){ kbMove(ov, card, function(){ ov.classList.remove("kbpin"); }); return; }
-      if(!kb) return;
-      // Passt die Karte nicht mehr über die Tastatur, wächst sie nach oben bis unter die Statusleiste (nie nach unten).
-      // Gerechnet wird ohne offsetTop: verschiebt iOS die Seite, bleibt die Karte, wo sie ist.
-      var top0 = +ov.dataset.pin0 || 0, want = top0;
-      if(kb){ var bot = (vv ? vv.height : window.innerHeight) - 10, need = card.scrollHeight + card.offsetHeight - card.clientHeight;
-        if(top0 + need > bot) want = Math.min(top0, Math.max(safeTop() + 8, bot - need)); }
-      if(Math.abs(want - (parseFloat(ov.style.getPropertyValue("--pint")) || 0)) > 1) kbMove(ov, card, function(){ ov.style.setProperty("--pint", Math.round(want)+"px"); });
+      if(kb) kbPlace(ov, card, vv ? vv.offsetTop : 0, vv ? vv.height : window.innerHeight);
     });
     body.classList.toggle("kb-sheet", kb && !!(ae && ae.closest && ae.closest(".sheet")));
     if(kb) setTimeout(function(){ ensureVis(document.activeElement); }, 60);
@@ -6507,12 +6508,37 @@ function ensureVis(el){
   function kbMove(ov, card, change){ var a = card && card.parentElement===ov ? card.getBoundingClientRect().top : null; change();
     if(a===null || !card.animate || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
     var d = a - card.getBoundingClientRect().top; if(Math.abs(d) > 1) card.animate([{transform:"translateY("+d+"px)"}, {transform:"none"}], {duration:240, easing:"cubic-bezier(.2,.8,.2,1)"}); }
+  /* Karte bei offener Tastatur platzieren. Alles in BILDSCHIRM-Koordinaten des sichtbaren Bereichs (visualViewport):
+     iOS verschiebt die Seite beim Fokus oft um offsetTop nach oben – die Karte wird um genau diesen Betrag gegengerechnet.
+     Regel: passt die Karte an ihrer bisherigen Stelle über die Tastatur, bleibt sie dort. Sonst sitzt ihre Unterkante knapp über
+     der Tastatur und sie wächst nach oben, höchstens bis unter die Statusleiste; was dann nicht passt, scrollt innen. */
+  function kbPlace(ov, card, vt, vh){
+    var top0 = +ov.dataset.pin0 || 0, bot = vh - 10, need = card.scrollHeight + card.offsetHeight - card.clientHeight, minS = safeTop() + 8;
+    var S = top0 + need <= bot ? top0 : Math.max(minS, Math.min(top0, bot - need));
+    var pint = Math.round(S + vt), pmax = Math.max(80, Math.round(bot - S));
+    if(Math.abs(pint - (parseFloat(ov.style.getPropertyValue("--pint")) || 0)) > 1 || Math.abs(pmax - (parseFloat(ov.style.getPropertyValue("--pmax")) || 0)) > 1)
+      kbMove(ov, card, function(){ ov.style.setProperty("--pint", pint+"px"); ov.style.setProperty("--pmax", pmax+"px"); });
+    return pmax;
+  }
   // Pop-up beim Antippen eines Felds an seiner jetzigen Stelle festhalten, damit es beim Öffnen der Tastatur nicht springt
   function kbPin(el){ var ov = el.closest && el.closest(".pop,.acctpop,.supop"); if(!ov || ov.classList.contains("kbpin")) return;
     var card = el; while(card.parentElement && card.parentElement!==ov) card = card.parentElement; if(card.parentElement!==ov) return;
     var t = card.offsetTop;   // ohne laufende Einblend-Animation (transform)
-    t = Math.max(0, Math.round(t)); ov.dataset.pin0 = t; ov._kbc = card; ov.style.setProperty("--pint", t+"px"); ov.classList.add("kbpin"); }
-  document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; kbPin(el); setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
+    var vt = vv ? vv.offsetTop : 0, vh = vv ? vv.height : window.innerHeight;
+    t = Math.max(0, Math.round(t)); ov.dataset.pin0 = t - vt; ov._kbc = card;
+    ov.style.setProperty("--pint", t+"px"); ov.style.setProperty("--pmax", Math.max(80, Math.round(vh - (t - vt) - 10))+"px"); ov.classList.add("kbpin");
+    // iOS: Tastatur kommt gleich. Karte schon jetzt dorthin, wo sie mit Tastatur hingehört – dann ist das Feld frei und iOS muss
+    // die Seite nicht verschieben (das war der Doppelsprung). Höhe aus dem letzten Öffnen, sonst geschätzt; korrigiert wird beim echten resize.
+    if(KBPRED && !body.classList.contains("kb")){ var q = innerWidth > innerHeight ? 1 : 0;
+      var pmax = kbPlace(ov, card, vt, KBVH[q] || Math.round(innerHeight * (q ? 0.4 : 0.5)));
+      // Feld innerhalb der Karte gleich in den künftig sichtbaren Teil scrollen (Abstände relativ zur Karte, Animation egal)
+      var rel = el.getBoundingClientRect().top - card.getBoundingClientRect().top, fh = Math.min(el.offsetHeight, 140);
+      if(rel + fh > pmax - 16) card.scrollTop += rel + fh - (pmax - 16); else if(rel < 8) card.scrollTop += rel - 8; } }
+  // Chat (keine Pop-up-Seite): Eingabezeile schon beim Antippen über die erwartete Tastatur, damit iOS nichts verschieben muss
+  function kbPredChat(el){ if(!KBPRED || body.classList.contains("kb") || el.id!=="chIn" || !chPage || !chOpen) return; var cv = $("chView"); if(!cv) return;
+    var q = innerWidth > innerHeight ? 1 : 0, box = $("chMsgs"), end = box && box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    cv.style.top = "0px"; cv.style.bottom = "auto"; cv.style.height = (KBVH[q] || Math.round(innerHeight * (q ? 0.4 : 0.5)))+"px"; if(end) box.scrollTop = box.scrollHeight; }
+  document.addEventListener("focusin", function(e){ if(!isTypeField(e.target)) return; var el = e.target; kbPin(el); kbPredChat(el); setTimeout(function(){ upd(); ensureVis(el); }, 320); setTimeout(function(){ ensureVis(el); }, 700); });
   document.addEventListener("focusout", function(){ setTimeout(upd, 80); });
   upd(); })();
 function closeSettings(){ accView = "main"; unameMsg = ""; $("acctPop").hidden = true; if($("tripPop").hidden) document.body.classList.remove("glass"); }
