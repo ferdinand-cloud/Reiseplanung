@@ -2451,6 +2451,32 @@ await test("Lösch-X sitzt im Suchfeld, auch nach Scrollen (Profil → Ziele, Su
   await xIn(sf, "Suche");
 });
 
+await test("Liste: Reise-Auswahl als Dropdown mit Suche statt Chips (30 Reisen)", async () => {
+  await seed();
+  await rp(`(function(){ var N = ["Lissabon","Tokio","New York","Rom","Paris"]; for(var i = 0; i < 30; i++){ var y = 2000 + i, nm = i < 5 ? N[i] : "Reise "+(i+1);
+      var t = newTripObj({id:"t_r"+i, name:nm, start:y+"-05-01", end:y+"-05-08", hotels:[], orte:[]}); S.trips[t.id] = t; } save(); openLsPage(); return true; })()`);
+  await page.waitForTimeout(300);
+  ok(await page.locator("#lsView .ls-trips button").count()===0, "Reisen stehen noch als Chips nebeneinander");
+  ok(await page.locator("#lsView .ls-tripdd").count()===1, "Dropdown für die Reise fehlt");
+  ok((await page.locator("#lsView .ls-tripdd").innerText()).includes("Testreise"), "Dropdown zeigt die aktuelle Reise nicht");
+  const bb = await page.locator("#lsView .ls-tripdd").boundingBox(); ok(bb.height < 50, "Dropdown zu hoch: "+bb.height);
+  await page.tap("#lsView .ls-tripdd"); await page.waitForTimeout(250);
+  ok(await page.locator("#jpMenu .frp-q").count()===1, "Suche im Dropdown fehlt");
+  ok(await page.locator("#jpMenu [data-act=lstrip]").count()===31, "nicht alle Reisen im Dropdown: "+await page.locator("#jpMenu [data-act=lstrip]").count());
+  const mb = await page.locator("#jpMenu").boundingBox(); ok(mb.y + mb.height <= 844 && mb.height <= 480, "Dropdown zu groß: "+JSON.stringify(mb));
+  await page.locator("#jpMenu .frp-q").fill("tok"); await page.waitForTimeout(100);
+  const vis = await page.evaluate(() => [].slice.call(document.querySelectorAll("#jpMenu [data-act=lstrip]")).filter(b => !b.hidden).map(b => b.getAttribute("data-trip")));
+  ok(vis.length===1 && vis[0]==="t_r1", "Suche „tok“ findet nicht nur Tokio: "+vis.join(","));
+  await page.locator("#jpMenu .frp-q").fill("xyz"); await page.waitForTimeout(100);
+  ok((await page.locator("#jpMenu").innerText()).includes("Keine Reise gefunden"), "Hinweis bei leerer Suche fehlt");
+  await page.locator("#jpMenu .frp-q").fill("tok"); await page.waitForTimeout(100);
+  await shot("liste-reise-dropdown");
+  await page.locator("#jpMenu [data-trip=t_r1]").click(); await page.waitForTimeout(300);
+  ok(await rp(`S.cur`)==="t_r1", "Auswahl wechselt die Reise nicht");
+  ok(await page.locator("#jpMenu").count()===0, "Dropdown bleibt nach der Auswahl offen");
+  ok((await page.locator("#lsView .ls-tripdd").innerText()).includes("Tokio"), "Dropdown zeigt die neue Reise nicht");
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }

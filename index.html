@@ -2615,6 +2615,13 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .pt-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vp-note{margin:4px 10px 6px;font-size:12px;color:var(--muted);line-height:1.35}
 .ls-dds{display:flex;gap:8px;margin:10px 0 4px}
+.ls-tripdds{margin:0 0 12px}
+.ls-tripdd{max-width:100%;gap:8px}
+.ls-tripdd .ls-ddn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ls-tripdd small{color:var(--muted);font-weight:500;font-size:12px;white-space:nowrap}
+.ls-tripdd svg{flex:0 0 auto}
+.ls-tsub{display:block;color:var(--muted);font-size:12px;font-weight:500}
+.addmenu.jpmenu[data-kind="lstrip"]{max-height:min(60vh,460px);overflow-y:auto;overscroll-behavior:contain;min-width:250px;max-width:min(340px,calc(100vw - 20px))}
 .ls-dd{display:inline-flex;align-items:center;gap:6px;min-width:0;border:1px solid var(--line);border-radius:999px;padding:7px 10px 7px 13px;background:none;color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
 .ls-dd.on{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
 .ls-dd svg{width:14px;height:14px;flex:0 0 auto}
@@ -6533,11 +6540,11 @@ function frsPopRender(first){
   var r2 = cp.querySelector(".frs-big"); if(r2) r2.scrollTop = st;
   if(kf){ var i = cp.querySelector(".frs-in"); if(i) i.focus(); }
 }
-function frPickHead(title){ return "<div class=\"frp-h\"><div class=\"dc-dh\">"+title+"</div><input type=\"search\" class=\"frp-q\" placeholder=\"Freunde suchen\" aria-label=\"Freunde suchen\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\"></div>"; }
+function frPickHead(title, ph, none){ ph = ph || "Freunde suchen"; return "<div class=\"frp-h\"><div class=\"dc-dh\">"+title+"</div><input type=\"search\" class=\"frp-q\" placeholder=\""+ph+"\" aria-label=\""+ph+"\" data-none=\""+(none || "Keine Freunde gefunden")+"\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\"></div>"; }
 document.addEventListener("input", function(e){ var q = e.target; if(!q.classList || !q.classList.contains("frp-q")) return;
   var m = q.closest(".jpmenu"), v = q.value.trim().replace(/^@/, "").toLowerCase(), n = 0; if(!m) return;
   m.querySelectorAll("[data-frn]").forEach(function(b){ var on = !v || b.getAttribute("data-frn").indexOf(v) > -1; b.hidden = !on; if(on) n++; });
-  var e0 = m.querySelector(".frp-none"); if(!n){ if(!e0){ e0 = document.createElement("p"); e0.className = "frp-none"; e0.textContent = "Keine Freunde gefunden"; m.appendChild(e0); } } else if(e0) e0.remove(); });
+  var e0 = m.querySelector(".frp-none"); if(!n){ if(!e0){ e0 = document.createElement("p"); e0.className = "frp-none"; e0.textContent = q.getAttribute("data-none") || "Keine Freunde gefunden"; m.appendChild(e0); } } else if(e0) e0.remove(); });
 function chPhSendMenu(ph, btn){
   if(!acct.user){ toast("Melde dich an, um Fotos zu schicken", false); return; }
   if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
@@ -6849,17 +6856,26 @@ function lsGoMap(pid){
   // wie im Tagesplan: Planung ganz einklappen, Pop-up offen, Punkt mit Abstand darüber
   if(!desktop.matches && hasLoc(p)){ setSheet("min"); setTimeout(function(){ revealPoint(p, 16, true); }, 60); } else revealPoint(p, 16, true);
 }
+/* Reise-Auswahl der Liste: ein Dropdown statt Chips nebeneinander (bei 30+ Reisen sonst unübersichtlich), ab 6 Reisen mit Suche */
+function lsTripIds(){ return liveIds().filter(function(id){ return !isViewerOf(id); }).sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); }); }
+function lsTripSub(t){ return t.start && t.end ? shortD(t.start)+"–"+shortD(t.end)+(t.end.slice(0, 4) ? " "+t.end.slice(0, 4) : "") : ""; }
+function lsTripDD(cur){ var t = cur && S.trips[cur];
+  return "<div class=\"ls-dds ls-tripdds\"><button type=\"button\" class=\"ls-dd ls-tripdd\" data-act=\"lstrippick\" aria-haspopup=\"menu\" aria-label=\"Reise wählen\">"+
+    (t ? "<i class=\"dc-tdot\" style=\"--cc:"+tripColor(cur)+"\"></i><span class=\"ls-ddn\">"+esc(t.name||"Reise")+"</span>"+(lsTripSub(t) ? "<small>"+esc(lsTripSub(t))+"</small>" : "") : "<span class=\"ls-ddn\">Reise wählen</span>")+CHEV+"</button></div>"; }
+function lsTripMenu(btn){ var ids = lsTripIds();
+  var h = (ids.length > 5 ? frPickHead("Reise", "Reise suchen", "Keine Reise gefunden") : "<div class=\"vp-h\">Reise</div>")+ids.map(function(id){ var t = S.trips[id], on = id===S.cur && !isViewerOf(S.cur);
+    return "<button type=\"button\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" data-frn=\""+esc(((t.name||"")+" "+(t.start||"").slice(0, 4)).toLowerCase())+"\" role=\"menuitemradio\" aria-checked=\""+on+"\"><span class=\"ai\"><i class=\"dc-tdot\" style=\"--cc:"+tripColor(id)+"\"></i></span><span>"+esc(t.name||"Reise")+(lsTripSub(t) ? "<small class=\"ls-tsub\">"+esc(lsTripSub(t))+"</small>" : "")+"</span>"+(on ? "<span class=\"ck\">✓</span>" : "")+"</button>"; }).join("");
+  jpPopover("lst", btn, h, "lstrip"); }
 function renderLs(){
   var el = $("lsView"); if(!el) return;
   var t = T(), ds = days(), ids = liveIds().filter(function(id){ return !isViewerOf(id); }); // nur eigene Reisen, keine beobachteten
   var h = "<div class=\"pf ls-page\"><div class=\"ls-head\">";
   if(!ids.length){ el.innerHTML = h+"</div><p class=\"note nt-empty\">Die Liste gibt es für deine eigenen Reisen. Du hast noch keine.</p></div>"; return; }
   if(isViewerOf(S.cur)){
-    h += "<div class=\"nt-kinds ls-trips\" role=\"tablist\" aria-label=\"Reise\">"+ids.map(function(id){ return "<button type=\"button\" role=\"tab\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" aria-selected=\"false\">"+esc(S.trips[id].name||"Reise")+"</button>"; }).join("")+"</div>";
+    h += lsTripDD(null);
     el.innerHTML = h+"</div><p class=\"note nt-empty\">Die Liste gibt es nur für deine eigenen Reisen. Wähle oben eine aus.</p></div>"; return;
   }
-  if(ids.length > 1) h += "<div class=\"nt-kinds ls-trips\" role=\"tablist\" aria-label=\"Reise\">"+ids.sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); }).map(function(id){
-    return "<button type=\"button\" role=\"tab\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" aria-selected=\""+(id===S.cur)+"\">"+esc(S.trips[id].name||"Reise")+"</button>"; }).join("")+"</div>";
+  if(ids.length > 1) h += lsTripDD(S.cur);
   else h += "<p class=\"ls-trip1\"><b>"+esc(t.name||"Reise")+"</b>"+(t.start && t.end ? " · "+shortD(t.start)+"–"+shortD(t.end) : "")+"</p>";
   // besuchte Orte je Tag
   var visited = [], nPh = 0;
@@ -11524,7 +11540,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h,.fg-keep")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lsvispick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=dcmore],[data-act=dctgt],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend],[data-act=fgfor]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h,.fg-keep")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lstrippick],[data-act=lsvispick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=dcmore],[data-act=dctgt],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend],[data-act=fgfor]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -13278,7 +13294,8 @@ document.addEventListener("click", function(e){
     case "dcreload": DC.at = 0; dcLoad(); if(dcSrc==="all") pubLoad(true); break;
     case "recshare": recShare = !recShare; lsSet("rp-recshare", recShare ? "1" : "0"); if(recShare) recSyncSoon(); else recWipe(); openSettings(); break;
     case "navlist": if(lsPage) closeLsPage(); else openLsPage(); break;
-    case "lstrip": var lst = t.getAttribute("data-trip"); if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
+    case "lstrippick": lsTripMenu(t); break;
+    case "lstrip": closeJpMore(); var lst = t.getAttribute("data-trip"); if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
     case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;
     case "lsvis": closeJpMore(); lsVis = t.getAttribute("data-v"); renderLs(); break;
     case "lsfilt": closeJpMore(); lsFilter = t.getAttribute("data-v"); renderLs(); break;
