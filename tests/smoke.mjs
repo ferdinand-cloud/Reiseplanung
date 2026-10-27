@@ -1236,7 +1236,15 @@ await test("Ziele: neue Reise bietet gemerkte Orte an, Besuch erscheint sofort i
   await rp(`document.getElementById("tForm").requestSubmit()`); await page.waitForTimeout(800);
   ok(await visible("#cfPop"), "Frage zum Übernehmen fehlt");
   ok((await page.locator("#cfPop").innerText()).includes("2 gemerkte Orte"), "Falsche Anzahl im Angebot");
+  ok((await page.locator("#cfPop .cf-no").innerText()).includes("Erstmal nicht") && (await page.locator("#cfPop .cf-no").innerText()).includes("später noch möglich"), "„Erstmal nicht“ mit Hinweis fehlt");
+  ok(await page.locator("#cfPop .cf-ok").evaluate(e => { const m = getComputedStyle(e).backgroundColor.match(/\d+/g).map(Number); return !(m[0] > m[1] + 60 && m[0] > m[2] + 60); }), "„Übernehmen“ ist rot (rot nur für Löschen)");
+  // „Erstmal nicht“: später in der Wunschliste übernehmen
+  await click("#cfPop .cf-no"); await page.waitForTimeout(150);
+  await rp(`tab = "wish"; renderSheet(); true`); await page.waitForTimeout(150);
+  ok((await page.locator("#body [data-act=zoffer]").innerText()).includes("2 gemerkte Orte"), "Später übernehmen in der Wunschliste fehlt");
+  await click("#body [data-act=zoffer]"); await page.waitForTimeout(150);
   await click("#cfPop .cf-ok"); await page.waitForTimeout(200);
+  ok(await page.locator("#body [data-act=zoffer]").count()===0, "Angebot bleibt nach dem Übernehmen stehen");
   ok(await rp(`Object.keys(T().places).filter(function(k){ return T().places[k].zl; }).length`)===2, "Orte nicht übernommen");
   ok(await rp(`!T().ziel && !noTrip()`), "Neue Reise ist nicht aktiv");
   await rp(`var k = Object.keys(T().places).filter(function(k){ return T().places[k].n==="Pantheon"; })[0], d = days()[0].key; T().order[d] = [k]; T().done[k] = true; T().rating = {}; T().rating[k] = 2; save(); openZiele(zielIds()[0]);`);
@@ -1261,12 +1269,44 @@ await test("Neue Reise: Zeitraum kompakt mit Datum/Uhrzeit nebeneinander und Nä
   await click("#zPop [data-act=zplan]"); await page.waitForTimeout(200);
   ok(await page.locator("#tForm .tf-span").count()===2, "Zeitraum nicht in zwei Zeilen");
   ok((await page.locator("#tForm .tf-pill.t").first().innerText()).trim()==="Uhrzeit", "Platzhalter Uhrzeit fehlt");
-  await page.fill("[data-f=start]", "2026-11-02"); await page.fill("[data-f=end]", "2026-11-06"); await page.fill("[data-f=arr]", "14:30");
-  ok((await page.locator("#tForm .tf-pill.d").first().innerText()).includes("2. Nov"), "Datum nicht lesbar angezeigt");
+  // Zeitraum-Kalender: erster Tipp Anreise, zweiter Tipp Abreise
+  const [k1, k2, k0] = await rp(`(function(){ var d = new Date(); function k(n){ return rngKey(new Date(d.getFullYear(), d.getMonth(), n, 12)); } return [k(10), k(14), k(5)]; })()`);
+  await click("#tForm [data-act=rngopen][data-f=start]"); await page.waitForTimeout(150);
+  ok(await visible("#rngPop .rng"), "Kalender öffnet nicht");
+  ok(await rp(`document.activeElement.type!=="date"`), "Natives Datumsfeld statt Kalender");
+  await click(`#rngPop [data-r="${k1}"]`); await page.waitForTimeout(80);
+  ok(await visible("#rngPop .rng"), "Kalender schließt schon nach dem ersten Tipp");
+  await click(`#rngPop [data-r="${k2}"]`); await page.waitForTimeout(500);
+  ok(!(await visible("#rngPop")), "Kalender schließt nach dem zweiten Tipp nicht");
+  ok(await rp(`tdraft.start==="${k1}" && tdraft.end==="${k2}"`), "Zeitraum nicht übernommen");
+  // erneut öffnen: Bereich markiert; früheres Datum als 2. Tipp wird neue Anreise
+  await click("#tForm [data-act=rngopen][data-f=start]"); await page.waitForTimeout(150);
+  ok(await page.locator("#rngPop .rng-d.in").count()===3, "Bereich zwischen An- und Abreise nicht markiert");
+  await shot("zeitraum-kalender");
+  await page.setViewportSize({width:844, height:390}); await page.waitForTimeout(400);
+  ok(await rp(`(function(){ var r = document.querySelector("#rngPop .rng").getBoundingClientRect(), b = document.querySelector("#rngPop .rng-ok").getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && b.bottom <= r.bottom; })()`), "Kalender passt quer nicht ins Bild");
+  await shot("zeitraum-kalender-quer");
+  await page.setViewportSize({width:390, height:844}); await page.waitForTimeout(400);
+  await click(`#rngPop [data-r="${k2}"]`); await click(`#rngPop [data-r="${k0}"]`); await click(`#rngPop [data-r="${k1}"]`); await page.waitForTimeout(500);
+  ok(await rp(`tdraft.start==="${k0}" && tdraft.end==="${k1}"`), "Früheres Datum nicht als neue Anreise genommen");
+  await click("#tForm [data-act=rngopen][data-f=start]"); await click(`#rngPop [data-r="${k1}"]`); await click(`#rngPop [data-r="${k2}"]`); await page.waitForTimeout(500);
+  await page.fill("[data-f=arr]", "14:30");
+  ok((await page.locator("#tForm .tf-pill.d").first().innerText()).includes("10."), "Datum nicht lesbar angezeigt");
   ok((await page.locator("#tForm .tf-pill.t").first().innerText()).trim()==="14:30", "Uhrzeit nicht angezeigt");
   ok((await page.locator("#tfNights").innerText()).includes("4 Nächte"), "Nächte fehlen");
-  ok(await rp(`tdraft.start==="2026-11-02" && tdraft.end==="2026-11-06" && tdraft.arr==="14:30"`), "Werte nicht übernommen");
+  ok(await rp(`tdraft.arr==="14:30"`), "Uhrzeit nicht übernommen");
   await shot("neue-reise-zeitraum");
+});
+
+await test("Neue Reise: Hotel „noch unklar“ ohne Fehler, später nachtragbar", async () => {
+  await noTripUser();
+  await rp(`tdraft = {mode:"new", name:"Lissabon", start:"2026-11-02", end:"2026-11-06", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"Lissabon", loc:"38.7200, -9.1400", from:"", to:""}], err:"", ok:"hotels.0"}; tab = "trip"; renderSheet(); true`); await page.waitForTimeout(150);
+  await click("#tForm [data-act=htbd]"); await page.waitForTimeout(100);
+  const tx = await page.locator("#tForm .tf-item.tbd").innerText();
+  ok(tx.includes("noch unklar") && !(await page.locator("#tForm .tf-item.tbd .miss").count()), "„Noch unklar“ fehlt oder zeigt „Lage fehlt“");
+  await shot("hotel-unklar");
+  await rp(`document.getElementById("tForm").requestSubmit()`); await page.waitForTimeout(600);
+  ok(await rp(`!noTrip() && T().name==="Lissabon" && T().hotels.length===0`), "Reise mit unklarem Hotel nicht angelegt");
 });
 
 await test("Ziele: „Reise planen“ schließen (× oder Abbrechen) führt zurück zum Ziel", async () => {
