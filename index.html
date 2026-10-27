@@ -13178,7 +13178,7 @@ document.addEventListener("click", function(e){
     case "wmfull": wmFull(!WMFULL); break;
     case "pfopen": closeProfile(); var pft = t.getAttribute("data-trip"); if(S.trips[pft]){ closeSettings(); grpSel = ""; S.cur = pft; save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
     case "demo": openDemo(); break;
-    case "pfnew": closeProfile(); var tnb = document.createElement("button"); tnb.setAttribute("data-act", "tripnew"); tnb.hidden = true; document.body.appendChild(tnb); tnb.click(); tnb.remove(); break;
+    case "pfnew": var tnb = document.createElement("button"); tnb.setAttribute("data-act", "tripnew"); tnb.hidden = true; document.body.appendChild(tnb); tnb.click(); tnb.remove(); if(tdraft) tdraft.back = "prof"; break;
     case "avpick": var avi = $("avIn"); if(avi) avi.click(); break;
     case "avdel": if(acct.user && fbDb) fbDb.collection("profiles").doc(acct.user.uid).set({photo:window.firebase.firestore.FieldValue.delete()}, {merge:true}).then(function(){ if(PROF) delete PROF.photo; navAv(); refreshSettings(); if(profOpen) renderProfile(); toast("Profilbild entfernt", false); }, function(e){ toast("Entfernen fehlgeschlagen: "+(e && e.message), false); }); break;
     case "srchclose": closeSearch(); break;
@@ -13648,6 +13648,7 @@ document.addEventListener("submit", function(e){
     var err = saveTrip();
     if(err){ tdraft.err = err; renderSheet(); return; }
     var wasNew = tdraft.mode==="new"; tdraft = null; save(); dirty();
+    if(wasNew) closeProfile(); // angelegt: direkt zur Karte; Bearbeiten bleibt über der Ursprungsansicht
     if(wasNew || !dayByKey(cur)) pickDefaultDay();
     tab = "day"; activeList = "open"; catFilter = {}; sel = null;
     if(!desktop.matches) setSheet("mid");
