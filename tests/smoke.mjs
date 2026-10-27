@@ -1174,13 +1174,26 @@ async function mapCtrlsOk(where){
   });
   ok(!bad.length, where+": "+bad.join(", "));
 }
+// Kopfleiste quer: eine Zeile, Reise links am Rand, Plus rechts am Rand, Knopfspalte darunter
+async function oneRow(where){
+  const r = await page.evaluate(() => { const g = id => document.getElementById(id).getBoundingClientRect(), sh = document.getElementById("sheet").getBoundingClientRect();
+    const side = window.__rp("sideOpen") ? sh.right : 0, d = document.createElement("div"); d.style.cssText = "position:fixed;padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)"; document.body.appendChild(d);
+    const c = getComputedStyle(d), L = parseFloat(c.paddingLeft), R = parseFloat(c.paddingRight); d.remove();
+    return {tb:g("tabbar"), tr:g("tripBtn"), sr:g("srchBtn"), cam:g("camBtn"), ctrl:g("ctrl"), left:Math.max(L, side), right:innerWidth - R}; });
+  const cy = b => b.top + b.height/2;
+  ok([r.tr, r.sr, r.cam].every(b => Math.abs(cy(b) - cy(r.tb)) < 4), where+": Kopfleiste nicht in einer Zeile");
+  ok(r.tr.right <= r.tb.left && r.tb.right <= r.sr.left && r.sr.right <= r.cam.left, where+": Kopfleiste überlappt");
+  ok(r.tr.left - r.left < 20, where+": Reise-Auswahl nicht am linken Rand ("+Math.round(r.tr.left)+" / "+Math.round(r.left)+")");
+  ok(r.right - r.cam.right < 20, where+": Plus nicht am rechten Rand ("+Math.round(r.cam.right)+" / "+Math.round(r.right)+")");
+  ok(r.ctrl.top >= r.tb.bottom, where+": Knopfspalte ragt in die Kopfleiste");
+}
 await test("Querformat: Planung als Seitenleiste, Kartenknöpfe neben der Leiste und außerhalb der Notch", async () => {
   await seed(); await page.waitForTimeout(300);
   ok(await rp(`desktop.matches`), "Querformat nutzt nicht die Seitenleiste");
   const sh = await page.evaluate(() => { const r = document.getElementById("sheet").getBoundingClientRect(); return {l:r.left, r:r.right, t:r.top, b:r.bottom}; });
   ok(sh.l === 0 && sh.t <= 0 && sh.b >= 389 && sh.r > 300 && sh.r < 430, "Planung ist keine schmale Leiste links: "+JSON.stringify(sh));
   ok(await page.evaluate(() => { const b = document.querySelector("#body .dh"); return b && b.getBoundingClientRect().left >= 47; }), "Inhalt der Planung liegt unter der Notch");
-  await mapCtrlsOk("Start");
+  await mapCtrlsOk("Start"); await oneRow("Start");
   await shot("quer-start");
   await rp(`select("p1")`); await page.waitForTimeout(400);
   ok(await visible("#card"), "Orts-Pop-up fehlt"); await mapCtrlsOk("Orts-Pop-up");
@@ -1189,7 +1202,7 @@ await test("Querformat: Planung als Seitenleiste, Kartenknöpfe neben der Leiste
   await click("#layersBtn"); ok(await visible("#layers"), "Kartenebenen öffnen nicht"); ok(await insideViewport("#layers"), "Kartenebenen ragen aus dem Bild");
   await shot("quer-ebenen"); await click("#layersBtn");
   await click("#edgeBtn"); await page.waitForTimeout(400);
-  ok(await rp(`!sideOpen`), "Planung klappt nicht ein"); await mapCtrlsOk("Planung eingeklappt");
+  ok(await rp(`!sideOpen`), "Planung klappt nicht ein"); await mapCtrlsOk("Planung eingeklappt"); await oneRow("Planung eingeklappt");
   await shot("quer-eingeklappt");
   await click("#edgeBtn"); await page.waitForTimeout(400);
   // Drehen: hochkant → Blatt unten, Knöpfe rechts; zurück quer → wieder Seitenleiste
@@ -1199,6 +1212,19 @@ await test("Querformat: Planung als Seitenleiste, Kartenknöpfe neben der Leiste
   await mapCtrlsOk("Hochkant nach Drehen");
   await page.setViewportSize({width:844, height:390}); await page.waitForTimeout(500);
   ok(await rp(`desktop.matches`), "Zurück quer: keine Seitenleiste"); await mapCtrlsOk("Quer nach Drehen");
+  // alle Symbole der Leiste liegen auf ihrem Hintergrund (Safari maß die Leiste zu schmal)
+  const inBar = async () => page.evaluate(() => { const b = document.getElementById("tabbar").getBoundingClientRect(); return [...document.querySelectorAll("#tabbar .tb")].every(e => { const r = e.getBoundingClientRect(); return r.left >= b.left - 1 && r.right <= b.right + 1; }); });
+  ok(await inBar(), "Quer: Symbole ragen aus der Leiste");
+  await click("#edgeBtn"); await page.waitForTimeout(400); ok(await inBar(), "Quer eingeklappt: Symbole ragen aus der Leiste"); await click("#edgeBtn"); await page.waitForTimeout(400);
+  // wie als App vom Home-Bildschirm: iOS meldet die neue Höhe der Kopfleiste teils erst nach resize – Knöpfe und Tagesleiste folgen ihr trotzdem
+  await page.setViewportSize({width:390, height:844}); await page.waitForTimeout(600);
+  const noOv = () => page.evaluate(() => { const tr = document.querySelector(".toprow").getBoundingClientRect(), tb = document.getElementById("tabbar").getBoundingClientRect(), c = document.getElementById("ctrl").getBoundingClientRect(), r = document.getElementById("rail").getBoundingClientRect();
+    return {tb:tr.top >= tb.bottom - 1, ctrl:c.top >= tr.bottom - 1, rail:r.top >= tr.bottom - 1}; });
+  let ov = await noOv(); ok(ov.tb && ov.ctrl && ov.rail, "Hochkant nach Drehen überlappt: "+JSON.stringify(ov));
+  await page.waitForTimeout(800); // Nachzügler vom Drehen abwarten
+  await page.evaluate(() => { document.querySelector(".top").style.paddingTop = "70px"; }); await page.waitForTimeout(300);
+  ov = await noOv(); ok(ov.ctrl && ov.rail, "Knöpfe folgen der Kopfleiste nicht, wenn sie später höher wird: "+JSON.stringify(ov));
+  await page.evaluate(() => { document.querySelector(".top").style.paddingTop = ""; });
 }, QUER);
 
 // prüft: Knöpfe, Eingaben und Überschriften der offenen Ansicht liegen nicht unter Notch/Rand (horizontal ins Bild ragende Elemente in Laufbändern ausgenommen)
