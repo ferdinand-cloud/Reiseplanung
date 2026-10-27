@@ -1310,6 +1310,35 @@ await test("Fußweg mit Wegpunkten: echter Weg auch wenn ein Teilstück fehlt, b
   } finally { globalThis.FOOTMOCK = false; }
 });
 
+await test("Ort-Menü (Mehr): Gruppen Planen/Zuordnen/Infos, einzeilige Zeilen, Löschen unten in voller Breite mit Rückfrage", async () => {
+  await seed();
+  const id = await rp(`Object.keys(T().places).filter(function(k){ return dayOf(k)===cur && P(k).k!=="hotel" && !T().done[k]; })[0]`);
+  ok(!!id, "Kein geplanter Ort am Tag");
+  await rp(`(function(){ setSheet("mid"); select("${id}"); })()`); await page.waitForTimeout(250);
+  await click("#card [data-act=cardmore]");
+  ok(await visible("#jpMenu"), "Menü öffnet nicht");
+  const m = await page.evaluate(() => { const el = document.querySelector("#jpMenu"), r = el.getBoundingClientRect(), kids = [...el.children];
+    const rows = kids.filter(x => x.tagName==="BUTTON" && !x.classList.contains("cm-del")), del = el.querySelector(".cm-del");
+    return { heads: [...el.querySelectorAll(".cm-h")].map(x => x.textContent), last: kids[kids.length-1]===del, delAct: del && del.getAttribute("data-act"),
+      delFull: del ? Math.abs(del.getBoundingClientRect().width - (r.width - 12)) < 3 : false,
+      maxH: Math.max(...rows.map(x => x.getBoundingClientRect().height)), subs: el.querySelectorAll(".cm-t small").length,
+      inView: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth,
+      first: kids[0].classList.contains("cm-h"), order: rows.map(x => x.getAttribute("data-act")) }; });
+  ok(m.heads.join("|")==="Planen|Zuordnen|Infos", "Gruppen-Überschriften falsch: "+m.heads.join("|"));
+  ok(m.first, "Menü beginnt nicht mit einer Überschrift");
+  ok(m.last && m.delAct==="moredel" && m.delFull, "Löschen steht nicht ganz unten in voller Breite");
+  ok(m.subs===0 && m.maxH <= 42, "Zeilen nicht einzeilig (Höhe "+m.maxH+", Untertitel "+m.subs+")");
+  ok(m.inView, "Menü ragt aus dem Bild");
+  ok(m.order.indexOf("unplan") > -1 && m.order.indexOf("unplan") < m.order.indexOf("grppick") && m.order.indexOf("grppick") < m.order.indexOf("gmopen"), "Reihenfolge der Gruppen falsch: "+m.order.join(","));
+  ok(await page.evaluate(() => getComputedStyle(document.querySelector("#jpMenu .cm-del")).color)!==await page.evaluate(() => getComputedStyle(document.querySelector("#jpMenu [data-act=gmopen]")).color), "Löschen nicht rot abgesetzt");
+  await shot("ort-menue");
+  await click("#jpMenu .cm-del");
+  ok(await visible("#cfPop"), "Rückfrage zum Löschen fehlt");
+  await click("#cfPop .cf-no"); await page.waitForTimeout(200);
+  ok(await rp(`!!P("${id}") && sel==="${id}"`), "Abbrechen hat gelöscht oder den Ort abgewählt");
+  ok(await visible("#card"), "Nach Abbrechen ist die Ort-Karte weg");
+});
+
 await test("Unterkunftsliste: Ort als Unterkunft vormerken, eigene Liste, als Hotel übernehmen, Abbrechen führt zurück", async () => {
   await seed();
   await rp(`select("p7")`); await page.waitForTimeout(200);
