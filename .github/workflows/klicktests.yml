@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 concurrency:
   group: klicktests
-  cancel-in-progress: true
+  cancel-in-progress: false   # laufenden Lauf fertig machen; dazwischen gepushte Stände werden zusammengefasst (nur der neueste wartet)
 jobs:
   smoke:
     runs-on: ubuntu-latest
