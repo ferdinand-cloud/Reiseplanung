@@ -5042,7 +5042,7 @@ function tfPillSync(t){
 function zPlanTrip(zid){
   var z = Z(zid); if(!z) return; closeProfile();
   var o = (z.orte||[]).filter(hasLoc).map(function(x){ return {n:x.n || z.name, loc:locStr(x), from:"", to:""}; });
-  tdraft = {mode:"new", name:z.name, start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:o.length ? o : [{n:"", loc:"", from:"", to:""}], err:""};
+  tdraft = {mode:"new", name:z.name, start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:o.length ? o : [{n:"", loc:"", from:"", to:""}], err:"", back:zid};
   closeMenus(); closeSettings(); tab = "trip"; renderSheet(); if(!desktop.matches) setSheet("mid");
   /* kein Fokus aufs Datumsfeld: iOS öffnet sonst sofort den Datumswähler */
 }
@@ -11562,7 +11562,8 @@ function renderWishPop(){
   if(fid && $(fid) && el.contains($(fid))) $(fid).focus();
 }
 var sheetTab = "day";
-function closeTrip(){ if(tab!=="trip") return; tab = sheetTab; tdraft = null; renderSheet(); scheduleOverlay(); }
+/* aus einem Ziel geöffnet („Reise planen“): Schließen führt zurück zum Ziel-Pop-up im Profil */
+function closeTrip(){ if(tab!=="trip") return; var back = tdraft && tdraft.back; tab = sheetTab; tdraft = null; renderSheet(); scheduleOverlay(); if(back && Z(back)) openZiele(back); }
 function wishTab(){
   var wAll = wishes().length, wPool = listPool().filter(function(p){ return !dayOf(p.id) && catOk(p.c) && nbMatch(p) && grpOk(p) && qMatch(p); }).length;
   var wFilt = wPool!==wAll || activeList!=="open";
@@ -12083,7 +12084,7 @@ document.addEventListener("click", function(e){
     case "trip": closeSettings(); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); break;
     case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
-    case "tcancel": if(noTrip()){ tdraft = null; closeTrip(); break; } tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
+    case "tcancel": if(noTrip() || (tdraft && tdraft.mode==="new")){ closeTrip(); break; } tdraft = null; if(!desktop.matches) setSheet("mid"); renderSheet(); break;
     case "tadd": var arr = tdraft[t.getAttribute("data-path")]; arr.push({n:"", loc:"", from:tdraft.start||"", to:tdraft.end||""}); tdraft.ok = t.getAttribute("data-path")+"."+(arr.length-1); renderSheet(); var gi = document.querySelector("#tripPop [data-geo=\""+tdraft.ok+"\"]"); if(gi) gi.focus(); break;
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); tdraft.ok = ""; renderSheet(); break;
     case "tfopen": var tk2 = t.getAttribute("data-k"); tdraft.ok = tdraft.ok===tk2 ? "" : tk2; renderSheet(); break;

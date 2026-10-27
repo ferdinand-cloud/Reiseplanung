@@ -1140,6 +1140,18 @@ await test("Neue Reise: Zeitraum kompakt mit Datum/Uhrzeit nebeneinander und Nä
   await shot("neue-reise-zeitraum");
 });
 
+await test("Ziele: „Reise planen“ schließen (× oder Abbrechen) führt zurück zum Ziel", async () => {
+  await seed(); // mit bestehender Reise: Abbrechen darf nicht deren Bearbeiten zeigen
+  await rp(`var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); save(); openZiele(z); true`); await page.waitForTimeout(200);
+  for(const how of ["#tripPop [data-act=tripclose]", "#tripPop [data-act=tcancel]"]){
+    await click("#zPop [data-act=zplan]"); await page.waitForTimeout(200);
+    ok(await visible("#tripPop #tForm"), "Reiseformular nicht offen");
+    await click(how); await page.waitForTimeout(250);
+    ok(!(await visible("#tripPop")), how+": Reise-Pop-up bleibt offen (z. B. andere Reise)");
+    ok(await visible("#profView") && await visible("#zPop .zdpop"), how+": nicht zurück zum Ziel-Pop-up");
+  }
+});
+
 await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise und Entdecken", async () => {
   await seed();
   await rp(`openZiele()`); await page.waitForTimeout(150);
