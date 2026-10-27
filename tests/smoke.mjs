@@ -1001,6 +1001,60 @@ await test("Routenoptionen je Etappe: Zeit (Abfahrt/Ankunft) und bevorzugte Verk
   ok(await rp(`legGet("legOpt", dayLegs(cur)[${li}][1])===undefined`), "Zurücksetzen löscht die Optionen nicht");
 });
 
+await test("ÖPNV über NYC hinaus (Transitous): Etappe zum Flughafen Newark mit NJ Transit und AirTrain", async () => {
+  await seed();
+  // Polyline (Google-Kodierung, Genauigkeit 6) wie bei MOTIS
+  const enc = (pts) => { let o = "", pla = 0, plo = 0; const e1 = (v) => { v = v < 0 ? ~(v << 1) : v << 1; let s = ""; while(v >= 32){ s += String.fromCharCode((32 | (v & 31)) + 63); v >>= 5; } return s + String.fromCharCode(v + 63); };
+    pts.forEach(([la, lo]) => { const a = Math.round(la*1e6), b = Math.round(lo*1e6); o += e1(a - pla) + e1(b - plo); pla = a; plo = b; }); return o; };
+  const REQ = [];
+  await page.route(/api\.transitous\.org/, rt => { const u = new URL(rt.request().url()); REQ.push(u.toString());
+    const t0 = Date.parse(u.searchParams.get("time")), iso = (m) => new Date(t0 + m*60000).toISOString();
+    const P = (n, la, lo, x) => Object.assign({name:n, lat:la, lon:lo, tz:"America/New_York"}, x||{});
+    const it = {duration:3600, startTime:iso(5), endTime:iso(65), transfers:1, id:"i1", legs:[
+      {mode:"WALK", from:P("Start", 40.7561, -73.9930), to:P("New York Penn Station", 40.7506, -73.9935), startTime:iso(5), endTime:iso(15), duration:600, distance:650, legGeometry:{points:enc([[40.7561,-73.9930],[40.7506,-73.9935]]), precision:6}},
+      {mode:"REGIONAL_RAIL", routeShortName:"NEC", routeLongName:"Northeast Corridor", routeColor:"EF3E42", routeTextColor:"FFFFFF", headsign:"Trenton", agencyName:"NJ Transit",
+       from:P("New York Penn Station", 40.7506, -73.9935), to:P("Newark Airport", 40.7046, -74.1906), startTime:iso(15), endTime:iso(42), duration:1620,
+       intermediateStops:[P("Secaucus Junction", 40.7612, -74.0758), P("Newark Penn Station", 40.7347, -74.1644)],
+       legGeometry:{points:enc([[40.7506,-73.9935],[40.7540,-74.0300],[40.7612,-74.0758],[40.7450,-74.1200],[40.7347,-74.1644],[40.7200,-74.1800],[40.7046,-74.1906]]), precision:6}},
+      {mode:"OTHER", routeShortName:"AirTrain", routeColor:"", headsign:"Terminal C", agencyName:"Port Authority",
+       from:P("Newark Airport", 40.7046, -74.1906), to:P("Terminal C", 40.6950, -74.1770), startTime:iso(50), endTime:iso(60), duration:600, intermediateStops:[P("Terminal A", 40.6890, -74.1820)],
+       legGeometry:{points:enc([[40.7046,-74.1906],[40.6980,-74.1880],[40.6890,-74.1820],[40.6950,-74.1770]]), precision:6}},
+      {mode:"WALK", from:P("Terminal C", 40.6950, -74.1770), to:P("Ziel", 40.6895, -74.1745), startTime:iso(60), endTime:iso(65), duration:300, distance:300}]};
+    return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({itineraries:[it], direct:[]}) }); });
+  await rp(`(function(){ var t = T(); t.places.pe = {id:"pe", n:"Flughafen Newark", c:"sight", la:40.6895, lo:-74.1745, list:"l_main", note:"", addr:"EWR"}; t.order[cur] = ["p1","p2","pe"]; legsList = true; select(null); setSheet("full"); renderSheet(); })()`);
+  const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][1] && L[i][1].id==="pe") return i; } return -1; })()`);
+  ok(li > -1, "Etappe zum Flughafen fehlt");
+  ok(await rp(`extWanted(P("p2"), P("pe")) && !extWanted(P("p1"), P("p2"))`), "Zuständigkeit falsch: Newark muss über Transitous, Manhattan nicht");
+  // Abfahrt 10:00 als Routenoption: Abfrage mit dieser Ortszeit
+  await rp(`legSet("legOpt", P("pe"), {t:"dep", tm:"10:00"}); ALTCACHE = {}; renderSheet();`);
+  await page.waitForFunction(i => window.__rp("(function(){ var L = dayLegs(cur)["+i+"]; return !!legRoute(L[0], L[1], cur).ext; })()"), li, {timeout:6000});
+  const q = REQ.filter(u => u.includes("toPlace=40.689500,-74.174500")).pop() || "";
+  ok(q.includes("/api/v5/plan?fromPlace=40.730800,-73.997300"), "Abfrage falsch: "+REQ.join(" "));
+  ok(await rp(`tzSecs(Date.parse(new URL(${JSON.stringify(q)}).searchParams.get("time")), "America/New_York")`)===36000, "Abfragezeit ist nicht 10:00 Ortszeit");
+  ok(!REQ.some(u => u.includes("toPlace=40.730800,-73.997300")), "Transitous für eine Manhattan-Etappe gefragt");
+  ok(await rp(`legMode(dayLegs(cur)[${li}][0], P("pe"))`)==="oepnv", "Etappe sollte ÖPNV sein");
+  const r = await rp(`(function(){ var L = dayLegs(cur)[${li}], r = legRoute(L[0], L[1], cur), rd = r.legs.filter(function(l){ return l.t==="ride"; });
+    return {n:rd.map(function(l){ return lineName(l.r); }), col:NET.r[rd[0].r][1], from:NET.s[rd[0].from][0], stops:rd[0].stops.length, path:ridePath(rd[0]).length, secs:r.secs, kind:extKind(rd[0].r)}; })()`);
+  ok(r.n.join(">")==="NEC>AirTrain" && r.col==="#EF3E42" && r.from==="New York Penn Station" && r.kind==="Zug", "Verbindung falsch übernommen: "+JSON.stringify(r));
+  ok(r.stops===4 && r.path===7, "Streckenverlauf nicht übernommen (Luftlinie?): "+JSON.stringify(r));
+  ok(r.secs===3600, "Dauer falsch: "+r.secs);
+  // NYC-Etappe bleibt beim eingebauten Netz
+  ok(await rp(`!legRoute(P("p1"), P("p2"), cur).ext`), "Manhattan-Etappe nutzt Transitous");
+  // Tagesplan: Linien, Abfahrt, Wegbeschreibung mit Fahrplanzeiten und Quelle
+  await rp(`legOpen[cur+"|${li}"] = true; renderSheet();`); await page.waitForTimeout(150);
+  const tx = await page.locator("li.tleg.lt").filter({hasText:"NEC"}).first().innerText();
+  ok(tx.includes("AirTrain") && tx.includes("60 Min.") && tx.includes("10:15"), "Etappe zeigt Verbindung/Abfahrt nicht: "+tx.replace(/\n/g, " | "));
+  ok(tx.includes("Newark Airport") && tx.includes("2 Stationen"), "Wegbeschreibung ohne Haltestellen: "+tx.replace(/\n/g, " | "));
+  ok(tx.includes("10:42") && tx.includes("Zug Richtung Trenton"), "Ankunft/Richtung fehlt: "+tx.replace(/\n/g, " | "));
+  ok(await page.locator("li.tleg.lt a[href*='transitous.org']").count()===1, "Quellenangabe Transitous fehlt");
+  await shot("etappe-newark");
+  // Karte: Fahrt mit Liniensymbol, Navigation nutzt die Verbindung
+  await rp(`scheduleOverlay()`); await page.waitForTimeout(300);
+  await rp(`me = {la:40.7308, lo:-73.9973, acc:8}; navStart(P("pe"), "oepnv");`);
+  await page.waitForFunction(() => window.__rp("!!(NAV && NAV.pts && !NAV.busy)"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`!!(NAV && NAV.segs && NAV.segs.some(function(sg){ return sg.kind==="ride" && sg.ride.from==="New York Penn Station"; }))`), "Navigation nutzt die Verbindung nicht");
+});
+
 await test("Tickets: Fahrkarte je Etappe und Event-Ticket je Ort hinterlegen (Buchen noch nicht verfügbar)", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});

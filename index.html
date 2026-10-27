@@ -2286,6 +2286,7 @@ ol.rt li{display:grid;grid-template-columns:44px 18px 1fr;column-gap:8px;align-i
 .rt-ride .rt-x{padding:4px 0 12px;align-items:center}
 .rt-lines{display:inline-flex;gap:3px}
 .rt-lines .bul{width:22px;height:22px;font-size:12.5px;margin:0}
+.bul.ext,.rt-lines .bul.ext,ol.tsteps .ti .bul.ext,.lines .lb button .bul.ext{width:auto;min-width:22px;border-radius:5px;padding:0 5px;font-size:11px;white-space:nowrap}
 .rt-lines .bul.bus{width:auto;height:20px}
 .rt-dir{font-size:13px;color:var(--ink);flex-basis:100%;margin-top:4px}
 .rt-mid{flex-basis:100%;font-size:12.5px;color:var(--muted)}
@@ -9024,11 +9025,11 @@ function lineBadge(m, ri){
   var w = 10 + nm.length*6.6;
   return "<rect x=\""+f1(m[0]-w/2)+"\" y=\""+f1(m[1]-9)+"\" width=\""+f1(w)+"\" height=\"18\" rx=\"5\" fill=\""+rr[1]+"\" stroke=\"var(--land)\" stroke-width=\"2\"/><text x=\""+f1(m[0])+"\" y=\""+f1(m[1]+4)+"\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\""+rr[2]+"\">"+esc(nm)+"</text>";
 }
-function lineName(ri){ var n = NET.r[ri][0]; return ri >= NR0 || n==="SIR" ? n : n.replace(/X$/,""); }
-function lineBul(ri){ var r = NET.r[ri]; return "<span class=\"bul"+(isFerry(ri)?" bus ferry":isBus(ri)?" bus":"")+"\" style=\"background:"+r[1]+";color:"+r[2]+"\">"+esc(lineName(ri))+"</span>"; }
+function lineName(ri){ var n = NET.r[ri][0]; return isExt(ri) || ri >= NR0 || n==="SIR" ? n : n.replace(/X$/,""); }
+function lineBul(ri){ var r = NET.r[ri]; return "<span class=\"bul"+(isFerry(ri)?" bus ferry":isBus(ri)?" bus":isExt(ri)?" bus ext":"")+"\" style=\"background:"+r[1]+";color:"+r[2]+"\">"+esc(lineName(ri))+"</span>"; }
 function dayMask(k){ var d = parseD(k); if(!d) return 1; var w = d.getUTCDay(); return w===0 ? 4 : w===6 ? 2 : 1; }
 var TRCACHE = {};
-function transit(a, b, k){ return transitCore(a, b, k, null); }
+function transit(a, b, k, xq){ var X = extAlts(a, b, k, xq); return X ? X[0] : transitCore(a, b, k, null); }
 function transitCore(a, b, k, opt){
   var ban = opt && opt.ban || {}, xp = opt && opt.xp || 0, pf = opt && opt.pf || 0, pref = opt && opt.pref || "", force = !!(opt && opt.force);
   var mask = dayMask(k), key = [a.la,a.lo,b.la,b.lo,mask, Object.keys(ban).join("."), xp, pf, force?1:0, pref].join(",");
@@ -9090,6 +9091,129 @@ function transitCore(a, b, k, opt){
   if(real > walkT - 120){ if(force) res.walkSecs = walkT; else res = {walk:true, secs:walkT, d:direct, legs:[{t:"walk", secs:walkT, d:direct, to:"Ziel"}]}; }
   TRCACHE[key] = res; return res;
 }
+/* ---------- ÖPNV über New York hinaus (Transitous / MOTIS): Flughafen Newark, NJ Transit, PATH, LIRR, Metro-North, andere Reiseziele ----------
+   Ist Start oder Ziel nicht am eingebauten NYC-Netz (oder liegt das Reiseziel außerhalb New Yorks), kommt die Verbindung von
+   api.transitous.org (offene Fahrplandaten weltweit). Haltestellen und Linien werden unter Schlüsseln "x…" bzw. "y…" in NET.s/NET.r
+   abgelegt – außerhalb der Zahlenindizes, damit das NYC-Routing sie nicht sieht, Anzeige und Karte sie aber wie NYC-Linien nutzen.
+   Fahrten tragen echte Zeiten (l.dep/l.arr, Sekunden ab Mitternacht vor Ort) und echte Streckenverläufe (EXTGEO). */
+var EXTAPI = "https://api.transitous.org/api/v5/plan", EXT = {}, EXTK = {}, EXTN = 0, EXTGEO = {}, EXTNEAR = {};
+var EXTMODE = {RAIL:"Zug", HIGHSPEED_RAIL:"Zug", LONG_DISTANCE:"Zug", NIGHT_RAIL:"Nachtzug", REGIONAL_RAIL:"Zug", REGIONAL_FAST_RAIL:"Zug", SUBURBAN:"S-Bahn", SUBWAY:"U-Bahn", METRO:"U-Bahn", TRAM:"Tram", BUS:"Bus", COACH:"Fernbus", FERRY:"Fähre", FUNICULAR:"Standseilbahn", AERIAL_LIFT:"Seilbahn", CABLE_CAR:"Seilbahn", AIRPLANE:"Flug", ODM:"Rufbus", OTHER:""};
+var EXTCOL = {BUS:"#5E7FA8", COACH:"#5E7FA8", FERRY:"#2E86AB", TRAM:"#B0563A", SUBWAY:"#3D6E9E", METRO:"#3D6E9E", SUBURBAN:"#2F7D5B"};
+function isExt(ri){ return typeof ri==="string"; }
+function extKind(ri){ return isExt(ri) && NET.r[ri] ? EXTMODE[NET.r[ri][4]] || "" : ""; }
+function extStop(n, la, lo){
+  var k = n+"@"+la.toFixed(4)+","+lo.toFixed(4);
+  if(!EXTK[k]){ EXTK[k] = "x"+(EXTN++); NET.s[EXTK[k]] = [n, (lo+74)*COS*KM, (LAT0-la)*KM]; }
+  return EXTK[k];
+}
+function extLine(n, c, tc, m){
+  var k = "r|"+n+"|"+c+"|"+m;
+  if(!EXTK[k]){ EXTK[k] = "y"+(EXTN++); NET.r[EXTK[k]] = [n, c, tc, "ext", m]; }
+  return EXTK[k];
+}
+// liegt ein Punkt am eingebauten NYC-Netz (U-Bahn-Station in Gehweite)?
+function nycNear(p){
+  var k = p.la.toFixed(3)+","+p.lo.toFixed(3); if(k in EXTNEAR) return EXTNEAR[k];
+  var o = false; for(var i = 0; i < NS0 && !o; i++){ if(dist(p, stLL(i)) < 1300) o = true; }
+  return (EXTNEAR[k] = o);
+}
+function extWanted(a, b){ return dist(a, b) >= 1500 && (!!DEST || !nycNear(a) || !nycNear(b)); }
+function polyDec(s, pr){
+  var f = Math.pow(10, pr || 6), i = 0, la = 0, lo = 0, out = [];
+  while(i < s.length){
+    var v = [0, 0];
+    for(var j = 0; j < 2; j++){ var sh = 0, r = 0, b; do { b = s.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while(b >= 32); v[j] = r & 1 ? ~(r >> 1) : r >> 1; }
+    la += v[0]; lo += v[1]; out.push([la/f, lo/f]);
+  }
+  return out;
+}
+// Ortszeit (Sekunden ab Mitternacht) eines Zeitpunkts in einer Zeitzone
+function tzSecs(ms, tz){
+  try { var o = {}; new Intl.DateTimeFormat("en-GB", {timeZone:tz || "America/New_York", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false}).formatToParts(new Date(ms)).forEach(function(x){ o[x.type] = x.value; });
+    return (+o.hour%24)*3600 + (+o.minute)*60 + (+o.second); } catch(e){ var d = new Date(ms); return d.getHours()*3600 + d.getMinutes()*60 + d.getSeconds(); }
+}
+// Abfragezeitpunkt (UTC-ms) für Tag k und Ortszeit tm ("HH:MM"); Zeitzone: New York in der Region, sonst grob nach Längengrad
+function extWhen(k, tm, p){
+  var q = tm.split(":"), base = Date.UTC(+k.slice(0,4), +k.slice(5,7)-1, +k.slice(8,10), +q[0], +q[1]);
+  var nyc = p.lo > -76.5 && p.lo < -71.5 && p.la > 39 && p.la < 42.5;
+  if(!nyc) return base - Math.round(p.lo/15)*3600000;
+  var off = (tzSecs(base, "America/New_York") - (base/1000 % 86400) + 86400*1.5) % 86400 - 43200; // Abstand Ortszeit – UTC
+  return base - off*1000;
+}
+// Fahrplan-Auskunft je Etappe: Ergebnis gemerkt (Speicher + Gerät), solange es lädt: null
+function extFor(a, b, k, xq){
+  var now = k===nyNow().key || k===todayKey(), tm = xq && xq.tm || (now ? "" : "09:00"), arr = !!(xq && xq.arr && xq.tm);
+  var ms = tm ? extWhen(k, tm, a) : Math.floor(Date.now()/600000)*600000;
+  var key = [a.la.toFixed(4), a.lo.toFixed(4), b.la.toFixed(4), b.lo.toFixed(4), tm ? k+" "+tm : "jetzt"+ms, arr?1:0].join(",");
+  var e = EXT[key];
+  if(!e){ var st = extStore()[key]; if(st && Date.now() - st.at < 7*86400000) e = EXT[key] = {st:"ok", raw:st.it}; }
+  if(e){ if(e.st==="ok" && !e.alts) e.alts = extBuild(e.raw, a, b); return e; }
+  e = EXT[key] = {st:"load"};
+  var u = EXTAPI+"?fromPlace="+a.la.toFixed(6)+","+a.lo.toFixed(6)+"&toPlace="+b.la.toFixed(6)+","+b.lo.toFixed(6)+"&time="+new Date(ms).toISOString()+(arr ? "&arriveBy=true" : "")+"&numItineraries=5&language=de";
+  fetch(u).then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(function(j){
+    e.raw = extSlim(j && j.itineraries || []); e.st = "ok"; e.alts = null;
+    var S0 = extStore(); S0[key] = {at:Date.now(), it:e.raw};
+    var ks = Object.keys(S0).sort(function(x, y){ return S0[y].at - S0[x].at; }).slice(0, 25), S1 = {}; ks.forEach(function(x){ S1[x] = S0[x]; });
+    try { lsSet("rp-ext", JSON.stringify(S1)); } catch(er){}
+  }).catch(function(){ e.st = "err"; setTimeout(function(){ if(EXT[key]===e) delete EXT[key]; }, 60000); })
+  .then(function(){ ALTCACHE = {}; TRCACHE = {}; renderSheet(); renderCard(); scheduleOverlay(); });
+  return e;
+}
+var EXTSTORE = null;
+function extStore(){ if(!EXTSTORE){ try { EXTSTORE = JSON.parse(lsGet("rp-ext")||"{}") || {}; } catch(e){ EXTSTORE = {}; } } return EXTSTORE; }
+// Antwort verkleinern (Gerätespeicher): je Abschnitt Verkehrsmittel, Linie, Halte mit Zeiten und ausgedünnter Streckenverlauf
+function extSlim(its){
+  var pl = function(p){ return {n:p.name || "", la:+(+p.lat).toFixed(6), lo:+(+p.lon).toFixed(6), t:Date.parse(p.departure || p.arrival || "") || 0, tz:p.tz || ""}; };
+  return its.slice(0, 6).map(function(it){
+    return {dur:it.duration, s:Date.parse(it.startTime), e:Date.parse(it.endTime), legs:(it.legs||[]).map(function(l){
+      var g = l.legGeometry && l.legGeometry.points ? polyDec(l.legGeometry.points, l.legGeometry.precision || 6) : [], g2 = [];
+      g.forEach(function(q, i){ if(!i || i===g.length-1 || dist({la:q[0], lo:q[1]}, {la:g2[g2.length-1][0], lo:g2[g2.length-1][1]}) > 25) g2.push([+q[0].toFixed(5), +q[1].toFixed(5)]); });
+      var tr = l.mode!=="WALK" && l.mode!=="BIKE" && l.mode!=="CAR" && l.mode!=="RENTAL";
+      return {m:l.mode, secs:l.duration || Math.round((Date.parse(l.endTime) - Date.parse(l.startTime))/1000), d:l.distance || 0,
+        n:tr ? (l.routeShortName || l.displayName || l.routeLongName || l.tripShortName || EXTMODE[l.mode] || "") : "", c:l.routeColor || "", tc:l.routeTextColor || "", hd:l.headsign || "", ag:l.agencyName || "",
+        f:pl(Object.assign({}, l.from, {departure:l.startTime})), to:pl(Object.assign({}, l.to, {arrival:l.endTime})),
+        s:tr ? (l.intermediateStops||[]).map(function(p){ return [p.name || "", +(+p.lat).toFixed(5), +(+p.lon).toFixed(5)]; }) : [], g:g2};
+    })};
+  });
+}
+// in Etappen-Verbindungen der App umwandeln (wie transitCore), bis zu drei verschiedene
+function extBuild(raw, a, b){
+  var direct = dist(a, b), out = [], sig = {};
+  (raw||[]).forEach(function(it){
+    var legs = [], rides = 0, prevSt = null;
+    it.legs.forEach(function(l, i){
+      if(l.m==="WALK" || !l.n && !EXTMODE.hasOwnProperty(l.m)){
+        var last = i===it.legs.length-1, st = last ? null : extStop(l.to.n || "Haltestelle", l.to.la, l.to.lo);
+        if(prevSt && !last && l.d < 400) legs.push({t:"xfer", secs:l.secs, from:prevSt, to:st});
+        else legs.push(last ? {t:"walk", secs:l.secs, d:l.d || dist(l.f, l.to), to:"Ziel"} : {t:"walk", secs:l.secs, d:l.d || dist(l.f, l.to), to:l.to.n, st:st});
+        return;
+      }
+      var name = String(l.n).length > 16 ? String(l.n).slice(0, 15)+"…" : String(l.n);
+      var c = /^[0-9a-f]{6}$/i.test(l.c) ? "#"+l.c : EXTCOL[l.m] || "#6E6E73", tc = /^[0-9a-f]{6}$/i.test(l.tc) ? "#"+l.tc : "#fff";
+      var r = extLine(name, c, tc, l.m), f = extStop(l.f.n || "Halt", l.f.la, l.f.lo), t = extStop(l.to.n || "Halt", l.to.la, l.to.lo);
+      var stops = [f].concat(l.s.map(function(p){ return extStop(p[0] || "Halt", p[1], p[2]); }), [t]);
+      if(l.g.length > 1) EXTGEO[r+":"+stops.join(",")] = l.g.map(function(q){ return {la:q[0], lo:q[1]}; });
+      legs.push({t:"ride", r:r, hd:l.hd || l.to.n, from:f, to:t, stops:stops, secs:l.secs, ext:1, ag:l.ag,
+        dep:l.f.t ? tzSecs(l.f.t, l.f.tz) : null, arr:l.to.t ? tzSecs(l.to.t, l.to.tz || l.f.tz) : null});
+      rides++; prevSt = t;
+    });
+    if(!rides) return;
+    var g = legs.filter(function(l){ return l.t==="ride"; }).map(function(l){ return NET.r[l.r][0]+"@"+NET.s[l.from][0]; }).join("|");
+    if(sig[g]) return; sig[g] = 1;
+    out.push({walk:false, secs:it.dur || Math.round((it.e - it.s)/1000), d:direct, legs:legs, ext:1, arrAt:it.e});
+  });
+  // früheste Ankunft zuerst, dann kürzere Fahrzeit
+  out.sort(function(x, y){ return (x.arrAt - y.arrAt) || (x.secs - y.secs); });
+  return out.slice(0, 3);
+}
+// Platzhalter, solange gesucht wird bzw. wenn nichts gefunden wurde (kein Fußweg über viele Kilometer)
+function extStub(e, a, b){ var d = dist(a, b); return {walk:true, secs:d/WALK, d:d, legs:[], load:e.st==="load", none:e.st==="ok", err:e.st==="err"}; }
+// Verbindungen über Transitous, falls nötig: null = nicht zuständig (NYC-Netz), sonst Liste (ggf. mit Platzhalter)
+function extAlts(a, b, k, xq){
+  if(!extWanted(a, b)) return null;
+  var e = extFor(a, b, k, xq);
+  return e.alts && e.alts.length ? e.alts : [extStub(e, a, b)];
+}
 /* Linien, die dieselbe Ein- und Ausstiegsstation in gleicher Richtung bedienen (z. B. A und C) */
 function parallelLines(l, mask){
   var S2 = schInit(), cnt = {}, dt = mask===4 ? 2 : mask===2 ? 1 : 0;
@@ -9125,7 +9249,8 @@ function ferryAlts(a, b, k){
 }
 /* bis zu drei sinnvolle Verbindungen: schnellste, andere Linien, weniger Umstiege */
 var ALTCACHE = {};
-function transitAlts(a, b, k, force, pref){
+function transitAlts(a, b, k, force, pref, xq){
+  var X = extAlts(a, b, k, xq); if(X) return X;
   pref = pref || "";
   var key = [a.la,a.lo,b.la,b.lo,dayMask(k),force?1:0,pref].join(",");
   if(ALTCACHE[key]) return ALTCACHE[key];
@@ -9153,11 +9278,11 @@ function transitAlts(a, b, k, force, pref){
 }
 /* Verbindungen einer Etappe. Mit Wegpunkten: die Route führt durch alle Wegpunkte (je Abschnitt eigene Verbindung) */
 function legAlts(a, b, k){
-  var lm = legGet("legMode", b), force = lm==="oepnv" || lm==="ferry", v = viaAhead(a, b, legVia(a, b)), pref = legPref(b);
+  var lm = legGet("legMode", b), force = lm==="oepnv" || lm==="ferry", v = viaAhead(a, b, legVia(a, b)), pref = legPref(b), xq = legXq(a, b);
   // Fähre: Verbindungen mit Fähre, sonst (noch nicht geladen / keine sinnvoll) die üblichen Verbindungen
-  var alts = function(S, E){ if(lm==="ferry"){ var f = ferryAlts(S, E, k); if(f && f.length) return f; } return transitAlts(S, E, k, force, pref); };
+  var alts = function(S, E){ if(lm==="ferry"){ var f = ferryAlts(S, E, k); if(f && f.length) return f; } return transitAlts(S, E, k, force, pref, xq); };
   if(!v.length) return alts(a, b);
-  var key = "via|"+[a.la,a.lo,b.la,b.lo,dayMask(k),lm==="ferry"?2:force?1:0,busReady?1:0,pref].join(",")+"|"+v.map(function(q){ return q[0]+","+q[1]; }).join(";");
+  var key = "via|"+[a.la,a.lo,b.la,b.lo,dayMask(k),lm==="ferry"?2:force?1:0,busReady?1:0,pref,xq?xq.tm+(xq.arr?"a":""):""].join(",")+"|"+v.map(function(q){ return q[0]+","+q[1]; }).join(";");
   if(ALTCACHE[key]) return ALTCACHE[key];
   // Die Route führt durch jeden Wegpunkt: je Abschnitt (Start → Wegpunkt 1 → … → Ziel) die passende Verbindung
   // mit dem gewählten Verkehrsmittel; so lassen sich auch U-Bahn, Bus und Fähre über Wegpunkte steuern.
@@ -9181,6 +9306,11 @@ function legAlts(a, b, k){
   cands.forEach(function(r){ var g = r.walk ? "walk" : r.legs.filter(function(l){ return l.t==="ride"; }).map(function(l){ return (l.alt||[l.r]).slice().sort().join("/")+"@"+l.from+">"+l.to; }).join("|"); if(sig[g]) return; sig[g] = 1; out.push(r); });
   out.sort(function(x, y){ return x.secs - y.secs; });
   return (ALTCACHE[key] = out.slice(0, 3));
+}
+// Zeitpunkt für die Fahrplan-Auskunft außerhalb NYC: Routenoption (Abfahrt/Ankunft) oder geplante Uhrzeit am Start
+function legXq(a, b){
+  var o = b && legOptOf(b); if(o && o.tm && (o.t==="dep" || o.t==="arr")) return {tm:o.tm, arr:o.t==="arr"};
+  var tm = a && a.id && timeOf(a.id); return tm ? {tm:tm} : null;
 }
 function legRoute(a, b, k){
   var alts = legAlts(a, b, k), i = legGet("legAlt", b) || 0;
@@ -9222,7 +9352,7 @@ function renderLineBanner(){
   var b = $("lineV"); if(!LINEV){ if(b) b.remove(); return; }
   if(!b){ b = document.createElement("div"); b.id = "lineV"; b.className = "banner"; b.setAttribute("role", "status"); document.body.appendChild(b); }
   var st = LINEV.st, n = st.length, fe = isFerry(LINEV.r), nm = function(si){ return NET.s[si][0].replace(/\s*\(Fähre\)$/, ""); };
-  b.innerHTML = lineBul(LINEV.r)+"<span class=\"lv-t\"><b>"+esc(nm(st[0]))+" → "+esc(nm(st[n-1]))+"</b><small>Ganze Linie · "+n+(fe ? " Anleger" : isBus(LINEV.r) ? " Haltestellen" : " Stationen")+"</small></span><button type=\"button\" data-act=\"lineVclose\" aria-label=\"Ganze Linie ausblenden\">×</button>";
+  b.innerHTML = lineBul(LINEV.r)+"<span class=\"lv-t\"><b>"+esc(nm(st[0]))+" → "+esc(nm(st[n-1]))+"</b><small>"+(isExt(LINEV.r) ? "Fahrt" : "Ganze Linie")+" · "+n+(fe ? " Anleger" : isBus(LINEV.r) ? " Haltestellen" : " Stationen")+"</small></span><button type=\"button\" data-act=\"lineVclose\" aria-label=\"Ganze Linie ausblenden\">×</button>";
 }
 function lineVSvg(){
   if(!LINEV) return "";
@@ -9244,7 +9374,7 @@ function lineVSvg(){
 function openLineMenu(li, rix, btn){
   var lp = dayLegs(cur)[li]; if(!lp) return; var r = legRoute(lp[0], lp[1], cur), l = r && r.legs[rix]; if(!l || l.t!=="ride") return;
   var rs = l.alt || [l.r], h = "<div class=\"vp-h\">"+esc(NET.s[l.from][0])+" → "+esc(NET.s[l.to][0])+"</div>";
-  rs.forEach(function(x){ h += "<button type=\"button\" role=\"menuitem\" data-act=\"lineVshow\" data-leg=\""+li+"\" data-ri=\""+rix+"\" data-r=\""+x+"\"><span class=\"ln-buls\">"+lineBul(x)+"</span><span class=\"cm-t\"><b>Ganze Linie "+esc(isFerry(x) ? (FERRYNAME[lineName(x)] || lineName(x)) : lineName(x))+" zeigen</b><small>von Endstation zu Endstation auf der Karte</small></span></button>"; });
+  rs.forEach(function(x){ h += "<button type=\"button\" role=\"menuitem\" data-act=\"lineVshow\" data-leg=\""+li+"\" data-ri=\""+rix+"\" data-r=\""+x+"\"><span class=\"ln-buls\">"+lineBul(x)+"</span><span class=\"cm-t\">"+(isExt(x) ? "<b>Fahrt "+esc(lineName(x))+" zeigen</b><small>vom Einstieg bis zum Ausstieg auf der Karte</small>" : "<b>Ganze Linie "+esc(isFerry(x) ? (FERRYNAME[lineName(x)] || lineName(x)) : lineName(x))+" zeigen</b><small>von Endstation zu Endstation auf der Karte</small>")+"</span></button>"; });
   if((l.lines0 || rs).length > 1) h += "<button type=\"button\" role=\"menuitem\" data-act=\"lnpick\" data-leg=\""+li+"\"><span class=\"ln-buls\">"+(l.lines0 || rs).map(lineBul).join("")+"</span><span class=\"cm-t\"><b>"+(l.lines0 ? "Linie ändern" : "Linie wählen")+"</b><small>bestimmte Linie für diese Fahrt festlegen</small></span></button>";
   jpPopover("lm"+li+"_"+rix, btn, h, "linemenu");
 }
@@ -9270,6 +9400,8 @@ function openLinePick(li, btn){
 function mins(s){ return Math.max(1, Math.round(s/60)); }
 function gmapsTransit(a, b){ return "https://www.google.com/maps/dir/?api=1&origin="+a.la+","+a.lo+"&destination="+b.la+","+b.lo+"&travelmode=transit"; }
 function transitSummary(r, short){
+  if(r.load) return "<span class=\"tw\">ÖPNV-Verbindung wird gesucht …</span>";
+  if(r.none || r.err) return "<span class=\"tw\">"+(r.err ? "Fahrplan-Auskunft nicht erreichbar" : "Keine ÖPNV-Verbindung gefunden")+"</span> · "+fmtDist(r.d);
   if(r.walk) return "<span class=\"tw\">Zu Fuß</span> "+mins(r.secs)+" Min. · "+fmtDist(r.d);
   var rides = r.legs.filter(function(l){ return l.t==="ride"; });
   return rides.map(function(l){ return (l.alt||[l.r]).map(lineBul).join("<span class=\"or\">/</span>"); }).join("<span class=\"arr\">›</span>")+" <b>"+mins(r.secs)+" Min.</b>"+(rides.length>1 && !short?" · "+(rides.length-1)+"× umsteigen":"")+(r.walkSecs && !short ? " · zu Fuß "+mins(r.walkSecs)+" Min." : "");
@@ -9330,6 +9462,7 @@ function headway(si, key, r, nx){
 }
 /* Text für eine Fahrt im Plan: nächste Abfahrten (heute) oder Takt */
 function rideTimes(l, ctx){
+  if(l.ext) return l.dep!=null ? "<div class=\"deps\"><span class=\"dl\">Abfahrt:</span> <b>"+hhmm(l.dep)+"</b></div>" : "";
   var nx = l.to!=null ? l.to : l.stops[l.stops.length-1], key = ctx && ctx.day || nyNow().key, now = nyNow(), rs = l.alt || [l.r], multi = rs.length > 1;
   var base = ctx && ctx.base!=null ? ctx.base : (key===now.key ? now.secs + (ctx && ctx.walk || 0) : null);
   if(base!=null){
@@ -9373,12 +9506,12 @@ function transitSteps(r, a, b, ctx){
       if(l.wp) h += "<li class=\"rt-pt rt-wp\"><span class=\"rt-t\">"+T0(t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>Wegpunkt "+l.wp+"</b></span></li>";
     } else if(l.t==="ride"){
       var rs = l.alt||[l.r], n = l.stops.length-1, mid = l.stops.slice(1,-1).map(function(s2){ return NET.s[s2][0]; });
-      var dep = null; if(t!=null){ var dd = departures(l.from, day, t, 1, rs, l.to); if(dd.length) dep = dd[0].t; }
-      var arr = dep!=null ? dep + l.secs : (t!=null ? t + l.secs : null);
-      var kind = isFerry(l.r) ? "Fähre" : isBus(l.r) ? "Bus" : "";
+      var dep = null; if(l.ext) dep = l.dep; else if(t!=null){ var dd = departures(l.from, day, t, 1, rs, l.to); if(dd.length) dep = dd[0].t; }
+      var arr = l.ext && l.arr!=null ? l.arr : dep!=null ? dep + l.secs : (t!=null ? t + l.secs : null);
+      var kind = l.ext ? extKind(l.r) : isFerry(l.r) ? "Fähre" : isBus(l.r) ? "Bus" : "";
       var nLbl = n+(isFerry(l.r) ? " Anleger" : isBus(l.r) ? (n===1?" Haltestelle":" Haltestellen") : (n===1?" Station":" Stationen"));
       h += "<li class=\"rt-pt\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\">"+T0(dep!=null ? dep : t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(NET.s[l.from][0])+"</b><small>einsteigen</small></span></li>";
-      h += "<li class=\"rt-ride\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\">"+(ctx && ctx.li!=null ? "<button type=\"button\" class=\"rt-lines rt-lpick\" data-act=\"lnmenu\" data-leg=\""+ctx.li+"\" data-ri=\""+lix+"\" aria-haspopup=\"menu\" aria-label=\"Linie: ganze Strecke zeigen"+((l.lines0 || rs).length > 1 ? " oder Linie wählen" : "")+"\">"+rs.map(lineBul).join("")+"<span class=\"rt-lw\">"+((l.lines0 || rs).length > 1 ? (l.lines0 ? "Linie ändern" : "Linie wählen") : "Ganze Linie")+"</span></button>" : "<span class=\"rt-lines\">"+rs.map(lineBul).join("")+"</span>")+
+      h += "<li class=\"rt-ride\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\"></span><span class=\"rt-d\"></span><span class=\"rt-x\">"+(ctx && ctx.li!=null ? "<button type=\"button\" class=\"rt-lines rt-lpick\" data-act=\"lnmenu\" data-leg=\""+ctx.li+"\" data-ri=\""+lix+"\" aria-haspopup=\"menu\" aria-label=\"Linie: ganze Strecke zeigen"+((l.lines0 || rs).length > 1 ? " oder Linie wählen" : "")+"\">"+rs.map(lineBul).join("")+"<span class=\"rt-lw\">"+((l.lines0 || rs).length > 1 ? (l.lines0 ? "Linie ändern" : "Linie wählen") : l.ext ? "Strecke" : "Ganze Linie")+"</span></button>" : "<span class=\"rt-lines\">"+rs.map(lineBul).join("")+"</span>")+
            "<span class=\"rt-dir\">"+(kind ? kind+" " : "")+"Richtung "+esc(l.hd)+"</span>"+
            (mid.length ? "<details class=\"rt-mid\"><summary>"+nLbl+" · "+mins(l.secs)+" Min.</summary><span>"+mid.map(esc).join("<br>")+"</span></details>" : "<small>"+nLbl+" · "+mins(l.secs)+" Min.</small>")+"</span></li>";
       h += "<li class=\"rt-pt\" style=\"--lc:"+NET.r[l.r][1]+"\"><span class=\"rt-t\">"+T0(arr)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(NET.s[l.to][0])+"</b><small>aussteigen</small></span></li>";
@@ -9386,7 +9519,7 @@ function transitSteps(r, a, b, ctx){
     }
   });
   h += "<li class=\"rt-pt end\"><span class=\"rt-t\">"+T0(t)+"</span><span class=\"rt-d\"></span><span class=\"rt-x\"><b>"+esc(nm(b))+"</b></span></li>";
-  h += "</ol><p class=\"rt-note\">Planmäßige MTA-Zeiten · <a href=\""+gmapsTransit(a,b)+"\" target=\"_blank\" rel=\"noopener\">Live in Google Maps</a></p>";
+  h += "</ol><p class=\"rt-note\">"+(r.ext ? "Fahrplan: <a href=\"https://transitous.org/sources/\" target=\"_blank\" rel=\"noopener\">Transitous</a>" : "Planmäßige MTA-Zeiten")+" · <a href=\""+gmapsTransit(a,b)+"\" target=\"_blank\" rel=\"noopener\">Live in Google Maps</a></p>";
   return h;
 }
 // Nächste und übernächste Abfahrt der ersten Fahrt einer Etappe (heute ab jetzt, sonst ab eingetragener Uhrzeit)
@@ -9396,6 +9529,8 @@ function legDeps(r, a, b){
   r.legs.forEach(function(l){ if(first) return; if(l.t==="ride") first = l; else w += l.secs||0; });
   if(!first) return "";
   var base = ctx.base!=null ? ctx.base + w : (cur===now.key ? now.secs + w : null);
+  if(first.ext){ if(first.dep==null) return ""; var me2 = cur===now.key && ctx.base==null ? Math.round((first.dep - now.secs)/60) : null;
+    return "<span class=\"ndep\" title=\"Abfahrt an "+esc(NET.s[first.from][0])+" (Fahrplan)\"><b>"+hhmm(first.dep)+"</b>"+(me2!=null && me2 >= 0 ? "<small>in "+me2+" Min.</small>" : "")+"</span>"; }
   if(base==null) return "";
   var d = departures(first.from, cur, base, 2, first.alt || [first.r], first.to);
   if(!d.length) return "<span class=\"ndep\">keine Abfahrt mehr</span>";
@@ -9547,7 +9682,7 @@ function tkDel(){
 }
 var routeMode = "walk"; // nicht mehr global; jede Etappe hat ihre eigene Wahl
 function legKey(a, b){ return (a.id||((+a.la).toFixed(4)+","+(+a.lo).toFixed(4)))+">"+(b.id||((+b.la).toFixed(4)+","+(+b.lo).toFixed(4))); }
-function legMode(a, b){ var m = legGet("legMode", b); if(m) return m; if(dist(a, b) < 1100) return "walk"; return transit(a, b, cur).walk ? "walk" : "oepnv"; }
+function legMode(a, b){ var m = legGet("legMode", b); if(m) return m; if(dist(a, b) < 1100) return "walk"; var tr = transit(a, b, cur, legXq(a, b)); return tr.walk && !((tr.load || tr.none || tr.err) && dist(a, b) > 3000) ? "walk" : "oepnv"; }
 function setLegMode(a, b, m){ legSet("legMode", b, m); }
 var legOpen = {}, legSel = -1;
 /* Einzelne Etappen auf der Karte ein-/ausblenden (pro Tag, gemerkt auf diesem Gerät) */
@@ -11177,6 +11312,7 @@ function shapesFor(name){
   return SHAPES[name] || SHAPES[name.replace(/X$/,"")] || [];
 }
 function ridePath(l){
+  if(isExt(l.r)) return EXTGEO[l.r+":"+l.stops.join(",")] || l.stops.map(stLL);
   if(isFerry(l.r)) return ferryRidePath(l);
   var k = l.r+":"+l.stops.join(","); if(RIDEC[k]) return RIDEC[k];
   var straight = l.stops.map(stLL), A = NET.s[l.stops[0]], B = NET.s[l.stops[l.stops.length-1]], best = null;
@@ -11590,7 +11726,8 @@ function goEst(mode, a, b){
   if(mode==="driving") return "ca. "+Math.max(2, Math.round(d/4.5/60)+3)+" Min. (Stadtverkehr)";
   if(dist(a, b) > 40000) return "";
   var r = transit(a, b, dayOf(goSt.id) || todayKey());
-  var rl = r.legs.filter(function(l){ return l.t==="ride"; }).map(function(l){ return l.r; });
+  var rl = r.legs.filter(function(l){ return l.t==="ride"; }).map(function(l){ return lineName(l.r); });
+  if(r.load) return "ÖPNV-Verbindung wird gesucht …"; if(r.none || r.err) return "";
   return r.walk ? "Zu Fuß schneller" : "ca. "+mins(r.secs)+" Min. · "+(rl.length>1?"Linien ":"Linie ")+rl.join(" › ");
 }
 function openGo(id){
@@ -11926,10 +12063,10 @@ function ferryLabel(r){ var l = r.legs.filter(function(x){ return x.t==="ride" &
 /* Wahl des Verkehrsmittels je Etappe: ein Knopf mit dem aktuellen Symbol, darunter ein Menü mit Zeiten */
 function openLegModes(li, btn){
   var lp = dayLegs(cur)[li]; if(!lp) return; var a = lp[0], b = lp[1], m = legMode(a, b);
-  var wd = walkDist(a, b, legVia(a, b)) || dist(a, b)*1.25, tr = transit(a, b, cur), br = bikeRoute(a, b);
+  var wd = walkDist(a, b, legVia(a, b)) || dist(a, b)*1.25, tr = transit(a, b, cur, legXq(a, b)), br = bikeRoute(a, b);
   var mins = function(x){ return Math.max(1, Math.round(x/60))+" Min."; };
   var fa = ferryAlts(a, b, cur), fsub = fa===null ? "Fahrpläne werden geladen …" : !fa.length ? "Keine sinnvolle Fährverbindung" : mins(fa[0].secs)+" · "+esc(ferryLabel(fa[0]));
-  var rows = [["walk", LMWALK, mins(wd/1.33)+" · "+fmtDist(wd)], ["oepnv", LMSUB, tr.walk ? "Kein Umstieg sinnvoll – zu Fuß schneller" : mins(tr.secs)], ["ferry", LMFERRY, fsub], ["car", LMCAR, (function(){ var cp = carPath(a, b, legVia(a, b)), ce = cp || carEst(a, b, legVia(a, b)); return (cp ? "" : "ca. ")+mins(ce.secs)+" · "+fmtDist(ce.d)+" · ohne Verkehr"; })()], ["bike", LMBIKE, br.wait ? (CB.err ? "Daten nicht erreichbar" : "Stationen werden geladen …") : br.nosys ? "Hier kein Leihrad-System mit Live-Daten" : br.none ? "Keine passende Station in der Nähe" : mins(br.secs)+" · inkl. Wege zur Station"]];
+  var rows = [["walk", LMWALK, mins(wd/1.33)+" · "+fmtDist(wd)], ["oepnv", LMSUB, tr.load ? "Verbindung wird gesucht …" : tr.none ? "Keine Verbindung gefunden" : tr.err ? "Fahrplan-Auskunft nicht erreichbar" : tr.walk ? "Kein Umstieg sinnvoll – zu Fuß schneller" : mins(tr.secs)+(tr.ext ? " · "+tr.legs.filter(function(l){ return l.t==="ride"; }).map(function(l){ return lineName(l.r); }).join(" › ") : "")], ["ferry", LMFERRY, fsub], ["car", LMCAR, (function(){ var cp = carPath(a, b, legVia(a, b)), ce = cp || carEst(a, b, legVia(a, b)); return (cp ? "" : "ca. ")+mins(ce.secs)+" · "+fmtDist(ce.d)+" · ohne Verkehr"; })()], ["bike", LMBIKE, br.wait ? (CB.err ? "Daten nicht erreichbar" : "Stationen werden geladen …") : br.nosys ? "Hier kein Leihrad-System mit Live-Daten" : br.none ? "Keine passende Station in der Nähe" : mins(br.secs)+" · inkl. Wege zur Station"]];
   jpPopover("lm"+li, btn, "<div class=\"vp-h\">Unterwegs auf dieser Etappe</div>"+rows.map(function(r){ return "<button type=\"button\" role=\"menuitemradio\" data-act=\"lmode\" data-leg=\""+li+"\" data-mode=\""+r[0]+"\" aria-checked=\""+(m===r[0])+"\"><span class=\"ai lmi\">"+r[1]+"</span><span class=\"cm-t\"><b>"+LMNAME[r[0]]+"</b><small>"+r[2]+"</small></span>"+(m===r[0] ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("")+
     "<button type=\"button\" role=\"menuitem\" class=\"lm-opt\" data-act=\"loptopen\" data-leg=\""+li+"\"><span class=\"ai lmi\">"+LOICO+"</span><span class=\"cm-t\"><b>Routenoptionen</b><small>"+esc(loptSum(legOptOf(b)).replace(/^Optionen: /, ""))+"</small></span></button>"+
     (m!=="walk" && m!=="car" ? (function(){ var nt = tkOn(tkLegOn(b)).length; return "<button type=\"button\" role=\"menuitem\" class=\"lm-opt\" data-act=\"tkleg\" data-leg=\""+li+"\"><span class=\"ai lmi\">"+ic("ticket")+"</span><span class=\"cm-t\"><b>Tickets</b><small>"+(nt ? nt+" hinterlegt" : "Fahrkarte hinterlegen oder buchen")+"</small></span></button>"; })() : ""), "lmodes");
