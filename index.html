@@ -3559,6 +3559,7 @@ button.tf-pill{border:0;font:inherit;color:inherit}
   <label><input type="checkbox" id="lNb"><span class="sw" style="background:repeating-linear-gradient(90deg,var(--hi) 0 4px,transparent 4px 7px)"></span>Bezirke</label>
   <h4 style="margin-top:4px">Bezirk hervorheben</h4>
   <select id="nbAdd" aria-label="Bezirk hervorheben"></select>
+  <p class="note dnote" id="nbErr" hidden></p>
   <div class="hl-list" id="nbList"></div>
 </div>
 <input type="file" id="cphIn" accept="image/*,image/heic,image/heif" multiple hidden>
@@ -4781,28 +4782,57 @@ function offExtras(){
   } catch(e){}
   return out;
 }
+/* ÖPNV fürs Offline-Paket: New York ist eingebaut (Fahrpläne, Busse, Fähren), dazu Citi-Bike-Stationen;
+   andere Ziele der Reise: Bahnen, Busse und Bezirke aus OpenStreetMap in den Gerätespeicher */
+function offTransit(run){
+  var t = T(), os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); });
+  var cs = os.length > 1 ? os.map(function(o){ return destNow(o); }) : [destNow()], nyc = cs.some(function(C){ return C && inNYC(C); });
+  var ds = destAll(), jobs = [], res = {nyc:nyc, n:[], err:0};
+  if(nyc){
+    jobs.push(function(){ return fetch("bus.json").then(function(r){ if(!r.ok) throw 0; }); });
+    jobs.push(function(){ return cbJSON(CB_BASE+"station_information.json").then(function(j){
+      var st = ((j && j.data && j.data.stations) || []).filter(function(x){ return x && x.lat && x.lon; }).map(function(x){ return [String(x.station_id), String(x.name||"Station").slice(0, 60), +(+x.lat).toFixed(6), +(+x.lon).toFixed(6), x.capacity||0]; });
+      if(!st.length) throw 0; lsSet("rp-cb-info", JSON.stringify({at:Date.now(), s:st})); }); });
+  }
+  ds.forEach(function(d){ var ok = true;
+    ["tr", "bus", "nb"].forEach(function(part){ jobs.push(function(){
+      return destGet(d.k+":"+part).then(function(v){
+        if(v && Date.now() - v.at < 30*864e5) return;
+        return (part==="nb" ? nbFetch(d) : trFetch(d, part==="bus")).then(function(v2){
+          destPut(d.k+":"+part, v2);
+          if(DEST && DEST.k===d.k){ DEST[part] = v2; DEST.st[part] = ""; destApply(part); } });
+      }).catch(function(e){ ok = false; throw e; });
+    }); });
+    jobs.push(function(){ if(ok) res.n.push(d.n || "Ziel"); return Promise.resolve(); });
+  });
+  OFF.all += jobs.length;
+  // nacheinander, damit Overpass nicht überlastet wird
+  return jobs.reduce(function(pr, f){ return pr.then(function(){ if(run.stop) return;
+    return f().catch(function(){ res.err++; }).then(function(){ OFF.done++; offShow(); }); }); }, Promise.resolve()).then(function(){ return res; });
+}
 function offStart(){
   if(OFF.run || !window.caches) return;
+  if(!navigator.onLine){ toast("Offline – der Download startet, sobald du Internet hast.", false); return; }
   var b = offBox(), tpl = offTpl(); if(!b){ toast("Die Reise hat noch keine Orte mit Adresse.", false); return; }
   if(!tpl){ toast("Die Karte ist noch nicht geladen – bitte kurz warten.", false); return; }
   var P0 = offPlan(b), urls = [];
   P0.rs.forEach(function(r){ for(var x = r.x0; x <= r.x1; x++) for(var y = r.y0; y <= r.y1; y++) urls.push(tpl.replace("{z}", r.z).replace("{x}", x).replace("{y}", y)); });
   urls = urls.concat(offExtras());
-  var tid = S.cur, run = OFF.run = {tid:tid, stop:false}; OFF.done = 0; OFF.all = urls.length; OFF.err = 0; var bytes = 0, i = 0;
+  var tid = S.cur, run = OFF.run = {tid:tid, stop:false}; OFF.done = 0; OFF.all = urls.length; OFF.err = 0; OFF.ph = "Karte"; var bytes = 0, i = 0, tr = null;
   offShow();
   caches.open(offCacheName(tid)).then(function(c){
     var next = function(){ if(run.stop || i >= urls.length) return Promise.resolve(); var u = urls[i++];
       return c.match(u).then(function(hit){ if(hit) return; return fetch(u).then(function(r){ if(!r.ok) throw 0; return r.clone().arrayBuffer().then(function(ab){ bytes += ab.byteLength; return c.put(u, r); }); }); })
         .catch(function(){ OFF.err++; }).then(function(){ OFF.done++; if(OFF.done % 25===0 || OFF.done===OFF.all) offShow(); return next(); }); };
     return Promise.all([0,1,2,3,4,5].map(next));
-  }).then(function(){
-    OFF.run = null;
+  }).then(function(){ if(run.stop) return; OFF.ph = "ÖPNV"; offShow(); return offTransit(run).then(function(r){ tr = r; }); }).then(function(){
+    OFF.run = null; OFF.ph = "";
     if(run.stop){ offShow(); return; }
-    var old = offMeta(tid) || {};
-    lsSet(offKey(tid), JSON.stringify({at:Date.now(), n:OFF.all - OFF.err, z:P0.zmax, mb:Math.round(bytes/1e5)/10 || old.mb || 0}));
+    var old = offMeta(tid) || {}, terr = tr ? tr.err : 0;
+    lsSet(offKey(tid), JSON.stringify({at:Date.now(), n:urls.length - OFF.err, z:P0.zmax, mb:Math.round(bytes/1e5)/10 || old.mb || 0, nyc:!!(tr && tr.nyc), dst:tr ? tr.n : [], terr:terr}));
     offShow();
-    toast(OFF.err > OFF.all/2 ? "Offline-Karte: viele Kacheln konnten nicht geladen werden ("+OFF.err+")." : "Offline-Karte gespeichert"+(OFF.err ? " ("+OFF.err+" Kacheln fehlen)" : ""), false);
-  }, function(){ OFF.run = null; offShow(); toast("Offline-Karte konnte nicht gespeichert werden (Speicher voll?).", false); });
+    toast(OFF.err > urls.length/2 ? "Offline-Karte: viele Kacheln konnten nicht geladen werden ("+OFF.err+")." : terr ? "Offline gespeichert – ÖPNV teilweise nicht geladen, bitte später aktualisieren." : "Karte und ÖPNV offline gespeichert"+(OFF.err ? " ("+OFF.err+" Kacheln fehlen)" : ""), false);
+  }, function(){ OFF.run = null; OFF.ph = ""; offShow(); toast("Offline-Karte konnte nicht gespeichert werden (Speicher voll?).", false); });
 }
 function offStop(){ if(OFF.run) OFF.run.stop = true; }
 function offDel(){
@@ -4812,12 +4842,15 @@ function offDel(){
 function offHTML(){
   if(!window.caches) return "";
   var m = offMeta(S.cur), b = offBox(), P0 = b ? offPlan(b) : null, run = OFF.run && OFF.run.tid===S.cur;
-  var sub = run ? "Lädt … "+Math.round(OFF.done*100/Math.max(1, OFF.all))+" % ("+OFF.done+" von "+OFF.all+")"
-    : m ? "Gespeichert am "+new Date(m.at).toLocaleDateString("de-DE", {day:"numeric", month:"short"})+" · "+m.n+" Kacheln"+(m.mb ? " · "+String(m.mb).replace(".", ",")+" MB" : "")+" · bis Zoom "+m.z
-    : P0 ? "Reisegebiet ohne Netz anzeigen · ca. "+P0.n+" Kacheln (~"+Math.max(1, Math.round(P0.n*0.05))+" MB)" : "Erst Orte mit Adresse anlegen";
+  var tl = m ? [m.nyc ? "New York (eingebaut)" : ""].concat(m.dst || []).filter(Boolean) : [];
+  var sub = run ? (OFF.ph==="ÖPNV" ? "Lädt ÖPNV … " : "Lädt Karte … ")+Math.round(OFF.done*100/Math.max(1, OFF.all))+" % ("+OFF.done+" von "+OFF.all+")"
+    : m ? "Gespeichert am "+new Date(m.at).toLocaleDateString("de-DE", {day:"numeric", month:"short"})+" · "+m.n+" Kacheln"+(m.mb ? " · "+String(m.mb).replace(".", ",")+" MB" : "")+" · bis Zoom "+m.z+
+      (tl.length ? " · ÖPNV: "+tl.join(", ") : m.dst ? "" : " · ÖPNV noch nicht geladen")+(m.terr ? " · ÖPNV unvollständig" : "")
+    : P0 ? "Karte und ÖPNV des Reisegebiets ohne Netz nutzen · ca. "+P0.n+" Kacheln (~"+Math.max(1, Math.round(P0.n*0.05))+" MB)" : "Erst Orte mit Adresse anlegen";
   var btn = run ? "<button type=\"button\" class=\"btn g s\" data-act=\"offstop\">Abbrechen</button>"
     : (P0 ? "<button type=\"button\" class=\"btn s"+(m ? " g" : "")+"\" data-act=\"offload\">"+(m ? "Aktualisieren" : "Laden")+"</button>" : "")+(m ? "<button type=\"button\" class=\"btn g s\" data-act=\"offdel\">Löschen</button>" : "");
-  return "<div class=\"sec offm\" id=\"offBox\"><h4>Offline-Karte</h4><div class=\"offrow\"><p class=\"note\">"+esc(sub)+"</p><div class=\"offacts\">"+btn+"</div></div></div>";
+  return "<div class=\"sec offm\" id=\"offBox\"><h4>Offline verfügbar</h4><div class=\"offrow\"><p class=\"note\">"+esc(sub)+"</p><div class=\"offacts\">"+btn+"</div></div>"+
+    "<p class=\"note offna\">Ohne Netz gehen Plan, GPS-Standort, Fotospots und Fotos weiter; Fotos werden hochgeladen, sobald wieder Internet da ist. Laden im Hintergrund bei geschlossener App ist noch nicht verfügbar (erst in der iPhone-App).</p></div>";
 }
 function offShow(){ var el = $("offBox"); if(el) el.outerHTML = offHTML(); }
 function shareBlock(){
@@ -7989,6 +8022,7 @@ function lpPhotoSpot(code){
   var a = code.slice(4).split(","), la = +a[0], lo = +a[1], nm = decodeURIComponent(a.slice(2).join(",") || ""), t = T(), pid = uid("w"), w = new Date(), tm = w.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
   var p = {id:pid, k:"photo", own:1, n:"Fotospot", c:"sight", list:(t.lists && t.lists[0] || {}).id || null, note:"", addr:"", la:+la.toFixed(6), lo:+lo.toFixed(6)};
   var nb = nbOf(p); p.n = nm ? "Fotospot "+nm : nb ? "Fotospot "+nb : "Fotospot"; p.n = p.n.slice(0, 80);
+  if(!nm && !navigator.onLine){ p.geo = 1; p.geoN = p.n; }
   t.places[pid] = p; var dk = dayByKey(cur) ? cur : null;
   if(dk){ ord(dk).push(pid); t.done[pid] = true; doneMove(pid, dk); if(dk===todayKey()){ t.times = t.times || {}; t.times[pid] = tm; } }
   save(); dirty(); select(pid); renderAll(); return pid;
@@ -8005,6 +8039,7 @@ function lpShow(pt){
   if(lpMark) lpMark.remove();
   var me2 = document.createElement("div"); me2.className = "lppin"; me2.innerHTML = "<i></i>";
   lpMark = new maplibregl.Marker({element:me2, anchor:"bottom"}).setLngLat([pt.lo, pt.la]).addTo(map);
+  if(!navigator.onLine){ lpPt.busy = false; lpPt.off = true; lpRender(); return; }
   lpRender();
   fetch("https://photon.komoot.io/reverse?lat="+pt.la+"&lon="+pt.lo+"&lang=de&limit=1").then(function(r){ return r.json(); }).then(function(j){
     var f = j && j.features && j.features[0], pr = f && f.properties || {};
@@ -8017,10 +8052,11 @@ function lpRender(){
   if(!lpPt) return;
   var el = $("catPop"), ro = acct.user && isViewerOf(S.cur);
   var h = "<div class=\"pop-card lpcard\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Markierter Punkt\"><div class=\"pop-head\"><h4>Markierter Punkt</h4><button type=\"button\" class=\"x\" data-act=\"lpclose\" aria-label=\"Schließen\">×</button></div>";
-  h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || "Unbenannter Ort"))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
+  h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || (lpPt.off ? "Offline – Adresse folgt mit Internet" : "Unbenannter Ort")))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
   if(noTrip()) h += "<div class=\"lpacts\"><button type=\"button\" class=\"btn lpphoto\" data-act=\"lpmerk\">"+ZBM+"Für später merken</button></div>";
   else if(ro) h += "<p class=\"note\">Als Beobachter kannst du nichts übernehmen.</p>";
   else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"planpick\" data-lp=\"1\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+(dayByKey(cur) && dayLegs(cur).length ? "<button type=\"button\" class=\"btn g\" data-act=\"lpvia\">Als Wegpunkt für die Gehroute</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button>"+(dayByKey(cur) ? "<label class=\"btn g lpphoto\" for=\"cphIn\" data-act=\"lpphoto\">"+LPCAM+"Als Fotospot – Fotos hinzufügen</label>" : "")+"<button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button><button type=\"button\" class=\"btn g lpphoto\" data-act=\"lpmerk\">"+ZBM+"Für später merken</button></div>";
+  if(lpPt.off && !ro) h += "<p class=\"note lpoff\">Offline: Fotospot und Fotos bleiben auf dem Gerät und werden hochgeladen, sobald du wieder Internet hast.</p>";
   el.innerHTML = h+"</div>"; el.hidden = false;
 }
 function lpClose(){ lpPt = null; if(lpMark){ lpMark.remove(); lpMark = null; } closeCatPop(); }
@@ -8756,7 +8792,9 @@ function saveNb(){ lsSet(NBKEY, JSON.stringify(Object.keys(nbHi))); }
 function applyNb(){
   var on = {}; nbActive().forEach(function(n){ on[n] = 1; });
   if(mapReady){ var f = ["in", ["get","n"], ["literal", Object.keys(on)]]; map.setFilter("nb-fill", f); map.setFilter("nb-hi", f); if(typeof applyPoi==="function") applyPoi(); }
-  var d = typeof DEST!=="undefined" && DEST, opts = "<option value=\"\">"+(d && !d.nb ? (d.st.nb==="err" ? "Bezirke konnten nicht geladen werden" : d.st.nb==="off" ? "Bezirke laden, sobald du online bist" : "Bezirke werden geladen …") : d && !NB.length ? "Keine Bezirke gefunden" : "Bezirk wählen …")+"</option>";
+  var d = typeof DEST!=="undefined" && DEST, opts = "<option value=\"\">"+(d && !d.nb ? (d.st.nb==="err" ? "Nicht geladen" : d.st.nb==="off" ? "Bezirke laden, sobald du online bist" : "Bezirke werden geladen …") : d && !NB.length ? "Keine Bezirke gefunden" : "Bezirk wählen …")+"</option>";
+  var ne = $("nbErr"), nm = d && !d.nb && d.st.nb==="err";
+  ne.hidden = !nm; ne.innerHTML = nm ? "Bezirke von "+esc(d.n || "diesem Ziel")+" kamen nicht an (Server ausgelastet oder zu viele Daten). <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"nb\">Erneut versuchen</button>" : "";
   var grp = d ? NB.map(function(x){ return x.b; }).filter(function(b, i, a){ return a.indexOf(b)===i; }) : ["Manhattan","Brooklyn","Queens"];
   grp.forEach(function(b){
     var o = NB.filter(function(x){ return x.b===b; }).map(function(x){ return x.n; }).sort(natCmp).map(function(n){ return "<option value=\""+esc(n)+"\""+(nbHi[n]?" disabled":"")+">"+esc(n)+"</option>"; }).join("");
@@ -8835,23 +8873,24 @@ var DRMODE = {subway:"metro", light_rail:"light", monorail:"light", tram:"tram",
 var DSTMODE = {subway:"metro", light_rail:"light", monorail:"light", funicular:"funi", train:"train"};
 var DCOL = {metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"};
 var DPAL = ["#C8102E","#0072CE","#E5A800","#00965E","#7D55C7","#E87722","#00A3AD","#A6192E","#5B7F95","#C6007E"];
+var DRMAX = 10000; // Suchradius höchstens 10 km: in großen Städten sonst zu viele Daten für Overpass und das iPhone
 var OVP = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 var DEST = null, NB_NYC = NB, NBKEY = "nyc-nb-hi", DOFF = {}, dQ = "", dOpen = {}, dWant = false, DMEM = {};
 var DL = (function(){ try { return JSON.parse(lsGet("rp-dl")||"{}") || {}; } catch(e){ return {}; } })();
 function inNYC(c){ return c.la > 40.45 && c.la < 41.0 && c.lo > -74.35 && c.lo < -73.6; }
 function isDest(){ return !!DEST; }
 /* Mittelpunkt des Ziels: Ort des aktuellen Tags (Reisen mit mehreren Städten), sonst Mitte der Reise */
-function destNow(){
+function destNow(o0){
   var t = T(); if(!t) return null;
-  var os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); }), o = null, C = null;
-  if(os.length > 1 && cur) o = os.filter(function(x){ return (!x.from || x.from <= cur) && (!x.to || x.to >= cur); })[0];
+  var os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); }), o = o0 || null, C = null;
+  if(!o0 && os.length > 1 && cur) o = os.filter(function(x){ return (!x.from || x.from <= cur) && (!x.to || x.to >= cur); })[0];
   o = o || (t.ziel || os.length > 1 ? os[0] : null);
   if(o) C = o.bb ? {la:(o.bb[1]+o.bb[3])/2, lo:(o.bb[0]+o.bb[2])/2} : {la:o.la, lo:o.lo};
   else C = tripCenter(t);
   if(!C || !hasLoc(C)) return null;
   var pts = (t.hotels||[]).concat(t.orte||[]).concat(Object.keys(t.places||{}).map(function(k){ return t.places[k]; })).filter(function(p){ return p && hasLoc(p) && dist(p, C) < 30000; }), r = 0;
   pts.forEach(function(p){ r = Math.max(r, dist(p, C)); });
-  return {la:+C.la.toFixed(4), lo:+C.lo.toFixed(4), r:Math.round(Math.min(14000, Math.max(6000, r + 2500))), n:String((o && o.n) || t.name || "").slice(0, 60), pts:pts.slice(0, 300).map(function(p){ return [p.la, p.lo]; })};
+  return {la:+C.la.toFixed(4), lo:+C.lo.toFixed(4), r:Math.round(Math.min(DRMAX, Math.max(5000, r + 2500))), n:String((o && o.n) || t.name || "").slice(0, 60), pts:pts.slice(0, 300).map(function(p){ return [p.la, p.lo]; })};
 }
 function destIdx(){ try { var a = JSON.parse(lsGet("rp-dest")||"[]"); return Array.isArray(a) ? a : []; } catch(e){ return []; } }
 function destNear(e, C){ return dist(e, C) < Math.max(3000, e.r*0.4); }
@@ -8859,8 +8898,17 @@ function destSync(){
   var C = destNow();
   if(!C || inNYC(C)){ if(DEST) destSet(null); return; }
   if(DEST && destNear(DEST, C)){ DEST.pts = C.pts; return; }
-  var hit = destIdx().filter(function(e){ return destNear(e, C); })[0];
-  destSet(hit ? {k:hit.k, la:hit.la, lo:hit.lo, r:hit.r, n:hit.n} : {k:"d"+C.la.toFixed(3)+"_"+C.lo.toFixed(3), la:C.la, lo:C.lo, r:C.r, n:C.n}, C.pts);
+  destSet(destOf(C), C.pts);
+}
+function destOf(C){ var hit = destIdx().filter(function(e){ return destNear(e, C); })[0];
+  return hit ? {k:hit.k, la:hit.la, lo:hit.lo, r:Math.min(hit.r, DRMAX), n:hit.n} : {k:"d"+C.la.toFixed(3)+"_"+C.lo.toFixed(3), la:C.la, lo:C.lo, r:C.r, n:C.n}; }
+/* alle Ziele der Reise außerhalb New Yorks (für den Offline-Download) */
+function destAll(){
+  var t = T(); if(!t) return [];
+  var os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); }), out = [], ks = {};
+  (os.length > 1 ? os.map(function(o){ return destNow(o); }) : [destNow()]).forEach(function(C){
+    if(!C || inNYC(C)) return; var d = destOf(C); if(ks[d.k]) return; ks[d.k] = 1; d.pts = C.pts; out.push(d); });
+  return out;
 }
 function destSet(d, pts){
   if(d){ d.pts = pts || []; d.st = {tr:"", bus:"", nb:""}; d.tr = null; d.bus = null; d.nb = null; }
@@ -8885,10 +8933,16 @@ function destWanted(part){ var on = DMODES.some(function(m){ return m[0]!=="bus"
 /* Zwischenspeicher: im Speicher und im Gerätespeicher (IndexedDB) */
 function destGet(id){ if(DMEM[id]) return Promise.resolve(DMEM[id]); return idbDo("readonly", function(st){ return st.get("dest:"+id); }).then(function(r){ var v = r && r.data && r.data.at ? r.data : null; if(v) DMEM[id] = v; return v; }).catch(function(){ return null; }); }
 function destPut(id, v){ DMEM[id] = v; idbDo("readwrite", function(st){ st.put({id:"dest:"+id, data:v}); }).catch(function(){}); }
+/* Overpass-Abfrage mit Zeitlimit: große Städte (z. B. Tokio) dürfen nicht endlos „laden“; Abbruch oder Serverfehler → Ersatzserver, dann Fehlermeldung.
+   Eine abgebrochene Abfrage („runtime error“, „Query timed out“) liefert unvollständige Daten: als Fehler werten, nicht speichern */
+var OVTO = 45000;
 function ovq(q, i){
   i = i || 0;
-  return fetch(OVP[i], {method:"POST", body:"data="+encodeURIComponent(q), headers:{"Content-Type":"application/x-www-form-urlencoded"}})
+  var ac = typeof AbortController==="function" ? new AbortController() : null, to = setTimeout(function(){ if(ac) ac.abort(); }, OVTO);
+  return fetch(OVP[i], {method:"POST", body:"data="+encodeURIComponent(q), headers:{"Content-Type":"application/x-www-form-urlencoded"}, signal:ac ? ac.signal : undefined})
     .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(j){ clearTimeout(to); if(j && j.remark && /error|timed out|out of memory/i.test(j.remark)) throw new Error("zu viele Daten"); return j; },
+      function(e){ clearTimeout(to); throw e; })
     .catch(function(e){ if(i+1 < OVP.length) return ovq(q, i+1); throw e; });
 }
 function destBB(d){ var a = d.r/111320, b = d.r/(111320*Math.cos(d.la*Math.PI/180)); return [(d.la-a).toFixed(4), (d.lo-b).toFixed(4), (d.la+a).toFixed(4), (d.lo+b).toFixed(4)].join(","); }
@@ -8910,8 +8964,8 @@ function txtCol(c){ var h = c.replace("#",""); if(h.length===3) h = h.replace(/.
 function natCmp(a, b){ return String(a).localeCompare(String(b), "de", {numeric:true}); }
 function trFetch(d, bus){
   var bb = destBB(d), q = bus
-    ? "[out:json][timeout:120];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out geom;"
-    : "[out:json][timeout:120];rel[type=route][route~\"^(subway|light_rail|monorail|tram|train|funicular|ferry)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out geom;"+
+    ? "[out:json][timeout:40];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;"
+    : "[out:json][timeout:40];(rel[type=route][route~\"^(subway|light_rail|monorail|tram|funicular|ferry)$\"]("+bb+");rel[type=route][route=train][service!~\"^(long_distance|high_speed|night|car_shuttle)$\"]("+bb+");)->.r;.r out body;way(r.r)("+bb+");out skel geom;"+
       "(way[railway=funicular]("+bb+");way[aerialway~\"^(cable_car|gondola)$\"]("+bb+"););out geom;node[railway=station][name]("+bb+");out;node[amenity=bicycle_rental]("+bb+");out;"+
       "rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+");out count;";
   return ovq(q).then(function(j){ return trParse(j); });
@@ -8920,7 +8974,7 @@ function trParse(j){
   var W = {}, used = {}, rels = [], st = [], bk = [], nbus = 0;
   (j.elements||[]).forEach(function(e){
     var tg = e.tags || {};
-    if(e.type==="way" && e.geometry) W[e.id] = {g:e.geometry.filter(Boolean).map(function(p){ return [+p.lon.toFixed(5), +p.lat.toFixed(5)]; }), t:tg};
+    if(e.type==="way" && e.geometry) W[e.id] = {g:simp(e.geometry.filter(Boolean).map(function(p){ return [+p.lon.toFixed(5), +p.lat.toFixed(5)]; }), 0.00003), t:tg};
     else if(e.type==="relation" && tg.type==="route") rels.push(e);
     else if(e.type==="node" && tg.amenity==="bicycle_rental"){ if(!tg.shop && tg.bicycle_rental!=="shop") bk.push([+e.lon.toFixed(5), +e.lat.toFixed(5), String(tg.name || tg.network || "").slice(0, 60)]); }
     else if(e.type==="node" && tg.railway==="station" && tg.name) st.push([+e.lon.toFixed(5), +e.lat.toFixed(5), String(tg.name).slice(0, 60), DSTMODE[tg.station] || "train"]);
@@ -8951,22 +9005,24 @@ function trParse(j){
 /* Bezirke: die kleinste Verwaltungseinheit, die (fast) alle Orte der Reise enthält, und deren nächste Unterteilung */
 function nbFetch(d){
   var pts = d.pts && d.pts.length ? d.pts : [[d.la, d.lo]];
-  return ovq("[out:json][timeout:30];is_in("+d.la+","+d.lo+")->.a;rel(pivot.a)[boundary=administrative][admin_level];out tags bb;").then(function(j){
+  return ovq("[out:json][timeout:25];is_in("+d.la+","+d.lo+")->.a;rel(pivot.a)[boundary=administrative][admin_level];out tags bb;").then(function(j){
     var cs = (j.elements||[]).filter(function(e){ var b = e.bounds, lv = +((e.tags||{}).admin_level); if(!b || !(lv >= 4 && lv <= 10)) return false;
       var n = pts.filter(function(p){ return p[0] >= b.minlat && p[0] <= b.maxlat && p[1] >= b.minlon && p[1] <= b.maxlon; }).length;
       return n >= pts.length*0.9 && dist({la:b.minlat, lo:b.minlon}, {la:b.maxlat, lo:b.maxlon}) > 4000; })
       .sort(function(a, b){ return b.tags.admin_level - a.tags.admin_level; });
     var tryC = function(i){
       if(i >= Math.min(cs.length, 3)) return {at:Date.now(), city:"", nb:[]};
-      var c = cs[i], lv = +c.tags.admin_level, b = c.bounds, tol = 0.003, lvs = []; for(var x = lv+1; x <= 11; x++) lvs.push(x);
-      return ovq("[out:json][timeout:60];rel("+c.id+");map_to_area->.c;rel(area.c)[boundary=administrative][admin_level~\"^("+lvs.join("|")+")$\"][name];out tags bb;").then(function(j2){
+      var c = cs[i], lv = +c.tags.admin_level, b = c.bounds, tol = 0.003, lvs = []; for(var x = lv+1; x <= 10; x++) lvs.push(x);
+      // nur Bezirke rund um die Reise (Suchgebiet), nicht die ganze Verwaltungseinheit (Tokio reicht bis zu den Ogasawara-Inseln)
+      var sb = destBB({la:d.la, lo:d.lo, r:d.r*1.3}).split(",").map(Number), qb = [Math.max(sb[0], b.minlat), Math.max(sb[1], b.minlon), Math.min(sb[2], b.maxlat), Math.min(sb[3], b.maxlon)].map(function(v){ return v.toFixed(4); }).join(",");
+      return ovq("[out:json][timeout:30];rel[boundary=administrative][admin_level~\"^("+lvs.join("|")+")$\"][name]("+qb+");out tags bb;").then(function(j2){
         var by = {};
         (j2.elements||[]).forEach(function(e){ var o = e.bounds; if(!o || e.id===c.id) return;
           if(o.minlat < b.minlat - tol || o.maxlat > b.maxlat + tol || o.minlon < b.minlon - tol || o.maxlon > b.maxlon + tol) return;
           (by[e.tags.admin_level] = by[e.tags.admin_level] || []).push(e.id); });
         var lk = Object.keys(by).map(Number).sort(function(a, b){ return a - b; }).filter(function(l){ return by[l].length >= 3 && by[l].length <= 120; })[0];
         if(!lk) return tryC(i+1);
-        return ovq("[out:json][timeout:120];rel(id:"+by[lk].join(",")+");out geom;").then(function(j3){ return nbParse(j3, String(c.tags.name || d.n || "").slice(0, 60)); });
+        return ovq("[out:json][timeout:40];rel(id:"+by[lk].join(",")+");out geom;").then(function(j3){ return nbParse(j3, String(c.tags.name || d.n || "").slice(0, 60)); });
       });
     };
     return tryC(0);
@@ -9097,7 +9153,7 @@ function destUi(){
   if(br) br.style.display = d && (!d.tr || !dBike().length) ? "none" : "";
   if(!d){ el.innerHTML = ""; trSync(); return; }
   var h = "", ms = dModes(), ro = isRO();
-  if(!d.tr) h += "<p class=\"note dnote\">"+(d.st.tr==="err" ? "ÖPNV von "+esc(d.n || "diesem Ziel")+" konnte nicht geladen werden. <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>"
+  if(!d.tr) h += "<p class=\"note dnote\">"+(d.st.tr==="err" ? "ÖPNV von "+esc(d.n || "diesem Ziel")+" kam nicht an (Server ausgelastet oder zu viele Daten). <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>"
     : d.st.tr==="off" ? "Offline: ÖPNV von "+esc(d.n || "diesem Ziel")+" lädt, sobald du wieder Internet hast." : "ÖPNV von "+esc(d.n || "diesem Ziel")+" wird geladen …")+"</p>";
   else if(!ms.length) h += "<p class=\"note dnote\">Keine ÖPNV-Linien in OpenStreetMap gefunden.</p>";
   if(!ro) ms.forEach(function(m){
@@ -9892,7 +9948,26 @@ function drawMe(){
 }
 
 /* ---------- Netz und Sicherung ---------- */
-function setNet(on){ var el = $("offline"); if(el) el.hidden = on; }
+function setNet(on){ netUi(); if(on) spotGeo(); }
+/* Hinweis oben: offline geht Plan, GPS und Fotospots weiter; wartende Fotos zählen */
+function netUi(){
+  var el = $("offline"); if(!el) return; var on = navigator.onLine; el.hidden = on; if(on) return;
+  var n = phQueue().up.length;
+  el.textContent = "Offline · GPS und Fotospots gehen weiter"+(n ? " · "+n+(n===1 ? " Foto wartet" : " Fotos warten")+" aufs Hochladen" : "")+(S.cur && offMeta(S.cur) ? "" : " · neue Kartenbereiche erst mit Netz");
+}
+/* offline gesetzte Fotospots bekommen ihre Adresse, sobald wieder Internet da ist */
+var spotBusy = false;
+function spotGeo(){
+  if(spotBusy || !navigator.onLine) return; var t = T(); if(!t || !t.places) return;
+  var ps = Object.keys(t.places).map(function(k){ return t.places[k]; }).filter(function(p){ return p && p.geo && hasLoc(p); }).slice(0, 20);
+  if(!ps.length) return; spotBusy = true;
+  ps.reduce(function(pr, p){ return pr.then(function(){
+    return fetch("https://photon.komoot.io/reverse?lat="+p.la+"&lon="+p.lo+"&lang=de&limit=1").then(function(r){ return r.json(); }).then(function(j){
+      var f = j && j.features && j.features[0], pr2 = f && f.properties || {}, str = [pr2.street, pr2.housenumber].filter(Boolean).join(" "), nm = pr2.name || str;
+      if(!p.addr) p.addr = [str, pr2.city || pr2.district].filter(Boolean).join(", ").slice(0, 120);
+      if(nm && /^Fotospot( |$)/.test(p.n||"") && p.n===p.geoN) p.n = ("Fotospot "+nm).slice(0, 80);
+      delete p.geo; delete p.geoN; }); }).catch(function(){}); }, Promise.resolve()).then(function(){ spotBusy = false; save(); dirty(); renderAll(); });
+}
 window.addEventListener("online", function(){ setNet(true); });
 window.addEventListener("offline", function(){ setNet(false); });
 function exportPlan(){
@@ -10863,9 +10938,11 @@ var CB_BASE = "https://gbfs.lyft.com/gbfs/1.1/bkn/en/", CBCOL = "#0A6CDB", BIKE 
 var CB = {st:[], byId:{}, infoAt:0, statAt:0, busy:false, err:""};
 var LMBIKE = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"5.5\" cy=\"17\" r=\"3.5\"/><circle cx=\"18.5\" cy=\"17\" r=\"3.5\"/><path d=\"M5.5 17L9 9h6l3.5 8M9 9l3 8 3-8M8 6h3\"/></svg>";
 function cbJSON(u){ return fetch(u, {cache:"no-store"}).then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }); }
-function cbInfoCached(){ try { var c = JSON.parse(lsGet("rp-cb-info")||"null"); if(c && c.s && Date.now() - c.at < 7*864e5) return c; } catch(e){} return null; }
+function cbInfoCached(any){ try { var c = JSON.parse(lsGet("rp-cb-info")||"null"); if(c && c.s && (any || Date.now() - c.at < 7*864e5)) return c; } catch(e){} return null; }
 function cbLoad(force){
   if(DEST) return; // Citi Bike nur in New York
+  // offline: gespeicherte Stationen (ohne Live-Verfügbarkeit) zeigen, z. B. aus dem Offline-Download
+  if(!navigator.onLine && !CB.st.length){ var c1 = cbInfoCached(true); if(c1){ CB.st = c1.s.map(function(r){ return {id:r[0], n:r[1], la:r[2], lo:r[3], cap:r[4], b:0, e:0, d:0, ok:true, known:false}; }); CB.byId = {}; CB.st.forEach(function(x){ CB.byId[x.id] = x; }); CB.infoAt = 0; cbApply(); } }
   if(CB.busy || !navigator.onLine || (!force && CB.errAt && Date.now() - CB.errAt < 45000)) return;
   var now = Date.now(), needInfo = !CB.st.length || now - CB.infoAt > 7*864e5, needStat = force || needInfo || now - CB.statAt > 60000;
   if(!needInfo && !needStat) return;
@@ -11939,7 +12016,7 @@ function idb(){
 function idbDo1(mode, fn){ return idb().then(function(db){ return new Promise(function(res, rej){ var tx; try { tx = db.transaction("photos", mode); } catch(e){ phDB = null; rej(e); return; } var st = tx.objectStore("photos"), out = fn(st); tx.oncomplete = function(){ res(out && out.result); }; tx.onerror = function(){ rej(tx.error); }; tx.onabort = function(){ rej(tx.error || new Error("abgebrochen")); }; }); }); }
 function idbDo(mode, fn){ return idbDo1(mode, fn).catch(function(e){ phDB = null; if(Date.now() < idbDown) throw e; return idbDo1(mode, fn); }); }
 function phQueue(){ try { return JSON.parse(lsGet("rp-ph-q")||'{"up":[],"del":[]}'); } catch(e){ return {up:[], del:[]}; } }
-function phSaveQ(q){ lsSet("rp-ph-q", JSON.stringify(q)); }
+function phSaveQ(q){ lsSet("rp-ph-q", JSON.stringify(q)); netUi(); }
 function phCol(tid){ return tripRef(tid || S.cur).collection("photos"); }
 var PHERR = {}, PHMEM = {};
 function phGet(id){
@@ -12251,7 +12328,8 @@ function phFlush(){
   if(phBusy || !fbDb || !acct.user || !navigator.onLine) return;
   var q = phQueue(); if(!q.up.length && !q.del.length) return;
   phBusy = true;
-  var ups = q.up.slice(), dels = q.del.slice();
+  var ups = q.up.filter(function(id){ return CAPQ.indexOf(id) < 0; }), dels = q.del.slice();
+  if(!ups.length && !dels.length){ phBusy = false; return; }
   Promise.all(ups.map(function(id){ return idbDo("readonly", function(st){ return st.get(id); }).catch(function(){ return null; }).then(function(r){ r = r || PHMEM[id]; if(!r) return; var tid = gidFor(r.trip||S.cur); if(!KNOWN[tid]) throw new Error("Reise noch nicht im Konto"); return phCol(tid).doc(id).set({data:r.data, place:r.place||"", trip:tid, by:acct.user.uid, at:Date.now(), shareTo:phShareTo(id), priv:isPrivPh(id, r.place)}); }).then(function(){ var q2 = phQueue(); q2.up = q2.up.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })
     .concat(dels.map(function(id){ return phCol(S.cur).doc(id).delete().then(function(){ var q2 = phQueue(); q2.del = q2.del.filter(function(x){ return x!==id; }); phSaveQ(q2); }); })))
     .then(function(){ phBusy = false; }, function(){ phBusy = false; setTimeout(phFlush, 20000); });

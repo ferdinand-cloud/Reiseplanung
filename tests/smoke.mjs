@@ -656,7 +656,7 @@ await test("Kartenebenen je Reiseziel: ÖPNV-Linien und Bezirke aus OpenStreetMa
     if(q.includes("is_in(")) el = [{type:"relation", id:100, tags:{name:"Lisboa", admin_level:"7", boundary:"administrative"}, bounds:{minlat:38.69, minlon:-9.23, maxlat:38.80, maxlon:-9.09}},
       {type:"relation", id:101, tags:{name:"Santa Maria Maior", admin_level:"8", boundary:"administrative"}, bounds:{minlat:38.709, minlon:-9.14, maxlat:38.716, maxlon:-9.13}},
       {type:"relation", id:1, tags:{name:"Portugal", admin_level:"2", boundary:"administrative"}, bounds:{minlat:36, minlon:-10, maxlat:42, maxlon:-6}}];
-    else if(q.includes("map_to_area")) el = [201, 202, 203].map((id, i) => ({type:"relation", id, tags:{name:["Estrela","Misericórdia","Alfama"][i], admin_level:"8"}, bounds:{minlat:38.70, minlon:-9.20+i*0.02, maxlat:38.71, maxlon:-9.19+i*0.02}}))
+    else if(q.includes("out tags bb")) el = [201, 202, 203].map((id, i) => ({type:"relation", id, tags:{name:["Estrela","Misericórdia","Alfama"][i], admin_level:"8"}, bounds:{minlat:38.70, minlon:-9.20+i*0.02, maxlat:38.71, maxlon:-9.19+i*0.02}}))
       .concat([{type:"relation", id:300, tags:{name:"Oeiras-Nachbar", admin_level:"8"}, bounds:{minlat:38.68, minlon:-9.30, maxlat:38.72, maxlon:-9.20}}]);
     else if(q.includes("rel(id:")) el = [adm(201, "Estrela", -9.20, 38.70), adm(202, "Misericórdia", -9.18, 38.70), adm(203, "Alfama", -9.16, 38.70)];
     else if(q.includes("subway")) el = [
@@ -716,6 +716,34 @@ await test("Kartenebenen je Reiseziel: ÖPNV-Linien und Bezirke aus OpenStreetMa
   await rp(`S.cur = "t_lis"; renderAll(); true`);
   await page.waitForFunction(() => window.__rp("!!(DEST && DEST.tr && DEST.nb && NB.length===3)"), null, {timeout:5000});
   ok(OVQ.length===n0 && await rp(`nbHi.Alfama && DL.metro`), "Ziel wird nicht aus dem Speicher geladen ("+(OVQ.length-n0)+" neue Abfragen)");
+});
+
+await test("Kartenebenen je Reiseziel: Zeitlimit und Fehler statt endlosem Laden (Tokio)", async () => {
+  let mode = "hang", n = 0;
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => { n++;
+    if(mode==="hang") return; // Server antwortet nie
+    if(mode==="remark") return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[{type:"relation", id:1, tags:{type:"route", route:"subway", ref:"G"}, members:[]}], remark:"runtime error: Query timed out in \"query\" at line 1 after 41 seconds."}) });
+    const q = decodeURIComponent((rt.request().postData()||"").replace(/^data=/, "").replace(/\+/g, " "));
+    const el = q.includes("subway") ? [{type:"relation", id:1, tags:{type:"route", route:"subway", ref:"G", colour:"#F39700"}, members:[{type:"way", ref:11}]}, {type:"way", id:11, geometry:[{lat:35.67, lon:139.70}, {lat:35.68, lon:139.76}]}] : [];
+    return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:el}) }); });
+  await seed();
+  await rp(`(function(){ OVTO = 1200; var t = newTripObj({id:"t_tyo", name:"Tokio", start:"2026-11-02", end:"2026-11-06", orte:[{id:"o8", n:"Tokio", la:35.6812, lo:139.7671, from:"2026-11-02", to:"2026-11-06"}]});
+    S.trips.t_tyo = t; S.cur = "t_tyo"; DL = {}; renderAll(); })()`);
+  ok(await rp(`!!DEST && DEST.r <= 10000`), "Suchradius zu groß");
+  await click("#layersBtn"); await click("#lTrBtn");
+  ok((await page.locator("#lTrDyn").innerText()).includes("wird geladen"), "Ladehinweis fehlt");
+  await page.waitForFunction(() => window.__rp("DEST.st.tr==='err' && DEST.st.nb==='err'"), null, {timeout:8000});
+  ok(n >= 4, "Ersatzserver wird nicht versucht ("+n+" Abfragen)");
+  ok(await page.locator("#lTrDyn [data-act=dretry]").isVisible() && await page.locator("#nbErr [data-act=dretry]").isVisible(), "Fehlermeldung mit „Erneut versuchen“ fehlt");
+  await shot("ziel-fehler");
+  // abgebrochene Abfrage mit unvollständigen Daten: Fehler, nichts gespeichert
+  mode = "remark"; await click("#lTrDyn [data-act=dretry]");
+  await page.waitForFunction(() => window.__rp("DEST.st.tr==='err'"), null, {timeout:5000});
+  ok(await rp(`!DEST.tr && !DMEM[DEST.k+":tr"]`), "Unvollständige Daten wurden übernommen");
+  // erneut versuchen, Server antwortet
+  mode = "ok"; await click("#lTrDyn [data-act=dretry]");
+  await page.waitForFunction(() => window.__rp("!!DEST.tr"), null, {timeout:5000}); await page.waitForTimeout(100);
+  ok((await page.locator("#lTrDyn").innerText()).includes("Metro"), "Nach „Erneut versuchen“ keine Linien");
 });
 
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
@@ -1877,6 +1905,59 @@ await test("Tagesvorschlag: angezeigte Wünsche nach Nähe auf die übrigen Tage
   ok(await rp(`ord(days().filter(function(d){ return d.key===cur; })[0].key).slice(0,3).join()==="p1,p2,p3"`), "Bereits geplante Stopps verändert");
   ok((await page.locator("#toast").innerText()).includes("verteilt"), "Hinweis mit Rückgängig fehlt");
 });
+await test("Offline-Paket: ÖPNV und Bezirke aller Ziele der Reise mitladen (Lissabon, Porto)", async () => {
+  const OVQ = [];
+  await page.route(/overpass-api\.de/, rt => { const q = decodeURIComponent((rt.request().postData()||"").replace(/^data=/, "").replace(/\+/g, " ")); OVQ.push(q);
+    const el = q.includes("subway") ? [{type:"relation", id:1, tags:{type:"route", route:"subway", ref:"A", name:"Linha Azul"}, members:[{type:"way", ref:11}]},
+      {type:"way", id:11, tags:{railway:"subway"}, geometry:[{lat:38.71, lon:-9.14}, {lat:38.72, lon:-9.15}]}] : [];
+    return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:el}) }); });
+  await page.route(/tiles\.test/, rt => rt.fulfill({ contentType: "application/x-protobuf", headers: {"access-control-allow-origin":"*"}, body: "x".repeat(300) }));
+  await seed();
+  await rp(`(function(){ var t = newTripObj({id:"t_pt", name:"Portugal", start:"2026-11-02", end:"2026-11-08", hotels:[{id:"h9", n:"Hotel Lisboa", la:38.7150, lo:-9.1400, from:"2026-11-02", to:"2026-11-05"}],
+    orte:[{id:"o9", n:"Lissabon", la:38.7223, lo:-9.1393, from:"2026-11-02", to:"2026-11-05"}, {id:"o8", n:"Porto", la:41.1579, lo:-8.6291, from:"2026-11-05", to:"2026-11-08"}]});
+    S.trips.t_pt = t; S.cur = "t_pt"; DL = {}; OFFTPL = "https://tiles.test/{z}/{x}/{y}.pbf"; OFFMAX = 60; tab = "trip"; renderAll(); })()`);
+  await page.waitForTimeout(200);
+  ok((await page.locator("#offBox").innerText()).includes("ÖPNV"), "Knopf erklärt ÖPNV nicht");
+  ok((await page.locator("#offBox").innerText()).includes("noch nicht verfügbar"), "Hinweis auf die iPhone-App fehlt");
+  await click("#offBox [data-act=offload]");
+  await page.waitForFunction(() => window.__rp("!!offMeta(S.cur)"), null, {timeout:20000});
+  const ks = await rp(`destAll().map(function(d){ return d.k; })`);
+  ok(ks.length===2, "nicht beide Ziele erkannt: "+ks);
+  for(const k of ks) ok(await rp(`Promise.all(["tr","bus","nb"].map(function(p){ return destGet("${k}:"+p); })).then(function(v){ return v.every(Boolean); })`), "ÖPNV von "+k+" nicht gespeichert");
+  ok(OVQ.filter(q => q.includes("subway")).length===2, "Bahnen nicht je Ziel geladen");
+  const tx = await page.locator("#offBox").innerText();
+  ok(tx.includes("Lissabon") && tx.includes("Porto") && !tx.includes("New York"), "Ziele im Stand falsch: "+tx);
+  // erneut laden: frische Daten werden nicht noch einmal abgefragt
+  const n0 = OVQ.length; await click("#offBox [data-act=offload]");
+  await page.waitForFunction(() => window.__rp("!OFF.run"), null, {timeout:20000});
+  ok(OVQ.length===n0, "frische ÖPNV-Daten werden neu abgefragt");
+});
+
+await test("Offline-Modus: Fotospot ohne Netz setzen, Fotos warten, Adresse kommt mit Internet", async () => {
+  await seed();
+  const ctx = page.context();
+  await ctx.setOffline(true); await page.waitForTimeout(150);
+  ok(await visible("#offline"), "Offline-Hinweis fehlt");
+  ok((await page.locator("#offline").innerText()).includes("GPS"), "Hinweis sagt nicht, dass GPS weitergeht");
+  await rp(`lpShow({la:40.7420, lo:-73.9890}); true`); await page.waitForTimeout(100);
+  const card = await page.locator("#catPop").innerText();
+  ok(card.includes("Offline") && card.includes("hochgeladen") && !card.includes("wird gesucht"), "Karte des markierten Punkts offline falsch: "+card);
+  ok(await page.locator("#catPop [data-act=lpphoto]").count()===1, "Fotospot offline nicht wählbar");
+  const pid = await rp(`lpClose(); lpPhotoSpot("new:40.7420,-73.9890,")`);
+  ok(await rp(`P("${pid}").geo===1 && P("${pid}").k==="photo"`), "Fotospot ohne Adresse nicht vorgemerkt");
+  // Foto in der Warteschlange: Zähler im Hinweis; während der Privat-Entscheidung wird nichts hochgeladen
+  await rp(`var q = phQueue(); q.up.push("ph_off1"); phSaveQ(q); true`);
+  ok((await page.locator("#offline").innerText()).includes("1 Foto wartet"), "wartendes Foto nicht angezeigt");
+  ok(await rp(`CAPQ = ["ph_off1"]; fbDb = {}; acct.user = acct.user || {uid:"u_me"}; var b = phBusy; phFlush(); var r = !phBusy; CAPQ = []; fbDb = null; r`), "Hochladen läuft schon vor der Privat-Entscheidung los");
+  await rp(`var q = phQueue(); q.up = q.up.filter(function(x){ return x!=="ph_off1"; }); phSaveQ(q); true`);
+  // wieder online: Adresse und Name nachtragen
+  await page.route(/photon\.komoot\.io\/reverse/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({features:[{properties:{name:"Flatiron Building", street:"5th Ave", housenumber:"175", city:"New York"}}]}) }));
+  await ctx.setOffline(false);
+  await page.waitForFunction(id => !window.__rp(`P("${id}").geo`), pid, {timeout:5000});
+  ok(await rp(`P("${pid}").n==="Fotospot Flatiron Building" && P("${pid}").addr==="5th Ave 175, New York"`), "Adresse nicht nachgetragen: "+await rp(`P("${pid}").n+" | "+P("${pid}").addr`));
+  ok(!(await visible("#offline")), "Offline-Hinweis bleibt online stehen");
+});
+
 await test("Offline-Karte: Kacheln des Reisegebiets laden, anzeigen und löschen", async () => {
   await seed();
   let tiles = 0;
@@ -1888,6 +1969,9 @@ await test("Offline-Karte: Kacheln des Reisegebiets laden, anzeigen und löschen
   ok(tiles > 20, "Kacheln nicht geladen");
   ok(await page.evaluate(async () => (await (await caches.open(window.__rp("offCacheName(S.cur)"))).keys()).length) === tiles, "Kacheln nicht im Offline-Speicher");
   ok((await page.locator("#offBox").innerText()).includes("Gespeichert"), "Stand nicht angezeigt");
+  // New York: ÖPNV ist eingebaut, Citi-Bike-Stationen kommen mit
+  ok(await rp(`offMeta(S.cur).nyc && JSON.parse(lsGet("rp-cb-info")).s.length===3`), "ÖPNV/Citi Bike nicht im Offline-Paket");
+  ok((await page.locator("#offBox").innerText()).includes("ÖPNV: New York"), "ÖPNV-Stand nicht angezeigt");
   await shot("offline-karte");
   await click("#offBox [data-act=offdel]"); ok(await visible("#cfPop"), "Löschen ohne Rückfrage");
   await click("#cfPop .cf-ok"); await page.waitForTimeout(300);
