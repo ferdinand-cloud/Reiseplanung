@@ -3544,6 +3544,7 @@ button.tf-pill{border:0;font:inherit;color:inherit}
   <label><input type="checkbox" id="lNb"><span class="sw" style="background:repeating-linear-gradient(90deg,var(--hi) 0 4px,transparent 4px 7px)"></span>Bezirke</label>
   <h4 style="margin-top:4px">Bezirk hervorheben</h4>
   <select id="nbAdd" aria-label="Bezirk hervorheben"></select>
+  <p class="note dnote" id="nbErr" hidden></p>
   <div class="hl-list" id="nbList"></div>
 </div>
 <input type="file" id="cphIn" accept="image/*,image/heic,image/heif" multiple hidden>
@@ -8699,7 +8700,9 @@ function saveNb(){ lsSet(NBKEY, JSON.stringify(Object.keys(nbHi))); }
 function applyNb(){
   var on = {}; nbActive().forEach(function(n){ on[n] = 1; });
   if(mapReady){ var f = ["in", ["get","n"], ["literal", Object.keys(on)]]; map.setFilter("nb-fill", f); map.setFilter("nb-hi", f); if(typeof applyPoi==="function") applyPoi(); }
-  var d = typeof DEST!=="undefined" && DEST, opts = "<option value=\"\">"+(d && !d.nb ? (d.st.nb==="err" ? "Bezirke konnten nicht geladen werden" : d.st.nb==="off" ? "Bezirke laden, sobald du online bist" : "Bezirke werden geladen …") : d && !NB.length ? "Keine Bezirke gefunden" : "Bezirk wählen …")+"</option>";
+  var d = typeof DEST!=="undefined" && DEST, opts = "<option value=\"\">"+(d && !d.nb ? (d.st.nb==="err" ? "Nicht geladen" : d.st.nb==="off" ? "Bezirke laden, sobald du online bist" : "Bezirke werden geladen …") : d && !NB.length ? "Keine Bezirke gefunden" : "Bezirk wählen …")+"</option>";
+  var ne = $("nbErr"), nm = d && !d.nb && d.st.nb==="err";
+  ne.hidden = !nm; ne.innerHTML = nm ? "Bezirke von "+esc(d.n || "diesem Ziel")+" kamen nicht an (Server ausgelastet oder zu viele Daten). <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"nb\">Erneut versuchen</button>" : "";
   var grp = d ? NB.map(function(x){ return x.b; }).filter(function(b, i, a){ return a.indexOf(b)===i; }) : ["Manhattan","Brooklyn","Queens"];
   grp.forEach(function(b){
     var o = NB.filter(function(x){ return x.b===b; }).map(function(x){ return x.n; }).sort(natCmp).map(function(n){ return "<option value=\""+esc(n)+"\""+(nbHi[n]?" disabled":"")+">"+esc(n)+"</option>"; }).join("");
@@ -8778,6 +8781,7 @@ var DRMODE = {subway:"metro", light_rail:"light", monorail:"light", tram:"tram",
 var DSTMODE = {subway:"metro", light_rail:"light", monorail:"light", funicular:"funi", train:"train"};
 var DCOL = {metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"};
 var DPAL = ["#C8102E","#0072CE","#E5A800","#00965E","#7D55C7","#E87722","#00A3AD","#A6192E","#5B7F95","#C6007E"];
+var DRMAX = 10000; // Suchradius höchstens 10 km: in großen Städten sonst zu viele Daten für Overpass und das iPhone
 var OVP = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 var DEST = null, NB_NYC = NB, NBKEY = "nyc-nb-hi", DOFF = {}, dQ = "", dOpen = {}, dWant = false, DMEM = {};
 var DL = (function(){ try { return JSON.parse(lsGet("rp-dl")||"{}") || {}; } catch(e){ return {}; } })();
@@ -8794,7 +8798,7 @@ function destNow(o0){
   if(!C || !hasLoc(C)) return null;
   var pts = (t.hotels||[]).concat(t.orte||[]).concat(Object.keys(t.places||{}).map(function(k){ return t.places[k]; })).filter(function(p){ return p && hasLoc(p) && dist(p, C) < 30000; }), r = 0;
   pts.forEach(function(p){ r = Math.max(r, dist(p, C)); });
-  return {la:+C.la.toFixed(4), lo:+C.lo.toFixed(4), r:Math.round(Math.min(14000, Math.max(6000, r + 2500))), n:String((o && o.n) || t.name || "").slice(0, 60), pts:pts.slice(0, 300).map(function(p){ return [p.la, p.lo]; })};
+  return {la:+C.la.toFixed(4), lo:+C.lo.toFixed(4), r:Math.round(Math.min(DRMAX, Math.max(5000, r + 2500))), n:String((o && o.n) || t.name || "").slice(0, 60), pts:pts.slice(0, 300).map(function(p){ return [p.la, p.lo]; })};
 }
 function destIdx(){ try { var a = JSON.parse(lsGet("rp-dest")||"[]"); return Array.isArray(a) ? a : []; } catch(e){ return []; } }
 function destNear(e, C){ return dist(e, C) < Math.max(3000, e.r*0.4); }
@@ -8805,7 +8809,7 @@ function destSync(){
   destSet(destOf(C), C.pts);
 }
 function destOf(C){ var hit = destIdx().filter(function(e){ return destNear(e, C); })[0];
-  return hit ? {k:hit.k, la:hit.la, lo:hit.lo, r:hit.r, n:hit.n} : {k:"d"+C.la.toFixed(3)+"_"+C.lo.toFixed(3), la:C.la, lo:C.lo, r:C.r, n:C.n}; }
+  return hit ? {k:hit.k, la:hit.la, lo:hit.lo, r:Math.min(hit.r, DRMAX), n:hit.n} : {k:"d"+C.la.toFixed(3)+"_"+C.lo.toFixed(3), la:C.la, lo:C.lo, r:C.r, n:C.n}; }
 /* alle Ziele der Reise außerhalb New Yorks (für den Offline-Download) */
 function destAll(){
   var t = T(); if(!t) return [];
@@ -8837,10 +8841,16 @@ function destWanted(part){ var on = DMODES.some(function(m){ return m[0]!=="bus"
 /* Zwischenspeicher: im Speicher und im Gerätespeicher (IndexedDB) */
 function destGet(id){ if(DMEM[id]) return Promise.resolve(DMEM[id]); return idbDo("readonly", function(st){ return st.get("dest:"+id); }).then(function(r){ var v = r && r.data && r.data.at ? r.data : null; if(v) DMEM[id] = v; return v; }).catch(function(){ return null; }); }
 function destPut(id, v){ DMEM[id] = v; idbDo("readwrite", function(st){ st.put({id:"dest:"+id, data:v}); }).catch(function(){}); }
+/* Overpass-Abfrage mit Zeitlimit: große Städte (z. B. Tokio) dürfen nicht endlos „laden“; Abbruch oder Serverfehler → Ersatzserver, dann Fehlermeldung.
+   Eine abgebrochene Abfrage („runtime error“, „Query timed out“) liefert unvollständige Daten: als Fehler werten, nicht speichern */
+var OVTO = 45000;
 function ovq(q, i){
   i = i || 0;
-  return fetch(OVP[i], {method:"POST", body:"data="+encodeURIComponent(q), headers:{"Content-Type":"application/x-www-form-urlencoded"}})
+  var ac = typeof AbortController==="function" ? new AbortController() : null, to = setTimeout(function(){ if(ac) ac.abort(); }, OVTO);
+  return fetch(OVP[i], {method:"POST", body:"data="+encodeURIComponent(q), headers:{"Content-Type":"application/x-www-form-urlencoded"}, signal:ac ? ac.signal : undefined})
     .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(j){ clearTimeout(to); if(j && j.remark && /error|timed out|out of memory/i.test(j.remark)) throw new Error("zu viele Daten"); return j; },
+      function(e){ clearTimeout(to); throw e; })
     .catch(function(e){ if(i+1 < OVP.length) return ovq(q, i+1); throw e; });
 }
 function destBB(d){ var a = d.r/111320, b = d.r/(111320*Math.cos(d.la*Math.PI/180)); return [(d.la-a).toFixed(4), (d.lo-b).toFixed(4), (d.la+a).toFixed(4), (d.lo+b).toFixed(4)].join(","); }
@@ -8862,8 +8872,8 @@ function txtCol(c){ var h = c.replace("#",""); if(h.length===3) h = h.replace(/.
 function natCmp(a, b){ return String(a).localeCompare(String(b), "de", {numeric:true}); }
 function trFetch(d, bus){
   var bb = destBB(d), q = bus
-    ? "[out:json][timeout:120];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out geom;"
-    : "[out:json][timeout:120];rel[type=route][route~\"^(subway|light_rail|monorail|tram|train|funicular|ferry)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out geom;"+
+    ? "[out:json][timeout:40];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;"
+    : "[out:json][timeout:40];(rel[type=route][route~\"^(subway|light_rail|monorail|tram|funicular|ferry)$\"]("+bb+");rel[type=route][route=train][service!~\"^(long_distance|high_speed|night|car_shuttle)$\"]("+bb+");)->.r;.r out body;way(r.r)("+bb+");out skel geom;"+
       "(way[railway=funicular]("+bb+");way[aerialway~\"^(cable_car|gondola)$\"]("+bb+"););out geom;node[railway=station][name]("+bb+");out;node[amenity=bicycle_rental]("+bb+");out;"+
       "rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+");out count;";
   return ovq(q).then(function(j){ return trParse(j); });
@@ -8872,7 +8882,7 @@ function trParse(j){
   var W = {}, used = {}, rels = [], st = [], bk = [], nbus = 0;
   (j.elements||[]).forEach(function(e){
     var tg = e.tags || {};
-    if(e.type==="way" && e.geometry) W[e.id] = {g:e.geometry.filter(Boolean).map(function(p){ return [+p.lon.toFixed(5), +p.lat.toFixed(5)]; }), t:tg};
+    if(e.type==="way" && e.geometry) W[e.id] = {g:simp(e.geometry.filter(Boolean).map(function(p){ return [+p.lon.toFixed(5), +p.lat.toFixed(5)]; }), 0.00003), t:tg};
     else if(e.type==="relation" && tg.type==="route") rels.push(e);
     else if(e.type==="node" && tg.amenity==="bicycle_rental"){ if(!tg.shop && tg.bicycle_rental!=="shop") bk.push([+e.lon.toFixed(5), +e.lat.toFixed(5), String(tg.name || tg.network || "").slice(0, 60)]); }
     else if(e.type==="node" && tg.railway==="station" && tg.name) st.push([+e.lon.toFixed(5), +e.lat.toFixed(5), String(tg.name).slice(0, 60), DSTMODE[tg.station] || "train"]);
@@ -8903,22 +8913,24 @@ function trParse(j){
 /* Bezirke: die kleinste Verwaltungseinheit, die (fast) alle Orte der Reise enthält, und deren nächste Unterteilung */
 function nbFetch(d){
   var pts = d.pts && d.pts.length ? d.pts : [[d.la, d.lo]];
-  return ovq("[out:json][timeout:30];is_in("+d.la+","+d.lo+")->.a;rel(pivot.a)[boundary=administrative][admin_level];out tags bb;").then(function(j){
+  return ovq("[out:json][timeout:25];is_in("+d.la+","+d.lo+")->.a;rel(pivot.a)[boundary=administrative][admin_level];out tags bb;").then(function(j){
     var cs = (j.elements||[]).filter(function(e){ var b = e.bounds, lv = +((e.tags||{}).admin_level); if(!b || !(lv >= 4 && lv <= 10)) return false;
       var n = pts.filter(function(p){ return p[0] >= b.minlat && p[0] <= b.maxlat && p[1] >= b.minlon && p[1] <= b.maxlon; }).length;
       return n >= pts.length*0.9 && dist({la:b.minlat, lo:b.minlon}, {la:b.maxlat, lo:b.maxlon}) > 4000; })
       .sort(function(a, b){ return b.tags.admin_level - a.tags.admin_level; });
     var tryC = function(i){
       if(i >= Math.min(cs.length, 3)) return {at:Date.now(), city:"", nb:[]};
-      var c = cs[i], lv = +c.tags.admin_level, b = c.bounds, tol = 0.003, lvs = []; for(var x = lv+1; x <= 11; x++) lvs.push(x);
-      return ovq("[out:json][timeout:60];rel("+c.id+");map_to_area->.c;rel(area.c)[boundary=administrative][admin_level~\"^("+lvs.join("|")+")$\"][name];out tags bb;").then(function(j2){
+      var c = cs[i], lv = +c.tags.admin_level, b = c.bounds, tol = 0.003, lvs = []; for(var x = lv+1; x <= 10; x++) lvs.push(x);
+      // nur Bezirke rund um die Reise (Suchgebiet), nicht die ganze Verwaltungseinheit (Tokio reicht bis zu den Ogasawara-Inseln)
+      var sb = destBB({la:d.la, lo:d.lo, r:d.r*1.3}).split(",").map(Number), qb = [Math.max(sb[0], b.minlat), Math.max(sb[1], b.minlon), Math.min(sb[2], b.maxlat), Math.min(sb[3], b.maxlon)].map(function(v){ return v.toFixed(4); }).join(",");
+      return ovq("[out:json][timeout:30];rel[boundary=administrative][admin_level~\"^("+lvs.join("|")+")$\"][name]("+qb+");out tags bb;").then(function(j2){
         var by = {};
         (j2.elements||[]).forEach(function(e){ var o = e.bounds; if(!o || e.id===c.id) return;
           if(o.minlat < b.minlat - tol || o.maxlat > b.maxlat + tol || o.minlon < b.minlon - tol || o.maxlon > b.maxlon + tol) return;
           (by[e.tags.admin_level] = by[e.tags.admin_level] || []).push(e.id); });
         var lk = Object.keys(by).map(Number).sort(function(a, b){ return a - b; }).filter(function(l){ return by[l].length >= 3 && by[l].length <= 120; })[0];
         if(!lk) return tryC(i+1);
-        return ovq("[out:json][timeout:120];rel(id:"+by[lk].join(",")+");out geom;").then(function(j3){ return nbParse(j3, String(c.tags.name || d.n || "").slice(0, 60)); });
+        return ovq("[out:json][timeout:40];rel(id:"+by[lk].join(",")+");out geom;").then(function(j3){ return nbParse(j3, String(c.tags.name || d.n || "").slice(0, 60)); });
       });
     };
     return tryC(0);
@@ -9049,7 +9061,7 @@ function destUi(){
   if(br) br.style.display = d && (!d.tr || !dBike().length) ? "none" : "";
   if(!d){ el.innerHTML = ""; trSync(); return; }
   var h = "", ms = dModes(), ro = isRO();
-  if(!d.tr) h += "<p class=\"note dnote\">"+(d.st.tr==="err" ? "ÖPNV von "+esc(d.n || "diesem Ziel")+" konnte nicht geladen werden. <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>"
+  if(!d.tr) h += "<p class=\"note dnote\">"+(d.st.tr==="err" ? "ÖPNV von "+esc(d.n || "diesem Ziel")+" kam nicht an (Server ausgelastet oder zu viele Daten). <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>"
     : d.st.tr==="off" ? "Offline: ÖPNV von "+esc(d.n || "diesem Ziel")+" lädt, sobald du wieder Internet hast." : "ÖPNV von "+esc(d.n || "diesem Ziel")+" wird geladen …")+"</p>";
   else if(!ms.length) h += "<p class=\"note dnote\">Keine ÖPNV-Linien in OpenStreetMap gefunden.</p>";
   if(!ro) ms.forEach(function(m){
