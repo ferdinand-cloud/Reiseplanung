@@ -23,7 +23,7 @@ jobs:
           SHOTS: shots
         run: |
           npm ci
-          CHROME=$(command -v google-chrome) node smoke.mjs
+          node smoke.mjs   # gleiches Chromium (@sparticuz/chromium) wie in den Sessions
       - name: Screenshots der Fehler
         if: failure()
         uses: actions/upload-artifact@v4
