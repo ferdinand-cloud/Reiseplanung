@@ -1489,8 +1489,12 @@ await test("Öffnungszeiten (online): Warnung bei später Uhrzeit, Anzeige in de
     if(dayOf("p3")!==k){ Object.keys(T().order).forEach(function(d){ T().order[d] = T().order[d].filter(function(x){ return x!=="p3"; }); }); ord(k).push("p3"); }
     save(); openJPop("p3", k); true`); await page.waitForTimeout(300);
   ok((await page.locator("#jPop .jp-info").innerText()).includes("10:00–18:00"), "Öffnungszeiten fehlen in der Detailansicht");
-  await page.fill("#jPop input[data-act=time]", "19:30"); await page.dispatchEvent("#jPop input[data-act=time]", "change");
-  await page.locator("#jPop input[data-act=time]").blur(); await page.waitForTimeout(300);
+  // Uhrzeit wie auf dem iPhone setzen: Feld hat den Fokus, Rad meldet input/change, gespeichert wird beim Verlassen (blur).
+  // Bewusst im Seitenkontext statt page.fill/locator.blur – Google Chrome (Action) verhielt sich dabei anders als Chromium.
+  ok(await rp(`var i = document.querySelector("#jPop input[data-act=time]"); i.focus(); i.value = "19:30";
+    i.dispatchEvent(new Event("input", {bubbles:true})); i.dispatchEvent(new Event("change", {bubbles:true}));
+    var early = timeOf("p3")==="19:30" && document.activeElement===i; i.blur(); !early`), "Uhrzeit schon während der Eingabe gespeichert (iOS-Rad würde schließen)");
+  await page.waitForTimeout(300);
   ok(await rp(`timeOf("p3")==="19:30"`), "Uhrzeit nicht gespeichert");
   const tt = await page.locator("#toast").innerText();
   ok(tt.includes("19:30") && tt.includes("zu"), "Keine Warnung bei Uhrzeit außerhalb der Öffnungszeiten: "+tt);
