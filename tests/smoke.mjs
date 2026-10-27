@@ -1209,6 +1209,19 @@ await test("Querformat: Planung als Seitenleiste, Kartenknöpfe neben der Leiste
   await mapCtrlsOk("Hochkant nach Drehen");
   await page.setViewportSize({width:844, height:390}); await page.waitForTimeout(500);
   ok(await rp(`desktop.matches`), "Zurück quer: keine Seitenleiste"); await mapCtrlsOk("Quer nach Drehen");
+  // alle Symbole der Leiste liegen auf ihrem Hintergrund (Safari maß die Leiste zu schmal)
+  const inBar = async () => page.evaluate(() => { const b = document.getElementById("tabbar").getBoundingClientRect(); return [...document.querySelectorAll("#tabbar .tb")].every(e => { const r = e.getBoundingClientRect(); return r.left >= b.left - 1 && r.right <= b.right + 1; }); });
+  ok(await inBar(), "Quer: Symbole ragen aus der Leiste");
+  await click("#edgeBtn"); await page.waitForTimeout(400); ok(await inBar(), "Quer eingeklappt: Symbole ragen aus der Leiste"); await click("#edgeBtn"); await page.waitForTimeout(400);
+  // wie als App vom Home-Bildschirm: iOS meldet die neue Höhe der Kopfleiste teils erst nach resize – Knöpfe und Tagesleiste folgen ihr trotzdem
+  await page.setViewportSize({width:390, height:844}); await page.waitForTimeout(600);
+  const noOv = () => page.evaluate(() => { const tr = document.querySelector(".toprow").getBoundingClientRect(), tb = document.getElementById("tabbar").getBoundingClientRect(), c = document.getElementById("ctrl").getBoundingClientRect(), r = document.getElementById("rail").getBoundingClientRect();
+    return {tb:tr.top >= tb.bottom - 1, ctrl:c.top >= tr.bottom - 1, rail:r.top >= tr.bottom - 1}; });
+  let ov = await noOv(); ok(ov.tb && ov.ctrl && ov.rail, "Hochkant nach Drehen überlappt: "+JSON.stringify(ov));
+  await page.waitForTimeout(800); // Nachzügler vom Drehen abwarten
+  await page.evaluate(() => { document.querySelector(".top").style.paddingTop = "70px"; }); await page.waitForTimeout(300);
+  ov = await noOv(); ok(ov.ctrl && ov.rail, "Knöpfe folgen der Kopfleiste nicht, wenn sie später höher wird: "+JSON.stringify(ov));
+  await page.evaluate(() => { document.querySelector(".top").style.paddingTop = ""; });
 }, QUER);
 
 // prüft: Knöpfe, Eingaben und Überschriften der offenen Ansicht liegen nicht unter Notch/Rand (horizontal ins Bild ragende Elemente in Laufbändern ausgenommen)

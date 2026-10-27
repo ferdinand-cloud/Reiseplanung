@@ -3129,14 +3129,14 @@ body.ro .navtools [data-act="addpop"]{display:none}
   .toprow{display:contents}
   .top .trip{order:0;flex:0 1 auto;max-width:34%;min-width:76px;margin:0;padding-top:9px;padding-bottom:9px}
   .tabbar{order:1;flex:0 0 auto;width:auto;min-width:0;padding:3px;margin:0 auto;gap:0}
-  .tabbar .tb{flex:0 0 32px;min-width:0}
+  .tabbar .tb{flex:0 0 32px;width:32px;min-width:0} /* feste Breite: Safari misst die Leiste sonst nach den Symbolen und der Hintergrund endet zu früh */
   .tabbar .tb,.tbpill{height:38px}
   .tbpill{top:3px}
   .top #srchBtn{order:2;margin-left:0}
   .top #camBtn{order:3;margin-left:0}
   .toprow .menubtn{width:42px;height:42px;flex:0 0 42px}
   body:not(.side-off):not(.profopen) .top{padding-left:12px} /* links liegt die Planung, die Notch ist dort schon berücksichtigt */
-  body.side-off .tabbar .tb{flex-basis:44px}
+  body.side-off .tabbar .tb{flex-basis:44px;width:44px}
   .top .trip{gap:6px;padding-left:14px;padding-right:10px}
   body:not(.side-off) .top .trip span{display:none} /* neben der Planung ist es eng: nur der Reisename */
   body.side-off .top{left:0} /* der Ausklapp-Griff sitzt mittig am Rand, oben ist frei */
@@ -12069,7 +12069,10 @@ document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; i
 desktop.addEventListener("change", function(){ syncSide(); resize(); });
 // Drehen: iOS meldet die neuen Maße teils erst nach dem resize-Ereignis, daher kurz danach noch einmal alles neu setzen
 quer.addEventListener("change", function(){ resize(); tbPillSync(); });
-window.addEventListener("orientationchange", function(){ setTimeout(function(){ resize(); tbPillSync(); }, 350); });
+window.addEventListener("orientationchange", function(){ [350, 900].forEach(function(t){ setTimeout(function(){ resize(); tbPillSync(); }, t); }); });
+// Kopfleiste ändert ihre Höhe beim Drehen (quer eine Zeile, hochkant zwei): sobald das wirklich passiert ist, Knöpfe, Tagesleiste usw. neu setzen.
+// Als App vom Home-Bildschirm meldet iOS die neuen Maße teils erst nach resize/orientationchange.
+if(window.ResizeObserver){ (function(){ var t = document.querySelector(".top"), lh = 0; new ResizeObserver(function(){ var h = Math.round(t.getBoundingClientRect().height); if(h===lh) return; lh = h; placeFloating(); tbPillSync(); }).observe(t, {box:"border-box"}); })(); }
 window.addEventListener("resize", resize);
 
 /* ---------- Start ---------- */
