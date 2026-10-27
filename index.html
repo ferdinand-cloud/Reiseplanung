@@ -2071,12 +2071,14 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .fr-badge{position:absolute;top:6px;right:8px;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;background:#FF3B30;color:#fff;font:700 12px/20px var(--f-body);font-style:normal;text-align:center}
 .fr-tile:has(.fr-badge){padding-right:34px}
 .ag-card[data-fr] .ag-title{padding-right:44px;font-size:23px}
-.fr-bar{display:flex;align-items:center;gap:8px;margin:6px 0 4px}
-.fr-bar .fr-seg{flex:1;min-width:0;margin:0}
+.fr-pills{display:flex;gap:8px;margin:8px 0 10px}
+.fr-pill{position:relative;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px 0 11px;border:0;border-radius:17px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font:600 14px/1 var(--f-body);cursor:pointer}
+.fr-pill svg{width:18px;height:18px}
+.fr-pill b{font-weight:600;color:var(--ink)}
+.fr-pill em{font-style:normal;font-weight:600;color:var(--muted)}
+.fr-pill .fr-badge{position:static;margin-left:2px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:18px}
+.ag-card[data-fr] .fr-seg{margin:0 0 4px}
 .fr-seg em{font-style:normal;color:var(--muted);font-weight:500;margin-left:3px}
-.fr-ib{position:relative;flex:0 0 36px;width:36px;height:36px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--ink);cursor:pointer}
-.fr-ib svg{width:19px;height:19px}
-.fr-ib .fr-badge{top:-4px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:18px;box-shadow:0 0 0 2px var(--card,var(--bg))}
 .fr-filt{margin:0 0 8px}
 .fr-none{margin:8px 4px}
 .fr-pop .ag-lbl:first-of-type{margin-top:4px}
@@ -4492,7 +4494,7 @@ function googleBlock(){
    Die E-Mail steht nur im eigenen Folgen-Dokument und nur, solange ihr euch gegenseitig folgt.
    Frühere Freundschaften (friendReqs) werden einmalig zu gegenseitigem Folgen; die Anfrage bleibt unverändert,
    fmig/{Anfrage-Kennung} merkt, dass sie umgewandelt ist. ---------- */
-var PROF = null, FR = {inc:[], followers:[], following:[], friends:[]}, frUnsub = [], frSearch = {q:"", res:[], busy:false}, unameEdit = false, unameMsg = "", FRNAMES = {}, frSig = "";
+var PROF = null, FR = {inc:[], out:[], followers:[], following:[], friends:[]}, frUnsub = [], frSearch = {q:"", res:[], busy:false}, unameEdit = false, unameMsg = "", FRNAMES = {}, frSig = "";
 function folRef(a, b){ return fbDb.collection("follows").doc(a+"_"+b); }
 function frWatch(){
   if(!fbDb || !acct.user || frUnsub.length) return;
@@ -4504,13 +4506,15 @@ function frWatch(){
     if(folOk===false){
       // Regeln für „follows“ noch nicht veröffentlicht: bisherige Freundschaften weiter nutzen
       FR.friends = A.concat(B).filter(function(r){ return r.status==="accepted"; }).map(function(r){ var me1 = r.from===uid0, u = me1 ? r.to : r.from; return {uid:u, name:nameOf(u, me1 ? r.toName : r.fromName), email:me1 ? r.toEmail : r.fromEmail}; });
-      FR.followers = FR.friends.slice(); FR.following = FR.friends.slice(); FR.inc = [];
+      FR.followers = FR.friends.slice(); FR.following = FR.friends.slice(); FR.inc = []; FR.out = [];
     } else {
-      var fo = {}; FO.forEach(function(r){ fo[r.to] = 1; });
-      FR.following = FO.map(function(r){ return {uid:r.to, name:nameOf(r.to), at:r.at||0, id:r.id}; });
-      FR.followers = FI.map(function(r){ return {uid:r.from, name:nameOf(r.from), email:r.fromEmail||"", at:r.at||0, id:r.id, mutual:!!fo[r.from]}; });
+      // st:"req" = Anfrage zum Folgen, noch nicht angenommen
+      var FOk = FO.filter(function(r){ return r.st!=="req"; }), FIk = FI.filter(function(r){ return r.st!=="req"; }), fo = {}; FOk.forEach(function(r){ fo[r.to] = 1; });
+      FR.following = FOk.map(function(r){ return {uid:r.to, name:nameOf(r.to), at:r.at||0, id:r.id}; });
+      FR.followers = FIk.map(function(r){ return {uid:r.from, name:nameOf(r.from), email:r.fromEmail||"", at:r.at||0, id:r.id, mutual:!!fo[r.from]}; });
       FR.friends = FR.followers.filter(function(f){ return f.mutual; });
-      FR.inc = FR.followers.filter(function(f){ return !f.mutual; });
+      FR.inc = FI.filter(function(r){ return r.st==="req"; }).map(function(r){ return {uid:r.from, name:nameOf(r.from), at:r.at||0, id:r.id+":"+(r.at||0)}; });
+      FR.out = FO.filter(function(r){ return r.st==="req"; }).map(function(r){ return {uid:r.to, name:nameOf(r.to), at:r.at||0, id:r.id}; });
       [FR.following, FR.followers].forEach(function(l){ l.sort(function(a, b){ return String(a.name).localeCompare(b.name, "de", {sensitivity:"base"}); }); });
       FR.inc.sort(function(a, b){ return b.at - a.at; });
       folMail(); folMigrate();
@@ -4523,11 +4527,11 @@ function frWatch(){
   };
   // E-Mail nur im eigenen Folgen-Dokument und nur bei gegenseitigem Folgen (für Einladungen zu Reisen)
   var folMail = function(){
-    var mm = myMail(), fi = {}; FI.forEach(function(r){ fi[r.from] = 1; });
-    FO.forEach(function(r){ var want = fi[r.to] ? mm : "", k = r.id+":"+want; if((r.fromEmail||"")===want || mailDone[k]) return; mailDone[k] = 1;
+    var mm = myMail(), fi = {}; FI.forEach(function(r){ if(r.st!=="req") fi[r.from] = 1; });
+    FO.forEach(function(r){ if(r.st==="req") return; var want = fi[r.to] ? mm : "", k = r.id+":"+want; if((r.fromEmail||"")===want || mailDone[k]) return; mailDone[k] = 1;
       folRef(uid0, r.to).update({fromEmail:want || firebase.firestore.FieldValue.delete()}).catch(function(){}); });
   };
-  // Einmalige Umwandlung: Freundschaft → beide folgen sich; offene Anfrage → Anfragender folgt
+  // Einmalige Umwandlung: Freundschaft → beide folgen sich; offene Freundschaftsanfrage → Anfrage zum Folgen
   var folMigrate = function(){
     if(!gotA || !gotB || !gotI || !gotO) return;
     var fi = {}, fo = {}; FI.forEach(function(r){ fi[r.from] = 1; }); FO.forEach(function(r){ fo[r.to] = 1; });
@@ -4537,23 +4541,25 @@ function frWatch(){
       mig.get().then(function(d){
         if(d.exists) return;
         var b = fbDb.batch(), now = Date.now(), n = 0;
-        var put = function(a, c, mail){ if(a===uid0 ? fo[c] : fi[a]) return; var v = {from:a, to:c, at:r.at || now, mig:r.id}; if(mail) v.fromEmail = String(mail).toLowerCase(); b.set(folRef(a, c), v); n++; };
+        var put = function(a, c, mail, st){ if(a===uid0 ? fo[c] : fi[a]) return; var v = {from:a, to:c, at:r.at || now, mig:r.id}; if(mail) v.fromEmail = String(mail).toLowerCase(); if(st) v.st = st; b.set(folRef(a, c), v); n++; };
         if(r.status==="accepted"){ put(r.from, r.to, r.fromEmail); put(r.to, r.from, r.toEmail); }
-        else put(r.from, r.to, "");
+        else put(r.from, r.to, "", "req");
         b.set(mig, {by:uid0, at:now});
         return b.commit();
       }).catch(function(){ migDone[r.id] = 0; });
     });
   };
-  // Meldungen: neuer Follower – je Follower nur einmal
-  var SK = "rp-folseen-"+uid0, seen = null; try { seen = JSON.parse(localStorage.getItem(SK)||"null"); } catch(e){}
+  // Meldungen: neue Anfrage zum Folgen an mich / meine Anfrage wurde angenommen – je Anfrage nur einmal
+  var SK = "rp-folseen2-"+uid0, seen = null; try { seen = JSON.parse(localStorage.getItem(SK)||"null"); } catch(e){}
   var first = !seen; seen = seen || {};
   var frNotify = function(){
-    if(!gotI || folOk===false) return;
+    if(!gotI || !gotO || folOk===false) return;
     var msgs = [];
-    FI.forEach(function(r){ if(seen[r.from]) return; seen[r.from] = 1; if(!first && !r.mig) msgs.push({u:r.from, at:r.at}); });
+    FI.forEach(function(r){ if(r.st!=="req") return; var k = "r:"+r.from+":"+(r.at||0); if(seen[k]) return; seen[k] = 1; msgs.push({u:r.from, at:r.at, t:" möchte dir folgen"}); });
+    FO.forEach(function(r){ var k = "p:"+r.to; if(r.st==="req"){ seen[k] = 1; return; } if(!seen[k]) return; delete seen[k]; if(!first) msgs.push({u:r.to, at:Date.now(), t:" hat deine Anfrage angenommen – du folgst jetzt"}); });
+    Object.keys(seen).forEach(function(k){ if(k.indexOf("p:")===0 && !FO.some(function(r){ return "p:"+r.to===k; })) delete seen[k]; });
     first = false; lsSet(SK, JSON.stringify(seen));
-    msgs.forEach(function(m, i){ setTimeout(function(){ var show = function(nm){ var fr = FR.following.some(function(f){ return f.uid===m.u; }); ntAdd({id:"fol:"+m.u+":"+(m.at||0), type:"friend", text:"@"+nm+(fr ? " folgt dir jetzt auch – ihr seid jetzt Freunde" : " folgt dir jetzt"), at:m.at}); };
+    msgs.forEach(function(m, i){ setTimeout(function(){ var show = function(nm){ ntAdd({id:"fol:"+m.u+":"+(m.at||0)+":"+m.t.length, type:"friend", text:"@"+nm+m.t, at:m.at}); };
       if(NAMES[m.u]) show(NAMES[m.u]); else fbDb.collection("profiles").doc(m.u).get().then(function(d){ var v = d.exists && d.data(); show(v && v.name || "?"); }, function(){ show("?"); }); }, i*5200); });
   };
   var rows = function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); };
@@ -4565,7 +4571,7 @@ function frWatch(){
   frUnsub.push(fbDb.collection("friendReqs").where("from", "==", uid0).onSnapshot(function(qs){ B = rows(qs); gotB = true; upd(); }, function(){ gotB = true; upd(); }));
   chWatch(); fgWatch();
 }
-function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; fgStop(); chStopAll(); if(chPage) closeChPage(); PROF = null; FR = {inc:[], followers:[], following:[], friends:[]}; navAv(); }
+function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; fgStop(); chStopAll(); if(chPage) closeChPage(); PROF = null; FR = {inc:[], out:[], followers:[], following:[], friends:[]}; navAv(); }
 function validName(n){ return /^[a-zA-Z0-9._-]{3,20}$/.test(n); }
 function setUsername(n){
   n = (n||"").trim().replace(/^@/, "");
@@ -4595,13 +4601,15 @@ function frDoSearch(q){
   }, function(){ frSearch.busy = false; frSearch.res = []; renderFrRes(); });
 }
 function frState(uid1){
-  var fo = FR.following.some(function(f){ return f.uid===uid1; }), fi = FR.followers.some(function(f){ return f.uid===uid1; });
-  return fo && fi ? "friend" : fo ? "following" : fi ? "follower" : "";
+  var has = function(l){ return (l||[]).some(function(f){ return f.uid===uid1; }); }, fo = has(FR.following), fi = has(FR.followers);
+  return fo && fi ? "friend" : fo ? "following" : has(FR.out) ? "requested" : has(FR.inc) ? "inc" : fi ? "follower" : "";
 }
-function frStLbl(st){ return st==="friend" ? "Ihr folgt euch" : st==="following" ? "Du folgst" : st==="follower" ? "Folgt dir" : ""; }
+function frStLbl(st){ return st==="friend" ? "Ihr folgt euch" : st==="following" ? "Du folgst" : st==="requested" ? "Anfrage gesendet" : st==="inc" ? "möchte dir folgen" : st==="follower" ? "Folgt dir" : ""; }
 function folBtn(st, uid1, name1){
   return st==="friend" || st==="following" ? "<button type=\"button\" class=\"btn g s\" data-act=\"folunf\" data-uid=\""+esc(uid1)+"\">Gefolgt</button>"
-    : "<button type=\"button\" class=\"btn s\" data-act=\"folfol\" data-uid=\""+esc(uid1)+"\" data-name=\""+esc(name1||"")+"\">"+(st==="follower" ? "Zurückfolgen" : "Folgen")+"</button>";
+    : st==="requested" ? "<button type=\"button\" class=\"btn g s\" data-act=\"folunf\" data-uid=\""+esc(uid1)+"\">Angefragt</button>"
+    : st==="inc" ? "<button type=\"button\" class=\"btn s\" data-act=\"folacc\" data-uid=\""+esc(uid1)+"\">Annehmen</button>"
+    : "<button type=\"button\" class=\"btn s\" data-act=\"folfol\" data-uid=\""+esc(uid1)+"\" data-name=\""+esc(name1||"")+"\">Folgen</button>";
 }
 function frResHTML(){
   if(frSearch.busy) return "<p class=\"note\">Suche …</p>";
@@ -4610,16 +4618,25 @@ function frResHTML(){
     return "<div class=\"ag-row\"><span class=\"mav\">"+esc(r.name[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.name)+"</b>"+(st ? "<small>"+frStLbl(st)+"</small>" : "")+"</span>"+folBtn(st, r.uid, r.name)+"</div>"; }).join("");
 }
 function renderFrRes(){ var el = $("frRes"); if(el) el.innerHTML = frResHTML(); }
-function frName(uid1){ var f = FR.followers.concat(FR.following).filter(function(x){ return x.uid===uid1; })[0]; return (f && f.name) || FRNAMES[uid1] || ""; }
+function frName(uid1){ var f = FR.followers.concat(FR.following, FR.inc, FR.out).filter(function(x){ return x.uid===uid1; })[0]; return (f && f.name) || FRNAMES[uid1] || ""; }
 function folFollow(uid1, name1){
   if(!PROF){ toast("Lege zuerst einen Benutzernamen fest", false); return; }
   if(!uid1 || uid1===acct.user.uid) return; name1 = name1 || frName(uid1); if(name1) FRNAMES[uid1] = name1;
-  var back = FR.followers.some(function(f){ return f.uid===uid1; });
-  folRef(acct.user.uid, uid1).set({from:acct.user.uid, to:uid1, at:Date.now()})
-    .then(function(){ toast(back ? "Ihr folgt euch jetzt gegenseitig – ihr seid Freunde" : "Du folgst jetzt @"+name1, false); renderFrRes(); }, function(e){ toast("Folgen fehlgeschlagen: "+(e && e.message), false); });
+  folRef(acct.user.uid, uid1).set({from:acct.user.uid, to:uid1, at:Date.now(), st:"req"})
+    .then(function(){ toast("Anfrage zum Folgen an @"+name1+" gesendet", false); renderFrRes(); if(gsPage) renderGs(); }, function(e){ toast("Anfrage fehlgeschlagen: "+(e && e.message), false); });
+}
+function folAccept(uid1){
+  var nm = frName(uid1);
+  folRef(uid1, acct.user.uid).update({st:"ok"}).then(function(){ toast("@"+nm+" folgt dir jetzt", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); });
+}
+function folDecline(uid1){
+  var nm = frName(uid1);
+  askConfirm("Anfrage von @"+nm+" ablehnen?", "@"+nm+" folgt dir dann nicht und erfährt davon nichts.", "Ablehnen", function(){
+    folRef(uid1, acct.user.uid).delete().then(function(){ toast("Anfrage abgelehnt", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); }); });
 }
 function folUnfollow(uid1){
-  var nm = frName(uid1), mu = frState(uid1)==="friend";
+  var nm = frName(uid1), st0 = frState(uid1), mu = st0==="friend";
+  if(st0==="requested"){ askConfirm("Anfrage an @"+nm+" zurückziehen?", "", "Zurückziehen", function(){ folRef(acct.user.uid, uid1).delete().then(function(){ toast("Anfrage zurückgezogen", false); renderFrRes(); if(gsPage) renderGs(); }, function(){}); }); return; }
   askConfirm("@"+nm+" nicht mehr folgen?", mu ? "Ihr folgt euch dann nicht mehr gegenseitig: kein Chat, keine Einladungen, keine „Freunde“-Inhalte mehr. Gemeinsame Reisen bleiben." : "Du siehst dann nichts mehr von @"+nm+" in Entdecken.", "Nicht mehr folgen", function(){
     folRef(acct.user.uid, uid1).delete().then(function(){ toast("Du folgst @"+nm+" nicht mehr", false); renderFrRes(); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); }); });
 }
@@ -4649,7 +4666,8 @@ function invCheck(){
     var u = d.exists && d.data().uid; if(!u){ toast("@"+v+" wurde nicht gefunden", false); return; }
     return fbDb.collection("profiles").doc(u).get().then(function(p){ var nm = (p.exists && p.data().name) || v, st = frState(u);
       if(st==="friend" || st==="following") toast("Du folgst @"+nm+" schon", false);
-      else askConfirm("@"+nm+" folgen?", (st==="follower" ? "@"+nm+" folgt dir schon. " : "Du hast den Einladungslink von @"+nm+" geöffnet. ")+"Folgt ihr euch gegenseitig, seht ihr eure Empfehlungen und könnt euch schreiben.", st==="follower" ? "Zurückfolgen" : "Folgen", function(){ folFollow(u, nm); });
+      else if(st==="requested") toast("Anfrage an @"+nm+" ist schon gesendet", false);
+      else askConfirm("@"+nm+" folgen?", (st==="follower" ? "@"+nm+" folgt dir schon. " : "Du hast den Einladungslink von @"+nm+" geöffnet. ")+"Nimmt @"+nm+" deine Anfrage an, folgst du. Folgt ihr euch gegenseitig, seht ihr eure Empfehlungen und könnt euch schreiben.", "Anfrage senden", function(){ folFollow(u, nm); });
     });
   }).catch(function(){ toast("Einladung konnte nicht geöffnet werden", false); });
 }
@@ -4703,10 +4721,10 @@ function friendsHTML(){
     var sub = gs.length ? gs.map(function(g){ return g.n; }).join(" · ") : mu ? "Freund · ihr folgt euch" : ing ? "folgt dir nicht" : "folgt dir";
     h += "<div class=\"ag-row\" data-frn=\""+esc(fn)+"\""+(q && fn.indexOf(q) < 0 ? " hidden" : "")+"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b><small>"+esc(sub)+"</small></span>"+
       (mu && !ing ? "<button type=\"button\" class=\"fg-for"+(gs.length ? " on" : "")+"\" data-act=\"fgfor\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Gruppen für @"+esc(f.name)+"\">"+FGICO+"</button>" : "")+
-      (ing ? folBtn("following", f.uid, f.name) : (mu ? "" : "<button type=\"button\" class=\"btn s\" data-act=\"folfol\" data-uid=\""+esc(f.uid)+"\" data-name=\""+esc(f.name||"")+"\" aria-label=\"@"+esc(f.name)+" zurückfolgen\">Folgen</button>")+"<button type=\"button\" class=\"fg-for fr-rm\" data-act=\"folrm\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Follower @"+esc(f.name)+" entfernen\" title=\"Follower entfernen\">"+FRRMICO+"</button>")+"</div>"; });
+      (ing ? folBtn("following", f.uid, f.name) : (mu ? "" : folBtn(frState(f.uid)==="requested" ? "requested" : "follower", f.uid, f.name))+"<button type=\"button\" class=\"fg-for fr-rm\" data-act=\"folrm\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Follower @"+esc(f.name)+" entfernen\" title=\"Follower entfernen\">"+FRRMICO+"</button>")+"</div>"; });
   if(list.length > 1) h += "<p class=\"note fr-none\""+(q && !list.some(function(f){ return norm(f.name||"").indexOf(q) > -1; }) ? "" : " hidden")+">Niemand mit diesem Namen.</p>";
-  h += "<button type=\"button\" class=\"ag-row\" data-act=\"accview\" data-v=\"search\"><span><b>Leute suchen</b><small>Über den Benutzernamen finden und folgen</small></span><em class=\"chev\">›</em></button>";
-  h += "<button type=\"button\" class=\"ag-row\" data-act=\"invshare\"><span><b>Einladen</b><small>Link verschicken – wer ihn öffnet, kann dir gleich folgen</small></span><em class=\"chev\">›</em></button>";
+  h += "<button type=\"button\" class=\"ag-row\" data-act=\"accview\" data-v=\"search\"><span><b>Leute suchen</b><small>Über den Benutzernamen finden und Anfrage zum Folgen senden</small></span><em class=\"chev\">›</em></button>";
+  h += "<button type=\"button\" class=\"ag-row\" data-act=\"invshare\"><span><b>Einladen</b><small>Link verschicken – wer ihn öffnet, kann dir gleich eine Anfrage schicken</small></span><em class=\"chev\">›</em></button>";
   return h+"</div><p class=\"note\">Freunde = ihr folgt euch gegenseitig. Nur Freunde sehen Inhalte mit der Sichtbarkeit „Freunde“, können mit dir chatten und zu Reisen eingeladen werden.</p>";
 }
 function profileHTML(){
@@ -4777,17 +4795,17 @@ function frReadKey(){ return "rp-frread-"+(acct.user ? acct.user.uid : ""); }
 function frUnread(){ var rd = {}; try { rd = JSON.parse(lsGet(frReadKey())||"{}") || {}; } catch(e){} return FR.inc.filter(function(r){ return !rd[r.id]; }).length; }
 function frMarkRead(){ var rd = {}; FR.inc.forEach(function(r){ rd[r.id] = 1; }); lsSet(frReadKey(), JSON.stringify(rd)); }
 function frTilesHTML(){
-  var u = frUnread(), ing = frTab==="ing", gl = FG.length ? FG.length+(FG.length===1 ? " Gruppe" : " Gruppen") : "keine Gruppen";
-  return "<div class=\"fr-bar\"><div class=\"pf-seg fr-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"fol\" aria-selected=\""+!ing+"\">Follower <em>"+FR.followers.length+"</em></button><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"ing\" aria-selected=\""+ing+"\">Gefolgt <em>"+FR.following.length+"</em></button></div>"+
-    "<button type=\"button\" class=\"fr-ib\" data-act=\"fglist\" aria-label=\"Gruppen · "+gl+"\" title=\"Gruppen · "+gl+"\">"+FGICO+"</button>"+
-    "<button type=\"button\" class=\"fr-ib\" data-act=\"frreqs\" aria-label=\"Neue Follower"+(FR.inc.length ? " · "+FR.inc.length+" offen" : "")+"\" title=\"Neue Follower\">"+FRREQICO+(u ? "<i class=\"fr-badge\">"+u+"</i>" : "")+"</button></div>";
+  var u = frUnread(), ing = frTab==="ing", n = FR.inc.length;
+  return "<div class=\"fr-pills\"><button type=\"button\" class=\"fr-pill\" data-act=\"fglist\" aria-label=\"Gruppen · "+(FG.length ? FG.length+(FG.length===1 ? " Gruppe" : " Gruppen") : "keine Gruppen")+"\">"+FGICO+"<b>Gruppen</b>"+(FG.length ? "<em>"+FG.length+"</em>" : "")+"</button>"+
+    "<button type=\"button\" class=\"fr-pill\" data-act=\"frreqs\" aria-label=\"Anfragen zum Folgen"+(n ? " · "+n+" offen" : "")+"\">"+FRREQICO+"<b>Anfragen</b>"+(n && !u ? "<em>"+n+"</em>" : "")+(u ? "<i class=\"fr-badge\">"+u+"</i>" : "")+"</button></div>"+
+    "<div class=\"pf-seg fr-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"fol\" aria-selected=\""+!ing+"\">Follower <em>"+FR.followers.length+"</em></button><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"ing\" aria-selected=\""+ing+"\">Gefolgt <em>"+FR.following.length+"</em></button></div>";
 }
 function frReqHTML(){
-  var h = "<div class=\"pop-card fr-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Neue Follower\"><div class=\"pop-head\"><h4>Neue Follower</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
-  if(!FR.inc.length) return h+"<p class=\"note\">Keine offenen. Hier erscheint, wer dir folgt und dem du noch nicht folgst.</p></div>";
+  var h = "<div class=\"pop-card fr-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Anfragen zum Folgen\"><div class=\"pop-head\"><h4>Anfragen zum Folgen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
+  if(!FR.inc.length) return h+"<p class=\"note\">Keine offenen Anfragen.</p></div>";
   h += "<div class=\"ag-grp\">";
-  FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.name)+"</b><small>folgt dir</small></span><span class=\"invb\">"+folBtn("follower", r.uid, r.name)+"<button type=\"button\" class=\"btn g s\" data-act=\"folrm\" data-uid=\""+esc(r.uid)+"\" aria-label=\"Follower @"+esc(r.name)+" entfernen\">Entfernen</button></span></div>"; });
-  return h+"</div><p class=\"note\">Zurückfolgen macht euch zu Freunden.</p></div>";
+  FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.name)+"</b><small>möchte dir folgen</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"folacc\" data-uid=\""+esc(r.uid)+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"folrej\" data-uid=\""+esc(r.uid)+"\">Ablehnen</button></span></div>"; });
+  return h+"</div></div>";
 }
 function openFrPop(kind){ FRPOP = kind; if(kind==="req") frMarkRead(); frPopRender(true); refreshSettings(); }
 function frPopRender(first){
@@ -7426,7 +7444,7 @@ function renderProfile(){
   if(profTab==="mine" && list.length) h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-new\" data-act=\"pfnew\"><span class=\"pf-plus\" aria-hidden=\"true\">＋</span><b>Neue Reise</b><small>Ziel, Zeitraum, Hotel</small></button></div>";
   h += "</div>"; }
   if(INVITES.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"opentrips\" data-v=\"req\">"+ic("mail", "ii")+" "+INVITES.length+(INVITES.length===1 ? " Einladung zu einer Reise" : " Einladungen zu Reisen")+" ›</button>";
-  var nfo = frUnread(); if(nfo) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"openfriends\" data-v=\"req\">"+ic("useradd", "ii")+" "+nfo+(nfo===1 ? " neuer Follower" : " neue Follower")+" ›</button>";
+  var nfo = frUnread(); if(nfo) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"openfriends\" data-v=\"req\">"+ic("useradd", "ii")+" "+nfo+(nfo===1 ? " Anfrage zum Folgen" : " Anfragen zum Folgen")+" ›</button>";
   h += "<button type=\"button\" class=\"pf-demo\" data-act=\"demo\"><span class=\"pf-demo-ic\" aria-hidden=\"true\">▶</span><span><b>App-Demo ansehen</b><small>Kurze Einführung, ändert nichts an deinen Reisen</small></span></button>";
   h += "</div>";
   el.innerHTML = h; fillPhotos(el);
@@ -13877,6 +13895,8 @@ document.addEventListener("click", function(e){
     case "folfol": folFollow(t.getAttribute("data-uid"), t.getAttribute("data-name")); if(gsPage) setTimeout(renderGs, 600); break;
     case "folunf": folUnfollow(t.getAttribute("data-uid")); break;
     case "folrm": folRemove(t.getAttribute("data-uid")); break;
+    case "folacc": folAccept(t.getAttribute("data-uid")); break;
+    case "folrej": folDecline(t.getAttribute("data-uid")); break;
     case "frtab": frTab = t.getAttribute("data-v")==="ing" ? "ing" : "fol"; frFilt = ""; refreshSettings(); break;
     case "fgopen": openFgEd(t.getAttribute("data-g")); break;
     case "fglist": openFrPop("grp"); break;
