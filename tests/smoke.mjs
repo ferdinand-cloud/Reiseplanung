@@ -832,6 +832,56 @@ await test("Routenoptionen je Etappe: Zeit (Abfahrt/Ankunft) und bevorzugte Verk
   ok(await rp(`legGet("legOpt", dayLegs(cur)[${li}][1])===undefined`), "Zurücksetzen löscht die Optionen nicht");
 });
 
+await test("Tickets: Fahrkarte je Etappe und Event-Ticket je Ort hinterlegen (Buchen noch nicht verfügbar)", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  await rp(`(function(){ var t = T(); t.places.p8 = {id:"p8", n:"Domino Park", c:"park", la:40.7144, lo:-73.9680, list:"l_main", note:"", addr:"River St"}; t.places.p9 = {id:"p9", n:"Kips Bay", c:"sight", la:40.7470, lo:-73.9760, list:"l_main", note:"", addr:"2nd Ave"}; t.order[cur] = ["p9","p8","p3"]; legsList = true; select(null); setSheet("full"); renderSheet(); })()`);
+  await page.waitForTimeout(200);
+  const li = await rp(`(function(){ var L = dayLegs(cur); for(var i = 0; i < L.length; i++){ if(L[i][0] && L[i][0].id==="p9" && L[i][1] && L[i][1].id==="p8") return i; } return -1; })()`);
+  ok(li > -1, "Etappe nicht gefunden");
+  await rp(`(function(){ var L = dayLegs(cur)[${li}]; setLegMode(L[0], L[1], "oepnv"); renderSheet(); })()`);
+  await page.locator(`[data-act=lmpick][data-leg="${li}"]`).click(); await page.waitForTimeout(150);
+  await click("#jpMenu [data-act=tkleg]");
+  ok(await visible("#catPop .tkpop"), "Ticket-Fenster fehlt");
+  ok((await page.locator("#catPop a.tkbook").getAttribute("href")).indexOf("omny.info") > -1, "OMNY-Link fehlt");
+  await click("#catPop [data-act=tkna]");
+  ok((await page.locator("#toast").innerText()).includes("noch nicht verfügbar"), "Hinweis „noch nicht verfügbar“ fehlt");
+  await click("#catPop [data-act=tknew]");
+  await page.locator("#tkN").fill("7-Tage-Pass"); await page.locator("#tkC").fill("ABC123"); await page.locator("#tkU").fill("omny.info");
+  await click("#catPop [data-act=tkst][data-v=ok]");
+  ok(await page.locator("#tkN").inputValue()==="7-Tage-Pass", "Eingabe geht beim Statuswechsel verloren");
+  await page.mouse.click(5, 5);
+  ok(await visible("#catPop .tkform"), "Tippen daneben verwirft das Formular");
+  await shot("ticket-form");
+  await click("#catPop [data-act=tksave]");
+  ok(await visible("#catPop .tkrow.ok"), "Gespeichertes Ticket fehlt in der Liste");
+  ok((await page.locator("#catPop a.tkopen").getAttribute("href"))==="https://omny.info", "Link zum Ticket fehlt");
+  const tk = await rp(`JSON.stringify(tkOn(tkLegOn(dayLegs(cur)[${li}][1])).map(function(x){ return [x.k, x.n, x.code, x.st, x.d===cur]; }))`);
+  ok(tk===JSON.stringify([["transit","7-Tage-Pass","ABC123","ok",true]]), "Ticket falsch gespeichert: "+tk);
+  ok(await rp(`privOf(T()) && pubOf(T()).tickets===undefined`), "Tickets dürfen nicht im öffentlichen Teil der Reise stehen");
+  await click("#catPop [data-act=tkclose]");
+  ok(await page.locator("#catPop").isHidden(), "Fenster schließt nicht");
+  ok(await page.locator(`[data-act=lmpick][data-leg="${li}"].tk`).count()===1, "Etappe zeigt nicht, dass ein Ticket hinterlegt ist");
+  // Ort: Event-Ticket über „Mehr“
+  await rp(`(function(){ setSheet("mid"); select("p3"); })()`); await page.waitForTimeout(250);
+  await click("#card [data-act=cardmore]");
+  await click("#jpMenu [data-act=tkplace]");
+  ok(await page.locator("#catPop a.tkbook").count()===0, "Bei Orten keine ÖPNV-Links");
+  await click("#catPop [data-act=tknew]");
+  await page.locator("#tkN").fill("Eintritt"); await page.locator("#tkT").fill("14:00");
+  await click("#catPop [data-act=tksave]");
+  ok(await rp(`tkOn("p:p3").length===1 && tkOn("p:p3")[0].k==="event" && tkOn("p:p3")[0].tm==="14:00"`), "Event-Ticket nicht gespeichert");
+  // Abbrechen führt zur Liste zurück, Löschen mit Rückfrage
+  await click("#catPop [data-act=tkedit]");
+  await click("#catPop .pf-acts [data-act=tkback]");
+  ok(await visible("#catPop [data-act=tknew]"), "Abbrechen führt nicht zur Liste zurück");
+  await click("#catPop [data-act=tkedit]"); await click("#catPop [data-act=tkdel]");
+  await click("#cfPop .cf-ok");
+  ok(await rp(`tkOn("p:p3").length===0 && tkOn(tkLegOn(dayLegs(cur)[${li}][1])).length===1`), "Löschen entfernt das falsche Ticket");
+  ok(await visible("#catPop .tkempty"), "Leere Liste nach dem Löschen fehlt");
+  await shot("ticket-liste");
+});
+
 await test("Linie wählen: bei mehreren möglichen Linien (z. B. A/C/E) eine bestimmte festlegen", async () => {
   await seed();
   await rp(`(function(){ T().order[cur] = ["p2"]; legsList = true; select(null); setSheet("full"); renderSheet(); })()`);
