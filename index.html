@@ -15015,7 +15015,7 @@ document.addEventListener("click", function(e){
     case "srlockeep": closeJpMore(); break;
     case "srradset": srch.rad = parseInt(t.getAttribute("data-v"),10) || 0; lsSet("rp-sr-rad", String(srch.rad)); closeJpMore(); srSet(); break;
     case "lnmenu": openLineMenu(parseInt(t.getAttribute("data-leg"),10), parseInt(t.getAttribute("data-ri"),10), t); break;
-    case "lineVshow": var lv3 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(lv3){ var r3 = legRoute(lv3[0], lv3[1], cur), l3 = r3 && r3.legs[parseInt(t.getAttribute("data-ri"),10)]; if(l3) showLine(l3, parseInt(t.getAttribute("data-r"),10)); } break;
+    case "lineVshow": var lv3 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(lv3){ var r3 = legRoute(lv3[0], lv3[1], cur), l3 = r3 && r3.legs[parseInt(t.getAttribute("data-ri"),10)]; if(l3) showLine(l3, (function(v){ return /^y/.test(v) ? v : parseInt(v, 10); })(t.getAttribute("data-r"))); } break;
     case "lineVclose": endLine(); break;
     case "lnset": closeJpMore(); var ln2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)]; if(ln2){ var lc2 = {}, lo2 = legGet("legLine", ln2[1]) || {}; for(var lk in lo2) lc2[lk] = lo2[lk]; var lv2 = t.getAttribute("data-v"); if(lv2) lc2[t.getAttribute("data-k")] = lv2; else delete lc2[t.getAttribute("data-k")]; legSet("legLine", ln2[1], Object.keys(lc2).length ? lc2 : null); renderSheet(); scheduleOverlay(); } break;
     case "legalt": var la2 = dayLegs(cur)[parseInt(t.getAttribute("data-leg"),10)];

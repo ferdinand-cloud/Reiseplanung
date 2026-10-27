@@ -1048,6 +1048,12 @@ await test("ÖPNV über NYC hinaus (Transitous): Etappe zum Flughafen Newark mit
   ok(tx.includes("10:42") && tx.includes("Zug Richtung Trenton"), "Ankunft/Richtung fehlt: "+tx.replace(/\n/g, " | "));
   ok(await page.locator("li.tleg.lt a[href*='transitous.org']").count()===1, "Quellenangabe Transitous fehlt");
   await shot("etappe-newark");
+  // „Fahrt … zeigen“: Strecke auf der Karte, Karte und Ebenen bleiben deckungsgleich
+  await page.locator("li.tleg.lt [data-act=lnmenu]").first().click(); await page.waitForTimeout(200);
+  ok((await page.locator("#jpMenu [data-act=lineVshow]").innerText()).includes("Fahrt NEC zeigen"), "Menüpunkt „Fahrt zeigen“ fehlt");
+  await page.locator("#jpMenu [data-act=lineVshow]").click(); await page.waitForTimeout(900);
+  const lv = await rp(`(function(){ var E = []; try { lineVSvg(); } catch(e){ E.push(e.message); } return {lv:!!LINEV, e:E, txt:($("lineV")||{}).textContent||""}; })()`);
+  ok(lv.lv && !lv.e.length, "Fahrt zeigen fehlerhaft: "+JSON.stringify(lv));
   // Karte: Fahrt mit Liniensymbol, Navigation nutzt die Verbindung
   await rp(`scheduleOverlay()`); await page.waitForTimeout(300);
   await rp(`me = {la:40.7308, lo:-73.9973, acc:8}; navStart(P("pe"), "oepnv");`);
