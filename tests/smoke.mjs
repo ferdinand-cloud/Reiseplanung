@@ -1126,6 +1126,20 @@ await test("Ziele: „Reise planen“ öffnet Formular ohne Datumswähler", asyn
   ok(await rp(`!document.activeElement || document.activeElement.type!=="date"`), "Datumsfeld hat sofort den Fokus (iOS öffnet den Datumswähler)");
 });
 
+await test("Neue Reise: Zeitraum kompakt mit Datum/Uhrzeit nebeneinander und Nächten", async () => {
+  await noTripUser();
+  await rp(`var z = zielNew("Lissabon", {id:"o1", n:"Lissabon", la:38.72, lo:-9.14, r:20000}); save(); openZiele(z); true`); await page.waitForTimeout(200);
+  await click("#zPop [data-act=zplan]"); await page.waitForTimeout(200);
+  ok(await page.locator("#tForm .tf-span").count()===2, "Zeitraum nicht in zwei Zeilen");
+  ok((await page.locator("#tForm .tf-pill.t").first().innerText()).trim()==="Ankunft", "Platzhalter Ankunft fehlt");
+  await page.fill("[data-f=start]", "2026-11-02"); await page.fill("[data-f=end]", "2026-11-06"); await page.fill("[data-f=arr]", "14:30");
+  ok((await page.locator("#tForm .tf-pill.d").first().innerText()).includes("2. Nov"), "Datum nicht lesbar angezeigt");
+  ok((await page.locator("#tForm .tf-pill.t").first().innerText()).trim()==="14:30", "Uhrzeit nicht angezeigt");
+  ok((await page.locator("#tfNights").innerText()).includes("4 Nächte"), "Nächte fehlen");
+  ok(await rp(`tdraft.start==="2026-11-02" && tdraft.end==="2026-11-06" && tdraft.arr==="14:30"`), "Werte nicht übernommen");
+  await shot("neue-reise-zeitraum");
+});
+
 await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise und Entdecken", async () => {
   await seed();
   await rp(`openZiele()`); await page.waitForTimeout(150);
