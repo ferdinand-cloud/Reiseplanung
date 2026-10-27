@@ -435,6 +435,31 @@ await test("Entdecken: Reels-Feed mit Auswahl Reise/Ziel/Inspiration, Like, Übe
   await rp(`fbDb = null; dcScope = "here"; closeDcPage(); true`);
 });
 
+await test("Symbole: gleiche Funktion = gleiches Symbol (Schicken, Karte, Merken), keine Emojis in Menüs", async () => {
+  await seed();
+  const IC = await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FR.friends = [{uid:"u_anna", name:"anna"}]; IC`);
+  const norm = (s) => page.evaluate((h) => { const d = document.createElement("div"); d.innerHTML = "<svg>"+h+"</svg>"; return d.firstChild.innerHTML; }, s);
+  const svgOf = (sel) => page.evaluate((q) => { const e = document.querySelector(q+" svg"); return e ? e.innerHTML : null; }, sel);
+  const emo = (sel) => page.evaluate((q) => { const e = document.querySelector(q); return e ? (e.textContent.match(/\p{Extended_Pictographic}/gu) || []).join("") : "fehlt"; }, sel);
+  const SEND = await norm(IC.send), MAP = await norm(IC.map);
+  // Entdecken „⋯“
+  await rp(`var r = {key:"u_anna/x", by:"u_anna", fname:"anna", n:"Kiosk", c:"essen", la:40.72, lo:-73.98, rating:1, photos:[], note:"", cm:[], also:[], at:Date.now()};
+    DC.byKey[r.key] = r; dcMore(r.key, document.querySelector(".tabbar button")); true`);
+  ok(await svgOf("#jpMenu [data-act=dcsend]")===SEND, "Entdecken: „Im Chat schicken“ ohne Papierflieger");
+  ok(await svgOf("#jpMenu [data-act=dcmap]")===MAP, "Entdecken: „Auf der Karte zeigen“ ohne Karten-Symbol");
+  ok(await emo("#jpMenu")==="", "Emoji im Entdecken-Menü: "+await emo("#jpMenu"));
+  await shot("symbole-entdecken-menue");
+  await rp(`closeJpMore(); true`);
+  // Ort „⋯“
+  await rp(`var id = Object.keys(T().places).filter(function(k){ var p = P(k); return hasLoc(p) && p.k!=="hotel"; })[0]; openJpMore(id, document.querySelector(".tabbar button")); true`);
+  ok(await svgOf("#jpMenu [data-act=chshare]")===SEND && (await page.locator("#jpMenu [data-act=chshare]").innerText()).includes("Im Chat schicken"), "Ort: „Im Chat schicken“ uneinheitlich");
+  ok(await emo("#jpMenu")==="", "Emoji im Ort-Menü: "+await emo("#jpMenu"));
+  await shot("symbole-ort-menue");
+  // Foto-Vollbild und Entdecken-Leiste nutzen dieselben Symbole
+  ok(await rp(`var h = dcSideHTML(DC.byKey["u_anna/x"]); h.indexOf(IC.like) > -1 && h.indexOf(IC.save) > -1 && h.indexOf(IC.comment) > -1 && h.indexOf(IC.more) > -1`), "Entdecken-Leiste nutzt nicht die zentralen Symbole");
+  ok(await rp(`[MAPICO, MAPGO].every(function(s){ return s===ic("map"); }) && visIco("pub")===ic("friends") && visIco("all")===ic("globe") && visIco("trip")===ic("trip")`), "Karten-/Sichtbarkeits-Symbole uneinheitlich");
+});
+
 await test("App-Demo: Auswahl Reisende/Beobachter, alle Schritte durchklickbar", async () => {
   await seed();
   await rp(`openDemo("trav")`); await page.waitForTimeout(200);
