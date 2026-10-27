@@ -336,7 +336,17 @@ await test("Entdecken: Foto öffnet Vollbild mit allen Fotos, ohne Sichern", asy
   await rp(`(function(){ var u = PHC.ph_a, u2 = PHC.ph_b; var r = {key:"u_anna/r1", by:"u_anna", fname:"anna", n:"Katz Deli", c:"essen", la:40.7223, lo:-73.9874, photos:[u, u2], note:"Bestes Pastrami", cm:[], at:Date.now()};
     DC.items = [r]; DC.byKey = {}; DC.byKey[r.key] = r; DC.at = Date.now(); dcScope = "all"; openDcPage(); })()`);
   await page.waitForTimeout(300);
-  await click("#dcView img[data-act=dcfull]");
+  await click("#dcView .dc-reel .dc-ph img");
+  ok(await page.evaluate(() => { const L = document.getElementById("pvLayer"); return !L || L.hidden; }), "Antippen im Feed öffnet Vollbild");
+  ok(await rp(`dcLong(DC.byKey["u_anna/r1"])===false`) && await page.locator("#dcView .dc-more").count()===0, "„mehr anzeigen“ bei kurzem Text");
+  await rp(`DC.byKey["u_anna/r1"].note = "Bestes Pastrami der Stadt. Früh kommen, sonst lange Schlange – und unbedingt die Pickles probieren, die gibt es gratis dazu."; DCSIG = ""; renderDc(); true`); await page.waitForTimeout(200);
+  const nh = async () => page.locator("#dcView .dc-note").evaluate(e => e.getBoundingClientRect().height);
+  const h0 = await nh();
+  await click("#dcView .dc-more"); await page.waitForTimeout(100);
+  ok((await nh()) > h0 + 5 && (await page.locator("#dcView .dc-more").innerText()).includes("weniger"), "Text klappt nicht auf");
+  await click("#dcView .dc-more"); await page.waitForTimeout(100);
+  ok(Math.abs((await nh()) - h0) < 2 && (await page.locator("#dcView .dc-more").innerText()).includes("mehr anzeigen"), "Text klappt nicht wieder ein");
+  await rp(`dcFull("u_anna/r1", 0); true`); await page.waitForTimeout(200);
   ok(await page.locator("#pvLayer .pv-slide").count()===2, "Nicht alle Fotos des Spots im Vollbild");
   ok(await page.locator("#pvLayer [data-act=dcvsave], #pvLayer [data-act=phsave]").count()===0, "Fotos von Freunden lassen sich herunterladen");
   ok(await page.locator("#pvLayer .pv-side [data-act=dcvcm]").count()===1, "Kommentare fehlen");
@@ -365,7 +375,7 @@ await test("Entdecken: Reels-Feed mit Auswahl Reise/Ziel/Inspiration, Like, Übe
     return {snap:getComputedStyle(f).scrollSnapType, h:r.height, fh:b.height, bottom:b.bottom, vh:innerHeight}; });
   ok(fd.snap.includes("y") && fd.h >= fd.fh - 1 && fd.fh > 500, "Kein Vollbild-Feed: "+JSON.stringify(fd));
   ok(fd.bottom <= fd.vh - 8, "Feed reicht bis an den unteren Rand: "+JSON.stringify(fd));
-  ok(await page.locator("#dcView .dc-reel img[data-act=dcfull]").count()===2, "Fotos des sichtbaren Vorschlags fehlen");
+  ok(await page.locator("#dcView .dc-reel .dc-ph img").count()===2, "Fotos des sichtbaren Vorschlags fehlen");
   ok((await page.locator("#dcView .dc-avg").innerText()).includes("Must Have"), "Durchschnittsbewertung falsch (Outstanding + Nice ≈ Must Have)");
   await page.waitForTimeout(300);
   ok((await page.locator("#dcView .dc-like").innerText()).trim()==="4" && (await page.locator("#dcView .dc-take").innerText()).trim()==="7", "Like-/Übernahme-Zähler nicht geladen");
@@ -376,6 +386,14 @@ await test("Entdecken: Reels-Feed mit Auswahl Reise/Ziel/Inspiration, Like, Übe
   await click("#dcView [data-act=dctake]"); await page.waitForTimeout(150);
   ok(await rp(`Object.keys(T().places).some(function(k){ var p = T().places[k]; return p.n==="Kiosk Zett" && p.rec; })`), "Nicht in die Wunschliste der Reise übernommen");
   ok(await rp(`window.__log.some(function(x){ return (x[0].slice(-10)==="/adds/u_me"); })`) && (await page.locator("#dcView .dc-take").innerText()).trim()==="8", "Übernahme nicht gezählt");
+  await click("#dcView [data-act=dctake]"); await page.waitForTimeout(150);
+  ok(await rp(`!Object.keys(T().places).some(function(k){ return T().places[k].n==="Kiosk Zett"; })`) && (await page.locator("#dcView .dc-take").innerText()).trim()==="7", "Erneutes Tippen nimmt die Übernahme nicht zurück");
+  ok(await rp(`window.__log.some(function(x){ return x[0].slice(-10)==="/adds/u_me" && x[1]==="del"; })`), "Übernahme-Merker nicht gelöscht");
+  await click("#dcView [data-act=dctake]"); await page.waitForTimeout(150);
+  ok(await rp(`Object.keys(T().places).some(function(k){ return T().places[k].n==="Kiosk Zett"; })`), "Zweites Übernehmen klappt nicht");
+  await rp(`var k = Object.keys(T().places).filter(function(k){ return T().places[k].n==="Kiosk Zett"; })[0]; T().order[days()[1].key] = (T().order[days()[1].key]||[]).concat([k]); $("toast").hidden = true; true`);
+  await click("#dcView [data-act=dctake]"); await page.waitForTimeout(150);
+  ok(await rp(`Object.keys(T().places).some(function(k){ return T().places[k].n==="Kiosk Zett"; })`) && (await page.locator("#toast").innerText()).includes("eingeplant"), "Eingeplanter Ort wird ohne Rückfrage entfernt");
   await click("#dcView .dc-avg");
   const rt = await page.locator("#catPop .dc-rpop").innerText();
   ok(rt.includes("@anna") && rt.includes("@Ludwig") && rt.includes("Outstanding") && rt.includes("Nice") && rt.includes("Stimmt!") && rt.includes("Teuer"), "Einzelbewertungen/Kommentare fehlen: "+rt);
@@ -1778,7 +1796,9 @@ const kbPop = async (open, ovSel, name, o = {}) => {
   await page.locator(fld).first().focus();
   let predBox = null;
   if(o.pred){ await page.waitForTimeout(50); await kbSettle(); predBox = await page.locator(card).first().boundingBox(); }
-  await page.evaluate(([h, t]) => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); if(t) Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => t}); visualViewport.dispatchEvent(new Event("resize")); }, [VH, pan0]);
+  await page.evaluate(([h, t, sh]) => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); if(t) Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => t});
+    if(sh){ window.__ihD = Object.getOwnPropertyDescriptor(window, "innerHeight"); Object.defineProperty(window, "innerHeight", {configurable:true, get:() => h}); }   // manche iOS-Versionen verkleinern innerHeight mit
+    visualViewport.dispatchEvent(new Event("resize")); }, [VH, pan0, !!o.shrink]);
   await page.waitForTimeout(450); await kbSettle();
   ok(await rp(`document.body.classList.contains("kb")`), name+": Tastatur nicht erkannt");
   const ov = await page.locator(ovSel).boundingBox(), fb = await page.locator(fld).first().boundingBox(), lb = await page.locator(card).first().boundingBox();
@@ -1810,7 +1830,7 @@ const kbPop = async (open, ovSel, name, o = {}) => {
   await page.evaluate(() => { delete visualViewport.offsetTop; visualViewport.dispatchEvent(new Event("scroll")); }); await page.waitForTimeout(200);
   const mid = await page.locator(card).first().boundingBox();
   ok(Math.abs(mid.y - pre.y) <= 1 && Math.abs(mid.height - pre.height) <= 1, name+": Karte ändert sich schon, bevor die Tastatur zu ist ("+JSON.stringify([pre.y, pre.height])+" → "+JSON.stringify([mid.y, mid.height])+")");
-  await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
+  await page.evaluate(() => { delete visualViewport.height; if(window.__ihD){ Object.defineProperty(window, "innerHeight", window.__ihD); delete window.__ihD; } visualViewport.dispatchEvent(new Event("resize")); });
   await page.waitForTimeout(300);
   const hs = await page.evaluate(() => { window.__kbRO.disconnect(); return window.__kbH.filter((h, i, a) => i===0 || h!==a[i-1]); });
   ok(hs.length <= 2, name+": Größe ändert sich beim Schließen mehrmals: "+hs.join(" → "));
@@ -1827,12 +1847,13 @@ await test("Tastatur im Pop-up: mittige Karte (Neues Ziel) springt nicht", async
 await test("Tastatur im Pop-up: hohe Karte (Ziel) sitzt knapp über der Tastatur und nutzt den Platz bis oben", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-hoch"); });
 await test("Tastatur im Pop-up: iOS verschiebt die Seite beim Fokus – Karte trotzdem knapp über der Tastatur", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-pan", {pan0:120}); });
 await test("Tastatur im Pop-up: Vorhersage beim Antippen (iOS) – beim Öffnen bewegt sich nichts mehr", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-pred", {pred:true}); });
+await test("Tastatur im Pop-up: Tastatur erkannt, auch wenn iOS innerHeight mitverkleinert", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-inner", {shrink:true}); });
 await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-quer"); }, QUER);
 
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {
   await seed();
   await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); try { localStorage.removeItem("rp-chkb"); } catch(e){} if(typeof KBPRED!=="undefined") KBPRED = true; true`);
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(1000);   // Zeitgeber vorheriger Tests (Fokus) abwarten
   ok(await page.locator("#chIn").count()===1, "Chat-Eingabe fehlt");
   const vp = page.viewportSize(), H = vp.height, VH = H - 380;
   // Lagen in BILDSCHIRM-Koordinaten (getBoundingClientRect zählt ab Layout-Oberkante, iOS verschiebt um offsetTop)
@@ -1848,32 +1869,67 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
   const same = (p, w) => { ok(Math.abs(p.bar.y - p0.bar.y) <= 1, w+": Hauptleiste verrutscht ("+p0.bar.y+" → "+p.bar.y+")"); ok(Math.abs(p.head.y - p0.head.y) <= 1, w+": Chat-Kopf verrutscht ("+p0.head.y+" → "+p.head.y+")");
     ok(!p.hole.length, w+": Karte scheint durch bei y="+p.hole.join(",")); };
   // 1) Antippen: Eingabe sofort über der (geschätzten) Tastatur, nichts darunter durchsichtig
-  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
-  const p1 = await pos(); same(p1, "Antippen"); ok(p1.inp.b <= Math.round(H * 0.5) + 1, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(p1.inp));
+  // Gleiten statt Springen: Bild für Bild mitschreiben, wo die Eingabe steht
+  const glide = (act) => page.evaluate(async (act) => { const c = document.querySelector("#chView .ch-comp"), ys = [Math.round(c.getBoundingClientRect().bottom)];
+    if(act==="focus") document.getElementById("chIn").focus(); else document.activeElement.blur();
+    for(let i = 0; i < 40; i++){ await new Promise(r => requestAnimationFrame(r)); ys.push(Math.round(c.getBoundingClientRect().bottom)); } return ys; }, act);
+  // Gleiten = erstes Bild noch (fast) an der alten Stelle, dann gleichmäßig in eine Richtung über mehrere Bilder bis zum Ziel
+  // (die Bildrate schwankt unter Last, daher keine feste Schrittgrenze)
+  // nur bis zum ersten Erreichen des Ziels auswerten (danach greift ggf. die Rückfallebene „keine Tastatur gekommen“ nach 1,2 s)
+  const smooth = (ys0, w, z) => { const a = ys0[0]; let k = ys0.findIndex(y => Math.abs(y - z) <= 2); const ys = k > 0 ? ys0.slice(0, k + 1) : ys0, dir = Math.sign(z - a); let mono = true, mid = 0;
+    for(let i = 1; i < ys.length; i++){ if(Math.sign(ys[i] - ys[i-1]) === -dir && Math.abs(ys[i] - ys[i-1]) > 1) mono = false; if(Math.abs(ys[i] - a) > 8 && Math.abs(ys[i] - z) > 8) mid++; }
+    ok(k > 0 && Math.abs(ys[1] - a) <= 40 && mono && mid >= 2, w+": Eingabe springt statt zu gleiten: "+ys0.join(",")); };
+  const g1 = await glide("focus"); smooth(g1, "Antippen", H - 400);   // erste Schätzung: gut 400 pt Tastatur
+  const p1 = await pos(); same(p1, "Antippen"); ok(p1.inp.b <= H - 380 && p1.inp.b >= H - 420, "Eingabe beim Antippen nicht über der erwarteten Tastatur: "+JSON.stringify(p1.inp));
 
   // 2) Fall A – iOS meldet die Tastatur nur über visualViewport (innerHeight bleibt) und verschiebt die Seite (offsetTop)
-  await kbFake(VH, 120); await page.waitForTimeout(50);
+  await kbFake(VH, 120); await page.waitForTimeout(350);
   let p = await pos(); same(p, "Tastatur mit Seitenverschiebung");
   ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur (verschoben): "+JSON.stringify(p));
-  await kbFake(VH, 0); await page.waitForTimeout(50);
+  await kbFake(VH, 0); await page.waitForTimeout(350);
   p = await pos(); same(p, "Tastatur ohne Verschiebung"); ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur: "+JSON.stringify(p));
-  await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50); await kbReal(); await page.waitForTimeout(50);
-  p = await pos(); same(p, "Schließen"); ok(p.inp.b >= H - 2, "Eingabe bleibt nach dem Schließen oben: "+JSON.stringify(p.inp));
+  const g2 = await glide("blur"); smooth(g2, "Schließen", p0.inp.b); await kbReal(); await page.waitForTimeout(50);
+  p = await pos(); same(p, "Schließen"); ok(Math.abs(p.inp.b - p0.inp.b) <= 1, "Eingabe steht nach dem Schließen nicht wie vorher: "+p0.inp.b+" → "+p.inp.b); ok(p.inp.b >= H - 2, "Eingabe bleibt nach dem Schließen oben: "+JSON.stringify(p.inp));
   // 3) Fall B – iOS verkleinert das ganze Layout (innerHeight sinkt mit): das war der Fehler mit der durchscheinenden Karte
-  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
-  await page.setViewportSize({width:vp.width, height:VH}); await page.waitForTimeout(150);
+  await page.locator("#chIn").focus(); await page.waitForTimeout(350);
+  await page.setViewportSize({width:vp.width, height:VH}); await page.waitForTimeout(350);
   p = await pos(); same(p, "Layout verkleinert"); ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe nicht direkt über der Tastatur (Layout verkleinert): "+JSON.stringify(p));
   ok(await rp(`JSON.parse(localStorage.getItem("rp-chkb") || "{}") && true`), "Tastaturhöhe nicht gemerkt");
   await shot("tastatur-chat");
-  await page.evaluate(() => document.activeElement.blur()); await page.setViewportSize(vp); await page.waitForTimeout(150);
+  await page.evaluate(() => document.activeElement.blur()); await page.setViewportSize(vp); await page.waitForTimeout(400);
   p = await pos(); same(p, "Schließen nach Verkleinern"); ok(p.inp.b >= H - 2, "Eingabe nach dem Schließen nicht unten: "+JSON.stringify(p.inp));
   // 4) Zweites Antippen: gemerkte Höhe → Eingabe steht sofort an der richtigen Stelle (kein Nachrutschen)
-  await page.locator("#chIn").focus(); await page.waitForTimeout(50);
+  const g3 = await glide("focus"); smooth(g3, "Zweites Antippen", VH);
   p = await pos(); ok(Math.abs(p.inp.b - VH) <= 1, "Gemerkte Tastaturhöhe nicht genutzt: "+JSON.stringify(p.inp));
   // 5) Senden lässt die Tastatur offen (Fokus bleibt im Feld)
   await page.evaluate(() => { const b = document.querySelector("#chView .ch-send"); const ev = new MouseEvent("mousedown", {bubbles:true, cancelable:true}); b.dispatchEvent(ev); window.__md = ev.defaultPrevented; });
   ok(await page.evaluate(() => window.__md), "Senden-Knopf nimmt dem Feld den Fokus (Tastatur ginge zu)");
   await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50);
+});
+
+await test("Anmeldung: Hintergrund bleibt ganz, beim Antippen und mit Tastatur bewegt sich nichts", async () => {
+  await seed();
+  await rp(`acct.user = null; acct.verify = null; acct.ready = true; acct.state = "out"; renderGate(true); true`);
+  await page.waitForTimeout(200);
+  ok(await visible("#gate #acMail"), "Anmeldefenster fehlt");
+  const H = page.viewportSize().height;
+  const st = () => page.evaluate(() => { const vv = visualViewport, t = vv.offsetTop, c = document.querySelector("#gate .gate-card").getBoundingClientRect(), pw = document.getElementById("acPw").getBoundingClientRect(), hole = [];
+    for(let y = t + 3; y < t + vv.height; y += 20) for(const x of [5, innerWidth/2, innerWidth - 5]){ const e = document.elementFromPoint(x, y); if(!e || !e.closest("#gate")) hole.push(Math.round(x)+"/"+Math.round(y)); }
+    return {card:Math.round(c.top - t), pw:Math.round(pw.bottom - t), hole}; });
+  const s0 = await st();
+  ok(!s0.hole.length, "Hintergrund nicht überall: "+s0.hole.join(" "));
+  ok(s0.pw <= H - 400, "Passwortfeld läge unter der Tastatur (iOS müsste verschieben): "+s0.pw);
+  await page.locator("#acMail").focus(); await page.waitForTimeout(200);
+  const chk = async (w) => { const s1 = await st(); ok(Math.abs(s1.card - s0.card) <= 1, w+": Karte springt ("+s0.card+" → "+s1.card+")"); ok(!s1.hole.length, w+": Hintergrund nicht überall: "+s1.hole.join(" ")); };
+  await chk("Antippen");
+  await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); visualViewport.dispatchEvent(new Event("resize")); }, H - 400);
+  await page.waitForTimeout(200); await chk("Tastatur offen");
+  await page.locator("#acPw").focus(); await page.waitForTimeout(200); await chk("Zweites Feld");
+  await page.setViewportSize({width:page.viewportSize().width, height:H - 400}); await page.waitForTimeout(200);
+  const s2 = await st(); ok(Math.abs(s2.card - s0.card) <= 1, "Layout verkleinert: Karte springt"); ok(!s2.hole.length, "Layout verkleinert: Hintergrund nicht überall");
+  await page.evaluate(() => { delete visualViewport.height; document.activeElement.blur(); visualViewport.dispatchEvent(new Event("resize")); });
+  await page.setViewportSize({width:page.viewportSize().width, height:H}); await page.waitForTimeout(200);
+  await shot("anmeldung");
 });
 
 await test("Freunde: Suche statt Liste bei 200 Freunden (Ziel teilen)", async () => {
