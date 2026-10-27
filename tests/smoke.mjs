@@ -343,6 +343,57 @@ await test("Entdecken: Foto öffnet Vollbild mit allen Fotos, ohne Sichern", asy
   ok(await page.evaluate(() => { const L = document.getElementById("pvLayer"); return !L || L.hidden; }), "Vollbild schließt nicht");
 });
 
+await test("Entdecken: Reels-Feed mit Auswahl Reise/Ziel/Inspiration, Like, Übernehmen, Bewertungen", async () => {
+  await seed();
+  await rp(`window.__log = []; var mk = function(path){ var o = {collection:function(n){ return mk(path+"/"+n); }, doc:function(id){ return mk(path+"/"+id); },
+      set:function(d){ window.__log.push([path, d]); return Promise.resolve(); }, delete:function(){ window.__log.push([path, "del"]); return Promise.resolve(); },
+      where:function(){ return o; }, orderBy:function(){ return o; }, limit:function(){ return o; }, onSnapshot:function(){ return function(){}; },
+      get:function(){ return Promise.resolve((path.indexOf("/spots/s")===0 && path.split("/").length===3) ? {exists:true, data:function(){ return {likes:4, adds:7}; }} : {docs:[], exists:false, data:function(){ return {}; }}); }};
+      return o; };
+    fbDb = Object.assign(mk(""), {batch:function(){ var ops = []; return {set:function(r, d){ ops.push(function(){ return r.set(d); }); }, delete:function(r){ ops.push(function(){ return r.delete(); }); }, commit:function(){ ops.forEach(function(f){ f(); }); return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }});
+    acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FR.friends = [{uid:"u_anna", name:"anna"}, {uid:"u_ludwig", name:"Ludwig"}];
+    var z = zielNew("Lissabon", {id:"o1", n:"Lissabon", la:38.72, lo:-9.14, r:20000}); save();
+    var mk2 = function(k, by, fn, n, la, lo, rt, note, cm){ return {key:by+"/"+k, by:by, fname:fn, n:n, c:"essen", la:la, lo:lo, rating:rt, photos:k==="a" ? [PHC.ph_a, PHC.ph_b] : [], note:note||"", cm:cm||[], at:Date.now()}; };
+    DC.items = [mk2("a", "u_anna", "anna", "Kiosk Zett", 40.7223, -73.9874, 1, "Bestes Pastrami", [{name:"Ludwig", text:"Stimmt!"}]), mk2("b", "u_ludwig", "Ludwig", "Kiosk Zett", 40.7224, -73.9875, 3, "Teuer, aber gut"),
+      mk2("c", "u_anna", "anna", "Time Out Market", 38.7069, -9.1459, 2, "")];
+    DC.byKey = {}; DC.items.forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); dcSrc = "friends"; dcScope = "here"; PUB.items = []; openDcPage(); true`);
+  await page.waitForTimeout(400);
+  ok(await page.locator("#dcView .dc-reel").count()===1, "Reise-Filter zeigt nicht nur Vorschläge rund um New York");
+  const fd = await page.evaluate(() => { const f = document.getElementById("dcFeed"), r = f.querySelector(".dc-reel").getBoundingClientRect(), b = f.getBoundingClientRect();
+    return {snap:getComputedStyle(f).scrollSnapType, h:r.height, fh:b.height, bottom:b.bottom, vh:innerHeight}; });
+  ok(fd.snap.includes("y") && fd.h >= fd.fh - 1 && fd.fh > 500, "Kein Vollbild-Feed: "+JSON.stringify(fd));
+  ok(fd.bottom <= fd.vh - 8, "Feed reicht bis an den unteren Rand: "+JSON.stringify(fd));
+  ok(await page.locator("#dcView .dc-reel img[data-act=dcfull]").count()===2, "Fotos des sichtbaren Vorschlags fehlen");
+  ok((await page.locator("#dcView .dc-avg").innerText()).includes("Must Have"), "Durchschnittsbewertung falsch (Outstanding + Nice ≈ Must Have)");
+  await page.waitForTimeout(300);
+  ok((await page.locator("#dcView .dc-like").innerText()).trim()==="4" && (await page.locator("#dcView .dc-take").innerText()).trim()==="7", "Like-/Übernahme-Zähler nicht geladen");
+  await shot("entdecken-reels");
+  await click("#dcView [data-act=dclike]"); await page.waitForTimeout(150);
+  ok(await rp(`window.__log.some(function(x){ return (x[0].indexOf("/spots/s")===0 && x[0].slice(-11)==="/likes/u_me"); }) && window.__log.some(function(x){ return (x[0].indexOf("/spots/s")===0 && x[0].split("/").length===3) && x[1].likes; })`), "Like nicht gespeichert");
+  ok(await page.locator("#dcView .dc-like.on").count()===1 && (await page.locator("#dcView .dc-like").innerText()).trim()==="5", "Like nicht angezeigt");
+  await click("#dcView [data-act=dctake]"); await page.waitForTimeout(150);
+  ok(await rp(`Object.keys(T().places).some(function(k){ var p = T().places[k]; return p.n==="Kiosk Zett" && p.rec; })`), "Nicht in die Wunschliste der Reise übernommen");
+  ok(await rp(`window.__log.some(function(x){ return (x[0].slice(-10)==="/adds/u_me"); })`) && (await page.locator("#dcView .dc-take").innerText()).trim()==="8", "Übernahme nicht gezählt");
+  await click("#dcView .dc-avg");
+  const rt = await page.locator("#catPop .dc-rpop").innerText();
+  ok(rt.includes("@anna") && rt.includes("@Ludwig") && rt.includes("Outstanding") && rt.includes("Nice") && rt.includes("Stimmt!") && rt.includes("Teuer"), "Einzelbewertungen/Kommentare fehlen: "+rt);
+  await shot("entdecken-bewertungen");
+  await rp(`closeCatPop(); $("toast").hidden = true; true`);
+  await click("#dcView [data-act=dctgt]");
+  ok((await page.locator("#jpMenu").innerText()).includes("Inspiration") && (await page.locator("#jpMenu").innerText()).includes("Lissabon"), "Auswahl ohne Inspiration oder Ziel");
+  await page.locator("#jpMenu [data-act=dcscopeset]", {hasText:"Lissabon"}).click(); await page.waitForTimeout(250);
+  ok((await page.locator("#dcView .dc-reel").innerText()).includes("Time Out") && await page.locator("#dcView .dc-reel").count()===1, "Ziel-Filter greift nicht");
+  await click("#dcView [data-act=dctake]"); await page.waitForTimeout(150);
+  ok(await rp(`Object.keys(S.trips[zielIds()[0]].places).some(function(k){ return S.trips[zielIds()[0]].places[k].n==="Time Out Market"; })`), "Nicht ins gewählte Ziel übernommen");
+  await rp(`$("toast").hidden = true; true`);
+  await click("#dcView [data-act=dctgt]");
+  await page.locator("#jpMenu [data-act=dcscopeset][data-v=all]").click(); await page.waitForTimeout(250);
+  ok(await page.locator("#dcView .dc-reel").count()===2 && (await page.locator("#dcView .dc-tgt").innerText()).includes("Inspiration"), "Inspiration zeigt nicht alle Vorschläge");
+  await rp(`document.getElementById("dcFeed").scrollTop = document.getElementById("dcFeed").clientHeight; true`); await page.waitForTimeout(300);
+  ok(await rp(`DCI===1`), "Feed rastet nicht auf den nächsten Vorschlag");
+  await rp(`fbDb = null; dcScope = "here"; closeDcPage(); true`);
+});
+
 await test("App-Demo: Auswahl Reisende/Beobachter, alle Schritte durchklickbar", async () => {
   await seed();
   await rp(`openDemo("trav")`); await page.waitForTimeout(200);
@@ -1211,9 +1262,9 @@ await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise u
   ok(await rp(`Object.keys(S.trips[zielIds()[0]].places).length===1`), "Ort landet nicht im Ziel mit passendem Gebiet");
   await rp(`select(null); var r = {key:"u_anna/r9", by:"u_anna", fname:"anna", n:"Di Fara Pizza", c:"essen", la:40.6250, lo:-73.9615, photos:[], note:"", cm:[], at:Date.now()};
     DC.items = [r]; DC.byKey = {}; DC.byKey[r.key] = r; DC.at = Date.now(); dcScope = "all"; openDcPage();`); await page.waitForTimeout(250);
-  await click("#dcView [data-act=dcmerk]"); await page.waitForTimeout(200);
+  await click("#dcView [data-act=dctake]"); await page.waitForTimeout(200);
   ok(await rp(`Object.keys(S.trips[zielIds()[0]].places).some(function(k){ var p = S.trips[zielIds()[0]].places[k]; return p.n==="Di Fara Pizza" && p.rec && p.rec.name==="anna"; })`), "Empfehlung nicht gemerkt");
-  ok(await page.locator("#dcView .zmk.on").count()===1, "Merken-Knopf zeigt den Stand nicht");
+  ok(await page.locator("#dcView .dc-take.on").count()===1, "Übernehmen-Knopf zeigt den Stand nicht");
   await shot("ziel-entdecken");
   await rp(`openZiele(zielIds()[0])`); await page.waitForTimeout(150);
   await click("#zPop [data-act=zedit]");
@@ -1592,7 +1643,8 @@ await test("Öffentlich: Ort für alle freigeben, in pub speichern, in Entdecken
   const txt = await page.locator("#dcView").innerText();
   ok(txt.includes("Lucali") && txt.includes("öffentlich"), "Öffentliche Empfehlung fehlt in Entdecken");
   await shot("oeffentlich-entdecken");
-  await click("#dcView [data-act=dcreport]");
+  await click("#dcView [data-act=dcmore]");
+  await click("#jpMenu [data-act=dcreport]");
   await click("#catPop [data-act=dcrepgo]"); await page.waitForTimeout(300);
   ok(await rp(`window.__log.some(function(x){ return x[0]==="/reports/u_me_u_zoe_t1_p1" && x[1].target==="u_zoe_t1_p1" && x[1].owner==="u_zoe"; })`), "Meldung nicht gespeichert");
   ok(!(await page.locator("#dcView").innerText()).includes("Lucali"), "Gemeldeter Beitrag noch sichtbar");

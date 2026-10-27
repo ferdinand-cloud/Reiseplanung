@@ -1895,6 +1895,75 @@ form.gnew{position:relative}
 .dc-map{margin-left:auto;width:36px;height:36px;border:0;border-radius:50%;background:var(--sheet);color:var(--accent);display:grid;place-items:center;cursor:pointer}
 .dc-map svg{width:18px;height:18px}
 .dc-map + .dc-map{margin-left:0}
+/* Entdecken als Reels: ein Vorschlag je Bildschirm, senkrecht einrasten */
+#dcView{overflow:hidden;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;flex-direction:column}
+#dcView[hidden]{display:none}
+#dcView .dc-page{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+.dc-bar{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.dc-bar .dc-src{flex:1 1 auto;margin:0;min-width:0}
+.dc-bar .dc-src button{white-space:nowrap}
+.dc-tgt{flex:0 1 auto;max-width:52%;display:flex;align-items:center;gap:7px;height:36px;padding:0 10px 0 8px;border:.5px solid var(--glass-bd);border-radius:999px;background:var(--glass-hi);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);color:var(--ink);font:600 14px/1 var(--f-body);cursor:pointer;box-shadow:var(--sh1)}
+.dc-tgt > svg{width:15px;height:15px;flex:0 0 15px;color:var(--muted)}
+.dc-tgn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dc-tgd{width:20px;height:20px;flex:0 0 20px;border-radius:50%;background:var(--cc);color:#fff;display:grid;place-items:center;font-size:11px}
+.dc-tgd.z{border-radius:6px}.dc-tgd svg{width:13px;height:13px}
+.dc-tgd.in{background:linear-gradient(135deg,#2F7BFF,#C04FE0)}
+.dc-tdot{display:block;width:12px;height:12px;border-radius:50%;background:var(--cc)}
+.dc-tz{color:var(--cc);display:grid;place-items:center}
+.dc-feed{flex:1;min-height:0;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-radius:22px}
+.dc-feed::-webkit-scrollbar{display:none}
+.dc-card.dc-reel{margin:0;height:100%;padding:0 0 8px;box-sizing:border-box;scroll-snap-align:start;scroll-snap-stop:always;background:none;border-radius:0;overflow:visible}
+.dc-rc{position:relative;height:100%;border-radius:22px;overflow:hidden;background:#111;color:#fff;isolation:isolate}
+.dc-rc.noph{background:radial-gradient(120% 80% at 30% 20%,color-mix(in srgb,var(--cc) 70%,#000),color-mix(in srgb,var(--cc) 25%,#000) 70%)}
+.dc-big{position:absolute;inset:0 0 35% 0;display:grid;place-items:center;color:rgba(255,255,255,.85)}
+.dc-big svg{width:84px;height:84px}
+.dc-reel .dc-ph{position:absolute;inset:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;background:#000}
+.dc-reel .dc-ph img{flex:0 0 100%;width:100%;height:100%;max-height:none;aspect-ratio:auto;object-fit:cover;scroll-snap-align:center;display:block}
+.dc-pn{position:absolute;top:10px;right:10px;z-index:2;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.4);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);font:600 12px/1.2 var(--f-body);color:#fff;pointer-events:none}
+.dc-grad{position:absolute;left:0;right:0;bottom:0;height:62%;background:linear-gradient(to top,rgba(0,0,0,.82),rgba(0,0,0,.45) 45%,transparent);pointer-events:none;z-index:1}
+.dc-info{position:absolute;left:14px;right:72px;bottom:14px;z-index:2;display:flex;flex-direction:column;gap:5px;text-shadow:0 1px 3px rgba(0,0,0,.45);pointer-events:none}
+.dc-info button{pointer-events:auto}
+.dc-reel .dc-who{flex-direction:row;align-items:center;gap:7px;flex:none}
+.dc-reel .dc-who b{font:600 14px/1.2 var(--f-body)}
+.dc-reel .dc-who small{color:rgba(255,255,255,.75);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dc-reel .dc-av,.dc-rv .dc-av{width:26px;height:26px;flex:0 0 26px;font-size:12px;box-shadow:0 0 0 1.5px rgba(255,255,255,.8)}
+.dc-reel .dc-hl,.dc-rv .dc-hl{padding:2px 7px;font-size:12px}
+.dc-reel .dc-name b{font:700 21px/1.2 var(--f-body);color:#fff}
+.dc-reel .dc-name .cic{background:rgba(255,255,255,.18);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.dc-reel .dc-sub{margin:0;color:rgba(255,255,255,.78);font-size:12.5px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.dc-avg{align-self:flex-start;display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:0;border-radius:999px;background:rgba(255,255,255,.18);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font:600 13px/1 var(--f-body);cursor:pointer;text-shadow:none}
+.dc-avg i,.dc-rt{font-style:normal;font-weight:700;color:color-mix(in srgb,var(--rc) 55%,#fff)}
+.dc-avg small{font-weight:500;color:rgba(255,255,255,.75);font-size:12px}
+.dc-reel .dc-note{margin:0;font-size:14px;line-height:1.35;color:#fff;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
+.dc-reel .dc-also{margin:0;color:rgba(255,255,255,.8);font-size:12.5px}.dc-reel .dc-also b{color:#9fe0b0}
+.dc-side{position:absolute;right:10px;bottom:14px;z-index:3;display:flex;flex-direction:column;gap:12px;align-items:center}
+.dc-sb{width:46px;border:0;padding:0;background:none;color:#fff;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font:600 12px/1 var(--f-body);text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.dc-sb svg{width:24px;height:24px;box-sizing:content-box;padding:10px;border-radius:50%;background:rgba(30,30,30,.4);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 2px 10px rgba(0,0,0,.25);transition:transform .15s ease,background .15s ease}
+.dc-sb span:empty{display:none}
+.dc-sb:active svg{transform:scale(.9)}
+.dc-like.on svg{color:#FF3B5C}
+.dc-take.on svg{background:rgba(52,199,89,.85)}
+.dc-end{height:100%;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:20px}
+.dc-feed > .dc-end:only-child{height:auto;justify-content:flex-start;padding-top:20px}
+.dc-end .pf-acts{flex-direction:column;align-items:stretch;width:min(320px,100%)}
+/* Bewertungen-Pop-up */
+.dc-rpop{width:min(420px,100%);max-height:min(82vh,680px);overflow-y:auto}
+.dc-rsum{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;padding:4px 2px 10px}
+.dc-ravg{display:flex;flex-direction:column;gap:2px;min-width:96px}
+.dc-ravg small{color:var(--muted);font-size:12px}.dc-ravg b{font:700 19px/1.15 var(--f-body)}
+.dc-rbars{display:grid;gap:3px}
+.dc-rbar{display:grid;grid-template-columns:82px 1fr 16px;gap:6px;align-items:center;font-size:11.5px;color:var(--muted)}
+.dc-rbar i{height:6px;border-radius:3px;background:var(--fill);overflow:hidden}.dc-rbar em{display:block;height:100%;border-radius:3px}
+.dc-rstat{display:flex;align-items:center;gap:5px;margin:0 2px 8px;color:var(--muted);font-size:13px}
+.dc-rstat svg{width:14px;height:14px;color:#FF3B5C}
+.dc-rlist{display:grid;gap:8px}
+.dc-rv{padding:10px 12px;border-radius:14px;background:var(--fill)}
+.dc-rvh{display:flex;align-items:center;gap:8px}
+.dc-rvh b{font:600 14px/1.2 var(--f-body)}.dc-rvh i{font-style:normal;font-weight:700;font-size:13px;margin-left:auto}.dc-rvh i.mu{color:var(--muted);font-weight:500}
+.dc-rv > small{display:block;margin:3px 0 0 34px;color:var(--muted);font-size:12px}
+.dc-rv p{margin:6px 0 0 34px;font-size:14px;line-height:1.4;white-space:pre-line}
+.dc-rv p.dc-rcm{font-size:13.5px;color:var(--ink)}
+@media (max-height:520px){ .dc-side{gap:6px;bottom:8px} .dc-sb svg{width:20px;height:20px;padding:7px} .dc-info{bottom:8px;gap:3px} .dc-reel .dc-note{-webkit-line-clamp:1} .dc-reel .dc-also{display:none} .dc-reel .dc-name b{font-size:18px} }
 .zmk.on{color:var(--sheet);background:var(--accent)}
 .zmk.on svg path{fill:currentColor}
 /* Ziele im Profil */
@@ -4829,7 +4898,7 @@ function recWipe(){ if(!fbDb || !acct.user) return; var me = acct.user.uid;
   recCol(me).get().then(function(qs){ qs.docs.forEach(function(d){ d.ref.delete(); }); lsSet("rp-recs-"+me, "{}"); toast("Deine Empfehlungen sind nicht mehr für Freunde sichtbar.", false); }, function(){}); }
 
 /* ---------- Entdecken: Empfehlungen von Freunden am Reiseziel ---------- */
-var dcPage = false, dcScope = "here", dcSrc = lsGet("rp-dcsrc") || "all", DC = {items:[], byKey:{}, at:0, busy:false, err:""};
+var dcPage = false, dcScope = lsGet("rp-dcscope") || "here", dcSrc = lsGet("rp-dcsrc") || "all", DC = {items:[], byKey:{}, at:0, busy:false, err:""};
 function openDcPage(){ closeMenus(); closeChPage(); closeGsPage(); closeProfile(); closeNtPage(); closeLsPage(); dcPage = true; renderDc(); $("dcView").hidden = false; navActive(); if(Date.now() - DC.at > 120000) dcLoad(); }
 function closeDcPage(){ if(!dcPage) return; dcPage = false; $("dcView").hidden = true; closeJpMore(); navActive(); }
 function dcLoad(){
@@ -4844,10 +4913,10 @@ var PUB = {items:[], key:"", busy:false, err:"", at:0}, PUBHIDE = null;
 function pubHidden(){ if(!PUBHIDE){ try { PUBHIDE = JSON.parse(lsGet("rp-pubhide") || "{}") || {}; } catch(e){ PUBHIDE = {}; } } return PUBHIDE; }
 function pubCells(C){ var out = {}; [-1, 0, 1].forEach(function(dy){ [-1, 0, 1].forEach(function(dx){ out[geohash(C.la + dy*0.176, C.lo + dx*0.352, 4)] = 1; }); }); return Object.keys(out); }
 function pubLoad(force){
-  if(!fbDb || !acct.user) return; var C = tripCenter(), here = dcScope==="here" && C, key = here ? pubCells(C).join(",") : "neu";
+  if(!fbDb || !acct.user) return; var tg = dcTgt(), C = tg && !tg.wide && tg.C, here = !!C, key = here ? pubCells(C).join(",") : "neu";
   if(!force && PUB.key===key && Date.now() - PUB.at < 120000) return;
   PUB.key = key; PUB.busy = true; PUB.err = ""; var me = acct.user.uid;
-  var qs = here ? pubCells(C).map(function(c){ return pubCol().where("gh", ">=", c).where("gh", "<", c+"~").limit(80).get(); }) : [pubCol().orderBy("at", "desc").limit(60).get()];
+  var qs = here ? pubCells(C).map(function(c){ return pubCol().where("gh", ">=", c).where("gh", "<", c+"~").limit(80).get(); }) : [pubCol().orderBy("at", "desc").limit(100).get()];
   Promise.all(qs).then(function(res){
     if(PUB.key!==key) return; var seen = {}, out = [];
     res.forEach(function(q){ q.docs.forEach(function(d){ var v = d.data(); if(!v || !v.by || v.by===me || seen[d.id]) return; seen[d.id] = 1;
@@ -4869,47 +4938,186 @@ function dcReportGo(k, i){
   fbDb.collection("reports").doc(me+"_"+r.pid).set({by:me, target:r.pid, owner:r.by, reason:DCREP[i] || "Sonstiges", n:String(r.n||"").slice(0, 80), at:Date.now()})
     .then(function(){ toast("Danke – gemeldet. Der Beitrag ist für dich ausgeblendet.", false); }, function(){ toast("Ausgeblendet. Die Meldung konnte nicht gesendet werden.", false); });
 }
-function tripCenter(){
-  var t = T(), pts = (t.hotels||[]).filter(hasLoc).concat((t.orte||[]).filter(hasLoc));
-  if(!pts.length) pts = Object.keys(t.places).map(P).filter(hasLoc);
+function tripCenter(t){
+  t = t || T(); if(!t) return null; var pts = (t.hotels||[]).filter(hasLoc).concat((t.orte||[]).filter(hasLoc));
+  if(!pts.length) pts = Object.keys(t.places).map(function(k){ return t.places[k]; }).filter(function(p){ return p && hasLoc(p); });
   if(!pts.length) return null;
   return {la: pts.reduce(function(a, p){ return a + p.la; }, 0)/pts.length, lo: pts.reduce(function(a, p){ return a + p.lo; }, 0)/pts.length};
 }
-function dcInTrip(r){ var t = T(); return Object.keys(t.places).some(function(id){ var p = t.places[id]; return p && hasLoc(p) && dist(p, r) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(r.n||"").toLowerCase().slice(0, 6); }); }
+function dcInT(t, r){ return !!t && Object.keys(t.places).some(function(id){ var p = t.places[id]; return p && hasLoc(p) && dist(p, r) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(r.n||"").toLowerCase().slice(0, 6); }); }
+function dcInTrip(r){ return dcInT(T(), r); }
+/* Auswahl in Entdecken: Reise oder Ziel (Vorschläge in deren Gebiet) oder „Inspiration“ (ortsunabhängig, dcScope = "all") */
+function dcTgt(){
+  if(dcScope==="all") return null;
+  var id = dcScope==="here" ? S.cur : dcScope, t = S.trips[id];
+  if(!t || t.arch){ id = S.cur; t = S.trips[id]; dcScope = "here"; }
+  if(!t || (!t.ziel && noTrip())) return null;
+  var o = t.ziel && (t.orte||[])[0], C = t.ziel ? (o ? (o.bb ? {la:(o.bb[1]+o.bb[3])/2, lo:(o.bb[0]+o.bb[2])/2} : {la:o.la, lo:o.lo}) : null) : tripCenter(t);
+  return {id:id, t:t, z:!!t.ziel, C:C && hasLoc(C) ? C : null, wide:!!t.ziel && ((t.orte||[]).length > 1 || (o && zSize(o) > 60000))};
+}
+function dcHas(r, tg){ var q = {n:r.n, la:+r.la, lo:+r.lo}; if(!tg) return !!zFind(q) || dcInTrip(q); if(tg.z) return Object.keys(tg.t.places).some(function(k){ return samePl(tg.t.places[k], q); }); return dcInT(tg.t, q); }
+function dcTgtName(tg){ return tg ? tg.t.name || (tg.z ? "Ziel" : "Reise") : "Inspiration"; }
+function dcQ(r){ return {n:r.n, c:r.c, la:+r.la, lo:+r.lo, addr:r.addr||"", note:"Empfehlung von @"+(r.fname||"Freund")+(r.note ? ": "+r.note.slice(0, 200) : ""), rec:{by:r.by||"", name:r.fname||""}}; }
+// Vorschlag übernehmen: in die Wunschliste der gewählten Reise oder ins gewählte Ziel; bei „Inspiration“ merken (passendes oder neues Ziel)
+function dcTake(key){
+  var r = DC.byKey[key]; if(!r || !r.la) return; var tg = dcTgt();
+  if(dcHas(r, tg)){ toast("„"+r.n+"“ ist schon "+(tg ? "in „"+dcTgtName(tg)+"“" : "gemerkt"), false); return; }
+  if(tg && tg.z){ var a = zielAdd(tg.id, dcQ(r)); if(!a) return; save(); zLast = {zid:tg.id, pid:a.id}; zToast("„"+r.n+"“ übernommen in „"+dcTgtName(tg)+"“", zLast); spotAdd(r); }
+  else if(tg){ if(isViewerOf(tg.id)){ toast("Diese Reise kannst du nur ansehen.", false); return; } dcAdd(key, null, tg.id); }
+  else { merken(dcQ(r)); spotAdd(r); }
+  dcReelRefresh(key);
+}
+/* Likes und Übernahmen je Ort (über alle Empfehlungen desselben Orts): spots/{id} mit Zählern, je Konto ein Merker in likes/{uid} bzw. adds/{uid}.
+   Die Kennung ist ein Hash aus Gebiet und Name – sie verrät weder Ort noch Empfehlende. */
+var SPOT = {}, MYLK = null;
+function hash53(s){ var h1 = 0xdeadbeef, h2 = 0x41c6ce57; for(var i = 0; i < s.length; i++){ var c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909); h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
+  return (4294967296*(2097151 & h2) + (h1>>>0)).toString(36); }
+function spotId(r){ return "s"+hash53(geohash(+r.la, +r.lo, 6)+"|"+zKey(r.n)); }
+function myLikes(){ if(!MYLK){ try { MYLK = JSON.parse(lsGet("rp-likes") || "{}") || {}; } catch(e){ MYLK = {}; } } return MYLK; }
+function setMyLike(id, on){ var m = myLikes(); if(on) m[id] = 1; else delete m[id]; lsSet("rp-likes", JSON.stringify(m)); }
+function spotOf(r){ var id = spotId(r); return SPOT[id] || (SPOT[id] = {id:id, likes:null, adds:null, me:!!myLikes()[id], meAdd:false, at:0}); }
+function spotRef(id){ return fbDb.collection("spots").doc(id); }
+function spotLoad(r){
+  if(!fbDb || !acct.user || !r || !r.la) return; var s = spotOf(r);
+  if(s.busy || s.load || Date.now() - s.at < 90000) return; s.load = true; var me = acct.user.uid, ref = spotRef(s.id);
+  Promise.all([ref.get(), ref.collection("likes").doc(me).get(), ref.collection("adds").doc(me).get()]).then(function(a){
+    s.load = false; s.at = Date.now(); if(s.busy) return; var d = a[0] && a[0].exists ? a[0].data() || {} : {};
+    s.likes = +d.likes || 0; s.adds = +d.adds || 0; s.me = !!(a[1] && a[1].exists); s.meAdd = !!(a[2] && a[2].exists); setMyLike(s.id, s.me); dcReelRefresh(r.key);
+  }, function(){ s.load = false; s.at = Date.now(); });
+}
+function spotErr(e){ return e && e.code==="permission-denied" ? " (Regeln noch nicht aktiv?)" : ""; }
+function spotLike(r){
+  if(!r || !r.la) return; if(!fbDb || !acct.user){ toast("Melde dich an, um Vorschläge zu liken.", false); return; }
+  var s = spotOf(r); if(s.busy) return;
+  var on = !s.me, me = acct.user.uid, FV = window.firebase.firestore.FieldValue, ref = spotRef(s.id), b = fbDb.batch();
+  s.me = on; s.likes = Math.max(0, (s.likes||0) + (on ? 1 : -1)); s.busy = true; setMyLike(s.id, on); dcReelRefresh(r.key);
+  if(on) b.set(ref.collection("likes").doc(me), {at:Date.now()}); else b.delete(ref.collection("likes").doc(me));
+  b.set(ref, {likes:FV.increment(on ? 1 : -1)}, {merge:true});
+  b.commit().then(function(){ s.busy = false; }, function(e){ s.busy = false; s.me = !on; s.likes = Math.max(0, s.likes + (on ? -1 : 1)); setMyLike(s.id, !on); dcReelRefresh(r.key); toast("Like konnte nicht gespeichert werden"+spotErr(e)+".", false); });
+}
+// Übernahme zählen: je Konto und Ort einmal
+function spotAdd(r){
+  if(!r || !r.la || !fbDb || !acct.user) return; var s = spotOf(r); if(s.meAdd) return;
+  var me = acct.user.uid, FV = window.firebase.firestore.FieldValue, ref = spotRef(s.id), b = fbDb.batch();
+  s.meAdd = true; s.adds = (s.adds||0) + 1;
+  b.set(ref.collection("adds").doc(me), {at:Date.now()}); b.set(ref, {adds:FV.increment(1)}, {merge:true});
+  b.commit().then(function(){}, function(){ s.adds = Math.max(0, s.adds - 1); dcReelRefresh(r.key); });
+}
+/* Bewertungen: Skala als Punkte (Outstanding 7 … Bad 1), Durchschnitt als nächstliegende Stufe */
+function dcRevs(r){ return [r].concat(r.also||[]); }
+function dcAvg(r){ var v = dcRevs(r).filter(function(x){ return rateRank(x.rating) < 99; }); if(!v.length) return null;
+  var a = v.reduce(function(s, x){ return s + 8 - rateRank(x.rating); }, 0)/v.length; return {avg:a, n:v.length, R:RATES[Math.max(0, Math.min(6, 7 - Math.round(a)))]}; }
+function dcCmN(r){ return dcRevs(r).reduce(function(s, x){ return s + (x.note ? 1 : 0) + (x.cm||[]).length; }, 0); }
+function dcList(){
+  var tg = dcTgt(), list = DC.items.slice(), hid = pubHidden();
+  if(dcSrc==="all") PUB.items.forEach(function(r){ if(!hid[r.pid] && !DC.items.some(function(x){ return x.key===r.key; })) list.push(r); });
+  if(tg && tg.z) list = list.filter(function(r){ return r.la && zielHas(tg.t, {la:+r.la, lo:+r.lo}); });
+  else if(tg && tg.C) list = list.filter(function(r){ return r.la && dist(tg.C, r) < 40000; });
+  list.sort(function(a, b){ var ra = a.hl ? 0 : (a.rating ? rateRank(a.rating) : 99), rb = b.hl ? 0 : (b.rating ? rateRank(b.rating) : 99); return ra - rb || (b.at||0) - (a.at||0); });
+  // derselbe Ort von mehreren: ein Vorschlag, „auch empfohlen von …“
+  var kept = []; list.forEach(function(r){ var k = r.la ? kept.filter(function(x){ return x.la && samePl(x, r); })[0] : null; if(k){ if(k.by!==r.by && !k.also.some(function(a){ return a.by===r.by; })) k.also.push(r); } else { r.also = []; kept.push(r); } });
+  return kept;
+}
+var DCSIG = "", DCL = [], DCI = 0;
+function dcSV(d, fill){ return "<svg viewBox=\"0 0 24 24\" fill=\""+(fill||"none")+"\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; }
+var DCHEART = "<path d=\"M12 20.5s-8-4.9-8-10.6A4.4 4.4 0 0 1 12 7.3a4.4 4.4 0 0 1 8 2.6c0 5.7-8 10.6-8 10.6z\"/>";
+function dcCnt(n){ return n==null ? "" : n >= 10000 ? Math.round(n/1000)+"k" : n >= 1000 ? (n/1000).toFixed(1).replace(".", ",")+"k" : String(n); }
+function dcSideHTML(r){
+  var s = spotOf(r), k = esc(r.key), tg = dcTgt(), has = dcHas(r, tg), nr = dcRevs(r).length, cmn = dcCmN(r);
+  return "<button type=\"button\" class=\"dc-sb dc-like"+(s.me ? " on" : "")+"\" data-act=\"dclike\" data-k=\""+k+"\" aria-pressed=\""+s.me+"\" aria-label=\"Gefällt mir\">"+dcSV(DCHEART, s.me ? "currentColor" : "none")+"<span>"+dcCnt(s.likes)+"</span></button>"+
+    "<button type=\"button\" class=\"dc-sb dc-take"+(has ? " on" : "")+"\" data-act=\"dctake\" data-k=\""+k+"\" aria-label=\""+(has ? "Schon übernommen" : esc(tg ? "In Wunschliste von „"+dcTgtName(tg)+"“ übernehmen" : "Merken – passendes oder neues Ziel"))+"\" title=\""+(s.adds ? s.adds+"× in Wunschlisten übernommen" : "In Wunschliste übernehmen")+"\">"+dcSV(has ? "<path d=\"m5 12.5 4.5 4.5L19 7.5\"/>" : "<path d=\"M12 5v14M5 12h14\"/>")+"<span>"+dcCnt(s.adds)+"</span></button>"+
+    "<button type=\"button\" class=\"dc-sb\" data-act=\"dcrate\" data-k=\""+k+"\" aria-label=\"Bewertungen und Kommentare\">"+dcSV("<path d=\"M4.5 5.5h15v10h-8l-4.5 3.5v-3.5h-2.5z\"/>")+"<span>"+(nr + cmn > 1 || cmn ? dcCnt(Math.max(nr, cmn)) : "")+"</span></button>"+
+    "<button type=\"button\" class=\"dc-sb\" data-act=\"dcmore\" data-k=\""+k+"\" aria-label=\"Mehr\">"+dcSV("<circle cx=\"5.5\" cy=\"12\" r=\".6\"/><circle cx=\"12\" cy=\"12\" r=\".6\"/><circle cx=\"18.5\" cy=\"12\" r=\".6\"/>")+"</button>";
+}
+function dcInfoHTML(r){
+  var tg = dcTgt(), A = dcAvg(r), RR = RATES.filter(function(x){ return x[0]===r.rating; })[0], dd = tg && tg.C && r.la ? dist(tg.C, r) : null;
+  return "<div class=\"dc-who\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><b>@"+esc(r.fname||"Freund")+"</b><small>"+esc([r.pub ? "öffentlich" : "Freund", r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+(r.hl ? "<span class=\"dc-hl\">★</span>" : "")+"</div>"+
+    "<div class=\"dc-name\"><span class=\"cic\" style=\"--cc:"+catCol(r.c)+"\">"+icon(r.c)+"</span><b>"+esc(r.n)+"</b></div>"+
+    "<small class=\"dc-sub\">"+esc([CATNAME[r.c], r.addr, dd!=null && dd > 2000 && !tg.z ? fmtDist(dd)+" vom Reiseziel" : ""].filter(Boolean).join(" · "))+"</small>"+
+    (A ? "<button type=\"button\" class=\"dc-avg\" data-act=\"dcrate\" data-k=\""+esc(r.key)+"\"><span>Ø</span><i style=\"--rc:"+A.R[2]+"\">"+A.R[1]+"</i>"+(A.n > 1 ? "<small>"+A.n+" Bewertungen</small>" : "")+"</button>" : RR ? "<i class=\"dc-rt\" style=\"--rc:"+RR[2]+"\">"+RR[1]+"</i>" : "")+
+    (r.note ? "<p class=\"dc-note\">„"+esc(r.note)+"“</p>" : "")+
+    (r.also.length ? "<p class=\"dc-also\">👥 <b>"+(r.also.length+1)+" empfehlen das</b> · auch "+r.also.map(function(a){ return "@"+esc(a.fname||"Freund"); }).join(", ")+"</p>" : "");
+}
+function dcPhHTML(r){ return (r.photos||[]).slice(-6).map(function(u, i, a){ return "<img src=\""+u+"\" alt=\"\" decoding=\"async\" data-act=\"dcfull\" data-k=\""+esc(r.key)+"\" data-i=\""+((r.photos.length - a.length) + i)+"\" role=\"button\" aria-label=\"Foto im Vollbild\">"; }).join(""); }
+function dcReelEl(key){ var f = $("dcFeed"); if(!f) return null; var a = f.querySelectorAll(".dc-reel"); for(var i = 0; i < a.length; i++) if(a[i].getAttribute("data-k")===key) return a[i]; return null; }
+function dcReelRefresh(key){ if(!dcPage) return; var el = dcReelEl(key), r = DCL.filter(function(x){ return x.key===key; })[0]; if(!el || !r) return;
+  el.querySelector(".dc-side").innerHTML = dcSideHTML(r); el.querySelector(".dc-info").innerHTML = dcInfoHTML(r); }
+// nur der sichtbare Vorschlag und seine Nachbarn tragen Fotos (Speicher auf dem iPhone)
+function dcFill(){
+  var f = $("dcFeed"); if(!f) return; var h = Math.max(1, f.clientHeight), idx = Math.round(f.scrollTop / h); DCI = idx;
+  f.querySelectorAll(".dc-reel").forEach(function(el, i){ var ph = el.querySelector(".dc-ph"), r = DCL[i]; if(!ph || !r) return; var near = Math.abs(i - idx) <= 1;
+    if(near && !ph.hasAttribute("data-on")){ ph.innerHTML = dcPhHTML(r); ph.setAttribute("data-on", ""); var c = el.querySelector(".dc-pn"); if(c) c.textContent = "1/"+ph.children.length; }
+    else if(!near && ph.hasAttribute("data-on")){ ph.innerHTML = ""; ph.removeAttribute("data-on"); } });
+  [idx, idx+1].forEach(function(i){ if(DCL[i]) spotLoad(DCL[i]); });
+}
 function renderDc(){
   var el = $("dcView"); if(!el) return;
-  var h = "<div class=\"pf dc-page\"><div class=\"ls-head dc-head\"><div class=\"dc-title\"><b>Entdecken</b><small>"+(dcSrc==="friends" ? "Empfehlungen deiner Freunde" : "Empfehlungen von Freunden und allen")+"</small></div>";
-  var C = tripCenter();
-  h += "<div class=\"pf-seg dc-src\" role=\"tablist\" aria-label=\"Quelle\"><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"all\" aria-selected=\""+(dcSrc==="all")+"\">🌐 Alle</button><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"friends\" aria-selected=\""+(dcSrc==="friends")+"\">👥 Nur Freunde</button></div>";
-  h += "<div class=\"nt-kinds\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"dcscope\" data-v=\"here\" aria-selected=\""+(dcScope==="here")+"\">Rund um „"+esc(T().name||"Reise")+"“</button><button type=\"button\" role=\"tab\" data-act=\"dcscope\" data-v=\"all\" aria-selected=\""+(dcScope==="all")+"\">Überall</button></div></div>";
-  if(!acct.user){ el.innerHTML = h+"<p class=\"note nt-empty\">Melde dich an, um Empfehlungen zu sehen.</p></div>"; return; }
-  if(dcSrc==="all"){ pubLoad(); if(PUB.err) h += "<p class=\"note nt-empty\">"+esc(PUB.err)+"</p>"; }
-  if(!FR.friends.length && dcSrc!=="all"){ el.innerHTML = h+"<p class=\"note nt-empty\">Noch keine Freunde. Füge Freunde hinzu – ihre besuchten und gut bewerteten Orte erscheinen dann hier.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div></div>"; return; }
-  var list = DC.items.slice(), hid = pubHidden();
-  if(dcSrc==="all") PUB.items.forEach(function(r){ if(!hid[r.pid] && !DC.items.some(function(x){ return x.key===r.key; })) list.push(r); });
-  if(dcScope==="here" && C) list = list.filter(function(r){ return r.la && dist(C, r) < 40000; });
-  list.sort(function(a, b){ var ra = a.hl ? 0 : (a.rating ? rateRank(a.rating) : 99), rb = b.hl ? 0 : (b.rating ? rateRank(b.rating) : 99); return ra - rb || (b.at||0) - (a.at||0); });
-  // derselbe Ort von mehreren Freunden: eine Karte, „auch empfohlen von …“
-  var kept = []; list.forEach(function(r){ var k = r.la ? kept.filter(function(x){ return x.la && samePl(x, r); })[0] : null; if(k){ if(k.by!==r.by && !k.also.some(function(a){ return a.by===r.by; })) k.also.push(r); } else { r.also = []; kept.push(r); } }); list = kept;
-  if((DC.busy || (dcSrc==="all" && PUB.busy)) && !list.length) h += "<p class=\"note nt-empty\">Lädt Empfehlungen …</p>";
-  else if(!list.length) h += "<p class=\"note nt-empty\">"+(dcSrc==="all" ? (dcScope==="here" ? "Hier hat noch niemand etwas empfohlen. Schau unter „Überall“." : "Noch keine Empfehlungen.") : dcScope==="here" ? "Für dieses Reiseziel haben deine Freunde noch nichts empfohlen. Schau unter „Überall“." : "Deine Freunde haben noch keine Empfehlungen geteilt.")+"</p>";
+  var tg = dcTgt(), tc = tg ? tripColor(tg.id) : "var(--accent)";
+  var head = "<div class=\"dc-bar\"><div class=\"pf-seg dc-src\" role=\"tablist\" aria-label=\"Quelle\"><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"all\" aria-selected=\""+(dcSrc==="all")+"\">🌐 Alle</button><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"friends\" aria-selected=\""+(dcSrc==="friends")+"\">👥 Freunde</button></div>"+
+    "<button type=\"button\" class=\"dc-tgt\" data-act=\"dctgt\" aria-haspopup=\"menu\" aria-label=\"Vorschläge für: "+esc(dcTgtName(tg))+"\"><span class=\"dc-tgd"+(tg ? (tg.z ? " z" : "") : " in")+"\" style=\"--cc:"+tc+"\">"+(tg ? (tg.z ? ZBM : "") : "✦")+"</span><span class=\"dc-tgn\">"+esc(dcTgtName(tg))+"</span>"+dcSV("<path d=\"m7 10 5 5 5-5\"/>")+"</button></div>";
+  if(!acct.user){ DCSIG = ""; el.innerHTML = "<div class=\"dc-page\">"+head+"<p class=\"note nt-empty\">Melde dich an, um Vorschläge zu sehen.</p></div>"; return; }
+  if(dcSrc==="all") pubLoad();
+  var list = (dcSrc!=="all" && !FR.friends.length) ? [] : dcList(), busy = DC.busy || (dcSrc==="all" && PUB.busy);
+  var sig = [dcSrc, dcScope, tg && tg.id, list.map(function(r){ return r.key+":"+r.also.length; }).join("|"), !list.length && busy, PUB.err, FR.friends.length].join("#"), f = $("dcFeed");
+  DCL = list;
+  if(f && sig===DCSIG){ list.forEach(function(r){ dcReelRefresh(r.key); }); return; }
+  var keep = f && DCSIG.split("#").slice(0, 3).join("#")===sig.split("#").slice(0, 3).join("#") ? f.scrollTop : 0;
+  DCSIG = sig;
+  var h = "<div class=\"dc-page\">"+head+"<div class=\"dc-feed\" id=\"dcFeed\">";
   list.forEach(function(r){
-    var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0], inT = dcInTrip(r), dd = C ? dist(C, r) : null;
-    h += "<article class=\"dc-card\">"+
-      "<div class=\"dc-top\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><span class=\"dc-who\"><b>@"+esc(r.fname||"Freund")+"</b><small>"+esc([r.pub ? "öffentlich" : "", r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small></span>"+
-        (r.hl ? "<span class=\"dc-hl\">★ Highlight</span>" : "")+"</div>"+
-      (r.photos && r.photos.length ? "<div class=\"dc-ph\">"+r.photos.map(function(u, i){ return "<img src=\""+u+"\" alt=\"\" loading=\"lazy\" data-act=\"dcfull\" data-k=\""+esc(r.key)+"\" data-i=\""+i+"\" role=\"button\" aria-label=\"Foto im Vollbild\">"; }).join("")+"</div>" : "")+
-      "<div class=\"dc-body\"><div class=\"dc-name\"><span class=\"cic\" style=\"--cc:"+catCol(r.c)+"\">"+icon(r.c)+"</span><b>"+esc(r.n)+"</b></div>"+
-        "<small class=\"dc-sub\">"+esc([CATNAME[r.c], r.addr, dd!=null && dcScope==="all" ? fmtDist(dd)+" vom Reiseziel" : ""].filter(Boolean).join(" · "))+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"</small>"+
-        (r.note ? "<p class=\"dc-note\">„"+esc(r.note)+"“</p>" : "")+recCmHTML(r, "dc-note")+
-        (r.also.length ? "<p class=\"dc-also\">👥 <b>"+(r.also.length+1)+" Freunde</b> empfehlen das · auch "+r.also.map(function(a){ var A = RATES.filter(function(x){ return x[0]===a.rating; })[0]; return "@"+esc(a.fname||"Freund")+(A ? " <i style=\"color:"+A[2]+"\">"+A[1]+"</i>" : ""); }).join(", ")+"</p>" : "")+
-        "<div class=\"dc-acts\">"+(inT ? "<span class=\"dc-in\">✓ In deiner Reise</span>" : (isRO() ? "" : "<button type=\"button\" class=\"btn g s\" data-act=\"dcwish\" data-k=\""+esc(r.key)+"\">＋ Wunschliste</button><button type=\"button\" class=\"btn s\" data-act=\"dcplan\" data-k=\""+esc(r.key)+"\">Einplanen …</button>"))+
-          (r.la ? zMkBtn({n:r.n, la:+r.la, lo:+r.lo}, "dcmerk", r.key, "dc-map") : "")+"<button type=\"button\" class=\"dc-map\" data-act=\"dcmap\" data-k=\""+esc(r.key)+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button>"+
-          (r.pub ? "<button type=\"button\" class=\"dc-map dc-rep\" data-act=\"dcreport\" data-k=\""+esc(r.key)+"\" aria-label=\"Beitrag melden\" title=\"Melden\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 17.5V3.5M5 4h9.5l-2 3.5 2 3.5H5\"/></svg></button>" : "")+"</div></div></article>";
+    var n = Math.min(6, (r.photos||[]).length);
+    h += "<article class=\"dc-card dc-reel\" data-k=\""+esc(r.key)+"\"><div class=\"dc-rc"+(n ? "" : " noph")+"\" style=\"--cc:"+catCol(r.c)+"\">"+
+      (n ? "<div class=\"dc-ph\"></div>"+(n > 1 ? "<span class=\"dc-pn\">1/"+n+"</span>" : "") : "<div class=\"dc-big\">"+icon(r.c)+"</div>")+
+      "<div class=\"dc-grad\"></div><div class=\"dc-info\">"+dcInfoHTML(r)+"</div><div class=\"dc-side\">"+dcSideHTML(r)+"</div></div></article>";
   });
-  h += "<div class=\"pf-acts\">"+(dcScope==="here" && !noTrip() ? "<button type=\"button\" class=\"btn g\" data-act=\"askopen\">Freunde nach Tipps fragen</button>" : "")+(list.length ? "<button type=\"button\" class=\"btn g\" data-act=\"dcreload\">Aktualisieren</button>" : "")+"</div>";
-  el.innerHTML = h+"</div>";
+  var msg = busy && !list.length ? "Lädt Vorschläge …" : !list.length ? (dcSrc!=="all" && !FR.friends.length ? "Noch keine Freunde. Füge Freunde hinzu – ihre veröffentlichten Orte erscheinen dann hier." : tg ? "Für „"+dcTgtName(tg)+"“ gibt es noch keine Vorschläge"+(dcSrc==="friends" ? " von Freunden" : "")+". Schau unter „Inspiration“." : "Noch keine Vorschläge.") : "Das war’s"+(tg ? " für „"+dcTgtName(tg)+"“" : "")+".";
+  h += "<div class=\"dc-end\"><p class=\"note\">"+esc(msg)+(PUB.err && dcSrc==="all" ? "<br>"+esc(PUB.err) : "")+"</p><div class=\"pf-acts\">"+
+    (dcSrc!=="all" && !FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button>" : "")+
+    (tg ? "<button type=\"button\" class=\"btn g\" data-act=\"dcscopeset\" data-v=\"all\">✦ Inspiration</button>" : "")+
+    (tg && FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"askopen\""+(tg.z ? " data-z=\""+esc(tg.id)+"\"" : "")+">Freunde nach Tipps fragen</button>" : "")+
+    (list.length ? "<button type=\"button\" class=\"btn g\" data-act=\"dcreload\">Aktualisieren</button>" : "")+"</div></div></div></div>";
+  el.innerHTML = h; f = $("dcFeed");
+  if(keep) f.scrollTop = keep;
+  var tmr = 0; f.addEventListener("scroll", function(){ clearTimeout(tmr); tmr = setTimeout(dcFill, 70); }, {passive:true});
+  // Fotozähler beim seitlichen Wischen
+  f.addEventListener("scroll", function(e){ var ph = e.target; if(!ph.classList || !ph.classList.contains("dc-ph")) return; var c = ph.parentNode.querySelector(".dc-pn"); if(c) c.textContent = (Math.round(ph.scrollLeft / Math.max(1, ph.clientWidth)) + 1)+"/"+ph.children.length; }, {capture:true, passive:true});
+  dcFill();
 }
+function dcTgtMenu(btn){
+  var cur = dcTgt(), row = function(v, ic, n, on){ return "<button type=\"button\" data-act=\"dcscopeset\" data-v=\""+esc(v)+"\" role=\"menuitemradio\" aria-checked=\""+on+"\"><span class=\"ai\">"+ic+"</span><span>"+esc(n)+"</span>"+(on ? "<span class=\"ck\">✓</span>" : "")+"</button>"; };
+  var tr = noTrip() ? [] : liveIds().sort(function(a, b){ return String(S.trips[a].start||"").localeCompare(String(S.trips[b].start||"")); }), zs = zielIds();
+  var h = row("all", "✦", "Inspiration – aus aller Welt", !cur);
+  if(tr.length) h += "<div class=\"dc-dh\">Reisen</div>"+tr.map(function(id){ return row(id, "<i class=\"dc-tdot\" style=\"--cc:"+tripColor(id)+"\"></i>", S.trips[id].name || "Reise", !!cur && cur.id===id); }).join("");
+  if(zs.length) h += "<div class=\"dc-dh\">Ziele</div>"+zs.map(function(id){ return row(id, "<span class=\"dc-tz\" style=\"--cc:"+tripColor(id)+"\">"+ZBM+"</span>", S.trips[id].name, !!cur && cur.id===id); }).join("");
+  jpPopover("dct", btn, h, "dctgt");
+}
+function dcSetScope(v){ dcScope = v==="all" ? "all" : v===S.cur ? "here" : (S.trips[v] ? v : "here"); lsSet("rp-dcscope", dcScope); var f = $("dcFeed"); if(f) f.scrollTop = 0; renderDc(); }
+function dcMore(key, btn){
+  var r = DC.byKey[key]; if(!r) return; var tg = dcTgt(), C = tripCenter(), cur = !isRO() && !noTrip() && days().length && (tg ? tg.id===S.cur : C && dist(C, r) < 40000);
+  var it = function(act, ic, n, cls){ return "<button type=\"button\" data-act=\""+act+"\" data-k=\""+esc(key)+"\" role=\"menuitem\""+(cls ? " class=\""+cls+"\"" : "")+"><span class=\"ai\">"+ic+"</span><span>"+n+"</span></button>"; };
+  jpPopover("dcm", btn, (r.la ? it("dcmap", MAPGO, "Auf der Karte zeigen") : "")+(cur && !dcInTrip(r) ? it("dcplanm", "📅", "Einplanen am …") : "")+
+    (FR.friends.length ? it("dcsend", "💬", "Im Chat schicken") : "")+(r.pub ? it("dcreport", "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 17.5V3.5M5 4h9.5l-2 3.5 2 3.5H5\"/></svg>", "Beitrag melden", "del") : ""), "dcmore");
+}
+function dcMoreBtn(key){ var el = dcReelEl(key); return el && el.querySelector("[data-act=dcmore]"); }
+// Bewertungen und Kommentare zu einem Vorschlag: Durchschnitt, Verteilung, jede Einzelbewertung mit Notiz und Kommentaren
+function dcRatings(key){
+  var r0 = DC.byKey[key], r = DCL.filter(function(x){ return x.key===key; })[0] || r0; if(!r) return; if(!r.also) r.also = [];
+  var A = dcAvg(r), revs = dcRevs(r), s = spotOf(r), cnt = {};
+  revs.forEach(function(x){ if(rateRank(x.rating) < 99) cnt[x.rating] = (cnt[x.rating]||0) + 1; });
+  var h = "<div class=\"pop-card zpop dc-rpop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Bewertungen\"><div class=\"pop-head\"><h4>"+esc(r.n)+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
+  h += "<div class=\"dc-rsum\">"+(A ? "<div class=\"dc-ravg\"><small>Durchschnitt</small><b style=\"color:"+A.R[2]+"\">Ø "+A.R[1]+"</b><small>"+A.n+" "+(A.n===1 ? "Bewertung" : "Bewertungen")+"</small></div>" : "<div class=\"dc-ravg\"><small>Noch keine Bewertung</small></div>")+
+    "<div class=\"dc-rbars\">"+RATES.map(function(R){ var c = cnt[R[0]]||0, w = A ? Math.round(100*c/A.n) : 0; return "<div class=\"dc-rbar\"><span>"+R[1]+"</span><i><em style=\"width:"+w+"%;background:"+R[2]+"\"></em></i><small>"+(c||"")+"</small></div>"; }).join("")+"</div></div>";
+  h += "<p class=\"dc-rstat\">"+dcSV(DCHEART, "currentColor")+" "+(s.likes||0)+" · ＋ "+(s.adds||0)+"× in Wunschlisten übernommen</p><div class=\"dc-rlist\">";
+  revs.forEach(function(x){ var R = RATES.filter(function(y){ return y[0]===x.rating; })[0];
+    h += "<div class=\"dc-rv\"><div class=\"dc-rvh\"><span class=\"dc-av\">"+esc(((x.fname||"?")[0]||"?").toUpperCase())+"</span><b>@"+esc(x.fname||"Freund")+"</b>"+(R ? "<i style=\"color:"+R[2]+"\">"+R[1]+"</i>" : "<i class=\"mu\">ohne Bewertung</i>")+(x.hl ? "<span class=\"dc-hl\">★</span>" : "")+"</div>"+
+      "<small>"+esc([x.pub ? "öffentlich" : "Freund", x.trip, x.at ? new Date(x.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+
+      (x.note ? "<p>„"+esc(x.note)+"“</p>" : "")+recCmHTML(x, "dc-rcm")+"</div>"; });
+  h += "</div></div>";
+  var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false;
+}
+function dcSendMenu(key){ var btn = dcMoreBtn(key); if(!btn || !FR.friends.length) return; var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
+  jpPopover("dcs", btn, frPickHead("Im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"dcsendto\" data-k=\""+esc(key)+"\" data-uid=\""+esc(f.uid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "dcsend"); }
 /* ---------- Ziele: Orte für später merken, auch ohne geplante Reise ----------
    Ein Ziel ist ein Reise-Datensatz ohne Zeitraum (ziel:1) mit frei wählbarem Namen und Gebiet (orte: Mittelpunkt mit
    Umkreis r oder Rahmen bb = [W, S, O, N]). Speichern, Konto-Abgleich und Teilen laufen damit wie bei Reisen.
@@ -5301,7 +5509,7 @@ var DCV = null;
 function dcvSV(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; }
 function dcvMeta(){
   var r = DCV && DC.byKey[DCV.key]; if(!r) return "";
-  var cm = r.cm || [], inT = dcInTrip(r), h = "<div class=\"pv-side\">";
+  var cm = r.cm || [], inT = dcHas(r, dcTgt()), h = "<div class=\"pv-side\">";
   h += "<button type=\"button\" class=\"pvi"+(DCV.cm?" on":"")+"\" data-act=\"dcvcm\" aria-expanded=\""+DCV.cm+"\" aria-label=\"Kommentare\">"+dcvSV("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/>")+"<span>"+(cm.length || "")+"</span></button>";
   if(acct.user) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvsend\" aria-label=\"Im Chat schicken\">"+dcvSV("<path d=\"M17.5 2.5 9 11M17.5 2.5l-5 15-3.5-6.5-6.5-3.5z\"/>")+"</button>";
   if(!inT && !isRO()) h += "<button type=\"button\" class=\"pvi\" data-act=\"dcvwish\" aria-label=\"Zur Wunschliste\">"+dcvSV("<path d=\"M10 16.5s-6-3.6-6-8a3.3 3.3 0 0 1 6-1.9 3.3 3.3 0 0 1 6 1.9c0 4.4-6 8-6 8z\"/>")+"</button>";
@@ -5338,18 +5546,19 @@ function dcvSendMenu(btn){
   var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
   jpPopover("dcv", btn, frPickHead("Im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"dcvto\" data-uid=\""+esc(f.uid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "dcvsend");
 }
-function dcvSendTo(u){
-  var r = DCV && DC.byKey[DCV.key]; closeJpMore(); if(!r) return; var cid = chWith(u); if(!cid) return;
-  var pl = {n:r.n, c:r.c, la:+r.la, lo:+r.lo, addr:r.addr||"", trip:r.trip||""}; if(r.rating) pl.rating = r.rating; var u0 = (r.photos||[])[DCV.i]; if(u0) pl.ph = u0;
+function dcvSendTo(u, key){
+  var r = DC.byKey[key || (DCV && DCV.key)]; closeJpMore(); if(!r) return; var cid = chWith(u); if(!cid) return;
+  var pl = {n:r.n, c:r.c, la:+r.la, lo:+r.lo, addr:r.addr||"", trip:r.trip||""}; if(r.rating) pl.rating = r.rating; var u0 = (r.photos||[])[DCV ? DCV.i : 0]; if(u0) pl.ph = u0;
   dcvClose(); closeDcPage(); openChPage(cid); chDraft = pl; renderChDraft(); setTimeout(function(){ var i = $("chIn"); if(i) i.focus(); }, 80);
 }
-function dcAdd(key, dk){
-  closeJpMore();
-  var r = DC.byKey[key]; if(!r || isRO()) return;
-  if(dcInTrip(r)){ toast("„"+r.n+"“ ist schon in deiner Reise", false); return; }
-  var t = T(), id = uid("w");
+function dcAdd(key, dk, tid){
+  closeJpMore(); tid = tid || S.cur;
+  var r = DC.byKey[key], t = S.trips[tid]; if(!r || !t || isViewerOf(tid)) return;
+  if(dcInT(t, r)){ toast("„"+r.n+"“ ist schon in "+(tid===S.cur ? "deiner Reise" : "„"+t.name+"“"), false); return; }
+  var id = uid("w");
   t.places[id] = {id:id, n:r.n, c:CATNAME[r.c] ? r.c : "sight", la:r.la, lo:r.lo, addr:r.addr||"", note:"Empfehlung von @"+(r.fname||"Freund")+(r.note ? ": "+r.note.slice(0, 200) : ""), list:(t.lists && t.lists[0] || {}).id || null, rec:{by:r.by, name:r.fname||""}};
-  save();
+  save(); spotAdd(r);
+  if(tid!==S.cur){ toast("„"+r.n+"“ liegt jetzt in der Wunschliste von „"+t.name+"“", false); renderDc(); return; }
   if(dk && dayByKey(dk)){ plan(id, dk); } else toast("„"+r.n+"“ liegt jetzt in der Wunschliste", true);
   dirty(); renderSheet(); scheduleOverlay(); renderDc();
 }
@@ -10379,7 +10588,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lsvispick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lsvispick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=dcmore],[data-act=dctgt],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -12058,6 +12267,15 @@ document.addEventListener("click", function(e){
     case "dcrepgo": dcReportGo(t.getAttribute("data-k"), +t.getAttribute("data-i")); break;
     case "dcscope": dcScope = t.getAttribute("data-v"); renderDc(); break;
     case "dcwish": dcAdd(t.getAttribute("data-k"), null); break;
+    case "dclike": spotLike(DC.byKey[t.getAttribute("data-k")]); break;
+    case "dctake": dcTake(t.getAttribute("data-k")); break;
+    case "dcrate": dcRatings(t.getAttribute("data-k")); break;
+    case "dcmore": dcMore(t.getAttribute("data-k"), t); break;
+    case "dctgt": dcTgtMenu(t); break;
+    case "dcscopeset": dcSetScope(t.getAttribute("data-v")); break;
+    case "dcplanm": var dpk = t.getAttribute("data-k"); setTimeout(function(){ var b = dcMoreBtn(dpk); if(b) jpPopover("dc", b, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"dcday\" data-k=\""+esc(dpk)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "dcplan"); }, 0); break;
+    case "dcsend": var dsk = t.getAttribute("data-k"); setTimeout(function(){ dcSendMenu(dsk); }, 0); break;
+    case "dcsendto": dcvSendTo(t.getAttribute("data-uid"), t.getAttribute("data-k")); break;
     case "zopen": closeGsPage(); closeDcPage(); closeChPage(); if(sel==="poi") select(null); openZiele(t.getAttribute("data-z")); break;
     case "znew": zEdit = zEditFrom(""); zRenderEdit(true); setTimeout(function(){ var zn = $("zName"); if(zn) zn.focus(); }, 0); break;
     case "zback": if(zEdit && t.closest("#catPop")){ zEdit = null; closeCatPop(); break; } zEdit = null; zClosePop(); break;
@@ -12093,7 +12311,7 @@ document.addEventListener("click", function(e){
     case "rclbopen": rcLbFull(false); break;
     case "rclbsend": var rph = rcLbPh(); if(rph) chPhSendMenu(rph, t); break;
     case "rclbsave": var rph2 = rcLbPh(); if(rph2) phSaveLib(rph2); break;
-    case "dcvwish": if(DCV){ dcAdd(DCV.key, null); dcvRefresh(); } break;
+    case "dcvwish": if(DCV){ dcTake(DCV.key); dcvRefresh(); } break;
     case "dcvmap": if(DCV){ var dvk = DCV.key; dcvClose(); var dvb = document.createElement("button"); dvb.type = "button"; dvb.hidden = true; dvb.setAttribute("data-act", "dcmap"); dvb.setAttribute("data-k", dvk); document.body.appendChild(dvb); dvb.click(); dvb.remove(); } break;
     case "dcvreply": var dvr = DCV && DC.byKey[DCV.key]; if(dvr && dvr.by){ dcvSendTo(dvr.by); } break;
     case "dcplan": var dk0 = t.getAttribute("data-k"); jpPopover("dc", t, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"dcday\" data-k=\""+esc(dk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "dcplan"); break;
