@@ -1233,6 +1233,7 @@ await test("Unterkunftsliste: Ort als Unterkunft vormerken, eigene Liste, als Ho
   await click("#jpMenu [data-act=staymark]"); await page.waitForTimeout(200);
   ok(await rp(`T().places.p7.c==="hotel" && T().places.p7.c0==="park"`), "Ort wird nicht als Unterkunft markiert");
   await rp(`select(null); tab = "wish"; setSheet("full"); renderSheet();`); await page.waitForTimeout(300);
+  ok(await rp(`document.querySelector("#body .fchips .fchip").getAttribute("data-k")==="list"`), "Listen-Kachel (Unterkünfte) steht nicht ganz links");
   await click("#body .fchip[data-k=list]");
   ok(await visible("#catPop [data-act=wlist][data-l=stay]"), "Liste „Unterkünfte“ fehlt in der Listenauswahl");
   await click("#catPop [data-act=wlist][data-l=stay]"); await page.waitForTimeout(200);
@@ -2152,18 +2153,19 @@ await test("Social: Freunde nach Tipps für ein Ziel fragen", async () => {
   ok((await page.locator("#toast").innerText()).includes("2 Freunde"), "Bestätigung fehlt");
   await rp(`fbDb = null; true`);
 });
-await test("Social: Einladungslink fragt nach Freundschaftsanfrage", async () => {
+await test("Social: Einladungslink fragt, ob man folgen will", async () => {
   await seed();
-  await rp(`window.__req = null; PROF = {name:"ich", nameLower:"ich"}; frRequest = function(u, n){ window.__req = [u, n]; };
+  await rp(`window.__req = null; PROF = {name:"ich", nameLower:"ich"}; FR.followers = []; FR.following = []; folFollow = function(u, n){ window.__req = [u, n]; };
     var fq = function(){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(id); }, add:function(){ return Promise.resolve({}); }}; return q; },
       fd = function(id){ return {id:id, collection:function(){ return fq(); }, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }, set:function(){ return Promise.resolve(); }, update:function(){ return Promise.resolve(); }, delete:function(){ return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }}; };
     window.__fakeDb = function(over){ var db = {collection:function(){ return fq(); }, batch:function(){ return {set:function(){}, update:function(){}, delete:function(){}, commit:function(){ return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }}; return Object.assign(db, over||{}); };
     fbDb = window.__fakeDb({collection:function(n){ var q = fq(); q.doc = function(id){ var d = fd(id); d.get = function(){ return Promise.resolve(n==="usernames" ? {exists:id==="zoe", data:function(){ return {uid:"u_zoe"}; }} : {exists:true, data:function(){ return {name:"Zoe"}; }}); }; return d; }; return q; }});
     INVFR = "zoe"; invCheck(); true`);
   await page.waitForTimeout(300);
-  ok(await visible("#cfPop") && (await page.locator("#cfPop").innerText()).includes("@Zoe"), "Frage nach Freundschaft fehlt");
+  ok(await visible("#cfPop") && (await page.locator("#cfPop").innerText()).includes("@Zoe"), "Frage nach Folgen fehlt");
+  ok((await page.locator("#cfPop .cf-ok").innerText()).trim()==="Folgen", "Knopf heißt nicht „Folgen“");
   await click("#cfPop .cf-ok");
-  ok(await rp(`window.__req && window.__req[0]==="u_zoe"`), "Anfrage nicht gesendet");
+  ok(await rp(`window.__req && window.__req[0]==="u_zoe"`), "Folgen nicht ausgelöst");
   ok(await rp(`invLink().endsWith("?freund=ich")`), "Einladungslink falsch");
   await rp(`INVFR = "ich"; invCheck(); true`); await page.waitForTimeout(200);
   ok(!(await visible("#cfPop")), "Eigener Link fragt nach Freundschaft mit sich selbst");
@@ -2618,6 +2620,7 @@ await test("Freundesgruppen: anlegen, am Freund zuordnen, Schnellauswahl beim Fr
     fbDb = {collection:function(c){ return fq(c); }, batch:function(){ return {set:function(){}, update:function(){}, delete:function(){}, commit:function(){ return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }};
     acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FG = [];
     FR.friends = [{id:"r1", uid:"u_anna", name:"anna", email:"a@x.de"}, {id:"r2", uid:"u_ludwig", name:"Ludwig", email:"l@x.de"}, {id:"r3", uid:"u_clara", name:"Clara", email:"c@x.de"}];
+    FR.followers = FR.friends.map(function(f){ return Object.assign({mutual:true}, f); }); FR.following = FR.friends.slice(); FR.inc = []; frTab = "fol";
     closeMenus(); accView = "friends"; openSettings(); true`);
   await page.waitForTimeout(200);
   ok(!(await rp(`!!document.querySelector("#acctPop [data-act=fgnew]")`)), "Gruppen stehen noch als Liste auf der Freunde-Seite");
@@ -2682,42 +2685,95 @@ await test("Freundesgruppen: anlegen, am Freund zuordnen, Schnellauswahl beim Fr
   await tapS("#cfPop .cf-ok"); await page.waitForTimeout(200);
   ok(await rp(`FG.length===1 && !fgGet("gk") && __fgw.some(function(w){ return w[0]==="del" && /fgroups\\/gk$/.test(w[1]); })`), "Gruppe nicht gelöscht");
   ok(await visible("#catPop .fr-pop .fg-grp") && !(await rp(`!!document.querySelector('#catPop [data-g="gk"]')`)), "Nach dem Löschen nicht zurück in der aktualisierten Liste");
-  await rp(`closeCatPop(); closeSettings(); fbDb = null; FR.friends = []; FG = []; true`);
+  await rp(`closeCatPop(); closeSettings(); fbDb = null; FR.friends = []; FR.followers = []; FR.following = []; FG = []; true`);
 });
 
-await test("Freunde-Seite: Anfragen-Knopf mit rotem Zähler, annehmen/ablehnen im Pop-up, Freunde durchsuchen", async () => {
+await test("Follower-Seite: Follower/Gefolgt, neue Follower mit rotem Zähler, zurückfolgen, entfernen, entfolgen, durchsuchen", async () => {
   await seed();
   await rp(`window.__upd = []; var fq = function(path){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(path+"/"+id); }, add:function(){ return Promise.resolve({}); }}; return q; },
-      fd = function(path){ return {id:path, collection:function(c){ return fq(path+"/"+c); }, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }, set:function(){ return Promise.resolve(); }, update:function(v){ __upd.push(["upd", path, v.status]); return Promise.resolve(); }, delete:function(){ __upd.push(["del", path]); return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }}; };
+      fd = function(path){ return {id:path, collection:function(c){ return fq(path+"/"+c); }, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }, set:function(v){ __upd.push(["set", path, v]); return Promise.resolve(); }, update:function(v){ __upd.push(["upd", path, v]); return Promise.resolve(); }, delete:function(){ __upd.push(["del", path]); return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }}; };
     fbDb = {collection:function(c){ return fq(c); }, batch:function(){ return {set:function(){}, update:function(){}, delete:function(){}, commit:function(){ return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }};
-    acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FG = []; try { localStorage.removeItem(frReadKey()); } catch(e){}
-    FR.friends = [{id:"r1", uid:"u_anna", name:"anna"}, {id:"r2", uid:"u_ludwig", name:"Ludwig"}, {id:"r3", uid:"u_clara", name:"Clara"}];
-    FR.inc = [{id:"u_x_u_me", from:"u_x", fromName:"xaver", status:"pending"}, {id:"u_y_u_me", from:"u_y", fromName:"yvonne", status:"pending"}];
-    FR.out = [{id:"u_me_u_z", to:"u_z", toName:"zora", status:"pending"}];
+    acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; PROF = {name:"ich", nameLower:"ich"}; FG = []; try { localStorage.removeItem(frReadKey()); } catch(e){}
+    FR.followers = [{id:"u_anna_u_me", uid:"u_anna", name:"anna", mutual:true}, {id:"u_ludwig_u_me", uid:"u_ludwig", name:"Ludwig", mutual:true}, {id:"u_x_u_me", uid:"u_x", name:"xaver"}, {id:"u_y_u_me", uid:"u_y", name:"yvonne"}];
+    FR.following = [{id:"u_me_u_anna", uid:"u_anna", name:"anna"}, {id:"u_me_u_ludwig", uid:"u_ludwig", name:"Ludwig"}, {id:"u_me_u_z", uid:"u_z", name:"zora"}];
+    FR.friends = FR.followers.slice(0, 2); FR.inc = FR.followers.slice(2); frTab = "fol"; frFilt = "";
     closeMenus(); accView = "friends"; openSettings(); true`);
   await page.waitForTimeout(200);
-  ok(!(await rp(`!!document.querySelector("#acctPop [data-act=fracc]")`)), "Anfragen stehen noch in der Freundesliste");
+  ok(/Follower/.test(await page.locator("#acctPop .ag-title").innerText()), "Seite heißt nicht Follower");
+  ok(/Follower · 4/.test(await page.locator('#acctPop [data-act=frtab][data-v="fol"]').innerText()) && /Gefolgt · 3/.test(await page.locator('#acctPop [data-act=frtab][data-v="ing"]').innerText()), "Reiter Follower/Gefolgt zählen falsch");
+  ok(await page.locator("#acctPop [data-frn]").count()===4, "Follower-Liste unvollständig");
+  ok(await rp(`[].every.call(document.querySelectorAll("#acctPop [data-frn] .fn b"), function(b){ return b.scrollWidth <= b.clientWidth + 1; })`), "Namen in der Liste abgeschnitten");
+  ok(await rp(`!document.querySelector('#acctPop [data-act=fgfor][data-uid="u_x"]') && !!document.querySelector('#acctPop [data-act=fgfor][data-uid="u_anna"]')`), "Gruppen-Knopf nicht nur bei Freunden (gegenseitig)");
+  ok(!(await rp(`/befreundet|Anfrage/.test(document.getElementById("acctPop").textContent)`)), "Alte Wörter Anfrage/befreundet auf der Seite");
   ok((await page.locator("#acctPop [data-act=frreqs] .fr-badge").textContent()).trim()==="2", "Roter Zähler fehlt oder falsch");
   ok(await rp(`var b = document.querySelector("#acctPop .fr-badge"), t = document.querySelector("#acctPop [data-act=frreqs]"), r = b.getBoundingClientRect(), q = t.getBoundingClientRect(); getComputedStyle(b).backgroundColor==="rgb(255, 59, 48)" && r.right > q.right - 30 && r.top < q.top + 20`), "Zähler nicht rot oben rechts");
-  await shot("freunde-seite");
+  await shot("follower-seite");
   await tapS("#acctPop [data-act=frreqs]"); await page.waitForTimeout(250);
-  ok(await page.locator("#catPop .fr-pop [data-act=fracc]").count()===2 && await page.locator("#catPop .fr-pop [data-act=frdel]").count()===3, "Anfragen-Pop-up unvollständig");
+  ok(await page.locator("#catPop .fr-pop [data-act=folfol]").count()===2 && await page.locator("#catPop .fr-pop [data-act=folrm]").count()===2, "Pop-up „Neue Follower“ unvollständig");
   ok(!(await rp(`!!document.querySelector("#acctPop .fr-badge")`)), "Zähler bleibt nach dem Ansehen");
-  await shot("freunde-anfragen");
-  await tapS('#catPop [data-act=fracc][data-uid="u_x_u_me"]'); await page.waitForTimeout(150);
-  ok(await rp(`__upd.some(function(u){ return u[0]==="upd" && /u_x_u_me$/.test(u[1]) && u[2]==="accepted"; })`), "Annehmen schreibt nicht");
-  await tapS('#catPop [data-act=frdel][data-id="u_y_u_me"]'); await page.waitForTimeout(150);
-  ok(await rp(`__upd.some(function(u){ return u[0]==="del" && /u_y_u_me$/.test(u[1]); })`), "Ablehnen löscht nicht");
-  await rp(`closeCatPop(); FR.inc.push({id:"u_w_u_me", from:"u_w", fromName:"wim", status:"pending"}); openSettings(); true`); await page.waitForTimeout(150);
-  ok((await page.locator("#acctPop .fr-badge").textContent()).trim()==="1", "Neue Anfrage wird nicht als ungelesen gezählt");
-  // Freunde durchsuchen
+  await shot("neue-follower");
+  await tapS('#catPop [data-act=folfol][data-uid="u_x"]'); await page.waitForTimeout(150);
+  ok(await rp(`__upd.some(function(u){ return u[0]==="set" && /^follows\\/u_me_u_x$/.test(u[1]) && u[2].from==="u_me" && u[2].to==="u_x"; })`), "Zurückfolgen schreibt nicht: "+await rp(`JSON.stringify(__upd)`));
+  await tapS('#catPop [data-act=folrm][data-uid="u_y"]'); await page.waitForTimeout(200);
+  ok(await visible("#cfPop .cf-card"), "Entfernen ohne Rückfrage");
+  await tapS("#cfPop .cf-ok"); await page.waitForTimeout(150);
+  ok(await rp(`__upd.some(function(u){ return u[0]==="del" && /^follows\\/u_y_u_me$/.test(u[1]); })`), "Follower entfernen löscht nicht");
+  await rp(`closeCatPop(); FR.inc.push({id:"u_w_u_me", uid:"u_w", name:"wim"}); openSettings(); true`); await page.waitForTimeout(150);
+  ok((await page.locator("#acctPop .fr-badge").textContent()).trim()==="1", "Neuer Follower wird nicht als ungelesen gezählt");
+  // Gefolgt: entfolgen mit Rückfrage
+  await tapS('#acctPop [data-act=frtab][data-v="ing"]'); await page.waitForTimeout(150);
+  ok(await page.locator("#acctPop [data-frn]").count()===3 && await page.locator("#acctPop [data-act=folunf]").count()===3, "Gefolgt-Liste falsch");
+  await tapS('#acctPop [data-act=folunf][data-uid="u_z"]'); await page.waitForTimeout(200);
+  ok(await visible("#cfPop .cf-card"), "Entfolgen ohne Rückfrage");
+  await tapS("#cfPop .cf-ok"); await page.waitForTimeout(150);
+  ok(await rp(`__upd.some(function(u){ return u[0]==="del" && /^follows\\/u_me_u_z$/.test(u[1]); })`), "Entfolgen löscht nicht");
+  // Durchsuchen
+  await tapS('#acctPop [data-act=frtab][data-v="fol"]'); await page.waitForTimeout(150);
   await page.fill("#frFilt", "lu"); await page.waitForTimeout(100);
-  ok(await rp(`[].filter.call(document.querySelectorAll("#acctPop [data-frn]"), function(r){ return !r.hidden; }).map(function(r){ return r.getAttribute("data-frn"); }).join()==="ludwig"`), "Suche filtert die Freunde nicht");
+  ok(await rp(`[].filter.call(document.querySelectorAll("#acctPop [data-frn]"), function(r){ return !r.hidden; }).map(function(r){ return r.getAttribute("data-frn"); }).join()==="ludwig"`), "Suche filtert nicht");
   await rp(`openSettings(); true`);
   ok(await rp(`document.activeElement.id==="frFilt" && [].filter.call(document.querySelectorAll("#acctPop [data-frn]"), function(r){ return !r.hidden; }).length===1`), "Suche geht beim Aktualisieren verloren");
   await page.fill("#frFilt", "qqq"); await page.waitForTimeout(100);
   ok(await visible("#acctPop .fr-none"), "Kein Hinweis bei leerer Suche");
-  await rp(`closeSettings(); frFilt = ""; fbDb = null; FR.friends = []; FR.inc = []; FR.out = []; true`);
+  // Profil: Follower und Gefolgt statt Freunde
+  await rp(`closeSettings(); frFilt = ""; openProfile(); true`); await page.waitForTimeout(250);
+  await shot("profil-follower");
+  ok(await rp(`var t = document.querySelector("#profView .pf-stats").textContent; /4\\s*Follower/.test(t) && /3\\s*Gefolgt/.test(t) && !/Freunde/.test(t)`), "Profil zeigt nicht Follower/Gefolgt: "+await rp(`document.querySelector("#profView .pf-stats").textContent`));
+  ok(await rp(`var a = document.querySelector("#profView .pf-stats").getBoundingClientRect(), p = document.querySelector("#profView .pf").getBoundingClientRect(); a.right <= p.right + 1`), "Profil-Zahlen ragen über den Rand");
+  await rp(`closeProfile(); fbDb = null; FR = {inc:[], followers:[], following:[], friends:[]}; true`);
+});
+
+await test("Follower: bestehende Freundschaften werden einmalig zu gegenseitigem Folgen, sonst nichts geändert", async () => {
+  await seed();
+  await rp(`window.__w = []; window.__snap = {}; window.__fmig = {"u_old_u_me":1};
+    var REQ = [{id:"u_anna_u_me", from:"u_anna", to:"u_me", status:"accepted", fromEmail:"a@x.de", toEmail:"me@test.de", at:5},
+               {id:"u_me_u_lu", from:"u_me", to:"u_lu", status:"accepted", toEmail:"lu@x.de", at:6},
+               {id:"u_me_u_z", from:"u_me", to:"u_z", status:"pending", at:7},
+               {id:"u_y_u_me", from:"u_y", to:"u_me", status:"pending", at:8},
+               {id:"u_old_u_me", from:"u_old", to:"u_me", status:"accepted", at:9}];
+    var snap = function(list){ return {docs:list.map(function(v){ var c = Object.assign({}, v), id = c.id; delete c.id; return {id:id, data:function(){ return Object.assign({}, c); }}; })}; };
+    var q = function(col){ var f = null, v = null, o = {where:function(a, b, c){ f = a; v = c; return o; }, orderBy:function(){ return o; }, limit:function(){ return o; }, get:function(){ return Promise.resolve({docs:[]}); },
+      onSnapshot:function(cb){ var k = col+":"+f; __snap[k] = function(list){ cb(snap(list.filter(function(r){ return r[f]===v; }))); }; if(col==="friendReqs") setTimeout(function(){ __snap[k](REQ); }, 0); else setTimeout(function(){ __snap[k]([]); }, 0); return function(){}; },
+      doc:function(id){ return d(col, id); }}; return o; };
+    var d = function(col, id){ return {id:id, collection:function(c){ return q(col+"/"+id+"/"+c); }, get:function(){ return Promise.resolve({exists: col==="fmig" ? !!__fmig[id] : false, data:function(){ return {}; }}); }, set:function(v){ __w.push(["set", col+"/"+id, v]); return Promise.resolve(); }, update:function(v){ __w.push(["upd", col+"/"+id, v]); return Promise.resolve(); }, delete:function(){ __w.push(["del", col+"/"+id]); return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }, __p:col+"/"+id}; };
+    fbDb = {collection:function(c){ return q(c); }, batch:function(){ var ops = []; return {set:function(ref, v){ ops.push(["bset", ref.__p, v]); }, update:function(){}, delete:function(){}, commit:function(){ ops.forEach(function(o){ __w.push(o); }); return Promise.resolve(); }}; }, runTransaction:function(){ return Promise.resolve(); }};
+    frStop(); acct.user = {uid:"u_me", email:"me@test.de"}; chWatch = function(){}; fgWatch = function(){}; frWatch(); true`);
+  await page.waitForTimeout(400);
+  const W = await rp(`JSON.stringify(__w)`);
+  const has = (p, f) => rp(`__w.some(function(w){ return w[0]==="bset" && w[1]===${JSON.stringify(p)} && (${f || "true"}); })`);
+  ok(await has("follows/u_anna_u_me", `w[2].from==="u_anna" && w[2].to==="u_me" && w[2].mig==="u_anna_u_me" && w[2].fromEmail==="a@x.de"`), "Anna folgt mir nicht: "+W);
+  ok(await has("follows/u_me_u_anna", `w[2].from==="u_me" && w[2].fromEmail==="me@test.de"`), "Ich folge Anna nicht: "+W);
+  ok(await has("fmig/u_anna_u_me") && await has("follows/u_me_u_lu") && await has("follows/u_lu_u_me") && await has("fmig/u_me_u_lu"), "Zweite Freundschaft nicht umgewandelt: "+W);
+  ok(await has("follows/u_me_u_z") && !(await has("follows/u_z_u_me")), "Offene eigene Anfrage falsch umgewandelt: "+W);
+  ok(await has("follows/u_y_u_me") && !(await has("follows/u_me_u_y")), "Offene Anfrage an mich falsch umgewandelt: "+W);
+  ok(!(await rp(`__w.some(function(w){ return /u_old/.test(w[1]); })`)), "Schon umgewandelte Freundschaft erneut angelegt: "+W);
+  ok(await rp(`__w.every(function(w){ return w[0]==="bset" && /^(follows|fmig)\\//.test(w[1]); })`), "Andere Daten verändert: "+W);
+  // Wenn die Folgen-Dokumente da sind: Freunde = gegenseitig
+  await rp(`var F = [{id:"u_anna_u_me", from:"u_anna", to:"u_me", fromEmail:"a@x.de", mig:"x", at:5}, {id:"u_me_u_anna", from:"u_me", to:"u_anna", fromEmail:"me@test.de", at:5}, {id:"u_y_u_me", from:"u_y", to:"u_me", at:8}, {id:"u_me_u_z", from:"u_me", to:"u_z", at:7}];
+    __snap["follows:to"](F); __snap["follows:from"](F); true`);
+  await page.waitForTimeout(150);
+  ok(await rp(`FR.friends.length===1 && FR.friends[0].uid==="u_anna" && FR.friends[0].email==="a@x.de" && FR.followers.length===2 && FR.following.length===2 && FR.inc.length===1 && FR.inc[0].uid==="u_y"`), "Listen falsch: "+await rp(`JSON.stringify(FR)`));
+  await rp(`frStop(); fbDb = null; true`);
 });
 
 const wmFullTest = async (n, vp) => {

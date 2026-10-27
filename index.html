@@ -2076,6 +2076,7 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .fg-for{width:32px;height:32px;flex:0 0 32px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--muted);cursor:pointer}
 .fg-for.on{color:var(--accent)}
 .fg-for svg{width:17px;height:17px}
+.fg-for.fr-rm{background:color-mix(in srgb,var(--del) 12%,transparent)}
 .fg-name{display:flex;align-items:center;gap:10px;margin:2px 0 4px;padding:4px 12px 4px 6px;border-radius:12px;background:var(--fill)}
 .fg-name input{flex:1;min-width:0;border:0;background:none !important;font:inherit;font-size:16px;font-weight:600;color:var(--ink);outline:none;padding:10px 0 !important}
 .fg-acts{display:flex;gap:8px;justify-content:flex-end}
@@ -2980,7 +2981,7 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 .pf-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
 .pf-side .pf-id{padding-right:44px;justify-content:center}
 .pf-side .pf-id b{font-size:18px;white-space:nowrap}
-.pf-side .pf-stats{display:flex;justify-content:flex-start;gap:18px;margin:0;padding:0;border:0;align-self:flex-start}
+.pf-side .pf-stats{display:flex;justify-content:flex-start;gap:12px;margin:0;padding:0;border:0;align-self:flex-start}
 .pf-side .pf-stats button{background:none;border-radius:8px;padding:0;gap:0;min-width:0;align-items:flex-start}
 .pf-side .pf-stats b{font-size:16px;line-height:1.15}
 .pf-side .pf-stats span{font-size:12px;white-space:nowrap}
@@ -3454,8 +3455,8 @@ body.ro .navtools [data-act="addpop"]{display:none}
 :root{--del:#C4462F}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--del:#F0766A} }
 :root[data-theme="dark"]{--del:#F0766A}
-:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="frdel"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],[data-ai="del"],.btn.warn,.tf-link.warn){color:var(--del) !important}
-.btn:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="frdel"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],.warn){background:color-mix(in srgb,var(--del) 13%,transparent) !important;border-color:color-mix(in srgb,var(--del) 30%,transparent) !important}
+:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="folrm"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],[data-ai="del"],.btn.warn,.tf-link.warn){color:var(--del) !important}
+.btn:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="folrm"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],.warn){background:color-mix(in srgb,var(--del) 13%,transparent) !important;border-color:color-mix(in srgb,var(--del) 30%,transparent) !important}
 :is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) :is(b,.ai){color:var(--del) !important}
 :is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) .ai{background:color-mix(in srgb,var(--del) 12%,transparent) !important}
 
@@ -3567,7 +3568,7 @@ button.tf-pill{border:0;font:inherit;color:inherit}
 <input type="file" id="avIn" accept="image/*" hidden>
 <div class="tripmenu" id="tripMenu" hidden></div>
 <div class="addmenu" id="addMenu" role="dialog" aria-label="Hinzufügen" hidden></div>
-<div class="tripmenu" id="mainMenu" hidden><button type="button" data-act="opentrips"><span>Reisen <b class="mbadge" id="invBadge" hidden></b></span><small>Private, gemeinsame Reisen, Anfragen</small></button><button type="button" data-act="openfriends"><span>Freunde <b class="mbadge" id="frBadge" hidden></b></span><small>Anfragen, Freunde suchen</small></button><button type="button" data-act="openacct"><span>Mein Konto</span><small>Anmeldung, Abgleich, Einstellungen</small></button></div>
+<div class="tripmenu" id="mainMenu" hidden><button type="button" data-act="opentrips"><span>Reisen <b class="mbadge" id="invBadge" hidden></b></span><small>Private, gemeinsame Reisen, Anfragen</small></button><button type="button" data-act="openfriends"><span>Follower <b class="mbadge" id="frBadge" hidden></b></span><small>Follower, Gefolgt, Leute suchen</small></button><button type="button" data-act="openacct"><span>Mein Konto</span><small>Anmeldung, Abgleich, Einstellungen</small></button></div>
 
 <nav class="rail" id="rail" aria-label="Reisetage"></nav>
 <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
@@ -4470,47 +4471,85 @@ function googleBlock(){
          "<div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\" role=\"status\">"+esc(gMsg)+"</p>":"")+"</div>";
 }
 /* ---------- Benutzername & Freunde ---------- */
-var PROF = null, FR = {inc:[], out:[], friends:[]}, frUnsub = [], frSearch = {q:"", res:[], busy:false}, unameEdit = false, unameMsg = "";
+/* ---------- Folgen: follows/{von}_{an} = {from, to, at, fromEmail?, mig?}. Wer mir folgt = Follower, wem ich folge = Gefolgt.
+   Freunde = ihr folgt euch gegenseitig (nur sie sehen „Freunde“-Inhalte, chatten, werden eingeladen, kommen in Gruppen).
+   Die E-Mail steht nur im eigenen Folgen-Dokument und nur, solange ihr euch gegenseitig folgt.
+   Frühere Freundschaften (friendReqs) werden einmalig zu gegenseitigem Folgen; die Anfrage bleibt unverändert,
+   fmig/{Anfrage-Kennung} merkt, dass sie umgewandelt ist. ---------- */
+var PROF = null, FR = {inc:[], followers:[], following:[], friends:[]}, frUnsub = [], frSearch = {q:"", res:[], busy:false}, unameEdit = false, unameMsg = "", FRNAMES = {}, frSig = "";
+function folRef(a, b){ return fbDb.collection("follows").doc(a+"_"+b); }
 function frWatch(){
   if(!fbDb || !acct.user || frUnsub.length) return;
   var uid0 = acct.user.uid;
   fbDb.collection("profiles").doc(uid0).get().then(function(d){ PROF = d.exists ? d.data() : null; refreshSettings(); navAv(); if(profOpen) renderProfile(); setTimeout(invCheck, 1200); }, function(){});
-  var A = [], B = [], NAMES = {}, asked = {};
+  var A = [], B = [], FI = [], FO = [], NAMES = FRNAMES, asked = {}, gotA = false, gotB = false, gotI = false, gotO = false, folOk = null, migDone = {}, mailDone = {};
+  var nameOf = function(u, alt){ if(u && !asked[u]){ asked[u] = 1; fbDb.collection("profiles").doc(u).get().then(function(d){ var v = d.exists && d.data(); if(v && v.name){ NAMES[u] = v.name; upd(); } }, function(){}); } return NAMES[u] || alt || ""; };
   var upd = function(){
-    // Namen immer aktuell aus dem Profil, nicht den beim Anfragen gespeicherten
-    A.concat(B).forEach(function(r){
-      [r.from, r.to].forEach(function(u){ if(u && u!==uid0 && !asked[u]){ asked[u] = 1; fbDb.collection("profiles").doc(u).get().then(function(d){ var v = d.exists && d.data(); if(v && v.name){ NAMES[u] = v.name; upd(); } }, function(){}); } });
-      if(NAMES[r.from]) r.fromName = NAMES[r.from];
-      if(NAMES[r.to]) r.toName = NAMES[r.to];
-    });
-    FR.inc = A.filter(function(r){ return r.status==="pending"; });
-    FR.out = B.filter(function(r){ return r.status==="pending"; });
-    FR.friends = A.concat(B).filter(function(r){ return r.status==="accepted"; }).map(function(r){ var me1 = r.from===uid0; return {uid: me1 ? r.to : r.from, name: me1 ? r.toName : r.fromName, email: me1 ? r.toEmail : r.fromEmail, id:r.id}; });
-    setNavDot(INVITES.length > 0 || FR.inc.length > 0);
-    var fb = $("frBadge"); if(fb){ fb.hidden = !FR.inc.length; fb.textContent = FR.inc.length; }
+    if(folOk===false){
+      // Regeln für „follows“ noch nicht veröffentlicht: bisherige Freundschaften weiter nutzen
+      FR.friends = A.concat(B).filter(function(r){ return r.status==="accepted"; }).map(function(r){ var me1 = r.from===uid0, u = me1 ? r.to : r.from; return {uid:u, name:nameOf(u, me1 ? r.toName : r.fromName), email:me1 ? r.toEmail : r.fromEmail}; });
+      FR.followers = FR.friends.slice(); FR.following = FR.friends.slice(); FR.inc = [];
+    } else {
+      var fo = {}; FO.forEach(function(r){ fo[r.to] = 1; });
+      FR.following = FO.map(function(r){ return {uid:r.to, name:nameOf(r.to), at:r.at||0, id:r.id}; });
+      FR.followers = FI.map(function(r){ return {uid:r.from, name:nameOf(r.from), email:r.fromEmail||"", at:r.at||0, id:r.id, mutual:!!fo[r.from]}; });
+      FR.friends = FR.followers.filter(function(f){ return f.mutual; });
+      FR.inc = FR.followers.filter(function(f){ return !f.mutual; });
+      [FR.following, FR.followers].forEach(function(l){ l.sort(function(a, b){ return String(a.name).localeCompare(b.name, "de", {sensitivity:"base"}); }); });
+      FR.inc.sort(function(a, b){ return b.at - a.at; });
+      folMail(); folMigrate();
+    }
+    setNavDot(INVITES.length > 0 || frUnread() > 0);
+    var fb = $("frBadge"), un = frUnread(); if(fb){ fb.hidden = !un; fb.textContent = un; }
     frNotify();
     refreshSettings(); if(FRPOP==="req") frPopRender(); if(tab==="trip") renderSheet();
+    var sig = [FR.followers.length, FR.following.length, un].join(); if(profOpen && sig!==frSig) renderProfile(); frSig = sig;
   };
-  // Meldungen: neue Anfrage an mich / meine Anfrage wurde angenommen – je Anfrage nur einmal
-  var SK = "rp-frseen-"+uid0, seen = null; try { seen = JSON.parse(localStorage.getItem(SK)||"null"); } catch(e){}
-  var first = !seen; seen = seen || {inc:{}, acc:{}}; var gotA = false, gotB = false;
+  // E-Mail nur im eigenen Folgen-Dokument und nur bei gegenseitigem Folgen (für Einladungen zu Reisen)
+  var folMail = function(){
+    var mm = myMail(), fi = {}; FI.forEach(function(r){ fi[r.from] = 1; });
+    FO.forEach(function(r){ var want = fi[r.to] ? mm : "", k = r.id+":"+want; if((r.fromEmail||"")===want || mailDone[k]) return; mailDone[k] = 1;
+      folRef(uid0, r.to).update({fromEmail:want || firebase.firestore.FieldValue.delete()}).catch(function(){}); });
+  };
+  // Einmalige Umwandlung: Freundschaft → beide folgen sich; offene Anfrage → Anfragender folgt
+  var folMigrate = function(){
+    if(!gotA || !gotB || !gotI || !gotO) return;
+    var fi = {}, fo = {}; FI.forEach(function(r){ fi[r.from] = 1; }); FO.forEach(function(r){ fo[r.to] = 1; });
+    A.concat(B).forEach(function(r){
+      if(migDone[r.id] || !r.from || !r.to) return; migDone[r.id] = 1;
+      var mig = fbDb.collection("fmig").doc(r.id);
+      mig.get().then(function(d){
+        if(d.exists) return;
+        var b = fbDb.batch(), now = Date.now(), n = 0;
+        var put = function(a, c, mail){ if(a===uid0 ? fo[c] : fi[a]) return; var v = {from:a, to:c, at:r.at || now, mig:r.id}; if(mail) v.fromEmail = String(mail).toLowerCase(); b.set(folRef(a, c), v); n++; };
+        if(r.status==="accepted"){ put(r.from, r.to, r.fromEmail); put(r.to, r.from, r.toEmail); }
+        else put(r.from, r.to, "");
+        b.set(mig, {by:uid0, at:now});
+        return b.commit();
+      }).catch(function(){ migDone[r.id] = 0; });
+    });
+  };
+  // Meldungen: neuer Follower – je Follower nur einmal
+  var SK = "rp-folseen-"+uid0, seen = null; try { seen = JSON.parse(localStorage.getItem(SK)||"null"); } catch(e){}
+  var first = !seen; seen = seen || {};
   var frNotify = function(){
-    if(!gotA || !gotB) return;
+    if(!gotI || folOk===false) return;
     var msgs = [];
-    A.forEach(function(r){ if(r.status==="pending" && !seen.inc[r.id]){ seen.inc[r.id] = 1; if(!first) msgs.push({k:"inc:"+r.id, at:r.at, u:r.from, f:r.fromName, t:" möchte mit dir befreundet sein"}); } });
-    B.forEach(function(r){ if(r.status==="accepted" && !seen.acc[r.id]){ seen.acc[r.id] = 1; if(!first) msgs.push({k:"acc:"+r.id, u:r.to, f:r.toName, t:" hat deine Freundschaftsanfrage angenommen"}); } });
-    A.forEach(function(r){ if(r.status==="accepted") seen.acc[r.id] = 1; });
-    if(first){ first = false; A.forEach(function(r){ if(r.status==="pending"){ msgs.push({k:"inc:"+r.id, at:r.at, u:r.from, f:r.fromName, t:" möchte mit dir befreundet sein"}); } }); }
-    lsSet(SK, JSON.stringify(seen));
-    msgs.forEach(function(m, i){ setTimeout(function(){ var show = function(nm){ ntAdd({id:"fr:"+m.k, type:"friend", text:"@"+nm+m.t, at:m.at}); };
-      if(NAMES[m.u]) show(NAMES[m.u]); else fbDb.collection("profiles").doc(m.u).get().then(function(d){ var v = d.exists && d.data(); show(v && v.name || m.f || "?"); }, function(){ show(m.f || "?"); }); }, i*5200); });
+    FI.forEach(function(r){ if(seen[r.from]) return; seen[r.from] = 1; if(!first && !r.mig) msgs.push({u:r.from, at:r.at}); });
+    first = false; lsSet(SK, JSON.stringify(seen));
+    msgs.forEach(function(m, i){ setTimeout(function(){ var show = function(nm){ var fr = FR.following.some(function(f){ return f.uid===m.u; }); ntAdd({id:"fol:"+m.u+":"+(m.at||0), type:"friend", text:"@"+nm+(fr ? " folgt dir jetzt auch – ihr seid jetzt Freunde" : " folgt dir jetzt"), at:m.at}); };
+      if(NAMES[m.u]) show(NAMES[m.u]); else fbDb.collection("profiles").doc(m.u).get().then(function(d){ var v = d.exists && d.data(); show(v && v.name || "?"); }, function(){ show("?"); }); }, i*5200); });
   };
   var rows = function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); };
-  frUnsub.push(fbDb.collection("friendReqs").where("to", "==", uid0).onSnapshot(function(qs){ var n0 = A.filter(function(r){ return r.status==="pending"; }).length; A = rows(qs); upd(); var n1 = FR.inc.length; gotA = true; upd(); }, function(){}));
-  frUnsub.push(fbDb.collection("friendReqs").where("from", "==", uid0).onSnapshot(function(qs){ B = rows(qs); gotB = true; upd(); }, function(){}));
+  var bad = function(){ if(folOk!==true){ folOk = false; upd(); } };
+  frUnsub.push(fbDb.collection("follows").where("to", "==", uid0).onSnapshot(function(qs){ folOk = true; FI = rows(qs); gotI = true; upd(); }, bad));
+  frUnsub.push(fbDb.collection("follows").where("from", "==", uid0).onSnapshot(function(qs){ folOk = true; FO = rows(qs); gotO = true; upd(); }, bad));
+  // frühere Freundschaftsanfragen: nur noch zum Umwandeln (und solange die neuen Regeln fehlen)
+  frUnsub.push(fbDb.collection("friendReqs").where("to", "==", uid0).onSnapshot(function(qs){ A = rows(qs); gotA = true; upd(); }, function(){ gotA = true; upd(); }));
+  frUnsub.push(fbDb.collection("friendReqs").where("from", "==", uid0).onSnapshot(function(qs){ B = rows(qs); gotB = true; upd(); }, function(){ gotB = true; upd(); }));
   chWatch(); fgWatch();
 }
-function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; fgStop(); chStopAll(); if(chPage) closeChPage(); PROF = null; FR = {inc:[], out:[], friends:[]}; navAv(); }
+function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; fgStop(); chStopAll(); if(chPage) closeChPage(); PROF = null; FR = {inc:[], followers:[], following:[], friends:[]}; navAv(); }
 function validName(n){ return /^[a-zA-Z0-9._-]{3,20}$/.test(n); }
 function setUsername(n){
   n = (n||"").trim().replace(/^@/, "");
@@ -4540,30 +4579,40 @@ function frDoSearch(q){
   }, function(){ frSearch.busy = false; frSearch.res = []; renderFrRes(); });
 }
 function frState(uid1){
-  if(FR.friends.some(function(f){ return f.uid===uid1; })) return "friend";
-  if(FR.out.some(function(r){ return r.to===uid1; })) return "out";
-  if(FR.inc.some(function(r){ return r.from===uid1; })) return "inc";
-  return "";
+  var fo = FR.following.some(function(f){ return f.uid===uid1; }), fi = FR.followers.some(function(f){ return f.uid===uid1; });
+  return fo && fi ? "friend" : fo ? "following" : fi ? "follower" : "";
+}
+function frStLbl(st){ return st==="friend" ? "Ihr folgt euch" : st==="following" ? "Du folgst" : st==="follower" ? "Folgt dir" : ""; }
+function folBtn(st, uid1, name1){
+  return st==="friend" || st==="following" ? "<button type=\"button\" class=\"btn g s\" data-act=\"folunf\" data-uid=\""+esc(uid1)+"\">Gefolgt</button>"
+    : "<button type=\"button\" class=\"btn s\" data-act=\"folfol\" data-uid=\""+esc(uid1)+"\" data-name=\""+esc(name1||"")+"\">"+(st==="follower" ? "Zurückfolgen" : "Folgen")+"</button>";
 }
 function frResHTML(){
   if(frSearch.busy) return "<p class=\"note\">Suche …</p>";
   if(frSearch.q.length >= 2 && !frSearch.res.length) return "<p class=\"note\">Niemand mit diesem Namen gefunden.</p>";
   return frSearch.res.map(function(r){ var st = frState(r.uid);
-    return "<div class=\"ag-row\"><span class=\"mav\">"+esc(r.name[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.name)+"</b></span>"+
-      (st==="friend" ? "<small>Freund</small>" : st==="out" ? "<small>Angefragt</small>" : st==="inc" ? "<button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+r.uid+"\">Annehmen</button>" : "<button type=\"button\" class=\"btn s\" data-act=\"frreq\" data-uid=\""+r.uid+"\" data-name=\""+esc(r.name)+"\">Anfrage senden</button>")+"</div>"; }).join("");
+    return "<div class=\"ag-row\"><span class=\"mav\">"+esc(r.name[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.name)+"</b>"+(st ? "<small>"+frStLbl(st)+"</small>" : "")+"</span>"+folBtn(st, r.uid, r.name)+"</div>"; }).join("");
 }
 function renderFrRes(){ var el = $("frRes"); if(el) el.innerHTML = frResHTML(); }
-function frRequest(uid1, name1){
+function frName(uid1){ var f = FR.followers.concat(FR.following).filter(function(x){ return x.uid===uid1; })[0]; return (f && f.name) || FRNAMES[uid1] || ""; }
+function folFollow(uid1, name1){
   if(!PROF){ toast("Lege zuerst einen Benutzernamen fest", false); return; }
-  var id = acct.user.uid+"_"+uid1;
-  fbDb.collection("friendReqs").doc(id).set({from:acct.user.uid, to:uid1, fromName:PROF.name, toName:name1, fromEmail:myMail(), status:"pending", at:Date.now()})
-    .then(function(){ toast("Anfrage an @"+name1+" gesendet", false); renderFrRes(); }, function(e){ toast("Anfrage fehlgeschlagen: "+(e && e.message), false); });
+  if(!uid1 || uid1===acct.user.uid) return; name1 = name1 || frName(uid1); if(name1) FRNAMES[uid1] = name1;
+  var back = FR.followers.some(function(f){ return f.uid===uid1; });
+  folRef(acct.user.uid, uid1).set({from:acct.user.uid, to:uid1, at:Date.now()})
+    .then(function(){ toast(back ? "Ihr folgt euch jetzt gegenseitig – ihr seid Freunde" : "Du folgst jetzt @"+name1, false); renderFrRes(); }, function(e){ toast("Folgen fehlgeschlagen: "+(e && e.message), false); });
 }
-function frAccept(id){
-  var r = FR.inc.filter(function(x){ return x.id===id || x.from===id; })[0]; if(!r) return;
-  fbDb.collection("friendReqs").doc(r.id).update({status:"accepted", toEmail:myMail(), toName:(PROF && PROF.name) || r.toName}).then(function(){ toast("Ihr seid jetzt befreundet", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); });
+function folUnfollow(uid1){
+  var nm = frName(uid1), mu = frState(uid1)==="friend";
+  askConfirm("@"+nm+" nicht mehr folgen?", mu ? "Ihr folgt euch dann nicht mehr gegenseitig: kein Chat, keine Einladungen, keine „Freunde“-Inhalte mehr. Gemeinsame Reisen bleiben." : "Du siehst dann nichts mehr von @"+nm+" in Entdecken.", "Nicht mehr folgen", function(){
+    folRef(acct.user.uid, uid1).delete().then(function(){ toast("Du folgst @"+nm+" nicht mehr", false); renderFrRes(); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); }); });
 }
-/* ---------- Einladungslink: …/?freund=name öffnet nach dem Anmelden die Frage nach einer Freundschaftsanfrage ---------- */
+function folRemove(uid1){
+  var nm = frName(uid1);
+  askConfirm("Follower @"+nm+" entfernen?", "@"+nm+" folgt dir dann nicht mehr und sieht keine „Freunde“-Inhalte mehr. Es gibt keine Benachrichtigung.", "Entfernen", function(){
+    folRef(uid1, acct.user.uid).delete().then(function(){ toast("@"+nm+" entfernt", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); }); });
+}
+/* ---------- Einladungslink: …/?freund=name öffnet nach dem Anmelden die Frage, ob man der Person folgen will ---------- */
 var INVFR = (function(){ var m = /[?&]freund=([^&#]+)/.exec(location.search), v = "";
   if(m){ try { v = decodeURIComponent(m[1]).replace(/^@/, "").toLowerCase(); } catch(e){} if(validName(v)) lsSet("rp-invfr", v); else v = "";
     try { history.replaceState(null, "", location.pathname+location.search.replace(/([?&])freund=[^&#]*&?/, "$1").replace(/[?&]$/, "")+location.hash); } catch(e){} }
@@ -4571,7 +4620,7 @@ var INVFR = (function(){ var m = /[?&]freund=([^&#]+)/.exec(location.search), v 
 function invLink(){ return location.origin+location.pathname+"?freund="+encodeURIComponent((PROF && PROF.nameLower) || ""); }
 function invShare(){
   if(!PROF || !PROF.nameLower){ toast("Lege zuerst einen Benutzernamen fest", false); return; }
-  var u = invLink(), txt = "Lass uns in Reiseplan befreundet sein – dann siehst du meine Empfehlungen und wir können Reisen zusammen planen.";
+  var u = invLink(), txt = "Folge mir in Reiseplan – dann siehst du meine Empfehlungen. Folgen wir uns gegenseitig, können wir Reisen zusammen planen.";
   if(navigator.share) navigator.share({title:"Reiseplan", text:txt, url:u}).catch(function(){});
   else if(navigator.clipboard) navigator.clipboard.writeText(u).then(function(){ toast("Einladungslink kopiert", false); }, function(){ toast(u, false); });
   else toast(u, false);
@@ -4583,14 +4632,11 @@ function invCheck(){
   fbDb.collection("usernames").doc(v).get().then(function(d){
     var u = d.exists && d.data().uid; if(!u){ toast("@"+v+" wurde nicht gefunden", false); return; }
     return fbDb.collection("profiles").doc(u).get().then(function(p){ var nm = (p.exists && p.data().name) || v, st = frState(u);
-      if(st==="friend") toast("Du bist schon mit @"+nm+" befreundet", false);
-      else if(st==="out") toast("Anfrage an @"+nm+" ist schon gesendet", false);
-      else if(st==="inc") askConfirm("Mit @"+nm+" befreunden?", "@"+nm+" hat dir schon eine Anfrage geschickt.", "Annehmen", function(){ frAccept(u); });
-      else askConfirm("Mit @"+nm+" befreunden?", "Du hast den Einladungslink von @"+nm+" geöffnet. Ihr seht dann gegenseitig eure Empfehlungen und könnt euch schreiben.", "Anfrage senden", function(){ frRequest(u, nm); });
+      if(st==="friend" || st==="following") toast("Du folgst @"+nm+" schon", false);
+      else askConfirm("@"+nm+" folgen?", (st==="follower" ? "@"+nm+" folgt dir schon. " : "Du hast den Einladungslink von @"+nm+" geöffnet. ")+"Folgt ihr euch gegenseitig, seht ihr eure Empfehlungen und könnt euch schreiben.", st==="follower" ? "Zurückfolgen" : "Folgen", function(){ folFollow(u, nm); });
     });
   }).catch(function(){ toast("Einladung konnte nicht geöffnet werden", false); });
 }
-function frRemove(id){ fbDb.collection("friendReqs").doc(id).delete(); }
 var accView = "main";
 var tripsTab = "priv";
 function isShared(id){ var mm = META[id]; return !!(mm && ((mm.members||[]).length > 1 || (mm.invites||[]).length > 0)); }
@@ -4625,22 +4671,27 @@ function tripsPageHTML(){
   if(!sh) h += "<div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"tripnew\"><span><b>+ Neue Reise</b></span></button></div>";
   return h+"</div>";
 }
+var frTab = "fol", FRRMICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.5 16.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M12.5 8.5h5\"/></svg>";
 function friendsPageHTML(){
-  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Freunde\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Freunde</h3>";
-  if(!acct.user) return h+"<p class=\"note\">Melde dich an, um Freunde hinzuzufügen.</p></div>";
-  return h+frTilesHTML()+friendsHTML()+(FR.friends.length||FR.inc.length||FR.out.length ? "" : "<p class=\"note\">Noch keine Freunde. Suche jemanden über seinen Benutzernamen – mit Freunden kannst du Reisen gemeinsam planen.</p>")+"</div>";
+  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Follower und Gefolgt\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Follower &amp; Gefolgt</h3>";
+  if(!acct.user) return h+"<p class=\"note\">Melde dich an, um anderen zu folgen.</p></div>";
+  return h+frTilesHTML()+friendsHTML()+"</div>";
 }
 function friendsHTML(){
-  var h = "<div class=\"ag-lbl\">Deine Freunde"+(FR.friends.length?" · "+FR.friends.length:"")+"</div>", q = norm(frFilt.trim().replace(/^@/, ""));
-  if(FR.friends.length > 1) h += "<label class=\"frs-q fr-filt\">"+FRSICO+"<input type=\"search\" id=\"frFilt\" value=\""+esc(frFilt)+"\" placeholder=\"Freunde suchen\" aria-label=\"Deine Freunde durchsuchen\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\" enterkeyhint=\"search\"></label>";
+  var ing = frTab==="ing", list = ing ? FR.following : FR.followers, q = norm(frFilt.trim().replace(/^@/, ""));
+  var h = "<div class=\"pf-seg fr-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"fol\" aria-selected=\""+!ing+"\">Follower · "+FR.followers.length+"</button><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"ing\" aria-selected=\""+ing+"\">Gefolgt · "+FR.following.length+"</button></div>";
+  if(list.length > 1) h += "<label class=\"frs-q fr-filt\">"+FRSICO+"<input type=\"search\" id=\"frFilt\" value=\""+esc(frFilt)+"\" placeholder=\""+(ing ? "Gefolgt durchsuchen" : "Follower durchsuchen")+"\" aria-label=\""+(ing ? "Gefolgt durchsuchen" : "Follower durchsuchen")+"\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\" enterkeyhint=\"search\"></label>";
   h += "<div class=\"ag-grp\">";
-  FR.friends.forEach(function(f){ var gs = f.uid ? fgOf(f.uid) : [], fn = norm(f.name||"");
-    h += "<div class=\"ag-row\" data-frn=\""+esc(fn)+"\""+(q && fn.indexOf(q) < 0 ? " hidden" : "")+"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b>"+(gs.length ? "<small>"+esc(gs.map(function(g){ return g.n; }).join(" · "))+"</small>" : "")+"</span>"+
-      (f.uid ? "<button type=\"button\" class=\"fg-for"+(gs.length ? " on" : "")+"\" data-act=\"fgfor\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Gruppen für @"+esc(f.name)+"\">"+FGICO+"</button>" : "")+"<button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+f.id+"\" aria-label=\"Freundschaft beenden\">Entfernen</button></div>"; });
-  if(FR.friends.length > 1) h += "<p class=\"note fr-none\""+(q && !FR.friends.some(function(f){ return norm(f.name||"").indexOf(q) > -1; }) ? "" : " hidden")+">Kein Freund mit diesem Namen.</p>";
-  h += "<button type=\"button\" class=\"ag-row\" data-act=\"accview\" data-v=\"search\"><span><b>Freunde suchen</b><small>Über den Benutzernamen finden und anfragen</small></span><em class=\"chev\">›</em></button>";
-  h += "<button type=\"button\" class=\"ag-row\" data-act=\"invshare\"><span><b>Freunde einladen</b><small>Link verschicken – wer ihn öffnet, kann dir gleich eine Anfrage senden</small></span><em class=\"chev\">›</em></button>";
-  return h+"</div>";
+  if(!list.length) h += "<p class=\"note\">"+(ing ? "Du folgst noch niemandem. Such Leute über ihren Benutzernamen." : "Dir folgt noch niemand. Schick deinen Einladungslink.")+"</p>";
+  list.forEach(function(f){ var mu = frState(f.uid)==="friend", gs = mu ? fgOf(f.uid) : [], fn = norm(f.name||"");
+    var sub = gs.length ? gs.map(function(g){ return g.n; }).join(" · ") : mu ? "Freund · ihr folgt euch" : ing ? "folgt dir nicht" : "folgt dir";
+    h += "<div class=\"ag-row\" data-frn=\""+esc(fn)+"\""+(q && fn.indexOf(q) < 0 ? " hidden" : "")+"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b><small>"+esc(sub)+"</small></span>"+
+      (mu ? "<button type=\"button\" class=\"fg-for"+(gs.length ? " on" : "")+"\" data-act=\"fgfor\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Gruppen für @"+esc(f.name)+"\">"+FGICO+"</button>" : "")+
+      (ing ? folBtn("following", f.uid, f.name) : (mu ? "" : "<button type=\"button\" class=\"btn s\" data-act=\"folfol\" data-uid=\""+esc(f.uid)+"\" data-name=\""+esc(f.name||"")+"\" aria-label=\"@"+esc(f.name)+" zurückfolgen\">Folgen</button>")+"<button type=\"button\" class=\"fg-for fr-rm\" data-act=\"folrm\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Follower @"+esc(f.name)+" entfernen\" title=\"Follower entfernen\">"+FRRMICO+"</button>")+"</div>"; });
+  if(list.length > 1) h += "<p class=\"note fr-none\""+(q && !list.some(function(f){ return norm(f.name||"").indexOf(q) > -1; }) ? "" : " hidden")+">Niemand mit diesem Namen.</p>";
+  h += "<button type=\"button\" class=\"ag-row\" data-act=\"accview\" data-v=\"search\"><span><b>Leute suchen</b><small>Über den Benutzernamen finden und folgen</small></span><em class=\"chev\">›</em></button>";
+  h += "<button type=\"button\" class=\"ag-row\" data-act=\"invshare\"><span><b>Einladen</b><small>Link verschicken – wer ihn öffnet, kann dir gleich folgen</small></span><em class=\"chev\">›</em></button>";
+  return h+"</div><p class=\"note\">Freunde = ihr folgt euch gegenseitig. Nur Freunde sehen Inhalte mit der Sichtbarkeit „Freunde“, können mit dir chatten und zu Reisen eingeladen werden.</p>";
 }
 function profileHTML(){
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Profil bearbeiten\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
@@ -4654,10 +4705,10 @@ function profileHTML(){
   return h+"</div>";
 }
 function searchHTML(){
-  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Freunde suchen\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
-  h += "<button type=\"button\" class=\"back\" data-act=\"accview\" data-v=\"friends\">‹ Freunde</button><h3 class=\"ag-title\">Freunde suchen</h3>";
+  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Leute suchen\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
+  h += "<button type=\"button\" class=\"back\" data-act=\"accview\" data-v=\"friends\">‹ Follower</button><h3 class=\"ag-title\">Leute suchen</h3>";
   if(!PROF){
-    h += "<div class=\"ag-lbl\">Schritt 1: Dein eigener Name</div><p class=\"note\">Bevor du suchen kannst, brauchst du selbst einen Benutzernamen. Unter ihm sehen dich deine Freunde – trag hier also <b>deinen</b> Namen ein, nicht den der gesuchten Person.</p>";
+    h += "<div class=\"ag-lbl\">Schritt 1: Dein eigener Name</div><p class=\"note\">Bevor du suchen kannst, brauchst du selbst einen Benutzernamen. Unter ihm finden und sehen dich andere – trag hier also <b>deinen</b> Namen ein, nicht den der gesuchten Person.</p>";
     h += "<form class=\"gnew\" id=\"unForm\"><input type=\"text\" id=\"unIn\" maxlength=\"20\" placeholder=\"z. B. ferdinand\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"><button type=\"submit\" class=\"btn s\">Festlegen</button></form>";
     h += "<p class=\"note\" id=\"unMsg\">"+esc(unameMsg || "3–20 Zeichen: Buchstaben, Zahlen, Punkt, Minus oder Unterstrich.")+"</p>";
     return h+"</div>";
@@ -4710,21 +4761,17 @@ function frReadKey(){ return "rp-frread-"+(acct.user ? acct.user.uid : ""); }
 function frUnread(){ var rd = {}; try { rd = JSON.parse(lsGet(frReadKey())||"{}") || {}; } catch(e){} return FR.inc.filter(function(r){ return !rd[r.id]; }).length; }
 function frMarkRead(){ var rd = {}; FR.inc.forEach(function(r){ rd[r.id] = 1; }); lsSet(frReadKey(), JSON.stringify(rd)); }
 function frTilesHTML(){
-  var u = frUnread(), n = FR.inc.length + FR.out.length;
+  var u = frUnread();
   return "<div class=\"fr-tiles\"><button type=\"button\" class=\"fr-tile\" data-act=\"fglist\"><span class=\"fg-ic\">"+FGICO+"</span><span><b>Gruppen</b><small>"+(FG.length ? FG.length+(FG.length===1 ? " Gruppe" : " Gruppen") : "nur für dich")+"</small></span></button>"+
-    "<button type=\"button\" class=\"fr-tile\" data-act=\"frreqs\"><span class=\"fg-ic\">"+FRREQICO+"</span><span><b>Anfragen</b><small>"+(FR.inc.length ? FR.inc.length+" offen" : n ? FR.out.length+" gesendet" : "keine offen")+"</small></span>"+
-    (u ? "<i class=\"fr-badge\" aria-label=\""+u+" neue Anfragen\">"+u+"</i>" : "")+"</button></div>";
+    "<button type=\"button\" class=\"fr-tile\" data-act=\"frreqs\"><span class=\"fg-ic\">"+FRREQICO+"</span><span><b>Neue Follower</b><small>"+(FR.inc.length ? FR.inc.length+" offen" : "keine offen")+"</small></span>"+
+    (u ? "<i class=\"fr-badge\" aria-label=\""+u+" neue Follower\">"+u+"</i>" : "")+"</button></div>";
 }
 function frReqHTML(){
-  var h = "<div class=\"pop-card fr-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Anfragen\"><div class=\"pop-head\"><h4>Anfragen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
-  if(!FR.inc.length && !FR.out.length) return h+"<p class=\"note\">Keine offenen Anfragen.</p></div>";
-  if(FR.inc.length){ h += "<div class=\"ag-lbl\">Erhalten · "+FR.inc.length+"</div><div class=\"ag-grp\">";
-    FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.fromName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.fromName)+"</b><small>möchte mit dir befreundet sein</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+r.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Ablehnen</button></span></div>"; });
-    h += "</div>"; }
-  if(FR.out.length){ h += "<div class=\"ag-lbl\">Gesendet · "+FR.out.length+"</div><div class=\"ag-grp\">";
-    FR.out.forEach(function(r){ h += "<div class=\"ag-row\"><span class=\"mav\">"+esc((r.toName||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.toName)+"</b><small>Anfrage gesendet</small></span><button type=\"button\" class=\"btn g s\" data-act=\"frdel\" data-id=\""+r.id+"\">Zurückziehen</button></div>"; });
-    h += "</div>"; }
-  return h+"</div>";
+  var h = "<div class=\"pop-card fr-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Neue Follower\"><div class=\"pop-head\"><h4>Neue Follower</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
+  if(!FR.inc.length) return h+"<p class=\"note\">Keine offenen. Hier erscheint, wer dir folgt und dem du noch nicht folgst.</p></div>";
+  h += "<div class=\"ag-grp\">";
+  FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.name)+"</b><small>folgt dir</small></span><span class=\"invb\">"+folBtn("follower", r.uid, r.name)+"<button type=\"button\" class=\"btn g s\" data-act=\"folrm\" data-uid=\""+esc(r.uid)+"\" aria-label=\"Follower @"+esc(r.name)+" entfernen\">Entfernen</button></span></div>"; });
+  return h+"</div><p class=\"note\">Zurückfolgen macht euch zu Freunden.</p></div>";
 }
 function openFrPop(kind){ FRPOP = kind; if(kind==="req") frMarkRead(); frPopRender(true); refreshSettings(); }
 function frPopRender(first){
@@ -4738,7 +4785,7 @@ document.addEventListener("input", function(e){ var q = e.target; if(q.id!=="frF
   card.querySelectorAll("[data-frn]").forEach(function(r){ var on = !v || r.getAttribute("data-frn").indexOf(v) > -1; r.hidden = !on; if(on) n++; });
   var e0 = card.querySelector(".fr-none"); if(e0) e0.hidden = !!n; });
 function fgListHTML(){
-  if(!FR.friends.length) return "<p class=\"note\">Füge zuerst Freunde hinzu.</p>";
+  if(!FR.friends.length) return "<p class=\"note\">Gruppen gibt es für Freunde – Leute, denen du folgst und die dir folgen.</p>";
   var h = "<div class=\"ag-grp fg-grp\">";
   FG.forEach(function(g){ var n = fgMem(g).length;
     h += "<button type=\"button\" class=\"ag-row fg-row\" data-act=\"fgopen\" data-g=\""+esc(g.id)+"\"><span class=\"fg-ic\">"+FGICO+"</span><span class=\"fn\"><b>"+esc(g.n)+"</b><small>"+(n===1 ? "1 Person" : n+" Personen")+"</small></span><em class=\"chev\">›</em></button>"; });
@@ -5209,7 +5256,7 @@ var NTIC = {mention:"<circle cx=\"10\" cy=\"10\" r=\"3\"/><path d=\"M13 10v1.2a2
   join:"<circle cx=\"7\" cy=\"7\" r=\"2.6\"/><circle cx=\"13.5\" cy=\"7.5\" r=\"2.2\"/><path d=\"M2 16c.5-2.6 2.4-4 5-4s4.5 1.4 5 4M12.5 12c2.3 0 4 1.1 4.5 3.5\"/>"};
 function notifsHTML(){
   var h = "<div class=\"ag-card nt-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mitteilungen\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Mitteilungen</h3>";
-  if(!NT.items.length) return h+"<p class=\"note\">Noch keine Mitteilungen. Hier erscheinen Kommentare in gemeinsamen Reisen, Freundschaftsanfragen, Einladungen und neue Mitreisende.</p></div>";
+  if(!NT.items.length) return h+"<p class=\"note\">Noch keine Mitteilungen. Hier erscheinen Kommentare in gemeinsamen Reisen, neue Follower, Einladungen und neue Mitreisende.</p></div>";
   h += "<div class=\"ag-grp nt-list\">";
   NT.items.forEach(function(x){
     h += "<button type=\"button\" class=\"ag-row nt"+(x.read ? "" : " new")+"\" data-act=\"ntgo\" data-v=\""+esc(x.id)+"\"><span class=\"nt-ic\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+(NTIC[x.type]||NTIC.comment)+"</svg></span>"+
@@ -5539,9 +5586,9 @@ function renderDc(){
       (n ? "<div class=\"dc-ph\"></div>"+(n > 1 ? "<span class=\"dc-pn\">1/"+n+"</span>" : "") : "<div class=\"dc-big\">"+icon(r.c)+"</div>")+
       "<div class=\"dc-grad\"></div><div class=\"dc-info"+(DCX[r.key] ? " open" : "")+"\">"+dcInfoHTML(r)+"</div><div class=\"dc-side\">"+dcSideHTML(r)+"</div></div></article>";
   });
-  var msg = busy && !list.length ? "Lädt Vorschläge …" : !list.length ? (dcSrc!=="all" && !FR.friends.length ? "Noch keine Freunde. Füge Freunde hinzu – ihre veröffentlichten Orte erscheinen dann hier." : tg ? "Für „"+dcTgtName(tg)+"“ gibt es noch keine Vorschläge"+(dcSrc==="friends" ? " von Freunden" : "")+". Schau unter „Inspiration“." : "Noch keine Vorschläge.") : "Das war’s"+(tg ? " für „"+dcTgtName(tg)+"“" : "")+".";
+  var msg = busy && !list.length ? "Lädt Vorschläge …" : !list.length ? (dcSrc!=="all" && !FR.friends.length ? "Noch keine Freunde. Folgt euch gegenseitig – dann erscheinen ihre veröffentlichten Orte hier." : tg ? "Für „"+dcTgtName(tg)+"“ gibt es noch keine Vorschläge"+(dcSrc==="friends" ? " von Freunden" : "")+". Schau unter „Inspiration“." : "Noch keine Vorschläge.") : "Das war’s"+(tg ? " für „"+dcTgtName(tg)+"“" : "")+".";
   h += "<div class=\"dc-end\"><p class=\"note\">"+esc(msg)+(PUB.err && dcSrc==="all" ? "<br>"+esc(PUB.err) : "")+"</p><div class=\"pf-acts\">"+
-    (dcSrc!=="all" && !FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button>" : "")+
+    (dcSrc!=="all" && !FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Leute finden</button>" : "")+
     (tg ? "<button type=\"button\" class=\"btn g\" data-act=\"dcscopeset\" data-v=\"all\">"+ic("compass", "ii")+" Inspiration</button>" : "")+
     (tg && FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"askopen\""+(tg.z ? " data-z=\""+esc(tg.id)+"\"" : "")+">Freunde nach Tipps fragen</button>" : "")+
     (list.length ? "<button type=\"button\" class=\"btn g\" data-act=\"dcreload\">Aktualisieren</button>" : "")+
@@ -6035,7 +6082,7 @@ function zShareHTML(zid){
   if(rows.length) h += "<div class=\"ag-grp ls-list\">"+rows.join("")+"</div>";
   var cand = FR.friends.filter(function(f){ return f.email && (m.members||[]).indexOf(f.uid) < 0 && inv.indexOf(f.email) < 0; });
   if(FR.friends.length) h += "<div class=\"ag-grp ls-list\">"+frsPopBtn("Freunde einladen", "zinvpop", " data-z=\""+esc(zid)+"\"")+"</div>";
-  else h += "<p class=\"note zhint\">Noch keine Freunde. Füge Freunde im Profil hinzu, um Ziele zu teilen.</p>";
+  else h += "<p class=\"note zhint\">Noch keine Freunde. Ziele teilst du mit Leuten, denen du folgst und die dir folgen.</p>";
   return h;
 }
 function zInvite(zid, mail, name){
@@ -6102,7 +6149,7 @@ function dcFull(key, i){
 function dcvClose(){ DCV = null; closeJpMore(); pvHide(); }
 function dcvSendMenu(btn){
   var r = DCV && DC.byKey[DCV.key]; if(!r) return;
-  if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
+  if(!FR.friends.length){ toast("Folgt euch zuerst gegenseitig – dann seid ihr Freunde", false); return; }
   var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
   jpPopover("dcv", btn, frPickHead("Im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"dcvto\" data-uid=\""+esc(f.uid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "dcvsend");
 }
@@ -6148,8 +6195,7 @@ function renderGs(full){
     var recs = DC.items.filter(function(r){ return hit([r.n, r.addr, r.note, r.fname, r.trip, CATNAME[r.c]].join(" ")); });
     var sec = function(title, n, body){ return n ? "<div class=\"nt-sec\">"+title+" · "+n+"</div><div class=\"ag-grp ls-list\">"+body+"</div>" : ""; };
     res += sec("Personen", ppl.length, ppl.map(function(x){ var st = frState(x.uid);
-      return "<div class=\"ls-row\"><span class=\"ls-th gsav\">"+(x.photo ? "<img src=\""+x.photo+"\" alt=\"\">" : esc((x.name[0]||"?").toUpperCase()))+"</span><span class=\"ls-t\"><b>@"+esc(x.name)+"</b><small>"+(st==="friend" ? "Freund" : st==="out" ? "Anfrage gesendet" : st==="inc" ? "möchte mit dir befreundet sein" : "")+"</small></span>"+
-        (st==="" ? "<button type=\"button\" class=\"btn s\" data-act=\"gsfriend\" data-uid=\""+x.uid+"\" data-name=\""+esc(x.name)+"\">Anfrage</button>" : st==="inc" ? "<button type=\"button\" class=\"btn s\" data-act=\"fracc\" data-uid=\""+x.uid+"\">Annehmen</button>" : "")+"</div>"; }).join(""));
+      return "<div class=\"ls-row\"><span class=\"ls-th gsav\">"+(x.photo ? "<img src=\""+x.photo+"\" alt=\"\">" : esc((x.name[0]||"?").toUpperCase()))+"</span><span class=\"ls-t\"><b>@"+esc(x.name)+"</b><small>"+frStLbl(st)+"</small></span>"+folBtn(st, x.uid, x.name)+"</div>"; }).join(""));
     res += sec("Reisen", trips.length, trips.map(function(id){ var t = S.trips[id], cov = tripCover(id);
       return "<button type=\"button\" class=\"ls-row\" data-act=\"gstrip\" data-trip=\""+esc(id)+"\">"+(cov ? "<img class=\"ls-th\" data-ph=\""+cov+"\" alt=\"\">" : "<span class=\"ls-th gsav\">"+esc(((t.name||"?")[0]).toUpperCase())+"</span>")+"<span class=\"ls-t\"><b>"+esc(t.name)+"</b><small>"+esc([rangeLabel(t.start, t.end), isViewerOf(id) ? "beobachtet" : ""].filter(Boolean).join(" · "))+"</small></span></button>"; }).join(""));
     res += sec("Ziele", zls.length, zls.map(function(id){ var z = S.trips[id]; return "<button type=\"button\" class=\"ls-row\" data-act=\"zopen\" data-z=\""+esc(id)+"\"><span class=\"ls-th ico zic\" style=\"--cc:"+tripColor(id)+"\">"+ZBM+"</span><span class=\"ls-t\"><b>"+esc(z.name)+"</b><small>"+Object.keys(z.places).length+" gemerkt</small></span></button>"; }).join(""));
@@ -6445,7 +6491,7 @@ function renderSug(first){
   if(SUG.tab==="pub" && SUG.busy) h += "<p class=\"note nt-empty\">Suche Orte entlang des Wegs …</p>";
   else if(SUG.tab==="pub" && SUG.err) h += "<p class=\"note nt-empty\">"+esc(SUG.err)+"</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"sugretry\">Nochmal versuchen</button></div>";
   else if(SUG.tab==="fr" && !acct.user) h += "<p class=\"note nt-empty\">Melde dich an, um Empfehlungen deiner Freunde zu sehen.</p>";
-  else if(SUG.tab==="fr" && !FR.friends.length) h += "<p class=\"note nt-empty\">Füge Freunde hinzu – ihre besuchten und gut bewerteten Orte erscheinen dann hier.</p>";
+  else if(SUG.tab==="fr" && !FR.friends.length) h += "<p class=\"note nt-empty\">Folge Leuten und lass dir zurückfolgen – die besuchten und gut bewerteten Orte deiner Freunde erscheinen dann hier.</p>";
   else if(SUG.tab==="fr" && DC.busy && !DC.items.length) h += "<p class=\"note nt-empty\">Lädt Empfehlungen deiner Freunde …</p>";
   else if(!list.length) h += "<p class=\"note nt-empty\">"+(SUG.tab==="fr" ? "Deine Freunde haben entlang dieses Wegs noch nichts empfohlen." : SUG.tab==="wish" ? "Keine Wünsche"+(SUG.cat ? " dieser Kategorie" : "")+" in der Nähe dieses Wegs." : SUG.tab==="zl" ? "Keine gemerkten Orte"+(SUG.cat ? " dieser Kategorie" : "")+" in der Nähe dieses Wegs." : "Keine öffentlichen Orte"+(SUG.cat ? " dieser Kategorie" : "")+" direkt am Weg gefunden.")+"</p>";
   else h += "<ul class=\"srlist\">"+list.slice(0, 60).map(function(r, i){
@@ -6583,7 +6629,7 @@ function chSendText(u, txt){
 }
 function openAsk(name, zid){
   if(!acct.user){ toast("Melde dich an, um Freunde zu fragen", false); return; }
-  if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
+  if(!FR.friends.length){ toast("Folgt euch zuerst gegenseitig – dann seid ihr Freunde", false); return; }
   ASK = {name:name, zid:zid || "", sel:{}, txt:"Ich plane gerade „"+name+"“ – hast du Tipps für mich? Schick mir gern Orte hier im Chat, ich merke sie mir direkt. 🙏"};
   renderAsk(true);
 }
@@ -6613,7 +6659,7 @@ var FRS = {}, FRSICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"curren
 // key: Name des Felds · cand: Freunde · act: Aktion beim Antippen · attrs: weitere data-Attribute · sel: ausgewählte uids (Häkchen)
 function frSearchHTML(key, cand, act, attrs, sel, big){
   var o = FRS[key] = Object.assign(FRS[key] || {q:""}, {cand:cand, act:act, attrs:attrs || "", sel:sel || null, big:!!big});
-  if(!FR.friends.length) return "<p class=\"note zhint\">Noch keine Freunde. Füge Freunde im Profil hinzu.</p>";
+  if(!FR.friends.length) return "<p class=\"note zhint\">Noch keine Freunde. Freunde sind Leute, denen du folgst und die dir folgen.</p>";
   return "<div class=\"frs\" data-frs=\""+key+"\"><label class=\"frs-q\">"+FRSICO+"<input type=\"search\" class=\"frs-in\" data-frs=\""+key+"\" value=\""+esc(o.q)+"\" placeholder=\"Freunde suchen ("+FR.friends.length+")\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\" enterkeyhint=\"search\"></label><div class=\"frs-res\">"+frSearchRes(key)+"</div></div>";
 }
 function frSearchRes(key){
@@ -6653,7 +6699,7 @@ document.addEventListener("input", function(e){ var q = e.target; if(!q.classLis
   var e0 = m.querySelector(".frp-none"); if(!n){ if(!e0){ e0 = document.createElement("p"); e0.className = "frp-none"; e0.textContent = q.getAttribute("data-none") || "Keine Freunde gefunden"; m.appendChild(e0); } } else if(e0) e0.remove(); });
 function chPhSendMenu(ph, btn){
   if(!acct.user){ toast("Melde dich an, um Fotos zu schicken", false); return; }
-  if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
+  if(!FR.friends.length){ toast("Folgt euch zuerst gegenseitig – dann seid ihr Freunde", false); return; }
   var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
   jpPopover("ph", btn, frPickHead("Foto im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"chphto\" data-uid=\""+esc(f.uid)+"\" data-ph=\""+esc(ph)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "chph");
 }
@@ -6740,7 +6786,7 @@ function chListHTML(){ var me = acct.user && acct.user.uid;
       h += "<div class=\"ag-grp ls-list ch-list\">"+CH.list.map(function(c){ var u = chOther(c), L = c.last || {}, un = chUnread(c);
         return "<button type=\"button\" class=\"ls-row"+(un?" un":"")+"\" data-act=\"chopen\" data-v=\""+esc(c.id)+"\">"+chAv(u, "ch-av")+"<span class=\"ls-t\"><b>@"+esc(chName(u))+"</b><small>"+(L.from===me ? "Du: " : "")+esc(L.t || (L.place ? (L.ph ? "📷 " : "📍 ")+L.place : ""))+"</small></span><span class=\"ch-meta\"><small>"+chTime(L.at)+"</small>"+(un ? "<i class=\"ch-dot\"></i>" : "")+"</span></button>"; }).join("")+"</div>";
     } else if(CH.got && !chNewOn) h += "<p class=\"note nt-empty\">Noch keine Chats. Tippe auf ＋, um einen Chat mit einem Freund zu beginnen.</p>";
-    if(!FR.friends.length) h += "<p class=\"note nt-empty\">Füge Freunde hinzu, um mit ihnen zu chatten.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div>";
+    if(!FR.friends.length) h += "<p class=\"note nt-empty\">Chatten kannst du mit Freunden – Leuten, denen du folgst und die dir folgen.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Leute finden</button></div>";
     return h+"</div>";
 }
 function renderCh(full){
@@ -6766,7 +6812,7 @@ function renderCh(full){
 function renderChNew(){
   var r = $("chNewRes"); if(!r) return; var me = acct.user && acct.user.uid, q = norm(chNewQ.trim().replace(/^@/, ""));
   var fr = FR.friends.filter(function(f){ return f.uid && (!q || norm(chName(f.uid)).indexOf(q) > -1); });
-  if(!FR.friends.length){ r.innerHTML = "<p class=\"note ch-newnote\">Du hast noch keine Freunde. Chatten kannst du nur mit Freunden.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Freunde finden</button></div>"; return; }
+  if(!FR.friends.length){ r.innerHTML = "<p class=\"note ch-newnote\">Du hast noch keine Freunde. Chatten kannst du nur mit Leuten, denen du folgst und die dir folgen.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Leute finden</button></div>"; return; }
   if(!q){ r.innerHTML = "<p class=\"note ch-newnote\">Gib den Namen eines Freundes ein.</p>"; return; }
   r.innerHTML = fr.length ? "<div class=\"ag-grp ls-list ch-newlist\">"+fr.slice(0, 20).map(function(f){ var ex = CH.byId[chId(me, f.uid)];
     return "<button type=\"button\" class=\"ls-row\" data-act=\"chnew\" data-uid=\""+esc(f.uid)+"\">"+chAv(f.uid, "ch-av sm")+"<span class=\"ls-t\"><b>@"+esc(chName(f.uid))+"</b><small>"+(ex ? "Chat öffnen" : "Neuer Chat")+"</small></span></button>"; }).join("")+"</div>"
@@ -6893,7 +6939,7 @@ window.addEventListener("popstate", function(e){ if(chPopIgn){ chPopIgn = false;
 /* Ort aus dem Ort-Fenster im Chat teilen: erst Freund wählen */
 function chShareMenu(pid, btn){
   if(!acct.user){ toast("Melde dich an, um Orte zu teilen", false); return; }
-  if(!FR.friends.length){ toast("Füge zuerst Freunde hinzu", false); return; }
+  if(!FR.friends.length){ toast("Folgt euch zuerst gegenseitig – dann seid ihr Freunde", false); return; }
   var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
   jpPopover(pid, btn, frPickHead("Im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"chshareto\" data-uid=\""+esc(f.uid)+"\" data-pid=\""+esc(pid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "chshare");
 }
@@ -6941,7 +6987,7 @@ function rvSection(p){
   var h = "<div class=\"jp-sec rvsec\"><div class=\"jp-lbl\">Bewertungen</div><div class=\"pf-seg rvseg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"rvtab\" data-v=\"friends\" aria-selected=\""+(rvTab==="friends")+"\">"+ic("friends", "ii")+" Freunde"+(fr.length ? " · "+fr.length : "")+"</button><button type=\"button\" role=\"tab\" data-act=\"rvtab\" data-v=\"public\" aria-selected=\""+(rvTab==="public")+"\">"+ic("globe", "ii")+" Öffentlich</button></div>";
   if(rvTab==="friends"){
     if(!acct.user) h += "<p class=\"note\">Melde dich an, um Bewertungen deiner Freunde zu sehen.</p>";
-    else if(!fr.length) h += "<p class=\"note\">"+(DC.busy ? "Lädt …" : FR.friends.length ? "Keiner deiner Freunde hat diesen Ort bisher bewertet." : "Füge Freunde hinzu, um ihre Bewertungen zu sehen.")+"</p>";
+    else if(!fr.length) h += "<p class=\"note\">"+(DC.busy ? "Lädt …" : FR.friends.length ? "Keiner deiner Freunde hat diesen Ort bisher bewertet." : "Folgt euch gegenseitig, um die Bewertungen deiner Freunde zu sehen.")+"</p>";
     fr.forEach(function(r){ var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
       h += "<div class=\"rvrow\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><div class=\"rvt\"><b>@"+esc(r.fname||"Freund")+"</b>"+(RR ? " <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+(r.hl ? " <span class=\"rvhl\">★ Highlight</span>" : "")+
         "<small>"+esc([r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+(r.note ? "<p>„"+esc(r.note)+"“</p>" : "")+recCmHTML(r, "")+
@@ -7041,7 +7087,7 @@ var MAPICO = ic("map");
 var MAPGO = ic("map");
 /* Mitteilungen als eigene Seite, nach Art filterbar */
 var ntPage = false, ntKind = "all";
-var NTKINDS = [["all","Alle"],["mention","Erwähnungen"],["reply","Antworten"],["comment","Kommentare"],["like","Gefällt mir"],["friend","Freunde"],["invite","Einladungen"],["join","Mitreisende"]];
+var NTKINDS = [["all","Alle"],["mention","Erwähnungen"],["reply","Antworten"],["comment","Kommentare"],["like","Gefällt mir"],["friend","Follower"],["invite","Einladungen"],["join","Mitreisende"]];
 function openNtPage(){ closeMenus(); closeChPage(); closeGsPage(); closeProfile(); closeLsPage(); closeDcPage(); ntPage = true; renderNt(); $("ntView").hidden = false; document.body.classList.add("profopen"); navActive(); }
 function closeNtPage(){ if(!ntPage) return; ntPage = false; $("ntView").hidden = true; if(!profOpen) document.body.classList.remove("profopen"); navActive(); }
 function renderNt(){
@@ -7053,7 +7099,7 @@ function renderNt(){
     return "<button type=\"button\" role=\"tab\" data-act=\"ntkind\" data-v=\""+k[0]+"\" aria-selected=\""+(ntKind===k[0])+"\">"+k[1]+(cnt[k[0]] ? " <b>"+cnt[k[0]]+"</b>" : "")+"</button>"; }).join("")+"</div>";
   var list = items.filter(function(x){ return ntKind==="all" || x.type===ntKind; });
   if(!list.length){
-    h += "<p class=\"note nt-empty\">"+(items.length ? "Keine Mitteilungen dieser Art." : "Noch keine Mitteilungen. Hier erscheinen Kommentare und Likes in gemeinsamen Reisen, Freundschaftsanfragen, Einladungen und neue Mitreisende.")+"</p>";
+    h += "<p class=\"note nt-empty\">"+(items.length ? "Keine Mitteilungen dieser Art." : "Noch keine Mitteilungen. Hier erscheinen Kommentare und Likes in gemeinsamen Reisen, neue Follower, Einladungen und neue Mitreisende.")+"</p>";
   } else {
     var today = new Date(); today.setHours(0,0,0,0); var t0 = today.getTime(), t1 = t0 - 86400000, t7 = t0 - 6*86400000, grp = "";
     list.forEach(function(x){
@@ -7110,7 +7156,7 @@ function acctHTML(){
   h += "<button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
   h += "<div class=\"ag-head\"><span class=\"ag-av\">"+(PROF && PROF.photo ? "<img src=\""+PROF.photo+"\" alt=\"\">" : esc(PROF ? PROF.name[0].toUpperCase() : ini))+"</span><div><b class=\"ag-name\">"+(PROF ? "@"+esc(PROF.name) : esc(mail || "Mein Konto"))+(u ? "<button type=\"button\" class=\"ag-edit\" data-act=\"accview\" data-v=\"profile\" aria-label=\"Profil bearbeiten\" title=\"Profil bearbeiten\">"+ic("edit")+"</button>" : "")+"</b>"+(PROF ? "<span class=\"ag-sub\">"+esc(mail)+"</span>" : "")+"<span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+(u ? "<button type=\"button\" class=\"ag-sync\" data-act=\"acsync\" aria-label=\"Jetzt abgleichen\" title=\"Jetzt abgleichen\">"+ic("sync", "ii")+"</button>" : "")+"</span></div></div>";
 
-  if(u && !PROF) h += "<p class=\"note\">Tipp: Über den Stift oben legst du einen Benutzernamen fest, damit dich Freunde finden.</p>";
+  if(u && !PROF) h += "<p class=\"note\">Tipp: Über den Stift oben legst du einen Benutzernamen fest, damit dich andere finden.</p>";
 
   // Google
   h += "<div class=\"ag-lbl\">Bewertungen &amp; Fotos</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"gtoggle\" aria-expanded=\""+gOpen+"\"><span><b>Google-Schlüssel</b><small>"+(gKey ? "Aktiv – nur auf diesem Gerät" : "Nicht eingerichtet")+"</small></span><em class=\"chev\">"+(gOpen?"⌄":"›")+"</em></button>";
@@ -7336,7 +7382,8 @@ function renderProfile(){
        "<div class=\"pf-side\"><div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b></div>";
   h += "<div class=\"pf-stats\"><button type=\"button\" data-act=\"pftab\" data-v=\"mine\"><b>"+mine.length+"</b><span>Reisen</span></button>"+
        "<button type=\"button\" data-act=\"pftab\" data-v=\"obs\"><b>"+obs.length+"</b><span>Beobachtet</span></button>"+
-       "<button type=\"button\" data-act=\"openfriends\"><b>"+FR.friends.length+"</b><span>Freunde</span></button></div></div></div>";
+       "<button type=\"button\" data-act=\"openfriends\" data-v=\"fol\"><b>"+FR.followers.length+"</b><span>Follower</span></button>"+
+       "<button type=\"button\" data-act=\"openfriends\" data-v=\"ing\"><b>"+FR.following.length+"</b><span>Gefolgt</span></button></div></div></div>";
   h += "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"mine\" aria-selected=\""+(profTab==="mine")+"\">Reisen</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"obs\" aria-selected=\""+(profTab==="obs")+"\">Beobachtet</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"ziele\" aria-selected=\""+(profTab==="ziele")+"\">Ziele</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"welt\" aria-selected=\""+(profTab==="welt")+"\">Karte</button></div>";
   if(profTab==="ziele") h += "<div class=\"zl\">"+zielsHTML()+"</div>"; else if(profTab==="welt") h += wmHTML(); else {
   var list = profTab==="obs" ? obs : mine, all0 = list.length;
@@ -7362,7 +7409,7 @@ function renderProfile(){
   if(profTab==="mine" && list.length) h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-new\" data-act=\"pfnew\"><span class=\"pf-plus\" aria-hidden=\"true\">＋</span><b>Neue Reise</b><small>Ziel, Zeitraum, Hotel</small></button></div>";
   h += "</div>"; }
   if(INVITES.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"opentrips\" data-v=\"req\">"+ic("mail", "ii")+" "+INVITES.length+(INVITES.length===1 ? " Einladung zu einer Reise" : " Einladungen zu Reisen")+" ›</button>";
-  if(FR.inc.length) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"openfriends\" data-v=\"req\">"+ic("useradd", "ii")+" "+FR.inc.length+(FR.inc.length===1 ? " Freundschaftsanfrage" : " Freundschaftsanfragen")+" ›</button>";
+  var nfo = frUnread(); if(nfo) h += "<button type=\"button\" class=\"pf-inv\" data-act=\"openfriends\" data-v=\"req\">"+ic("useradd", "ii")+" "+nfo+(nfo===1 ? " neuer Follower" : " neue Follower")+" ›</button>";
   h += "<button type=\"button\" class=\"pf-demo\" data-act=\"demo\"><span class=\"pf-demo-ic\" aria-hidden=\"true\">▶</span><span><b>App-Demo ansehen</b><small>Kurze Einführung, ändert nichts an deinen Reisen</small></span></button>";
   h += "</div>";
   el.innerHTML = h; fillPhotos(el);
@@ -10959,7 +11006,6 @@ var CONFIRM = {
   trippurge:["Endgültig löschen?", "Die Reise wird mit allen Orten, Notizen und Fotos dauerhaft entfernt – auch für alle Mitreisenden. Das kann nicht rückgängig gemacht werden.", "Endgültig löschen"],
   mleave:["Reise verlassen?", "Die Reise verschwindet von deinen Geräten. Wieder hinein kommst du nur mit einer neuen Einladung.", "Verlassen"],
   minvdel:["Einladung zurückziehen?", "", "Zurückziehen"],
-  frdel:["Freund entfernen?", "", "Entfernen"],
   fgdel:["Gruppe löschen?", "Die Personen bleiben deine Freunde – nur die Gruppe verschwindet.", "Löschen"],
   gkeydel:["Google-Schlüssel entfernen?", "", "Entfernen"]
 };
@@ -12762,10 +12808,10 @@ function renderWish(){
   var sortLbl = wView==="grp" ? "Gruppe" : wView==="dist" ? (wDistDir==="asc" ? "Nächste zuerst" : "Weiteste zuerst") : "Kategorie";
   var chip = function(k, lbl, on){ return "<button type=\"button\" class=\"fchip"+(on?" on":"")+"\" data-act=\"wfilt\" data-k=\""+k+"\" aria-haspopup=\"dialog\">"+esc(lbl)+CHEV+"</button>"; };
   h += "<div class=\"fchips\" role=\"group\" aria-label=\"Filter\">"+
+    (multi ? chip("list", activeList==="open" ? "Liste" : activeList==="none" ? "Ohne Liste" : activeList==="stay" ? "Unterkünfte" : listName(activeList), activeList!=="open") : "")+
     chip("nb", !keys.length ? "Bezirke" : keys.length===1 ? keys[0] : keys.length+" Bezirke", keys.length>0)+
     chip("cat", catLbl, ck.length>0)+
     (gs.length ? chip("grp", grpLbl, !!grpSel) : "")+
-    (multi ? chip("list", activeList==="open" ? "Liste" : activeList==="none" ? "Ohne Liste" : activeList==="stay" ? "Unterkünfte" : listName(activeList), activeList!=="open") : "")+
     "<button type=\"button\" class=\"fchip sort\" data-act=\"wfilt\" data-k=\"sort\" aria-haspopup=\"dialog\">"+ic("sort", "ii")+" "+esc(sortLbl)+CHEV+"</button>"+
     (!isRO() && days().length > 1 ? "<button type=\"button\" class=\"fchip dschip\" data-act=\"dsopen\" aria-haspopup=\"dialog\" title=\"Wünsche nach Nähe auf die Tage verteilen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3M7 12h2M11 12h2\"/></svg>Auf Tage verteilen</button>" : "")+
     "<button type=\"button\" class=\"fchip dschip\" data-act=\"lkshare\" title=\"Angezeigte Wünsche als Link teilen\" aria-label=\"Angezeigte Wünsche als Link teilen\">"+ic("share")+"Teilen</button></div>";
@@ -13588,7 +13634,7 @@ document.addEventListener("click", function(e){
   if(RO_ACTS[act] && isRO()){ e.preventDefault(); toast("Als Beobachter kannst du nur ansehen.", false); return; }
   // Löschen u. Ä. erst nach Bestätigung (Wischen hat stattdessen „Rückgängig“)
   var cf = CONFIRM[act];
-  if(cf && !(act==="frdel" && !t.hasAttribute("aria-label"))){
+  if(cf){
     if(t.getAttribute("data-ok")!=="1"){ e.preventDefault(); askConfirm(cf[0], cf[1], cf[2], function(){ t.setAttribute("data-ok", "1"); if(document.body.contains(t)) t.click(); else { t.hidden = true; document.body.appendChild(t); t.click(); t.remove(); } }); return; }
     t.removeAttribute("data-ok");
   }
@@ -13635,7 +13681,6 @@ document.addEventListener("click", function(e){
     case "chphfull": chPhFull(t.getAttribute("data-k")); break;
     case "chshareto": chShareTo(t.getAttribute("data-uid"), t.getAttribute("data-pid")); break;
     case "navsrch": if(gsPage) closeGsPage(); else openGsPage(); break;
-    case "gsfriend": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); setTimeout(renderGs, 600); break;
     case "gstrip": closeGsPage(); var gtr = t.getAttribute("data-trip"); if(S.trips[gtr] && gtr!==S.cur){ grpSel = ""; S.cur = gtr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
     case "gsplace": closeGsPage(); closeProfile(); var gpt = t.getAttribute("data-trip"), gpp = t.getAttribute("data-pid");
       if(S.trips[gpt] && gpt!==S.cur){ grpSel = ""; S.cur = gpt; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
@@ -13806,9 +13851,10 @@ document.addEventListener("click", function(e){
     case "ntread": NT.items.forEach(function(x){ x.read = true; }); ntSave(); ntBadge(); if(ntPage) renderNt(); else openSettings(); break;
     case "ntclear": NT.items = []; ntSave(); ntBadge(); ntKind = "all"; if(ntPage) renderNt(); else openSettings(); break;
     case "accview": accView = t.getAttribute("data-v"); unameMsg = ""; openSettings(); var fi = $(accView==="search" ? "frQ" : "unIn"); if(fi && accView!=="main") fi.focus(); break;
-    case "frreq": frRequest(t.getAttribute("data-uid"), t.getAttribute("data-name")); break;
-    case "fracc": frAccept(t.getAttribute("data-uid")); break;
-    case "frdel": frRemove(t.getAttribute("data-id")); break;
+    case "folfol": folFollow(t.getAttribute("data-uid"), t.getAttribute("data-name")); if(gsPage) setTimeout(renderGs, 600); break;
+    case "folunf": folUnfollow(t.getAttribute("data-uid")); break;
+    case "folrm": folRemove(t.getAttribute("data-uid")); break;
+    case "frtab": frTab = t.getAttribute("data-v")==="ing" ? "ing" : "fol"; frFilt = ""; refreshSettings(); break;
     case "fgopen": openFgEd(t.getAttribute("data-g")); break;
     case "fglist": openFrPop("grp"); break;
     case "frreqs": openFrPop("req"); break;
@@ -13953,7 +13999,7 @@ document.addEventListener("click", function(e){
     case "opentrips": closeMenus(); $("toast").hidden = true; accView = "trips"; if(t.getAttribute("data-v")) tripsTab = t.getAttribute("data-v"); else tripsTab = isShared(S.cur) ? "shared" : "priv"; openSettings(); break;
     case "tripstab": tripsTab = t.getAttribute("data-v"); openSettings(); break;
     case "tripdetails": closeSettings(); tab = "trip"; renderSheet(); scheduleOverlay(); break;
-    case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; openSettings(); if(t.getAttribute("data-v")==="req") openFrPop("req"); break;
+    case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; var frv = t.getAttribute("data-v"); if(frv==="fol" || frv==="ing"){ frTab = frv; frFilt = ""; } openSettings(); if(frv==="req") openFrPop("req"); break;
     case "opentrip": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeSettings();
       var otr = t.getAttribute("data-trip"); if(otr && S.trips[otr] && otr!==S.cur){ grpSel = ""; S.cur = otr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); }
       tab = "trip"; tdraft = isViewerOf(S.cur) ? null : tripToDraft(T(), "edit"); renderSheet(); scheduleOverlay();
