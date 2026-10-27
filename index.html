@@ -3788,7 +3788,12 @@ body.ro .navtools [data-act="addpop"]{display:none}
 /* Zeitraum-Kalender */
 .rng-d.off{color:var(--muted);opacity:.35;cursor:default}
 .tf-two .tf-pill.d{display:flex;width:100%;height:40px;margin-top:4px}
-.zoffer{display:block;width:100%;margin:8px 0;padding:10px 12px;border:0;border-radius:12px;background:var(--fill);color:var(--ink);font:500 14px/1.3 var(--f-body);text-align:left;cursor:pointer}
+.wtiles{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;margin:8px 0 10px}
+.wtile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;padding:8px 10px;border:0;border-radius:12px;background:var(--fill);color:var(--ink);text-align:left;cursor:pointer}
+.wtile b{font:600 17px/1.15 var(--f-body)}
+.wtile span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 12px/1.2 var(--f-body);color:var(--muted)}
+.wtile.on{background:var(--accent);color:#fff}.wtile.on span{color:rgba(255,255,255,.85)}
+.wtile:disabled{opacity:.45;cursor:default}
 .tf-item.tbd .tf-t small{color:var(--muted)}
 .tf-item.tbd .tf-ic{opacity:.55}
 .cf-card.rng{width:min(340px,100%);padding:16px 14px 12px}
@@ -13855,9 +13860,6 @@ function renderWish(){
     h += "<div class=\"fstat\"><span><b>"+wShown+"</b> von "+wAll+" Wünschen</span><button type=\"button\" class=\"tf-link\" data-act=\"wreset\">Filter zurücksetzen</button>"+(keys.length ? "<button type=\"button\" class=\"tf-link\" data-act=\"nbfit\">Auf Karte</button>" : "")+"</div>";
   }
 
-  // gemerkte Orte aus passenden Zielen später noch übernehmen („Erstmal nicht“ beim Anlegen)
-  var zo = !isRO() && zOfferItems(S.cur).length;
-  if(zo) h += "<button type=\"button\" class=\"zoffer\" data-act=\"zoffer\">"+zo+(zo===1 ? " gemerkter Ort" : " gemerkte Orte")+" aus deinen Zielen übernehmen ›</button>";
   if(newList.open){
     h += "<form class=\"f\" id=\"nlForm\"><label><span>Name der neuen Liste</span><input type=\"text\" id=\"nlName\" maxlength=\"40\" value=\""+esc(newList.name)+"\" placeholder=\"z. B. Rooftop-Bars\" autocomplete=\"off\"></label>"+
          "<div class=\"row\"><button class=\"btn\" type=\"submit\">Liste anlegen</button><button class=\"btn g\" type=\"button\" data-act=\"nlcancel\">Abbrechen</button></div></form>";
@@ -13966,22 +13968,21 @@ function wishResults(){
     h += "<p class=\"note\">"+all.length+(all.length===1?" Treffer":" Treffer")+" für „"+esc(q)+"“</p>";
     return h + (all.length ? byCat(all) : "<p class=\"empty\">Nichts gefunden. Suche nach Name, Adresse, Bezirk, Kategorie oder einem Wort aus der Notiz.</p>");
   }
+  // oben drei kleine Kacheln: gemerkte Orte aus den Zielen übernehmen („Erstmal nicht“ beim Anlegen), schon eingeplante (nochmal besuchen),
+  // zurückgestellte; Eingeplant/Zurückgestellt klappen ihre Liste direkt unter den Kacheln auf
+  var zo = isRO() ? -1 : zOfferItems(S.cur).length;
+  var pl = activeList==="open" ? Object.keys(T().places).map(P).filter(function(p){ return !p.of && dayOf(p.id) && fc(p); }) : null;
+  var pk = parkedWishes().filter(function(p){ return (activeList==="open" || inList(p, activeList)) && fc(p); });
+  if(zo > 0 || (pl && pl.length) || pk.length){
+    var tile = function(act, n, t, on, tip){ return "<button type=\"button\" class=\"wtile"+(on ? " on" : "")+"\" data-act=\""+act+"\""+(n ? "" : " disabled")+(on!=null ? " aria-pressed=\""+on+"\"" : "")+" title=\""+tip+"\"><b>"+n+"</b><span>"+t+"</span></button>"; };
+    h += "<div class=\"wtiles\">"+(zo > -1 ? tile("zoffer", zo, "Gemerkt", null, "Gemerkte Orte aus deinen Zielen übernehmen") : "")+
+      (pl ? tile("wplanned", pl.length, "Eingeplant", wPlannedOpen && pl.length > 0, "Schon eingeplante Orte – nochmal besuchen") : "")+
+      tile("wparked", pk.length, "Zurückgestellt", wParkedOpen && pk.length > 0, "Zurückgestellte Wünsche ein- oder ausblenden")+"</div>";
+    if(pl && pl.length && wPlannedOpen) h += "<div class=\"sec\"><h4>Schon eingeplant · nochmal besuchen</h4><ul class=\"wl\">"+pl.map(wishRow).join("")+"</ul></div>";
+    if(pk.length && wParkedOpen) h += "<div class=\"sec wpark\"><h4>Zurückgestellt</h4><ul class=\"wl\">"+pk.map(wishRow).join("")+"</ul></div>";
+  }
   var open = pool.filter(function(p){ return !dayOf(p.id) && fc(p); });
   h += open.length ? byCat(open) : activeList==="stay" && !catAny() && !keys.length ? "<p class=\"empty\">Noch keine Unterkünfte. Sammle hier mögliche Unterkünfte mit „+“ oder über die Suche (Kategorie Unterkunft). Bewerten, Fotos und Empfehlen wie bei jedem Ort; die gewählte übernimmst du als Hotel der Reise.</p>" : "<p class=\"empty\">"+(catAny()||keys.length?"Keine offenen Wünsche für diesen Filter.":"Noch keine offenen Wünsche. Lege oben den ersten an.")+"</p>";
-  if(activeList==="open"){
-    var pl = Object.keys(T().places).map(P).filter(function(p){ return !p.of && dayOf(p.id) && fc(p); });
-    if(pl.length){
-      h += "<div class=\"sec\"><button type=\"button\" class=\"fold\" data-act=\"wplanned\" aria-expanded=\""+wPlannedOpen+"\"><h4>Schon eingeplant · "+pl.length+"</h4><span class=\"cnt\">nochmal besuchen</span>"+CHEV+"</button>";
-      if(wPlannedOpen) h += "<ul class=\"wl\">"+pl.map(wishRow).join("")+"</ul>";
-      h += "</div>";
-    }
-  }
-  var pk = parkedWishes().filter(function(p){ return (activeList==="open" || inList(p, activeList)) && fc(p); });
-  if(pk.length){
-    h += "<div class=\"sec wpark\"><button type=\"button\" class=\"fold\" data-act=\"wparked\" aria-expanded=\""+wParkedOpen+"\"><h4>Zurückgestellt · "+pk.length+"</h4><span class=\"cnt\">"+(wParkedOpen ? "ausblenden" : "einblenden")+"</span>"+CHEV+"</button>";
-    if(wParkedOpen) h += "<ul class=\"wl\">"+pk.map(wishRow).join("")+"</ul>";
-    h += "</div>";
-  }
   if(activeList!=="open"){
     var planned = pool.filter(function(p){ return !p.of && dayOf(p.id) && fc(p); });
     if(planned.length) h += "<div class=\"sec\"><h4>Schon eingeplant · "+planned.length+"</h4><ul class=\"wl\">"+planned.map(wishRow).join("")+"</ul></div>";

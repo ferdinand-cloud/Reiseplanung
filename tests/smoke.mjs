@@ -1564,7 +1564,15 @@ await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin l�
   ok(await rp(`!!T().places.p6`), "Zurückstellen hat den Wunsch gelöscht");
   await rp(`select(null); tab = "wish"; setSheet("full"); renderSheet();`); await page.waitForTimeout(300);
   ok(!(await visible("#wishRes li[data-id=p6]")), "Zurückgestellter Wunsch steht noch in der Wunschliste");
-  ok((await page.locator("#wishRes .wpark").innerText()).includes("Zurückgestellt · 1"), "Abschnitt „Zurückgestellt“ fehlt");
+  const pt = await page.locator("#wishRes .wtiles [data-act=wparked]").innerText();
+  ok(pt.includes("Zurückgestellt") && pt.includes("1"), "Kachel „Zurückgestellt“ fehlt");
+  ok(await rp(`(function(){ var w = document.querySelector("#wishRes .wtiles"), l = document.querySelector("#wishRes li.wi"); return !!w && !!l && w.getBoundingClientRect().bottom <= l.getBoundingClientRect().top; })()`), "Kacheln stehen nicht oben über der Liste");
+  ok(await page.locator("#wishRes .fold").count()===0, "Alte Zeilen unten in der Wunschliste noch da");
+  await click("#wishRes .wtiles [data-act=wplanned]"); await page.waitForTimeout(150);
+  ok(await rp(`(function(){ var ids = Object.keys(T().places).filter(function(k){ return !P(k).of && dayOf(k); }); return ids.length > 0 && ids.every(function(k){ return !!document.querySelector('#wishRes li[data-id="'+k+'"]'); }); })()`), "Kachel „Eingeplant“ zeigt die eingeplanten Orte nicht");
+  ok(await page.locator("#wishRes .wtiles [data-act=wplanned]").getAttribute("aria-pressed")==="true", "Kachel „Eingeplant“ nicht aktiv");
+  await shot("wunsch-kacheln-eingeplant");
+  await click("#wishRes .wtiles [data-act=wplanned]"); await page.waitForTimeout(150);
   await click("#wishRes [data-act=wparked]"); await page.waitForTimeout(150);
   ok(await visible("#wishRes li.parked[data-id=p6]"), "Zurückgestellte lassen sich nicht einblenden");
   await click("#wishRes li[data-id=p6] [data-act=wunpark]"); await page.waitForTimeout(200);
@@ -1971,10 +1979,12 @@ await test("Ziele: neue Reise bietet gemerkte Orte an, Besuch erscheint sofort i
   // „Erstmal nicht“: später in der Wunschliste übernehmen
   await click("#cfPop .cf-no"); await page.waitForTimeout(150);
   await rp(`tab = "wish"; renderSheet(); true`); await page.waitForTimeout(150);
-  ok((await page.locator("#body [data-act=zoffer]").innerText()).includes("2 gemerkte Orte"), "Später übernehmen in der Wunschliste fehlt");
+  const zt = await page.locator("#body .wtiles [data-act=zoffer]").innerText();
+  ok(zt.includes("2") && zt.includes("Gemerkt"), "Kachel „Gemerkt“ in der Wunschliste fehlt");
+  await shot("wunsch-kacheln");
   await click("#body [data-act=zoffer]"); await page.waitForTimeout(150);
   await click("#cfPop .cf-ok"); await page.waitForTimeout(200);
-  ok(await page.locator("#body [data-act=zoffer]").count()===0, "Angebot bleibt nach dem Übernehmen stehen");
+  ok(await page.locator("#body [data-act=zoffer]:not([disabled])").count()===0, "Angebot bleibt nach dem Übernehmen stehen");
   ok(await rp(`Object.keys(T().places).filter(function(k){ return T().places[k].zl; }).length`)===2, "Orte nicht übernommen");
   ok(await rp(`!T().ziel && !noTrip()`), "Neue Reise ist nicht aktiv");
   await rp(`var k = Object.keys(T().places).filter(function(k){ return T().places[k].n==="Pantheon"; })[0], d = days()[0].key; T().order[d] = [k]; T().done[k] = true; T().rating = {}; T().rating[k] = 2; save(); openZiele(zielIds()[0]);`);
