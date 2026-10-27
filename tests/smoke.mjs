@@ -1008,6 +1008,22 @@ await test("Tagesplan: alles erledigt und ausgeblendet – Weg zum Hotel bleibt 
   ok(await rp(`(function(){ var el = document.querySelector("li.tleg"), hd = document.querySelector("[data-act=hidedone]"); return !!(el && hd && (hd.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)); })()`), "Weg zum Hotel steht nicht nach dem Hinweis auf die ausgeblendeten Stopps");
 });
 
+await test("Hotel-Pop-up: Zwischenstopp einplanen, beliebig oft, kein Knopf mehr im Tagesplan", async () => {
+  await seed();
+  await rp(`cur = todayKey(); tab = "day"; renderAll();`); await page.waitForTimeout(200);
+  ok(await page.locator(".rhead [data-act=hotelstopadd]").count()===0, "Zwischenstopp-Knopf steht noch im Tagesplan");
+  const n0 = await rp(`ord(cur).filter(function(x){ return P(x) && P(x).k==="hotel"; }).length`);
+  for(let i = 0; i < 3; i++){
+    await rp(`select("h1")`); await page.waitForTimeout(150);
+    const b = page.locator("#card [data-act=hotelstopadd]");
+    ok(await b.count()===1, "Zwischenstopp fehlt im Hotel-Pop-up");
+    await b.click(); await page.waitForTimeout(200);
+  }
+  ok(await rp(`ord(cur).filter(function(x){ return P(x) && P(x).k==="hotel"; }).length`)===n0+3, "Nicht jeder Zwischenstopp wurde eingeplant");
+  ok(await rp(`!sel`), "Hotel-Pop-up bleibt nach dem Einplanen offen");
+  ok(await page.locator("#sheet li", {hasText:"Zwischenstopp im Hotel"}).count() >= 3, "Zwischenstopps fehlen im Tagesplan");
+});
+
 await test("Liste: besuchte Orte nach Sichtbarkeit filtern", async () => {
   await seed();
   // gestern besucht: p4, p5; p4 privat, p5 für Freunde; dazu heute p1 besucht (Reise)
