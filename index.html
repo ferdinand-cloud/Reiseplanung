@@ -1621,7 +1621,7 @@ body.ro .lrow:has(#lSub),body.ro .lrow:has(#lBus),body.ro label:has(#lWish),body
 .addmenu.jpmenu > button.sel{background:var(--fill)}
 .addmenu.jpmenu .cm-t{display:flex;flex-direction:column;gap:1px;min-width:0}
 .addmenu.jpmenu .cm-t small{font-size:12px;font-weight:500;color:var(--muted);line-height:1.25}
-.addmenu.jpmenu[data-kind="cardmore"]{width:min(268px,calc(100vw - 20px));max-height:calc(100dvh - 20px);overflow-y:auto;overscroll-behavior:contain}
+.addmenu.jpmenu[data-kind="cardmore"]{width:min(268px,calc(100vw - 20px));grid-template-columns:minmax(0,1fr);max-height:calc(100dvh - 20px);overflow-y:auto;overscroll-behavior:contain}
 .addmenu.jpmenu[data-kind="cardmore"] > button{padding:7px 8px;gap:10px;font-size:14.5px}
 .addmenu.jpmenu[data-kind="cardmore"] .ai{width:26px;height:26px;flex:0 0 26px;border-radius:8px}
 .addmenu.jpmenu[data-kind="cardmore"] .ai svg{width:16px;height:16px}

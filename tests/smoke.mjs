@@ -1314,6 +1314,8 @@ await test("Ort-Menü (Mehr): Gruppen Planen/Zuordnen/Infos, einzeilige Zeilen, 
   await seed();
   const id = await rp(`Object.keys(T().places).filter(function(k){ return dayOf(k)===cur && P(k).k!=="hotel" && !T().done[k]; })[0]`);
   ok(!!id, "Kein geplanter Ort am Tag");
+  // langer Hotelname: Zeile muss gekürzt werden statt das Menü zu verbreitern
+  await rp(`(function(){ var h = dayByKey(cur).hotel; if(h) h.n = "Voco Times Square South Hotel Manhattan New York"; })()`);
   await rp(`(function(){ setSheet("mid"); select("${id}"); })()`); await page.waitForTimeout(250);
   await click("#card [data-act=cardmore]");
   ok(await visible("#jpMenu"), "Menü öffnet nicht");
@@ -1322,13 +1324,15 @@ await test("Ort-Menü (Mehr): Gruppen Planen/Zuordnen/Infos, einzeilige Zeilen, 
     const rows = kids.filter(x => x.tagName==="BUTTON" && !x.classList.contains("cm-del")), del = el.querySelector(".cm-del");
     return { heads: [...el.querySelectorAll(".cm-h")].map(x => x.textContent), last: kids[kids.length-1]===del, delAct: del && del.getAttribute("data-act"),
       // Layout-Maße (offset/client) statt getBoundingClientRect: das Pop-up skaliert beim Aufgehen kurz
-      delFull: del ? Math.abs(del.offsetWidth - (el.clientWidth - 12)) < 3 : false,
+      delFull: del ? Math.abs(del.offsetWidth - (el.clientWidth - 12)) < 3 : false, delW: del && del.offsetWidth, cw: el.clientWidth,
+      over: kids.filter(x => x.offsetWidth > el.clientWidth - 12 + 1).length + (el.scrollWidth > el.clientWidth + 1 ? 1 : 0),
       maxH: Math.max(...rows.map(x => x.offsetHeight)), subs: el.querySelectorAll(".cm-t small").length,
       inView: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth,
       first: kids[0].classList.contains("cm-h"), order: rows.map(x => x.getAttribute("data-act")) }; });
   ok(m.heads.join("|")==="Planen|Zuordnen|Infos", "Gruppen-Überschriften falsch: "+m.heads.join("|"));
   ok(m.first, "Menü beginnt nicht mit einer Überschrift");
-  ok(m.last && m.delAct==="moredel" && m.delFull, "Löschen steht nicht ganz unten in voller Breite");
+  ok(m.last && m.delAct==="moredel" && m.delFull, "Löschen steht nicht ganz unten in voller Breite: "+JSON.stringify([m.last, m.delAct, m.delW, m.cw]));
+  ok(m.over===0, "Zeilen ragen aus dem Menü (lange Texte ohne Kürzung)");
   ok(m.subs===0 && m.maxH <= 42, "Zeilen nicht einzeilig (Höhe "+m.maxH+", Untertitel "+m.subs+")");
   ok(m.inView, "Menü ragt aus dem Bild");
   ok(m.order.indexOf("unplan") > -1 && m.order.indexOf("unplan") < m.order.indexOf("grppick") && m.order.indexOf("grppick") < m.order.indexOf("gmopen"), "Reihenfolge der Gruppen falsch: "+m.order.join(","));
