@@ -2640,7 +2640,7 @@ await test("Freundesgruppen: anlegen, am Freund zuordnen, Schnellauswahl beim Fr
   ok(await rp(`FG.length===1 && FG[0].n==="Familie" && FG[0].m.join()==="u_anna,u_ludwig"`), "Gruppe falsch gespeichert: "+await rp(`JSON.stringify(FG)`));
   ok(await rp(`__fgw.some(function(w){ return w[0]==="set" && /^users\\/u_me\\/fgroups\\/g/.test(w[1]) && w[2].n==="Familie" && w[2].m.length===2; })`), "Nicht im eigenen privaten Bereich gespeichert: "+await rp(`JSON.stringify(__fgw)`));
   ok(await rp(`var g = document.querySelector("#catPop .fr-pop .fg-grp"); !!g && /Familie/.test(g.textContent) && /2 Personen/.test(g.textContent)`), "Nach dem Speichern nicht zurück in der Gruppenliste");
-  ok(await rp(`/1 Gruppe/.test(document.querySelector("#acctPop [data-act=fglist]").textContent)`), "Gruppen-Knopf zählt nicht");
+  ok(await rp(`/1 Gruppe/.test(document.querySelector("#acctPop [data-act=fglist]").getAttribute("aria-label"))`), "Gruppen-Knopf zählt nicht");
   await tapS("#catPop [data-act=fgnew]"); await page.waitForTimeout(250);
   ok(await rp(`document.getElementById("fgName").value===""`), "Neue Gruppe übernimmt den Namen der vorigen: "+await rp(`document.getElementById("fgName").value`));
   await rp(`closeCatPop(); true`);
@@ -2700,7 +2700,8 @@ await test("Follower-Seite: Follower/Gefolgt, neue Follower mit rotem Zähler, z
     closeMenus(); accView = "friends"; openSettings(); true`);
   await page.waitForTimeout(200);
   ok(/Follower/.test(await page.locator("#acctPop .ag-title").innerText()), "Seite heißt nicht Follower");
-  ok(/Follower · 4/.test(await page.locator('#acctPop [data-act=frtab][data-v="fol"]').innerText()) && /Gefolgt · 3/.test(await page.locator('#acctPop [data-act=frtab][data-v="ing"]').innerText()), "Reiter Follower/Gefolgt zählen falsch");
+  ok(/Follower\s*4/.test(await page.locator('#acctPop [data-act=frtab][data-v="fol"]').innerText()) && /Gefolgt\s*3/.test(await page.locator('#acctPop [data-act=frtab][data-v="ing"]').innerText()), "Reiter Follower/Gefolgt zählen falsch");
+  ok(await rp(`var t = document.querySelector("#acctPop .ag-title").getBoundingClientRect(), x = document.querySelector("#acctPop .ag-x").getBoundingClientRect(), s = document.querySelector("#acctPop .fr-seg").getBoundingClientRect(), b = document.querySelector("#acctPop [data-act=frreqs]").getBoundingClientRect(); Math.abs(s.top + s.height/2 - (b.top + b.height/2)) < 4 && (function(){ var g = document.createRange(); g.selectNodeContents(document.querySelector("#acctPop .ag-title")); return g.getBoundingClientRect().right <= x.left - 4; })()`), "Kopf nicht kompakt: Umschalter und Knöpfe nicht in einer Zeile oder Titel unter dem Schließen-Knopf");
   ok(await page.locator("#acctPop [data-frn]").count()===4, "Follower-Liste unvollständig");
   ok(await rp(`[].every.call(document.querySelectorAll("#acctPop [data-frn] .fn b"), function(b){ return b.scrollWidth <= b.clientWidth + 1; })`), "Namen in der Liste abgeschnitten");
   ok(await rp(`!document.querySelector('#acctPop [data-act=fgfor][data-uid="u_x"]') && !!document.querySelector('#acctPop [data-act=fgfor][data-uid="u_anna"]')`), "Gruppen-Knopf nicht nur bei Freunden (gegenseitig)");
@@ -2756,7 +2757,7 @@ await test("Follower-Seite: Unterfenster (Leute suchen, Gruppen, Gruppe, neue Fo
     closeMenus(); openProfile(); true`);
   await page.waitForTimeout(300);
   await rp(`accView = "friends"; openSettings(); true`); await page.waitForTimeout(200);
-  const onFriends = async (w) => { await page.waitForTimeout(250); ok(await rp(`!document.getElementById("acctPop").hidden && accView==="friends" && !!document.querySelector("#acctPop .fr-tiles")`), w+": nicht zurück auf der Follower-Seite"); };
+  const onFriends = async (w) => { await page.waitForTimeout(250); ok(await rp(`!document.getElementById("acctPop").hidden && accView==="friends" && !!document.querySelector("#acctPop .fr-bar")`), w+": nicht zurück auf der Follower-Seite"); };
   // Leute suchen: × und Tipp daneben
   await tapS('#acctPop [data-act=accview][data-v="search"]'); await page.waitForTimeout(200);
   ok(await rp(`accView==="search"`), "Leute suchen öffnet nicht");
