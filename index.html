@@ -2163,7 +2163,7 @@ li.st .lcol .grip::before{content:"";position:absolute;right:0;top:10px;bottom:1
 li.st .lcol .grip:active,ol.plan.sorting .st.drag .grip{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
 
 /* Lösch-X in Eingabefeldern */
-#clrX{position:fixed;z-index:200;width:28px;height:28px;border:0;background:none;padding:5px;color:color-mix(in srgb,var(--ink) 38%,transparent);cursor:pointer;display:grid;place-items:center}
+#clrX{position:absolute;z-index:5;width:28px;height:28px;border:0;background:none;padding:5px;color:color-mix(in srgb,var(--ink) 38%,transparent);cursor:pointer;display:grid;place-items:center}
 #clrX[hidden]{display:none}
 #clrX svg{width:18px;height:18px;display:block}
 input.hasclr{padding-right:34px !important}
@@ -5439,7 +5439,11 @@ function drawLocs(){
     cur.classList.add("hasclr");
     var r = cur.getBoundingClientRect(); if(!r.width || !cur.offsetParent){ btn.hidden = true; return; }
     var top = document.elementFromPoint(Math.round(r.right - 16), Math.round(r.top + r.height/2)); if(top && top!==cur && top!==btn && !btn.contains(top) && !cur.contains(top)){ btn.hidden = true; return; }
-    btn.style.left = Math.round(r.right - 30)+"px"; btn.style.top = Math.round(r.top + r.height/2 - 14)+"px"; btn.hidden = false;
+    // direkt neben dem Feld im selben Container, nicht fest am Bildschirm: so verrutscht das X nicht, wenn iOS die Seite für die Tastatur verschiebt
+    if(cur.nextSibling!==btn) cur.after(btn);
+    btn.hidden = false; var op = btn.offsetParent, ox = window.scrollX, oy = window.scrollY;
+    if(op && op!==document.body){ var o = op.getBoundingClientRect(); ox = op.scrollLeft - o.left - op.clientLeft; oy = op.scrollTop - o.top - op.clientTop; }
+    btn.style.left = Math.round(r.right - 30 + ox)+"px"; btn.style.top = Math.round(r.top + r.height/2 - 14 + oy)+"px";
   };
   document.addEventListener("focusin", function(e){ if(ok(e.target)){ cur = e.target; place(); } });
   document.addEventListener("input", function(e){ if(ok(e.target)){ cur = e.target; place(); } });
