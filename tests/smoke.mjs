@@ -1899,6 +1899,8 @@ await test("Freunde: Suche statt Liste bei 200 Freunden (Ziel teilen)", async ()
   await rp(`fbDb = null; FR.friends = []; true`);
 });
 
+// Tippen mit Selektor in der Fehlermeldung
+async function tapS(sel){ try { await page.tap(sel); } catch(e){ throw new Error("Tippen auf "+sel+" fehlgeschlagen: "+(e.message||e).split("\n")[0]); } }
 await test("Freundesgruppen: anlegen, am Freund zuordnen, Schnellauswahl beim Fragen und Einladen, löschen", async () => {
   await seed();
   await rp(`window.__fgw = []; var fq = function(path){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(path+"/"+id); }, add:function(){ return Promise.resolve({}); }}; return q; },
@@ -1909,58 +1911,58 @@ await test("Freundesgruppen: anlegen, am Freund zuordnen, Schnellauswahl beim Fr
     closeMenus(); accView = "friends"; openSettings(); true`);
   await page.waitForTimeout(200);
   ok(await visible("#acctPop [data-act=fgnew]"), "„Neue Gruppe“ fehlt auf der Freunde-Seite");
-  await page.tap("#acctPop [data-act=fgnew]"); await page.waitForTimeout(250);
+  await tapS("#acctPop [data-act=fgnew]"); await page.waitForTimeout(250);
   ok(await visible("#catPop .fg-card"), "Gruppen-Fenster öffnet nicht");
-  await page.tap("#catPop [data-act=fgsave]"); await page.waitForTimeout(150);
+  await tapS("#catPop [data-act=fgsave]"); await page.waitForTimeout(150);
   ok(await rp(`FG.length===0 && !!document.querySelector("#catPop .fg-card")`), "Gruppe ohne Namen gespeichert");
   await page.fill("#fgName", "Familie");
-  await page.tap('#catPop .frs-row[data-uid="u_anna"]'); await page.waitForTimeout(120);
-  await page.tap('#catPop .frs-row[data-uid="u_ludwig"]'); await page.waitForTimeout(120);
+  await tapS('#catPop .frs-row[data-uid="u_anna"]'); await page.waitForTimeout(120);
+  await tapS('#catPop .frs-row[data-uid="u_ludwig"]'); await page.waitForTimeout(120);
   ok(await rp(`document.getElementById("fgName").value`)==="Familie", "Name geht beim Auswählen verloren");
   ok(await page.locator("#catPop .frs-chip").count()===2, "Ausgewählte erscheinen nicht oben");
   await shot("fg-bearbeiten");
-  await page.tap("#catPop [data-act=fgsave]"); await page.waitForTimeout(250);
+  await tapS("#catPop [data-act=fgsave]"); await page.waitForTimeout(250);
   ok(await rp(`FG.length===1 && FG[0].n==="Familie" && FG[0].m.join()==="u_anna,u_ludwig"`), "Gruppe falsch gespeichert: "+await rp(`JSON.stringify(FG)`));
   ok(await rp(`__fgw.some(function(w){ return w[0]==="set" && /^users\\/u_me\\/fgroups\\/g/.test(w[1]) && w[2].n==="Familie" && w[2].m.length===2; })`), "Nicht im eigenen privaten Bereich gespeichert: "+await rp(`JSON.stringify(__fgw)`));
   ok(await rp(`document.getElementById("catPop").hidden && /Familie/.test(document.querySelector("#acctPop .fg-grp").textContent) && /2 Personen/.test(document.querySelector("#acctPop .fg-grp").textContent)`), "Gruppe fehlt auf der Freunde-Seite");
   // Zweite Gruppe, Clara am Freund selbst zuordnen – auch in mehreren Gruppen
-  await rp(`fgPut({id:"gk", n:"Enger Kreis", m:["u_anna"]}); true`); await page.waitForTimeout(100);
-  await page.tap('#acctPop [data-act=fgfor][data-uid="u_clara"]'); await page.waitForTimeout(200);
+  await rp(`fgPut({id:"gk", n:"Enger Kreis", m:["u_anna"]}); $("toast").hidden = true; true`); await page.waitForTimeout(100);
+  await tapS('#acctPop [data-act=fgfor][data-uid="u_clara"]'); await page.waitForTimeout(200);
   ok(await page.locator("#jpMenu [data-act=fgset]").count()===2, "Gruppen-Auswahl am Freund fehlt");
-  await page.tap('#jpMenu [data-act=fgset]:has-text("Familie")'); await page.waitForTimeout(150);
-  await page.tap('#jpMenu [data-act=fgset]:has-text("Enger Kreis")'); await page.waitForTimeout(150);
+  await tapS('#jpMenu [data-act=fgset]:has-text("Familie")'); await page.waitForTimeout(150);
+  await tapS('#jpMenu [data-act=fgset]:has-text("Enger Kreis")'); await page.waitForTimeout(150);
   ok(await visible("#jpMenu"), "Auswahl schließt nach dem Antippen");
   ok(await rp(`fgOf("u_clara").length===2 && fgOf("u_anna").length===2`), "Person nicht in mehreren Gruppen");
   await shot("fg-am-freund");
-  await page.tap("#acctPop .ag-title"); await page.waitForTimeout(150);
+  await tapS("#acctPop .ag-title"); await page.waitForTimeout(150);
   ok(await rp(`/Enger Kreis · Familie/.test(document.querySelector('#acctPop [data-uid="u_clara"]').closest(".ag-row").textContent)`), "Gruppen stehen nicht beim Freund");
   // Schnellauswahl: Freunde fragen
   await rp(`closeSettings(); openAsk("Rom"); true`); await page.waitForTimeout(200);
   ok(await page.locator("#catPop .ask-card .fg-chip").count()===2, "Gruppen fehlen beim Freunde-Fragen");
   await shot("fg-fragen");
-  await page.tap('#catPop .fg-chip:has-text("Familie")'); await page.waitForTimeout(150);
+  await tapS('#catPop .fg-chip:has-text("Familie")'); await page.waitForTimeout(150);
   ok(await rp(`Object.keys(ASK.sel).sort().join()==="u_anna,u_clara,u_ludwig"`), "Gruppe wählt nicht alle aus");
-  await page.tap('#catPop .fg-chip:has-text("Familie")'); await page.waitForTimeout(150);
+  await tapS('#catPop .fg-chip:has-text("Familie")'); await page.waitForTimeout(150);
   ok(await rp(`Object.keys(ASK.sel).length===0`), "Zweites Antippen hebt die Auswahl nicht auf");
   await rp(`closeCatPop(); ASK = null; true`);
   // Schnellauswahl: Ziel teilen (einladen) mit Rückfrage
   await rp(`var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); META[z] = {owner:"u_me", members:["u_me"], invites:["a@x.de"]}; window.__z = z; save(); openZiele(z); true`);
   await page.waitForTimeout(300);
-  await page.tap("#zPop [data-act=zinvpop]"); await page.waitForTimeout(300);
+  await tapS("#zPop [data-act=zinvpop]"); await page.waitForTimeout(300);
   ok((await page.locator('#catPop .fg-chip[data-act=fginv]:has-text("Familie")').textContent()).replace(/\s/g, "")==="Familie2", "Gruppe zählt bereits Eingeladene mit");
-  await page.tap('#catPop .fg-chip:has-text("Familie")'); await page.waitForTimeout(200);
+  await tapS('#catPop .fg-chip:has-text("Familie")'); await page.waitForTimeout(200);
   ok(await visible("#cfPop .cf-card"), "Keine Rückfrage vor dem Einladen der Gruppe");
-  await page.tap("#cfPop .cf-ok"); await page.waitForTimeout(300);
+  await tapS("#cfPop .cf-ok"); await page.waitForTimeout(300);
   ok(await rp(`META[__z].invites.slice().sort().join()==="a@x.de,c@x.de,l@x.de"`), "Gruppe nicht eingeladen: "+await rp(`JSON.stringify(META[__z].invites)`));
   ok(await rp(`!document.querySelector("#catPop .fg-chip[data-act=fginv]")`), "Gruppe bleibt trotz eingeladener Personen zur Auswahl");
   await rp(`closeCatPop(); closeProfile(); true`);
   // Löschen nur mit Bestätigung, rot
-  await rp(`closeMenus(); accView = "friends"; openSettings(); true`); await page.waitForTimeout(200);
-  await page.tap('#acctPop [data-act=fgopen][data-g="gk"]'); await page.waitForTimeout(200);
+  await rp(`closeMenus(); accView = "friends"; openSettings(); $("toast").hidden = true; true`); await page.waitForTimeout(200);
+  await tapS('#acctPop [data-act=fgopen][data-g="gk"]'); await page.waitForTimeout(200);
   ok(await rp(`var c = getComputedStyle(document.querySelector("#catPop [data-act=fgdel]")).color.match(/\\d+/g).map(Number); c[0] > c[1] + 40`), "Löschen-Knopf nicht rot");
-  await page.tap("#catPop [data-act=fgdel]"); await page.waitForTimeout(200);
+  await tapS("#catPop [data-act=fgdel]"); await page.waitForTimeout(200);
   ok(await visible("#cfPop .cf-card") && await rp(`FG.length===2`), "Löschen ohne Rückfrage");
-  await page.tap("#cfPop .cf-ok"); await page.waitForTimeout(200);
+  await tapS("#cfPop .cf-ok"); await page.waitForTimeout(200);
   ok(await rp(`FG.length===1 && !fgGet("gk") && __fgw.some(function(w){ return w[0]==="del" && /fgroups\\/gk$/.test(w[1]); })`), "Gruppe nicht gelöscht");
   await rp(`closeCatPop(); closeSettings(); fbDb = null; FR.friends = []; FG = []; true`);
 });
