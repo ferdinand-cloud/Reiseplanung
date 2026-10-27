@@ -1339,6 +1339,22 @@ await test("Unterkunftsliste: Ort als Unterkunft vormerken, eigene Liste, als Ho
   ok(await rp(`T().places.p7.c==="park" && !T().places.p7.c0`), "Markierung lässt sich nicht zurücknehmen");
 });
 
+await test("Ebene Wünsche aus: nach Listenwechsel und Einklappen keine Wunsch-Pins", async () => {
+  await seed();
+  await rp(`layers.wish = false; select(null); tab = "wish"; setSheet("mid"); renderSheet(); fitPoints(wishes()); drawOverlay();`);
+  for(let i=0; i<30 && !(await rp(`WISHN>0`)); i++) await page.waitForTimeout(100);
+  ok(await rp(`WISHN>0`), "Offene Wunschliste zeigt keine Wünsche auf der Karte");
+  await click("#body .fchip[data-k=list]");
+  await click("#catPop [data-act=wlist][data-l=stay]"); await page.waitForTimeout(200);
+  await click("#body .fchip[data-k=list]");
+  await click("#catPop [data-act=wlist][data-l=open]"); await page.waitForTimeout(200);
+  await rp(`setSheet("min")`); await page.waitForTimeout(300);
+  ok(await rp(`activeList==="open" && WISHN===0`), "Eingeklappt mit Ebene „Wünsche“ aus werden Wünsche gezeigt");
+  await rp(`setSheet("mid"); fitPoints(wishes());`);
+  for(let i=0; i<30 && !(await rp(`WISHN>0`)); i++) await page.waitForTimeout(100);
+  ok(await rp(`WISHN>0`), "Nach Ausklappen fehlen die Wünsche der Liste auf der Karte");
+});
+
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
   await seed();
   await rp(`select("p6")`); await page.waitForTimeout(200);

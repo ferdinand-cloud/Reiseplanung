@@ -8747,7 +8747,7 @@ function movableAt(x, y){
   var best = null, bd = 26, D = dayByKey(cur);
   function test(id){ var r = rootOf(id), p = P(r); if(!canMove(p)) return; var q = pt(P(id)), d = Math.hypot(q[0]-x, q[1]-y); if(d < bd){ best = r; bd = d; } }
   if(D) ord(cur).forEach(test);
-  if(layers.wish || tab==="wish") wishes().forEach(function(w){ test(w.id); });
+  if(layers.wish || wishView()) wishes().forEach(function(w){ test(w.id); });
   PHMK.forEach(test);
   // Wegpunkte der Route (liegen über den Stopps nur, wenn sie näher sind)
   if(layers.route && D) VIAMK.forEach(function(m){ var d = Math.hypot(m.x-x, m.y-y); if(d < Math.min(bd, 22)){ best = "via:"+m.li+":"+m.vi; bd = d; } });
@@ -10001,7 +10001,7 @@ function thumbOf(ph){
   return null;
 }
 function firstThumb(id){ var a = ((T().photos||{})[id]) || []; for(var i = a.length - 1; i >= 0; i--){ var t = thumbOf(a[i]); if(t) return t; } return null; }
-var cpN = 0;
+var cpN = 0, WISHN = 0; // WISHN: Anzahl gezeichneter Wunsch-Pins
 function mkShadow(x, y, r){ return "<ellipse cx=\""+f1(x)+"\" cy=\""+f1(y+r*.28)+"\" rx=\""+f1(r*1.02)+"\" ry=\""+f1(r*.98)+"\" fill=\"#0b1219\" opacity=\".22\"/>"; }
 function mkPhoto(x, y, r, img, ring, op){
   var id = "cp"+(cpN++);
@@ -10051,9 +10051,9 @@ function drawOverlay(){
     });
   }
   // Wünsche (dezent)
-  var sugIds = {}, wishMarks = [], wlabels = "", MK = []; cpN = 0; LBLQ = [];
+  var sugIds = {}, wishMarks = [], wlabels = "", MK = []; cpN = 0; WISHN = 0; LBLQ = [];
   if(tab==="day" && sugOpen && D) suggest(cur,3).forEach(function(x){ sugIds[x.w.id] = 1; });
-  if((layers.wish || tab==="wish") && !isRO()){
+  if((layers.wish || wishView()) && !isRO()){
     wishes().forEach(function(w){
       if(!hasLoc(w)) return;
       if((!catOk(w.c) || (tab==="wish" && (!nbMatch(w) || !qMatch(w) || !grpOk(w)))) && sel!==w.id) return;
@@ -10061,6 +10061,7 @@ function drawOverlay(){
       var strong = (tab==="wish" && activeList!=="open" && (w.list||"none")===activeList) || sugIds[w.id];
       wishMarks.push({w:w, q:q, strong:strong});
     });
+    WISHN = wishMarks.length;
     wishMarks.forEach(function(m){
       var w = m.w, q = m.q, isSel = sel===w.id, cc = catCol(w.c), big = zoomed || m.strong || isSel;
       var ring = (tab==="day" && sugIds[w.id]) ? dayColor(cur) : cc, op = big ? 1 : .92, th = big && firstThumb(w.id);
@@ -10177,7 +10178,7 @@ function drawOverlay(){
   if(visOn()) (function(){
     var shown = {}, ps = T().photos || {};
     if(D) ord(cur).forEach(function(id){ if(!mapHid(id) && !(P(id) && P(id).k==="hotel")) shown[id] = 1; });
-    if((layers.wish || tab==="wish") && !isRO()) wishes().forEach(function(w){ shown[w.id] = 1; });
+    if((layers.wish || wishView()) && !isRO()) wishes().forEach(function(w){ shown[w.id] = 1; });
     Object.keys(ps).forEach(function(pid){
       var q0p = P(pid); if(shown[pid] || !q0p || !hasLoc(q0p) || !(ps[pid]||[]).length || (isRO() && !dayOf(pid))) return;
       var qq = pt(q0p); if(!onScreen(qq, 30)) return;
@@ -10981,7 +10982,7 @@ function tap(x, y){
   function test(id, p, rad){ if(!hasLoc(p)) return; var q = pt(p), d = Math.hypot(q[0]-x, q[1]-y); if(d < Math.max(rad, bd) && (!best || d < bd)){ best = id; bd = d; } }
   if(D) ord(cur).forEach(function(id){ test(id, P(id), 20); });
   T().hotels.forEach(function(h){ test(h.id, h, 18); });
-  if(!best && (layers.wish || tab==="wish") && !isRO()) wishes().forEach(function(w){ test(w.id, w, 16); });
+  if(!best && (layers.wish || wishView()) && !isRO()) wishes().forEach(function(w){ test(w.id, w, 16); });
   if(!best) PHMK.forEach(function(pid){ test(pid, P(pid), 14); });
   if(!best && layers.sub && !isRO()){ var sb = -1, sd = 16; TRANSIT.stations.forEach(function(st, si){ if(!stationOn(st)) return; var q = toS(st[1], st[2]), d = Math.hypot(q[0]-x, q[1]-y); if(d < sd){ sd = d; sb = si; } }); if(sb > -1){ select("sub:"+sb); return; } }
   if(!best && layers.bike && map.getLayer("cb")){ var cbf = map.queryRenderedFeatures([[x-12, y-12], [x+12, y+12]], {layers:["cb"]})[0]; if(cbf){ select("cb:"+cbf.properties.id); cbLoad(); return; } }
@@ -11780,10 +11781,16 @@ function applySheet(){
   if(body.style.paddingBottom !== pb) body.style.paddingBottom = pb;
 }
 function setSheet(s, px){ sheetPx = px || 0; sheetState = s; document.body.classList.toggle("sheetfull", s==="full"); document.body.classList.toggle("sheetmin", s==="min"); if(s!=="min") sideOpen = true; syncSide(); applySheet(); placeFloating(); }
+// Wünsche auf der Karte ohne Ebene „Wünsche“ nur, solange die Wunschliste wirklich offen ist (eingeklappt zählt die Ebene)
+function planOpen(){ return desktop.matches ? sideOpen : sheetState!=="min"; }
+function wishView(){ return tab==="wish" && planOpen(); }
+var lastPlanOpen = null;
 function syncSide(){
   document.body.classList.toggle("side-off", desktop.matches && !sideOpen);
   if(typeof tbPillSync==="function") setTimeout(tbPillSync, 0); // quer ändert sich die Breite der Leiste oben
-  var open = desktop.matches ? sideOpen : sheetState!=="min";
+  var open = planOpen();
+  if(lastPlanOpen!==null && open!==lastPlanOpen && tab==="wish" && !layers.wish && typeof scheduleOverlay==="function") scheduleOverlay();
+  lastPlanOpen = open;
   $("sideBtn").setAttribute("aria-expanded", open);
   $("sideBtn").setAttribute("aria-label", open ? "Planung einklappen" : "Planung ausklappen");
   $("edgeBtn").setAttribute("aria-label", open ? "Planung einklappen" : "Planung ausklappen");
