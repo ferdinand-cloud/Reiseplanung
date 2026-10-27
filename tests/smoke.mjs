@@ -2372,6 +2372,14 @@ const avCropTest = async (n) => {
   await shot("profilbild-vollbild-"+n);
   await page.locator("#avFull .avf-x").click();
   ok(await rp(`$("avFull").hidden && profOpen`), "Vollbild nicht geschlossen oder Profil zu");
+  // nach unten ziehen schließt wie bei den Fotos
+  await page.locator("#profView img.pf-av").click(); await page.locator("#avFull img").waitFor({state:"visible"});
+  const cdp = await page.context().newCDPSession(page), mx = Math.round(vp.width/2), my = Math.round(vp.height/3);
+  await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:mx, y:my}]});
+  for(const d of [20, 60, 120, 180, 220]){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:mx, y:my + d}]}); await page.waitForTimeout(16); }
+  await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]});
+  await page.waitForFunction(() => window.__rp(`$("avFull").hidden`));
+  ok(await rp(`profOpen`), "Profil nach Runterziehen zu");
   await rp(`fbDb = null; true`);
 };
 await test("Profilbild: zuschneiden im runden Rahmen, verschieben, zoomen, Vollbild", async () => { await avCropTest("hoch"); });

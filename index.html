@@ -1540,10 +1540,11 @@ li.st .sub{margin-top:1px}
 .avc-m{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.5);border:1.5px solid rgba(255,255,255,.85);pointer-events:none}
 .avc-card p{font-size:13px}
 img.pf-av,img.pe-img,.ag-av img,.ch-head img.ch-av,.gsav img{cursor:zoom-in}
-.avfull{position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.92);display:grid;place-items:center;padding:max(48px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+.avfull{position:fixed;inset:0;z-index:99}
+.avf-lb{position:absolute;inset:0;background:rgba(0,0,0,.94);display:grid;place-items:center;padding:max(48px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));touch-action:none}
 .avfull[hidden]{display:none}
 .avfull img{width:min(100%,calc(100vh - 96px));aspect-ratio:1/1;object-fit:cover;display:block}
-.avf-x{position:absolute;top:max(10px,env(safe-area-inset-top));right:12px;width:38px;height:38px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font:400 26px/1 var(--f-body);cursor:pointer}
+.avf-x{position:absolute;z-index:1;top:max(10px,env(safe-area-inset-top));right:12px;width:38px;height:38px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font:400 26px/1 var(--f-body);cursor:pointer}
 /* rot nur, wenn der Knopf löscht oder entfernt */
 .cf-ok.del{background:#D9534F;color:#fff}
 body.ro .lrow:has(#lSub),body.ro .lrow:has(#lBus),body.ro label:has(#lWish),body.ro label:has(#lSub),body.ro label:has(#lBus),body.ro label:has(#lFerry),body.ro #subLines,body.ro #busLines,body.ro #tabWish{display:none}
@@ -7419,9 +7420,10 @@ function avCrop(im, url){
 var AVTAP = "img.pf-av, img.pe-img, .ag-av img, .ch-head img.ch-av, .gsav img";
 function avFull(src){
   var el = $("avFull"); if(!el){ el = document.createElement("div"); el.id = "avFull"; el.className = "avfull"; document.body.appendChild(el); }
-  el.innerHTML = "<button type=\"button\" class=\"avf-x\" aria-label=\"Schließen\">×</button><img src=\""+esc(src)+"\" alt=\"Profilbild\">";
+  el.innerHTML = "<button type=\"button\" class=\"avf-x\" aria-label=\"Schließen\">×</button><div class=\"avf-lb\"><img src=\""+esc(src)+"\" alt=\"Profilbild\"></div>";
   el.hidden = false;
-  var close = function(){ el.hidden = true; el.innerHTML = ""; document.removeEventListener("keydown", key, true); };
+  var lb = el.querySelector(".avf-lb"), close = function(){ el.hidden = true; el.innerHTML = ""; document.removeEventListener("keydown", key, true); };
+  dragDownClose(lb, function(){ return [el.querySelector(".avf-x")].filter(Boolean); }, close);
   var key = function(ev){ if(ev.key==="Escape"){ ev.stopPropagation(); close(); } };
   document.addEventListener("keydown", key, true);
   el.onclick = function(ev){ ev.stopPropagation(); close(); };
@@ -14497,9 +14499,11 @@ function rcLb(ph){
   rcZoom(lb); rcLbSwipe(lb);
 }
 /* Vollbild im Rückblick: von oben nach unten ziehen schließt das Foto und springt zur Stelle dieses Fotos im Rückblick */
-function rcLbSwipe(lb){
+function rcLbSwipe(lb){ dragDownClose(lb, function(){ return [$("rcLbX"), $("rcLbSide")].filter(Boolean); }, function(){ var ph = rcLbPh(); rcLbClose(); rcGoToPh(ph); }); }
+/* Vollbild nach unten ziehen schließt (Fotos im Rückblick, Profilbild): el folgt dem Finger, others blenden aus, done schließt */
+function dragDownClose(lb, others, done){
   var sw = null;
-  function parts(){ return [lb, $("rcLbX"), $("rcLbSide")].filter(Boolean); }
+  function parts(){ return others ? others() : []; }
   lb.addEventListener("touchstart", function(e){
     sw = null; if(e.touches.length!==1 || lb.classList.contains("zoomed")) return;
     var t = e.touches[0]; sw = {x:t.clientX, y:t.clientY, t:Date.now(), mode:null, dy:0};
@@ -14513,15 +14517,14 @@ function rcLbSwipe(lb){
     e.preventDefault(); sw.dy = Math.max(0, dy);
     var k = Math.min(sw.dy, 400)/400;
     lb.style.transition = "none"; lb.style.transform = "translateY("+sw.dy+"px) scale("+(1 - k*0.15)+")"; lb.style.background = "rgba(0,0,0,"+(0.94*(1 - Math.min(sw.dy, 300)/300*0.85))+")";
-    parts().slice(1).forEach(function(n){ n.style.transition = "none"; n.style.opacity = String(1 - Math.min(1, sw.dy/120)); });
+    parts().forEach(function(n){ n.style.transition = "none"; n.style.opacity = String(1 - Math.min(1, sw.dy/120)); });
   }, {passive:false});
-  function reset(){ lb.style.transition = "transform .2s ease, background .2s ease"; lb.style.transform = ""; lb.style.background = ""; parts().slice(1).forEach(function(n){ n.style.transition = "opacity .2s ease"; n.style.opacity = ""; }); }
+  function reset(){ lb.style.transition = "transform .2s ease, background .2s ease"; lb.style.transform = ""; lb.style.background = ""; parts().forEach(function(n){ n.style.transition = "opacity .2s ease"; n.style.opacity = ""; }); }
   function end(){
     if(!sw) return; var s0 = sw; sw = null; if(s0.mode!=="v") return;
     if(s0.dy > 110 || (s0.dy > 50 && Date.now() - s0.t < 250)){
-      var ph = rcLbPh();
       lb.style.transition = "transform .18s ease, opacity .18s ease"; lb.style.transform = "translateY("+window.innerHeight+"px)"; lb.style.opacity = "0";
-      setTimeout(function(){ rcLbClose(); rcGoToPh(ph); }, 170);
+      setTimeout(done, 170);
     } else reset();
   }
   lb.addEventListener("touchend", end); lb.addEventListener("touchcancel", end);
