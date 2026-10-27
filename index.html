@@ -3282,7 +3282,270 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 @keyframes dmSortF{0%,15%{transform:none;opacity:1}25%{transform:scale(.85)}60%,75%{transform:translateY(-56px) scale(.85)}85%{transform:translateY(-56px);opacity:0}100%{opacity:0}}
 /* Plan eingeklappt beim Kartenschritt */
 .dm-mock[data-a="map"] .m-sheet{height:16%}
-@media (prefers-reduced-motion:reduce){.dm-mock *,.dm-mock{animation:none !important}}
+/* Demo: Kapitel-Fortschritt, „In der App zeigen“, neue Bildschirme */
+.dm-stage.in-r{animation:dmInR .34s cubic-bezier(.2,.8,.25,1)}
+.dm-stage.in-l{animation:dmInL .34s cubic-bezier(.2,.8,.25,1)}
+@keyframes dmInR{from{opacity:.2;transform:translateX(26px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes dmInL{from{opacity:.2;transform:translateX(-26px) scale(.98)}to{opacity:1;transform:none}}
+.dm-card{height:100%;max-height:760px}
+.dm-txt{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.dm-ey{display:block;margin:0 0 5px;font:700 11px/1.2 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--accent,#007AFF)}
+.dm-real{display:inline-flex;align-items:center;gap:6px;margin:10px auto 0;border:0;border-radius:999px;padding:7px 13px;background:color-mix(in srgb,var(--accent,#007AFF) 11%,transparent);color:var(--accent,#007AFF);font:600 13px/1 var(--f-body);cursor:pointer}
+.dm-real .ii{width:15px;height:15px}
+.dm-real:active{transform:scale(.96)}
+.dm-miss{margin:8px 0 0 !important;font-size:12.5px !important;color:var(--muted)}
+.dm-dots.dm-prog{display:flex;gap:4px;align-items:center;flex:1 1 auto;min-width:0;padding:0 2px}
+.dm-prog button{flex:1 1 0;min-width:6px;height:22px;border:0;padding:0;background:none;display:flex;align-items:center;cursor:pointer}
+.dm-dots.dm-prog button i,.dm-nav:has(.go) .dm-dots.dm-prog button i{display:block;width:100%;height:4px;border-radius:2px;background:var(--accent,#007AFF);transform-origin:left center;transition:transform .35s cubic-bezier(.2,.8,.25,1);box-shadow:none}
+.dm-prog button{background:linear-gradient(color-mix(in srgb,var(--ink) 14%,transparent),color-mix(in srgb,var(--ink) 14%,transparent)) center/100% 4px no-repeat;border-radius:2px}
+.dm-prog button.on{background-size:100% 6px}
+.dm-prog button.on i{height:6px !important;border-radius:3px}
+/* Querformat: Mini-Handy links, Text und Navigation rechts */
+@media (orientation:landscape) and (max-height:500px){
+  .dm-card{width:min(760px,100%);display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto 1fr auto;column-gap:4px}
+  .dm-top{grid-column:1/-1}
+  .dm-stage{grid-column:1;grid-row:2/4;height:auto;padding:4px 8px 12px 18px;place-items:start}
+  .dm-mock{transform:scale(.8);transform-origin:top left;margin:0 -45px -63px 0}
+  .dm-txt{grid-column:2;grid-row:2;text-align:left;padding:8px 20px 0 10px}
+  .dm-nav{grid-column:2;grid-row:3;padding:8px 18px 14px 10px}
+}
+/* Hervorhebung des echten Bedienelements */
+.dm-spot{position:fixed;inset:0;z-index:95;cursor:pointer;animation:popfade .2s ease}
+.dm-hole{position:fixed;border-radius:16px;box-shadow:0 0 0 200vmax rgba(8,12,18,.55),0 0 0 3px var(--accent,#007AFF);animation:dmHole 1.6s ease-in-out infinite;pointer-events:none}
+@keyframes dmHole{50%{box-shadow:0 0 0 200vmax rgba(8,12,18,.55),0 0 0 7px color-mix(in srgb,var(--accent,#007AFF) 45%,transparent)}}
+.dm-tip{position:fixed;left:0;right:0;margin:0 auto;width:min(320px,calc(100% - 32px));box-sizing:border-box;padding:14px 16px;border-radius:20px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);border:.5px solid var(--glass-bd,var(--line));box-shadow:0 18px 50px rgba(0,0,0,.35);color:var(--ink);text-align:center;animation:popzoom .24s cubic-bezier(.2,.9,.3,1.15)}
+.dm-tip b{display:block;font:700 16px/1.25 var(--f-display)}
+.dm-tip small{display:block;margin-top:3px;color:var(--muted);font-size:13px}
+.dm-tip button{margin-top:10px;border:0;border-radius:999px;padding:9px 18px;background:var(--accent,#007AFF);color:#fff;font:700 14px/1 var(--f-body)}
+/* Bildschirme mit data-sc */
+.dm-mock .ms.cur{display:block}
+.dm-mock .mz .mk{position:relative}
+.dm-mock[data-f="up"] .m-fing{opacity:1;animation:dmSwipeUp 2.6s ease-in-out infinite}
+@keyframes dmSwipeUp{0%{transform:translateY(40px);opacity:0}12%{opacity:1;transform:translateY(40px) scale(.82)}45%{transform:translateY(-70px) scale(.82);opacity:1}55%,100%{transform:translateY(-70px);opacity:0}}
+.mz{font-family:var(--f-body);color:var(--ink);font-size:7.5px;box-sizing:border-box}
+.mz b{font-weight:700}
+.mz small{color:var(--muted);font-size:6.5px}
+.mz-av{flex:0 0 auto;display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;color:#fff;font:800 7px/1 var(--f-body);font-style:normal;border:1.2px solid rgba(255,255,255,.9)}
+.mz .ii{width:10px;height:10px}
+.mz-pop{position:absolute;left:10px;right:10px;top:46px;padding:9px;border-radius:14px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:.5px solid var(--glass-bd,var(--line));box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.mzo-l{margin:8px 2px 4px;font:700 6px/1 var(--f-body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.mz .x{width:15px;height:15px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--ink) 8%,transparent);font-size:7px}
+/* Willkommen */
+.mz-hero{background:radial-gradient(90% 60% at 80% 10%,#5b7cf0 0,transparent 70%),radial-gradient(80% 60% at 0% 100%,#2fb39a 0,transparent 70%),linear-gradient(160deg,#16264a,#0d1426);color:#fff;overflow:hidden}
+.mzh-glow{position:absolute;inset:0;background:radial-gradient(60% 40% at 30% 35%,rgba(255,255,255,.12),transparent 70%);animation:dmGlow 6s ease-in-out infinite}
+@keyframes dmGlow{50%{opacity:.4}}
+.mzh-map{position:absolute;inset:0;width:100%;height:100%}
+.mzh-map .st{stroke:rgba(255,255,255,.12);stroke-width:7;fill:none}
+.mzh-map .rt{stroke:#F5C431;stroke-width:3.2;fill:none;stroke-linecap:round;stroke-dasharray:260;stroke-dashoffset:260;animation:dmDraw 4.5s ease-in-out infinite}
+@keyframes dmDraw{0%{stroke-dashoffset:260}45%,85%{stroke-dashoffset:0}100%{stroke-dashoffset:0;opacity:0}}
+.mzh-map .pn{fill:#fff;stroke:#F5C431;stroke-width:2.4;transform-box:fill-box;transform-origin:center;animation:dmPin 4.5s ease-in-out infinite}
+.mzh-map .p2{animation-delay:.5s}.mzh-map .p3{animation-delay:1s}.mzh-map .p4{animation-delay:1.5s}
+@keyframes dmPin{0%,5%{transform:scale(0)}15%,85%{transform:scale(1)}100%{transform:scale(1);opacity:0}}
+.mzh-brand{position:absolute;left:14px;top:16px}
+.mzh-brand b{display:block;font:800 17px/1 var(--f-display);letter-spacing:-.01em}
+.mzh-brand small{color:rgba(255,255,255,.75);font-size:7px;letter-spacing:.06em}
+.mzh-c{position:absolute;display:flex;align-items:center;gap:5px;padding:6px 8px;border-radius:12px;background:rgba(40,56,96,.72);border:.5px solid rgba(255,255,255,.28);box-shadow:0 8px 20px rgba(0,0,0,.25);color:#fff;opacity:0;animation:dmFloat 4.5s ease-in-out infinite}
+.mzh-c span{display:flex;flex-direction:column;gap:1px}
+.mzh-c small{color:rgba(255,255,255,.8)}
+.mzh-c em{font-style:normal;font-weight:800;font-size:6.5px;padding:2px 5px;border-radius:6px;background:#C9A227;color:#1b1400}
+.mzh-c1{left:12px;top:64px;animation-delay:.3s}
+.mzh-c2{right:14px;top:132px;animation-delay:1.1s}
+.mzh-c2 .hz{color:#ff5c7a;display:flex}.mzh-c2 svg{width:12px;height:12px;fill:currentColor}
+.mzh-c3{left:56px;top:190px;animation-delay:1.9s}
+.mzh-c3 .ok{width:14px;height:14px;border-radius:50%;background:#34C759;display:grid;place-items:center;font-size:8px;font-weight:800}
+.mzh-c4{left:14px;bottom:18px;animation-delay:2.5s}
+.mzh-c4 .mz-av{margin-right:-8px}.mzh-c4 small{margin-left:9px}
+@keyframes dmFloat{0%{opacity:0;transform:translateY(10px) scale(.94)}12%,82%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-6px)}}
+/* Warum */
+.mz-why{background:var(--sheet);padding:12px 12px 0}
+.mzw-reel{position:relative;height:150px;border-radius:14px;overflow:hidden;background:linear-gradient(160deg,#e7c38f,#b56a3b 55%,#4a2414);color:#fff}
+.mzw-who{position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:5px}
+.mzw-who span{display:flex;flex-direction:column}.mzw-who small{color:rgba(255,255,255,.8)}
+.mzw-side{position:absolute;right:7px;bottom:10px;display:grid;gap:6px}
+.mzw-side span,.mzr-side span{position:relative;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.35);display:grid;place-items:center;color:#fff}
+.mzw-side svg,.mzr-side svg{width:10px;height:10px}
+.mzw-side em,.mzr-side em{position:absolute;top:100%;left:50%;transform:translateX(-50%);font:700 5.5px/1.3 var(--f-body);font-style:normal}
+.mzw-side .ring{background:var(--accent,#007AFF)}
+.mzw-txt{position:absolute;left:9px;right:36px;bottom:9px;display:flex;flex-direction:column;gap:1px}
+.mzw-txt b{font-size:10px}.mzw-txt small{color:rgba(255,255,255,.85)}.mzw-txt em{color:#ffd75e;font-style:normal;font-weight:800}
+.mzw-txt p{margin:2px 0 0;font-size:6.5px;opacity:.9}
+.mzw-arr{display:grid;place-items:center;height:42px;color:var(--accent,#007AFF)}
+.mzw-arr svg{width:18px;height:18px;animation:dmBob 1.4s ease-in-out infinite}
+@keyframes dmBob{50%{transform:translateY(5px)}}
+.mzw-plan{display:flex;align-items:center;gap:7px;padding:8px;border-radius:11px;background:color-mix(in srgb,var(--ink) 5%,transparent);border:1px solid var(--line);animation:dmPlanIn 3s ease-in-out infinite}
+.mzw-plan span:nth-child(2){display:flex;flex-direction:column;gap:1px;flex:1}
+.mzw-plan .n{width:15px;height:15px;border-radius:50%;background:#C98A4B;color:#fff;display:grid;place-items:center;font-weight:800}
+.mzw-plan .ok{color:#2e9b5a;font-weight:800}
+@keyframes dmPlanIn{0%,25%{opacity:0;transform:translateY(-8px)}40%,100%{opacity:1;transform:none}}
+/* Vorher · unterwegs · danach */
+.mz-pil{background:linear-gradient(170deg,color-mix(in srgb,var(--accent,#007AFF) 10%,var(--sheet)),var(--sheet));padding:44px 12px 0;display:none}
+.dm-mock .mz-pil.cur{display:flex;flex-direction:column;gap:12px}
+.mzp-r{display:flex;align-items:center;gap:9px;padding:10px;border-radius:14px;background:var(--sheet);box-shadow:0 6px 18px rgba(0,0,0,.08);border:.5px solid var(--line);opacity:0;animation:dmRowIn .5s cubic-bezier(.2,.8,.25,1) forwards}
+.mzp-r:nth-child(2){animation-delay:.35s}.mzp-r:nth-child(3){animation-delay:.7s}
+@keyframes dmRowIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+.mzp-r i{flex:0 0 auto;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
+.mzp-r i .ii{width:15px;height:15px}
+.mzp-r span{display:flex;flex-direction:column;gap:2px}.mzp-r b{font-size:10px}.mzp-r small{font-size:7px}
+/* Reise-Menü */
+.mzt-menu{position:absolute;left:9px;top:64px;width:156px;padding:5px;border-radius:12px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:.5px solid var(--glass-bd,var(--line));box-shadow:0 10px 26px rgba(0,0,0,.22);animation:popzoom .3s cubic-bezier(.2,.9,.3,1.15);transform-origin:top left}
+.mzt-menu p{position:relative;display:flex;align-items:baseline;gap:4px;margin:0;padding:5px 6px;border-radius:7px;white-space:nowrap}
+.mzt-menu p.sel{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.mzt-menu p.a{font-weight:600}
+.mzt-menu hr{border:0;border-top:.5px solid var(--line);margin:3px 4px}
+.mzt-menu em,.mzf-s em{font-style:normal;font-weight:700}
+.tg{color:#2e9b5a}.to{color:#C98A1B}.tv{color:#AF52DE}.td{color:#6E6E73}
+/* Option */
+.mz-opt{background:var(--sheet);padding:12px 11px}
+.mzo-h,.mzk-h{display:flex;align-items:center;justify-content:space-between}
+.mzo-h b,.mzk-h b{font:800 12px/1 var(--f-display)}
+.mzo-opt,.mzo-g{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 8px;border-radius:9px;background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.mzo-opt{margin-top:8px}.mzo-opt span{display:flex;flex-direction:column;gap:1px}
+.mzo-g + .mzo-g{margin-top:3px}.mzo-g span{color:var(--muted)}.mzo-g i{font-style:normal;color:var(--muted);padding:2px 6px;border-radius:5px;background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.mo-sw{position:relative !important;flex:0 0 auto;width:22px;height:13px;border-radius:999px;background:var(--line);animation:dmSwBg 4s ease-in-out infinite}
+.mo-sw::after{content:"";position:absolute;top:1.5px;left:1.5px;width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);animation:dmSwK 4s ease-in-out infinite}
+@keyframes dmSwBg{0%,30%{background:var(--line)}40%,100%{background:#34C759}}
+@keyframes dmSwK{0%,30%{transform:none}40%,100%{transform:translateX(9px)}}
+.mzo-fade{overflow:hidden;animation:dmFold 4s ease-in-out infinite}
+@keyframes dmFold{0%,32%{max-height:90px;opacity:1}48%,100%{max-height:0;opacity:0}}
+.mzo-f{position:absolute;left:11px;right:11px;bottom:12px;display:grid;grid-template-columns:1fr 1.6fr;gap:5px;text-align:center;font-weight:700}
+.mzo-f span{padding:6px;border-radius:999px;background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.mzo-f .p{background:var(--ink);color:var(--sheet)}
+/* Unterkünfte */
+.mzs-sh{position:absolute;left:0;right:0;bottom:0;height:64%;padding:6px 9px;box-sizing:border-box;border-radius:16px 16px 0 0;background:var(--sheet);box-shadow:0 -4px 14px rgba(0,0,0,.12)}
+.mzs-ch{display:flex;gap:4px;margin-bottom:6px}
+.mzs-ch span{padding:3px 6px;border-radius:999px;background:color-mix(in srgb,var(--ink) 7%,transparent);font-weight:600;font-size:6.5px;white-space:nowrap}
+.mzs-ch .y{background:color-mix(in srgb,var(--accent,#007AFF) 15%,transparent);color:var(--accent,#007AFF)}
+.mzs-r{display:flex;align-items:center;gap:6px;padding:6px;border-radius:9px;background:color-mix(in srgb,var(--ink) 4%,transparent);margin-bottom:4px}
+.mzs-r > i{flex:0 0 auto;width:16px;height:16px;border-radius:5px;display:grid;place-items:center;background:#17212c;color:#fff}
+.mzs-r > span{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;white-space:nowrap;overflow:hidden}
+.mzs-r em{position:relative !important;font-style:normal;font-weight:700;font-size:6.5px;padding:3px 6px;border-radius:999px;background:var(--ink);color:var(--sheet)}
+/* Tickets */
+.mz-tk{background:rgba(8,12,18,.35)}
+.mz-tk .mz-pop{top:62px}
+.mzk-s{display:block;text-align:center;margin-top:2px}
+.mzk-r,.mzk-t{display:flex;align-items:center;gap:6px;padding:6px;border-radius:9px;background:var(--sheet);border:.5px solid var(--line)}
+.mzk-r i{width:18px;height:18px;border-radius:6px;display:grid;place-items:center;background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.mzk-r span,.mzk-t span{display:flex;flex-direction:column;gap:1px;flex:1}
+.mzk-r em{font-style:italic}
+.mzk-t > em{font-style:normal;font-weight:700;font-size:6.5px;color:#2e9b5a;padding:2px 5px;border-radius:5px;background:rgba(46,155,90,.12)}
+.mk-add{position:relative !important;display:block;margin-top:8px;padding:6px;border-radius:999px;background:var(--ink);color:var(--sheet);text-align:center;font-weight:700}
+/* Kartenebenen */
+.mz-lay{background:var(--land,#eceeec)}
+.mzl-map{position:absolute;inset:0;width:100%;height:100%;opacity:.8}
+.mzl-trip{position:absolute;left:9px;top:12px;padding:4px 9px;border-radius:10px;background:var(--glass,var(--sheet));font-weight:700;font-size:9.5px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.mzl-trip small{font-size:7px}
+.mzl-pop{top:40px;right:30px}
+.mzl-pop p{position:relative;display:flex;align-items:center;gap:5px;margin:0;padding:3px 2px;border-radius:6px}
+.mzl-pop small{margin-left:auto}
+.mzl-pop .cv{font-style:normal;width:12px;height:12px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--ink) 8%,transparent);font-size:7px}
+.mzl-pop .sw{width:12px;height:3px;border-radius:2px}
+.mzl-pop .sw.dash{background:repeating-linear-gradient(90deg,#7b3fbf 0 3px,transparent 3px 5px)}
+.mzl-pop .ck{width:9px;height:9px;border-radius:3px;border:1.2px solid var(--muted);box-sizing:border-box;flex:0 0 auto}
+.mzl-pop .ck.y{background:var(--ink);border-color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--sheet)}
+.mzl-pop .ck.part{background:linear-gradient(var(--ink),var(--ink)) center/5px 1.5px no-repeat;border-color:var(--ink)}
+.mzl-sub{margin:1px 0 3px 7px;padding-left:6px;border-left:1px solid var(--line);animation:dmSub .5s .3s both}
+@keyframes dmSub{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+/* Leihräder */
+.mz-bike{background:var(--land,#eceeec)}
+.mzb-map{position:absolute;inset:0;background:repeating-linear-gradient(28deg,transparent 0 26px,color-mix(in srgb,var(--sheet) 70%,transparent) 26px 28px),repeating-linear-gradient(118deg,transparent 0 34px,color-mix(in srgb,var(--sheet) 60%,transparent) 34px 36px)}
+.mzb-map i{position:absolute;width:15px;height:15px;border-radius:50%;background:#0A6CDB;color:#fff;font:800 6.5px/15px var(--f-body);font-style:normal;text-align:center;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.mzb-map i.z{background:#8e8e93}
+.mb-card{position:absolute !important;left:8px;right:8px;bottom:10px;padding:9px;border-radius:14px;background:var(--sheet);box-shadow:0 8px 24px rgba(0,0,0,.22)}
+.mzb-h{display:flex;align-items:center;gap:6px}.mzb-h > span:last-child{display:flex;flex-direction:column;gap:1px}.mzb-h b{font-size:9.5px}
+.mzb-h .cic{width:18px;height:18px;border-radius:6px;display:grid;place-items:center;background:#0A6CDB;color:#fff}.mzb-h .cic svg{width:11px;height:11px}
+.mzb-av{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:7px 0 4px}
+.mzb-av span{padding:6px;border-radius:9px;background:color-mix(in srgb,#0A6CDB 9%,transparent);display:flex;flex-direction:column;gap:1px}
+.mzb-av b{font-size:13px;color:#0A6CDB;animation:dmTick 3s ease-in-out infinite}
+@keyframes dmTick{0%,70%{opacity:1}80%{opacity:.3}90%,100%{opacity:1}}
+.mzb-n{display:block}
+.mzb-t{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px}
+.mzb-t span{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px;border-radius:7px;background:color-mix(in srgb,var(--ink) 6%,transparent);font-size:6.5px;font-weight:700}
+.mzb-t svg{width:10px;height:10px}.mzb-t .p{background:var(--ink);color:var(--sheet)}
+/* Offline */
+.mz-off{background:var(--land,#eceeec)}
+.mzf-ban{position:absolute;left:8px;right:8px;top:12px;padding:5px 8px;border-radius:9px;background:#1c1c1e;color:#fff;font-size:6.5px;font-weight:600;text-align:center;animation:dmBan 5s ease-in-out infinite}
+@keyframes dmBan{0%,55%{opacity:0;transform:translateY(-6px)}65%,100%{opacity:1;transform:none}}
+.mzf-pop{top:40px}
+.mzf-t{display:block;font:800 12px/1.1 var(--f-display)}
+.mzf-n{display:block;line-height:1.35}
+.mzf-row{margin:6px 0}
+.mf-btn{position:relative !important;display:inline-grid;align-items:center;width:84px;height:18px;border-radius:999px;background:var(--ink);color:var(--sheet);font-weight:700;font-size:7px;overflow:hidden}
+.mf-btn > span{grid-area:1/1;text-align:center}
+.mf-btn .l{animation:dmOffL 5s infinite}
+.mf-btn .bar{margin:0 8px;height:4px;border-radius:2px;background:rgba(255,255,255,.25);opacity:0;animation:dmOffB 5s infinite}
+.mf-btn .bar i{display:block;height:100%;border-radius:2px;background:#fff;transform-origin:left;animation:dmOffP 5s infinite}
+.mf-btn .ok{opacity:0;animation:dmOffK 5s infinite}
+@keyframes dmOffL{0%,18%{opacity:1}22%,100%{opacity:0}}
+@keyframes dmOffB{0%,20%{opacity:0}24%,50%{opacity:1}54%,100%{opacity:0}}
+@keyframes dmOffP{0%,22%{transform:scaleX(0)}50%,100%{transform:scaleX(1)}}
+@keyframes dmOffK{0%,52%{opacity:0}56%,100%{opacity:1}}
+/* Entdecken als Reels */
+.dm-mock .mz-reel{top:38px;background:var(--sheet);overflow:hidden}
+.mzr-top{position:absolute;left:8px;right:8px;top:4px;display:flex;gap:5px;z-index:2}
+.mzr-top .tg{display:flex;align-items:center;gap:4px;padding:4px 7px;border-radius:999px;border:.5px solid var(--line);background:var(--sheet);color:var(--ink);font-weight:700;font-size:7.5px;white-space:nowrap}
+.mzr-top .tg > i{width:8px;height:8px;border-radius:50%;background:#30B0C7}
+.mzr-top .tg.in{color:var(--accent,#007AFF)}
+.mzr-top .sg{flex:1;display:grid;grid-template-columns:1fr 1fr;padding:2px;border-radius:999px;background:color-mix(in srgb,var(--ink) 7%,transparent);text-align:center;font-size:7px;font-weight:700;color:var(--muted)}
+.mzr-top .sg b,.mzr-top .sg span{padding:3px 0;border-radius:999px}.mzr-top .sg b{background:var(--sheet);color:var(--ink)}
+.mzr-track{position:absolute;left:8px;right:8px;top:30px;bottom:8px;overflow:hidden;border-radius:14px}
+.mz-reel[data-sc="reels"] .mzr-track > div{animation:dmReel 5.2s cubic-bezier(.6,0,.25,1) infinite}
+@keyframes dmReel{0%,40%{transform:none}55%,92%{transform:translateY(-100%)}100%{transform:none}}
+.mzr-c{position:relative;height:100%;background:linear-gradient(165deg,var(--a),var(--b));color:#fff}
+.mzr-c .n{position:absolute;right:7px;top:7px;padding:2px 5px;border-radius:999px;background:rgba(0,0,0,.3);font-size:6px;font-weight:700}
+.mzr-side{position:absolute;right:7px;bottom:12px;display:grid;gap:11px}
+.mzr-side .y{color:#fff;background:var(--accent,#007AFF)}
+.mzr-side .ring{z-index:3}
+.mzr-tx{position:absolute;left:8px;right:38px;bottom:12px;display:flex;flex-direction:column;gap:2px}
+.mzr-tx .w{display:flex;align-items:center;gap:4px}.mzr-tx .w small{color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mzr-tx .t{font:800 11px/1.1 var(--f-display)}
+.mzr-tx > small{color:rgba(255,255,255,.85)}
+.mzr-tx .r{align-self:flex-start;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.18);font-size:6.5px;font-weight:700}
+.mi-z{position:absolute !important;left:16px;right:16px;top:70px;z-index:3;display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:12px;background:var(--glass-hi,var(--sheet));color:var(--ink);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 10px 26px rgba(0,0,0,.3);animation:dmToast 4s ease-in-out infinite}
+.mi-z > span:last-child{display:flex;flex-direction:column;gap:1px}
+.mi-z .ok{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--accent,#007AFF);color:#fff}
+@keyframes dmToast{0%,25%{opacity:0;transform:translateY(8px)}35%,90%{opacity:1;transform:none}100%{opacity:0}}
+/* Follower & Gruppen */
+.mz-fol,.mz-grp{background:rgba(8,12,18,.35)}
+.mz-fol .mz-pop,.mz-grp .mz-pop{top:30px}
+.mzf-pills{display:flex;gap:4px;margin:7px 0 5px}
+.mzf-pills span{position:relative;display:flex;align-items:center;gap:3px;padding:4px 7px;border-radius:999px;background:color-mix(in srgb,var(--accent,#007AFF) 12%,transparent);font-weight:700;font-size:7px}
+.mzf-pills svg{width:10px;height:10px;color:var(--accent,#007AFF)}
+.mzf-pills em{font-style:normal;color:var(--muted)}
+.mzf-pills .bd{position:absolute;right:-3px;top:-3px;min-width:10px;height:10px;border-radius:5px;background:#ff3b30;color:#fff;font:800 6px/10px var(--f-body);font-style:normal;text-align:center}
+.mzf-seg{display:grid;grid-template-columns:1fr 1fr;padding:2px;border-radius:7px;background:color-mix(in srgb,var(--ink) 7%,transparent);text-align:center;font-size:7px;margin-bottom:6px}
+.mzf-seg b,.mzf-seg span{padding:3px 0;border-radius:5px}.mzf-seg b{background:var(--sheet);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.mzf-seg em{font-style:normal;color:var(--muted)}
+.mzf-req,.mzf-p{display:flex;align-items:center;gap:6px;padding:6px;border-radius:9px;background:var(--sheet);border:.5px solid var(--line);margin-bottom:4px}
+.mzf-req{background:color-mix(in srgb,var(--accent,#007AFF) 7%,var(--sheet))}
+.mzf-req > span,.mzf-p > span:nth-child(2){display:flex;flex-direction:column;gap:1px;flex:1}
+.mzf-req em,.mzf-p em{position:relative !important;font-style:normal;font-weight:700;font-size:6.5px;padding:3px 6px;border-radius:999px}
+.mf-ok{background:var(--accent,#007AFF);color:#fff}
+.mzf-req .no{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.mzf-p .fb{background:var(--ink);color:var(--sheet)}
+.mzf-p .gi{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--accent,#007AFF) 14%,transparent);color:var(--accent,#007AFF);font-weight:700}
+.mzg-ask{top:186px !important}
+.mzg-q{display:flex;gap:4px}
+.mzg-q span{display:flex;align-items:center;gap:3px;padding:4px 7px;border-radius:999px;background:color-mix(in srgb,var(--ink) 7%,transparent);font-weight:700;font-size:7px}
+.mzg-q .y{background:var(--accent,#007AFF);color:#fff}.mzg-q .y small{color:rgba(255,255,255,.85)}
+.mg-q{position:relative !important}
+/* Profil */
+.dm-mock .mz-prof{top:38px;background:var(--sheet);padding:10px 10px 0}
+.mzq-h{display:flex;align-items:center;gap:7px}
+.mzq-av{width:32px;height:32px;border-radius:50%;background:#6E8FD8;color:#fff;display:grid;place-items:center;font:800 13px/1 var(--f-display)}
+.mzq-n{display:flex;flex-direction:column;gap:3px;flex:1}.mzq-n > b{font-size:10.5px}
+.mp-cap{position:relative !important;align-self:flex-start;display:flex;align-items:center;gap:3px;padding:3px 7px;border-radius:999px;border:.5px solid var(--line);background:color-mix(in srgb,var(--ink) 4%,transparent);font-size:6.5px}
+.mp-cap i{width:.5px;height:8px;background:var(--line);margin:0 2px}
+.mzq-g{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;border:.5px solid var(--line);font-size:8px;align-self:flex-start}
+.mzq-seg{display:grid;grid-template-columns:1.2fr 1.5fr 1fr 1fr;margin:9px 0 7px;padding:2px;border-radius:7px;background:color-mix(in srgb,var(--ink) 7%,transparent);text-align:center;font-size:6.5px;font-weight:700;color:var(--muted)}
+.mzq-seg b,.mzq-seg span{padding:3px 0;border-radius:5px}.mzq-seg b{background:var(--sheet);color:var(--ink)}.mzq-seg em{font-style:normal;color:var(--accent,#007AFF)}
+.mzq-tiles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mzq-tiles span{position:relative;height:84px;border-radius:12px;background:linear-gradient(170deg,var(--a),var(--b));color:#fff;display:flex;flex-direction:column;justify-content:flex-end;padding:6px;box-sizing:border-box}
+.mzq-tiles em{position:absolute;left:5px;top:5px;padding:2px 5px;border-radius:999px;font:700 5.5px/1.2 var(--f-body);font-style:normal;color:#fff}
+.mzq-tiles b{font-size:8.5px}.mzq-tiles small{color:rgba(255,255,255,.8);font-size:6px}
+.ms-vispop i.al{color:#6E6E73;background:rgba(110,110,115,.14)}
+.ms-sh .vh:first-of-type{margin-top:0}
+@media (prefers-reduced-motion:reduce){.dm-mock *,.dm-mock,.dm-stage,.dm-hole{animation:none !important}}
+@media (prefers-reduced-motion:reduce){.mzh-c,.mzp-r,.mzf-ban,.mi-z,.mzw-plan{opacity:1 !important}.mzh-map .rt{stroke-dashoffset:0}.mo-sw{background:#34C759}.mo-sw::after{transform:translateX(9px)}.mzo-fade{display:none}.mf-btn .l{opacity:0}.mf-btn .ok{opacity:1}}
 
 /* ===== Designsprache: filigran, luftig, Glas mit Haarlinien (zuletzt, überschreibt Früheres) ===== */
 :root,:root[data-theme="light"]{
@@ -10075,40 +10338,56 @@ $("locBtn").addEventListener("click", function(){ startLocate(); });
 /* ---------- App-Demo: Einführung zum Durchklicken ----------
    Eigene Ebene über der App mit gezeichneten Mini-Bildschirmen. Sie liest und ändert keine Reisedaten;
    gemerkt wird nur, dass ein neues Konto die Demo auf diesem Gerät schon gesehen hat. */
-/* Schritte je Rolle. s = Bildschirm im Mini-Handy, on = hervorgehobene Teile, ring = pulsierender Ring,
-   f = Fingerposition [x, y] im Mini-Handy (224 × 316), fm = "swipe" für Wischbewegung, v = Reiter im Tagesplan, a = Animation, b = Infoblase */
+/* Schritte je Rolle, in Kapitel gegliedert (ch, siehe DM_CH). s = Bildschirm im Mini-Handy, on = hervorgehobene Teile, ring = pulsierender Ring,
+   f = Fingerposition [x, y] im Mini-Handy (224 × 316), fm = "swipe"/"up" für Wischbewegung, v = Reiter im Tagesplan, a = Animation, b = Infoblase,
+   real = das echte Bedienelement dazu: {v: Ansicht aus DM_VIEW, el: Selektor} – „In der App zeigen“ öffnet die Ansicht und hebt es hervor */
+var DM_CH = {start:"Willkommen", plan:"Planen", go:"Unterwegs", follow:"Mitverfolgen", photo:"Fotos", share:"Teilen", comm:"Community", end:"Los geht’s"};
 var DM_ROLES = {
   trav: [
-    {t:"Willkommen bei Reiseplan", p:"In ein paar Schritten zeigen wir dir, wie du Reisen planst, unterwegs festhältst und mit Freunden teilst. Wischen oder die Pfeile unten bringen dich weiter."},
-    {t:"Die Leiste oben", p:"Karte, Liste deiner Orte, Entdecken, Suche, Chats, Mitteilungen und dein Profil – von hier erreichst du alles mit einem Tipp.", on:".m-bar", ring:".m-bar", f:[112,21]},
-    {t:"Deine Reise", p:"Darunter steht deine aktuelle Reise. Tippe darauf, um eine neue Reise anzulegen, zwischen Reisen zu wechseln oder Zeitraum und Hotel zu ändern.", on:".m-trip", ring:".m-trip", f:[42,50]},
-    {t:"Orte sammeln", p:"Über die Lupe findest du Cafés, Sehenswürdigkeiten und mehr. Alles, was dich interessiert, landet auf deiner Wunschliste. Mit dem ＋ planst du einen Ort für einen Tag ein.", on:".m-srch,.m-sheet", ring:".m-srch", v:"wish", f:[199,232]},
-    {t:"Tag für Tag planen", p:"Links wählst du den Reisetag. Im Tagesplan stehen deine Stopps in der richtigen Reihenfolge, auf der Karte siehst du die Route mit Fußwegen und U-Bahn.", on:".m-rail,.m-sheet,.m-route,.m-pin,.m-hotel", ring:".m-rail", f:[22,87]},
-    {t:"Reihenfolge ändern", p:"Halte einen Stopp am Griff links gedrückt und zieh ihn an die gewünschte Stelle. Die Route passt sich automatisch an.", on:".m-sheet", a:"sort"},
-    {t:"Ort antippen", p:"Ein Tipp auf einen Punkt öffnet die Karte zum Ort: Empfehlungen von Freunden, die nächste U-Bahn, und darunter Zur Planung, Route, Details und Mehr.", s:"card", ring:".mc-plan", f:[38,262]},
-    {t:"Unterwegs festhalten", p:"Mit ＋ hältst du Fotos und neue Orte fest, erledigte Stopps hakst du ab. Der Pfeil zeigt deinen Standort.", on:".m-loc,.m-add,.m-sheet", ring:".m-add", f:[205,50]},
-    {t:"Fotos ansehen", p:"Tippe auf ein Foto für das Vollbild. Nach links und rechts wischen zeigt die weiteren Fotos, nach unten ziehen schließt. Links stehen immer die Optionen zum Foto.", s:"photo", ring:".ms-side", f:[150,145], fm:"swipe"},
-    {t:"Gefällt mir & kommentieren", p:"Mit dem Herz zeigst du, dass dir ein Foto gefällt. Über die Sprechblase kommentierst du – mit @Name erwähnst du Mitreisende.", s:"comment", ring:".ms-cm", f:[18,95]},
-    {t:"Wer sieht was?", p:"Über das Symbol links legst du fest, wer ein Foto sieht: Privat nur Mitreisende, Reise auch Beobachter, Freunde zusätzlich deine Freunde. Die Farbe zeigt die Wahl.", s:"vis", ring:".ms-vis", f:[18,145]},
-    {t:"Foto oder Ort versenden", p:"Mit dem Papierflieger schickst du ein Foto oder einen Ort direkt in einen Chat. Oben suchst du den passenden Freund.", s:"send", ring:".ms-pick", f:[110,128]},
-    {t:"Chatten", p:"In den Chats stimmt ihr euch ab. Geteilte Orte und Fotos erscheinen als Karte – ein Tipp öffnet sie auf deiner Karte.", s:"chat", ring:".mh-card", f:[160,68]},
-    {t:"Tagesrückblick", p:"Aus deinen Stopps, Fotos und Notizen entsteht für jeden Tag ein Rückblick mit animierter Route. Seitlich wischen springt zum Vortag oder nächsten Tag.", s:"recap", f:[150,200], fm:"swipe"},
-    {t:"Entdecken", p:"Unter Entdecken siehst du, was deine Freunde empfehlen – mit Fotos und Bewertung. Mit einem Tipp landet ein Ort auf deiner Wunschliste.", s:"disc", ring:".md-add", f:[58,271]},
-    {t:"Gemeinsam reisen", p:"Lade Freunde als Mitreisende ein – sie planen mit. Beobachter sehen die Reise mit Fotos und Rückblick, können aber nichts ändern.", s:"share", ring:".mx-seg", f:[75,193]},
-    {t:"KI-Assistent", p:"Über den KI-Knopf kannst du bald Fragen zu Orten stellen und per Sprache planen. Diese Einführung findest du jederzeit wieder in deinem Profil.", on:".m-ki", ring:".m-ki", f:[205,78]}
+    {ch:"start", s:"hero", t:"Willkommen bei Reiseplan", p:"Deine Reisen, deine Freunde und ihre besten Tipps an einem Ort. Plane jeden Tag mit echten Wegen, entdecke, was Menschen empfehlen, denen du vertraust, und teile deine schönsten Momente."},
+    {ch:"start", s:"why", t:"Tipps von Freunden statt anonymer Sterne", p:"Sieh, wo deine Freunde waren und was sie wirklich lieben. Ein Tipp – und der Ort liegt in deinem Plan, samt Fußweg und U-Bahn dorthin.", ring:".mw-take", f:[195,142]},
+    {ch:"start", s:"pillars", t:"Vorher, unterwegs, danach", p:"Vorher planst du Tag für Tag. Unterwegs führt dich die Karte und du hältst Fotos fest – auch ohne Netz. Danach bleibt ein Rückblick, den du mit Freunden teilst."},
+    {ch:"plan", t:"Die Leiste oben", p:"Karte, Liste deiner Orte, Entdecken, Suche, Chats, Mitteilungen und dein Profil – von hier erreichst du alles mit einem Tipp.", on:".m-bar", ring:".m-bar", f:[112,21], real:{v:"map", el:"#tabbar"}},
+    {ch:"plan", s:"trips", t:"Deine Reisen auf einen Blick", p:"Tippe oben auf die Reise: Dort wechselst du zwischen Reisen und siehst ihren Status – Aktuell, In Planung, Option oder Abgeschlossen. Die laufende Reise steht immer zuerst.", ring:".mt-now", f:[60,50], real:{v:"tripmenu", el:"#tripMenu"}},
+    {ch:"plan", s:"opt", t:"Noch nicht sicher? Als Option anlegen", p:"Bei „Neue Reise anlegen“ schaltest du „Option“ ein: Die Reise braucht dann keinen Termin und kein Hotel, nur Name und Ziel. Sammle schon Ideen und leg sie später fest.", ring:".mo-sw", f:[192,64], real:{v:"tripmenu", el:"#tripMenu [data-act=tripnew]"}},
+    {ch:"plan", t:"Orte sammeln", p:"Über die Lupe findest du Cafés, Sehenswürdigkeiten und mehr. Alles, was dich interessiert, landet auf deiner Wunschliste. Mit dem ＋ planst du einen Ort für einen Tag ein.", on:".m-srch,.m-sheet", ring:".m-srch", v:"wish", f:[199,232], real:{v:"map", el:"#srchBtn"}},
+    {ch:"plan", s:"stay", t:"Unterkünfte vergleichen", p:"In der Liste „Unterkünfte“ sammelst du mögliche Hotels – mit Bewertung, Fotos und Tipps wie bei jedem Ort. Deine Wahl übernimmst du mit einem Tipp als Hotel der Reise.", ring:".ms-h2", f:[176,226], real:{v:"wish", el:"#body .fchip[data-k=list]"}},
+    {ch:"plan", t:"Tag für Tag planen", p:"Links wählst du den Reisetag. Im Tagesplan stehen deine Stopps in der richtigen Reihenfolge, auf der Karte siehst du die Route mit Fußwegen und U-Bahn.", on:".m-rail,.m-sheet,.m-route,.m-pin,.m-hotel", ring:".m-rail", f:[22,87], real:{v:"day", el:"#rail"}},
+    {ch:"plan", t:"Reihenfolge ändern", p:"Halte einen Stopp am Griff links gedrückt und zieh ihn an die gewünschte Stelle. Die Route passt sich automatisch an.", on:".m-sheet", a:"sort", real:{v:"day", el:"#body li.st .grip"}},
+    {ch:"plan", s:"card", t:"Ort antippen", p:"Ein Tipp auf einen Ort öffnet seine Karte: Tipps von Freunden, die nächste Haltestelle und darunter Zur Planung, Route, Details und Mehr.", ring:".mc-plan", f:[38,262], real:{v:"wish", el:"#body li.wi"}},
+    {ch:"plan", s:"tk", t:"Tickets immer dabei", p:"Fahrkarten je Etappe und Eintrittskarten je Ort hinterlegst du mit Code, Link und Preis – sichtbar nur für Mitreisende. Du findest sie am Verkehrsmittel einer Etappe und unter Mehr am Ort.", ring:".mk-add", f:[112,222], real:{v:"day", el:"#body [data-act=lmpick]"}},
+    {ch:"go", s:"lay", t:"Die Karte kennt dein Reiseziel", p:"Über die Ebenen blendest du ÖPNV, Bezirke und Cafés ein – vom Verkehrsmittel bis zur einzelnen Linie. Das gilt nicht nur für New York: Für jedes Reiseziel lädt die App Linien und Bezirke dazu.", ring:".ml-tr", f:[150,70], real:{v:"map", el:"#layersBtn"}},
+    {ch:"go", s:"bike", t:"Leihräder in vielen Städten", p:"Bike Share zeigt Stationen mit freien Rädern und Plätzen live – in New York und vielen weiteren Städten. Plane eine Etappe mit dem Rad, die Navigation führt dich zur Station.", ring:".mb-card", f:[112,250], real:{v:"layers", el:"#layers label:has(#lBike)"}},
+    {ch:"go", s:"off", t:"Auch ohne Netz unterwegs", p:"Lade Karte und ÖPNV deiner Reise vorab herunter. Ohne Netz gehen Plan, Standort, Fotospots und Fotos weiter – hochgeladen wird, sobald wieder Internet da ist.", ring:".mf-btn", f:[60,125], real:{v:"trip", el:"#offBox"}},
+    {ch:"go", t:"Unterwegs festhalten", p:"Mit ＋ hältst du Fotos und neue Orte fest, erledigte Stopps hakst du ab. Der Pfeil zeigt deinen Standort.", on:".m-loc,.m-add,.m-sheet", ring:".m-add", f:[205,50], real:{v:"map", el:"#camBtn"}},
+    {ch:"go", s:"photo", t:"Fotos ansehen", p:"Tippe auf ein Foto für das Vollbild. Nach links und rechts wischen zeigt die weiteren Fotos, nach unten ziehen schließt. Links stehen immer die Optionen zum Foto.", ring:".ms-side", f:[150,145], fm:"swipe", real:{v:"photo", el:"#pvLayer .pv-side"}},
+    {ch:"go", s:"comment", t:"Gefällt mir & kommentieren", p:"Mit dem Herz zeigst du, dass dir ein Foto gefällt. Über die Sprechblase kommentierst du – mit @Name erwähnst du Mitreisende.", ring:".ms-cm", f:[18,95], real:{v:"photo", el:"#pvLayer .pv-side"}},
+    {ch:"go", s:"vis", t:"Wer sieht was?", p:"Über das Symbol links legst du fest, wer ein Foto sieht: Privat nur Mitreisende, Reise auch Beobachter, Freunde zusätzlich deine Freunde, Alle jeder. Die Farbe zeigt die Wahl.", ring:".ms-vis", f:[18,145], real:{v:"photo", el:"#pvLayer [data-act=itemvispick]"}},
+    {ch:"share", s:"send", t:"Foto oder Ort versenden", p:"Mit dem Papierflieger schickst du ein Foto oder einen Ort direkt in einen Chat. Oben suchst du den passenden Freund.", ring:".ms-pick", f:[110,128], real:{v:"photo", el:"#pvLayer [data-act=phsend]"}},
+    {ch:"share", s:"chat", t:"Chatten", p:"In den Chats stimmt ihr euch ab. Geteilte Orte und Fotos erscheinen als Karte – ein Tipp öffnet sie auf deiner Karte.", ring:".mh-card", f:[160,68], real:{v:"map", el:"#tbChat"}},
+    {ch:"share", s:"recap", t:"Tagesrückblick", p:"Aus deinen Stopps, Fotos und Notizen entsteht für jeden Tag ein Rückblick mit animierter Route. Seitlich wischen springt zum Vortag oder nächsten Tag.", f:[150,200], fm:"swipe", real:{v:"day", el:"#body [data-act=recap]"}},
+    {ch:"share", s:"share", t:"Gemeinsam reisen", p:"Lade Freunde als Mitreisende ein – sie planen mit. Beobachter sehen die Reise mit Fotos und Rückblick, können aber nichts ändern.", ring:".mx-seg", f:[75,193], real:{v:"trip", el:"#tripPop .sec.share"}},
+    {ch:"comm", s:"reels", t:"Entdecken: Tipps zum Durchwischen", p:"Wische nach oben durch Fotos und Bewertungen von Freunden und der Community – passend zu deiner Reise. Mit dem Herz gefällt dir ein Ort, das Lesezeichen übernimmt ihn in deine Wunschliste.", ring:".mr-take", f:[112,200], fm:"up", real:{v:"map", el:"#tbDisc"}},
+    {ch:"comm", s:"insp", t:"Inspiration für später", p:"Unter „Inspiration“ siehst du Orte aus aller Welt. Übernimmst du einen, landet er in einem Ziel – auch ohne geplante Reise. Fährst du später hin, liegt alles schon bereit.", ring:".mi-z", f:[112,212], real:{v:"disc", el:"#dcView .dc-tgt"}},
+    {ch:"comm", s:"fol", t:"Folgen mit Anfrage", p:"Schick Leuten eine Anfrage zum Folgen – sie entscheiden, ob sie annehmen. Folgt ihr euch gegenseitig, seid ihr Freunde: Ihr seht Freunde-Inhalte, chattet und ladet euch zu Reisen ein.", ring:".mf-ok", f:[137,134], real:{v:"friends", el:"#acctPop [data-act=frreqs]"}},
+    {ch:"comm", s:"grp", t:"Gruppen für deine Leute", p:"Fasse Freunde in Gruppen zusammen, etwa Familie oder Lauftreff. Gruppen siehst nur du. Beim Einladen, Teilen oder Tipps-Fragen wählst du eine ganze Gruppe mit einem Tipp.", ring:".mg-q", f:[70,250], real:{v:"friends", el:"#acctPop [data-act=fglist]"}},
+    {ch:"comm", s:"prof", t:"Dein Profil", p:"Hier liegen deine Reisen als Kacheln mit Status, beobachtete Reisen, deine Ziele und eine Karte aller Orte. Oben siehst du, wer dir folgt und wem du folgst.", ring:".mp-cap", f:[120,62], real:{v:"prof", el:"#profView .pf-stats"}},
+    {ch:"end", t:"Bereit für die nächste Reise?", p:"Bald hilft dir der KI-Assistent beim Planen, per Text oder Sprache. Diese Einführung findest du jederzeit wieder in deinem Profil.", on:".m-ki", ring:".m-ki", f:[205,78], real:{v:"map", el:"#aiBtn"}}
   ],
   obs: [
-    {t:"Willkommen als Beobachter", p:"Jemand hat dich eingeladen, eine Reise mitzuverfolgen. Du siehst Plan, Karte, Fotos und Rückblicke – und kannst liken, kommentieren und chatten. Ändern kannst du nichts."},
-    {t:"Die Leiste oben", p:"Karte, Liste, Entdecken, Suche, Chats, Mitteilungen und dein Profil. Über die Glocke erfährst du, wenn es Neues von der Reise gibt.", on:".m-bar", ring:".m-bar", f:[170,21]},
-    {t:"Beobachtete Reisen", p:"Oben steht die Reise, die du gerade ansiehst. Tippe darauf, um zwischen beobachteten Reisen zu wechseln. Im Profil findest du sie unter „Beobachtet“.", on:".m-trip", ring:".m-trip", f:[42,50]},
-    {t:"Den Tag verfolgen", p:"Links wählst du den Reisetag. Im Tagesplan siehst du alle Stopps, abgehakte sind schon besucht. Auf der Karte erscheinen die Orte mit ihren Fotos.", on:".m-rail,.m-sheet,.m-pin,.m-hotel", ring:".m-rail", f:[22,87], a:"done"},
-    {t:"Neues mitbekommen", p:"Neue Fotos, Kommentare und abgeschlossene Tage meldet dir die Glocke oben. Ein Tipp bringt dich direkt dorthin.", s:"notif", ring:".mn-first", f:[150,62]},
-    {t:"Fotos ansehen", p:"Tippe auf ein Foto für das Vollbild und wische durch alle Fotos des Tages. Nach unten ziehen schließt die Ansicht wieder.", s:"photo", ring:".ms-img", f:[150,145], fm:"swipe"},
-    {t:"Gefällt mir & kommentieren", p:"Zeig mit dem Herz, was dir gefällt, und schreib Kommentare zu Fotos. Die Reisenden sehen sie sofort.", s:"comment", ring:".ms-like,.ms-cm", f:[18,70]},
-    {t:"Tagesrückblick", p:"Für jeden Tag gibt es einen Rückblick mit Route, Stationen und Momenten. Seitlich wischen springt zum Vortag oder nächsten Tag.", s:"recap", f:[150,200], fm:"swipe"},
-    {t:"Chatten & teilen", p:"Schick ein Foto oder einen Ort mit dem Papierflieger an Freunde und schreib den Reisenden direkt im Chat.", s:"chat", ring:".mh-card", f:[160,68]},
-    {t:"Was Beobachter nicht sehen", p:"Als privat markierte Orte, Notizen und Fotos bleiben nur für die Mitreisenden. Fotos herunterladen und den Plan ändern können nur Mitreisende.", s:"photo", ring:".ms-side", obsNote:true},
-    {t:"Viel Spaß beim Mitreisen!", p:"Diese Einführung findest du jederzeit wieder in deinem Profil.", on:".m-bar", ring:".m-bar .av", f:[200,21]}
+    {ch:"start", s:"hero", t:"Willkommen an Bord", p:"Jemand nimmt dich mit auf die Reise! Du siehst Plan, Karte, Fotos und Rückblicke, likest, kommentierst und chattest. Ändern können nur die Mitreisenden."},
+    {ch:"follow", t:"Die Leiste oben", p:"Karte, Liste, Entdecken, Suche, Chats, Mitteilungen und dein Profil. Über die Glocke erfährst du, wenn es Neues von der Reise gibt.", on:".m-bar", ring:".m-bar", f:[170,21], real:{v:"map", el:"#tabbar"}},
+    {ch:"follow", t:"Beobachtete Reisen", p:"Oben steht die Reise, die du gerade ansiehst. Tippe darauf, um zwischen beobachteten Reisen zu wechseln. Im Profil findest du sie unter „Beobachtet“.", on:".m-trip", ring:".m-trip", f:[42,50], real:{v:"map", el:"#tripBtn"}},
+    {ch:"follow", t:"Den Tag verfolgen", p:"Links wählst du den Reisetag. Im Tagesplan siehst du alle Stopps, abgehakte sind schon besucht. Auf der Karte erscheinen die Orte mit ihren Fotos.", on:".m-rail,.m-sheet,.m-pin,.m-hotel", ring:".m-rail", f:[22,87], a:"done", real:{v:"day", el:"#rail"}},
+    {ch:"follow", s:"notif", t:"Neues mitbekommen", p:"Neue Fotos, Kommentare und abgeschlossene Tage meldet dir die Glocke oben. Ein Tipp bringt dich direkt dorthin.", ring:".mn-first", f:[150,62], real:{v:"map", el:"#bellBtn"}},
+    {ch:"photo", s:"photo", t:"Fotos ansehen", p:"Tippe auf ein Foto für das Vollbild und wische durch alle Fotos des Tages. Nach unten ziehen schließt die Ansicht wieder.", ring:".ms-img", f:[150,145], fm:"swipe", real:{v:"photo", el:"#pvLayer .pv-wrap"}},
+    {ch:"photo", s:"comment", t:"Gefällt mir & kommentieren", p:"Zeig mit dem Herz, was dir gefällt, und schreib Kommentare zu Fotos. Die Reisenden sehen sie sofort.", ring:".ms-like,.ms-cm", f:[18,70], real:{v:"photo", el:"#pvLayer .pv-side"}},
+    {ch:"photo", s:"photo", t:"Was Beobachter nicht sehen", p:"Als privat markierte Orte, Notizen und Fotos bleiben nur für die Mitreisenden. Fotos herunterladen und den Plan ändern können nur Mitreisende.", ring:".ms-side", obsNote:true, real:{v:"photo", el:"#pvLayer .pv-side"}},
+    {ch:"share", s:"recap", t:"Tagesrückblick", p:"Für jeden Tag gibt es einen Rückblick mit Route, Stationen und Momenten. Seitlich wischen springt zum Vortag oder nächsten Tag.", f:[150,200], fm:"swipe", real:{v:"day", el:"#body [data-act=recap]"}},
+    {ch:"share", s:"chat", t:"Chatten & teilen", p:"Schick ein Foto oder einen Ort mit dem Papierflieger an Freunde und schreib den Reisenden direkt im Chat.", ring:".mh-card", f:[160,68], real:{v:"map", el:"#tbChat"}},
+    {ch:"comm", s:"reels", t:"Entdecken", p:"Wische durch die Tipps von Freunden und der Community. Gefällt dir ein Ort, merkst du ihn dir mit dem Lesezeichen für deine eigene nächste Reise.", ring:".mr-take", f:[112,200], fm:"up", real:{v:"map", el:"#tbDisc"}},
+    {ch:"comm", s:"fol", t:"Folgen mit Anfrage", p:"Folge den Reisenden – sie bestätigen deine Anfrage. Folgt ihr euch gegenseitig, seid ihr Freunde und könnt chatten.", ring:".mf-ok", f:[137,134], real:{v:"friends", el:"#acctPop [data-act=frreqs]"}},
+    {ch:"end", t:"Viel Spaß beim Mitreisen!", p:"Beobachtete Reisen findest du im Profil unter „Beobachtet“. Diese Einführung findest du dort jederzeit wieder.", on:".m-bar", ring:".m-bar .av", f:[200,21], real:{v:"map", el:"#tbProf"}}
   ]
 };
 var dmRole = "trav", dmI = 0;
@@ -10137,8 +10416,108 @@ function dmPhotoHTML(){
     "<div class=\"ms-cap\">Abendlicht über dem East River</div><div class=\"ms-cnt\">3 / 12</div>"+
     "<div class=\"ms-obsnote\">"+ic("lock", "ii")+" Private Fotos und Notizen siehst du nicht · Herunterladen nur für Mitreisende</div>"+
     "<div class=\"ms-panel\"><b>Kommentare · 2</b><p><i style=\"background:#E5A100\">A</i><span><b>@anna</b> Traumhaft! 😍</span></p><p><i style=\"background:#5E9970\">L</i><span><b>@Ludwig</b> Da müssen wir auch hin</span></p><span class=\"ms-in\">Kommentieren · @ erwähnt</span></div>"+
-    "<div class=\"mk ms-vispop\"><div class=\"vh\">Foto sichtbar für</div><p><i class=\"pr\">"+ILOCK+"</i><span><b>Privat</b><small>nur Mitreisende</small></span></p><p class=\"sel\"><i class=\"tr\">"+VISTRIP+"</i><span><b>Reise</b><small>+ Beobachter</small></span><em>✓</em></p><p><i class=\"pu\">"+VISPUB+"</i><span><b>Freunde</b><small>+ Freunde</small></span></p></div>"+
+    "<div class=\"mk ms-vispop\"><div class=\"vh\">Foto sichtbar für</div><p><i class=\"pr\">"+ILOCK+"</i><span><b>Privat</b><small>nur Mitreisende</small></span></p><p class=\"sel\"><i class=\"tr\">"+VISTRIP+"</i><span><b>Reise</b><small>+ Beobachter</small></span><em>✓</em></p><p><i class=\"pu\">"+VISPUB+"</i><span><b>Freunde</b><small>+ Freunde</small></span></p><p><i class=\"al\">"+VISALL+"</i><span><b>Alle</b><small>öffentlich, mit Rückfrage</small></span></p></div>"+
     "<div class=\"mk ms-pick\"><div class=\"vh\">Foto im Chat schicken an …</div><span class=\"ms-q\">Freunde suchen</span><p><i style=\"background:#E5A100\">A</i>@anna</p><p><i style=\"background:#5E9970\">L</i>@Ludwig</p><p><i style=\"background:#8C78AE\">C</i>@Clara</p></div></div>";
+}
+/* Weitere Bildschirme im Mini-Handy (data-sc = Schritt s); jeder bildet die echte Ansicht der App nach */
+function dmAv(c, l){ return "<i class=\"mz-av\" style=\"background:"+c+"\">"+l+"</i>"; }
+function dmScreensHTML(){
+  var I = function(n){ return ic(n, "ii"); }, HEART = dmSv(DMI.heart, 20, 1.8), SAVE = I("save");
+  return ""+
+  // Willkommen: Karte mit Route, Empfehlungen schweben herein
+  "<div class=\"ms mz mz-hero\" data-sc=\"hero\"><div class=\"mzh-glow\"></div>"+
+    "<svg class=\"mzh-map\" viewBox=\"0 0 224 316\" aria-hidden=\"true\"><path class=\"st\" d=\"M-10 210 L240 120 M-10 120 L240 250 M40 -10 L120 330 M150 -10 L190 330\"/>"+
+      "<path class=\"rt\" d=\"M44 236 C70 200 60 170 96 158 S150 150 158 116 S176 74 186 60\"/>"+
+      "<circle class=\"pn p1\" cx=\"44\" cy=\"236\" r=\"6\"/><circle class=\"pn p2\" cx=\"96\" cy=\"158\" r=\"6\"/><circle class=\"pn p3\" cx=\"158\" cy=\"116\" r=\"6\"/><circle class=\"pn p4\" cx=\"186\" cy=\"60\" r=\"6\"/></svg>"+
+    "<div class=\"mzh-brand\"><b>Reiseplan</b><small>Planen · Entdecken · Teilen</small></div>"+
+    "<div class=\"mzh-c mzh-c1\">"+dmAv("#E5A100", "A")+"<span><b>@anna empfiehlt</b><small>Katz’s Delicatessen</small></span><em>Outstanding</em></div>"+
+    "<div class=\"mzh-c mzh-c2\"><span class=\"hz\">"+HEART+"</span><b>128</b></div>"+
+    "<div class=\"mzh-c mzh-c3\"><span class=\"ok\">✓</span><span><b>Eingeplant</b><small>Tag 2 · 12 Min. zu Fuß</small></span></div>"+
+    "<div class=\"mzh-c mzh-c4\">"+dmAv("#5E9970", "L")+dmAv("#8C78AE", "C")+dmAv("#007AFF", "F")+"<small>reisen mit</small></div></div>"+
+  // Warum: Tipp eines Freundes → im Plan
+  "<div class=\"ms mz mz-why\" data-sc=\"why\"><div class=\"mzw-reel\"><div class=\"mzw-who\">"+dmAv("#E5A100", "A")+"<span><b>@anna</b><small>Freundin · New York</small></span></div>"+
+      "<div class=\"mzw-side\"><span>"+HEART+"<em>24</em></span><span class=\"mk mw-take\">"+SAVE+"<em>9</em></span></div>"+
+      "<div class=\"mzw-txt\"><b>Katz’s Delicatessen</b><small>Restaurant · <em>Must Have</em></small><p>„Pastrami! Unbedingt am Tresen bestellen.“</p></div></div>"+
+    "<div class=\"mzw-arr\">"+dmSv("<path d=\"M12 4v15M6 13l6 6 6-6\"/>", 24, 2.4)+"</div>"+
+    "<div class=\"mzw-plan\"><span class=\"n\">3</span><span><b>Katz’s Delicatessen</b><small>Tag 2 · 12 Min. zu Fuß · F-Linie 2 Av</small></span><span class=\"ok\">✓</span></div></div>"+
+  // Vorher · unterwegs · danach
+  "<div class=\"ms mz mz-pil\" data-sc=\"pillars\">"+
+    "<div class=\"mzp-r\"><i style=\"--c:#007AFF\">"+I("cal")+"</i><span><b>Vorher</b><small>Tage planen, echte Wege, Unterkünfte, Tickets</small></span></div>"+
+    "<div class=\"mzp-r\"><i style=\"--c:#2e9b5a\">"+I("camera")+"</i><span><b>Unterwegs</b><small>Navigation, ÖPNV, Fotos – auch offline</small></span></div>"+
+    "<div class=\"mzp-r\"><i style=\"--c:#AF52DE\">"+I("star")+"</i><span><b>Danach</b><small>Rückblick, Bewertungen, Tipps für Freunde</small></span></div></div>"+
+  // Reise-Menü mit Status
+  "<div class=\"ms mz mz-trips\" data-sc=\"trips\"><div class=\"mzt-menu\">"+
+    "<p class=\"mk mt-now sel\"><b>New York</b><small><em class=\"tg\">Aktuell</em> · 21.–27. Okt.</small></p>"+
+    "<p><b>Lissabon</b><small><em class=\"to\">In Planung</em> · 14.–20. Mai</small></p>"+
+    "<p><b>Japan</b><small><em class=\"tv\">Option</em> · ohne Termin</small></p>"+
+    "<p><b>Rom</b><small><em class=\"td\">Abgeschlossen</em> · Apr. 2026</small></p>"+
+    "<hr><p class=\"a\">Reise bearbeiten</p><p class=\"a\">+ Neue Reise anlegen</p></div></div>"+
+  // Neue Reise als Option
+  "<div class=\"ms mz mz-opt\" data-sc=\"opt\"><div class=\"mzo-h\"><b>Neue Reise</b><span class=\"x\">✕</span></div>"+
+    "<div class=\"mzo-opt\"><span><b>Option</b><small>Noch nicht fest? Ohne Termin anlegen</small></span><span class=\"mk mo-sw\"></span></div>"+
+    "<div class=\"mzo-l\">Reise</div><div class=\"mzo-g\"><span>Name</span><b>Japan</b></div>"+
+    "<div class=\"mzo-fade\"><div class=\"mzo-l\">Zeitraum</div><div class=\"mzo-g\"><span>Anreise</span><i>Datum</i></div><div class=\"mzo-l\">Hotels</div><div class=\"mzo-g\"><span>Hotel</span><i>Lage fehlt</i></div></div>"+
+    "<div class=\"mzo-l\">Reiseziel</div><div class=\"mzo-g\"><span>Ort</span><b>Tokio</b></div><div class=\"mzo-g\"><span>Ort</span><b>Kyoto</b></div>"+
+    "<div class=\"mzo-f\"><span>Abbrechen</span><span class=\"p\">Reise anlegen</span></div></div>"+
+  // Unterkünfte in der Wunschliste
+  "<div class=\"ms mz mz-stay\" data-sc=\"stay\"><div class=\"mzs-sh\"><span class=\"m-handle\"></span><div class=\"m-tabs\"><span>Tagesplan</span><span class=\"a\">Wunschliste</span></div>"+
+    "<div class=\"mzs-ch\"><span class=\"y\">Unterkünfte ⌄</span><span>Bezirke ⌄</span><span>Kategorie ⌄</span></div>"+
+    "<div class=\"mzs-r\"><i>"+I("hotel")+"</i><span><b>voco Times Square South</b><small>Hotel der Reise · 21.–27.10.</small></span></div>"+
+    "<div class=\"mzs-r\"><i>"+I("hotel")+"</i><span><b>The Hoxton Williamsburg</b><small>Very Good · Tipp von @anna</small></span><em class=\"mk ms-h2\">Als Hotel</em></div>"+
+    "<div class=\"mzs-r\"><i>"+I("hotel")+"</i><span><b>Arlo SoHo</b><small>2 Fotos · 450 m zur U-Bahn</small></span></div></div></div>"+
+  // Tickets
+  "<div class=\"ms mz mz-tk\" data-sc=\"tk\"><div class=\"mz-pop\"><div class=\"mzk-h\"><b>Tickets</b><span class=\"x\">✕</span></div><small class=\"mzk-s\">Top of the Rock</small>"+
+    "<div class=\"mzo-l\">Buchen</div><div class=\"mzk-r\"><i>"+I("ticket")+"</i><span><b>Tickets in der App buchen</b><small><em>Noch nicht verfügbar</em></small></span></div>"+
+    "<div class=\"mzo-l\">Meine Tickets</div><div class=\"mzk-t\"><span><b>Top of the Rock · Sa 24.10.</b><small>Code 7F3K-22 · 2 × 40 $</small></span><em>Gebucht</em></div>"+
+    "<span class=\"mk mk-add\">+ Ticket hinterlegen</span></div></div>"+
+  // Kartenebenen je Reiseziel (hier Lissabon)
+  "<div class=\"ms mz mz-lay\" data-sc=\"lay\"><svg class=\"mzl-map\" viewBox=\"0 0 224 316\" aria-hidden=\"true\"><path d=\"M-5 250 C60 230 120 260 230 220\" stroke=\"#c3d6e2\" stroke-width=\"40\" fill=\"none\"/><path d=\"M20 40 L200 200\" stroke=\"#3a8fd6\" stroke-width=\"3\"/><path d=\"M10 150 C80 120 140 140 220 90\" stroke=\"#E5A100\" stroke-width=\"3\"/><path d=\"M60 0 L120 210\" stroke=\"#d6453a\" stroke-width=\"2.4\" stroke-dasharray=\"5 3\"/></svg>"+
+    "<div class=\"mzl-trip\">Lissabon <small>14.–20. Mai ⌄</small></div>"+
+    "<div class=\"mz-pop mzl-pop\"><div class=\"mzo-l\">Auf der Karte</div>"+
+      "<p class=\"mk ml-tr\"><i class=\"ck part\"></i><span class=\"sw\" style=\"background:linear-gradient(90deg,#3a8fd6 0 33%,#E5A100 33% 66%,#d6453a 66%)\"></span><b>ÖPNV</b><small>3 von 6</small><em class=\"cv\">⌃</em></p>"+
+      "<div class=\"mzl-sub\"><p><i class=\"ck y\"></i><span class=\"sw\" style=\"background:#3a8fd6\"></span>Metro / U-Bahn</p><p><i class=\"ck y\"></i><span class=\"sw\" style=\"background:#E5A100\"></span>Tram</p><p><i class=\"ck y\"></i><span class=\"sw\" style=\"background:#d6453a\"></span>Seilbahnen</p><p><i class=\"ck\"></i><span class=\"sw\" style=\"background:#2f6fd6\"></span>Busse</p><p><i class=\"ck\"></i><span class=\"sw\" style=\"background:#0b84b5\"></span>Fähren</p><p><i class=\"ck\"></i><span class=\"sw\" style=\"background:#0A6CDB\"></span>Bike Share</p></div>"+
+      "<p><i class=\"ck y\"></i><span class=\"sw\" style=\"background:#8e8e93\"></span><b>Wünsche</b></p><p><i class=\"ck\"></i><span class=\"sw dash\"></span><b>Bezirke</b></p></div></div>"+
+  // Leihräder (Station mit Live-Verfügbarkeit, hier Paris)
+  "<div class=\"ms mz mz-bike\" data-sc=\"bike\"><div class=\"mzb-map\"><i style=\"left:40px;top:70px\">7</i><i style=\"left:120px;top:52px\">3</i><i class=\"z\" style=\"left:170px;top:110px\">0</i><i style=\"left:84px;top:132px\">12</i><i style=\"left:150px;top:168px\">5</i></div>"+
+    "<div class=\"mk mb-card\"><div class=\"mzb-h\"><span class=\"cic\">"+LMBIKE+"</span><span><b>Rue de Rivoli – Louvre</b><small>Vélib’ Station · 35 Plätze</small></span></div>"+
+      "<div class=\"mzb-av\"><span><b>7</b>Räder<small>davon 2 E-Bikes</small></span><span><b>21</b>freie Plätze</span></div><small class=\"mzb-n\">Stand: gerade eben · live</small>"+
+      "<div class=\"mzb-t\"><span class=\"p\">"+dmSv(DMI.route, 20, 1.8)+"Navigieren</span><span>"+LMBIKE+"So geht’s</span><span>"+I("sync")+"Aktualisieren</span></div></div></div>"+
+  // Offline verfügbar (Reise-Ansicht)
+  "<div class=\"ms mz mz-off\" data-sc=\"off\"><div class=\"mzf-ban\">Offline: Plan und Routen gehen weiter · 2 Fotos warten</div>"+
+    "<div class=\"mz-pop mzf-pop\"><b class=\"mzf-t\">New York</b><small class=\"mzf-s\"><em class=\"tg\">Aktuell</em> · 21.–27. Okt. · 7 Tage</small>"+
+      "<div class=\"mzo-l\">Offline verfügbar</div><small class=\"mzf-n\">Karte und ÖPNV des Reisegebiets ohne Netz nutzen · ca. 300 Kacheln (~15 MB)</small>"+
+      "<div class=\"mzf-row\"><span class=\"mk mf-btn\"><span class=\"l\">Laden</span><span class=\"bar\"><i></i></span><span class=\"ok\">✓ Offline bereit</span></span></div>"+
+      "<small class=\"mzf-n\">Ohne Netz gehen Plan, GPS-Standort, Fotospots und Fotos weiter.</small></div></div>"+
+  // Entdecken als Reels
+  "<div class=\"ms mz mz-reel\" data-sc=\"reels\"><div class=\"mzr-top\"><span class=\"tg\"><i></i>New York ⌄</span><span class=\"sg\"><b>Alle</b><span>Freunde</span></span></div>"+
+    "<div class=\"mzr-track\">"+
+      "<div class=\"mzr-c\" style=\"--a:#3f8f7a;--b:#16302b\"><span class=\"n\">1/3</span><div class=\"mzr-side\"><span>"+HEART+"<em>342</em></span><span class=\"mk mr-take\">"+SAVE+"<em>97</em></span><span>"+dmSv(DMI.cm, 20, 1.8)+"<em>3</em></span><span>"+dmSv(DMI.more, 20, 1.8)+"</span></div>"+
+        "<div class=\"mzr-tx\"><div class=\"w\">"+dmAv("#E5A100", "A")+"<b>@anna</b><small>Freund · Okt. 2026</small></div><b class=\"t\">The High Line</b><small>Park · Gansevoort St bis 34th St</small><span class=\"r\">Ø Must Have · 2 Bewertungen</span></div></div>"+
+      "<div class=\"mzr-c\" style=\"--a:#c9853f;--b:#3a1e10\"><span class=\"n\">1/2</span><div class=\"mzr-side\"><span>"+HEART+"<em>58</em></span><span>"+SAVE+"<em>21</em></span><span>"+dmSv(DMI.cm, 20, 1.8)+"<em>1</em></span><span>"+dmSv(DMI.more, 20, 1.8)+"</span></div>"+
+        "<div class=\"mzr-tx\"><div class=\"w\">"+dmAv("#5E9970", "L")+"<b>@Ludwig</b><small>öffentlich · Sep. 2026</small></div><b class=\"t\">Joe’s Pizza</b><small>Restaurant · Carmine St</small><span class=\"r\">Ø Very Good · 4 Bewertungen</span></div></div></div></div>"+
+  // Inspiration → Ziel ohne Reise
+  "<div class=\"ms mz mz-reel mz-insp\" data-sc=\"insp\"><div class=\"mzr-top\"><span class=\"tg in\">"+I("compass")+"Inspiration ⌄</span><span class=\"sg\"><b>Alle</b><span>Freunde</span></span></div>"+
+    "<div class=\"mzr-track\"><div class=\"mzr-c\" style=\"--a:#5c8fc9;--b:#1d2c47\"><span class=\"n\">1/4</span><div class=\"mzr-side\"><span>"+HEART+"<em>211</em></span><span class=\"y\">"+SAVE+"<em>65</em></span><span>"+dmSv(DMI.cm, 20, 1.8)+"<em>6</em></span><span>"+dmSv(DMI.more, 20, 1.8)+"</span></div>"+
+      "<div class=\"mzr-tx\"><div class=\"w\">"+dmAv("#8C78AE", "C")+"<b>@Clara</b><small>öffentlich · Lissabon</small></div><b class=\"t\">Miradouro da Graça</b><small>Aussicht · Graça, Lissabon</small><span class=\"r\">Ø Outstanding · 5 Bewertungen</span></div></div></div>"+
+    "<div class=\"mk mi-z\"><span class=\"ok\">"+SAVE+"</span><span><b>Im Ziel „Lissabon“ gemerkt</b><small>Liegt bereit, wenn du dorthin reist</small></span></div></div>"+
+  // Follower & Gefolgt mit Anfragen
+  "<div class=\"ms mz mz-fol\" data-sc=\"fol\"><div class=\"mz-pop\"><div class=\"mzk-h\"><b>Follower &amp; Gefolgt</b><span class=\"x\">✕</span></div>"+
+    "<div class=\"mzf-pills\"><span>"+I("friends")+"Gruppen <em>2</em></span><span>"+FRREQICO+"Anfragen <i class=\"bd\">1</i></span></div>"+
+    "<div class=\"mzf-seg\"><b>Follower <em>12</em></b><span>Gefolgt <em>9</em></span></div>"+
+    "<div class=\"mzf-req\">"+dmAv("#8C78AE", "C")+"<span><b>@Clara</b><small>möchte dir folgen</small></span><em class=\"mk mf-ok\">Annehmen</em><em class=\"no\">✕</em></div>"+
+    "<div class=\"mzf-p\">"+dmAv("#E5A100", "A")+"<span><b>@anna</b><small>Ihr folgt euch · Freunde</small></span></div>"+
+    "<div class=\"mzf-p\">"+dmAv("#5E9970", "L")+"<span><b>@Ludwig</b><small>Folgt dir</small></span><em class=\"fb\">Folgen</em></div></div></div>"+
+  // Freundesgruppen
+  "<div class=\"ms mz mz-grp\" data-sc=\"grp\"><div class=\"mz-pop\"><div class=\"mzk-h\"><b>Gruppen</b><span class=\"x\">✕</span></div>"+
+    "<div class=\"mzf-p\"><span class=\"gi\">"+I("friends")+"</span><span><b>Familie</b><small>4 Personen</small></span></div>"+
+    "<div class=\"mzf-p\"><span class=\"gi\">"+I("friends")+"</span><span><b>Lauftreff</b><small>6 Personen</small></span></div>"+
+    "<div class=\"mzf-p\"><span class=\"gi add\">+</span><span><b>Neue Gruppe</b><small>Nur für dich sichtbar</small></span></div></div>"+
+    "<div class=\"mz-pop mzg-ask\"><div class=\"mzo-l\">Freunde nach Tipps fragen · An</div><div class=\"mzg-q\"><span class=\"mk mg-q y\">"+I("friends")+"Familie <small>4</small></span><span>"+I("friends")+"Lauftreff <small>6</small></span></div></div></div>"+
+  // Profil
+  "<div class=\"ms mz mz-prof\" data-sc=\"prof\"><div class=\"mzq-h\"><span class=\"mzq-av\">F</span><span class=\"mzq-n\"><b>Ferdinand</b><span class=\"mk mp-cap\">"+I("friends")+"<b>12</b> Follower <i></i><b>9</b> Gefolgt</span></span><span class=\"mzq-g\">⚙</span></div>"+
+    "<div class=\"mzq-seg\"><b>Reisen <em>4</em></b><span>Beobachtet <em>1</em></span><span>Ziele</span><span>Karte</span></div>"+
+    "<div class=\"mzq-tiles\"><span style=\"--a:#3a6fd6;--b:#12224a\"><em class=\"pfs-now\">Aktuell</em><b>New York</b><small>21.–27.10.</small></span><span style=\"--a:#d9a24a;--b:#6b3f12\"><em class=\"pfs-plan\">In Planung</em><b>Lissabon</b><small>14.–20.5.</small></span>"+
+      "<span style=\"--a:#b07ad6;--b:#3b1d57\"><em class=\"pfs-opt\">Option</em><b>Japan</b><small>ohne Termin</small></span><span style=\"--a:#8d8d93;--b:#2b2b30\"><em class=\"pfs-done\">Abgeschlossen</em><b>Rom</b><small>Apr. 2026</small></span></div></div>";
 }
 function dmMockHTML(){
   var bar = ["map","list","disc","srch","chat","bell"].map(function(k, i){ return "<span class=\"bi"+(i===0?" a":"")+"\">"+dmSv(DMI[k])+"</span>"; }).join("")+"<span class=\"bi av\">F</span>";
@@ -10149,7 +10528,7 @@ function dmMockHTML(){
     "<div class=\"mk m-dot\" style=\"left:64px;top:126px;background:#C98A4B\"></div><div class=\"mk m-dot\" style=\"left:170px;top:116px;background:#5E97B5\"></div>"+
     "<div class=\"m-bubble\" style=\"top:104px\">Ralph's Coffee · 6 Min. zu Fuß</div>"+
     "<div class=\"mk m-bar\">"+bar+"</div>"+
-    "<div class=\"mk m-trip\">New York <small>24.–28. Okt. ⌄</small></div>"+
+    "<div class=\"mk m-trip\">New York <small>21.–27. Okt. ⌄</small></div>"+
     "<div class=\"mk m-btn m-srch\">"+dmSv(DMI.srch, 24, 2.4)+"</div><div class=\"mk m-btn m-add mx-own\">＋</div>"+
     "<div class=\"mk m-rail\"><b>2</b>So 25.</div>"+
     "<div class=\"mk m-cb m-ki\"><span>KI</span></div><div class=\"mk m-cb m-lay\"></div><div class=\"mk m-cb m-side\"></div><div class=\"mk m-cb m-loc\"></div>"+
@@ -10167,7 +10546,7 @@ function dmMockHTML(){
     "</div>"+
     // Ort-Karte
     "<div class=\"ms ms-card\"><b>Joe's Pizza</b><small>Restaurant · Greenwich Village</small><div class=\"mc-ch\"><span>"+ic("friends", "ii")+" Freunde · 2</span><span>"+ic("globe", "ii")+" Öffentlich</span></div><div class=\"mc-op\">🚇 ÖPNV · Christopher St · 150 m</div>"+
-      "<div class=\"mc-t\"><span class=\"mk mc-plan\">"+dmSv(DMI.plus, 20, 2)+"Zur Planung</span><span>"+dmSv(DMI.route, 20, 1.8)+"Route</span><span>"+dmSv(DMI.cm, 20, 1.8)+"Details</span><span>"+dmSv(DMI.more, 20, 1.8)+"Mehr</span></div></div>"+
+      "<div class=\"mc-t\"><span class=\"mk mc-plan\">"+dmSv(DMI.plus, 20, 2)+"Zur Planung</span><span>"+dmSv(DMI.route, 20, 1.8)+"Route</span><span>"+ic("note")+"Details</span><span>"+dmSv(DMI.more, 20, 1.8)+"Mehr</span></div></div>"+
     dmPhotoHTML()+
     // Chat
     "<div class=\"ms ms-chat\"><div class=\"mh-h\"><span>‹</span><i style=\"background:#E5A100\">A</i><b>@anna</b></div>"+
@@ -10176,36 +10555,43 @@ function dmMockHTML(){
     // Rückblick
     "<div class=\"ms ms-rc\"><div class=\"rd\"><span>2</span><span class=\"a\">3</span><span>4</span><span>5</span></div><div class=\"rk\">● RÜCKBLICK · NEW YORK</div><div class=\"rb\">Tag 3</div><div class=\"rt\">Samstag, 24. Oktober</div>"+
       "<div class=\"rs\"><span><b>6</b>besuchte Orte</span><span><b>9,4</b>km</span><span><b>12</b>Fotos</span></div><div class=\"rm\"><i></i><i></i><i></i></div><div class=\"rw\">‹ Vortag · wischen · nächster Tag ›</div></div>"+
-    // Entdecken
-    "<div class=\"ms ms-dc\"><div class=\"dh\">Entdecken</div><div class=\"dseg\"><span class=\"a\">"+ic("globe", "ii")+" Alle</span><span>"+ic("friends", "ii")+" Freunde</span></div>"+
-      "<div class=\"dcard\"><div class=\"dw\"><i style=\"background:#E5A100\">A</i><span><b>@anna</b><small>New York · Okt. 2026</small></span></div><div class=\"dp\"></div><b class=\"dn\">Katz's Delicatessen</b><small class=\"ds\">Restaurant · <em>Outstanding</em></small><div class=\"da\"><span class=\"mk md-add\">"+ic("save", "ii")+" Wunschliste</span><span class=\"pl\">Einplanen …</span></div></div></div>"+
     // Mitteilungen
     "<div class=\"ms ms-nt\"><div class=\"dh\">Mitteilungen</div><p class=\"mk mn-first\"><i style=\"background:#007AFF\">F</i><span><b>@Ferdinand</b> hat 4 neue Fotos hinzugefügt<small>vor 5 Min.</small></span></p><p><i style=\"background:#E5A100\">A</i><span><b>@anna</b> hat dein Foto kommentiert<small>vor 1 Std.</small></span></p><p><i style=\"background:#5E9970\">✓</i><span>Tag 3 ist abgeschlossen – Rückblick ansehen<small>gestern</small></span></p></div>"+
     // Mitreisende einladen
-    "<div class=\"ms ms-sh\"><div class=\"dh\">Mitreisende & Beobachter</div><p><i style=\"background:#007AFF\">F</i><span><b>@Ferdinand</b> (du)<small>Besitzer</small></span></p><p><i style=\"background:#E5A100\">A</i><span><b>@anna</b><small>Mitreisende</small></span></p><p><i style=\"background:#8C78AE\">M</i><span><b>@Mama</b><small>Beobachterin</small></span></p>"+
-      "<div class=\"vh\">Einladen als</div><div class=\"mk mx-seg\"><span class=\"a\">Mitreisende</span><span>Beobachter</span></div><div class=\"sx\">Mitreisende planen mit: Stopps, Wunschliste, Tagebuch, Fotos und Kommentare.</div></div>"+
+    "<div class=\"ms ms-sh\"><div class=\"dh\">Mitreisende & Beobachter</div><div class=\"vh\">Einladen als</div><div class=\"mk mx-seg\"><span class=\"a\">Mitreisende</span><span>Beobachter</span></div><div class=\"sx\">Mitreisende planen mit: Stopps, Wunschliste, Tagebuch, Fotos und Kommentare.</div>"+
+      "<div class=\"vh\">Personen</div><p><i style=\"background:#007AFF\">F</i><span><b>@Ferdinand</b> (du)<small>Besitzer</small></span></p><p><i style=\"background:#E5A100\">A</i><span><b>@anna</b><small>Mitreisende</small></span></p><p><i style=\"background:#8C78AE\">M</i><span><b>@Mama</b><small>Beobachterin</small></span></p></div>"+
+    dmScreensHTML()+
     "<div class=\"m-fing\"></div>";
 }
 var DM_ARR_L = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M19 12H5M11 6l-6 6 6 6\"/></svg>";
 var DM_ARR_R = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg>";
+// Kapitel der aktuellen Rolle in Reihenfolge: [{c, from, n}]
+function dmChapters(){ var out = []; DM_STEPS_NOW().forEach(function(s, i){ var l = out[out.length-1]; if(l && l.c===s.ch) l.n++; else out.push({c:s.ch, from:i, n:1}); }); return out; }
 function dmShow(i){
   var el = $("demo"); if(!el) return;
-  var L = DM_STEPS_NOW();
+  var L = DM_STEPS_NOW(), prev = dmI;
   dmI = Math.max(0, Math.min(L.length-1, i));
   var st = L[dmI], mock = el.querySelector(".dm-mock"), last = dmI===L.length-1;
   mock.classList.toggle("focus", !!st.on && !st.s);
   mock.setAttribute("data-r", dmRole); mock.setAttribute("data-s", st.s || "");
   mock.setAttribute("data-v", st.v || "plan"); mock.setAttribute("data-a", st.a || ""); mock.setAttribute("data-f", st.f ? (st.fm || "tap") : "");
   mock.classList.toggle("obsnote", !!st.obsNote);
+  mock.querySelectorAll(".ms[data-sc]").forEach(function(m){ m.classList.toggle("cur", m.getAttribute("data-sc")===st.s); });
   if(st.f){ mock.style.setProperty("--fx", st.f[0]+"px"); mock.style.setProperty("--fy", st.f[1]+"px"); }
   mock.querySelectorAll(".mk, .ring, .on").forEach(function(m){ m.classList.remove("on", "ring"); });
   if(st.on) mock.querySelectorAll(st.on).forEach(function(m){ m.classList.add("on"); });
   if(st.ring) mock.querySelectorAll(st.ring).forEach(function(m){ m.classList.add("ring"); });
   mock.querySelector(".m-bubble").classList.toggle("show", !!st.b);
   var tp = mock.querySelector(".tp"), tw = mock.querySelector(".tw"); tp.classList.toggle("a", st.v!=="wish"); tw.classList.toggle("a", st.v==="wish");
-  var tx = el.querySelector(".dm-txt"); tx.innerHTML = "<h3 id=\"dmT\">"+esc(st.t)+"</h3><p>"+esc(st.p)+"</p>"; tx.classList.remove("fade"); void tx.offsetWidth; tx.classList.add("fade");
+  // Mini-Handy gleitet in Blätterrichtung herein
+  var stg = el.querySelector(".dm-stage"); stg.classList.remove("in-l", "in-r"); void stg.offsetWidth; if(prev!==dmI) stg.classList.add(dmI > prev ? "in-r" : "in-l");
+  var chs = dmChapters(), ci = chs.map(function(c){ return c.c; }).indexOf(st.ch), C = chs[ci];
+  var tx = el.querySelector(".dm-txt"); tx.innerHTML = "<span class=\"dm-ey\">"+esc(DM_CH[st.ch]||"")+(C && C.n > 1 ? " · "+(dmI - C.from + 1)+" von "+C.n : "")+"</span><h3 id=\"dmT\">"+esc(st.t)+"</h3><p>"+esc(st.p)+"</p>"+
+    (st.real ? "<button type=\"button\" class=\"dm-real\" data-dm=\"real\">"+ic("eye", "ii")+"In der App zeigen</button>" : "")+"<p class=\"dm-miss\" hidden></p>";
+  tx.classList.remove("fade"); void tx.offsetWidth; tx.classList.add("fade");
   el.querySelector(".dm-cnt").textContent = (dmI+1)+" / "+L.length;
-  el.querySelector(".dm-dots").innerHTML = L.map(function(_, k){ return "<i"+(k===dmI?" class=\"on\"":"")+"></i>"; }).join("");
+  el.querySelector(".dm-dots").innerHTML = chs.map(function(c, k){ var f = k < ci ? 1 : k > ci ? 0 : (dmI - c.from + 1)/c.n;
+    return "<button type=\"button\" data-dm=\"ch\" data-i=\""+c.from+"\" class=\""+(k===ci ? "on" : "")+"\" style=\"flex-grow:"+c.n+"\" aria-label=\"Kapitel "+esc(DM_CH[c.c]||"")+"\"><i style=\"transform:scaleX("+f+")\"></i></button>"; }).join("");
   el.querySelectorAll(".dm-role button").forEach(function(b){ b.setAttribute("aria-selected", b.getAttribute("data-r")===dmRole); });
   el.querySelector(".dm-prev").disabled = dmI===0;
   var nx = el.querySelector(".dm-next");
@@ -10214,12 +10600,62 @@ function dmShow(i){
   nx.setAttribute("aria-label", last ? "Einführung beenden" : "Weiter");
   el.querySelector(".dm-skip").style.visibility = last ? "hidden" : "";
 }
-function closeDemo(){ var el = $("demo"); if(el) el.remove(); document.removeEventListener("keydown", dmKey, true); }
+function closeDemo(){ dmSpotOff(true); var el = $("demo"); if(el) el.remove(); document.removeEventListener("keydown", dmKey, true); }
 function dmKey(e){
   if(!$("demo")) return;
+  if($("dmSpot")){ if(e.key==="Escape" || e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); dmBack(); } return; }
   if(e.key==="ArrowRight"){ e.preventDefault(); e.stopPropagation(); if(dmI < DM_STEPS_NOW().length-1) dmShow(dmI+1); }
   else if(e.key==="ArrowLeft"){ e.preventDefault(); e.stopPropagation(); dmShow(dmI-1); }
   else if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); closeDemo(); }
+}
+/* „In der App zeigen“: Demo ausblenden, die passende Ansicht öffnen und das echte Bedienelement hervorheben.
+   Ein Tipp bringt zurück zur Demo an dieselbe Stelle; die vorherige Ansicht wird wiederhergestellt. Daten werden nicht verändert. */
+var dmPrev = null;
+function dmPages(){ closeChPage(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); closeMenus(); }
+function dmSheetUp(){ if(!desktop.matches && (sheetState==="min" || sheetState==="peek")) setSheet("mid"); }
+var DM_VIEW = {
+  map: function(){ dmPages(); },
+  day: function(){ dmPages(); if(tab!=="day"){ tab = "day"; renderSheet(); } dmSheetUp(); },
+  wish: function(){ dmPages(); if(tab!=="wish"){ tab = "wish"; renderSheet(); } dmSheetUp(); },
+  trip: function(){ dmPages(); if(!tdraft && tab!=="trip"){ tab = "trip"; renderSheet(); } dmSheetUp(); },
+  tripmenu: function(){ dmPages(); $("tripMenu").hidden = false; $("tripBtn").setAttribute("aria-expanded", true); placeFloating(); },
+  layers: function(){ dmPages(); if($("layers").hidden) $("layersBtn").click(); var g = $("lTrGrp"); if(g && g.hidden && $("lTrBtn")){ $("lTrBtn").click(); dmPrev.lgrp = true; } },
+  photo: function(){ dmPages(); var ph = T().photos || {}, pid = Object.keys(ph).filter(function(k){ return P(k) && (ph[k]||[]).length; })[0]; if(pid) openJPop(pid, dayOf(pid), ph[pid][0]); },
+  disc: function(){ openDcPage(); },
+  friends: function(){ closeMenus(); accView = "friends"; unameMsg = ""; frTab = "fol"; frFilt = ""; openSettings(); },
+  prof: function(){ openProfile(); }
+};
+function dmGo(i){
+  var st = DM_STEPS_NOW()[i], dm = $("demo"); if(!st || !st.real || !dm) return null;
+  dmPrev = {i:i, prof:profOpen, dc:dcPage, ls:lsPage, ch:chPage, gs:gsPage, nt:ntPage, tab:tab, sheet:sheetState, lay:!$("layers").hidden, acc:!$("acctPop").hidden};
+  dm.hidden = true;
+  (DM_VIEW[st.real.v] || DM_VIEW.map)();
+  var t = document.querySelector(st.real.el), r = t && t.getBoundingClientRect();
+  if(t && r.width && r.height){ try { t.scrollIntoView({block:"nearest", inline:"nearest"}); } catch(e){} r = t.getBoundingClientRect(); }
+  if(!t || !r.width || !r.height){ dmBack(); var m = dm.querySelector(".dm-miss"); if(m){ m.hidden = false; m.textContent = "Das erscheint in deiner App, sobald du eine Reise mit Orten und Fotos hast."; } return null; }
+  var sp = document.createElement("div"); sp.id = "dmSpot"; sp.className = "dm-spot"; sp.setAttribute("role", "dialog"); sp.setAttribute("aria-label", st.t);
+  var pad = 6, x = Math.max(4, r.left - pad), y = Math.max(4, r.top - pad), w = Math.min(innerWidth - 8, r.width + pad*2), h = Math.min(innerHeight - 8, r.height + pad*2), below = y + h + 130 < innerHeight, inside = !below && y < 130;
+  sp.innerHTML = "<div class=\"dm-hole\" style=\"left:"+x+"px;top:"+y+"px;width:"+w+"px;height:"+h+"px\"></div>"+
+    "<div class=\"dm-tip "+(below ? "b" : "a")+"\" style=\""+(below ? "top:"+(y + h + 12) : "bottom:"+(inside ? 28 : innerHeight - y + 12))+"px\"><b>"+esc(st.t)+"</b><small>Hier findest du es in der App.</small><button type=\"button\" data-dm=\"back\">Zurück zur Demo</button></div>";
+  ["pointerdown", "touchstart", "mousedown", "touchend"].forEach(function(k){ sp.addEventListener(k, function(e){ e.stopPropagation(); }, {passive:true}); });
+  sp.addEventListener("click", function(e){ e.stopPropagation(); e.preventDefault(); dmBack(); });
+  document.body.appendChild(sp);
+  return t;
+}
+function dmSpotOff(){ var s = $("dmSpot"); if(s) s.remove(); }
+function dmBack(){
+  dmSpotOff(); var p = dmPrev; dmPrev = null;
+  if(p){
+    if(jp) closeJPop();
+    if(!p.acc && !$("acctPop").hidden) closeSettings();
+    if(p.lgrp && $("lTrGrp") && !$("lTrGrp").hidden) $("lTrBtn").click();
+    if(!p.lay && !$("layers").hidden) $("layersBtn").click();
+    dmPages();
+    if(tab!==p.tab){ tab = p.tab; renderSheet(); }
+    if(sheetState!==p.sheet && !desktop.matches) setSheet(p.sheet);
+    if(p.prof) openProfile(); else if(p.dc) openDcPage(); else if(p.ls) openLsPage(); else if(p.ch) openChPage(); else if(p.gs) openGsPage(); else if(p.nt) openNtPage();
+  }
+  var dm = $("demo"); if(dm){ dm.hidden = false; var b = dm.querySelector(".dm-real"); if(b) b.focus(); }
 }
 function openDemo(role){
   closeDemo();
@@ -10229,20 +10665,22 @@ function openDemo(role){
     "<div class=\"dm-top\"><span class=\"dm-cnt\"></span><div class=\"dm-role\" role=\"tablist\" aria-label=\"Demo für\"><button type=\"button\" role=\"tab\" data-dm=\"role\" data-r=\"trav\">Reisende</button><button type=\"button\" role=\"tab\" data-dm=\"role\" data-r=\"obs\">Beobachter</button></div><button type=\"button\" class=\"dm-skip\" data-dm=\"close\">Überspringen</button></div>"+
     "<div class=\"dm-stage\"><div class=\"dm-mock\" aria-hidden=\"true\">"+dmMockHTML()+"</div></div>"+
     "<div class=\"dm-txt\" aria-live=\"polite\"></div>"+
-    "<div class=\"dm-nav\"><button type=\"button\" class=\"dm-arrow dm-prev\" data-dm=\"prev\" aria-label=\"Zurück\">"+DM_ARR_L+"</button><div class=\"dm-dots\" aria-hidden=\"true\"></div><button type=\"button\" class=\"dm-arrow dm-next\" data-dm=\"next\"></button></div></div>";
+    "<div class=\"dm-nav\"><button type=\"button\" class=\"dm-arrow dm-prev\" data-dm=\"prev\" aria-label=\"Zurück\">"+DM_ARR_L+"</button><div class=\"dm-dots dm-prog\"></div><button type=\"button\" class=\"dm-arrow dm-next\" data-dm=\"next\"></button></div></div>";
   // Eingaben bleiben in der Demo und erreichen die App darunter nicht
   ["pointerdown", "touchstart", "mousedown", "touchend"].forEach(function(t){ el.addEventListener(t, function(e){ e.stopPropagation(); }, {passive:true}); });
   var sx = null, sy = null;
-  el.addEventListener("touchstart", function(e){ if(e.touches.length===1 && !(e.target.closest && e.target.closest(".dm-role"))){ sx = e.touches[0].clientX; sy = e.touches[0].clientY; } }, {passive:true});
+  el.addEventListener("touchstart", function(e){ if(e.touches.length===1 && !(e.target.closest && e.target.closest(".dm-role,.dm-prog"))){ sx = e.touches[0].clientX; sy = e.touches[0].clientY; } }, {passive:true});
   el.addEventListener("touchend", function(e){ if(sx===null) return; var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
     if(Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)*1.5){ if(dx < 0 && dmI < DM_STEPS_NOW().length-1) dmShow(dmI+1); else if(dx > 0) dmShow(dmI-1); } }, {passive:true});
   el.addEventListener("click", function(e){ e.stopPropagation(); var b = e.target.closest("[data-dm]"); if(!b) return; var a = b.getAttribute("data-dm");
     if(a==="close") closeDemo(); else if(a==="prev") dmShow(dmI-1);
-    else if(a==="role"){ var r = b.getAttribute("data-r"); if(r!==dmRole){ dmRole = r; dmShow(0); } }
+    else if(a==="ch") dmShow(+b.getAttribute("data-i"));
+    else if(a==="real") dmGo(dmI);
+    else if(a==="role"){ var r = b.getAttribute("data-r"); if(r!==dmRole){ dmRole = r; dmI = 0; dmShow(0); } }
     else if(a==="next"){ if(dmI===DM_STEPS_NOW().length-1) closeDemo(); else dmShow(dmI+1); } });
   document.body.appendChild(el);
   document.addEventListener("keydown", dmKey, true);
-  dmShow(0);
+  dmI = 0; dmShow(0);
 }
 // Neues Konto (höchstens 7 Tage alt): Demo einmal nach dem ersten Öffnen der App zeigen
 function demoMaybe(u){

@@ -512,24 +512,108 @@ await test("Symbole: gleiche Funktion = gleiches Symbol (Schicken, Karte, Merken
   ok(await rp(`[MAPICO, MAPGO].every(function(s){ return s===ic("map"); }) && visIco("pub")===ic("friends") && visIco("all")===ic("globe") && visIco("trip")===ic("trip")`), "Karten-/Sichtbarkeits-Symbole uneinheitlich");
 });
 
-await test("App-Demo: Auswahl Reisende/Beobachter, alle Schritte durchklickbar", async () => {
+await test("App-Demo: Einstieg mit Ziel und Nutzen, Kapitel, alle Schritte durchklickbar", async () => {
   await seed();
   await rp(`openDemo("trav")`); await page.waitForTimeout(200);
   ok(await visible("#demo .dm-role"), "Rollenauswahl oben fehlt");
   ok(await page.locator("#demo .m-bar .bi svg").count() >= 6, "Symbole in der Leiste fehlen");
+  // Einstieg: erst Ziel und Nutzen (Kapitel „Willkommen“ mit eigenen Bildschirmen), dann die Bedienung
+  const intro = await rp(`DM_ROLES.trav.filter(function(s){ return s.ch==="start"; }).map(function(s){ return s.s; })`);
+  ok(intro.join()==="hero,why,pillars", "Einstieg zeigt nicht Ziel und Nutzen: "+intro);
+  ok(await visible("#demo .ms[data-sc=hero].cur") && (await page.locator("#demo .dm-ey").innerText()).includes("WILLKOMMEN"), "Willkommens-Bildschirm fehlt");
+  const chs = await rp(`dmChapters().map(function(c){ return c.c; })`);
+  ok(chs.join()==="start,plan,go,share,comm,end", "Kapitel der Reisenden-Demo: "+chs);
+  ok(await page.locator("#demo .dm-prog button").count()===chs.length, "Fortschritt zeigt nicht je Kapitel einen Abschnitt");
+  await page.locator("#demo .dm-prog button").nth(4).click(); await page.waitForTimeout(80);
+  ok(await rp(`DM_STEPS_NOW()[dmI].ch`)==="comm" && await rp(`DM_STEPS_NOW()[dmI-1].ch`)==="share", "Tipp auf Kapitel springt nicht zum Kapitelanfang");
+  await rp(`dmShow(0)`);
   const nT = await rp(`DM_STEPS_NOW().length`), seen = new Set();
-  for(let i = 0; i < nT - 1; i++){ seen.add(await page.locator("#demo .dm-mock").getAttribute("data-s")); await page.locator("#demo .dm-next").click(); await page.waitForTimeout(60); }
-  ["card","photo","comment","vis","send","chat","recap","disc","share"].forEach(x => ok(seen.has(x), "Reisende-Demo zeigt Bildschirm nicht: "+x));
+  for(let i = 0; i < nT - 1; i++){
+    const s = await page.locator("#demo .dm-mock").getAttribute("data-s"); seen.add(s);
+    if(s && await page.locator("#demo .ms[data-sc='"+s+"']").count()) ok(await visible("#demo .ms[data-sc='"+s+"'].cur"), "Bildschirm nicht sichtbar: "+s);
+    await page.locator("#demo .dm-next").click(); await page.waitForTimeout(40);
+  }
+  ["hero","why","pillars","trips","opt","stay","card","tk","lay","bike","off","photo","comment","vis","send","chat","recap","share","reels","insp","fol","grp","prof"].forEach(x => ok(seen.has(x), "Reisende-Demo zeigt Bildschirm nicht: "+x));
   ok((await page.locator("#demo .dm-next").innerText()).includes("Los"), "Letzter Schritt ohne „Los geht’s“");
   await page.locator("#demo .dm-role [data-r=obs]").click(); await page.waitForTimeout(150);
   const nO = await rp(`DM_STEPS_NOW().length`);
   ok(nO !== nT && await rp(`dmI`)===0, "Beobachter-Demo startet nicht von vorn");
   ok(await page.locator("#demo .dm-role [data-r=obs][aria-selected=true]").count()===1, "Rollenauswahl nicht markiert");
-  for(let i = 0; i < nO - 1; i++){ await page.locator("#demo .dm-next").click(); await page.waitForTimeout(60); }
+  for(let i = 0; i < nO - 1; i++){ await page.locator("#demo .dm-next").click(); await page.waitForTimeout(40); }
   await rp(`dmShow(DM_STEPS_NOW().findIndex(function(s){ return s.s==="photo"; }))`);
   ok(!(await visible("#demo .ms-more")), "Beobachter-Demo zeigt ⋯ (Herunterladen/Löschen)");
   await rp(`dmShow(DM_STEPS_NOW().length-1)`); await page.locator("#demo .dm-next").click(); await page.waitForTimeout(150);
   ok(await page.locator("#demo").count()===0, "Demo schließt am Ende nicht");
+});
+
+await test("App-Demo: jeder Schritt zeigt auf ein echtes Bedienelement („In der App zeigen“)", async () => {
+  await seed();
+  await rp(`ntBadge(); openProfile(); true`); await page.waitForTimeout(150);
+  for(const role of ["trav", "obs"]){
+    await rp(`openDemo("${role}")`); await page.waitForTimeout(120);
+    const L = await rp(`DM_STEPS_NOW().map(function(s){ return {ch:s.ch, t:s.t, real:s.real||null}; })`);
+    for(let i = 0; i < L.length; i++){
+      const st = L[i];
+      if(st.ch==="start") continue;
+      ok(st.real && st.real.el, role+": Schritt ohne echtes Bedienelement: "+st.t);
+      await rp(`dmShow(${i})`);
+      ok(await visible("#demo .dm-real"), role+": „In der App zeigen“ fehlt: "+st.t);
+      await page.locator("#demo .dm-real").click(); await page.waitForTimeout(260);
+      ok(await page.locator("#dmSpot").count()===1, role+": Element nicht gefunden für „"+st.t+"“: "+st.real.el);
+      const r = await page.evaluate(sel => { const e = document.querySelector(sel); if(!e) return null; const b = e.getBoundingClientRect(); return {w:b.width, h:b.height, l:b.left, t:b.top, r:b.right, b:b.bottom}; }, st.real.el);
+      ok(r && r.w > 0 && r.h > 0 && r.b > 0 && r.t < 844 && r.r > 0 && r.l < 390, role+": Element nicht im Bild für „"+st.t+"“: "+JSON.stringify(r));
+      ok(await page.locator("#demo").isHidden(), role+": Demo verdeckt das Element");
+      ok(await insideViewport("#dmSpot .dm-tip"), role+": Hinweis „Zurück zur Demo“ nicht im Bild bei „"+st.t+"“");
+      await page.locator("#dmSpot .dm-tip button").click(); await page.waitForTimeout(160);
+      ok(await page.locator("#dmSpot").count()===0 && await visible("#demo .dm-card"), role+": Zurück zur Demo klappt nicht bei „"+st.t+"“");
+      ok(await rp(`dmI`)===i, role+": Demo steht nach dem Zurückkehren nicht am selben Schritt");
+      ok(await rp(`profOpen && !jp && $("layers").hidden && $("acctPop").hidden && $("tripMenu").hidden && tab==="day"`), role+": Vorherige Ansicht nicht wiederhergestellt nach „"+st.t+"“");
+    }
+    await rp(`closeDemo()`);
+  }
+});
+
+await test("App-Demo quer: Mini-Handy links, Text rechts, nichts überlappt", async () => {
+  await seed();
+  await rp(`openDemo("trav"); dmShow(4); true`);
+  await page.waitForFunction(() => [".dm-card", ".dm-stage"].every(s => !document.querySelector("#demo "+s).getAnimations().length), null, {polling:100, timeout:15000});   // Einblenden/Hereingleiten fertig
+  ok(await insideViewport("#demo .dm-card"), "Demo-Fenster ragt quer aus dem Bild");
+  const g = await page.evaluate(() => { const r = s => document.querySelector(s).getBoundingClientRect(); const m = r("#demo .dm-mock"), t = r("#demo .dm-txt"), n = r("#demo .dm-nav"); return {m, t, n}; });
+  ok(g.m.right <= g.t.left + 1 && g.m.right <= g.n.left + 1, "Mini-Handy überlappt Text oder Navigation: "+JSON.stringify(g));
+  ok(g.m.bottom <= 390 && g.n.bottom <= 390, "Mini-Handy oder Navigation unten abgeschnitten");
+  await shot("demo-quer");
+}, {vp:{width:844, height:390}});
+
+await test("App-Demo: Mini-Bildschirme entsprechen den echten Ansichten", async () => {
+  await seed();
+  await rp(`openDemo("trav")`); await page.waitForTimeout(150);
+  const mock = sel => page.evaluate(s => [...document.querySelectorAll(s)].map(e => e.textContent.trim()), sel);
+  // Ort-Karte: dieselben Kacheln wie die echte Karte eines Wunschorts
+  const mt = await mock("#demo .ms-card .mc-t > span");
+  await rp(`closeDemo(); select("p6"); true`); await page.waitForTimeout(250);
+  const rt = await page.evaluate(() => [...document.querySelectorAll("#card .jp-tile")].map(e => e.innerText.trim()));
+  ok(mt.join("|")===rt.join("|"), "Ort-Karte in der Demo: "+mt.join("|")+" statt "+rt.join("|"));
+  // Foto-Vollbild: gleiche Knöpfe links wie die echte Ansicht (mit Likes/Kommentaren)
+  await rp(`sel = null; renderCard(); phSocial = function(){ return true; }; openJPop("p4", dayOf("p4"), "ph_a"); true`); await page.waitForTimeout(350);
+  const pv = await page.evaluate(() => [...document.querySelectorAll("#pvLayer .pv-side .pvi")].map(e => e.getAttribute("data-act")));
+  ok(pv.join()==="phlike,pvcm,phmap,itemvispick,phsend,phmore", "Echte Foto-Knöpfe haben sich geändert: "+pv);
+  await rp(`closeJPop(); openDemo("trav"); true`); await page.waitForTimeout(150);
+  ok(await page.locator("#demo .ms-side .ms-b").count()===pv.length, "Foto-Knöpfe in der Demo passen nicht zur App");
+  // Sichtbarkeit: alle vier Stufen
+  const vis = await mock("#demo .ms-vispop p b");
+  ok(vis.join()===await rp(`[VISLBL.priv, VISLBL.trip, VISLBL.pub, VISLBL.all].join()`), "Sichtbarkeitsstufen in der Demo: "+vis);
+  // Reise-Status wie in der App
+  const stt = await mock("#demo .mzt-menu em");
+  ok(stt.join()===await rp(`[TSTAT.now, TSTAT.plan, TSTAT.opt, TSTAT.done].join()`), "Reise-Status in der Demo: "+stt);
+  const pst = await mock("#demo .mzq-tiles em");
+  ok(pst.join()===stt.join(), "Status-Plaketten im Profil der Demo: "+pst);
+  // Entdecken: vier Knöpfe rechts wie im echten Feed
+  ok(await page.locator("#demo .ms[data-sc=reels] .mzr-c").first().locator(".mzr-side > span").count()===await rp(`(dcSideHTML(dcDemo()[0]).match(/class="dc-sb/g)||[]).length`), "Entdecken-Knöpfe in der Demo passen nicht zum Feed");
+  // Bezeichnungen aus der Demo, die es in der App (außerhalb der Demo) geben muss
+  const src = await page.evaluate(() => { const s = [...document.scripts].map(x => x.textContent).join("\n"), a = s.indexOf("/* ---------- App-Demo"), b = s.indexOf("// Neues Konto (höchstens"); return s.slice(0, a)+s.slice(b); });
+  for(const w of ["Gruppen", "Anfragen zum Folgen", "Annehmen", "Ticket hinterlegen", "Tickets in der App buchen", "Noch nicht verfügbar", "Als Hotel der Reise übernehmen", "Unterkünfte", "Offline verfügbar", "Bike Share", "Metro / U-Bahn", "Tram", "Seilbahnen", "Navigieren", "So geht’s", "Aktualisieren", "Inspiration – aus aller Welt", "Noch nicht fest? Ohne Termin anlegen", "Neue Reise anlegen", "Beobachtet", "Follower", "Gefolgt", "Zur Planung"])
+    ok(src.includes(w) || (await page.evaluate(() => document.body.innerHTML)).includes(w), "Begriff aus der Demo gibt es in der App nicht: "+w);
+  await rp(`closeDemo()`);
 });
 
 await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kachel", async () => {
