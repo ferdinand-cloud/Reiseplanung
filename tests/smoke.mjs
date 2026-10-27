@@ -1559,6 +1559,41 @@ await test("Neue Reise: Zeitraum kompakt mit Datum/Uhrzeit nebeneinander und Nä
   await shot("neue-reise-zeitraum");
 });
 
+await test("Reise-Status und Option: abgeschlossen/aktuell/in Planung, Option ohne Termin anlegen", async () => {
+  await seed();
+  ok(await rp(`(function(){ var tk = todayKey(); function k(n){ return addD(tk, n); }
+    return tripStatus({start:k(-9), end:k(-1)})==="done" && tripStatus({start:k(-2), end:k(0)})==="now" && tripStatus({start:k(1), end:k(5)})==="plan" && tripStatus({opt:true, start:"", end:""})==="opt"; })()`), "Status falsch berechnet");
+  // Neue Reise als Option: ohne Zeitraum und Hotels, Name + Ort nötig
+  await rp(`closeMenus(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); true`); await page.waitForTimeout(200);
+  ok(await rp(`(function(){ var o = document.querySelector("#tForm .tf-opt"), n = document.querySelector("#tForm [data-f=name]"); return !!o && !!(o.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING); })()`), "Schieberegler Option fehlt oder nicht am Anfang");
+  await click("#tForm [data-act=topt]"); await page.waitForTimeout(150);
+  ok(await page.locator("#tForm [data-act=topt][aria-checked=true]").count()===1, "Option nicht eingeschaltet");
+  ok(await page.locator("#tForm .tf-span").count()===0 && await page.locator("#tForm [data-path=hotels]").count()===0, "Zeitraum/Hotels bei Option noch sichtbar");
+  await shot("neue-reise-option");
+  await page.fill("#tForm [data-f=name]", "Lissabon irgendwann");
+  await page.locator("#tForm [type=submit]").click(); await page.waitForTimeout(200);
+  ok((await page.locator("#tForm .err").innerText()).includes("mindestens einen Ort"), "Ort wird bei Option nicht verlangt");
+  await rp(`tdraft.orte[0].n = "Lissabon"; tdraft.orte[0].loc = "38.72, -9.14"; true`);
+  await page.locator("#tForm [type=submit]").click(); await page.waitForTimeout(400);
+  ok(await rp(`T().name==="Lissabon irgendwann" && T().opt===true && !T().start && !T().end && T().orte.length===1 && days().length===0`), "Option-Reise nicht angelegt");
+  ok(await rp(`$("tripBtn").textContent.includes("Option")`), "Kopfzeile zeigt nicht „Option“: "+await rp(`$("tripBtn").textContent+" / "+getComputedStyle($("tripBtn")).display`));
+  await click("#tripBtn"); await page.waitForTimeout(150);
+  ok((await page.locator("#tripMenu").innerText()).includes("Option") && (await page.locator("#tripMenu .tst").count()) >= 2, "Reise-Menü zeigt den Status nicht");
+  await shot("reise-status-menue");
+  await rp(`closeMenus(); true`);
+  // Bearbeiten: Option aus → Zeitraum wieder da, ohne Datum Fehler; mit Datum wird es eine geplante Reise
+  await rp(`tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); true`); await page.waitForTimeout(150);
+  ok(await page.locator("#tForm [data-act=topt][aria-checked=true]").count()===1, "Option beim Bearbeiten nicht gesetzt");
+  await click("#tForm [data-act=topt]"); await page.waitForTimeout(150);
+  ok(await page.locator("#tForm .tf-span").count()===2, "Zeitraum nach Ausschalten nicht da");
+  await page.locator("#tForm [type=submit]").click(); await page.waitForTimeout(200);
+  ok((await page.locator("#tForm .err").innerText()).includes("An- und Abreise"), "Ohne Option kein Datum verlangt");
+  await rp(`tdraft.start = addD(todayKey(), 10); tdraft.end = addD(todayKey(), 13); true`);
+  await page.locator("#tForm [type=submit]").click(); await page.waitForTimeout(400);
+  ok(await rp(`!T().opt && tripStatus(T())==="plan" && days().length===4`), "Aus Option wird keine geplante Reise");
+  await rp(`openProfile(); true`); await page.waitForTimeout(300); await shot("profil-status");
+});
+
 await test("Reise bearbeiten: „Reise löschen“ ganz unten, volle Breite, gedämpft rot", async () => {
   await seed();
   await rp(`acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; META[S.cur] = {owner:"u_me", members:["u_me"], roles:{u_me:"owner"}}; tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); true`); await page.waitForTimeout(200);
