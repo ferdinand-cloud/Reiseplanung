@@ -11,6 +11,7 @@ import { chromium as pw } from "playwright-core";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SHOTS = process.env.SHOTS || "";            // Ordner für Screenshots (optional)
 const ONLY = process.argv[2] || "";               // nur Tests, deren Name das enthält
+const VP0 = (process.env.VP || "390x844").split("x").map(Number);   // VP=844x390 → alle Tests im Querformat
 
 async function chromePath(){
   if(process.env.CHROME) return { exe: process.env.CHROME, args: [] };
@@ -30,10 +31,10 @@ let browser = null;
 const results = [];
 let page, errs = [], OSRMREQ = [];
 
-async function newPage(){
+async function newPage(vp, safe){
   // je Test ein frischer Browser (das mitgelieferte Chromium läuft als ein Prozess; mehrere Karten-Seiten nacheinander blockieren sonst)
   browser = await pw.launch({ executablePath: exe, args, headless: true });
-  const ctx = await browser.newContext({ viewport: {width:390, height:844}, deviceScaleFactor: 2, isMobile: true, hasTouch: true, serviceWorkers: "block", locale: "de-DE", timezoneId: "America/New_York" });
+  const ctx = await browser.newContext({ viewport: vp || {width:VP0[0], height:VP0[1]}, deviceScaleFactor: 2, isMobile: true, hasTouch: true, serviceWorkers: "block", locale: "de-DE", timezoneId: "America/New_York" });
   await ctx.route(/^https?:\/\/(?!127\.0\.0\.1)/, rt => {
     const u = rt.request().url();
     if(u.includes("gbfs.lyft.com") && u.includes("station_information")) return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({data:{stations:[
@@ -78,6 +79,9 @@ async function newPage(){
     return rt.abort();
   });
   const p = await ctx.newPage();
+  // Notch/abgerundete Ecken nachbilden: safe-area-inset-* (links, rechts, oben, unten), z. B. iPhone quer {left:47, right:47, bottom:21}
+  safe = safe || (process.env.SAFE ? (([l, r, t, b]) => ({left:l, right:r, top:t, bottom:b}))(process.env.SAFE.split(",").map(Number)) : null);
+  if(safe) await (await ctx.newCDPSession(p)).send("Emulation.setSafeAreaInsetsOverride", {insets:Object.assign({top:0, left:0, right:0, bottom:0}, safe)});
   p.setDefaultTimeout(6000);
   errs = [];
   p.on("pageerror", e => errs.push(e.message));
@@ -114,11 +118,11 @@ async function seed(){
   })()`);
 }
 
-async function test(name, fn){
+async function test(name, fn, opt){
   if(ONLY && !name.toLowerCase().includes(ONLY.toLowerCase())) return;
   const t0 = Date.now(); if(process.env.VERBOSE) console.log("… "+name);
   try {
-    page = await newPage();
+    page = await newPage(opt && opt.vp, opt && opt.safe);
     await fn();
     ok(!errs.length, "JavaScript-Fehler: "+errs.join(" | "));
     results.push({name, ok:true, ms:Date.now()-t0});
@@ -857,7 +861,7 @@ await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abha
   // Suche, Hinzufügen und KI bleiben während der Navigation erreichbar (linke Leiste)
   ok(await page.locator("#navTools button:visible").count()===3, "Suche, Plus und KI fehlen im Navigationsmodus");
   await click("#navAdd"); await page.waitForTimeout(150);
-  ok(await visible("#addMenu") && await page.evaluate(() => { const m = document.querySelector("#addMenu").getBoundingClientRect(), h = document.querySelector("#navUi .nav-hero").getBoundingClientRect(); return m.top >= h.bottom && m.left > 50; }), "Plus-Menü erscheint nicht neben der linken Leiste");
+  ok(await visible("#addMenu") && await page.evaluate(() => { const m = document.querySelector("#addMenu").getBoundingClientRect(), h = document.querySelector("#navUi .nav-hero").getBoundingClientRect(); return (m.top >= h.bottom || m.left >= h.right) && m.left > 50 && m.right <= innerWidth; }), "Plus-Menü erscheint nicht neben der Leiste");
   await click("#navAdd"); await page.waitForTimeout(100);
   await click("#navTools [data-act=srchopen]"); await page.waitForTimeout(200);
   ok(await visible("#srchPop"), "Suche lässt sich während der Navigation nicht öffnen");
@@ -1148,6 +1152,88 @@ await test("Ziele: mit Freunden teilen, Tipps von Freunden erkennbar", async () 
   await rp(`META[zielIds()[0]].owner = "u_anna"; zEdit = zEditFrom(zielIds()[0]); renderProfile();`); await page.waitForTimeout(150);
   ok((await page.locator("#profView [data-act=zdel]").innerText()).includes("verlassen"), "Geteiltes fremdes Ziel bietet Löschen statt Verlassen");
 });
+/* Querformat: iPhone quer (844×390) mit Notch-Rändern links/rechts und Home-Leiste unten */
+const QUER = {vp:{width:844, height:390}, safe:{left:47, right:47, bottom:21}};
+// prüft: alle sichtbaren Bedienelemente über der Karte liegen im Bild, außerhalb der Notch-Ränder und neben der Planung
+async function mapCtrlsOk(where){
+  const bad = await page.evaluate(() => {
+    const out = [], W = innerWidth, H = innerHeight, side = window.__rp("desktop.matches && sideOpen") ? document.getElementById("sheet").getBoundingClientRect().right : 0;
+    const sa = (() => { const d = document.createElement("div"); d.style.cssText = "position:fixed;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)"; document.body.appendChild(d); const c = getComputedStyle(d), r = {l:parseFloat(c.paddingLeft), r:parseFloat(c.paddingRight)}; d.remove(); return r; })();
+    document.querySelectorAll("#tabbar, .toprow > button, #rail, #ctrl > button, #card").forEach(e => {
+      const r = e.getBoundingClientRect(), cs = getComputedStyle(e);
+      if(!r.width || !r.height || cs.visibility==="hidden" || cs.display==="none" || e.closest("[hidden]")) return;
+      const n = e.id || e.className;
+      if(r.top < -1 || r.bottom > H + 1) out.push(n+" ragt oben/unten heraus");
+      if(r.right > W - sa.r + 1) out.push(n+" unter dem rechten Rand ("+Math.round(r.right)+" > "+(W - sa.r)+")");
+      if(r.left < Math.max(sa.l, side) - 1) out.push(n+" unter Notch/Planung ("+Math.round(r.left)+" < "+Math.max(sa.l, side)+")");
+    });
+    return out;
+  });
+  ok(!bad.length, where+": "+bad.join(", "));
+}
+await test("Querformat: Planung als Seitenleiste, Kartenknöpfe neben der Leiste und außerhalb der Notch", async () => {
+  await seed(); await page.waitForTimeout(300);
+  ok(await rp(`desktop.matches`), "Querformat nutzt nicht die Seitenleiste");
+  const sh = await page.evaluate(() => { const r = document.getElementById("sheet").getBoundingClientRect(); return {l:r.left, r:r.right, t:r.top, b:r.bottom}; });
+  ok(sh.l === 0 && sh.t <= 0 && sh.b >= 389 && sh.r > 300 && sh.r < 430, "Planung ist keine schmale Leiste links: "+JSON.stringify(sh));
+  ok(await page.evaluate(() => { const b = document.querySelector("#body .dh"); return b && b.getBoundingClientRect().left >= 47; }), "Inhalt der Planung liegt unter der Notch");
+  await mapCtrlsOk("Start");
+  await shot("quer-start");
+  await rp(`select("p1")`); await page.waitForTimeout(400);
+  ok(await visible("#card"), "Orts-Pop-up fehlt"); await mapCtrlsOk("Orts-Pop-up");
+  await shot("quer-ort");
+  await rp(`select(null)`);
+  await click("#layersBtn"); ok(await visible("#layers"), "Kartenebenen öffnen nicht"); ok(await insideViewport("#layers"), "Kartenebenen ragen aus dem Bild");
+  await shot("quer-ebenen"); await click("#layersBtn");
+  await click("#edgeBtn"); await page.waitForTimeout(400);
+  ok(await rp(`!sideOpen`), "Planung klappt nicht ein"); await mapCtrlsOk("Planung eingeklappt");
+  await shot("quer-eingeklappt");
+  await click("#edgeBtn"); await page.waitForTimeout(400);
+  // Drehen: hochkant → Blatt unten, Knöpfe rechts; zurück quer → wieder Seitenleiste
+  await page.setViewportSize({width:390, height:844}); await page.waitForTimeout(500);
+  ok(await rp(`!desktop.matches`), "Hochkant bleibt Seitenleiste");
+  ok(await page.evaluate(() => document.getElementById("sheet").getBoundingClientRect().width === innerWidth), "Hochkant: Blatt nicht über die ganze Breite");
+  await mapCtrlsOk("Hochkant nach Drehen");
+  await page.setViewportSize({width:844, height:390}); await page.waitForTimeout(500);
+  ok(await rp(`desktop.matches`), "Zurück quer: keine Seitenleiste"); await mapCtrlsOk("Quer nach Drehen");
+}, QUER);
+
+// prüft: Knöpfe, Eingaben und Überschriften der offenen Ansicht liegen nicht unter Notch/Rand (horizontal ins Bild ragende Elemente in Laufbändern ausgenommen)
+async function notchFree(root, where){
+  const bad = await page.evaluate((root) => {
+    const W = innerWidth, H = innerHeight, d = document.createElement("div"); d.style.cssText = "position:fixed;padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)"; document.body.appendChild(d);
+    const c = getComputedStyle(d), L = parseFloat(c.paddingLeft), R = parseFloat(c.paddingRight); d.remove(); const out = [];
+    document.querySelectorAll(root).forEach(rt => rt.querySelectorAll("button, input, textarea, select, h1, h2, h3, h4, b").forEach(e => {
+      const r = e.getBoundingClientRect(), cs = getComputedStyle(e); if(!r.width || !r.height || cs.visibility==="hidden" || r.bottom < 0 || r.top > H) return;
+      let p = e.parentElement, scr = false; while(p && p!==rt.parentElement){ const ps = getComputedStyle(p); if(/auto|scroll|hidden/.test(ps.overflowX) && p.scrollWidth > p.clientWidth + 2){ scr = true; break; } p = p.parentElement; } if(scr) return;
+      if(r.left < L - 1 || r.right > W - R + 1) out.push((e.id || e.className || e.tagName)+" "+Math.round(r.left)+"–"+Math.round(r.right)+" "+(e.textContent||"").trim().slice(0, 20));
+    }));
+    return out.slice(0, 6);
+  }, root);
+  ok(!bad.length, where+": unter Notch/Rand: "+bad.join(" | "));
+}
+await test("Querformat: Ansichten und Dialoge liegen nicht unter der Notch", async () => {
+  await seed();
+  const views = [
+    ["profil", `openProfile()`, "#profView", `closeProfile()`],
+    ["ziele", `openZiele()`, "#profView", `closeProfile()`],
+    ["liste", `openLsPage()`, "#lsView", `closeLsPage()`],
+    ["mitteilungen", `openNtPage()`, "#ntView", `closeNtPage()`],
+    ["chat", `openChPage()`, "#chView", `closeChPage()`],
+    ["entdecken", `openDcPage()`, "#dcView", `closeDcPage()`],
+    ["suche", `openSearch()`, "#srchPop", `closeSearch()`],
+    ["ki", `openAiChat()`, "#aiPop", `$("aiPop").hidden = true`],
+    ["einstellungen", `openSettings()`, "#acctPop", `closeSettings()`],
+    ["tagebuch", `openJPop("p4", dayOf("p4"))`, "#jPop", `closeJPop()`],
+    ["rueckblick", `openRecap(dayOf("p4"))`, "#rc", `closeRecap()`],
+  ];
+  for(const [n, open, root, close] of views){
+    await rp(open); await page.waitForTimeout(700);
+    await notchFree(root, n);
+    await shot("quer-"+n);
+    await rp(close).catch(() => {}); await page.waitForTimeout(250);
+  }
+}, QUER);
 
 await test("Route: gemerkte Orte am Weg, Zahl am Stern, Einschieben verknüpft mit dem Ziel", async () => {
   await seed();

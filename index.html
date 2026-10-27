@@ -133,13 +133,16 @@ ol.tsteps .ti .bul.bus{height:22px;font-size:11.5px}
 .tabs button small{font-size:12px;font-weight:600;opacity:.7;margin-left:3px}
 .tabs button[aria-selected="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px var(--scrim)}
 .body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:12px max(16px,env(safe-area-inset-right,0px)) calc(28px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:14px;align-content:start}
-@media (min-width:900px){
-  .sheet{top:0;bottom:0;right:auto;width:400px;height:100%;border-radius:0;transform:none!important;box-shadow:2px 0 18px var(--scrim);padding-top:env(safe-area-inset-top,0px)}
+:root{--sw:400px}
+/* Telefon im Querformat: Planung als schmale Seitenleiste links (wie am großen Bildschirm), Karte rechts daneben */
+@media (orientation:landscape) and (max-height:500px){ :root{--sw:calc(min(330px, 40vw) + env(safe-area-inset-left,0px))} }
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){
+  .sheet{top:0;bottom:0;right:auto;width:var(--sw);height:100%;border-radius:0;transform:none!important;box-shadow:2px 0 18px var(--scrim);padding-top:env(safe-area-inset-top,0px)}
   .handle{display:none}
   .grab{cursor:default;padding-top:14px}
-  .top{left:400px}
-  .card{left:416px}
-  .attr{left:410px}
+  .top{left:var(--sw)}
+  .card{left:calc(var(--sw) + 16px)}
+  .attr{left:calc(var(--sw) + 10px)}
 }
 
 /* Inhalte */
@@ -252,7 +255,7 @@ form.f input[type=text],form.f select{width:100%;border:1px solid var(--line);bo
 .daylist .dt b{font-size:15px}
 .daylist .dt em{font-style:normal;font-size:11px;font-weight:700;background:var(--ink);color:var(--sheet);border-radius:999px;padding:2px 7px;margin-left:4px;vertical-align:1px}
 .daylist .dt small{font-size:12.5px;color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-@media (min-width:900px){ .rail{left:410px} .top{left:400px} }
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){ .rail{left:calc(var(--sw) + 10px)} .top{left:var(--sw)} }
 .mapnote{position:fixed;z-index:14;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 140px);background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:12.5px;color:var(--muted);box-shadow:0 2px 8px var(--scrim)}
 fieldset.grp{border:1px solid var(--line);border-radius:12px;padding:10px;margin:0;display:grid;gap:8px}
 fieldset.grp legend{padding:0 4px;font-size:12.5px;font-weight:700;color:var(--muted)}
@@ -304,7 +307,7 @@ form.f input[type=date],form.f input[type=time]{width:100%;border:1px solid var(
 .pop-list button .ico{width:32px;height:32px}
 .pop-list button[aria-pressed="true"]{background:var(--chip)}
 .pop-list button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
-@media (min-width:900px){.pop{align-items:center}.pop-card{border-radius:18px}}
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){.pop{align-items:center}.pop-card{border-radius:18px}}
 .edge{display:none}
 .mlist{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:6px}
 .mlist li{display:flex;align-items:center;gap:8px}
@@ -859,17 +862,17 @@ body.ro #camBtn,body.notrip #camBtn{display:none}
 .gp-sh a{border-top:1px solid var(--line)}
 .gp-sh-x{border-radius:16px;color:var(--ink)}
 @keyframes gpUp{from{transform:translateY(30px);opacity:0}}
-@media (min-width:900px){
-  .edge{display:grid;place-items:center;position:fixed;z-index:17;top:50%;left:400px;transform:translateY(-50%);width:22px;height:56px;border:1px solid var(--line);border-left:0;border-radius:0 10px 10px 0;background:var(--sheet);color:var(--muted);box-shadow:4px 0 10px var(--scrim);padding:0;transition:left .28s cubic-bezier(.2,.8,.2,1)}
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){
+  .edge{display:grid;place-items:center;position:fixed;z-index:17;top:50%;left:var(--sw);transform:translateY(-50%);width:22px;height:56px;border:1px solid var(--line);border-left:0;border-radius:0 10px 10px 0;background:var(--sheet);color:var(--muted);box-shadow:4px 0 10px var(--scrim);padding:0;transition:left .28s cubic-bezier(.2,.8,.2,1)}
   .edge svg{width:14px;height:14px;transition:transform .2s}
   .sheet{transition:transform .28s cubic-bezier(.2,.8,.2,1)}
   body.side-off .sheet{transform:translateX(-100%)!important;box-shadow:none}
-  body.side-off .edge{left:0}
+  body.side-off .edge{left:env(safe-area-inset-left,0px)}
   body.side-off .edge svg{transform:rotate(180deg)}
-  body.side-off .top{left:22px}
-  body.side-off .rail{left:32px}
-  body.side-off .card{left:36px}
-  body.side-off .attr{left:30px}
+  body.side-off .top{left:calc(env(safe-area-inset-left,0px) + 22px)}
+  body.side-off .rail{left:calc(env(safe-area-inset-left,0px) + 32px)}
+  body.side-off .card{left:calc(env(safe-area-inset-left,0px) + 36px)}
+  body.side-off .attr{left:calc(env(safe-area-inset-left,0px) + 30px)}
 }
 #wishPop{z-index:39}
 #catPop{z-index:70}
@@ -1141,7 +1144,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 .pop{background:rgba(8,12,18,.28);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:popfade .18s ease}
 .pop-card{background:var(--glass-hi);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-bd);border-bottom:0;border-radius:var(--r-l) var(--r-l) 0 0;box-shadow:var(--sh2);padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));animation:popup .26s cubic-bezier(.2,.8,.2,1)}
 .pop-card::before{content:"";display:block;width:38px;height:5px;border-radius:3px;background:color-mix(in srgb,var(--ink) 18%,transparent);margin:0 auto 10px}
-@media (min-width:900px){ .pop-card{border-radius:var(--r-l);border-bottom:1px solid var(--glass-bd)} .pop-card::before{display:none} }
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){ .pop-card{border-radius:var(--r-l);border-bottom:1px solid var(--glass-bd)} .pop-card::before{display:none} }
 .pop-list button{border-radius:14px;padding:10px 8px}
 .pop-list button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
 .pop-head h4{font-size:21px;letter-spacing:.005em}
@@ -1216,7 +1219,7 @@ li.st > .stc::before{display:none}
 .gtag{border-color:var(--hair)}
 body.sheetfull .rail,body.sheetfull .ctrl,body.sheetfull .attr,body.sheetfull .card{opacity:0;pointer-events:none}
 .rail,.ctrl,.attr{transition:opacity .2s ease}
-@media (min-width:900px){ body.sheetfull .rail,body.sheetfull .ctrl,body.sheetfull .attr,body.sheetfull .card{opacity:1;pointer-events:auto} }
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){ body.sheetfull .rail,body.sheetfull .ctrl,body.sheetfull .attr,body.sheetfull .card{opacity:1;pointer-events:auto} }
 
 /* ================= Apple-Stil (iOS): Systemschrift, Systemfarben, Materialien ================= */
 :root{
@@ -1646,7 +1649,7 @@ body.ro .lrow:has(#lSub),body.ro .lrow:has(#lBus),body.ro label:has(#lWish),body
 .toprow #srchBtn{flex:0 0 44px;margin-left:auto}
 .toprow #camBtn{flex:0 0 44px;margin-left:0}
 body.profopen .toprow{display:none}
-@media (min-width:900px){ .tabbar{width:min(440px,calc(100% - 24px))} }
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){ .tabbar{width:min(440px,calc(100% - 24px))} }
 /* Knopf „Tagesplan & Wunschliste“ im selben Liquid-Glass-Look wie die Leiste oben */
 #sheetOpen{isolation:isolate;padding:12px 20px;
   background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.12)),color-mix(in srgb,var(--sheet) 46%,transparent);
@@ -2228,14 +2231,15 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .sheet .tabs,#body{transition:opacity .2s ease}
 body.sheetmin .sheet .tabs,body.sheetmin #body{opacity:0;pointer-events:none}
 body.sheetmin .sheet .handle{width:56px;height:5px;background:color-mix(in srgb,var(--ink) 45%,transparent)}
-@media (min-width:900px){ body.sheetmin .sheet .tabs,body.sheetmin #body{opacity:1;pointer-events:auto} }
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){ body.sheetmin .sheet .tabs,body.sheetmin #body{opacity:1;pointer-events:auto} }
 /* Eingeklappt: Blatt ganz weg, stattdessen Knopf zum Antippen – mit Abstand zur Home-Leiste (Wischen dort öffnet das iOS-Multitasking) */
 #sheetOpen{display:none;position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);transform:translateX(-50%);z-index:17;align-items:center;gap:8px;padding:11px 18px;border-radius:999px;border:.5px solid var(--glass-bd,var(--line));background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);box-shadow:0 4px 20px rgba(0,0,0,.16);color:var(--ink);font:inherit;font-size:15px;font-weight:600;white-space:nowrap;-webkit-tap-highlight-color:transparent}
 #sheetOpen svg{width:16px;height:16px}
 #sheetOpen:active{transform:translateX(-50%) scale(.96)}
 body.sheetmin #sheetOpen{display:inline-flex}
 body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2,.8,.2,1),visibility 0s .28s}
-@media (min-width:900px){ body.sheetmin #sheetOpen{display:none} body.sheetmin .sheet{visibility:visible} }
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){ body.profopen .top{left:0} }
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){ body.sheetmin #sheetOpen{display:none} body.sheetmin .sheet{visibility:visible} }
 
 .lrow{display:flex;align-items:center;gap:6px}
 .vis-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:14px;background:var(--fill)}
@@ -2677,7 +2681,7 @@ body.rc-on .addmenu.jpmenu{z-index:99}
 @keyframes rcSpin{to{--rca:360deg}}
 @keyframes rcFade{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion: reduce){ #rc,#rc *,.rc-open,.rc-open::before,.rc-open::after{animation:none !important;transition:none !important} .rc-rv{opacity:1;transform:none;filter:none} .rc-mk{transform:scale(1)} }
-@media (min-width:900px){ .rc-in{max-width:760px;margin:0 auto} .rc-hero{min-height:70vh} }
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){ .rc-in{max-width:760px;margin:0 auto} .rc-hero{min-height:70vh} }
 
 /* Auswahl- und Menü-Pop-ups überall als schwebende Karte in der Mitte – nicht mehr als Blatt von unten */
 .pop{align-items:center !important;padding:16px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));box-sizing:border-box}
@@ -3029,7 +3033,7 @@ body.navon .ctrl .cg-ai{display:none}
 .navtools{display:none;left:max(12px,env(safe-area-inset-left,0px));right:auto}
 body.navon .navtools{display:grid;transition:top .3s ease}
 body.ro .navtools [data-act="addpop"]{display:none}
-@media (min-width:900px){ body.navon .navtools{display:none} }
+@media (min-width:900px), (orientation:landscape) and (max-height:500px){ body.navon .navtools{display:none} }
 /* zurückgestellte Wünsche: gedämpft, mit Knopf zum Zurückholen */
 .wi.parked .wic,.wi.parked .m{opacity:.6}
 .wpk{font-weight:600;color:var(--muted)}
@@ -3119,6 +3123,32 @@ body.ro .navtools [data-act="addpop"]{display:none}
 .nv-flow{animation:nvFlow 1.4s linear infinite}
 @keyframes nvFlow{to{stroke-dashoffset:-16.1}}
 @media (prefers-reduced-motion: reduce){ .nv-flow{animation:none;display:none} }
+/* Telefon im Querformat: Kopfleiste kompakt und links neben der Knopfspalte, Knopfspalte rechts ab oben (sonst reicht die Höhe nicht) */
+@media (orientation:landscape) and (max-height:500px){
+  .top{padding-top:calc(env(safe-area-inset-top,0px) + 8px);padding-right:calc(max(12px,env(safe-area-inset-right,0px)) + 54px);gap:6px}
+  .tabbar{padding:3px}
+  .tabbar .tb,.tbpill{height:38px}
+  .tbpill{top:3px}
+  .toprow .menubtn{width:40px;height:40px;flex-basis:40px}
+  .top .trip{padding-top:6px;padding-bottom:6px}
+  .grab,.body{padding-right:16px}
+  .layers{max-height:none}
+  .toast{max-width:min(520px,calc(100% - 24px))}
+  #rc{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  /* Dialoge: weniger Rand, bei Bedarf scrollen; Einplanen-Optionen nebeneinander */
+  .cfpop{padding:10px max(16px,env(safe-area-inset-right,0px)) max(10px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  .cf-card{max-height:100%;overflow-y:auto}
+  .plan-card{width:min(560px,100%);display:grid;grid-template-columns:1fr 1fr;column-gap:8px;align-items:stretch}
+  .plan-card > *{grid-column:1/-1}
+  .plan-card > .plan-opt{grid-column:auto}
+  .plan-card > .plan-opt:first-of-type:last-of-type{grid-column:1/-1}
+  .plan-card > p{margin:2px 0 8px}
+  /* Navigation quer: Hinweise und Fußleiste als Spalte links, Karte rechts daneben; Planung währenddessen ausgeblendet */
+  body.navon .sheet,body.navon .edge{visibility:hidden}
+  .nav-ui,.nav-foot{right:auto;width:min(400px,calc(48vw - env(safe-area-inset-left,0px)))}
+  .nav-ui .nav-hero{padding:10px 14px 10px 10px}
+  body.navon .navtools{display:grid;left:auto;right:calc(max(12px,env(safe-area-inset-right,0px)) + 52px);top:calc(env(safe-area-inset-top,0px) + 8px) !important}
+}
 </style>
 </head>
 <body>
@@ -6318,7 +6348,9 @@ var confirmKey = null, confirmTimer = null;
 var undoSnap = null, toastTimer = null;
 var sheetState = "peek", PEEK = 172, MIN = 30, sideOpen = true;
 (function(){ try { var pr = document.createElement("div"); pr.style.cssText = "position:fixed;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden"; document.body.appendChild(pr); MIN = 26 + (parseFloat(getComputedStyle(pr).paddingBottom) || 0); pr.remove(); } catch(e){} })();
-var desktop = window.matchMedia("(min-width: 900px)");
+// Seitenleiste statt Blatt: breite Bildschirme und Telefone im Querformat
+var desktop = window.matchMedia("(min-width: 900px), (orientation:landscape) and (max-height:500px)");
+var quer = window.matchMedia("(orientation:landscape) and (max-height:500px)"); // Telefon quer
 
 /* ---------- Karte: MapLibre mit OpenFreeMap-Kacheln (weltweit) ---------- */
 var mapEl = $("map"), ov = $("ov");
@@ -9064,12 +9096,13 @@ function placeFloating(){
   var cmax = window.innerHeight - (desktop.matches ? 16 : sv + 12) - (cardTop + 10);
   if(!desktop.matches) cmax = Math.min(cmax, Math.round(window.innerHeight*0.56)); // oberhalb bleibt Platz für den Punkt
   $("card").style.maxHeight = Math.max(160, cmax)+"px";
-  $("ctrl").style.top = (topB + 10)+"px"; navPlace();
+  $("ctrl").style.top = (quer.matches ? Math.round($("tabbar").getBoundingClientRect().top) : topB + 10)+"px"; navPlace();
   $("layers").style.top = Math.round($("layersBtn").getBoundingClientRect().top)+"px";
+  $("layers").style.maxHeight = quer.matches ? Math.max(120, window.innerHeight - Math.round($("layersBtn").getBoundingClientRect().top) - safeBottom() - 10)+"px" : "";
   $("mapnote").style.left = "";
   $("tripMenu").style.top = (topB + 6)+"px";
-  $("mainMenu").style.top = (topB + 6)+"px"; $("mainMenu").style.left = desktop.matches ? (sideOpen ? "412px" : "34px") : "";
-  $("tripMenu").style.left = desktop.matches ? (sideOpen ? "412px" : "34px") : "";
+  $("mainMenu").style.top = (topB + 6)+"px"; $("mainMenu").style.left = desktop.matches ? (sideOpen ? Math.round(sheet.getBoundingClientRect().right + 12)+"px" : "calc(env(safe-area-inset-left,0px) + 34px)") : "";
+  $("tripMenu").style.left = $("mainMenu").style.left;
   $("pick").style.top = (topB + 10)+"px";
   $("toast").style.top = (topB + 10)+"px";
   $("offline").style.top = (topB + 10)+"px";
@@ -9409,6 +9442,8 @@ function navOnPos(){
 /* Karte in Soll-Gehrichtung drehen (per Knopf): Blickrichtung = Richtung des Wegs ca. 35 m voraus, dreht an Kurven mit */
 var navRotOn = lsGet("rp-nav-rot")==="1";
 function navAhead(N, m){ var P0 = N.pts, s0 = N.s!=null ? N.s : N.cum[N.pi], i = N.pi; while(i < P0.length - 1 && N.cum[i] - s0 < m) i++; return P0[i]; }
+// Querformat: Hinweise stehen links, der eigene Standort rückt in die Mitte der freien Karte rechts daneben
+function navOffX(){ var u = $("navUi"); if(!quer.matches || !u) return 0; var r = u.getBoundingClientRect(); return r.width ? Math.round(r.right / 2) : 0; }
 function navFollow(zoom){
   if(!NAV || !me || !map) return;
   var o = {center:[me.lo, me.la], zoom: zoom ? Math.max(map.getZoom(), 16.5) : map.getZoom(), duration: reduceMotion ? 0 : 600};
@@ -9416,14 +9451,15 @@ function navFollow(zoom){
   if(nav3dOn() && !NAV.arrived){
     var ah3 = navAhead(NAV, NAV.mode==="car" ? 45 : 20); o.pitch = 57; o.zoom = NAV3DZ[NAV.mode] || 18;
     if(ah3 && dist(me, ah3) > 3){ var b3 = navBear(me, ah3), cb3 = (map.getBearing() + 360) % 360, d3 = ((b3 - cb3 + 540) % 360) - 180; if(Math.abs(d3) > 4 || zoom) o.bearing = b3; if(!reduceMotion) o.duration = Math.min(1500, 650 + Math.abs(d3) * 6); }
-    o.offset = [0, Math.round(window.innerHeight * 0.26)];
+    o.offset = [navOffX(), Math.round(window.innerHeight * (quer.matches ? 0.2 : 0.26))];
     map.easeTo(o); return;
   }
   if(map.getPitch() > 1) o.pitch = 0;
+  if(quer.matches) o.offset = [navOffX(), 0];
   if(navRotOn && NAV.pts && !NAV.arrived){ var ah = navAhead(NAV, 14); // kurzer Blick voraus: dreht erst in der Kurve, nicht schon davor
     if(ah && dist(me, ah) > 5){ var b = navBear(me, ah), cb = (map.getBearing() + 360) % 360, d = ((b - cb + 540) % 360) - 180;
       if(Math.abs(d) > 8 || zoom){ o.bearing = b; if(!reduceMotion) o.duration = Math.min(1600, 700 + Math.abs(d) * 8); } }
-    o.offset = [0, Math.round(window.innerHeight * 0.16)]; // eigener Standort etwas unterhalb der Mitte – mehr Sicht nach vorn
+    o.offset = [navOffX(), Math.round(window.innerHeight * 0.16)]; // eigener Standort etwas unterhalb der Mitte – mehr Sicht nach vorn
   }
   map.easeTo(o);
 }
@@ -10461,6 +10497,7 @@ function closeAddMenu(){ var m = $("addMenu"); if(m && !m.hidden){ m.hidden = tr
 function placeAddMenu(){
   var nv = document.body.classList.contains("navon") && $("navAdd") && $("navAdd").offsetParent, m = $("addMenu"), b = (nv ? $("navAdd") : $("camBtn")).getBoundingClientRect();
   // während der Navigation klappt das Menü neben der linken Leiste auf
+  if(nv && quer.matches){ m.style.top = Math.round(b.top)+"px"; m.style.left = "auto"; m.style.right = Math.round(window.innerWidth - b.left + 8)+"px"; return; } // quer: Leiste steht rechts
   if(nv){ m.style.top = Math.round(b.top)+"px"; m.style.left = Math.round(b.right + 8)+"px"; m.style.right = "auto"; return; }
   m.style.left = ""; m.style.top = Math.round(b.bottom + 8)+"px"; m.style.right = Math.max(12, Math.round(window.innerWidth - b.right))+"px";
 }
@@ -12015,6 +12052,9 @@ document.addEventListener("keydown", function(e){
 });
 document.addEventListener("keydown", function(e){ if(e.key!=="Escape") return; if($("suPop")) closeSignup(); else if(!$("srchPop").hidden) closeSearch(); else if(tab==="trip" && $("jPop").hidden && $("acctPop").hidden && $("catPop").hidden) closeTrip(); else if(!$("jPop").hidden) closeJPop(); else if(!$("acctPop").hidden) closeSettings(); else if(!$("catPop").hidden) closeCatPop(); else if(draft.open){ draft.open = false; renderWishPop(); scheduleOverlay(); } });
 desktop.addEventListener("change", function(){ syncSide(); resize(); });
+// Drehen: iOS meldet die neuen Maße teils erst nach dem resize-Ereignis, daher kurz danach noch einmal alles neu setzen
+quer.addEventListener("change", function(){ resize(); tbPillSync(); });
+window.addEventListener("orientationchange", function(){ setTimeout(function(){ resize(); tbPillSync(); }, 350); });
 window.addEventListener("resize", resize);
 
 /* ---------- Start ---------- */
