@@ -1,0 +1,33 @@
+# Klicktests nach jedem Push auf main (und von Hand über „Run workflow“).
+# Änderungen gehen sofort live; Fehler hier werden nachträglich behoben.
+name: Klicktests
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: klicktests
+  cancel-in-progress: true
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Klicktests
+        working-directory: tests
+        env:
+          SHOTS: shots
+        run: |
+          npm ci
+          CHROME=$(command -v google-chrome) node smoke.mjs
+      - name: Screenshots der Fehler
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fehler-screenshots
+          path: tests/shots
+          if-no-files-found: ignore
