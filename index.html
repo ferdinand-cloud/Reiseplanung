@@ -4021,9 +4021,9 @@ var IC = {
 function ic(n, cls, fill){ return "<svg"+(cls ? " class=\""+cls+"\"" : "")+" viewBox=\"0 0 20 20\" fill=\""+(fill||"none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+IC[n]+"</svg>"; }
 function icf(n, cls){ return ic(n, cls, "currentColor"); }
 
-/* ---------- Bewegung: Pop-ups gehen am angetippten Knopf auf und gleiten weich wieder zu, Seiten der Leiste kommen aus der
-   Richtung des Reiters. Reine Darstellung: der Zustand (hidden) wechselt sofort wie bisher, beim Schließen spielt eine nicht
-   bedienbare Kopie ohne IDs die Ausblendung. Bei „Bewegung reduzieren“ (iOS-Einstellung) entfällt alles. ---------- */
+/* ---------- Bewegung: Pop-ups gehen am angetippten Knopf auf (und schließen sofort), Seiten der Leiste kommen aus der
+   Richtung des Reiters. Reine Darstellung: der Zustand (hidden) wechselt sofort wie bisher; beim Schließen einer Seite blendet
+   nur ihre leere Fläche aus (Kopie ohne Inhalt und IDs). Bei „Bewegung reduzieren“ (iOS-Einstellung) entfällt alles. ---------- */
 var FX = (function(){
   var RM = window.matchMedia ? matchMedia("(prefers-reduced-motion: reduce)") : {matches:false};
   var tap = {x:0, y:0, t:0};
@@ -4063,12 +4063,8 @@ var FX = (function(){
     if(k==="page"){   // nur die leere Fläche blendet aus, darunter erscheint die Karte (folgt gleich eine andere Seite, entfällt sie)
       var p = ghost(el, false); if(!p) return; p.classList.add("fx-pgbg"); prevPg.g = p;
       p.animate([{opacity:1}, {opacity:0}], {duration:240, easing:"ease-out", fill:"forwards"}); done(p, 260); return; }
-    var g = ghost(el, true); if(!g) return;
-    if(k==="menu"){ g.animate([{opacity:1, transform:"none"}, {opacity:0, transform:"scale(.94)"}], {duration:160, easing:"cubic-bezier(.4,0,1,1)", fill:"forwards"}); done(g, 180); return; }
-    var c = g.firstElementChild;
-    g.animate([{opacity:1}, {opacity:0}], {duration:210, easing:"ease-in", fill:"forwards"});
-    if(c) c.animate([{transform:"none"}, {transform:"translateY(8px) scale(.95)"}], {duration:210, easing:"cubic-bezier(.4,0,1,1)", fill:"forwards"});
-    done(g, 230);
+    // Pop-ups und Menüs schließen sofort: eine ausblendende Kopie tauchte auf dem iPhone nach dem Verschwinden kurz wieder auf
+    // (Zucken – neue Ebene, Bilder neu dekodiert, Stile über IDs fehlten). Ferdinand, 27.10.2026.
   }
   function from(card){   // Startpunkt der Öffnung: der gerade angetippte Knopf (sonst leicht von unten)
     var s = card.style;

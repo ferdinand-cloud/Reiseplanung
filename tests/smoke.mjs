@@ -3162,7 +3162,7 @@ await test("Liste: Reise-Auswahl als Dropdown mit Suche statt Chips (30 Reisen)"
   ok((await page.locator("#lsView .ls-tripdd").innerText()).includes("Tokio"), "Dropdown zeigt die neue Reise nicht");
 });
 
-await test("Bewegung: Pop-up geht am Knopf auf, schließt als Kopie ohne IDs, Seiten mit Richtung", async () => {
+await test("Bewegung: Pop-up geht am Knopf auf, schließt sofort ohne Zucken, Seiten mit Richtung", async () => {
   await seed(); await rp(`select("p6")`); await page.waitForTimeout(200);
   await click("#card [data-act=planpick]");
   const o = await page.evaluate(() => { const e = document.getElementById("planPop"), c = e.firstElementChild; return {fx:e.classList.contains("fx-in"), dx:c.style.getPropertyValue("--fxdx"), s:c.style.getPropertyValue("--fxs")}; });
@@ -3170,11 +3170,13 @@ await test("Bewegung: Pop-up geht am Knopf auf, schließt als Kopie ohne IDs, Se
   await page.waitForTimeout(500);
   ok(await rp(`!$("planPop").classList.contains("fx-in")`), "Einblend-Klasse bleibt hängen (Neuzeichnen würde wieder animieren)");
   await page.locator("#planPop [data-act=plancancel]").click();
-  const g = await page.evaluate(() => { const L = document.getElementById("fxL"), k = L && L.firstElementChild;
-    return {n:L ? L.children.length : 0, ids:L ? L.querySelectorAll("[id]").length : -1, inert:!!(L && L.inert), orig:document.getElementById("planPop").hidden, cls:k ? k.className : ""}; });
-  ok(g.n===1 && g.ids===0 && g.inert && g.orig && g.cls.includes("cfpop"), "Ausblend-Kopie falsch: "+JSON.stringify(g));
+  // Schließen: sofort weg, keine ausblendende Kopie (die tauchte auf dem iPhone kurz wieder auf = Zucken)
+  const g = await page.evaluate(() => ({orig:document.getElementById("planPop").hidden, ghosts:document.querySelectorAll("#fxL > *").length}));
+  ok(g.orig && g.ghosts===0, "Pop-up zuckt beim Schließen (Kopie): "+JSON.stringify(g));
+  await page.locator("#tbProf").click(); await page.waitForTimeout(450);
+  await page.locator("#tbMap").click();
+  ok(await page.evaluate(() => document.querySelectorAll("#fxL > :not(.fx-pgbg)").length)===0, "Seite hinterlässt Inhalts-Kopie");
   await page.waitForTimeout(350);
-  ok(await page.evaluate(() => document.getElementById("fxL").children.length)===0, "Ausblend-Kopie wird nicht entfernt");
   // Seiten: Profil → Entdecken (Reiter weiter links) gleitet von links, die leere Fläche des Profils entfällt sofort
   await rp(`openProfile()`); await page.waitForTimeout(450);
   await click("#tbDisc");
