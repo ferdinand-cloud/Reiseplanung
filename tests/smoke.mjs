@@ -1649,7 +1649,22 @@ await test("Reise-Status und Option: abgeschlossen/aktuell/in Planung, Option oh
   await rp(`tdraft.start = addD(todayKey(), 10); tdraft.end = addD(todayKey(), 13); true`);
   await page.locator("#tForm [type=submit]").click(); await page.waitForTimeout(400);
   ok(await rp(`!T().opt && tripStatus(T())==="plan" && days().length===4`), "Aus Option wird keine geplante Reise");
-  await rp(`openProfile(); true`); await page.waitForTimeout(300); await shot("profil-status");
+  // Profil: Status als Plakette auf der Kachel, Filter nach Status (Mehrfachauswahl)
+  await rp(`var o = newTripObj({name:"Irgendwann Japan", start:"", end:"", orte:[{id:"o_j", n:"Tokio", la:35.68, lo:139.69}], opt:true}); S.trips[o.id] = o; save(); pfStat = {}; openProfile(); true`); await page.waitForTimeout(300);
+  ok(await page.locator("#profView .pf-trip .pf-st").count()===3, "Status-Plakette fehlt auf den Kacheln");
+  ok(await page.locator("#profView .pf-trip .pf-st.pfs-opt").count()===1, "Option-Plakette fehlt");
+  await shot("profil-status");
+  await click("#profView [data-act=pfstatpick]"); await page.waitForTimeout(150);
+  ok(await page.locator("#jpMenu [data-act=pfstat]").count()===5, "Status-Filter hat nicht Alle + 4 Status");
+  await click("#jpMenu [data-act=pfstat][data-v=opt]"); await page.waitForTimeout(150);
+  ok(await visible("#jpMenu"), "Filter-Menü schließt bei Mehrfachauswahl");
+  ok(await page.locator("#profView .pf-trip").count()===1, "Filter Option zeigt nicht nur die Option-Reise");
+  await click("#jpMenu [data-act=pfstat][data-v=now]"); await page.waitForTimeout(150);
+  ok(await page.locator("#profView .pf-trip").count()===2 && await rp(`pfStatSel().length===2`), "Mehrfachauswahl im Status-Filter geht nicht");
+  ok((await page.locator("#profView [data-act=pfstatpick]").innerText()).includes("2 Status"), "Filter-Knopf zeigt Auswahl nicht");
+  await shot("profil-status-filter");
+  await click("#jpMenu [data-act=pfstat][data-v='']"); await page.waitForTimeout(150);
+  ok(await page.locator("#profView .pf-trip").count()===3, "„Alle“ setzt den Filter nicht zurück");
 });
 
 await test("Reise bearbeiten: „Reise löschen“ ganz unten, volle Breite, gedämpft rot", async () => {

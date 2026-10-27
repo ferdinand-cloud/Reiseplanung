@@ -456,6 +456,12 @@ body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0
 .tf-head h2{margin:0;font:700 22.5px/1.1 var(--f-display)}
 .tf-head p{margin:3px 0 0;color:var(--muted);font-size:14px}
 .tf-optg{margin-top:12px}
+.pf-filt{margin:-4px 0 12px}
+.pf-bdg{position:absolute;left:10px;top:10px;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.pf-bdg .pf-act{position:static}
+.pf-st{padding:4px 9px;border-radius:999px;color:#fff;font:700 11px/1.2 var(--f-body);font-style:normal;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.pfs-now{background:#2e9b5a}.pfs-plan{background:#C98A1B}.pfs-opt{background:#AF52DE}.pfs-done{background:#6E6E73}
+.pf-dot{display:inline-block;width:10px;height:10px;border-radius:50%}
 .tf-row.tf-opt > .tf-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;color:inherit;font-size:inherit}
 .tf-opt .tf-t b{font-weight:600;font-size:15px}
 .tf-opt .tf-t small{color:var(--muted);font-size:12.5px}
@@ -7248,6 +7254,13 @@ function wmFill(){
     m.addLayer({id:x[0], type:"circle", source:x[0], paint:{"circle-radius":x[3], "circle-color":x[2], "circle-opacity":x[4] || .9, "circle-stroke-color":"#fff", "circle-stroke-width":x[0]==="wmv" ? 0 : 1.5}});
   });
 }
+// Profil: nach Reise-Status filtern (Mehrfachauswahl, leer = alle)
+var pfStat = {}, PFSTCNT = {}, PFSTK = ["now","plan","opt","done"];
+function pfStatSel(){ return PFSTK.filter(function(k){ return pfStat[k]; }); }
+function pfStatLbl(sel){ return !sel.length ? "Status: Alle" : sel.length===1 ? TSTAT[sel[0]] : sel.length+" Status"; }
+function pfStatMenu(){ var sel = pfStatSel();
+  return "<div class=\"vp-h\">Status</div><button type=\"button\" class=\"fg-keep\" role=\"menuitemcheckbox\" data-act=\"pfstat\" data-v=\"\" aria-checked=\""+!sel.length+"\"><span class=\"cm-t\"><b>Alle</b></span>"+(!sel.length ? "<b class=\"ck\">✓</b>" : "")+"</button>"+
+    PFSTK.map(function(k){ var on = !!pfStat[k]; return "<button type=\"button\" class=\"fg-keep\" role=\"menuitemcheckbox\" data-act=\"pfstat\" data-v=\""+k+"\" aria-checked=\""+on+"\"><span class=\"ai\"><i class=\"pf-dot pfs-"+k+"\"></i></span><span class=\"cm-t\"><b>"+TSTAT[k]+"</b></span><small class=\"ls-n\">"+(PFSTCNT[k]||0)+"</small>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join(""); }
 function renderProfile(){
   var el = $("profView"); if(!el) return; if(profTab!=="welt") wmStop();
   var h = "<div class=\"pf\">";
@@ -7265,10 +7278,15 @@ function renderProfile(){
        "<button type=\"button\" data-act=\"openfriends\"><b>"+FR.friends.length+"</b><span>Freunde</span></button></div></div></div>";
   h += "<div class=\"pf-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"mine\" aria-selected=\""+(profTab==="mine")+"\">Reisen</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"obs\" aria-selected=\""+(profTab==="obs")+"\">Beobachtet</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"ziele\" aria-selected=\""+(profTab==="ziele")+"\">Ziele</button><button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\"welt\" aria-selected=\""+(profTab==="welt")+"\">Karte</button></div>";
   if(profTab==="ziele") h += "<div class=\"zl\">"+zielsHTML()+"</div>"; else if(profTab==="welt") h += wmHTML(); else {
-  var list = profTab==="obs" ? obs : mine;
+  var list = profTab==="obs" ? obs : mine, all0 = list.length;
   list.sort(function(a, b){ return ((S.trips[b]||{}).start||"").localeCompare((S.trips[a]||{}).start||""); });
+  PFSTCNT = {}; list.forEach(function(id){ var k = tripStatus(S.trips[id]); PFSTCNT[k] = (PFSTCNT[k]||0) + 1; });
+  var stSel = pfStatSel();
+  if(all0 > 1 || stSel.length) h += "<div class=\"ls-dds pf-filt\"><button type=\"button\" class=\"ls-dd"+(stSel.length ? " on" : "")+"\" data-act=\"pfstatpick\" aria-haspopup=\"menu\">"+esc(pfStatLbl(stSel))+CHEV+"</button></div>";
+  if(stSel.length) list = list.filter(function(id){ return pfStat[tripStatus(S.trips[id])]; });
   h += "<div class=\"pf-grid\">";
-  if(!list.length) h += "<p class=\"note pf-empty\">"+(profTab==="obs" ? "Du beobachtest noch keine Reise. Wenn dich jemand als Beobachter einlädt, erscheint sie hier." : "Noch keine eigene Reise erstellt.")+"</p>"+(profTab!=="obs" && !list.length ? "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"tripnew\">Erste Reise anlegen</button></div>" : "");
+  if(all0 && !list.length) h += "<p class=\"note pf-empty\">Keine Reisen mit diesem Status.</p>";
+  if(!all0) h += "<p class=\"note pf-empty\">"+(profTab==="obs" ? "Du beobachtest noch keine Reise. Wenn dich jemand als Beobachter einlädt, erscheint sie hier." : "Noch keine eigene Reise erstellt.")+"</p>"+(profTab!=="obs" && !all0 ? "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"tripnew\">Erste Reise anlegen</button></div>" : "");
   var MORE = ic("more");
   list.forEach(function(id){
     var t = S.trips[id], m = META[id], cov = tripCover(id), n = m ? (m.members||[]).length : 1, own = m && acct.user && m.owner===acct.user.uid, vw = isViewerOf(id);
@@ -7276,8 +7294,8 @@ function renderProfile(){
     h += "<div class=\"pf-tw\">"+
          "<button type=\"button\" class=\"pf-trip"+(id===S.cur?" cur":"")+"\" data-act=\"pfopen\" data-trip=\""+esc(id)+"\">"+
          "<span class=\"pf-cov"+(cov ? "" : " lt")+"\" style=\"--cc:"+tripColor(id)+"\">"+(cov ? "<img data-ph=\""+cov+"\" alt=\"\">" : "<i>"+esc(tripInitials(t.name))+"</i>")+"</span>"+
-         (id===S.cur ? "<em class=\"pf-act\">Aktiv</em>" : "")+
-         "<span class=\"pf-tt\"><b>"+esc(t.name||"Reise")+"</b><small>"+tstatHTML(t)+esc([!t.opt && t.start && t.end ? shortD(t.start)+"–"+shortD(t.end) : "", role].filter(Boolean).map(function(x){ return " · "+x; }).join(""))+"</small></span></button>"+
+         "<span class=\"pf-bdg\"><em class=\"pf-st pfs-"+tripStatus(t)+"\">"+TSTAT[tripStatus(t)]+"</em>"+(id===S.cur ? "<em class=\"pf-act\">Aktiv</em>" : "")+"</span>"+
+         "<span class=\"pf-tt\"><b>"+esc(t.name||"Reise")+"</b><small>"+esc([t.opt ? "ohne Termin" : t.start && t.end ? shortD(t.start)+"–"+shortD(t.end) : "", role].filter(Boolean).join(" · "))+"</small></span></button>"+
          "<button type=\"button\" class=\"pf-more\" data-act=\"pfmore\" data-trip=\""+esc(id)+"\" aria-haspopup=\"menu\" aria-label=\"Optionen für "+esc(t.name||"Reise")+"\">"+MORE+"</button></div>";
   });
   if(profTab==="mine" && list.length) h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-new\" data-act=\"pfnew\"><span class=\"pf-plus\" aria-hidden=\"true\">＋</span><b>Neue Reise</b><small>Ziel, Zeitraum, Hotel</small></button></div>";
@@ -11780,7 +11798,7 @@ function isOver(id){ var o = T().overrated||{}; return !!(o[rootOf(id)] || o[id]
 function rateRank(v){ for(var i=0;i<RATES.length;i++) if(RATES[i][0]===v) return i+1; return 99; }
 function rateOf(id){ var rt = T().rating||{}, ro = rootOf(id); return rt[ro] || rt[id] || 0; } // eine Bewertung je Ort, auch bei mehreren Besuchen
 function closeJpMore(){ var m = $("jpMenu"); if(m){ m.remove(); } document.removeEventListener("click", jpMoreOut, true); }
-function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h,.fg-keep")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lstrippick],[data-act=lsvispick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=dcmore],[data-act=dctgt],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend],[data-act=fgfor]")) return; closeJpMore(); }
+function jpMoreOut(e){ var m = $("jpMenu"); if(!m) return; if(m.contains(e.target) && e.target.closest && e.target.closest(".frp-h,.fg-keep")) return; if(m.contains(e.target)){ setTimeout(closeJpMore, 0); return; } if(e.target.closest && e.target.closest("[data-act=jpmore],[data-act=cardmore],[data-act=navpick],[data-act=lmpick],[data-act=legalt],[data-act=lnpick],[data-act=lnmenu],[data-act=srlocpick],[data-act=lsfiltpick],[data-act=lstrippick],[data-act=lsvispick],[data-act=pfstatpick],[data-act=privtopick],[data-act=srradpick],[data-act=pfmore],[data-act=phmore],[data-act=poimore],[data-act=dcvsend],[data-act=dcmore],[data-act=dctgt],[data-act=rclbsend],[data-act=ratepick],[data-act=itemvispick],[data-act=placevispick],[data-act=dcplan],[data-act=chplan],[data-act=phsend],[data-act=fgfor]")) return; closeJpMore(); }
 function jpPopover(id, btn, html, kind){
   var was = $("jpMenu"), same = was && was.getAttribute("data-kind")===kind; closeJpMore(); if(same) return;
   var m = document.createElement("div"); m.id = "jpMenu"; m.className = "addmenu jpmenu"; m.setAttribute("role", "menu"); m.setAttribute("data-id", id); m.setAttribute("data-kind", kind);
@@ -13560,6 +13578,9 @@ document.addEventListener("click", function(e){
     case "lstrippick": lsTripMenu(t); break;
     case "lstrip": closeJpMore(); var lst = t.getAttribute("data-trip"); if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
     case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;
+    case "pfstatpick": jpPopover("pfs", t, pfStatMenu(), "pfstat"); break;
+    case "pfstat": var psv = t.getAttribute("data-v"); if(!psv) pfStat = {}; else if(pfStat[psv]) delete pfStat[psv]; else pfStat[psv] = true;
+      renderProfile(); var psm = $("jpMenu"), psb = document.querySelector("#profView [data-act=pfstatpick]"); if(psm && psb){ psm.innerHTML = pfStatMenu(); } else closeJpMore(); break;
     case "lsvis": closeJpMore(); lsVis = t.getAttribute("data-v"); renderLs(); break;
     case "lsfilt": closeJpMore(); lsFilter = t.getAttribute("data-v"); renderLs(); break;
     case "lsfiltpick": jpPopover("lsf", t, "<div class=\"vp-h\">Anzeigen</div>"+[["all","Alle besuchten", LSCNT.all],["unrated","Noch nicht bewertet", LSCNT.unrated]].map(function(o){ var on = lsFilter===o[0];
