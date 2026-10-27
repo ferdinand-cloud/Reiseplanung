@@ -576,7 +576,7 @@ await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kac
   ok(!(await visible("#tripPop")) && await visible("#profView"), "Abbrechen führt nicht zurück zum Profil");
   for(const how of ["#tripPop [data-act=tripclose]", "backdrop"]){
     await page.locator("#profView [data-act=pfmore][data-trip=t_mal]").click(); await click("#jpMenu [data-act=pfedit]"); await page.waitForTimeout(200);
-    if(how==="backdrop") await page.mouse.click(5, 5); else await click(how);
+    if(how==="backdrop"){ await page.mouse.click(5, 5); await page.waitForTimeout(150); ok(await visible("#tripPop #tForm"), "Tipp daneben verwirft das Formular"); await click("#tripPop [data-act=tripclose]"); } else await click(how);
     await page.waitForTimeout(200);
     ok(!(await visible("#tripPop")) && await visible("#profView") && await rp(`profTab`)==="mine", how+": nicht zurück zum Profil");
   }
@@ -1498,6 +1498,24 @@ await test("Mitreisende & Beobachter: Einladen steht vor der Liste der Personen"
   ok(await rp(`(function(){ var r = document.querySelector("#shPop [data-act=invrole]"), l = document.querySelector("#shPop .mlist"); return !!(r.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING); })()`), "„Einladen als“ steht nicht vor der Liste");
   await shot("mitreisende-popup");
   await rp(`shClose(); true`);
+});
+
+await test("Neue Reise: Von/Bis bei Ort und Hotel über den Kalender, Eingaben bleiben erhalten", async () => {
+  await noTripUser();
+  await rp(`tdraft = {mode:"new", name:"Lissabon", start:"2026-11-02", end:"2026-11-08", arr:"", dep:"", hotels:[{n:"Hotel Avenida", loc:"", from:"", to:""}], orte:[{n:"Lissabon", loc:"38.7200, -9.1400", from:"", to:""}], err:"", ok:"orte.0"}; tab = "trip"; renderSheet(); true`); await page.waitForTimeout(150);
+  ok(await page.locator("#tripPop input[type=date]").count()===0, "Noch native Datumsfelder im Formular");
+  ok((await page.locator("#tripPop [data-act=rngopen][data-f='orte.0.from']").innerText()).includes("Reisebeginn"), "Von zeigt keinen Platzhalter");
+  await click("#tripPop [data-act=rngopen][data-f='orte.0.from']"); await page.waitForTimeout(150);
+  ok(await rp(`rng.m===10 && rng.y===2026`), "Kalender startet nicht im Reisemonat");
+  ok((await page.locator("#rngPop .rng-top").innerText()).includes("Von"), "Kalender nennt nicht Von/Bis");
+  await click(`#rngPop [data-r="2026-11-03"]`); await click(`#rngPop [data-r="2026-11-05"]`); await page.waitForTimeout(500);
+  ok(await rp(`tdraft.orte[0].from==="2026-11-03" && tdraft.orte[0].to==="2026-11-05" && tdraft.start==="2026-11-02" && tdraft.name==="Lissabon" && tdraft.hotels[0].n==="Hotel Avenida"`), "Zeitraum des Orts nicht übernommen oder andere Eingaben verloren");
+  ok(await visible("#tripPop #tForm"), "Formular nach dem Kalender geschlossen");
+  // Fehltipp: Finger setzt im Formular auf, lässt auf dem Hintergrund los – Formular bleibt
+  await rp(`document.querySelector("#tripPop [data-f='orte.0.n']").dispatchEvent(new PointerEvent("pointerdown", {bubbles:true})); document.getElementById("tripPop").click(); true`);
+  await page.mouse.click(5, 5); await page.waitForTimeout(200);
+  ok(await visible("#tripPop #tForm") && await rp(`tdraft && tdraft.name==="Lissabon"`), "Tipp neben das Formular verwirft die Eingaben");
+  await shot("ort-von-bis");
 });
 
 await test("Neue Reise: Hotel „noch unklar“ ohne Fehler, später nachtragbar", async () => {

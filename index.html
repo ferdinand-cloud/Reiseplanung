@@ -3416,6 +3416,7 @@ body.ro .navtools [data-act="addpop"]{display:none}
 .dhi.rc-open.ph svg{position:absolute;right:3px;bottom:3px;width:13px;height:13px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
 .dsugs h5{margin:0 0 6px;font:600 12px/1.2 var(--f-body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 /* Zeitraum-Kalender */
+.tf-two .tf-pill.d{display:flex;width:100%;height:40px;margin-top:4px}
 .zoffer{display:block;width:100%;margin:8px 0;padding:10px 12px;border:0;border-radius:12px;background:var(--fill);color:var(--ink);font:500 14px/1.3 var(--f-body);text-align:left;cursor:pointer}
 .tf-item.tbd .tf-t small{color:var(--muted)}
 .tf-item.tbd .tf-ic{opacity:.55}
@@ -5609,10 +5610,14 @@ function shRender(){
 /* Zeitraum-Kalender: erster Tipp Anreise, zweiter Tipp Abreise, dazwischen markiert */
 var rng = null;
 function rngKey(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
+/* which: "start"/"end" (Reise) oder "hotels.0.from"/"orte.1.to" (Hotel/Ort im Formular) */
+function rngGet(k){ var o = tdraft; k.split(".").forEach(function(x){ o = o == null ? o : o[x]; }); return o || ""; }
 function rngOpen(which){
-  if(!tdraft) return; var s = tdraft.start || "", e = tdraft.end || "";
-  var base = new Date(((which==="end" && e) || s || e || rngKey(new Date()))+"T12:00");
-  rng = {s:s, e:e, y:base.getFullYear(), m:base.getMonth(), ph:(which==="end" && s) ? "end" : "start"};
+  if(!tdraft) return; var it = /^(hotels|orte)\.\d+\.(from|to)$/.test(which) ? which.replace(/\.(from|to)$/, "") : "";
+  var fs = it ? it+".from" : "start", fe = it ? it+".to" : "end", s = rngGet(fs), e = rngGet(fe); which = /(end|to)$/.test(which) ? "end" : "start";
+  if(it && !s && !e && tdraft.start){ var base0 = tdraft.start; }
+  var base = new Date(((which==="end" && e) || s || e || base0 || rngKey(new Date()))+"T12:00");
+  rng = {s:s, e:e, fs:fs, fe:fe, it:it, y:base.getFullYear(), m:base.getMonth(), ph:(which==="end" && s) ? "end" : "start"};
   var el = $("rngPop"); if(!el){ el = document.createElement("div"); el.id = "rngPop"; el.className = "cfpop rngpop"; document.body.appendChild(el);
     el.onclick = function(ev){ ev.stopPropagation(); var b = ev.target.closest("[data-r]");
       if(ev.target===el) return rngClose(true);
@@ -5633,7 +5638,7 @@ function rngPick(k){
 }
 function rngClose(apply){
   var el = $("rngPop"); if(el){ el.hidden = true; el.innerHTML = ""; }
-  if(apply && rng && tdraft){ tdraft.start = rng.s; tdraft.end = rng.e || (rng.s && tdraft.end && tdraft.end >= rng.s ? tdraft.end : ""); renderSheet(); }
+  if(apply && rng && tdraft){ var oe = rngGet(rng.fe); setPath(tdraft, rng.fs, rng.s); setPath(tdraft, rng.fe, rng.e || (rng.s && oe && oe >= rng.s ? oe : "")); renderSheet(); }
   rng = null;
 }
 function rngRender(){
@@ -5649,10 +5654,11 @@ function rngRender(){
     g += "<button type=\"button\" class=\""+c+"\" data-r=\""+k+"\" aria-pressed=\""+(k===rng.s || k===rng.e)+"\">"+d+"</button>";
   }
   var mt = first.toLocaleDateString("de-DE", {month:"long", year:"numeric"});
-  var sum = rng.s ? tfPillTxt("d", rng.s)+" – "+(rng.e ? tfPillTxt("d", rng.e) : "…") : "Anreise wählen";
+  var isH = rng.it.indexOf("hotels")===0, l1 = rng.it ? (isH ? "Check-in" : "Von") : "Anreise", l2 = rng.it ? (isH ? "Check-out" : "Bis") : "Abreise";
+  var sum = rng.s ? tfPillTxt("d", rng.s)+" – "+(rng.e ? tfPillTxt("d", rng.e) : "…") : l1+" wählen";
   var n = tfNights({start:rng.s, end:rng.e});
   el.innerHTML = "<div class=\"cf-card rng\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Zeitraum wählen\">"+
-    "<div class=\"rng-top\"><b>"+esc(sum)+"</b><small>"+esc(n || (rng.ph==="end" ? "Jetzt Abreise wählen" : "Erst Anreise, dann Abreise antippen"))+"</small></div>"+
+    "<div class=\"rng-top\"><b>"+esc(sum)+"</b><small>"+esc(n || (rng.ph==="end" ? "Jetzt "+l2+" wählen" : "Erst "+l1+", dann "+l2+" antippen"))+"</small></div>"+
     "<div class=\"rng-nav\"><button type=\"button\" data-r=\"prev\" aria-label=\"Voriger Monat\">‹</button><span>"+esc(mt)+"</span><button type=\"button\" data-r=\"next\" aria-label=\"Nächster Monat\">›</button></div>"+
     "<div class=\"rng-g\">"+g+"</div>"+
     "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\" data-r=\"clear\">Leeren</button><button type=\"button\" class=\"rng-ok\" data-r=\"ok\">Fertig</button></div></div>";
@@ -12622,6 +12628,7 @@ function renderTrip(){
   h2 += "<div class=\"tf-lbl\">Zeitraum<small id=\"tfNights\">"+esc(tfNights(d))+"</small></div><div class=\"tf-grp\">"+
     "<div class=\"tf-row tf-span\"><span>Anreise</span>"+pill("start", "d", "Datum", "Anreisedatum")+pill("arr", "t", "Uhrzeit", "Ankunftszeit")+"</div>"+
     "<div class=\"tf-row tf-span\"><span>Abreise</span>"+pill("end", "d", "Datum", "Abreisedatum")+pill("dep", "t", "Uhrzeit", "Abflugzeit")+"</div></div>";
+  function dbtn(f, v, ph){ return "<button type=\"button\" class=\"tf-pill d"+(v?" on":"")+"\" data-act=\"rngopen\" data-f=\""+f+"\" aria-haspopup=\"dialog\"><b>"+esc(v ? tfPillTxt("d", v) : ph)+"</b></button>"; }
   function items(kind, title, addLbl, searchPh, icon){
     var out = "<div class=\"tf-lbl\">"+title+"</div><div class=\"tf-grp\">";
     d[kind].forEach(function(x, i){
@@ -12637,7 +12644,7 @@ function renderTrip(){
       if(open){
         out += "<div class=\"tf-body\">"+geoField(k, searchPh)+
           "<label class=\"tf-f\"><span>Name</span><input type=\"text\" data-f=\""+k+".n\" value=\""+esc(x.n)+"\" maxlength=\"80\" autocomplete=\"off\"></label>"+
-          "<div class=\"tf-two\"><label class=\"tf-f\"><span>"+(kind==="hotels"?"Check-in":"Von")+"</span><input type=\"date\" data-f=\""+k+".from\" value=\""+esc(x.from)+"\"></label><label class=\"tf-f\"><span>"+(kind==="hotels"?"Check-out":"Bis")+"</span><input type=\"date\" data-f=\""+k+".to\" value=\""+esc(x.to)+"\"></label></div>"+
+          "<div class=\"tf-two\"><div class=\"tf-f\"><span>"+(kind==="hotels"?"Check-in":"Von")+"</span>"+dbtn(k+".from", x.from, kind==="hotels" ? "Datum" : "Reisebeginn")+"</div><div class=\"tf-f\"><span>"+(kind==="hotels"?"Check-out":"Bis")+"</span>"+dbtn(k+".to", x.to, kind==="hotels" ? "Datum" : "Reiseende")+"</div></div>"+
           "<details class=\"tf-loc\""+(has?"":" open")+"><summary>Lage "+(has?"<small>"+esc(x.loc)+"</small>":"eingeben")+"</summary><input type=\"text\" data-f=\""+k+".loc\" value=\""+esc(x.loc)+"\" placeholder=\"Maps-Link oder Koordinaten, z. B. 40.7561, -73.9930\" autocomplete=\"off\"></details>"+
           "<div class=\"tf-acts\"><button type=\"button\" class=\"tf-link\" data-act=\"pick\" data-target=\""+k+".loc\">Auf der Karte wählen</button>"+(kind==="hotels" && !has ? "<button type=\"button\" class=\"tf-link\" data-act=\"htbd\" data-i=\""+i+"\">Noch unklar</button>" : "")+"<button type=\"button\" class=\"tf-link warn\" data-act=\"tdel\" data-path=\""+kind+"\" data-i=\""+i+"\">Entfernen</button></div></div>";
       }
@@ -13045,12 +13052,17 @@ function startViaPick(li){
 }
 function endViaPick(){ viaPick = null; legSel = -1; $("pick").hidden = true; $("pick").querySelector("span").textContent = "Tippe auf die Karte, um den Ort zu setzen."; $("pickCancel").textContent = "Abbrechen"; scheduleOverlay(); }
 
+/* Tipp daneben schließt ein Pop-up nur, wenn der Finger auch auf dem Hintergrund aufgesetzt hat
+   (iOS verschiebt das Pop-up beim Antippen von Feldern; der Loslass-Punkt landet dann sonst auf dem Hintergrund) */
+var bgDown = null;
+document.addEventListener("pointerdown", function(e){ bgDown = e.target; }, true);
 document.addEventListener("click", function(e){
+  if(e.target && e.target.id && /^(zPop|catPop|acctPop|suPop|tripPop|srchPop|jPop)$/.test(e.target.id) && bgDown && bgDown!==e.target) return;
   if(e.target.id==="zPop"){ zClosePop(); return; }
   if(e.target.id==="catPop"){ if(lpPt){ if(Date.now()-lpAt > 900) lpClose(); } else closeCatPop(); return; }
   if(e.target.id==="acctPop"){ closeSettings(); return; }
   if(e.target.id==="suPop"){ closeSignup(); return; }
-  if(e.target.id==="tripPop"){ closeTrip(); return; }
+  if(e.target.id==="tripPop"){ if(!tdraft) closeTrip(); return; } // Formular: nur × oder Abbrechen schließen, ein Fehltipp verwirft keine Eingaben
   if(e.target.id==="srchPop"){ closeSearch(); return; }
   if(e.target.id==="jPop"){ closeJPop(); return; }
   var t = e.target.closest("[data-act],[data-tab]");
