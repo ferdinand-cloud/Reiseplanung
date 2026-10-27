@@ -1646,8 +1646,8 @@ await test("Freunde: Suche statt Liste bei 200 Freunden (Ziel teilen)", async ()
   ok(await page.locator("#zPop .frs-row").count()===0, "Ohne Suche werden Freunde aufgelistet");
   await page.fill("#zPop .frs-in", "freund1"); await page.waitForTimeout(150);
   const n = await page.locator("#zPop .frs-row").count();
-  ok(n===8, "Trefferliste nicht begrenzt: "+n);
-  ok((await page.locator("#zPop .frs-res").innerText()).includes("weitere"), "Hinweis auf weitere Treffer fehlt");
+  ok(n===111, "Nicht alle Treffer angezeigt: "+n);
+  ok(await rp(`var d = document.querySelector("#zPop .frs-dd"); !!d && d.scrollHeight > d.clientHeight + 20 && d.clientHeight <= 270`), "Trefferliste ist kein scrollbares Dropdown");
   await page.fill("#zPop .frs-in", "zo"); await page.waitForTimeout(150);
   ok(await page.locator("#zPop .frs-row").count()===1, "Suche nach Zoe findet nicht genau einen Treffer");
   await shot("freunde-suche");
@@ -1658,7 +1658,8 @@ const wmFullTest = async (n, vp) => {
   await seed();
   await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; profTab = "welt"; openProfile(); true`); await page.waitForTimeout(800);
   const bx = await page.locator("#profView .wm-box").boundingBox();
-  ok(bx.height >= 300 || n==="quer", "Weltkarte zu klein: "+bx.height);
+  ok(n==="quer" || (bx.height >= 220 && bx.height <= 340), "Weltkarte zu klein oder zu groß: "+bx.height);
+  ok(n==="quer" || bx.height < vp.height * 0.45, "Weltkarte nimmt zu viel Höhe ein");
   ok(await visible("#profView .wm-box .wm-stats") && await visible("#profView .wm-box .wm-fs"), "Zahlen oder Vollbild-Knopf fehlen auf der Karte");
   ok(await rp(`var c = PFMAP && PFMAP.getCanvas(), b = document.querySelector("#profView .wm-box"); !!c && Math.abs(c.clientHeight - b.clientHeight) < 3`), "Karte füllt den Rahmen nicht");
   await shot("weltkarte-"+n);

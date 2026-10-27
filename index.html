@@ -1904,7 +1904,8 @@ form.gnew{position:relative}
 .frs-q svg{width:17px;height:17px;flex:0 0 17px}
 .frs-q input{flex:1;min-width:0;border:0;background:none !important;font:inherit;font-size:16px;color:var(--ink);outline:none;padding:10px 0 !important}
 .frs-res:empty{display:none}
-.frs-res{margin-top:6px;display:grid;gap:2px}
+.frs-res{margin-top:6px}
+.frs-dd{display:grid;gap:2px;max-height:min(264px,40vh);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:4px;border-radius:14px;background:var(--glass-hi,var(--sheet));border:.5px solid var(--glass-bd,var(--line));box-shadow:0 8px 24px rgba(0,0,0,.12)}
 .frs-row{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:7px 6px;border-radius:12px;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
 .frs-row:active{background:var(--fill)}
 .frs-row b{flex:1;min-width:0;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2232,7 +2233,7 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .vis-all svg{width:20px;height:20px;color:#AF52DE;flex:0 0 auto}.vis-all span{flex:1;min-width:0}.vis-all small{display:block;color:var(--muted);font-size:12px}
 .vis-all i{font-style:normal;font-weight:700;color:#AF52DE}.vis-all.on{border-color:#AF52DE;background:color-mix(in srgb,#AF52DE 10%,transparent)}
 .wm-stats div{display:flex;flex-direction:column;align-items:center}
-.wm-box{position:relative;height:min(62vh,460px);border-radius:18px;overflow:hidden;margin:2px 0 14px;background:var(--fill)}
+.wm-box{position:relative;height:min(42vh,320px);border-radius:18px;overflow:hidden;margin:2px 0 14px;background:var(--fill)}
 .wm-box .wm-map{position:absolute;inset:0;height:auto;margin:0;border-radius:0}
 .wm-box.full{position:fixed;inset:0;height:auto;margin:0;border-radius:0;z-index:95}
 body.wmfull .tabbar{display:none}
@@ -5768,9 +5769,9 @@ function frSearchRes(key){
   var hit = o.cand.filter(function(f){ return norm(f.name||"").indexOf(q) > -1 || (f.email && f.email.toLowerCase().indexOf(q) === 0); });
   if(!hit.length) return "<p class=\"note frs-none\">Kein Freund mit diesem Namen.</p>";
   hit.sort(function(a, b){ var x = norm(a.name||"").indexOf(q), y = norm(b.name||"").indexOf(q); return (x===0 ? 0 : 1) - (y===0 ? 0 : 1) || String(a.name).localeCompare(b.name); });
-  return hit.slice(0, 8).map(function(f){ var on = o.sel && o.sel[f.uid];
+  return "<div class=\"frs-dd\" role=\"listbox\">"+hit.map(function(f){ var on = o.sel && o.sel[f.uid];
     return "<button type=\"button\" class=\"frs-row"+(on ? " on" : "")+"\" data-act=\""+o.act+"\" data-uid=\""+esc(f.uid||"")+"\" data-mail=\""+esc(f.email||"")+"\" data-name=\""+esc(f.name||"")+"\""+o.attrs+" aria-pressed=\""+!!on+"\">"+(f.uid ? chAv(f.uid, "frs-av") : "<span class=\"frs-av\">"+esc((f.name||"?")[0].toUpperCase())+"</span>")+"<b>@"+esc(f.name)+"</b><span class=\"frs-add\">"+(on ? "✓" : FRSADD)+"</span></button>"; }).join("")+
-    (hit.length > 8 ? "<p class=\"note frs-none\">"+(hit.length - 8)+" weitere – tippe mehr Buchstaben</p>" : "");
+    "</div>";
 }
 document.addEventListener("input", function(e){ var q = e.target; if(!q.classList || !q.classList.contains("frs-in")) return;
   var k = q.getAttribute("data-frs"), o = FRS[k]; if(!o) return; o.q = q.value; var r = q.closest(".frs").querySelector(".frs-res"); if(r) r.innerHTML = frSearchRes(k); });
