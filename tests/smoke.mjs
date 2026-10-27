@@ -22,10 +22,10 @@ if(!SHARD){
   const jobs = Math.max(1, Number(process.env.JOBS) || Math.min(4, os.cpus().length));
   if(jobs > 1){
     const t0 = Date.now(), file = fileURLToPath(import.meta.url);
-    await chromePath();   // Chromium einmal vorab entpacken, sonst entpacken alle Prozesse gleichzeitig (spawn ETXTBSY)
+    const ch = await chromePath();   // Chromium einmal hier entpacken und den Prozessen mitgeben, sonst entpacken alle gleichzeitig (spawn ETXTBSY)
     const parts = await Promise.all(Array.from({length:jobs}, (_, i) => new Promise(res => {
       let out = "";
-      const c = spawn(process.execPath, [file, ...process.argv.slice(2)], { env: {...process.env, SHARD: i+"/"+jobs}, stdio: ["ignore", "pipe", "inherit"] });
+      const c = spawn(process.execPath, [file, ...process.argv.slice(2)], { env: {...process.env, SHARD: i+"/"+jobs, CHROME: ch.exe, CHROME_ARGS: JSON.stringify(ch.args)}, stdio: ["ignore", "pipe", "inherit"] });
       c.stdout.on("data", d => { out += d; if(process.env.VERBOSE) process.stdout.write(String(d).split("\n").filter(l => l && !l.startsWith("@@")).map(l => l+"\n").join("")); });
       c.on("close", () => { const l = out.split("\n").find(x => x.startsWith("@@")); res(l ? JSON.parse(l.slice(2)) : [{name:"Prozess "+i, idx:-1, ok:false, ms:0, err:"abgestürzt"}]); });
     })));
@@ -40,7 +40,7 @@ function report(results, ms){
 }
 
 async function chromePath(){
-  if(process.env.CHROME) return { exe: process.env.CHROME, args: [] };
+  if(process.env.CHROME) return { exe: process.env.CHROME, args: process.env.CHROME_ARGS ? JSON.parse(process.env.CHROME_ARGS) : [] };
   try { const c = (await import("@sparticuz/chromium")).default; return { exe: await c.executablePath(), args: c.args }; }
   catch(e){ throw new Error("Kein Chromium gefunden: CHROME=/pfad/zu/chrome setzen oder @sparticuz/chromium installieren"); }
 }
@@ -299,6 +299,27 @@ await test("Rückblick: seitlich wischen wechselt den Tag", async () => {
   ok(k > Y, "Wischen nach links wechselt nicht zum nächsten Tag ("+k+")");
 });
 
+async function dayHeadOk(where){
+  await rp(`(function(){ sugOpen = false; select(null); setSheet("full"); renderSheet(); })()`); await page.waitForTimeout(250);
+  const r = await page.evaluate(() => { const q = s => { const e = document.querySelector("#body .dhx "+s); if(!e) return null; const b = e.getBoundingClientRect(); return {t:b.top, b:b.bottom, l:b.left, r:b.right}; };
+    const row = document.querySelector("#body .dhx").getBoundingClientRect(), body = document.getElementById("body").getBoundingClientRect();
+    return {row:{t:row.top, b:row.bottom, h:row.height, r:row.right}, body:{r:body.right}, day:q(".dhd"), rc:q("[data-act=recap]"), sug:q("[data-act=sugtoggle]"), ring:!!document.querySelector("#body .dhx .dring[role=progressbar]"), old:!!document.querySelector("#body .fold[data-act=sugtoggle]")}; });
+  ok(r.day && r.rc && r.sug, where+": Tag, Vorschau oder Vorschläge fehlen in der Zeile "+JSON.stringify(r));
+  ok(r.row.h <= 64, where+": Tageskopf zu hoch ("+Math.round(r.row.h)+" px)");
+  ok(Math.abs((r.rc.t+r.rc.b)/2 - (r.sug.t+r.sug.b)/2) < 2 && r.rc.t >= r.row.t - 1 && r.sug.b <= r.row.b + 1, where+": Knöpfe nicht in einer Zeile "+JSON.stringify(r));
+  ok(r.day.r <= r.rc.l && r.rc.r <= r.sug.l && r.sug.r <= r.body.r + 1, where+": Reihenfolge/Überlappung falsch "+JSON.stringify(r));
+  ok(r.ring && !r.old, where+": Fortschrittsring fehlt oder alte Vorschlagszeile noch da");
+  await click("#body .dhx [data-act=sugtoggle]"); await page.waitForTimeout(200);
+  ok(await page.locator("#body .dsugs .sug").count() > 0, where+": Vorschläge klappen nicht auf");
+  ok(await page.evaluate(() => document.querySelector("#body .dhx [data-act=sugtoggle]").getAttribute("aria-expanded"))==="true", where+": Vorschlagsknopf nicht als offen markiert");
+  await shot("tageskopf-"+where);
+  await click("#body .dhx [data-act=sugtoggle]"); await page.waitForTimeout(200);
+  ok(await page.locator("#body .dsugs").count()===0, where+": Vorschläge klappen nicht zu");
+  await click("#body .dhx [data-act=recap]"); await page.waitForTimeout(400);
+  ok(await visible("#rc"), where+": Tagesvorschau öffnet nicht");
+}
+await test("Tageskopf: Tag, Tagesvorschau und Vorschläge in einer Zeile (hoch)", async () => { await seed(); await dayHeadOk("hoch"); });
+await test("Tageskopf: Tag, Tagesvorschau und Vorschläge in einer Zeile (quer)", async () => { await seed(); await dayHeadOk("quer"); }, {vp:{width:844, height:390}, safe:{left:47, right:47, bottom:21}});
 await test("Kartenebenen: Besuchte Orte & Fotospots ausblenden", async () => {
   await seed();
   await click("#layersBtn");
@@ -1184,6 +1205,17 @@ await test("Ziele: Ziel mit eigenem Namen und Gebiet anlegen, Merken aus Reise u
   ok(await visible("#cfPop"), "Löschen ohne Rückfrage");
   await click("#cfPop .cf-ok"); await page.waitForTimeout(150);
   ok(await rp(`zielIds().length===0 && !!S.trips.t_test`), "Ziel nicht gelöscht oder Reise betroffen");
+});
+
+await test("Löschen/Entfernen ist rötlich markiert (Ziel bearbeiten)", async () => {
+  await noTripUser();
+  await rp(`var z = zielNew("Lissabon", {id:"o1", n:"Lissabon", la:38.72, lo:-9.14, r:20000}); save(); openZiele(z); true`); await page.waitForTimeout(200);
+  await click("#zPop [data-act=zedit]"); await page.waitForTimeout(150);
+  const red = async sel => page.locator(sel).first().evaluate(e => { const m = getComputedStyle(e).color.match(/\d+/g).map(Number); return m[0] > m[1] + 60 && m[0] > m[2] + 60; });
+  ok(await red("#catPop [data-act=zdel]"), "„Ziel löschen“ nicht rot");
+  ok(await red("#catPop [data-act=zareadel]"), "Gebiet „Entfernen“ nicht rot");
+  ok(!(await red("#catPop [data-act=zsave]")), "Speichern fälschlich rot");
+  await shot("loeschen-rot");
 });
 
 await test("Ziele: Ort über Google-Maps-Link, Instagram-Link oder Namen merken", async () => {
