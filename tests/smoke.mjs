@@ -229,6 +229,52 @@ await test("Foto-Ansicht als Beobachter: kein Sichern, kein ⋯", async () => {
   ok(await page.locator("#pvLayer [data-act=phmap]").count()===1, "Karten-Button fehlt für Beobachter");
 });
 
+await test("Chat: nach rechts wischen führt zurück zur Übersicht, Position und Chat bleiben erhalten", async () => {
+  await seed();
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId = {}; CH.list = []; CH.got = true;
+    for(var i = 0; i < 14; i++){ var id = "u_me_u"+i; CH.byId[id] = {id:id, members:["u_me","u"+i], names:{["u"+i]:"Freund"+i}, at:1000 - i, last:{t:"Hallo "+i, from:"u"+i, at:1000 - i}}; CH.list.push(CH.byId[id]); }
+    openChPage(); true`);
+  await page.waitForTimeout(300);
+  const row = '#chView [data-act=chopen][data-v="u_me_u9"]';
+  await page.evaluate(() => { document.getElementById("chView").scrollTop = 260; });
+  const sc0 = await page.evaluate(() => document.getElementById("chView").scrollTop);
+  ok(sc0 > 100, "Übersicht lässt sich nicht scrollen: "+sc0);
+  await page.tap(row); await page.waitForTimeout(300);
+  ok(await rp(`chOpen==="u_me_u9" && history.state && history.state.rpch==="u_me_u9"`), "Chat nicht geöffnet oder kein Verlaufseintrag");
+  const cdp = await page.context().newCDPSession(page);
+  const swipe = async (pts) => { await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:pts[0][0], y:pts[0][1]}]});
+    for(const p of pts.slice(1)){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:p[0], y:p[1]}]}); await page.waitForTimeout(16); }
+    await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); };
+  // senkrecht wischen: bleibt im Chat
+  await swipe([[200, 400], [205, 450], [208, 520], [210, 600]]); await page.waitForTimeout(350);
+  ok(await rp(`chOpen==="u_me_u9"`), "Senkrechtes Wischen verlässt den Chat");
+  // kurz nach rechts und zurück: bleibt im Chat, nichts verschoben
+  await swipe([[100, 400], [130, 402], [150, 404], [120, 404]]); await page.waitForTimeout(350);
+  ok(await rp(`chOpen==="u_me_u9" && !document.querySelector("#chView .ch-under") && !document.querySelector("#chView .ch-conv").style.translate`), "Abgebrochenes Wischen lässt Reste zurück");
+  // während des Wischens folgt der Chat dem Finger, darunter die Übersicht
+  await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:60, y:400}]});
+  for(const x of [80, 110, 150, 200]){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x, y:405}]}); await page.waitForTimeout(16); }
+  const mid = await page.evaluate(() => { const c = document.querySelector("#chView .ch-conv"); return {x:Math.round(c.getBoundingClientRect().left), under:!!document.querySelector("#chView .ch-under .ch-list")}; });
+  ok(mid.x > 100 && mid.under, "Chat folgt dem Finger nicht oder keine Übersicht darunter: "+JSON.stringify(mid));
+  await shot("chat-zurueckwischen");
+  for(const x of [260, 320]){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x, y:405}]}); await page.waitForTimeout(16); }
+  await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); await page.waitForTimeout(500);
+  const st = await page.evaluate(r => { const v = document.getElementById("chView"), e = document.querySelector(r), b = e && e.getBoundingClientRect();
+    return {sc:v.scrollTop, ret:!!e && e.classList.contains("ch-ret"), foc:document.activeElement===e, vis:!!b && b.top >= 0 && b.bottom <= innerHeight}; }, row);
+  ok(await rp(`chPage && !chOpen && !!document.querySelector("#chView .ch-list")`), "Wischen führt nicht zur Übersicht");
+  ok(Math.abs(st.sc - sc0) <= 2, "Scrollposition der Übersicht nicht erhalten: "+sc0+" → "+st.sc);
+  ok(st.ret && st.foc && st.vis, "Chat, aus dem man kam, nicht sichtbar/markiert/fokussiert: "+JSON.stringify(st));
+  ok(await rp(`!(history.state && history.state.rpch)`), "Verlaufseintrag des Chats bleibt stehen");
+  // Safari-Zurück (Rand-Wischen) = Verlauf zurück: ebenfalls zur Übersicht
+  await page.tap(row); await page.waitForTimeout(300);
+  await page.evaluate(() => history.back()); await page.waitForTimeout(400);
+  ok(await rp(`chPage && !chOpen && !!document.querySelector("#chView .ch-list")`), "Safari-Zurück führt nicht zur Übersicht");
+  // Zurück-Knopf: gleiche Wiederherstellung
+  await page.tap(row); await page.waitForTimeout(300); await page.tap("#chView [data-act=chback]"); await page.waitForTimeout(400);
+  ok(await rp(`!chOpen && document.querySelector('#chView [data-v="u_me_u9"]').classList.contains("ch-ret")`), "Zurück-Knopf markiert den Chat nicht");
+  await cdp.detach(); await rp(`closeChPage(); CH.byId = {}; CH.list = []; true`);
+});
+
 await test("Foto im Chat schicken: Freunde-Suche filtert, Menü bleibt offen", async () => {
   await seed();
   await rp(`openJPop("p4", dayOf("p4"), "ph_a")`); await page.waitForTimeout(300);
@@ -559,6 +605,78 @@ await test("Ebenen: ÖPNV-Gruppe aufklappbar, farbige Karte und 3D ohne Schalter
   ok((await page.locator("#layers").innerText()).indexOf("Tagesroute")===-1, "Tagesroute steht noch im Ebenen-Menü");
   await click("#lTrBtn"); await page.waitForTimeout(100);
   ok(!(await page.locator("#lTrGrp").isVisible()), "ÖPNV-Auswahl klappt nicht wieder zu");
+});
+
+await test("Kartenebenen je Reiseziel: ÖPNV-Linien und Bezirke aus OpenStreetMap (Lissabon)", async () => {
+  const OVQ = [];
+  const sq = (lo, la, d) => [{lat:la, lon:lo}, {lat:la, lon:lo+d}, {lat:la+d, lon:lo+d}, {lat:la+d, lon:lo}];
+  const adm = (id, n, lo, la) => { const p = sq(lo, la, 0.01); return {type:"relation", id, tags:{name:n, admin_level:"8", boundary:"administrative"},
+    members:[{type:"way", ref:id*10, role:"outer", geometry:[p[0], p[1], p[2]]}, {type:"way", ref:id*10+1, role:"outer", geometry:[p[0], p[3], p[2]]}]}; };
+  await page.route(/overpass-api\.de/, rt => { const q = decodeURIComponent((rt.request().postData()||"").replace(/^data=/, "").replace(/\+/g, " ")); OVQ.push(q);
+    let el = [];
+    if(q.includes("is_in(")) el = [{type:"relation", id:100, tags:{name:"Lisboa", admin_level:"7", boundary:"administrative"}, bounds:{minlat:38.69, minlon:-9.23, maxlat:38.80, maxlon:-9.09}},
+      {type:"relation", id:101, tags:{name:"Santa Maria Maior", admin_level:"8", boundary:"administrative"}, bounds:{minlat:38.709, minlon:-9.14, maxlat:38.716, maxlon:-9.13}},
+      {type:"relation", id:1, tags:{name:"Portugal", admin_level:"2", boundary:"administrative"}, bounds:{minlat:36, minlon:-10, maxlat:42, maxlon:-6}}];
+    else if(q.includes("map_to_area")) el = [201, 202, 203].map((id, i) => ({type:"relation", id, tags:{name:["Estrela","Misericórdia","Alfama"][i], admin_level:"8"}, bounds:{minlat:38.70, minlon:-9.20+i*0.02, maxlat:38.71, maxlon:-9.19+i*0.02}}))
+      .concat([{type:"relation", id:300, tags:{name:"Oeiras-Nachbar", admin_level:"8"}, bounds:{minlat:38.68, minlon:-9.30, maxlat:38.72, maxlon:-9.20}}]);
+    else if(q.includes("rel(id:")) el = [adm(201, "Estrela", -9.20, 38.70), adm(202, "Misericórdia", -9.18, 38.70), adm(203, "Alfama", -9.16, 38.70)];
+    else if(q.includes("subway")) el = [
+      {type:"relation", id:1, tags:{type:"route", route:"subway", ref:"A", name:"Linha Azul", colour:"#0072CE"}, members:[{type:"way", ref:11}]},
+      {type:"relation", id:2, tags:{type:"route", route:"tram", ref:"28E", name:"Elétrico 28", colour:"#FFCC00"}, members:[{type:"way", ref:12}]},
+      {type:"relation", id:3, tags:{type:"route", route:"tram", ref:"15E", name:"Elétrico 15"}, members:[{type:"way", ref:14}]},
+      {type:"way", id:11, tags:{railway:"subway"}, geometry:[{lat:38.71, lon:-9.14}, {lat:38.72, lon:-9.15}]},
+      {type:"way", id:12, tags:{railway:"tram"}, geometry:[{lat:38.711, lon:-9.13}, {lat:38.715, lon:-9.135}]},
+      {type:"way", id:14, tags:{railway:"tram"}, geometry:[{lat:38.70, lon:-9.17}, {lat:38.70, lon:-9.20}]},
+      {type:"way", id:13, tags:{railway:"funicular", name:"Elevador da Glória"}, geometry:[{lat:38.7155, lon:-9.1430}, {lat:38.7165, lon:-9.1440}]},
+      {type:"node", id:21, lat:38.7106, lon:-9.1420, tags:{railway:"station", station:"subway", name:"Baixa-Chiado"}},
+      {type:"node", id:22, lat:38.7120, lon:-9.1400, tags:{amenity:"bicycle_rental", name:"Gira 101"}},
+      {type:"count", id:0, tags:{relations:"1"}}];
+    else if(q.includes("trolleybus")) el = [{type:"relation", id:5, tags:{type:"route", route:"bus", ref:"758", name:"Cais do Sodré – Portas de Benfica"}, members:[{type:"way", ref:31}]},
+      {type:"way", id:31, tags:{highway:"primary"}, geometry:[{lat:38.706, lon:-9.145}, {lat:38.75, lon:-9.19}]}];
+    return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:el}) }); });
+  await seed();
+  ok(await rp(`DEST===null && !document.body.classList.contains("dyn")`), "New York gilt nicht als eingebautes Ziel");
+  await rp(`(function(){ var t = newTripObj({id:"t_lis", name:"Lissabon", start:"2026-11-02", end:"2026-11-06", hotels:[{id:"h9", n:"Hotel Lisboa", la:38.7150, lo:-9.1400, from:"2026-11-02", to:"2026-11-06"}], orte:[{id:"o9", n:"Lissabon", la:38.7223, lo:-9.1393, from:"2026-11-02", to:"2026-11-06"}]});
+    S.trips.t_lis = t; S.cur = "t_lis"; DL = {}; renderAll(); })()`);
+  ok(await rp(`!!DEST && document.body.classList.contains("dyn")`), "Lissabon wird nicht als eigenes Ziel erkannt");
+  ok(!OVQ.length, "Overpass wird schon ohne Bedarf gefragt");
+  await click("#layersBtn"); await click("#lTrBtn");
+  await page.waitForFunction(() => window.__rp("!!(DEST && DEST.tr && DEST.nb)"), null, {timeout:5000});
+  const grp = await page.locator("#lTrGrp").innerText();
+  ok(grp.includes("Metro") && grp.includes("Tram") && grp.includes("Seilbahnen") && grp.includes("Busse") && grp.includes("Bike Share"), "Verkehrsmittel des Ziels fehlen: "+grp);
+  ok(!grp.includes("Subway") && !(await page.locator("#lSub").isVisible()) && !grp.includes("Fähren"), "New-York-Verkehrsmittel stehen noch im Menü: "+grp);
+  ok((await page.locator("#layers").textContent()).includes("Bezirke") && (await page.locator("#layers").textContent()).includes("Bezirk hervorheben"), "Ebene heißt nicht „Bezirke“");
+  // Hauptschalter ÖPNV → erstes Verkehrsmittel (Metro)
+  await page.locator("label:has(#lTr)").click(); await page.waitForTimeout(150);
+  ok(await rp(`DL.metro && !DL.tram && $("lTr").indeterminate && map.getLayoutProperty("dtr","visibility")==="visible"`), "ÖPNV-Hauptschalter schaltet die Metro nicht ein");
+  ok(await rp(`map.getSource("dtr")._data.features.length===4 && map.getLayoutProperty("sub","visibility")==="none"`), "Linien des Ziels nicht auf der Karte");
+  // Unterkategorie Tram → einzelne Linien
+  await page.locator("#ld-tram").check(); await page.waitForTimeout(100);
+  await click("[data-act=dfold][data-m=tram]");
+  ok(await page.locator("#dLines-tram [data-id='tram:28E']").isVisible() && await page.locator("#dLines-tram [data-id='tram:15E']").isVisible(), "Tram-Linien fehlen");
+  await shot("ziel-oepnv");
+  await click("#dLines-tram [data-id='tram:28E']");
+  ok(await rp(`DOFF["tram:28E"] && JSON.stringify(map.getFilter("dtr")).indexOf("tram:28E") > -1`), "Linie lässt sich nicht ausblenden");
+  ok(/1 von 2/.test(await page.locator("label:has(#ld-tram)").innerText()), "Zähler der Tram-Linien fehlt");
+  // Busse erst bei Bedarf laden
+  ok(!OVQ.some(q => q.includes("trolleybus)$\"](") && !q.includes("subway")), "Busse werden ohne Bedarf geladen");
+  await page.locator("#ld-bus").check(); await click("[data-act=dfold][data-m=bus]");
+  await page.waitForFunction(() => window.__rp("!!(DEST && DEST.bus)"), null, {timeout:5000}); await page.waitForTimeout(100);
+  ok(await page.locator("#dLines-bus [data-id='bus:758']").isVisible(), "Buslinie fehlt");
+  // Bezirke des Ziels: Liste, Hervorheben, Umgebung (Nachbarort) nicht dabei
+  ok(await rp(`NB.length===3 && nbByName("Estrela") > -1 && nbByName("Oeiras-Nachbar") < 0 && map.getSource("nb")._data.features.length===3`), "Bezirke falsch: "+await rp(`NB.map(function(x){ return x.n; }).join(",")`));
+  ok(await rp(`NB[0].r[0].length >= 8`), "Bezirks-Umriss nicht zusammengesetzt");
+  ok(await rp(`nbOf({la:38.705, lo:-9.175})`)==="Misericórdia", "Ort wird keinem Bezirk zugeordnet");
+  await page.locator("#nbAdd").selectOption("Alfama"); await page.waitForTimeout(150);
+  ok(await rp(`nbHi.Alfama && JSON.parse(lsGet("rp-nb-hi-"+DEST.k)).indexOf("Alfama") > -1 && JSON.parse(lsGet("nyc-nb-hi")||"[]").indexOf("Alfama") < 0`), "Bezirk wird nicht je Ziel hervorgehoben");
+  // zurück nach New York: eingebaute Daten; wieder Lissabon: aus dem Speicher, ohne neue Abfrage
+  const n0 = OVQ.length;
+  await rp(`S.cur = "t_test"; renderAll(); true`); await page.waitForTimeout(150);
+  ok(await rp(`DEST===null && NB.length > 50 && !nbHi.Alfama`), "New York bekommt die Daten nicht zurück");
+  ok(await page.locator("#lSub").isVisible() && !(await page.locator("#lTrDyn").isVisible()), "New-York-Menü kommt nicht zurück");
+  await rp(`S.cur = "t_lis"; renderAll(); true`);
+  await page.waitForFunction(() => window.__rp("!!(DEST && DEST.tr && DEST.nb && NB.length===3)"), null, {timeout:5000});
+  ok(OVQ.length===n0 && await rp(`nbHi.Alfama && DL.metro`), "Ziel wird nicht aus dem Speicher geladen ("+(OVQ.length-n0)+" neue Abfragen)");
 });
 
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
@@ -1324,6 +1442,16 @@ await test("Neue Reise: Zeitraum kompakt mit Datum/Uhrzeit nebeneinander und Nä
   await shot("neue-reise-zeitraum");
 });
 
+await test("Reise bearbeiten: „Reise löschen“ ganz unten, volle Breite, gedämpft rot", async () => {
+  await seed();
+  await rp(`acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; META[S.cur] = {owner:"u_me", members:["u_me"], roles:{u_me:"owner"}}; tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); true`); await page.waitForTimeout(200);
+  ok(await page.locator("#tripPop [data-act=deltrip]").count()===1, "Reise löschen fehlt");
+  ok(await rp(`(function(){ var b = document.querySelector("#tripPop [data-act=deltrip]"), all = document.querySelectorAll("#tripPop button, #tripPop input, #tripPop select"), last = all[all.length-1]; return last===b || b.compareDocumentPosition(last) & Node.DOCUMENT_POSITION_PRECEDING; })()`), "Reise löschen steht nicht ganz unten");
+  ok(await rp(`(function(){ var b = document.querySelector("#tripPop [data-act=deltrip]").getBoundingClientRect(), f = document.querySelector("#tripPop .tf-foot").getBoundingClientRect(); return b.width >= f.width - 50; })()`), "Reise löschen nicht über die volle Breite");
+  ok(await page.locator("#tripPop [data-act=deltrip]").evaluate(e => { const m = getComputedStyle(e).backgroundColor.match(/[\d.]+/g).map(Number); return m.length===4 && m[3] < 0.5; }), "Reise löschen knallrot statt gedämpft");
+  await page.locator("#tripPop [data-act=deltrip]").scrollIntoViewIfNeeded(); await shot("reise-loeschen-unten");
+});
+
 await test("Neue Reise: Hotel „noch unklar“ ohne Fehler, später nachtragbar", async () => {
   await noTripUser();
   await rp(`tdraft = {mode:"new", name:"Lissabon", start:"2026-11-02", end:"2026-11-06", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"Lissabon", loc:"38.7200, -9.1400", from:"", to:""}], err:"", ok:"hotels.0"}; tab = "trip"; renderSheet(); true`); await page.waitForTimeout(150);
@@ -1961,7 +2089,7 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
     if(act==="focus") document.getElementById("chIn").focus(); else document.activeElement.blur();
     const t0 = performance.now(); let slow = 0;
     for(let i = 0; i < 40 && performance.now() - t0 < 500; i++){ const t = performance.now(); await new Promise(r => requestAnimationFrame(r)); if(i < 12 && performance.now() - t > 60) slow++; ys.push(Math.round(c.getBoundingClientRect().bottom)); }
-    ys.slow = slow > 2; return {ys, slow:slow > 2}; }, act).then(r => { r.ys.slow = r.slow; return r.ys; });
+    return {ys, slow:slow > 2 || ys.length < 10}; }, act).then(r => { r.ys.slow = r.slow; return r.ys; });
   // Gleiten = erstes Bild noch (fast) an der alten Stelle, dann gleichmäßig in eine Richtung über mehrere Bilder bis zum Ziel
   // (die Bildrate schwankt unter Last, daher keine feste Schrittgrenze)
   // nur bis zum ersten Erreichen des Ziels auswerten (danach greift ggf. die Rückfallebene „keine Tastatur gekommen“ nach 1,2 s)
