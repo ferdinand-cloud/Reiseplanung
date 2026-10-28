@@ -1553,7 +1553,8 @@ await test("Fürs nächste Mal merken: besuchter Ort und Wunschliste-Ort aus der
   const zid = await rp(`zielIds()[0]`);
   ok(await rp(`Object.keys(Z("${zid}").places).length`)===2, "Ziel hat nicht genau zwei gemerkte Orte");
   ok(await rp(`zStatus("${zid}", Z("${zid}").places[P("${vis}").zl.split("/")[1]]).done`), "Besuch erscheint nicht im Ziel");
-  ok(await rp(`zVisited("${zid}").every(function(x){ return x.p.id!=="${vis}"; })`), "Gemerkter Ort steht zusätzlich unter „besucht, nicht gemerkt“");
+  ok(await rp(`zVisited("${zid}").every(function(x){ return x.p.id!=="${vis}"; })`), "Schon vor dem Merken besuchter Ort steht unter „Besucht“ statt „Gemerkt“");
+  ok(await rp(`zOpenPl("${zid}").length`)===2, "Fürs nächste Mal gemerkter besuchter Ort fehlt unter „Gemerkt“");
   // Pop-up öffnet das Ziel
   await rp(`select("${vis}")`); await page.waitForTimeout(200);
   await click("#card [data-act=cardmore]"); await click("#jpMenu [data-act=pzopen]"); await page.waitForTimeout(300);
@@ -2067,9 +2068,24 @@ await test("Ziele: neue Reise bietet gemerkte Orte an, Besuch erscheint sofort i
   await rp(`var k = Object.keys(T().places).filter(function(k){ return T().places[k].n==="Pantheon"; })[0], d = days()[0].key; T().order[d] = [k]; T().done[k] = true; T().rating = {}; T().rating[k] = 2; save(); openZiele(zielIds()[0]);`);
   await page.waitForTimeout(200);
   const txt = await page.locator("#zPop .zdpop").innerText();
-  ok(txt.includes("besucht") && txt.includes("Must Have"), "Besuch/Bewertung erscheint nicht im Ziel");
+  ok(/Besucht auf Reisen · 1/i.test(txt) && txt.includes("Must Have") && /Gemerkt · 1/i.test(txt), "Besuchter gemerkter Ort steht nicht unter „Besucht auf Reisen“: "+txt.replace(/\n/g, " / "));
+  ok(await page.locator("#zPop .zrow").count()===1 && !(await page.locator("#zPop .zrow").innerText()).includes("Pantheon"), "Besuchter Ort steht noch unter „Gemerkt“");
+  ok(await rp(`Object.keys(S.trips[zielIds()[0]].places).length`)===2, "Besuchter Ort wurde aus dem Ziel entfernt");
   ok(txt.includes("Wunschliste"), "Übernommener, noch offener Ort zeigt keinen Stand");
   await shot("ziel-besucht");
+  // Kategorie-Filter wirkt auf „Gemerkt“ und „Besucht auf Reisen“
+  await click("#zPop [data-act=zcatpop]");
+  ok(await visible("#catPop [data-act=zcat][data-cat=sight]") && await visible("#catPop [data-act=zcat][data-cat=essen]"), "Kategorie-Auswahl im Ziel fehlt");
+  await click("#catPop [data-act=zcat][data-cat=essen]");
+  await shot("ziel-filter-pop");
+  await click("#catPop .btn[data-act=catclose]");
+  let ft = await page.locator("#zPop .zdpop").innerText();
+  ok(ft.includes("Trattoria Roma") && !ft.includes("Pantheon") && /Besucht auf Reisen · 0 von 1/i.test(ft), "Filter Essen wirkt nicht auf beide Abschnitte: "+ft.replace(/\n/g, " / "));
+  ok((await page.locator("#zPop [data-act=zcatpop]").innerText()).includes(await rp(`CATNAME.essen`)), "Filter-Knopf zeigt die Kategorie nicht");
+  await shot("ziel-filter");
+  await click("#zPop [data-act=zcatreset]");
+  ft = await page.locator("#zPop .zdpop").innerText();
+  ok(ft.includes("Trattoria Roma") && ft.includes("Pantheon"), "Filter zurücksetzen wirkt nicht");
   ok(await rp(`zOfferItems(S.cur).length`)===0, "Bereits übernommene Orte würden erneut angeboten");
 });
 await test("Ziele: „Reise planen“ öffnet Formular ohne Datumswähler", async () => {

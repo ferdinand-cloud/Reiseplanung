@@ -6316,6 +6316,7 @@ function merken(q){
 function zielMerk(zid, q, neu){
   var r = zielAdd(zid, q); if(!r) return;
   var ft = q.from && S.trips[q.tid], fp = ft && ft.places[q.from]; if(fp && !isViewerOf(q.tid)) fp.zl = zid+"/"+r.id;
+  var zp = Z(zid).places[r.id]; if(!r.dup){ var vb = zDoneN(zid, zp); if(vb) zp.vb = vb; else delete zp.vb; }
   save(); zLast = {zid:zid, pid:r.id};
   zToast("„"+q.n+"“ gemerkt in „"+Z(zid).name+"“"+(neu ? " · neues Ziel" : ""), zLast);
   if(profOpen) renderProfile(); if(dcPage) renderDc(); if(sel==="poi" && poiSel) renderCard(); if(chOpen) renderChMsgs(false);
@@ -6351,15 +6352,23 @@ function zMove(to){
 /* Stand eines gemerkten Orts in den Reisen: geplant, besucht, Bewertung */
 function zVisits(t, k){ return [k].concat(Object.keys(t.places).filter(function(x){ return t.places[x] && t.places[x].of===k; })); }
 function zPlanned(t, x){ return Object.keys(t.order||{}).some(function(dk){ return (t.order[dk]||[]).indexOf(x) > -1; }); }
-function zStatus(zid, p){
-  var out = null, ref = zid+"/"+p.id;
-  Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; if(!t || t.ziel || t.arch || t.seed) return false;
-    return Object.keys(t.places||{}).some(function(k){ var q = t.places[k]; if(!q || q.of) return false;
+// alle Vorkommen eines gemerkten Orts in den Reisen (je Reise einmal)
+function zRefs(zid, p){
+  var out = [], ref = zid+"/"+p.id;
+  Object.keys(S.trips).forEach(function(tid){ var t = S.trips[tid]; if(!t || t.ziel || t.arch || t.seed) return;
+    Object.keys(t.places||{}).some(function(k){ var q = t.places[k]; if(!q || q.of) return false;
       if(q.zl!==ref && !samePl(q, p)) return false;
-      var vs = zVisits(t, k); out = {tid:tid, pid:k, done:vs.some(function(x){ return (t.done||{})[x]; }), planned:vs.some(function(x){ return zPlanned(t, x); }), rating:(t.rating||{})[k] || 0};
+      var vs = zVisits(t, k); out.push({tid:tid, pid:k, done:vs.some(function(x){ return (t.done||{})[x]; }), planned:vs.some(function(x){ return zPlanned(t, x); }), rating:(t.rating||{})[k] || 0});
       return true; }); });
   return out;
 }
+// Stand für die Anzeige: eine offene Planung vor einem früheren Besuch
+function zStatus(zid, p){ var rs = zRefs(zid, p); return rs.filter(function(r){ return r.planned && !r.done; })[0] || rs.filter(function(r){ return r.done; })[0] || rs[0] || null; }
+/* Gemerkt = noch nicht besucht. Besuche, die es beim Merken schon gab (vb), zählen nicht: wer einen besuchten Ort fürs nächste Mal
+   merkt, sieht ihn unter „Gemerkt“, bis er ihn erneut besucht. Danach steht er unter „Besucht auf Reisen“, bleibt aber im Ziel. */
+function zDoneN(zid, p){ return zRefs(zid, p).filter(function(r){ return r.done; }).length; }
+function zIsVis(zid, p){ return zDoneN(zid, p) > (p.vb || 0); }
+function zOpenPl(zid){ var z = Z(zid); return z ? Object.keys(z.places).map(function(k){ return z.places[k]; }).filter(function(p){ return !p.of && !zIsVis(zid, p); }) : []; }
 // besuchte Orte aus Reisen im Gebiet des Ziels, die nicht gemerkt waren
 function zVisited(zid){
   var z = Z(zid), out = []; if(!z) return out;
@@ -6369,6 +6378,8 @@ function zVisited(zid){
       if(!zVisits(t, k).some(function(x){ return (t.done||{})[x]; })) return;
       if(Object.keys(z.places).some(function(x){ return samePl(z.places[x], q); })) return;
       out.push({tid:tid, p:q, rating:(t.rating||{})[k] || 0}); }); });
+  Object.keys(z.places).forEach(function(pid){ var p = z.places[pid]; if(p.of || !zIsVis(zid, p)) return;
+    var r = zRefs(zid, p).filter(function(x){ return x.done; }).pop(), t = S.trips[r.tid]; out.push({tid:r.tid, p:t.places[r.pid], rating:r.rating, zp:pid}); });
   return out;
 }
 /* Reise angelegt: gemerkte Orte aus passenden Zielen anbieten (einmal fragen) */
@@ -6379,7 +6390,7 @@ function zMatchTrip(t){
 function zLinked(t, zid, p){ var ref = zid+"/"+p.id; return Object.keys(t.places).some(function(k){ var q = t.places[k]; return q && (q.zl===ref || samePl(q, p)); }); }
 function zOfferItems(tid){
   var t = S.trips[tid], out = []; if(!t || t.ziel) return out;
-  zMatchTrip(t).forEach(function(zid){ var z = S.trips[zid]; Object.keys(z.places).forEach(function(pid){ var p = z.places[pid]; if(hasLoc(p) && !zLinked(t, zid, p)) out.push({zid:zid, p:p}); }); });
+  zMatchTrip(t).forEach(function(zid){ var z = S.trips[zid]; Object.keys(z.places).forEach(function(pid){ var p = z.places[pid]; if(hasLoc(p) && !p.of && !zLinked(t, zid, p) && !zIsVis(zid, p)) out.push({zid:zid, p:p}); }); });
   return out;
 }
 function zOffer(tid){
@@ -6579,7 +6590,7 @@ function zStatusText(st){
 function zielsHTML(){
   var zo = !!(zOpen && Z(zOpen)); if(!zo){ zOpen = ""; zLk.zid = ""; }
   var ids = zielIds(), h = zLinkHTML(zo)+"<div class=\"pf-grid\">";
-  ids.forEach(function(zid){ var z = S.trips[zid], n = Object.keys(z.places).length, v = zVisited(zid).length;
+  ids.forEach(function(zid){ var z = S.trips[zid], n = zOpenPl(zid).length, v = zVisited(zid).length;
     h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-trip zt\" data-act=\"zopen\" data-z=\""+esc(zid)+"\"><span class=\"pf-cov lt\" style=\"--cc:"+tripColor(zid)+"\"><i>"+esc(tripInitials(z.name))+"</i></span>"+
       "<span class=\"pf-tt\"><b>"+esc(z.name)+"</b><small>"+esc([n+" gemerkt", v ? v+" besucht" : "", META[zid] && (META[zid].members||[]).length > 1 ? "geteilt" : ""].filter(Boolean).join(" · "))+"</small></span></button></div>"; });
   h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-new\" data-act=\"znew\"><span class=\"pf-plus\" aria-hidden=\"true\">＋</span><b>Neues Ziel</b><small>Stadt, Region oder Land</small></button></div></div>";
@@ -6592,22 +6603,39 @@ function zRow(zid, p, st){
     (p.src ? "<a class=\"zrow-x zsrc\" href=\""+esc(p.src)+"\" target=\"_blank\" rel=\"noopener\" aria-label=\"Quelle öffnen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M8.5 11.5l3-3M7 9.5l-1.5 1.5a2.5 2.5 0 0 0 3.5 3.5L10.5 13M13 10.5l1.5-1.5a2.5 2.5 0 0 0-3.5-3.5L9.5 7\"/></svg></a>" : "")+
     "<button type=\"button\" class=\"zrow-x\" data-act=\"zpldel\" data-z=\""+esc(zid)+"\" data-pid=\""+esc(p.id)+"\" aria-label=\"„"+esc(p.n)+"“ entfernen\">×</button></div>";
 }
+/* Kategorie-Filter der Ziel-Ansicht (wie in der Wunschliste, mehrere möglich): wirkt auf „Gemerkt“ und „Besucht auf Reisen“ */
+var zCat = {}, zCatZ = "";
+function zCatOk(c){ return !Object.keys(zCat).length || !!zCat[c]; }
+function zCatPop(){
+  var zid = zOpen, cc = {}, all = zOpenPl(zid).concat(zVisited(zid).map(function(x){ return x.p; }));
+  all.forEach(function(p){ cc[p.c] = (cc[p.c]||0)+1; });
+  var row = function(c, on, lbl, n){ return "<button type=\"button\" data-act=\"zcat\" data-cat=\""+c+"\" aria-pressed=\""+on+"\"><span class=\"box\"></span><span>"+lbl+"</span><small>"+n+"</small></button>"; };
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Kategorie\"><div class=\"pop-head\"><h4>Kategorie</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list wfl\">"+
+    row("", !Object.keys(zCat).length, "Alle Kategorien", all.length);
+  CATS.forEach(function(c){ if(cc[c[0]] || zCat[c[0]]) h += row(c[0], !!zCat[c[0]], icon(c[0],"ci")+" "+esc(c[1]), cc[c[0]]||0); });
+  h += "</div><p class=\"note\" style=\"margin:8px 2px 0\">Mehrere möglich.</p><div class=\"row\" style=\"margin-top:8px\"><button type=\"button\" class=\"btn\" data-act=\"catclose\">Fertig</button></div></div>";
+  $("catPop").innerHTML = h; $("catPop").hidden = false;
+}
 function zDetailHTML(zid){
-  var z = S.trips[zid], ps = Object.keys(z.places).map(function(k){ return z.places[k]; }).filter(function(p){ return !p.of; });
+  if(zCatZ!==zid){ zCat = {}; zCatZ = zid; }
+  var z = S.trips[zid], ps0 = zOpenPl(zid), ps = ps0.filter(function(p){ return zCatOk(p.c); });
   ps.sort(function(a, b){ return (b.at||0) - (a.at||0) || String(a.n).localeCompare(b.n); });
-  var vis = zVisited(zid), area = (z.orte||[]).map(function(o){ return o.n; }).filter(Boolean).join(", ");
+  var vis0 = zVisited(zid), vis = vis0.filter(function(x){ return zCatOk(x.p.c); }), area = (z.orte||[]).map(function(o){ return o.n; }).filter(Boolean).join(", ");
   var h = "<div class=\"zhead\"><span class=\"zh-t\"><b>"+esc(z.name)+"</b><small>"+esc(area || "Gebiet noch nicht festgelegt")+"</small></span>"+
     "<button type=\"button\" class=\"zh-ed\" data-act=\"zedit\" data-z=\""+esc(zid)+"\" aria-label=\"Ziel bearbeiten\">"+ic("edit")+"</button><button type=\"button\" class=\"x zx\" data-act=\"zback\" aria-label=\"Schließen\">×</button></div>";
   if(zLk.zid!==zid) zLk = {q:"", res:[], msg:"", src:"", busy:false, zid:zid};
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   h += "<div class=\"jp-tiles zacts\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"zplan\" data-z=\""+esc(zid)+"\" aria-label=\"Reise hierhin planen\">"+I(IC.cal)+"<span>Reise planen</span></button>"+
     (acct.user && FR.friends.length ? "<button type=\"button\" class=\"jp-tile\" data-act=\"askopen\" data-z=\""+esc(zid)+"\" aria-label=\"Freunde nach Tipps fragen\">"+I("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/><path d=\"M8.6 7.6a1.5 1.5 0 1 1 1.9 1.5c-.4.1-.5.4-.5.8\"/><circle cx=\"10\" cy=\"11.3\" r=\".5\" fill=\"currentColor\"/>")+"<span>Tipps holen</span></button>" : "")+
-    (ps.some(hasLoc) ? "<button type=\"button\" class=\"jp-tile\" data-act=\"lkzshare\" data-z=\""+esc(zid)+"\" aria-label=\"Als Link teilen\">"+I(IC.share)+"<span>Link teilen</span></button>" : "")+"</div>";
+    (Object.keys(z.places).some(function(k){ return hasLoc(z.places[k]); }) ? "<button type=\"button\" class=\"jp-tile\" data-act=\"lkzshare\" data-z=\""+esc(zid)+"\" aria-label=\"Als Link teilen\">"+I(IC.share)+"<span>Link teilen</span></button>" : "")+"</div>";
   h += zLinkHTML();
-  h += "<div class=\"nt-sec\">Gemerkt · "+ps.length+"</div>";
-  h += ps.length ? "<div class=\"ag-grp ls-list\">"+ps.map(function(p){ return zRow(zid, p, zStatus(zid, p)); }).join("")+"</div>" : "<p class=\"note\">Noch nichts gemerkt. Tippe auf der Karte, in Entdecken oder im Chat auf das Merken-Zeichen.</p>";
+  var zck = Object.keys(zCat), zcl = !zck.length ? "Kategorie" : zck.length===1 ? CATNAME[zck[0]] : zck.length+" Kategorien";
+  if(ps0.length + vis0.length > 1) h += "<div class=\"fchips zfchips\" role=\"group\" aria-label=\"Filter\"><button type=\"button\" class=\"fchip"+(zck.length ? " on" : "")+"\" data-act=\"zcatpop\" aria-haspopup=\"dialog\">"+esc(zcl)+CHEV+"</button>"+
+    (zck.length ? "<button type=\"button\" class=\"tf-link\" data-act=\"zcatreset\">Filter zurücksetzen</button>" : "")+"</div>";
+  h += "<div class=\"nt-sec\">Gemerkt · "+ps.length+(zck.length ? " von "+ps0.length : "")+"</div>";
+  h += ps.length ? "<div class=\"ag-grp ls-list\">"+ps.map(function(p){ return zRow(zid, p, zStatus(zid, p)); }).join("")+"</div>" : "<p class=\"note\">"+(ps0.length ? "Keine gemerkten Orte in dieser Kategorie." : "Noch nichts gemerkt. Tippe auf der Karte, in Entdecken oder im Chat auf das Merken-Zeichen.")+"</p>";
   h += zShareHTML(zid);
-  if(vis.length) h += "<div class=\"nt-sec\">Besucht auf Reisen · "+vis.length+"</div><div class=\"ag-grp ls-list\">"+vis.map(function(x){ var RR = RATES.filter(function(r){ return r[0]===x.rating; })[0];
+  if(vis0.length) h += "<div class=\"nt-sec\">Besucht auf Reisen · "+vis.length+(zck.length ? " von "+vis0.length : "")+"</div><div class=\"ag-grp ls-list\">"+vis.map(function(x){ var RR = RATES.filter(function(r){ return r[0]===x.rating; })[0];
     return "<button type=\"button\" class=\"ls-row\" data-act=\"gsplace\" data-trip=\""+esc(x.tid)+"\" data-pid=\""+esc(x.p.id)+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(x.p.c)+"\">"+icon(x.p.c)+"</span><span class=\"ls-t\"><b>"+esc(x.p.n)+"</b><small>"+[esc(S.trips[x.tid].name), RR ? "<i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : ""].filter(Boolean).join(" · ")+"</small></span><span class=\"ls-go\">"+MAPGO+"</span></button>"; }).join("")+"</div>";
   return h;
 }
@@ -6818,7 +6846,7 @@ function renderGs(full){
       return "<div class=\"ls-row\"><span class=\"ls-th gsav\">"+(x.photo ? "<img src=\""+x.photo+"\" alt=\"\">" : esc((x.name[0]||"?").toUpperCase()))+"</span><span class=\"ls-t\"><b>@"+esc(x.name)+"</b><small>"+frStLbl(st)+"</small></span>"+folBtn(st, x.uid, x.name)+"</div>"; }).join(""));
     res += sec("Reisen", trips.length, trips.map(function(id){ var t = S.trips[id], cov = tripCover(id);
       return "<button type=\"button\" class=\"ls-row\" data-act=\"gstrip\" data-trip=\""+esc(id)+"\">"+(cov ? "<img class=\"ls-th\" data-ph=\""+cov+"\" alt=\"\">" : "<span class=\"ls-th gsav\">"+esc(((t.name||"?")[0]).toUpperCase())+"</span>")+"<span class=\"ls-t\"><b>"+esc(t.name)+"</b><small>"+esc([rangeLabel(t.start, t.end), isViewerOf(id) ? "beobachtet" : ""].filter(Boolean).join(" · "))+"</small></span></button>"; }).join(""));
-    res += sec("Ziele", zls.length, zls.map(function(id){ var z = S.trips[id]; return "<button type=\"button\" class=\"ls-row\" data-act=\"zopen\" data-z=\""+esc(id)+"\"><span class=\"ls-th ico zic\" style=\"--cc:"+tripColor(id)+"\">"+ZBM+"</span><span class=\"ls-t\"><b>"+esc(z.name)+"</b><small>"+Object.keys(z.places).length+" gemerkt</small></span></button>"; }).join(""));
+    res += sec("Ziele", zls.length, zls.map(function(id){ var z = S.trips[id]; return "<button type=\"button\" class=\"ls-row\" data-act=\"zopen\" data-z=\""+esc(id)+"\"><span class=\"ls-th ico zic\" style=\"--cc:"+tripColor(id)+"\">"+ZBM+"</span><span class=\"ls-t\"><b>"+esc(z.name)+"</b><small>"+zOpenPl(id).length+" gemerkt</small></span></button>"; }).join(""));
     res += sec("Gemerkte Orte", zpl.length, zpl.slice(0, 40).map(function(x){ var p = x.p; return "<button type=\"button\" class=\"ls-row\" data-act=\"zshow\" data-z=\""+esc(x.zid)+"\" data-pid=\""+esc(p.id)+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span><span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+esc(["gemerkt in „"+S.trips[x.zid].name+"“", CATNAME[p.c]].join(" · "))+"</small></span><span class=\"ls-go\">"+MAPGO+"</span></button>"; }).join(""));
     res += sec("Orte in deinen Reisen", places.length, places.slice(0, 40).map(function(x){ var p = x.p, ph = ((S.trips[x.tid].photos||{})[p.id]||[]);
       return "<button type=\"button\" class=\"ls-row\" data-act=\"gsplace\" data-trip=\""+esc(x.tid)+"\" data-pid=\""+esc(p.id)+"\">"+(ph.length ? "<img class=\"ls-th\" data-ph=\""+ph[ph.length-1]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span>")+
@@ -15279,6 +15307,9 @@ document.addEventListener("click", function(e){
     case "lcattog": var lk = t.getAttribute("data-k"); lcatOpen[lk] = !lcatOpen[lk]; if(lk==="poi") renderPoiCats(); else renderWishCats(); break;
     case "lwcat": var lw = t.getAttribute("data-cat"); if(!lw) catFilter = {}; else { delete catFilter._none; if(catFilter[lw]){ delete catFilter[lw]; if(!catKeys().length) catFilter = {_none:1}; } else catFilter[lw] = 1; } renderWishCats(); dirty(); renderSheet(); scheduleOverlay(); break;
     case "lwnone": catFilter = {_none:1}; renderWishCats(); dirty(); renderSheet(); scheduleOverlay(); break;
+    case "zcatpop": zCatPop(); break;
+    case "zcat": var zc = t.getAttribute("data-cat"); if(!zc) zCat = {}; else if(zCat[zc]) delete zCat[zc]; else zCat[zc] = 1; zRenderPop(); zCatPop(); break;
+    case "zcatreset": zCat = {}; zRenderPop(); break;
     case "wcat": var wc = t.getAttribute("data-cat"); if(!wc) catFilter = {}; else { delete catFilter._none; if(catFilter[wc]){ delete catFilter[wc]; if(!catKeys().length) catFilter = {_none:1}; } else catFilter[wc] = 1; } renderSheet(); scheduleOverlay(); renderWishCats(); if(wfiltK==="cat" && !$("catPop").hidden) openWFilt("cat"); break;
     case "nbrem": delete nbHi[t.getAttribute("data-nb")]; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
     case "nbclear": nbHi = {}; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
