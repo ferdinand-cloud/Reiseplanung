@@ -8735,7 +8735,7 @@ function srchLocal(q){
   if(!w.length && !srch.cat) return out;
   var hit = function(txt){ var h = norm(txt); return w.every(function(x){ return h.indexOf(x) > -1; }); };
   Object.keys(T().places).map(P).forEach(function(p){
-    if(p.of || (isRO() && !visitsOf(p.id).length) || !hit([p.n, p.addr, p.note, CATNAME[p.c], nbOf(p), grpName(p.g)].join(" "))) return;
+    if(p.of || (isRO() && !visitsOf(p.id).length) || !hit([p.n, p.addr, p.note, CATNAME[p.c], nbOf(p), grpNames(p)].join(" "))) return;
     var vs = visitsOf(p.id);
     out.push({kind:"place", id:p.id, n:p.n, c:p.c, sub:(vs.length ? vs.map(function(v){ return "Tag "+dayByKey(v.k).n; }).join(", ") : "Wunschliste")+(p.addr ? " · "+p.addr : ""), d: hasLoc(p) ? dist(C, p) : null});
     if(hasLoc(p)) seen[norm(p.n).slice(0,10)+Math.round(p.la*2000)+","+Math.round(p.lo*2000)] = 1;
@@ -11904,7 +11904,7 @@ function renderCard(){
   var cadd = isRO() ? "" : "<label class=\"cphadd"+(cph.length?" sm":"")+"\" for=\"cphIn\" data-act=\"cphpick\" data-pid=\""+sel+"\" title=\"Fotos hinzufügen\" aria-label=\"Fotos hinzufügen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2.5 7h2.6l1.4-2h4\"/><path d=\"M12.5 9.8V15.5H2.5V7\"/><circle cx=\"7.5\" cy=\"10.8\" r=\"2.3\"/><path d=\"M15.5 3v6M12.5 6h6\"/></svg></label>";
   if(cph.length || cadd) c = c.replace(/<\/div><\/div>$/, "</div>"+(cph.length ? "<button type=\"button\" class=\"cph\" data-act=\"cphopen\" data-ph=\""+cph[0]+"\" aria-label=\""+cph.length+(cph.length===1?" Foto":" Fotos")+" ansehen\">"+
          cph.slice(0,3).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(cph.length>1 ? "<b>"+cph.length+"</b>" : "")+"</button>" : "")+cadd+"</div>");
-  c += "<div class=\"cchips\">"+dayChip(sel)+visBtn(sel, "cvis", true)+(grpName(p.g) ? "<button type=\"button\" class=\"gtag on\" data-act=\"grppick\" data-id=\""+sel+"\">"+ic("group", "ii")+" "+esc(grpName(p.g))+"</button>" : "")+"</div>";
+  c += "<div class=\"cchips\">"+dayChip(sel)+visBtn(sel, "cvis", true)+(grpNames(p) ? "<button type=\"button\" class=\"gtag on\" data-act=\"grppick\" data-id=\""+sel+"\">"+ic("group", "ii")+" "+esc(grpNames(p))+"</button>" : "")+"</div>";
   if(p.addr || p.note || noteOf(sel)) c += "<p class=\"cnote\">"+[p.addr ? esc(p.addr) : "", p.note ? esc(p.note) : "", noteOf(sel) ? "<span class=\"cmine\">"+esc(noteOf(sel).length > 140 ? noteOf(sel).slice(0,138)+" …" : noteOf(sel))+"</span>" : ""].filter(Boolean).join("<br>")+"</p>";
   if(hasLoc(p)) c += ohLine(p, dk);
   if(hasLoc(p)) c += frLine(p)+rvChips(p);
@@ -11941,7 +11941,7 @@ function openCardMore(btn){
   if(dk===cur && !dn) pl += row("unplan", I(IC.back), isHs ? "Zwischenstopp entfernen" : p.of ? "Diesen Besuch entfernen" : "Zurück in Wunschliste", "", "Aus dem Tagesplan nehmen");
   if(!dk && !isHs && !p.of && !isRO()) pl += p.park ? row("wunpark", I(IC.again), "Wieder auf Wunschliste", "", "Zurückstellen aufheben", " data-pid=\""+sel+"\"")
     : row("wpark", I(IC.park), "Zurückstellen", "", "Aus der Wunschliste nehmen, ohne zu löschen", " data-pid=\""+sel+"\"");
-  if(!isHs) as += row("grppick", I(IC.group), grpName(p.g) ? "Gruppe" : "Zu Gruppe hinzufügen", grpName(p.g) ? esc(grpName(p.g)) : "");
+  if(!isHs) as += row("grppick", I(IC.group), gidsOf(p).length > 1 ? "Gruppen" : gidsOf(p).length ? "Gruppe" : "Zu Gruppe hinzufügen", esc(grpNames(p)));
   if(!isHs && !p.of && p.k!=="photo" && !isRO()){
     if(p.c==="hotel" && !stayHotel(sel) && hasLoc(p)) as += row("stay2h", I(IC.hotel), "Als Hotel übernehmen", "", "Als Hotel der Reise übernehmen, Zeitraum im Reise-Fenster prüfen", " data-pid=\""+sel+"\"");
     if(canStay(p)) as += row("staymark", I(IC.hotel), p.c==="hotel" ? "Keine Unterkunft" : "Als Unterkunft vormerken", "", p.c==="hotel" ? "Aus der Unterkunftsliste nehmen" : "In die Unterkunftsliste der Reise", " data-pid=\""+sel+"\"");
@@ -12996,7 +12996,7 @@ function renderDay(){
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
       "<div class=\"lcol\">"+(isH ? "<button type=\"button\" class=\"no hs\" data-act=\"stopopen\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":"H")+"</button>"
             : "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>")+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\">"+GRIPSVG+"</button>"+"</div>"+
-      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? "<span class=\"privmk\" title=\"Privat – nur Mitreisende\">"+ILOCK+"privat</span>" : "")+(canPriv() && isPubP(id) ? "<span class=\"pubmk\" title=\"Für Freunde veröffentlicht\">"+VISPUB+"</span>" : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+ohRowMark(id)+esc(p.k==="hotel" ? (hFree(cur) && i===0 ? "Start im Hotel" : hFree(cur) && i===ids.length-1 ? "Zurück ins Hotel" : "Zwischenstopp im Hotel") : CATNAME[p.c])+(function(){ var gn = grpName((P(rootOf(id))||p).g); return gn ? " · <span class=\"sgrp\" title=\"Gruppe\">"+GRPICO+esc(gn)+"</span>" : ""; })()+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
+      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? "<span class=\"privmk\" title=\"Privat – nur Mitreisende\">"+ILOCK+"privat</span>" : "")+(canPriv() && isPubP(id) ? "<span class=\"pubmk\" title=\"Für Freunde veröffentlicht\">"+VISPUB+"</span>" : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+ohRowMark(id)+esc(p.k==="hotel" ? (hFree(cur) && i===0 ? "Start im Hotel" : hFree(cur) && i===ids.length-1 ? "Zurück ins Hotel" : "Zwischenstopp im Hotel") : CATNAME[p.c])+(function(){ var gn = grpNames(P(rootOf(id))||p); return gn ? " · <span class=\"sgrp\" title=\"Gruppe\">"+GRPICO+esc(gn)+"</span>" : ""; })()+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(!isRO() && (hasLoc(p)||p.addr)?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\">"+ic("cal")+"<select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
       "</div></li>";
@@ -13038,8 +13038,8 @@ function jpPopover(id, btn, html, kind){
   setTimeout(function(){ document.addEventListener("click", jpMoreOut, true); }, 0);
 }
 function openJpMore(id, btn){
-  var p = P(id); if(!p) return; var g = grpName(p.g), pv = isPrivP(id);
-  jpPopover(id, btn, "<button type=\"button\" data-act=\"grppick\" role=\"menuitem\"><span class=\"ai\">"+ic("group")+"</span><span>"+(g ? "Gruppe: "+esc(g) : "Zu Gruppe hinzufügen")+"</span></button>"+
+  var p = P(id); if(!p) return; var g = grpNames(p), pv = isPrivP(id);
+  jpPopover(id, btn, "<button type=\"button\" data-act=\"grppick\" role=\"menuitem\"><span class=\"ai\">"+ic("group")+"</span><span>"+(g ? (gidsOf(p).length > 1 ? "Gruppen: " : "Gruppe: ")+esc(g) : "Zu Gruppe hinzufügen")+"</span></button>"+
     // Privat/Reise/Freunde stellt man unter „Sichtbarkeit“ im Fenster ein – hier nur, wo es dieses Feld nicht gibt (Hotel)
     (canPriv() && p.k==="hotel" ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : "")+
     (hasLoc(p) && p.k!=="hotel" && acct.user ? "<button type=\"button\" data-act=\"chshare\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+ic("send")+"</span><span>Im Chat schicken</span></button>" : "")+
@@ -13129,7 +13129,7 @@ function renderJPop(){
   if(!isRO() && (hasLoc(p) || p.addr)) h += "<button type=\"button\" class=\"jq\" data-act=\"go\" aria-label=\"Route\" title=\"Route\">"+I(IC.route)+"</button>";
   h += "<a class=\"jq\" target=\"_blank\" rel=\"noopener\" aria-label=\"Infos in Google Maps\" title=\"Infos in Google Maps\" href=\""+gmInfoUrl(p)+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 9.2v4.6\"/><circle cx=\"10\" cy=\"6.4\" r=\".6\" fill=\"currentColor\"/>")+"</a>";
   // „⋯“: Gruppe, im Chat teilen, Wegpunkt – die Sichtbarkeit steht im Fenster darunter
-  if(!isRO()) h += "<button type=\"button\" class=\"jq"+(grpName(p.g)?" grp":"")+"\" data-act=\"jpmore\" aria-haspopup=\"dialog\" aria-label=\"Mehr: Gruppe, im Chat schicken\" title=\""+(grpName(p.g) ? "Gruppe: "+esc(grpName(p.g)) : "Mehr")+"\">"+
+  if(!isRO()) h += "<button type=\"button\" class=\"jq"+(grpNames(p)?" grp":"")+"\" data-act=\"jpmore\" aria-haspopup=\"dialog\" aria-label=\"Mehr: Gruppe, im Chat schicken\" title=\""+(grpNames(p) ? (gidsOf(p).length > 1 ? "Gruppen: " : "Gruppe: ")+esc(grpNames(p)) : "Mehr")+"\">"+
        (p.k==="hotel" && pv0 ? ILOCK : I(IC.more))+"</button>";
   h += "</div>";
   if(p.note || (hasLoc(p) && ohInfo(p))) h += "<div class=\"jp-info\">"+(p.note ? "<p class=\"note\">"+esc(p.note)+"</p>" : "")+ohLine(p, jp.dk || dayOf(jp.pid), true)+"</div>";
@@ -13902,7 +13902,7 @@ function openWFilt(k){
     CATS.forEach(function(c){ if(cc[c[0]] || catFilter[c[0]]) h += row("wcat", "data-cat=\""+c[0]+"\"", !!catFilter[c[0]], icon(c[0],"ci")+" "+esc(c[1]), cc[c[0]]||0); });
     h += "</div><p class=\"note\" style=\"margin:8px 2px 0\">Mehrere möglich.</p><div class=\"row\" style=\"margin-top:8px\"><button type=\"button\" class=\"btn\" data-act=\"catclose\">Fertig</button></div></div>";
   } else if(k==="grp"){
-    var base2 = pool.filter(function(p){ return catOk(p.c) && nbMatch(p) && qMatch(p); }), gc = {}; base2.forEach(function(p){ var g = grpName(p.g) ? p.g : "none"; gc[g] = (gc[g]||0)+1; });
+    var base2 = pool.filter(function(p){ return catOk(p.c) && nbMatch(p) && qMatch(p); }), gc = {}; base2.forEach(function(p){ var gg = gidsOf(p); if(!gg.length) gg = ["none"]; gg.forEach(function(g){ gc[g] = (gc[g]||0)+1; }); });
     h += row("wgrp", "data-g=\"\"", !grpSel, "Alle Gruppen", base2.length);
     groups().forEach(function(g){ h += row("wgrp", "data-g=\""+g.id+"\"", grpSel===g.id, ic("group", "ii")+" "+esc(g.n), gc[g.id]||0); });
     h += row("wgrp", "data-g=\"none\"", grpSel==="none", "Ohne Gruppe", gc.none||0);
@@ -13927,31 +13927,40 @@ var grpSel = "", wView = /^(grp|dist)$/.test(lsGet("rp-wview")||"") ? lsGet("rp-
 function groups(){ var g = T().groups || {}; return Object.keys(g).map(function(k){ return {id:k, n:g[k].n}; }).sort(function(a, b){ return a.n.localeCompare(b.n, "de"); }); }
 var GRPICO = ic("group");
 function grpName(gid){ var g = (T().groups||{})[gid]; return g ? g.n : ""; }
-function grpOk(p){ if(grpSel && grpSel!=="none" && !grpName(grpSel)) grpSel = ""; return !grpSel || (grpSel==="none" ? !grpName(p.g) : p.g===grpSel); }
+// Ein Ort kann in mehreren Gruppen sein: p.g ist eine Gruppen-ID (ältere Daten, auch bei genau einer Gruppe) oder eine Liste von IDs
+function gidsOf(p){ var g = p && p.g, gs = T().groups || {}; return (Array.isArray(g) ? g : g ? [g] : []).filter(function(x, i, a){ return typeof x==="string" && gs[x] && a.indexOf(x)===i; }).sort(function(a, b){ return gs[a].n.localeCompare(gs[b].n, "de"); }); }
+function grpNames(p){ return gidsOf(p).map(grpName).join(", "); }
+function inGrp(p, gid){ var g = p && p.g; return Array.isArray(g) ? g.indexOf(gid) > -1 : g===gid; }
+function setGids(p, a){ if(!a.length) delete p.g; else p.g = a.length===1 ? a[0] : a; }
+function grpOk(p){ if(grpSel && grpSel!=="none" && !grpName(grpSel)) grpSel = ""; return !grpSel || (grpSel==="none" ? !gidsOf(p).length : inGrp(p, grpSel)); }
 var grpTarget = null, grpEdit = null;
 function openGrpPop(pid){
   grpTarget = pid || null;
-  var p = pid && P(pid), cur0 = p ? (grpName(p.g) ? p.g : "") : null, gs = groups();
-  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppe\"><div class=\"pop-head\"><h4>"+(p ? "Gruppe für "+esc(p.n) : "Gruppen verwalten")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list glist\">";
-  if(p) h += "<button type=\"button\" data-act=\"grpset\" data-g=\"\" aria-pressed=\""+(!cur0)+"\"><span>Keine Gruppe</span></button>";
+  var p = pid && P(pid), cur0 = p ? gidsOf(p) : null, gs = groups();
+  var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppen\"><div class=\"pop-head\"><h4>"+(p ? "Gruppen für "+esc(p.n) : "Gruppen verwalten")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list glist\">";
+  if(p) h += "<button type=\"button\" data-act=\"grpset\" data-g=\"\" aria-pressed=\""+(!cur0.length)+"\"><span>Keine Gruppe</span></button>";
   gs.forEach(function(g){
-    var cnt = Object.keys(T().places).filter(function(k){ return !T().places[k].of && T().places[k].g===g.id; }).length;
+    var cnt = Object.keys(T().places).filter(function(k){ return !T().places[k].of && inGrp(T().places[k], g.id); }).length;
     if(grpEdit===g.id){
       h += "<form class=\"gedit\" id=\"grpRen\" data-g=\""+g.id+"\"><input type=\"text\" id=\"grpRenIn\" value=\""+esc(g.n)+"\" maxlength=\"40\"><button type=\"submit\" class=\"btn s\">OK</button><button type=\"button\" class=\"btn g s warn\" data-act=\"grpdel\" data-g=\""+g.id+"\">Löschen</button></form>";
     } else {
-      h += "<div class=\"grow\">"+(p ? "<button type=\"button\" data-act=\"grpset\" data-g=\""+g.id+"\" aria-pressed=\""+(cur0===g.id)+"\"><span>"+esc(g.n)+"</span><small>"+cnt+"</small></button>" : "<span class=\"gname\">"+esc(g.n)+" <small>"+cnt+"</small></span>")+
+      h += "<div class=\"grow\">"+(p ? "<button type=\"button\" data-act=\"grpset\" data-g=\""+g.id+"\" aria-pressed=\""+(cur0.indexOf(g.id) > -1)+"\"><span>"+esc(g.n)+"</span><small>"+cnt+"</small></button>" : "<span class=\"gname\">"+esc(g.n)+" <small>"+cnt+"</small></span>")+
            "<button type=\"button\" class=\"gedbtn\" data-act=\"grpedit\" data-g=\""+g.id+"\" aria-label=\"Gruppe umbenennen oder löschen\">"+ic("edit", "ii")+"</button></div>";
     }
   });
   if(!gs.length) h += "<p class=\"note\">Noch keine Gruppen. Lege unten die erste an, z. B. „Central Park“.</p>";
+  else if(p) h += "<p class=\"note\">Mehrere Gruppen möglich.</p>";
   h += "</div><form class=\"gnew\" id=\"grpNew\"><input type=\"text\" id=\"grpNewIn\" maxlength=\"40\" placeholder=\"Neue Gruppe, z. B. Central Park\" autocomplete=\"off\"><button type=\"submit\" class=\"btn s\">"+(p ? "Anlegen &amp; zuordnen" : "Anlegen")+"</button></form></div>";
   $("catPop").innerHTML = h; $("catPop").hidden = false;
 }
-function setGroup(pid, gid){ var p = T().places[pid]; if(!p) return; if(gid) p.g = gid; else delete p.g; save(); }
+// gid leer = aus allen Gruppen nehmen; sonst Gruppe an- oder abwählen (on: true = nur hinzufügen)
+function setGroup(pid, gid, on){ var p = T().places[pid]; if(!p) return; var a = Array.isArray(p.g) ? p.g.slice() : p.g ? [p.g] : [], i = a.indexOf(gid);
+  if(!gid) a = []; else if(i < 0) a.push(gid); else if(!on) a.splice(i, 1);
+  setGids(p, a); save(); }
 function norm(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[’']/g,"'"); }
 function qMatch(p){
   if(!wishQuery.trim()) return true;
-  var hay = norm([p.n, p.addr, p.note, CATNAME[p.c], nbOf(p), listName(p.list), grpName(p.g)].join(" "));
+  var hay = norm([p.n, p.addr, p.note, CATNAME[p.c], nbOf(p), listName(p.list), grpNames(p)].join(" "));
   return norm(wishQuery).split(/\s+/).filter(Boolean).every(function(w){ return hay.indexOf(w) > -1; });
 }
 function hl(text){
@@ -13975,8 +13984,8 @@ function wishResults(){
       return "<p class=\"note wref\">Luftlinie ab "+esc(rf.lbl)+" · "+(wDistDir==="asc" ? "nächste zuerst" : "weiteste zuerst")+"</p><ul class=\"wl\">"+withD.map(function(x){ return wishRow(x.p); }).join("")+"</ul>";
     }
     if(wView==="grp"){
-      groups().forEach(function(g){ var ws = arr.filter(function(p){ return p.g===g.id; }); if(ws.length) out += "<div class=\"sec\"><h4>"+ic("group", "ii")+" "+esc(g.n)+" · "+ws.length+"</h4><ul class=\"wl\">"+ws.map(wishRow).join("")+"</ul></div>"; });
-      var rest = arr.filter(function(p){ return !grpName(p.g); });
+      groups().forEach(function(g){ var ws = arr.filter(function(p){ return inGrp(p, g.id); }); if(ws.length) out += "<div class=\"sec\"><h4>"+ic("group", "ii")+" "+esc(g.n)+" · "+ws.length+"</h4><ul class=\"wl\">"+ws.map(wishRow).join("")+"</ul></div>"; });
+      var rest = arr.filter(function(p){ return !gidsOf(p).length; });
       if(rest.length) out += "<div class=\"sec\"><h4>Ohne Gruppe · "+rest.length+"</h4><ul class=\"wl\">"+rest.map(wishRow).join("")+"</ul></div>";
       return out;
     }
@@ -14099,7 +14108,7 @@ function wishRow(p){
   if(p.park && !dk) right = "<button type=\"button\" class=\"wunpark\" data-act=\"wunpark\" aria-label=\"Wieder auf die Wunschliste\" title=\"Wieder auf die Wunschliste\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/></svg><small>Zurück</small></button>";
   var rf = distRef(), dm = rf && hasLoc(p) ? dist(rf.p, p) : null;
   var nfr = acct.user && hasLoc(p) && DC.items.length ? frWho(p).length : 0;
-  var meta = [hs ? "<b class=\"wsel\">"+ic("hotel", "ii")+" Hotel der Reise"+(hs.from && hs.to ? " "+shortD(hs.from)+"–"+shortD(hs.to) : "")+"</b>" : "", nfr ? "<b class=\"wfr\" title=\""+nfr+(nfr===1 ? " Freund empfiehlt" : " Freunde empfehlen")+" das\">"+ic("friends", "ii")+" "+nfr+"</b>" : "", p.park && !dk ? "<b class=\"wpk\">zurückgestellt</b>" : "", dm!=null ? "<b class=\"wdist\">"+fmtDist(dm)+"</b>" : "", nbOf(p) && nbKeys().length!==1 ? esc(nbOf(p)) : "", p.addr ? esc(p.addr) : "", grpName(p.g) ? ic("group", "ii")+" "+esc(grpName(p.g)) : "", hasLoc(p) ? "" : "<b>ohne Ort</b>"].filter(Boolean).join(" · ");
+  var meta = [hs ? "<b class=\"wsel\">"+ic("hotel", "ii")+" Hotel der Reise"+(hs.from && hs.to ? " "+shortD(hs.from)+"–"+shortD(hs.to) : "")+"</b>" : "", nfr ? "<b class=\"wfr\" title=\""+nfr+(nfr===1 ? " Freund empfiehlt" : " Freunde empfehlen")+" das\">"+ic("friends", "ii")+" "+nfr+"</b>" : "", p.park && !dk ? "<b class=\"wpk\">zurückgestellt</b>" : "", dm!=null ? "<b class=\"wdist\">"+fmtDist(dm)+"</b>" : "", nbOf(p) && nbKeys().length!==1 ? esc(nbOf(p)) : "", p.addr ? esc(p.addr) : "", grpNames(p) ? ic("group", "ii")+" "+esc(grpNames(p)) : "", hasLoc(p) ? "" : "<b>ohne Ort</b>"].filter(Boolean).join(" · ");
   return "<li class=\"wi sw"+(dk?" planned":"")+(p.park && !dk ? " parked" : "")+"\" data-id=\""+p.id+"\"><button type=\"button\" class=\"swdel\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"swc\" data-act=\"wopen\"><span class=\"wic\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span><div class=\"m\"><button type=\"button\" class=\"nm\" data-act=\"wopen\">"+hl(p.n)+"</button>"+(meta ? "<div class=\"wmeta\">"+meta+"</div>" : "")+(p.note ? "<div class=\"wnote\">"+esc(p.note)+"</div>" : "")+"</div>"+right+"</div></li>";
 }
 function wishForm(){
@@ -14973,9 +14982,9 @@ document.addEventListener("click", function(e){
       tripRef(S.cur).collection(ccol).doc(cdid).delete(); break;
     case "grppick": grpEdit = null; openGrpPop(id); break;
     case "grpmanage": grpEdit = null; openGrpPop(null); break;
-    case "grpset": setGroup(grpTarget, t.getAttribute("data-g")); closeCatPop(); renderSheet(); renderCard(); scheduleOverlay(); if(jp && !$("jPop").hidden) renderJPop(); break;
+    case "grpset": setGroup(grpTarget, t.getAttribute("data-g")); openGrpPop(grpTarget); renderSheet(); renderCard(); scheduleOverlay(); if(jp && !$("jPop").hidden) renderJPop(); break;
     case "grpedit": grpEdit = grpEdit===t.getAttribute("data-g") ? null : t.getAttribute("data-g"); openGrpPop(grpTarget); var gi = $("grpRenIn"); if(gi) gi.focus(); break;
-    case "grpdel": var dg = t.getAttribute("data-g"), tg = T(); undoSnap = snapshot(); delete (tg.groups||{})[dg]; Object.keys(tg.places).forEach(function(k){ if(tg.places[k].g===dg) delete tg.places[k].g; }); if(grpSel===dg) grpSel = ""; grpEdit = null; save(); openGrpPop(grpTarget); renderSheet(); toast("Gruppe gelöscht – die Orte bleiben in der Wunschliste", true); break;
+    case "grpdel": var dg = t.getAttribute("data-g"), tg = T(); undoSnap = snapshot(); delete (tg.groups||{})[dg]; Object.keys(tg.places).forEach(function(k){ var q = tg.places[k]; if(inGrp(q, dg)) setGids(q, (Array.isArray(q.g) ? q.g : [q.g]).filter(function(x){ return x!==dg; })); }); if(grpSel===dg) grpSel = ""; grpEdit = null; save(); openGrpPop(grpTarget); renderSheet(); toast("Gruppe gelöscht – die Orte bleiben in der Wunschliste", true); break;
     case "wgrp": grpSel = t.getAttribute("data-g"); renderSheet(); scheduleOverlay(); if(wfiltK==="grp" && !$("catPop").hidden) closeCatPop(); break;
     case "wfilt": openWFilt(t.getAttribute("data-k")); break;
     case "dsopen": closeMenus(); openDaySug(); break;
@@ -15345,7 +15354,7 @@ document.addEventListener("submit", function(e){
     var tg2 = T(); tg2.groups = tg2.groups || {};
     var ex = groups().filter(function(g){ return g.n.toLowerCase()===gn.toLowerCase(); })[0], gid = ex ? ex.id : uid("g");
     if(!ex) tg2.groups[gid] = {n:gn.slice(0,40)};
-    if(grpTarget){ setGroup(grpTarget, gid); closeCatPop(); toast(P(grpTarget).n+" ist jetzt in „"+gn+"“", false); } else { save(); openGrpPop(null); }
+    if(grpTarget){ setGroup(grpTarget, gid, true); openGrpPop(grpTarget); renderSheet(); renderCard(); toast(P(grpTarget).n+" ist jetzt in „"+gn+"“", false); } else { save(); openGrpPop(null); }
     renderSheet(); renderCard(); return;
   }
   if(id==="grpRen"){

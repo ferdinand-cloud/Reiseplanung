@@ -1438,6 +1438,35 @@ await test("Fußweg mit Wegpunkten: echter Weg auch wenn ein Teilstück fehlt, b
   } finally { globalThis.FOOTMOCK = false; }
 });
 
+await test("Gruppen: ein Ort in mehreren Gruppen (alte Einzel-Zuordnung bleibt gültig)", async () => {
+  await seed();
+  const id = await rp(`Object.keys(T().places).filter(function(k){ var p = P(k); return !p.of && p.k!=="hotel"; })[0]`);
+  // alter Stand: eine Gruppe als einzelne ID
+  await rp(`(function(){ var t = T(); t.groups = {ga:{n:"Central Park"}, gb:{n:"Abends"}}; T().places["${id}"].g = "ga"; save(); })()`);
+  ok(await rp(`gidsOf(P("${id}")).join()==="ga" && grpNames(P("${id}"))==="Central Park"`), "Alte Einzel-Zuordnung nicht erkannt");
+  await rp(`openGrpPop("${id}")`);
+  ok(await visible("#catPop .glist"), "Gruppen-Auswahl öffnet nicht");
+  await click('#catPop [data-act=grpset][data-g="gb"]');
+  ok(await visible("#catPop .glist"), "Auswahl schließt nach dem ersten Tipp – Mehrfachauswahl nicht möglich");
+  ok(await rp(`JSON.stringify(P("${id}").g)==='["ga","gb"]'`), "Nicht in beiden Gruppen: "+await rp(`JSON.stringify(P("${id}").g)`));
+  ok(await rp(`document.querySelectorAll('#catPop [data-act=grpset][aria-pressed=true]').length===2`), "Beide Gruppen nicht als gewählt markiert");
+  ok(await rp(`grpNames(P("${id}"))==="Abends, Central Park"`), "Namen falsch: "+await rp(`grpNames(P("${id}"))`));
+  ok(await rp(`(grpSel = "ga", grpOk(P("${id}"))) && (grpSel = "gb", grpOk(P("${id}"))) && (grpSel = "none", !grpOk(P("${id}")))`), "Filter nach Gruppe findet den Ort nicht in beiden");
+  await rp(`grpSel = ""`);
+  // neue Gruppe anlegen fügt hinzu statt zu ersetzen
+  await page.fill("#grpNewIn", "Regentag"); await click("#grpNew [type=submit]");
+  ok(await rp(`gidsOf(P("${id}")).length===3`), "Neue Gruppe ersetzt die bisherigen");
+  // abwählen bis zur einzelnen ID; Löschen einer Gruppe nimmt nur sie heraus
+  await click('#catPop [data-act=grpset][data-g="gb"]');
+  await rp(`(function(){ var g = Object.keys(T().groups).filter(function(k){ return T().groups[k].n==="Regentag"; })[0]; setGroup("${id}", g); })()`);
+  ok(await rp(`P("${id}").g==="ga"`), "Bei einer Gruppe nicht als Einzelwert gespeichert: "+await rp(`JSON.stringify(P("${id}").g)`));
+  await rp(`setGroup("${id}", "gb")`);
+  await click('#catPop [data-act=grpedit][data-g="ga"]'); await click('#catPop [data-act=grpdel][data-g="ga"]');
+  ok(await rp(`P("${id}").g==="gb"`), "Gruppe löschen entfernt falsch: "+await rp(`JSON.stringify(P("${id}").g)`));
+  await rp(`openGrpPop("${id}")`); await click('#catPop [data-act=grpset][data-g=""]');
+  ok(await rp(`P("${id}").g===undefined`), "„Keine Gruppe“ leert die Zuordnung nicht");
+});
+
 await test("Ort-Menü (Mehr): Gruppen Planen/Zuordnen/Infos, einzeilige Zeilen, Löschen unten in voller Breite mit Rückfrage", async () => {
   await seed();
   const id = await rp(`Object.keys(T().places).filter(function(k){ return dayOf(k)===cur && P(k).k!=="hotel" && !T().done[k]; })[0]`);
