@@ -3620,13 +3620,17 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.85;font-wei
 
 body.navon .ctrl{transition:top .3s ease}
 body.navon .ctrl .cg-ai{display:none}
-/* 3D-Knopf: erst ab Zoomstufe sichtbar, links neben dem Kompass (außerhalb der Spalte: nichts rutscht, unten nichts unter dem Blatt), blendet weich ein */
-.ctrl .cg-3d{position:absolute;grid-column:1;grid-row:3;top:0;right:calc(100% + 10px);visibility:hidden;opacity:0;transform:scale(.85);pointer-events:none;transition:opacity .2s ease,transform .2s ease,visibility 0s linear .2s}
-.ctrl .cg-3d.on{visibility:visible;opacity:1;transform:none;pointer-events:auto;transition:opacity .2s ease,transform .2s ease,visibility 0s}
-body.navon .ctrl .cg-3d{display:none}
-@media (hover:none) and (pointer:coarse){ .ctrl .cg-3d{grid-row:2} }
-.cg button.b3d{font:800 14px/1 var(--f-body);letter-spacing:.02em}
-.cg button.b3d.on{background:#0A84FF;color:#fff}
+/* 3D-Knopf neben Suche und Plus: erst ab Zoomstufe sichtbar, blendet weich ein; Suche/Plus stehen rechtsbündig und bleiben, wo sie sind */
+.top .menubtn.b3d{font:800 14px/1 var(--f-body);letter-spacing:.02em;animation:b3dIn .22s ease both}
+.top .menubtn.b3d.on{color:#0A84FF} /* an = blaue Schrift auf Glas (wie Apple Karten) */
+@keyframes b3dIn{from{opacity:0;transform:scale(.8)}}
+@media (prefers-reduced-motion: reduce){ .top .menubtn.b3d{animation:none} }
+.top #b3dBtn{margin-left:auto}
+.top #b3dBtn:not([hidden]) + #srchBtn{margin-left:0}
+.top .trip{max-width:calc(100% - 202px)} /* Platz für den 3D-Knopf freihalten: die Reise-Kachel springt nicht beim Einblenden */
+body.navon .top #b3dBtn{display:none}
+/* Kopfleiste in einer Zeile (Telefon quer, iPad): Knopf außerhalb des Flusses links neben der Suche, damit die Leiste in der Mitte nicht rutscht (Lage per JS) */
+@media (orientation:landscape) and (max-height:500px), (min-width:900px) and (min-height:501px){ .top #b3dBtn{position:absolute;margin:0} }
 .navtools{display:none;left:max(12px,env(safe-area-inset-left,0px));right:auto}
 body.navon .navtools{display:grid;transition:top .3s ease}
 body.ro .navtools [data-act="addpop"]{display:none}
@@ -3920,7 +3924,7 @@ body.profopen #sheet,body.profopen #sheetOpen,body.profopen .ctrl,body.profopen 
 <button type="button" class="tb" id="bellBtn" data-act="bell" aria-label="Mitteilungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.8a6 6 0 0 1 12 0c0 4.3 1.7 6 2.3 6.7H3.7C4.3 15.8 6 14.1 6 9.8z"/><path d="M9.8 19.6a2.3 2.3 0 0 0 4.4 0"/></svg><b class="bell-n" id="bellN" hidden></b></button>
 <button type="button" class="tb" id="tbProf" data-act="navprof" aria-label="Profil"><span class="tbav" id="tbAv"></span></button>
 </nav>
-<div class="toprow"><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn" id="srchBtn" data-act="srchopen" aria-label="Orte suchen" title="Orte suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button><button type="button" class="menubtn" id="camBtn" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button></div></div>
+<div class="toprow"><button type="button" class="trip" id="tripBtn" aria-haspopup="true" aria-expanded="false"></button><button type="button" class="menubtn b3d" id="b3dBtn" aria-pressed="false" aria-label="2D-Ansicht – tippen für 3D" title="2D" hidden>2D</button><button type="button" class="menubtn" id="srchBtn" data-act="srchopen" aria-label="Orte suchen" title="Orte suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button><button type="button" class="menubtn" id="camBtn" data-act="addpop" aria-haspopup="dialog" aria-label="Hinzufügen: Foto oder Standort"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button></div></div>
 <div class="profview" id="profView" hidden></div>
 <div class="profview ntview" id="ntView" hidden></div>
 <div class="profview lsview" id="lsView" hidden></div>
@@ -3946,7 +3950,6 @@ body.profopen #sheet,body.profopen #sheetOpen,body.profopen .ctrl,body.profopen 
   <button type="button" id="locBtn" aria-label="Meinen Standort zeigen" aria-pressed="false"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M17.6 2.4 2.9 8.7c-.6.3-.5 1.1.1 1.3l5.6 1.6 1.6 5.6c.2.6 1 .7 1.3.1l6.3-14.7c.2-.5-.3-1-.8-.8z"/></svg></button>
   <button type="button" id="ghostBtn" aria-pressed="false" aria-label="Privatsphäre-Modus" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17.5V9a5 5 0 0 1 10 0v8.5l-1.7-1.3-1.6 1.3-1.7-1.3-1.7 1.3-1.6-1.3z"/><circle cx="8" cy="9" r=".9" fill="currentColor"/><circle cx="12" cy="9" r=".9" fill="currentColor"/></svg></button>
   <button type="button" id="zfit" aria-label="Tagesroute zeigen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="6"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3"/></svg></button></div>
-  <div class="cg cg-3d" id="cg3d" aria-hidden="true"><button type="button" id="b3dBtn" class="b3d" tabindex="-1" aria-pressed="false" aria-label="2D-Ansicht – tippen für 3D" title="2D">2D</button></div>
 </div>
 <div class="ctrl navtools" id="navTools" aria-label="Suche, Hinzufügen und KI während der Navigation"><div class="cg">
   <button type="button" data-act="srchopen" aria-label="Orte suchen" title="Orte suchen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4.5 4.5"/></svg></button>
@@ -8669,20 +8672,27 @@ function apply3d(silent){
 /* 3D-Ansicht (wie Apple Karten): Knopf erscheint erst ab Zoom 15, wo die Gebäude Höhe haben; Standard 3D,
    d. h. beim Hineinzoomen kippt die Karte einmal weich. Wahl 2D/3D gemerkt auf dem Gerät. */
 var v3d = lsGet("rp-3dv")!=="0", V3DZ = 15, v3dDone = false;
+function v3dPlace(){
+  var b = $("b3dBtn"), sb = $("srchBtn"); if(!b || b.hidden || !sb) return;
+  if(getComputedStyle(b).position!=="absolute"){ b.style.top = b.style.left = ""; return; }
+  var r = sb.getBoundingClientRect(), o = (b.offsetParent || document.body).getBoundingClientRect();
+  b.style.top = (r.top - o.top)+"px"; b.style.left = (r.left - o.left - 8 - b.offsetWidth)+"px";
+}
 function v3dShow(){
-  var b = $("b3dBtn"), g = $("cg3d"); if(!b || !map) return;
-  var z = map.getZoom(), p = map.getPitch() > 1, vis = g.classList.contains("on");
+  var b = $("b3dBtn"); if(!b || !map) return;
+  var z = map.getZoom(), p = map.getPitch() > 1, vis = !b.hidden;
   var on = p || z >= V3DZ || (vis && z >= V3DZ - .4); // kleine Hysterese: kein Flackern an der Grenze
-  if(on !== vis){ g.classList.toggle("on", on); g.setAttribute("aria-hidden", on ? "false" : "true"); b.tabIndex = on ? 0 : -1; }
+  if(on !== vis){ b.hidden = !on; if(on) v3dPlace(); }
   if(b.classList.contains("on") !== p){ b.classList.toggle("on", p); b.textContent = p ? "3D" : "2D"; b.title = p ? "3D" : "2D";
     b.setAttribute("aria-pressed", p); b.setAttribute("aria-label", p ? "3D-Ansicht – tippen für 2D" : "2D-Ansicht – tippen für 3D"); }
 }
-function v3dMoveEnd(){
+function v3dMoveEnd(e){
   if(!map || !mapReady || NAV) return;
   var z = map.getZoom();
   if(z < V3DZ - .5) v3dDone = false;
   if(z < 13.5 && map.getPitch() > 1){ map.easeTo({pitch:0, duration: reduceMotion?0:400}); return; } // Gebäude weg → wieder flach
-  if(v3d && !v3dDone && z >= V3DZ && map.getPitch() < 5){ v3dDone = true; map.easeTo({pitch:50, duration: reduceMotion?0:600}); }
+  // nur nach eigener Geste kippen: Sprünge der App zu einem Punkt bleiben, wie sie sind (Punkt bleibt sichtbar)
+  if(v3d && !v3dDone && e && e.originalEvent && z >= V3DZ && map.getPitch() < 5){ v3dDone = true; map.easeTo({pitch:50, duration: reduceMotion?0:600}); }
 }
 function v3dToggle(){
   if(!map) return;
@@ -10602,6 +10612,7 @@ $("zout").addEventListener("click", function(){ map.zoomOut(); });
 $("zfit").addEventListener("click", fitDay);
 $("compass").addEventListener("click", function(){ v3dDone = true; map.easeTo({bearing:0, pitch:0, duration: reduceMotion?0:400}); });
 $("b3dBtn").addEventListener("click", v3dToggle);
+window.addEventListener("resize", function(){ requestAnimationFrame(v3dPlace); });
 $("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; if(open){ $("lVis").checked = visOn(); renderWishCats(); renderPoiCats(); if(DEST){ destNeed("tr"); destNeed("nb"); } } this.setAttribute("aria-expanded", open); placeFloating(); });
 ["lSub","lBus","lFerry","lWish","lNb","lRoute"].forEach(function(id){
   $(id).addEventListener("change", function(){

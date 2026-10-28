@@ -3522,31 +3522,42 @@ await test("Leiste: erneutes Antippen eines Knopfs bleibt auf der Seite (kein Sp
   ok(await rp(`!profOpen && !lsPage && !dcPage && !gsPage && !chPage && !ntPage`), "Karten-Knopf schließt die Seiten nicht");
 });
 
-await test("3D-Karte: Knopf erst ab Zoomstufe, Standard 3D kippt beim Hineinzoomen, 2D/3D umschaltbar und gemerkt", async () => {
+await test("3D-Karte: Knopf bei Suche und Plus erst ab Zoomstufe, Standard 3D kippt beim Hineinzoomen, 2D/3D umschaltbar und gemerkt", async () => {
+  // ohne Animation: geneigte Karte rendert im Test-Chromium zäh
   await seed(); await rp(`reduceMotion = true; lsSet("rp-3dv", ""); v3d = true; v3dDone = false; map.jumpTo({center:[-73.985, 40.758], zoom:12, pitch:0}); true`);
   await page.waitForTimeout(300);
-  const vis = () => page.evaluate(() => { const g = document.getElementById("cg3d"), r = g.getBoundingClientRect(), cs = getComputedStyle(g); return {on:g.classList.contains("on"), v:cs.visibility, h:r.height}; });
-  const top0 = await page.evaluate(() => document.getElementById("zfit").getBoundingClientRect().top);
-  let s = await vis(); ok(!s.on && s.v==="hidden", "3D-Knopf bei Zoom 12 sichtbar");
-  ok(s.h > 30, "3D-Knopf hält seinen Platz nicht (Höhe "+s.h+")");
-  await rp(`map.jumpTo({zoom:15.6}); true`);
+  const pos = async () => { await page.evaluate(() => Promise.all(document.getElementById("b3dBtn").getAnimations().map(a => a.finished))); return page.evaluate(() => { const q = id => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.width)]; }; return {s:q("srchBtn"), c:q("camBtn"), t:q("tripBtn"), b:q("b3dBtn"), h:document.getElementById("b3dBtn").hidden}; }); };
+  const p0 = await pos(); ok(p0.h, "3D-Knopf bei Zoom 12 sichtbar");
+  await rp(`map.jumpTo({zoom:15.6}, {originalEvent:{}}); true`);
   await page.waitForFunction(() => window.__rp("map.getPitch() > 40 && !map.isMoving()"), null, {timeout:6000}).catch(() => {});
   ok(await rp(`map.getPitch()`) > 40, "Standard 3D: Karte kippt beim Hineinzoomen nicht: "+await rp(`map.getPitch()`));
   ok(await rp(`b3dOn`), "3D-Gebäude nicht an");
-  await page.waitForTimeout(300); s = await vis(); ok(s.on && s.v==="visible", "3D-Knopf ab Zoom 15 nicht sichtbar");
-  ok(await page.evaluate(() => document.getElementById("zfit").getBoundingClientRect().top) === top0, "Andere Knöpfe verschieben sich beim Einblenden");
+  await page.waitForTimeout(300); const p1 = await pos();
+  ok(!p1.h, "3D-Knopf ab Zoom 15 nicht sichtbar");
+  ok(JSON.stringify([p1.s, p1.c, p1.t])===JSON.stringify([p0.s, p0.c, p0.t]), "Suche/Plus/Reise verschieben sich beim Einblenden: "+JSON.stringify([p0, p1]));
+  ok(Math.abs(p1.b[1] - p1.s[1]) <= 2 && p1.b[0] + p1.b[2] <= p1.s[0] - 4 && p1.b[0] >= p1.t[0] + p1.t[2], "3D-Knopf nicht links neben der Suche: "+JSON.stringify(p1));
   ok(await page.locator("#b3dBtn").textContent()==="3D" && await page.locator("#b3dBtn").getAttribute("aria-pressed")==="true", "Knopf zeigt nicht 3D an");
-  await page.evaluate(() => document.getElementById("b3dBtn").click()); // geneigte WebGL-Karte rendert im Test zäh → direkter Klick
+  await page.evaluate(() => document.getElementById("b3dBtn").click());
   await page.waitForFunction(() => window.__rp("map.getPitch() < 1 && !map.isMoving()"), null, {timeout:5000}).catch(() => {});
-  ok(await rp(`map.getPitch()`) < 1, "2D schaltet nicht zurück: "+await rp(`JSON.stringify({p:map.getPitch(), z:map.getZoom(), m:map.isMoving(), v:v3d, d:v3dDone})`));
+  ok(await rp(`map.getPitch()`) < 1, "2D schaltet nicht zurück");
   ok(await rp(`lsGet("rp-3dv")`)==="0" && await page.locator("#b3dBtn").textContent()==="2D", "2D-Wahl nicht gemerkt/angezeigt");
   // 2D gemerkt: erneutes Hineinzoomen kippt nicht
   await rp(`map.jumpTo({zoom:12}); true`); await page.waitForTimeout(300);
-  await rp(`map.jumpTo({zoom:16}); true`); await page.waitForTimeout(900);
+  ok(await rp(`$("b3dBtn").hidden`), "3D-Knopf beim Herauszoomen nicht ausgeblendet");
+  await rp(`map.jumpTo({zoom:16}, {originalEvent:{}}); true`); await page.waitForTimeout(900);
   ok(await rp(`map.getPitch()`) < 1, "Trotz 2D-Wahl gekippt");
-  await page.evaluate(() => document.getElementById("b3dBtn").click()); // geneigte WebGL-Karte rendert im Test zäh → direkter Klick
+  await page.evaluate(() => document.getElementById("b3dBtn").click());
   await page.waitForFunction(() => window.__rp("map.getPitch() > 40 && !map.isMoving()"), null, {timeout:5000}).catch(() => {});
   ok(await rp(`map.getPitch()`) > 40 && await rp(`lsGet("rp-3dv")`)==="1", "3D schaltet nicht wieder ein");
+  // Kopfleiste in einer Zeile (iPad quer): Knopf links neben der Suche, Leiste in der Mitte rutscht nicht
+  await page.setViewportSize({width:1180, height:820}); await page.waitForTimeout(500);
+  await rp(`map.jumpTo({zoom:12, pitch:0}); true`); await page.waitForTimeout(300);
+  const tb0 = await page.evaluate(() => Math.round(document.querySelector(".tabbar").getBoundingClientRect().left));
+  await rp(`map.jumpTo({zoom:16}, {originalEvent:{}}); true`); await page.waitForTimeout(600);
+  const w = await pos(), tb1 = await page.evaluate(() => Math.round(document.querySelector(".tabbar").getBoundingClientRect().left));
+  ok(!w.h && Math.abs(w.b[1] - w.s[1]) <= 2 && w.b[0] + w.b[2] <= w.s[0] - 4, "iPad: 3D-Knopf nicht neben der Suche: "+JSON.stringify(w));
+  ok(tb0===tb1, "iPad: Leiste rutscht beim Einblenden: "+tb0+" → "+tb1);
+  await page.setViewportSize({width:390, height:844});
   await rp(`map.jumpTo({zoom:12, pitch:0}); reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches; true`);
 });
 
