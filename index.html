@@ -4449,6 +4449,8 @@ function noTripHTML(){
 var wasNoTrip = false;
 function applyNoTrip(){
   var nt = noTrip(); document.body.classList.toggle("notrip", nt);
+  if(nt && !wasNoTrip && acct.user) blog("„Noch keine Reise“ angezeigt: Reisen im Speicher "+Object.keys(S.trips||{}).length+", Gate "+(document.body.classList.contains("gated") ? "an" : "aus")+", warten "+!!acct.boot);
+  if(nt && acct.user && !acct.boot && !document.body.classList.contains("gated") && Date.now() - BL0 < 180000 && !BLSHOW && !/[?&]rptest/.test(location.search)){ BLSHOW = true; blShow(); }
   if(nt && !wasNoTrip){ if(map){ try { map.jumpTo({center:[0, 25], zoom:1.2}); } catch(e){} } if(!desktop.matches && typeof setSheet==="function" && sheetState!=="mid") setTimeout(function(){ setSheet("mid"); }, 0); }
   wasNoTrip = nt;
 }
@@ -4885,7 +4887,7 @@ function pvGate(qs){
   var vids = qs.docs.filter(function(d){ var v = d.data()||{}; return me && (v.viewers||[]).indexOf(me)>-1 && !v.deleted; }).map(function(d){ return d.id; });
   return Promise.all(ids.map(pvWatch).concat(vids.map(shWatch)));
 }
-function pvApply(qs){ pvLastQs = qs; var seq = ++pvSeq; pvGate(qs).then(function(){ if(seq===pvSeq) acctApply(fbRows(qs)); }); }
+function pvApply(qs){ pvLastQs = qs; var seq = ++pvSeq; blog("Warte auf private Teile ("+qs.size+")"); pvGate(qs).then(function(){ blog("Private Teile da"+(seq===pvSeq ? "" : " (veraltet)")); if(seq===pvSeq) acctApply(fbRows(qs)); }); }
 function jeq(a, b){ return JSON.stringify(a===undefined?null:a) === JSON.stringify(b===undefined?null:b); }
 function mergeOrder(b, l, r, preferLocal){
   b = b||[]; l = l||[]; r = r||[];
@@ -5021,14 +5023,14 @@ function acctApply(rows){
   refreshSettings(); // z. B. „Reisen“: privat/gemeinsam nach neuem Stand
 }
 function acctPull(){
-  if(!fbDb || !acct.user) return;
+  if(!fbDb || !acct.user) return; blog("Neuabruf vom Server");
   setAcct("sync");
   myTrips().get({source:"server"}).then(function(qs){ var seq = ++pvSeq; return pvGate(qs).then(function(){ if(seq===pvSeq) acctApply(fbRows(qs)); }); }, function(e){ setAcct("error", navigator.onLine ? (e && e.message) : "offline"); });
 }
 function myTrips(){ return fbDb.collection("trips").where("members", "array-contains", acct.user.uid); }
 /* einmalig: Reisen aus dem früheren Speicherort (users/{uid}/trips) übernehmen */
 function acctMigrate(){
-  var mk = "rp-mig2-"+acct.user.uid;
+  var mk = "rp-mig2-"+acct.user.uid; blog("Übernahme alter Speicher "+(lsGet(mk)==="1" ? "erledigt" : "läuft"));
   if(lsGet(mk)==="1") return Promise.resolve();
   return fbDb.collection("users").doc(acct.user.uid).collection("trips").get().then(function(qs){
     var jobs = [];
@@ -5132,6 +5134,7 @@ function authApply(u){
       acct.user = u ? {uid:u.uid, id:u.uid, email:u.email} : null;
       if(u && was!==u.uid) demoMaybe(u);
       // Neu angemeldet und noch keine Reise auf dem Gerät: Ladeanzeige statt „Noch keine Reise“, bis der Serverstand da ist
+      if(u && was!==u.uid){ BL0 = Date.now(); BLOG = []; }
       blog("Anmeldung: "+(u ? "ja" : "nein")+", vorher "+(was ? "angemeldet" : "nicht")+", noTrip "+noTrip());
       if(u && was!==u.uid && noTrip()) bootWait(); else if(!u) bootDone(true);
       if(u && was!==u.uid){ acctMigrate().then(function(){ acctLive(); setTimeout(phFlush, 1500); cmWatch(); frWatch(); ntStart(); }); }
@@ -8581,9 +8584,12 @@ function refreshSettings(){
 var GATELOAD = "<div class=\"gate-card gate-load\" role=\"status\"><h1>Reiseplan</h1><p class=\"note\"><i class=\"ldspin\" aria-hidden=\"true\"></i>Lade deine Reisen …</p></div>", bootT = null, bootE = null;
 // Fehler beim ersten Abruf (z. B. Anmelde-Token noch nicht bestätigt) beenden das Warten nicht – nur echte Daten oder spätestens 40 s
 /* Diagnose Ladeablauf: mit ?bootdiag in der Adresse zeigt die App unten, was beim Anmelden passiert (Zeit, Abruf, Fehler, Anzahl Reisen) */
-var BOOTDIAG = /[?&]bootdiag/.test(location.search), BL0 = Date.now();
-function blog(t){ if(!BOOTDIAG) return; var b = $("bootDiag"); if(!b){ b = document.createElement("pre"); b.id = "bootDiag"; b.style.cssText = "position:fixed;left:6px;right:6px;bottom:90px;z-index:99999;max-height:40vh;overflow:auto;margin:0;padding:8px;font:11px/1.35 ui-monospace,monospace;background:rgba(0,0,0,.78);color:#fff;border-radius:10px;white-space:pre-wrap;pointer-events:auto"; document.body.appendChild(b); }
-  b.textContent += ((Date.now() - BL0)/1000).toFixed(1)+"s "+t+"\n"; b.scrollTop = b.scrollHeight; }
+var BOOTDIAG = /[?&]bootdiag/.test(location.search), BL0 = Date.now(), BLOG = [], BLSHOW = BOOTDIAG;
+// Protokoll läuft immer mit (letzte Anmeldung, im Gerät gespeichert); sichtbar mit ?bootdiag oder automatisch, wenn kurz nach der Anmeldung „Noch keine Reise“ erscheint
+function blog(t){ BLOG.push(((Date.now() - BL0)/1000).toFixed(1)+"s "+t); if(BLOG.length > 80) BLOG.shift(); lsSet("rp-bootlog", BLOG.join("\n")); if(BLSHOW) blShow(); }
+function blShow(){ var b = $("bootDiag"); if(!b){ b = document.createElement("pre"); b.id = "bootDiag"; b.title = "Antippen schließt"; b.style.cssText = "position:fixed;left:6px;right:6px;bottom:90px;z-index:99999;max-height:45vh;overflow:auto;margin:0;padding:8px;font:11px/1.35 ui-monospace,monospace;background:rgba(0,0,0,.82);color:#fff;border-radius:10px;white-space:pre-wrap";
+    b.addEventListener("click", function(){ BLSHOW = BOOTDIAG; b.remove(); }); document.body.appendChild(b); }
+  b.textContent = "Ladeprotokoll (Antippen schließt)\n"+BLOG.join("\n"); b.scrollTop = b.scrollHeight; }
 function bootWait(){ blog("Warten auf Reisen (Stand ab v384)"); acct.boot = true; clearTimeout(bootT); clearTimeout(bootE); bootE = null; bootT = setTimeout(function(){ bootDone(); }, 40000); }
 function bootDone(quiet){ clearTimeout(bootT); clearTimeout(bootE); bootE = null; if(!acct.boot) return; blog("Ladeanzeige weg, Reisen: "+liveIds(true).length+", noTrip "+noTrip()); acct.boot = false; if(!quiet) renderGate(); }
 function renderGate(force){
@@ -8597,6 +8603,7 @@ function renderGate(force){
       "<p class=\"note\" id=\"acctNote\" role=\"status\">"+esc(acct.vmsg||"")+"</p></div>";
     return;
   }
+  if(acct.user && !acct.boot && !g.hidden) blog("Gate weg (noTrip "+noTrip()+")");
   if(acct.user && acct.boot){ g.hidden = false; document.body.classList.add("gated"); if(!g.querySelector(".gate-load")) g.innerHTML = GATELOAD; return; }
   if(acct.state==="unconf" || acct.user){ g.hidden = true; document.body.classList.remove("gated"); return; }
   g.hidden = false; document.body.classList.add("gated");
