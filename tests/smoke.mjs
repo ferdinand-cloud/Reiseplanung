@@ -2380,6 +2380,33 @@ await test("Breitbild (iPad): Reise-Auswahl, Leiste, Suche und Plus in einer Zei
   ok(await page.evaluate(() => document.getElementById("tripBtn").getBoundingClientRect().top >= document.getElementById("tabbar").getBoundingClientRect().bottom - 1), "Hochformat: Reise-Auswahl nicht mehr unter der Leiste");
 }, {vp:{width:1366, height:1024}});
 
+// Wunschliste → Ort antippen → Haupt-Pop-up schließen: der Punkt bleibt sichtbar, Karten-Pop-up und Leisten verdecken ihn nicht (Hoch- und Querformat, iPhone und iPad)
+await test("Kartenpunkt bleibt nach Schließen des Pop-ups sichtbar (iPad, Querformat)", async () => {
+  await seed(); await page.waitForTimeout(300);
+  for(const vp of [{width:1366, height:1024}, {width:1024, height:1366}, {width:1180, height:820}, {width:844, height:390}, {width:390, height:844}]){
+    await page.setViewportSize(vp); await page.waitForTimeout(500);
+    const w = vp.width+"×"+vp.height;
+    for(const pid of ["p7", "p6"]){
+      await rp(`(function(){ closeJPop(); select(null); tab = "wish"; renderAll(); map.jumpTo({center:[-73.90, 40.80], zoom:12}); })()`);
+      if(await rp(`desktop.matches && !sideOpen`)){ await click("#edgeBtn"); await page.waitForTimeout(400); }
+      if(await rp(`!desktop.matches`)){ await rp(`setSheet("mid")`); await page.waitForTimeout(400); }
+      await page.locator('#sheet li.wi[data-id="'+pid+'"] .nm, #side li.wi[data-id="'+pid+'"] .nm, li.wi[data-id="'+pid+'"] .nm').first().click();
+      await page.waitForTimeout(1300);
+      if(await visible("#jPop")){ await click('#jPop [data-act="jclose"]'); }
+      await page.waitForFunction(() => !window.__rp("map.isMoving()"), null, {timeout:4000}).catch(() => {});
+      await page.waitForTimeout(1300);
+      ok(await visible("#card"), w+": Karten-Pop-up fehlt");
+      const r = await rp(`(function(){ var p = P("${pid}"), q = map.project([p.lo, p.la]), mr = mapEl.getBoundingClientRect(), x = q.x + mr.left, y = q.y + mr.top;
+        var c = $("card").getBoundingClientRect(), top = document.elementFromPoint(x, y);
+        return {x:Math.round(x), y:Math.round(y), card:[Math.round(c.left), Math.round(c.top), Math.round(c.right), Math.round(c.bottom)],
+          inCard: x > c.left - 6 && x < c.right + 6 && y > c.top - 6 && y < c.bottom + 6, onMap: !!top && (mapEl.contains(top) || ($("ov") && $("ov").contains(top))) && x > Math.max(mr.left, 0) + 16 && x < Math.min(mr.right, innerWidth) - 16 && y > document.querySelector(".top").getBoundingClientRect().bottom + 8 && y < Math.min(mr.bottom, innerHeight) - 16, hit: top ? (top.id || top.className || top.tagName) : "" }; })()`);
+      await shot("punkt-sichtbar-"+vp.width+"x"+vp.height+"-"+pid);
+      ok(!r.inCard, w+" "+pid+": Karten-Pop-up verdeckt den Punkt "+JSON.stringify(r));
+      ok(r.onMap, w+" "+pid+": Punkt verdeckt von "+JSON.stringify(r));
+    }
+  }
+}, {vp:{width:1366, height:1024}});
+
 // prüft: Knöpfe, Eingaben und Überschriften der offenen Ansicht liegen nicht unter Notch/Rand (horizontal ins Bild ragende Elemente in Laufbändern ausgenommen)
 async function notchFree(root, where){
   const bad = await page.evaluate((root) => {

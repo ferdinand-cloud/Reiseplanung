@@ -10518,6 +10518,7 @@ function revealPoint(p, z, always, again){
     var mr = mapEl.getBoundingClientRect(), Hh = window.innerHeight, cx = mr.left + mr.width/2;
     var obs = [], vis = function(el){ return el && !el.hidden && el.getClientRects().length; };
     var jc = vis($("jPop")) ? $("jPop").querySelector(".ag-card") : null;
+    if(desktop.matches) return revealFree(p, z, always, mr, [vis($("card")) ? $("card") : null, jc]);
     [vis($("card")) ? $("card") : null, jc].forEach(function(el){ if(!el) return; var r = el.getBoundingClientRect(); if(r.left < cx && r.right > cx) obs.push([r.top - 8, r.bottom + 8]); });
     var sv = sheetVisible(); if(sv) obs.push([Hh - sv, Hh]);
     var top = $("rail") && $("rail").getBoundingClientRect ? Math.max(0, $("rail").getBoundingClientRect().bottom) : 60; if(!(top > 0 && top < Hh/3)) top = 60;
@@ -10536,6 +10537,30 @@ function revealPoint(p, z, always, again){
     var ty = (best[0] + best[1]) / 2;
     map.easeTo({center:[p.lo, p.la], zoom:zz, offset:[0, Math.round(ty - (mr.top + mr.height/2))], duration: reduceMotion?0:500});
   }); });
+}
+// Breitbild und Querformat (iPad, iPhone quer): Fenster und Karte des Ortes liegen nicht über die ganze Breite,
+// darum in der Fläche suchen: der Punkt kommt an die Stelle mit dem größten Abstand zu Fenstern, Leisten und Kartenknöpfen
+// (nahe der Mitte bzw. bei always=false möglichst nah an seiner jetzigen Stelle)
+function revealFree(p, z, always, mr, els){
+  var L = Math.max(mr.left, 0), R = Math.min(mr.right, window.innerWidth), Tp = Math.max(mr.top, 0), B = Math.min(mr.bottom, window.innerHeight);
+  var rs = [];
+  els.forEach(function(el){ if(el){ var r = el.getBoundingClientRect(); if(r.width && r.height) rs.push([r.left - 8, r.top - 8, r.right + 8, r.bottom + 8]); } });
+  var tb = document.querySelector(".top"); if(tb){ var tr = tb.getBoundingClientRect(); if(tr.bottom > Tp && tr.bottom < B/2) Tp = tr.bottom + 6; }
+  [$("rail"), $("sheet"), $("edgeBtn")].concat([].slice.call(document.querySelectorAll("#ctrl .cg"))).forEach(function(el){ if(!el || el.hidden) return; var r = el.getBoundingClientRect(); if(r.width && r.height) rs.push([r.left - 6, r.top - 6, r.right + 6, r.bottom + 6]); });
+  var clr = function(x, y){ var c = Math.min(x - L, R - x - 60, y - Tp, B - y); // rechts Platz für den Namen am Punkt
+    for(var i = 0; i < rs.length && c > 0; i++){ var r = rs[i], dx = Math.max(r[0] - x - 60, 0, x - r[2]), dy = Math.max(r[1] - y, 0, y - r[3]); c = Math.min(c, dx || dy ? Math.sqrt(dx*dx + dy*dy) : 0); }
+    return c; };
+  var q = map.project([p.lo, p.la]), qx = q.x + mr.left, qy = q.y + mr.top, cx0 = (L + R)/2, cy0 = (Tp + B)/2;
+  var pts = [], mx = 0, st = 10;
+  for(var y = Tp + st; y < B; y += st) for(var x = L + st; x < R; x += st){ var c = clr(x, y); if(c > 0){ pts.push([x, y, c]); if(c > mx) mx = c; } }
+  if(!pts.length) return;
+  var need = Math.min(80, mx * 0.9), zz = z ? Math.max(map.getZoom(), z) : map.getZoom();
+  // gilt als frei, wenn er gut sichtbar ist (Abstand mindestens 28 px bzw. fast so viel wie möglich)
+  if(!always && zz===map.getZoom() && clr(qx, qy) >= Math.min(28, mx * 0.8)) return;
+  var rx = always ? cx0 : qx, ry = always ? cy0 : qy, best = null, bd = 1e12;
+  pts.forEach(function(t){ if(t[2] < need) return; var d = (t[0]-rx)*(t[0]-rx) + (t[1]-ry)*(t[1]-ry); if(d < bd){ bd = d; best = t; } });
+  if(!best) return;
+  map.easeTo({center:[p.lo, p.la], zoom:zz, offset:[Math.round(best[0] - (mr.left + mr.width/2)), Math.round(best[1] - (mr.top + mr.height/2))], duration: reduceMotion?0:500});
 }
 function resize(){ var r = mapEl.getBoundingClientRect(); W = r.width; H = r.height; applySheet(); if(map) map.resize(); placeFloating(); scheduleOverlay(); }
 $("zin").addEventListener("click", function(){ map.zoomIn(); });
@@ -13386,6 +13411,8 @@ function phLike(ph){
   (mine ? ref.delete() : ref.set({pid:"lk:"+ph, text:"❤", by:me, email:myMail(), at:Date.now()})).catch(function(e){ toast("Gefällt mir nicht gespeichert: "+(e && e.message), false); });
 }
 function closeJPop(){ var rcph = jp && jp.ret==="recap" ? jp.view : null; closeJpMore(); pvHide(); jp = null; $("jPop").hidden = true; document.body.classList.remove("glass"); renderSheet();
+  // Fenster zu: Punkt neu prüfen, damit die Karte des Ortes ihn nicht verdeckt
+  if(sel && sel!=="poi" && P(sel) && hasLoc(P(sel)) && map) revealPoint(P(sel), 0, false);
   if(rcph && $("rc") && !$("rc").hidden){ if(RC.dirty){ RC.dirty = false; var rlf = RC.lbFrom; renderRecap(RC.key); RC.lbFrom = rlf; } rcGoToPh(rcph); } }
 
 /* ---------- Fotos: verkleinert, lokal in IndexedDB, mit Konto in Firestore ---------- */
