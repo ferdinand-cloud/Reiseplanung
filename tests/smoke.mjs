@@ -183,6 +183,36 @@ await test("Wunsch-Pop-up → Zur Planung: Tagesauswahl vollständig im Bild", a
   ok(!(await visible("#planPop")), "Einplanen-Pop-up schließt nicht");
 });
 
+await test("Tag wählen: „Alle Tage anzeigen“ zeigt die gesamte Reise auf der Karte", async () => {
+  await seed();
+  const k = await rp(`(function(){ var ds = days(); T().order[ds[3].key] = ["p6"]; renderAll(); return {Y:ds[1].key, H:ds[2].key, M:ds[3].key}; })()`);
+  await click("#rail [data-act=daypop]");
+  ok(await visible("#catPop .dayall"), "Knopf „Alle Tage anzeigen“ fehlt");
+  ok(await rp(`$("catPop").querySelector(".daylist button").classList.contains("dayall")`), "„Alle Tage“ steht nicht oben");
+  await shot("alle-tage-pop");
+  await click("#catPop .dayall");
+  ok(await rp(`allOn()`), "Gesamtansicht nicht aktiv");
+  ok(!(await visible("#catPop")), "Pop-up bleibt offen");
+  ok(await rp(`$("rail").textContent.indexOf("Alle") > -1`), "Tageskreis zeigt nicht „Alle“");
+  ok(await rp(`$("body").textContent.indexOf("Alle Tage") > -1 && $("body").querySelectorAll(".adl [data-act=day]").length===days().length`), "Blatt zeigt keine Tagesübersicht");
+  await page.waitForTimeout(300);
+  ok(await rp(`(function(){ var h = $("ov").innerHTML; return h.indexOf(dayColor("${k.M}")) > -1 && h.indexOf(dayColor("${k.H}")) > -1; })()`), "Karte zeigt nicht die Stopps aller Tage");
+  await shot("alle-tage-karte");
+  // erneut öffnen: „Alle Tage“ markiert, kein einzelner Tag
+  await click("#rail [data-act=daypop]");
+  ok(await rp(`$("catPop").querySelector(".dayall").getAttribute("aria-pressed")==="true" && !$("catPop").querySelector("[data-act=daypick][aria-pressed=true]")`), "Markierung im Pop-up falsch");
+  await click("#catPop [data-act=daypick][data-day='"+k.Y+"']");
+  ok(!(await rp(`allOn()`)) && await rp(`cur`)===k.Y, "Tag wählen beendet die Gesamtansicht nicht");
+  // Ansichtsmodus (abgeschlossene Reise) bietet sie ebenso an; Verschieben-Pop-up nicht
+  await rp(`T().fin = 1; finEd = ""; renderAll(); true`);
+  ok(await rp(`isRO()`), "Reise nicht im Ansichtsmodus");
+  await click("#rail [data-act=daypop]");
+  ok(await visible("#catPop .dayall"), "Ansichtsmodus: „Alle Tage“ fehlt");
+  await click("#catPop .dayall"); ok(await rp(`allOn()`), "Ansichtsmodus: Gesamtansicht nicht aktiv");
+  await rp(`T().fin = 0; allD = ""; renderAll(); openDayPop("p1", true); true`);
+  ok(!(await rp(`!!$("catPop").querySelector(".dayall")`)), "Verschieben-Pop-up zeigt „Alle Tage“");
+});
+
 await test("Wunschliste-Plus: fragt Tag und Position, Abbrechen bleibt an derselben Stelle", async () => {
   await seed(); await rp(`select(null); cur = todayKey(); tab = "wish"; setSheet("full"); renderSheet();`); await page.waitForTimeout(300);
   const b = page.locator("#sheet .wplan[data-pid=p6]");
