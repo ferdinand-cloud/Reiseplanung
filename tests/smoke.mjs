@@ -3201,14 +3201,14 @@ await test("Öffentlich: Ort für alle freigeben, in pub speichern, in Entdecken
   ok(await visible("#pubPop") && (await page.locator("#pubPop").innerText()).includes("Öffentlich teilen"), "Rückfrage zum öffentlichen Teilen fehlt");
   await shot("oeffentlich-frage");
   await click("#pubPop .pub-ok");
-  ok(await rp(`T().pubA.p4===1 && T().pubP.p4===1 && visOf4("p4")==="all" && isPubP("p4")`), "Ort nicht öffentlich gestellt");
+  ok(await rp(`T().pubA.p4===1 && T().pubP.p4==="u_me" && visOf4("p4")==="all" && isPubP("p4")`), "Ort nicht öffentlich gestellt");
   await rp(`KNOWN.t_test = 1; recBusy = false; lsSet("rp-recs-u_me", "{}"); recSync(); true`); await page.waitForTimeout(500);
   ok(await rp(`window.__log.some(function(x){ return x[0]==="/pub/u_me_t_test_p4" && x[1].gh && x[1].gh.length===7 && x[1].by==="u_me"; })`), "Öffentliche Empfehlung nicht in pub geschrieben");
   ok(await rp(`window.__log.some(function(x){ return x[0]==="/recs/u_me/items/t_test_p4"; })`), "Freundes-Empfehlung fehlt");
   await rp(`setVis("p4", "pub"); true`); await page.waitForTimeout(200);
   ok(await visible("#cfPop"), "Zurücknehmen ohne Rückfrage");
   await click("#cfPop .cf-ok");
-  ok(await rp(`!T().pubA.p4 && T().pubP.p4===1`), "Öffentlich nicht zurückgenommen");
+  ok(await rp(`!T().pubA.p4 && T().pubP.p4==="u_me"`), "Öffentlich nicht zurückgenommen");
   await rp(`recBusy = false; window.__log = []; recSync(); true`); await page.waitForTimeout(500);
   ok(await rp(`window.__log.some(function(x){ return x[0]==="/pub/u_me_t_test_p4" && x[1]==="del"; })`), "Öffentliche Empfehlung nicht gelöscht");
   await rp(`dcSrc = "all"; dcScope = "all"; DC.at = Date.now(); openDcPage(); true`); await page.waitForTimeout(500);
@@ -4142,6 +4142,21 @@ await test("Leiste: erneutes Antippen eines Knopfs bleibt auf der Seite (kein Sp
   }
   await page.locator("#tbMap").click(); await page.waitForTimeout(300);
   ok(await rp(`!profOpen && !lsPage && !dcPage && !gsPage && !chPage && !ntPage`), "Karten-Knopf schließt die Seiten nicht");
+});
+
+await test("Empfehlungen: gemeinsame Reise – nur wer veröffentlicht hat, gibt den Ort als eigene Empfehlung weiter", async () => {
+  await seed();
+  // Mitreisende(r) in einer fremden Reise: Ort p4 von „u_owner“ veröffentlicht, p5 von mir, p1 alt (1) → zählt für den Besitzer
+  await rp(`T().done.p1 = 1; T().pubP = {p4:"u_owner", p5:"u_me", p1:1}; T().notes = {p4:"Notiz vom Besitzer"}; KNOWN.t_test = 1;
+    META.t_test = {owner:"u_owner", members:["u_owner","u_me"], viewers:[]}; true`);
+  ok(await rp(`var r = recCollect(); !r.t_test_p4 && !!r.t_test_p5 && !r.t_test_p1`), "Mitreisende(r) veröffentlicht fremde Orte als eigene Empfehlung");
+  // als Besitzer: alte Markierung (1) gilt als eigene
+  await rp(`META.t_test.owner = "u_me"; true`);
+  ok(await rp(`var r = recCollect(); !!r.t_test_p1 && !!r.t_test_p5 && !r.t_test_p4`), "Besitzer: alte Veröffentlichung fehlt");
+  // setVis merkt sich, wer veröffentlicht hat
+  await rp(`delete META.t_test; T().pubP = {}; T().privP = {}; setVis("p4", "pub"); true`); await page.waitForTimeout(200);
+  if(await visible("#pubPop")) await click("#pubPop .pub-ok");
+  ok(await rp(`T().pubP.p4==="u_me"`), "Veröffentlicher nicht gespeichert");
 });
 
 await test("3D-Karte: Knopf bei Suche und Plus erst ab Zoomstufe, Standard 3D kippt beim Hineinzoomen, 2D/3D umschaltbar und gemerkt", async () => {

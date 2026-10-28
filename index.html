@@ -4759,7 +4759,9 @@ function setVis(pid, v){
   var apply = function(){
     t.privP = t.privP || {}; t.pubP = t.pubP || {}; t.pubA = t.pubA || {};
     visitIds(ro).forEach(function(k){ delete t.privP[k]; delete t.pubP[k]; delete t.pubA[k]; });
-    if(v==="priv") t.privP[ro] = 1; else if(v==="pub") t.pubP[ro] = 1; else if(v==="all"){ t.pubP[ro] = 1; t.pubA[ro] = 1; }
+    // pubP merkt sich, wer veröffentlicht hat: nur dessen Gerät gibt den Ort als Empfehlung weiter (nicht jeder Mitreisende)
+    var pb = (acct.user && acct.user.uid) || 1;
+    if(v==="priv") t.privP[ro] = 1; else if(v==="pub") t.pubP[ro] = pb; else if(v==="all"){ t.pubP[ro] = pb; t.pubA[ro] = 1; }
     save(); phPrivSync(photosAll(ro)); cmResync(); pubCmSyncSoon(); recSyncSoon();
     toast(v==="priv" ? "Privat – nur Mitreisende sehen den Ort" : v==="all" ? "Öffentlich – alle Nutzer sehen den Ort in Entdecken" : v==="pub" ? "Veröffentlicht – deine Freunde sehen den Ort mit Bewertung" : "Nur für diese Reise sichtbar (Mitreisende und Beobachter)", false);
     if(jp && !$("jPop").hidden) renderJPop(); renderSheet(); if(sel) renderCard(); if(lsPage) renderLs();
@@ -5996,6 +5998,8 @@ function recSyncSoon(){ if(!recShare) return; clearTimeout(recT); recT = setTime
 function recCol(uid0){ return fbDb.collection("recs").doc(uid0).collection("items"); }
 function recThumb(ph){ return phGet(ph).then(function(d){ if(!d) return null; return new Promise(function(res){ var im = new Image(); im.onload = function(){ var m = 560, k = Math.min(1, m/Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement("canvas");
   c.width = Math.round(im.naturalWidth*k); c.height = Math.round(im.naturalHeight*k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL("image/jpeg", .72)); }; im.onerror = function(){ res(null); }; im.src = d; }); }).catch(function(){ return null; }); }
+// Wer hat den Ort veröffentlicht? uid (neu) oder 1 (alt: dann gilt der Besitzer der Reise)
+function pubMine(tid, pb, me){ if(typeof pb==="string") return pb===me; var m = META[tid]; return !m || !m.owner || m.owner===me; }
 function recCollect(){
   var out = {}, me = acct.user && acct.user.uid;
   Object.keys(S.trips).forEach(function(tid){
@@ -6007,6 +6011,7 @@ function recCollect(){
       var vs = [pid].concat(Object.keys(t.places).filter(function(k){ return t.places[k] && t.places[k].of===pid; }));
       if(!vs.some(function(k){ return t.done[k]; })) return;
       if(!(t.pubP && t.pubP[pid])) return; // nur bewusst veröffentlichte Orte
+      if(!pubMine(tid, t.pubP[pid], me)) return; // nur selbst veröffentlichte Orte, nicht die der Mitreisenden
       var r = (t.rating||{})[pid] || 0, isHl = !!hl[p.n];
       var note = (!(t.privN||{})[pid] && (t.pubItem||{})["n:"+pid]) ? ((t.notes||{})[pid] || "") : "";
       var phs = [].concat.apply([], vs.map(function(k){ return (t.photos||{})[k] || []; })).filter(function(x){ return !(t.privPh||{})[x] && (t.pubItem||{})["ph:"+x]; }).slice(-12);
