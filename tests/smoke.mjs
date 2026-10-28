@@ -450,7 +450,16 @@ await test("Anmeldung: erst Reisen laden, dann Startseite – kein „Noch keine
   ok(await rp(`$("gate").hidden && !document.body.classList.contains("gated") && !acct.boot && !noTrip()`), "Nach dem Laden bleibt die Ladeanzeige stehen oder keine Reise");
   ok(await page.locator("#sheet .notrip, .notrip h2").count()===0, "„Noch keine Reise“ erscheint trotz geladener Reise");
   // neues Konto ohne Reisen: nach kurzem Warten „Noch keine Reise“
-  await rp(`bootWait(); renderGate(); S = {trips:{}, cur:null}; acctApply([]); true`); await page.waitForTimeout(4400);
+  // bestehendes Konto, Server meldet (noch) nichts: Ladeanzeige bleibt, nach einer Weile „Ohne Reisen fortfahren“ mit Protokoll
+  await rp(`bootWait({metadata:{creationTime:"2025-01-01T00:00:00Z"}}); renderGate(); S = {trips:{}, cur:null}; acctApply([]); true`); await page.waitForTimeout(4400);
+  ok(await rp(`acct.boot && !$("gate").hidden`), "Leerer Serverstand bei bestehendem Konto zeigt „Noch keine Reise“");
+  await rp(`bootSlow(); true`); await page.waitForTimeout(100);
+  ok(await visible("#gate [data-act=bootgo]") && await rp(`$("gateLog").textContent.includes("Warten auf Reisen")`), "Kein „Ohne Reisen fortfahren“/Protokoll bei langer Ladezeit");
+  await shot("anmeldung-dauert");
+  await page.tap("#gate [data-act=bootgo]"); await page.waitForTimeout(150);
+  ok(await rp(`!acct.boot && $("gate").hidden`), "„Ohne Reisen fortfahren“ wirkt nicht");
+  // neues Konto ohne Reisen: nach kurzem Warten „Noch keine Reise“
+  await rp(`bootWait({metadata:{creationTime:new Date().toISOString()}}); renderGate(); S = {trips:{}, cur:null}; acctApply([]); true`); await page.waitForTimeout(4400);
   ok(await rp(`!acct.boot && $("gate").hidden`), "Neues Konto ohne Reisen bleibt in der Ladeanzeige hängen");
 });
 
