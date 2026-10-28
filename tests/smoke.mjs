@@ -1797,6 +1797,80 @@ await test("3D-Navigation: geneigte Karte, Weg unter den Gebäuden, 3D-Pfeil, Sc
   ok(await rp(`map.getPitch()`) < 5, "Nach dem Ende bleibt die Karte geneigt");
 });
 
+await test("Chat: Sprachnachricht gedrückt halten, links abbrechen, oben feststellen, abspielen mit Wellenform", async () => {
+  await seed();
+  // Mikrofon nachbilden: Ton aus einem Oszillator; Firestore nachbilden: gesendete Dokumente in __set, Ton-Dokumente per get
+  await rp(`window.__set = []; window.__M = [{id:"m1", from:"u1", t:"Hallo", at:Date.now() - 60000}];
+    navigator.mediaDevices.getUserMedia = function(){ var c = new AudioContext(), o = c.createOscillator(), g = c.createGain(), d = c.createMediaStreamDestination(); o.frequency.value = 330; g.gain.value = 0.6; o.connect(g); g.connect(d); o.start(); return Promise.resolve(d.stream); };
+    var qs = function(){ return {docs:__M.map(function(m){ return {id:m.id, data:function(){ return JSON.parse(JSON.stringify(m)); }}; })}; }, n = 0;
+    var ref = function(id){ return {id:id, get:function(){ var x = __set.filter(function(s){ return s.id===id; })[0]; return Promise.resolve({exists:!!x, data:function(){ return x && x.d; }}); }, update:function(){ return Promise.resolve(); }}; };
+    fbDb = {runTransaction:function(){ return new Promise(function(){}); }, batch:function(){ var L = []; return {set:function(r, d){ L.push({id:r.id, d:d}); }, update:function(){}, commit:function(){ __set = __set.concat(L); return Promise.resolve(); }}; },
+      collection:function(){ return {doc:function(cid){ var r = ref(cid); r.collection = function(nm){ var q = {orderBy:function(){ return q; }, limitToLast:function(){ return q; }, doc:function(id){ return ref(id || "d"+(++n)); }, get:function(){ return Promise.resolve(qs()); },
+        onSnapshot:function(cb){ if(nm!=="msgs" || cid!=="u1_u_me") return function(){}; window.__snap = function(){ cb(qs()); }; setTimeout(__snap, 0); return function(){}; }}; return q; }; return r; }}; }};
+    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:1000, names:{u1:"Anna"}, read:{u_me:Date.now()}, last:{t:"Hallo", from:"u1", at:1000}}}; CH.list = [CH.byId.u1_u_me]; CH.got = true; CHPROF.u1 = {name:"Anna"};
+    delete CHMC.u1_u_me; openChPage("u1_u_me"); true`);
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===1`), null, {timeout:4000});
+  // leer: Aufnahme-Knopf statt Senden; mit Text: Senden
+  ok(await visible("#chView .ch-rec") && !(await visible("#chView .ch-send")), "Leere Eingabe zeigt nicht den Aufnahme-Knopf");
+  ok(await rp(`var d = document.createElement("div"); d.innerHTML = ic("voice", "vi"); document.querySelector("#chView .ch-rec svg.vi").outerHTML===d.firstChild.outerHTML`), "Aufnahme-Knopf nutzt nicht das Symbol IC.voice");
+  await page.fill("#chIn", "Text"); ok(await visible("#chView .ch-send") && !(await visible("#chView .ch-rec")), "Mit Text bleibt der Aufnahme-Knopf statt Senden");
+  await page.fill("#chIn", ""); ok(await visible("#chView .ch-rec"), "Nach dem Löschen kein Aufnahme-Knopf");
+  const cdp = await page.context().newCDPSession(page);
+  const tStart = (x, y) => cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x, y}]});
+  const tMove = async (x, y) => { await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x, y}]}); await page.waitForTimeout(30); };
+  const tEnd = () => cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]});
+  await rp(`document.activeElement && document.activeElement.blur(); true`); await page.waitForTimeout(600);
+  const rb = await page.evaluate(() => { const r = document.querySelector("#chView .ch-rec").getBoundingClientRect(); return {x:r.left + r.width/2, y:r.top + r.height/2}; });
+  const vos = () => rp(`__set.filter(function(s){ return s.d && s.d.vo; }).length`);
+  // 1) gedrückt halten → Aufnahme läuft (Zeit, Live-Wellenform, Abbrechen-Hinweis), loslassen → gesendet
+  await tStart(rb.x, rb.y);
+  await page.waitForFunction(() => window.__rp(`!!VR && VR.st==="rec"`), null, {timeout:8000});
+  await page.waitForTimeout(1600);
+  ok(await visible("#chVRec") && await rp(`$("chVRec").querySelectorAll(".ch-vlive i").length > 5 && /0:0[1-4]/.test($("chVRec").querySelector(".ch-vtm").textContent) && $("chVRec").textContent.includes("Abbrechen")`), "Aufnahme-Leiste fehlt oder ohne Zeit/Wellenform: "+await rp(`$("chVRec").textContent`));
+  ok(await visible("#chView .ch-vlk"), "Hinweis zum Feststellen fehlt");
+  await shot("sprachnachricht-aufnahme");
+  await tEnd();
+  await page.waitForFunction(() => window.__rp(`__set.some(function(s){ return s.d && s.d.vo; })`), null, {timeout:4000});
+  const sent = await rp(`var m = __set.filter(function(s){ return s.d && s.d.vo; })[0].d, a = __set.filter(function(s){ return s.id===m.vo.id; })[0], c = __set.filter(function(s){ return s.d && s.d.last; })[0].d;
+    ({d:m.vo.d, n:m.vo.n, wv:m.vo.wv, mt:m.vo.mt, at:!!m.at, from:m.from, aud:a && a.d.aud.slice(0, 11), audAt:a && ("at" in a.d), audFrom:a && a.d.from, last:c.last.t, idle:!VR && $("chVRec").hidden})`);
+  ok(sent.d >= 1.3 && sent.d < 4 && sent.n===1 && /^[0-9]{18,40}$/.test(sent.wv) && /[5-9]/.test(sent.wv) && /^audio\//.test(sent.mt) && sent.at && sent.from==="u_me", "Nachricht falsch: "+JSON.stringify(sent));
+  ok(sent.aud==="data:audio/" && sent.audAt===false && sent.audFrom==="u_me", "Ton-Dokument falsch (ohne „at“, mit from): "+JSON.stringify(sent));
+  ok(/^Sprachnachricht · 0:0\d$/.test(sent.last) && sent.idle, "Chat-Übersicht/Zustand nach dem Senden falsch: "+JSON.stringify(sent));
+  // 2) nach links ziehen → verworfen
+  await tStart(rb.x, rb.y); await page.waitForFunction(() => window.__rp(`!!VR && VR.st==="rec"`), null, {timeout:8000}); await page.waitForTimeout(900);
+  for(const d of [20, 50, 90, 130]) await tMove(rb.x - d, rb.y);
+  await tEnd(); await page.waitForTimeout(500);
+  ok(await vos()===1 && await rp(`!VR && $("chVRec").hidden`), "Nach links ziehen verwirft die Aufnahme nicht");
+  // 3) nach oben ziehen → festgestellt, läuft nach dem Loslassen weiter; Knopf sendet
+  await tStart(rb.x, rb.y); await page.waitForFunction(() => window.__rp(`!!VR && VR.st==="rec"`), null, {timeout:8000}); await page.waitForTimeout(400);
+  for(const d of [20, 50, 90]) await tMove(rb.x, rb.y - d);
+  await tEnd(); await page.waitForTimeout(800);
+  ok(await rp(`!!VR && VR.st==="lock" && document.querySelector("#chView .ch-comp").classList.contains("vlock") && !!$("chVRec").querySelector("[data-act=vrdel]")`), "Nach oben ziehen stellt die Aufnahme nicht fest");
+  await shot("sprachnachricht-festgestellt");
+  await tStart(rb.x, rb.y); await tEnd();
+  await page.waitForFunction(() => window.__rp(`__set.filter(function(s){ return s.d && s.d.vo; }).length===2`), null, {timeout:4000});
+  ok(await rp(`!VR && $("chVRec").hidden`), "Senden im festgestellten Zustand beendet die Aufnahme nicht");
+  // 4) kurz tippen: nichts gesendet, Hinweis
+  await tStart(rb.x, rb.y); await page.waitForTimeout(150); await tEnd(); await page.waitForTimeout(500);
+  ok(await vos()===2 && await rp(`!VR`), "Kurzes Tippen sendet oder hängt");
+  await cdp.detach();
+  // 5) Abspielen: Sprachnachricht von Anna (Ton nicht im Speicher → aus Firestore), Wellenform, Dauer, Stelle wählen
+  await rp(`var m = __set.filter(function(s){ return s.d && s.d.vo; })[0].d; __set.push({id:"vo_anna", d:{from:"u1", aud:__set.filter(function(s){ return s.id===m.vo.id; })[0].d.aud, i:0, n:1, mt:m.vo.mt}});
+    __M.push({id:"m2", from:"u1", t:"", at:Date.now(), vo:{id:"vo_anna", n:1, d:m.vo.d, mt:m.vo.mt, wv:"1357975311357975"}}); __snap(); true`);
+  await page.waitForTimeout(200);
+  const v = '#chMsgs .ch-msg[data-mid="m2"] .ch-vo';
+  ok(await rp(`var e = document.querySelector('${v}'); !!e && e.querySelectorAll(".ch-vw i").length===16 && /^0:0\\d$/.test(e.querySelector(".ch-vt").textContent)`), "Sprachnachricht ohne Wellenform/Dauer");
+  await page.tap(v+" .ch-vp");
+  await page.waitForFunction(() => window.__rp(`VP.mid==="m2" && VP.ok && !VP.el.paused`), null, {timeout:4000});
+  await page.waitForTimeout(500);
+  ok(await rp(`document.querySelector('${v}').classList.contains("pl") && document.querySelectorAll('${v} .ch-vw i.on').length > 0`), "Abspielen zeigt keinen Fortschritt");
+  await shot("sprachnachricht-abspielen");
+  await page.tap(v+" .ch-vp"); await page.waitForTimeout(150);
+  ok(await rp(`VP.el.paused && !document.querySelector('${v}').classList.contains("pl")`), "Anhalten geht nicht");
+  ok(await rp(`chReText(chMsgs.filter(function(m){ return m.id==="m2"; })[0]).indexOf("Sprachnachricht")===0`), "Antworten-Zitat einer Sprachnachricht falsch");
+  ok(!errs.length, "Fehler: "+errs.join(" | "));
+  await rp(`closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
+});
 await test("Chat: geteiltes Foto öffnet Ort und Foto, auch wenn Reise-Kennung nicht passt", async () => {
   await seed();
   // Nachricht mit fremder Reise-Kennung und veralteter Orts-Kennung, Foto liegt aber in der Reise
