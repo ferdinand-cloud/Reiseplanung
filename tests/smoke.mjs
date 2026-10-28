@@ -137,7 +137,7 @@ async function seed(){
     var c = document.createElement("canvas"); c.width = 320; c.height = 240; var g = c.getContext("2d");
     ["#c33","#3a3","#36c"].forEach(function(col, i){ g.fillStyle = col; g.fillRect(0, 0, 320, 240); g.fillStyle = "#fff"; g.font = "60px sans-serif"; g.fillText(String(i+1), 140, 140); PHC[["ph_a","ph_b","ph_c"][i]] = c.toDataURL("image/jpeg", .7); });
     acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; fbDb = null; acct.state = "ok"; lsSet("rp-dcdemo", "0"); DCSIG = "";
-    S = {trips:{t_test:t}, cur:"t_test"}; cur = H; tab = "day"; sel = null; finEd = "";
+    S = {trips:{t_test:t}, cur:"t_test"}; cur = H; tab = "day"; sel = null; finEd = ""; finM = "";
     FR.friends = [{uid:"u_anna", name:"anna"},{uid:"u_ludwig", name:"Ludwig"},{uid:"u_clara", name:"Clara"}];
     renderGate(); renderAll();
     return {Y:Y, H:H};
@@ -740,7 +740,7 @@ await test("Profil: Reise über ⋯ abschließen und wieder öffnen (vor dem End
 
 await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“ öffnet die volle Planung", async () => {
   await seed();
-  ok(await rp(`!isRO() && !document.body.classList.contains("ro") && !document.querySelector(".tm-fin")`), "Laufende Reise startet nicht in der vollen Ansicht");
+  ok(await rp(`!isRO() && !document.body.classList.contains("ro") && tripMode()==="edit"`), "Laufende Reise startet nicht im Bearbeitungsmodus");
   await rp(`T().fin = 1; save(); renderAll(); true`); await page.waitForTimeout(200);
   ok(await rp(`isRO() && finRO() && !isViewer() && document.body.classList.contains("ro")`), "Abgeschlossene Reise nicht in der Beobachter-Ansicht");
   ok(await page.locator("#body .finbar").count()===0, "Leiste „Reise bearbeiten“ steht noch im Tagesplan");
@@ -762,13 +762,13 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   await rp(`closeJPop(); true`);
   ok(await rp(`$("sheetOpen").textContent.trim()==="Tagebuch" && $("tabDay").textContent==="Tagebuch"`), "Knopf unten/Reiter heißen im Ansichtsmodus nicht „Tagebuch“");
   await click("#tripBtn");
-  ok(await page.locator("#tripMenu > .tm-fin[data-act=finedit]").isVisible() && await page.locator("#tripMenu [data-act=tripedit]").count()===0, "Reise-Menü bietet nicht „Reise bearbeiten“ (oben, hervorgehoben) an");
-  ok(await rp(`var m = $("tripMenu"), a = m.children[0], b = m.children[1]; a.classList.contains("tm-cur") && a.getAttribute("aria-current")==="true" && a.textContent.indexOf("Testreise") > -1 && b.getAttribute("data-act")==="finedit"`), "Gewählte Reise steht nicht oben, „Reise bearbeiten“ nicht direkt darunter");
+  ok(await rp(`var m = $("tripMenu"), a = m.children[0], b = m.children[1]; a.classList.contains("tm-cur") && a.getAttribute("aria-current")==="true" && a.textContent.indexOf("Testreise") > -1 && a.textContent.indexOf("✓") > -1 && b.classList.contains("tm-mode")`), "Gewählte Reise (mit Haken) nicht oben, Umschalter nicht direkt darunter");
+  ok(await rp(`$("tripMenu").querySelector("[data-act=tripmode][data-v=view]").getAttribute("aria-pressed")==="true"`) && await page.locator("#tripMenu [data-act=tripedit]").count()===0, "Umschalter zeigt nicht „Ansicht“");
   ok(await page.locator("#tripMenu .sc-b.on").count()===0, "„Vergangene Reisen“ ist noch hervorgehoben");
   await shot("abgeschlossen-ansicht");
   // Bearbeiten: volle Ansicht wie bei aktiven Reisen
-  await click("#tripMenu [data-act=finedit]");
-  ok(await rp(`!isRO() && finEdOn() && !document.body.classList.contains("ro")`), "„Reise bearbeiten“ öffnet nicht die volle Ansicht");
+  await click("#tripMenu [data-act=tripmode][data-v=edit]");
+  ok(await rp(`!isRO() && tripMode()==="edit" && !document.body.classList.contains("ro")`), "Bearbeiten öffnet nicht die volle Ansicht");
   await rp(`pickDefaultDay(); renderSheet(); true`);
   ok(await page.locator("#body [data-act=rtoggle]").count()===1, "Routen-Schalter fehlt beim Bearbeiten");
   ok(await page.locator("#body ol.plan").count()===1, "Stopps fehlen beim Bearbeiten");
@@ -776,20 +776,26 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await rp(`$("sheetOpen").textContent.trim()==="Tagesplan & Wunschliste"`), "Knopf unten nennt beim Bearbeiten nicht die Wunschliste");
   ok(await rp(`$("tabDay").textContent==="Tagesplan"`), "Reiter heißt beim Bearbeiten nicht „Tagesplan“");
   await click("#tripBtn");
-  ok(await page.locator("#tripMenu .tm-fin[data-act=finview]").isVisible() && await page.locator("#tripMenu [data-act=tripedit]").count()===1, "„Bearbeiten beenden“ fehlt im Reise-Menü");
+  ok(await rp(`$("tripMenu").querySelector("[data-act=tripmode][data-v=edit]").getAttribute("aria-pressed")==="true"`) && await page.locator("#tripMenu [data-act=tripedit]").count()===1, "Umschalter zeigt nicht „Bearbeiten“");
   await shot("abgeschlossen-bearbeiten");
   // Beenden: zurück zur Ansicht; andere Reise und zurück: wieder Ansicht
-  await click("#tripMenu [data-act=finview]");
-  ok(await rp(`isRO() && finRO()`), "„Bearbeiten beenden“ führt nicht zurück zur Ansicht");
-  await rp(`finEd = S.cur; renderAll(); true`);
+  await click("#tripMenu [data-act=tripmode][data-v=view]");
+  ok(await rp(`isRO() && finRO()`), "Umschalter „Ansicht“ führt nicht zurück zur Ansicht");
+  await rp(`setTripMode("edit"); renderAll(); true`);
   await rp(`S.trips.t_mal = newTripObj({id:"t_mal", name:"Mallorca", start:"2027-05-01", end:"2027-05-05"}); tripSwitch("t_mal"); tripSwitch("t_test"); true`);
   ok(await rp(`finRO()`), "Nach Reisewechsel bleibt die abgeschlossene Reise im Bearbeiten-Modus");
   // Liste: Moduswechsel in der Reise-Auswahl, keine Leiste
   await rp(`S.trips.t_mal.fin = 0; openLsPage(); true`); await page.waitForTimeout(200);
   ok(await page.locator("#lsView .finbar").count()===0, "Leiste „Reise bearbeiten“ steht noch in der Liste");
   await click("#lsView [data-act=lstrippick]");
-  ok(await page.locator("#jpMenu .tm-fin[data-act=finedit]").isVisible(), "„Reise bearbeiten“ fehlt in der Reise-Auswahl der Liste");
-  ok(await rp(`var c = $("jpMenu").querySelector(".tm-cur"); !!c && c.textContent.indexOf("Testreise") > -1 && c.compareDocumentPosition($("jpMenu").querySelector(".tm-fin")) & 4`), "Gewählte Reise steht in der Liste nicht über „Reise bearbeiten“");
+  ok(await page.locator("#jpMenu .tm-mode [data-v=edit]").isVisible(), "Umschalter fehlt in der Reise-Auswahl der Liste");
+  ok(await rp(`var c = $("jpMenu").querySelector(".tm-cur"); !!c && c.textContent.indexOf("Testreise") > -1 && c.compareDocumentPosition($("jpMenu").querySelector(".tm-mode")) & 4`), "Gewählte Reise steht in der Liste nicht über dem Umschalter");
+  await rp(`closeJpMore(); true`);
+  // aktive Reise: startet im Bearbeiten, Ansicht wählbar (ohne Tagebuch-Umbau)
+  await rp(`T().fin = 0; finEd = ""; finM = ""; renderAll(); true`);
+  ok(await rp(`tripMode()==="edit" && !isRO()`), "Aktive Reise startet nicht im Bearbeitungsmodus");
+  await rp(`setTripMode("view"); renderAll(); true`);
+  ok(await rp(`isRO() && !finJ() && $("tabDay").textContent==="Tagesplan"`) && await page.locator("#body ol.plan").count()===1, "Ansichtsmodus einer aktiven Reise falsch");
   ok(await page.locator("#jpMenu .sc-b.on").count()===0, "„Vergangene Reisen“ in der Liste noch hervorgehoben");
 });
 
@@ -3565,13 +3571,13 @@ await test("Liste: Reise-Auswahl als Dropdown mit Suche statt Chips (30 Reisen),
   const bb = await page.locator("#lsView .ls-tripdd").boundingBox(); ok(bb.height < 50, "Dropdown zu hoch: "+bb.height);
   await page.tap("#lsView .ls-tripdd"); await page.waitForTimeout(250);
   ok(await page.locator("#jpMenu .frp-q").count()===1, "Suche im Dropdown fehlt");
-  ok(await page.locator("#jpMenu [data-act=lstrip]").count()===11, "Dropdown soll nur laufende/kommende Reisen zeigen: "+await page.locator("#jpMenu [data-act=lstrip]").count());
+  ok(await page.locator("#jpMenu [data-act=lstrip]").count()===10 && await page.locator("#jpMenu .tm-cur").count()===1, "Dropdown soll gewählte Reise oben + übrige laufende/kommende Reisen zeigen: "+await page.locator("#jpMenu [data-act=lstrip]").count());
   ok(await page.locator("#jpMenu [data-act=lstrip][data-trip=t_r1]").count()===0, "Vergangene Reise steht direkt im Dropdown");
   ok(await page.locator("#jpMenu [data-act=scopepop][data-k=past]").count()===1 && (await page.locator("#jpMenu [data-act=scopepop][data-k=past]").innerText()).includes("20"), "Knopf „Vergangene Reisen“ fehlt");
   const mb = await page.locator("#jpMenu").boundingBox(); ok(mb.y + mb.height <= 844 && mb.height <= 480, "Dropdown zu groß: "+JSON.stringify(mb));
-  await page.locator("#jpMenu .frp-q").fill("testr"); await page.waitForTimeout(100);
+  await page.locator("#jpMenu .frp-q").fill("reise 25"); await page.waitForTimeout(100);
   const vis = await page.evaluate(() => [].slice.call(document.querySelectorAll("#jpMenu [data-act=lstrip]")).filter(b => !b.hidden).map(b => b.getAttribute("data-trip")));
-  ok(vis.length===1 && vis[0]==="t_test", "Suche findet nicht nur die Testreise: "+vis.join(","));
+  ok(vis.length===1 && vis[0]==="t_r24", "Suche findet nicht nur „Reise 25“: "+vis.join(","));
   await page.locator("#jpMenu .frp-q").fill("");
   await click("#jpMenu [data-act=scopepop][data-k=past]");
   ok(await visible("#catPop .scpop") && await page.locator("#jpMenu").count()===0, "Pop-up „Vergangene Reisen“ öffnet nicht");

@@ -497,15 +497,15 @@ body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0
 .tf-opt[aria-checked="true"] .sw2{background:var(--ok,#34C759)}
 .tf-opt[aria-checked="true"] .sw2::after{transform:translateX(18px)}
 .tst{font-style:normal;font-weight:600}
-/* Abgeschlossene Reise: Moduswechsel oben im Reise-Menü, deutlich hervorgehoben */
-.tripmenu button.tm-fin,.jpmenu button.tm-fin{display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;text-align:left;background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent);border-radius:11px}
-.tm-fin .ii{width:18px;height:18px;flex:none}
-.tm-fin > span{display:flex;flex-direction:column;min-width:0}
-.tm-fin b{font-weight:650}
-.tm-fin small{color:var(--muted);font-weight:500}
-.tripmenu button.tm-fin.on,.jpmenu button.tm-fin.on{background:var(--fill);color:inherit}
-.tripmenu button.tm-fin{margin-bottom:4px}
-.jpmenu button.tm-fin{margin:2px 0 4px}
+/* Reise-Menü: gewählte Reise oben (Haken), darunter Umschalter Ansicht/Bearbeiten */
+.tripmenu button.tm-cur,.tripmenu button.tm-cur[aria-current="true"]{align-items:center;background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.tm-cur .tm-cn{display:flex;flex-direction:column;gap:1px;min-width:0}
+.tm-cur .ck{font-style:normal;color:var(--accent);font-weight:700}
+.jpmenu button.tm-cur{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.tm-mode{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;margin:4px 0 2px;border-radius:12px;background:var(--fill)}
+.tripmenu .tm-mode button,.jpmenu .tm-mode button{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 6px;margin:0;border:0;border-radius:9px;background:none;color:var(--muted);font:600 13px/1.2 var(--f-body);width:100%}
+.tm-mode button .ii{width:16px;height:16px}
+.tripmenu .tm-mode button[aria-pressed="true"],.jpmenu .tm-mode button[aria-pressed="true"]{background:var(--sheet);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .tst-now{color:var(--ok,#2e9b5a)}
 .tst-opt{color:#AF52DE}
 .tf-lbl{margin:18px 4px 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -6534,7 +6534,7 @@ function zShow(zid, pid){
 function tripSwitch(id){ if(!S.trips[id] || id===S.cur) return; grpSel = ""; S.cur = id; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
 function tripEditFrom(id, fromProf){
   if(!S.trips[id] || isViewerOf(id)) return; tripSwitch(id); closeMenus(); closeSettings();
-  if(tripStatus(S.trips[id])==="done") finEd = id; // abgeschlossen: Bearbeiten öffnet die volle Ansicht
+  finEd = id; finM = "edit"; // Bearbeiten öffnet den Bearbeitungsmodus
   tdraft = tripToDraft(T(), "edit"); if(fromProf) tdraft.back = "prof"; tab = "trip"; renderSheet(); scheduleOverlay();
 }
 /* Mitreisende & Beobachter als eigenes Pop-up (aus dem ⋯-Menü der Kachel und aus „Reise bearbeiten“) */
@@ -7821,8 +7821,8 @@ function lsTripSub(t){ return TSTAT[tripStatus(t)]+(!t.opt && t.start && t.end ?
 function lsTripDD(cur){ var t = cur && S.trips[cur], zz = t && t.ziel, sub = t ? (zz ? "Ziel" : lsTripSub(t)) : "";
   return "<div class=\"ls-dds ls-tripdds\"><button type=\"button\" class=\"ls-dd ls-tripdd\" data-act=\"lstrippick\" aria-haspopup=\"menu\" aria-label=\"Reise wählen\">"+
     (t ? (zz ? "<span class=\"dc-tz\" style=\"--cc:"+tripColor(cur)+"\">"+ZBM+"</span>" : "<i class=\"dc-tdot\" style=\"--cc:"+tripColor(cur)+"\"></i>")+"<span class=\"ls-ddn\">"+esc(t.name||"Reise")+"</span>"+(sub ? "<small>"+esc(sub)+"</small>" : "") : "<span class=\"ls-ddn\">Reise wählen</span>")+CHEV+"</button></div>"; }
-function lsTripMenu(btn){ var ids = scopeNow("ls"), zs = zsOn();
-  var h = (ids.length > 5 ? frPickHead("Reise", "Reise suchen", "Keine Reise gefunden") : "<div class=\"vp-h\">Reise</div>")+curTopHTML("ls")+(zs ? "" : finRow())+ids.map(function(id){ var t = S.trips[id], on = id===S.cur && !isViewerOf(S.cur) && !zs;
+function lsTripMenu(btn){ var ids = scopeNow("ls").filter(function(k){ return k!==scopeCur("ls"); }), zs = zsOn();
+  var h = (ids.length > 5 ? frPickHead("Reise", "Reise suchen", "Keine Reise gefunden") : "<div class=\"vp-h\">Reise</div>")+curTopHTML("ls")+finRow()+ids.map(function(id){ var t = S.trips[id], on = id===S.cur && !isViewerOf(S.cur) && !zs;
     return "<button type=\"button\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" data-frn=\""+esc(((t.name||"")+" "+(t.start||"").slice(0, 4)).toLowerCase())+"\" role=\"menuitemradio\" aria-checked=\""+on+"\"><span class=\"ai\"><i class=\"dc-tdot\" style=\"--cc:"+tripColor(id)+"\"></i></span><span>"+esc(t.name||"Reise")+(lsTripSub(t) ? "<small class=\"ls-tsub\">"+esc(lsTripSub(t))+"</small>" : "")+"</span>"+(on ? "<span class=\"ck\">✓</span>" : "")+"</button>"; }).join("")+scopeBtns("ls");
   jpPopover("lst", btn, h, "lstrip"); }
 function renderLs(){
@@ -13165,13 +13165,13 @@ var CHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" str
 function renderTop(){
   var t = T(), zs = zsOn(), zt = zs && Z(zs);
   $("tripBtn").innerHTML = zt ? "<b>"+esc(zt.name)+"</b><span>Ziel</span>"+CHEV : "<b>"+esc(t.name)+"</b><span>"+esc(t.opt ? "Option" : rangeLabel(t.start,t.end))+"</span>"+CHEV; tripFit(); requestAnimationFrame(tripFit);
-  var h = curTopHTML("map")+(zs ? "" : finRow());
+  var h = curTopHTML("map")+finRow()+(scopeNow("map").some(function(k){ return k!==scopeCur("map"); }) ? "<hr>" : "");
   // laufende und kommende Reisen direkt, abgeschlossene und Ziele über die Knöpfe darunter
-  scopeNow("map").map(function(k){ return S.trips[k]; }).forEach(function(x){
+  scopeNow("map").filter(function(k){ return k!==scopeCur("map"); }).map(function(k){ return S.trips[k]; }).forEach(function(x){
     h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur && !zs)+"\"><span>"+esc(x.name)+"</span><small>"+tstatHTML(x)+esc(x.opt ? "" : " · "+rangeLabel(x.start,x.end))+"</small></button>";
   });
   h += scopeBtns("map")+"<hr>"+
-       (zs ? "" : acct.user && isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Reise-Details</span><small>Mitglieder</small></button>" : finRO() ? "" : "<button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button>")+"<button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
+       (zs ? "" : acct.user && isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Reise-Details</span><small>Mitglieder</small></button>" : finRO() ? "" : "<button type=\"button\" data-act=\"tripedit\">Reisedaten bearbeiten</button>")+"<button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
   $("tripMenu").innerHTML = h;
   var d = dayByKey(cur), r = "";
   if(d && allOn()) r = "<button type=\"button\" class=\"rd-day\" data-act=\"daypop\" aria-haspopup=\"dialog\" aria-label=\"Alle Tage – Tag wechseln\"><span class=\"b ab\" style=\"--dc:"+allDc()+"\"></span>Alle<span class=\"cnt\">"+days().length+" Tage</span><span class=\"chev\">"+CHEV+"</span></button>";
@@ -13241,7 +13241,7 @@ function renderDay(){
     h += "</div>";
   }
 
-  if(finRO()) return h + journalBlock(D); // abgeschlossen, Ansichtsmodus: nur das Tagebuch, Stopps erst beim Bearbeiten
+  if(finJ()) return h + journalBlock(D); // abgeschlossen, Ansichtsmodus: nur das Tagebuch, Stopps erst beim Bearbeiten
   var hn = HT ? esc(HT.n) : "";
   h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>"+(isRO() ? "Stopps" : "Route")+"</h4>"+(isRO() ? "" : "<button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+routeAnyVisible()+"\" aria-label=\"Alle Etappen auf der Karte ein- oder ausblenden\">"+(routeAnyVisible()?EYE:EYEOFF)+"<span>Karte</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>"+
        "<button type=\"button\" class=\"rtog\" data-act=\"legslist\" role=\"switch\" aria-checked=\""+legsList+"\" aria-label=\"Wege zwischen den Stopps im Tagesplan ein- oder ausblenden\"><span>Wege</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>")+"</div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
@@ -14491,7 +14491,7 @@ function renderTrip(){
     if(!t.opt) h += "<div class=\"tf-row\"><span>Abreise</span><b>"+esc(dayByKey(t.end) ? dayByKey(t.end).title : t.end)+(t.dep?" · "+esc(t.dep):"")+"</b></div>";
     (t.hotels.length ? t.hotels : t.opt ? [] : [null]).forEach(function(x, i){ h += "<div class=\"tf-row\"><span>"+(i===0?(t.hotels.length>1?"Hotels":"Hotel"):"")+"</span><b>"+(x ? esc(x.n)+"<small>"+shortD(x.from)+"–"+shortD(x.to)+"</small>" : "noch keins")+"</b></div>"; });
     t.orte.forEach(function(x, i){ h += "<div class=\"tf-row\"><span>"+(i===0?(t.orte.length>1?"Orte":"Ort"):"")+"</span><b>"+esc(x.n)+(x.from?"<small>"+shortD(x.from)+"–"+shortD(x.to)+"</small>":"")+"</b></div>"; });
-    if(!ro) h += finRO() ? "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"finedit\">Reise bearbeiten</button>" : "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"tripedit\">Reise bearbeiten</button>";
+    if(!ro) h += finRO() ? "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"finedit\">Bearbeitungsmodus</button>" : "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"tripedit\">Reise bearbeiten</button>";
     h += "</div>";
     h += shareBlock();
     if(!ro) h += offHTML();
@@ -14657,29 +14657,35 @@ function renderSheet(){
 var RO_ACTS = {"lpphoto":1,"placevis":1,"placevispick":1,"itemvis":1,"itemvispick":1,"vis":1,"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"wpark":1,"wunpark":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"stay2h":1,"staymark":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
 function isViewer(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 /* Abgeschlossene Reise: Ansicht wie für Beobachter, bis man „Reise bearbeiten“ wählt (gilt nur in dieser Sitzung und für diese Reise) */
-var finEd = "";
-function finRO(){ return !!(S && S.trips[S.cur] && !isViewerOf(S.cur) && !T().ziel && tripStatus(T())==="done" && finEd!==S.cur); }
-function finEdOn(){ return !!(S && S.trips[S.cur] && !isViewerOf(S.cur) && tripStatus(T())==="done" && finEd===S.cur); }
-// Aktuelle Auswahl (vergangene Reise oder Ziel) oben im Reise-Menü, wenn sie nicht unter den laufenden/kommenden steht
+/* Ansichts- und Bearbeitungsmodus eigener Reisen: abgeschlossene starten in der Ansicht, alle anderen im Bearbeiten.
+   Umschalten oben im Reise-Menü (Auge/Stift); gilt für die gewählte Reise, bis eine andere gewählt wird. */
+var finEd = "", finM = "";
+function ownTrip(){ return !!(S && S.trips[S.cur] && !isViewerOf(S.cur) && !T().ziel); }
+function tripMode(){ return finEd===S.cur && finM ? finM : tripStatus(T())==="done" ? "view" : "edit"; }
+function setTripMode(m){ finEd = S.cur; finM = m; }
+function finRO(){ return ownTrip() && tripMode()==="view"; }
+function finJ(){ return finRO() && tripStatus(T())==="done"; } // abgeschlossen + Ansicht: Tagesplan ist nur noch Tagebuch
+// gewählte Reise bzw. gewähltes Ziel steht immer oben im Reise-Menü, mit Haken
 function curTopHTML(ctx){
-  var cur = scopeCur(ctx), t = cur && S.trips[cur]; if(!t || scopeNow(ctx).indexOf(cur) > -1) return "";
-  if(ctx==="map") return "<button type=\"button\" class=\"tm-cur\" data-act=\"tmcur\" aria-current=\"true\"><span>"+esc(t.name||"Reise")+"</span><small>"+(t.ziel ? "Ziel" : tstatHTML(t)+esc(t.opt ? "" : " · "+rangeLabel(t.start,t.end)))+"</small></button>";
-  return "<button type=\"button\" class=\"tm-cur\" data-act=\"tmcur\" role=\"menuitemradio\" aria-checked=\"true\"><span class=\"ai\">"+(t.ziel ? "<span class=\"dc-tz\" style=\"--cc:"+tripColor(cur)+"\">"+ZBM+"</span>" : "<i class=\"dc-tdot\" style=\"--cc:"+tripColor(cur)+"\"></i>")+"</span><span>"+esc(t.name||"Reise")+"<small class=\"ls-tsub\">"+esc(t.ziel ? "Ziel" : lsTripSub(t))+"</small></span><span class=\"ck\">✓</span></button>";
+  var cur = scopeCur(ctx), t = cur && S.trips[cur]; if(!t) return "";
+  var sub = t.ziel ? "Ziel" : null;
+  if(ctx==="map") return "<button type=\"button\" class=\"tm-cur\" data-act=\"tmcur\" aria-current=\"true\"><span class=\"tm-cn\"><b>"+esc(t.name||"Reise")+"</b><small>"+(sub || tstatHTML(t)+esc(t.opt ? "" : " · "+rangeLabel(t.start,t.end)))+"</small></span><i class=\"ck\">✓</i></button>";
+  return "<button type=\"button\" class=\"tm-cur\" data-act=\"tmcur\" role=\"menuitemradio\" aria-checked=\"true\"><span class=\"ai\">"+(t.ziel ? "<span class=\"dc-tz\" style=\"--cc:"+tripColor(cur)+"\">"+ZBM+"</span>" : "<i class=\"dc-tdot\" style=\"--cc:"+tripColor(cur)+"\"></i>")+"</span><span>"+esc(t.name||"Reise")+"<small class=\"ls-tsub\">"+esc(sub || lsTripSub(t))+"</small></span><span class=\"ck\">✓</span></button>";
 }
-// Moduswechsel oben im Reise-Menü (Karte und Liste): Ansichtsmodus ↔ Bearbeitungsmodus
+// Umschalter Ansicht (Auge) / Bearbeiten (Stift) direkt unter der gewählten Reise
 function finRow(){
-  if(finRO()) return "<button type=\"button\" class=\"tm-fin\" data-act=\"finedit\">"+ic("edit", "ii")+"<span><b>Reise bearbeiten</b><small>Gerade im Ansichtsmodus</small></span></button>";
-  if(finEdOn()) return "<button type=\"button\" class=\"tm-fin on\" data-act=\"finview\">"+ic("eye", "ii")+"<span><b>Bearbeiten beenden</b><small>Zurück zum Ansichtsmodus</small></span></button>";
-  return "";
+  if(!ownTrip() || zsOn()) return "";
+  var m = tripMode(), b = function(v, ico, lbl){ return "<button type=\"button\" data-act=\"tripmode\" data-v=\""+v+"\" aria-pressed=\""+(m===v)+"\" title=\""+lbl+"smodus\">"+ic(ico, "ii")+"<span>"+lbl+"</span></button>"; };
+  return "<div class=\"tm-mode\" role=\"group\" aria-label=\"Modus\">"+b("view", "eye", "Ansicht")+b("edit", "edit", "Bearbeiten")+"</div>";
 }
 function isRO(){ return isViewer() || finRO(); }
 var roWas = null;
 function applyRO(){
-  if(finEd && finEd!==S.cur) finEd = ""; // andere Reise gewählt: Bearbeiten endet
+  if(finEd && finEd!==S.cur){ finEd = ""; finM = ""; } // andere Reise gewählt: Modus wieder Standard
   var ro = isRO(), k = ro ? S.cur : "";
   document.body.classList.toggle("ro", ro);
   // Ansicht: keine Wunschliste; abgeschlossene Reise zeigt nur das Tagebuch und heißt auch so
-  var dl = finRO() ? "Tagebuch" : "Tagesplan", sos = $("sheetOpen") && $("sheetOpen").querySelector("span"), sot = ro ? dl : "Tagesplan & Wunschliste"; if(sos && sos.textContent!==sot) sos.textContent = sot;
+  var dl = finJ() ? "Tagebuch" : "Tagesplan", sos = $("sheetOpen") && $("sheetOpen").querySelector("span"), sot = ro ? dl : "Tagesplan & Wunschliste"; if(sos && sos.textContent!==sot) sos.textContent = sot;
   var tdy = $("tabDay"); if(tdy && tdy.textContent!==dl) tdy.textContent = dl;
   if(ro && tab==="wish") tab = "day";
   if(k===roWas) return; roWas = k;
@@ -15226,8 +15232,8 @@ document.addEventListener("click", function(e){
     case "gotoday": closeCatPop(); closeJpMore(); if(jp) closeJPop(); cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
     case "trip": closeSettings(); zsSet(""); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tmcur": closeMenus(); closeJpMore(); break;
-    case "finedit": closeMenus(); closeJpMore(); finEd = S.cur; renderAll(); break;
-    case "finview": closeMenus(); closeJpMore(); finEd = ""; if(tab==="trip" && tdraft) tdraft = null; renderAll(); break;
+    case "tripmode": var tmv = t.getAttribute("data-v"); if(tmv!==tripMode()){ setTripMode(tmv); if(tmv==="view" && tab==="trip" && tdraft) tdraft = null; } closeMenus(); closeJpMore(); renderAll(); break;
+    case "finedit": closeMenus(); closeJpMore(); setTripMode("edit"); renderAll(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); break;
     case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
     case "topt": if(tdraft){ tdraft.opt = !tdraft.opt; tdraft.err = ""; if(tdraft.opt && /^hotels/.test(tdraft.ok||"")) tdraft.ok = ""; renderSheet(); } break;
@@ -15711,7 +15717,7 @@ document.addEventListener("submit", function(e){
   if(id==="tForm"){
     var err = saveTrip();
     if(err){ tdraft.err = err; renderSheet(); return; }
-    var wasNew = tdraft.mode==="new"; tdraft = null; save(); dirty(); if(wasNew) finEd = S.cur;
+    var wasNew = tdraft.mode==="new"; tdraft = null; save(); dirty(); if(wasNew) setTripMode("edit");
     if(wasNew) closeProfile(); // angelegt: direkt zur Karte; Bearbeiten bleibt über der Ursprungsansicht
     if(wasNew || !dayByKey(cur)) pickDefaultDay();
     tab = "day"; activeList = "open"; catFilter = {}; sel = null;
