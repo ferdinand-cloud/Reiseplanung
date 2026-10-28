@@ -531,9 +531,14 @@ await test("Chat: Nachricht gedrückt halten – Reaktionen, Antworten, Fixieren
   ok(["Antworten", "Kopieren", "Weiterleiten", "Fixieren", "Sticker hinzufügen", "Für dich löschen"].every(w => L.menu.includes(w)), "Menüpunkte fehlen: "+L.menu);
   ok(L.hid==="hidden" && /blur/.test(L.blur), "Original nicht ausgeblendet oder Hintergrund nicht unscharf");
   await shot("chat-gedrueckt-halten");
+  // keine iOS-Textauswahl: Verlauf, Menü und (solange offen) die ganze Seite nicht markierbar, Auswahlbeginn wird verhindert
+  ok(await rp(`var us = function(q){ var e = document.querySelector(q); return getComputedStyle(e).webkitUserSelect || getComputedStyle(e).userSelect; };
+    var ev = new Event("selectstart", {bubbles:true, cancelable:true}); document.querySelector("#chAct .cha-menu button").dispatchEvent(ev);
+    us("#chMsgs .ch-bub")==="none" && us("#chMsgs .ch-tm")==="none" && us("#chAct .cha-menu button span")==="none" && us(".top")==="none" && document.body.classList.contains("chact") && ev.defaultPrevented && String(getSelection())===""`), "Gedrückthalten erlaubt Textauswahl");
   // Herz: gespeichert als rx.u_me, klein an der Nachricht; Antippen der Reaktion entfernt sie
   await cha("rx"); await page.waitForTimeout(300);
   ok(await rp(`!$("chAct") && document.querySelector('#chMsgs .ch-msg[data-mid="m28"]').style.visibility===""`), "Menü schließt nach Reaktion nicht");
+  ok(await rp(`!document.body.classList.contains("chact") && getComputedStyle($("chIn")).userSelect!=="none"`), "Nach dem Schließen bleibt die Seite unmarkierbar oder Eingabe gesperrt");
   ok(await rp(`JSON.stringify(__upd[__upd.length-1])===JSON.stringify(["m28", {"rx.u_me":"❤️"}])`), "Reaktion nicht gespeichert: "+await rp(`JSON.stringify(__upd)`));
   ok(await rp(`var p = document.querySelector('#chMsgs .ch-msg[data-mid="m28"] .ch-rxs'); !!p && p.textContent.includes("❤️")`), "Reaktion nicht an der Nachricht");
   await tp('#chMsgs .ch-msg[data-mid="m28"] .ch-rxs'); await page.waitForTimeout(200);

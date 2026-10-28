@@ -2016,6 +2016,8 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 /* Gedrückt halten: Nachricht hervorgehoben über unscharfem Hintergrund, Reaktionen darüber, Menü darunter */
 .ch-bub,.ch-msg img,.ch-pl,.ch-phc{-webkit-touch-callout:none}
 .ch-bub{-webkit-user-select:none;user-select:none}
+/* iOS: Gedrückthalten darf keine Textauswahl/Kopieren-Leiste starten – im Verlauf, im Menü und solange es offen ist auf der ganzen Seite */
+#chMsgs,#chMsgs *,#chAct,#chAct *,body.chact *:not(input):not(textarea){-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .ch-rxs{position:relative;z-index:1;margin:-7px 8px 0;padding:1px 6px;min-height:22px;border:0;border-radius:12px;background:var(--sheet);color:var(--ink);font:13px/20px var(--f-body);box-shadow:0 0 0 2px var(--bg,var(--sheet)),0 1px 4px rgba(0,0,0,.14);cursor:pointer;display:inline-flex;align-items:center;gap:1px}
 .ch-rxs i{font-style:normal;font-size:12px;color:var(--muted);margin-left:3px}
 .ch-rxs.mine{box-shadow:0 0 0 2px var(--bg,var(--sheet)),0 0 0 3.5px color-mix(in srgb,var(--accent) 45%,transparent)}
@@ -8052,15 +8054,18 @@ function chActOpen(el){
   var ax = function(w){ return cl(mine ? r.right - w : r.left, w); };
   rx.style.left = ax(rw)+"px"; rx.style.top = (y - rh - 10)+"px"; rx.style.transformOrigin = (mine ? "right" : "left")+" bottom";
   mn.style.left = ax(mw)+"px"; mn.style.top = (y + ht + 10)+"px"; mn.style.transformOrigin = (mine ? "right" : "left")+" top";
-  el.style.visibility = "hidden";
+  el.style.visibility = "hidden"; document.body.classList.add("chact"); chNoSel();
   requestAnimationFrame(function(){ a.classList.add("on"); mm.style.transform = "translateY("+(y - r.top).toFixed(1)+"px)"; });
   try { if(navigator.vibrate) navigator.vibrate(10); } catch(x){}
   a.addEventListener("click", function(ev){ ev.stopPropagation(); var b = ev.target.closest("[data-cha]"); if(!b){ chActClose(); return; } chActDo(b.getAttribute("data-cha"), b); });
   a.addEventListener("touchmove", function(ev){ if(!ev.target.closest(".cha-rx.grid") && ev.cancelable) ev.preventDefault(); }, {passive:false});
 }
 document.addEventListener("keydown", function(e){ if(e.key==="Escape" && chActM){ e.stopPropagation(); chActClose(); } }, true);
+function chNoSel(){ try { var sl = window.getSelection(); if(sl && sl.rangeCount && !(document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName))) sl.removeAllRanges(); } catch(x){} }
+// Auswahl gar nicht erst beginnen lassen (iOS startet sie beim langen Drücken trotz user-select teils doch)
+document.addEventListener("selectstart", function(e){ var t = e.target && (e.target.nodeType===1 ? e.target : e.target.parentNode); if(t && t.closest && (chActM || t.closest("#chMsgs,#chAct"))) e.preventDefault(); }, true);
 function chActClose(now){ var o = chActM; chActM = null; if(!o) return; var a = o.a, el = o.el;
-  var fin = function(){ if(a.parentNode) a.remove(); if(el) el.style.visibility = ""; };
+  var fin = function(){ if(a.parentNode) a.remove(); if(el) el.style.visibility = ""; if(!chActM) document.body.classList.remove("chact"); chNoSel(); };
   if(now){ fin(); return; } a.classList.remove("on"); var mm = a.querySelector(".cha-msg"); if(mm) mm.style.transform = ""; setTimeout(fin, 200); }
 function chActDo(k, b){ var o = chActM; if(!o) return; var id = o.id, m = chMsgById(id);
   if(k==="rx"){ chActClose(); chReact(id, b.getAttribute("data-e")); return; }
