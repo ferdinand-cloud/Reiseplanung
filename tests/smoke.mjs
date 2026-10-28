@@ -685,6 +685,29 @@ await test("App-Demo: Mini-Bildschirme entsprechen den echten Ansichten", async 
   await rp(`closeDemo()`);
 });
 
+await test("Profil: Reise über ⋯ abschließen und wieder öffnen (vor dem Enddatum, bleibt bearbeitbar)", async () => {
+  await seed();
+  await rp(`(function(){ S.trips.t_mal = newTripObj({id:"t_mal", name:"Mallorca", start:"2027-05-01", end:"2027-05-05"}); PROF = {name:"tester"}; save(); openProfile(); })()`);
+  await page.waitForTimeout(300);
+  ok(await rp(`tripStatus(T())`)==="now", "Ausgangslage: Testreise nicht aktuell");
+  await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
+  ok((await page.locator("#jpMenu [data-act=pffin]").innerText()).includes("Reise abschließen"), "„Reise abschließen“ fehlt im ⋯-Menü");
+  await shot("reise-abschliessen-menue");
+  await click("#jpMenu [data-act=pffin]");
+  ok(await rp(`T().fin===1 && tripStatus(T())==="done" && TSTAT[tripStatus(T())]==="Abgeschlossen"`), "Reise nicht abgeschlossen");
+  ok(await rp(`scopePast("map").indexOf("t_test") > -1 && scopeNow("map").indexOf("t_test") < 0`), "Abgeschlossene Reise steht nicht unter „Vergangene Reisen“");
+  ok(await rp(`T().start <= todayKey() && T().end >= todayKey()`), "Zeitraum wurde verändert");
+  await page.locator("#profView [data-act=pfmore][data-trip=t_test]").click();
+  ok(await page.locator("#jpMenu [data-act=pfedit]").count()===1, "Abgeschlossene Reise nicht mehr bearbeitbar");
+  ok((await page.locator("#jpMenu [data-act=pffin]").innerText()).includes("Wieder öffnen"), "„Wieder öffnen“ fehlt");
+  await click("#jpMenu [data-act=pffin]");
+  ok(await rp(`!T().fin && tripStatus(T())==="now"`), "Wieder öffnen klappt nicht");
+  // Reise mit vergangenem Enddatum: kein „abschließen“ nötig
+  await rp(`S.trips.t_alt = newTripObj({id:"t_alt", name:"Alt", start:"2020-05-01", end:"2020-05-05"}); save(); renderProfile(); true`); await page.waitForTimeout(200);
+  await page.locator("#profView [data-act=pfmore][data-trip=t_alt]").click();
+  ok(await page.locator("#jpMenu [data-act=pffin]").count()===0, "Bereits abgeschlossene Reise bietet „abschließen“ an");
+});
+
 await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kachel", async () => {
   await seed();
   await rp(`(function(){ S.trips.t_mal = newTripObj({id:"t_mal", name:"Mallorca", start:"2027-05-01", end:"2027-05-05"}); PROF = {name:"tester"}; openProfile(); })()`);

@@ -4359,7 +4359,8 @@ function rangeLabel(a, b){
 }
 /* Reise-Status: Option (ohne Termin) · In Planung · Aktuell · Abgeschlossen (Enddatum vorbei) */
 var TSTAT = {opt:"Option", plan:"In Planung", now:"Aktuell", done:"Abgeschlossen"};
-function tripStatus(t){ if(!t) return "plan"; if(t.opt) return "opt"; var tk = todayKey(); if(!parseD(t.start) || !parseD(t.end)) return "plan"; return t.end < tk ? "done" : t.start <= tk ? "now" : "plan"; }
+// fin: von Hand abgeschlossen (Profil › ⋯), gilt auch vor dem Enddatum als abgeschlossen, bleibt bearbeitbar
+function tripStatus(t){ if(!t) return "plan"; if(t.fin) return "done"; if(t.opt) return "opt"; var tk = todayKey(); if(!parseD(t.start) || !parseD(t.end)) return "plan"; return t.end < tk ? "done" : t.start <= tk ? "now" : "plan"; }
 function tstatHTML(t){ var k = tripStatus(t); return "<em class=\"tst tst-"+k+"\">"+TSTAT[k]+"</em>"; }
 // Zeitraum oder „Option“ (ohne Termin)
 function tripRange(t){ return t && t.opt ? "Option · ohne Termin" : rangeLabel(t.start, t.end); }
@@ -8019,6 +8020,8 @@ function openPfMore(id, btn){
   if(!isViewerOf(id)){
     h += row("pfedit", I("<path d=\"M12.8 4.2l3 3L7.5 15.5H4.5v-3z\"/><path d=\"M11 6l3 3\"/>"), "Reise bearbeiten", "Name, Zeitraum, Hotels, Orte");
     h += row("pfshare", I("<circle cx=\"7.5\" cy=\"7\" r=\"2.8\"/><path d=\"M2.5 16c.5-2.8 2.5-4.3 5-4.3s4.5 1.5 5 4.3M15 6.5v5M12.5 9h5\"/>"), "Mitreisende &amp; Beobachter", "Freunde einladen, Rollen verwalten");
+    if(t.fin) h += row("pffin", I(IC.again), "Wieder öffnen", "Gilt wieder als aktuell oder in Planung");
+    else if(tripStatus(t)!=="done") h += row("pffin", I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M6.8 10.2l2.2 2.2 4.2-4.6\"/>"), "Reise abschließen", "Bleibt bearbeitbar, steht dann unter „Vergangene Reisen“");
   }
   jpPopover(id, btn, h, "pfmore");
 }
@@ -15114,6 +15117,9 @@ document.addEventListener("click", function(e){
     case "navdone": if(NAV && NAV.tgt.id && P(NAV.tgt.id)){ var ndid = NAV.tgt.id; T().done[ndid] = true; doneMove(ndid); save(); renderSheet(); scheduleOverlay(); toast("„"+P(ndid).n+"“ abgehakt", false); } navEnd(true); break;
     case "cbrefresh": cbLoad(true); break;
     case "pfmore": openPfMore(t.getAttribute("data-trip"), t); break;
+    case "pffin": closeJpMore(); var pft = S.trips[t.getAttribute("data-trip")]; if(!pft || isViewerOf(pft.id)) break;
+      if(pft.fin) delete pft.fin; else pft.fin = 1; save(); renderAll();
+      toast(pft.fin ? "„"+(pft.name||"Reise")+"“ ist abgeschlossen und steht unter „Vergangene Reisen“" : "„"+(pft.name||"Reise")+"“ ist wieder offen", false); break;
     case "pfcover": var cvt = t.getAttribute("data-trip"), cvv = t.getAttribute("data-v"); closeJpMore(); if(cvv==="auto") coverSave(cvt, null); else openCoverPick(cvt, cvv); break;
     case "cvmode": if(CVP){ CVP.mode = t.getAttribute("data-v"); renderCoverPick(); } break;
     case "cvcol": if(CVP){ CVP.col = t.getAttribute("data-v"); renderCoverPick(); } break;
