@@ -2013,6 +2013,36 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-rq small{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted);padding:0 6px}
 .ch-rq small svg{width:12px;height:12px}
 .ch-rqb{max-width:100%;padding:6px 12px;border-radius:16px;background:transparent;box-shadow:inset 0 0 0 1px var(--sep,var(--line));color:var(--muted);font:14px/1.3 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Gedrückt halten: Nachricht hervorgehoben über unscharfem Hintergrund, Reaktionen darüber, Menü darunter */
+.ch-bub,.ch-msg img,.ch-pl,.ch-phc{-webkit-touch-callout:none}
+.ch-bub{-webkit-user-select:none;user-select:none}
+.ch-rxs{position:relative;z-index:1;margin:-7px 8px 0;padding:1px 6px;min-height:22px;border:0;border-radius:12px;background:var(--sheet);color:var(--ink);font:13px/20px var(--f-body);box-shadow:0 0 0 2px var(--bg,var(--sheet)),0 1px 4px rgba(0,0,0,.14);cursor:pointer;display:inline-flex;align-items:center;gap:1px}
+.ch-rxs i{font-style:normal;font-size:12px;color:var(--muted);margin-left:3px}
+.ch-rxs.mine{box-shadow:0 0 0 2px var(--bg,var(--sheet)),0 0 0 3.5px color-mix(in srgb,var(--accent) 45%,transparent)}
+#chAct{position:fixed;inset:0;z-index:96;background:color-mix(in srgb,var(--sheet) 35%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3);opacity:0;transition:opacity .18s ease;touch-action:none;overflow:hidden}
+#chAct.on{opacity:1}
+#chAct .cha-msg{position:absolute;margin:0;max-width:none;pointer-events:none;transition:transform .26s cubic-bezier(.2,.9,.3,1.1);overflow:hidden}
+.cha-rx,.cha-menu{position:absolute;background:var(--sheet);box-shadow:0 10px 34px rgba(0,0,0,.2),0 0 0 .5px var(--hair,rgba(0,0,0,.08));transform:scale(.8);opacity:0;transition:transform .26s cubic-bezier(.2,1.25,.4,1),opacity .16s}
+#chAct.on .cha-rx,#chAct.on .cha-menu{transform:none;opacity:1}
+.cha-rx{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;padding:6px 8px;border-radius:30px;max-width:calc(100vw - 24px);box-sizing:border-box}
+.cha-rx button{width:44px;height:44px;border:0;border-radius:50%;background:transparent;font:28px/44px system-ui;padding:0;cursor:pointer;color:var(--muted);display:grid;place-items:center;transition:transform .12s}
+.cha-rx button:active{transform:scale(1.25)}
+.cha-rx button.sel{background:var(--fill)}
+.cha-rx .cha-more svg{width:24px;height:24px}
+.cha-rx.grid{border-radius:22px;width:min(340px,calc(100vw - 24px))}
+.cha-menu{min-width:240px;max-width:calc(100vw - 24px);border-radius:16px;padding:4px 0;overflow:hidden}
+.cha-menu>small{display:block;padding:9px 18px 5px;color:var(--muted);font-size:12.5px}
+.cha-menu button{display:flex;align-items:center;gap:14px;width:100%;padding:12px 18px;border:0;background:transparent;color:var(--ink);font:16px/1.2 var(--f-body);text-align:left;cursor:pointer}
+.cha-menu button svg{width:21px;height:21px;flex:0 0 21px}
+.cha-menu button.na{color:var(--muted)}
+.cha-menu button.na em{margin-left:auto;font-style:normal;font-size:11.5px}
+.cha-menu button.del{color:var(--del)}
+.ch-pin{position:absolute;z-index:3;left:12px;right:12px;top:calc(var(--chhd,0px) + 58px);display:flex;align-items:center;gap:10px;margin:0;padding:8px 14px;border:0;border-radius:16px;background:color-mix(in srgb,var(--sheet) 70%,transparent);-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);box-shadow:0 0 0 .5px var(--sep,var(--line)),0 4px 14px rgba(0,0,0,.08);color:var(--ink);font:14px/1.3 var(--f-body);text-align:left;cursor:pointer;min-width:0;box-sizing:border-box}
+.ch-conv.haspin>.ch-msgs{padding-top:calc(var(--chhd) + 108px)}
+.ch-pin[hidden]{display:none}
+.ch-pin svg{width:17px;height:17px;flex:0 0 17px;color:var(--accent)}
+.ch-pin span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-pin b{font-weight:600;margin-right:4px}
 .ch-msg.rhl .ch-bub,.ch-msg.rhl .ch-pl,.ch-msg.rhl .ch-phc{animation:chrhl 1.4s ease-out}
 @keyframes chrhl{0%,30%{filter:brightness(.82)}100%{filter:none}}
 .ch-pl{width:260px;max-width:100%;border-radius:16px;overflow:hidden;background:var(--sheet);box-shadow:0 0 0 .5px var(--hair),0 2px 10px rgba(0,0,0,.08)}
@@ -4213,6 +4243,10 @@ var IC = {
   del:"<path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/>", // Löschen
   close:"<path d=\"M5 5l10 10M15 5L5 15\"/>", // Schließen
   reply:"<path d=\"M8 5 3.5 9.5 8 14\"/><path d=\"M3.5 9.5H12a4.5 4.5 0 0 1 4.5 4.5v1.5\"/>", // Antworten
+  fix:"<path d=\"M12.5 3 17 7.5l-2.2.6-3.4 3.4.2 3.3-1.4 1.4-6.5-6.5 1.4-1.4 3.3.2 3.4-3.4z\"/><path d=\"M6.8 13.2 3 17\"/>", // Fixieren (Nachricht oben anheften)
+  plus:"<path d=\"M10 4.5v11M4.5 10h11\"/>", // Mehr/Hinzufügen
+  copy:"<rect x=\"7\" y=\"7\" width=\"10\" height=\"10\" rx=\"2\"/><path d=\"M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2\"/>", // Kopieren
+  sticker:"<path d=\"M16.5 10.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v8A2.5 2.5 0 0 0 6 16.5h4.5z\"/><path d=\"M16.5 10.5h-3.5a2.5 2.5 0 0 0-2.5 2.5v3.5\"/><path d=\"M7.5 8.5h.01M12 8.5h.01\"/>", // Sticker
   more:"<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>", // Mehr
   group:"<rect x=\"3\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"3\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/>", // Gruppe
   share:"<path d=\"M10 12.5V3M6.5 6.5L10 3l3.5 3.5\"/><path d=\"M5 9.5H4.5v7h11v-7H15\"/>", // Als Link teilen
@@ -7505,6 +7539,7 @@ function chWatch(){
     CH.byId = {}; CH.list.forEach(function(c){ CH.byId[c.id] = c; }); CH.got = true;
     if(chPage && chOpen && chUnread(CH.byId[chOpen] || {})) chMarkRead(chOpen);
     chBadge(); if(chPage && !chOpen) renderCh();
+    if(chPage && chOpen) chMetaUpd();
   }, function(){ CH.got = true; chBadge(); }));
 }
 var chUn = null, chUnReg = false;
@@ -7584,7 +7619,7 @@ function chSubMsgs(cid){
     if(chOpen===cid){ renderChMsgs(!had || (L1 && L1.from===me && (!L0 || L1.id!==L0.id)) ? true : undefined); if(chUnread(CH.byId[cid] || {})) chMarkRead(cid); }
   }, function(){ chMsgs = []; chMsgErr = true; if(chOpen===cid) renderChMsgs(); });
 }
-function chCloseConv(){ chPendId = null; if(VR) vrStop(false); vpStop(); if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } if((chOpen || chNewOn) && !chPopping && history.state && history.state.rpch){ chPopIgn = true; setTimeout(function(){ chPopIgn = false; }, 600); try { history.back(); } catch(e){ chPopIgn = false; } } chOpen = null; chNewOn = false; chNewQ = ""; chMsgs = []; chPickOn = false; chRe = null; chVV(); }
+function chCloseConv(){ chPendId = null; if(VR) vrStop(false); vpStop(); if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } if((chOpen || chNewOn) && !chPopping && history.state && history.state.rpch){ chPopIgn = true; setTimeout(function(){ chPopIgn = false; }, 600); try { history.back(); } catch(e){ chPopIgn = false; } } chOpen = null; chNewOn = false; chNewQ = ""; chMsgs = []; chPickOn = false; chRe = null; chActClose(true); chVV(); }
 function chWith(u){ var me = acct.user && acct.user.uid; if(!me || !u) return null; return chId(me, u); }
 function chMatch(pl){ var out = null; Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; if(t.ziel) return false; return Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = {tid:tid, pid:pid}; return true; } return false; }); }); return out; }
 function chPhotoCard(ph, key, draft){
@@ -7817,13 +7852,15 @@ var chNewMk = null;
 function chMsgsHTML(){
   var me = acct.user && acct.user.uid, h = "", lastDay = "", mk = chNewMk && chNewMk.cid===chOpen ? chNewMk : null;
   if(!chMsgs.length) return "<p class=\"note ch-empty\">Noch keine Nachrichten. Schreib etwas oder teile einen Ort mit "+ic("pin", "ii")+".</p>";
-  chMsgs.forEach(function(m, i){
+  var hid = chHidden(), L = chMsgs.filter(function(m){ return !hid[m.id]; });
+  if(!L.length) return "<p class=\"note ch-empty\">Keine Nachrichten.</p>";
+  L.forEach(function(m, i){
     var d = new Date(m.at||0).toDateString(); if(d!==lastDay){ lastDay = d; h += "<div class=\"ch-day\">"+esc(new Date(m.at||0).toLocaleDateString("de-DE", {weekday:"short", day:"numeric", month:"long"}))+"</div>"; }
     if(mk && m.from!==me && (m.at||0) > mk.at){ mk = null; h += "<div class=\"ch-new\" id=\"chNewMk\"><span>Neue Nachrichten</span></div>"; }
-    var mine = m.from===me, nx = chMsgs[i+1], tail = !nx || nx.from!==m.from || (nx.at - m.at) > 300000;
+    var mine = m.from===me, nx = L[i+1], tail = !nx || nx.from!==m.from || (nx.at - m.at) > 300000;
     h += "<div class=\"ch-msg"+(mine?" me":"")+(tail?" tail":"")+"\" data-mid=\""+esc(m.id)+"\">"+chReQuote(m)+
       (m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.vo ? chVoHTML(m) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+
-      (tail ? "<small class=\"ch-tm\">"+chTime(m.at, true)+"</small>" : "")+"</div>";
+      chRxHTML(m)+(tail ? "<small class=\"ch-tm\">"+chTime(m.at, true)+"</small>" : "")+"</div>";
   });
   return h;
 }
@@ -7879,7 +7916,7 @@ function renderCh(full){
     chVV();
   }
   if(chNewOn) renderChNew();
-  renderChMsgs(full ? true : undefined); renderChDraft(); renderChRe(); chCompUpd();
+  renderChMsgs(full ? true : undefined); renderChDraft(); renderChRe(); chCompUpd(); renderChPin();
   var cvg = el.querySelector(".ch-conv"); if(cvg) cvg.classList.toggle("gone", chGone(u));
   var pk = $("chPick"); if(pk){ pk.hidden = !chPickOn; if(chPickOn) $("chPickRes").innerHTML = chPickHTML(); }
 }
@@ -7955,6 +7992,106 @@ function chReJump(id){ var box = $("chMsgs"), e = box && box.querySelector(".ch-
   var pt = parseFloat(getComputedStyle(box).paddingTop) || 0, vis = box.clientHeight - pt;   // Bereich unter dem Kopf
   box.scrollTo({top:Math.max(0, box.scrollTop + r.top - br.top - pt - (vis - Math.min(r.height, vis)) / 2), behavior:"smooth"});
   e.classList.remove("rhl"); void e.offsetWidth; e.classList.add("rhl"); setTimeout(function(){ e.classList.remove("rhl"); }, 1500); }
+/* ---------- Gedrückt halten auf einer Nachricht: Reaktionen (rx = {uid: Emoji}, für beide sichtbar) und Menü
+   (Antworten, Kopieren, Weiterleiten, Fixieren, Für dich löschen). Fixiert und Ausgeblendet stehen im Chat-Dokument (pin, hide.uid.id). ---------- */
+var CHRX = ["❤️", "😂", "😮", "😢", "😡", "👍"],
+  CHRX2 = ["🔥", "🙏", "👏", "🥰", "😍", "🤩", "😎", "🤔", "😅", "🙌", "💯", "✨", "🎉", "😋", "🤤", "😱", "🥲", "😴", "🙈", "👀", "💪", "🤝", "✅", "❌", "📍", "🗽", "🍕", "☕", "🍷", "✈️"],
+  chActM = null;
+function chHidden(){ var me = acct.user && acct.user.uid, c = chOpen && CH.byId[chOpen]; return (c && c.hide && me && c.hide[me]) || {}; }
+function chMsgById(id){ return chMsgs.filter(function(x){ return x.id===id; })[0]; }
+function chRxHTML(m){ var rx = m.rx || {}, me = acct.user && acct.user.uid, cnt = {}, n = 0, order = [];
+  Object.keys(rx).forEach(function(u){ var e = rx[u]; if(!e) return; n++; if(!cnt[e]){ cnt[e] = 0; order.push(e); } cnt[e]++; });
+  if(!n) return ""; order.sort(function(a, b){ return cnt[b] - cnt[a]; });
+  return "<button type=\"button\" class=\"ch-rxs"+(rx[me] ? " mine" : "")+"\" data-act=\"chrxtap\" data-v=\""+esc(m.id)+"\" aria-label=\"Reaktionen: "+esc(order.join(" "))+(rx[me] ? " – antippen entfernt deine" : "")+"\">"+order.slice(0, 3).join("")+(n > 1 ? "<i>"+n+"</i>" : "")+"</button>"; }
+// Reaktion setzen/ändern; gleiche Reaktion erneut = entfernen. Sofort sichtbar, Server bestätigt per Verlauf
+function chReact(id, e){ var me = acct.user && acct.user.uid, m = chMsgById(id); if(!me || !m || !chOpen || !fbDb) return;
+  var cur = (m.rx || {})[me] || "", nv = cur===e ? "" : e, old = Object.assign({}, m.rx || {}); m.rx = Object.assign({}, m.rx || {}); if(nv) m.rx[me] = nv; else delete m.rx[me];
+  renderChMsgs(false); var o = {}; o["rx."+me] = nv;
+  fbDb.collection("chats").doc(chOpen).collection("msgs").doc(id).update(o).catch(function(err){ m.rx = old; renderChMsgs(false);
+    toast((err && err.code)==="permission-denied" ? "Reaktion nicht gespeichert: Firestore-Regeln für Reaktionen noch nicht veröffentlicht" : "Reaktion nicht gespeichert", false); }); }
+function chMetaUpd(){ var c = CH.byId[chOpen] || {}, sig = JSON.stringify(chHidden())+"|"+JSON.stringify(c.pin || null);
+  if(sig===chMetaUpd.sig) return; chMetaUpd.sig = sig; renderChPin(); if($("chMsgs")) renderChMsgs(false); }
+// Fixierte Nachricht: Leiste unter dem Kopf, Antippen springt hin
+function renderChPin(){ var cv = document.querySelector("#chView .ch-conv"), hd = cv && cv.querySelector(".ch-head"); if(!hd) return;
+  var b = $("chPinBox"), c = chOpen && CH.byId[chOpen], p = c && c.pin;
+  if(!b){ b = document.createElement("button"); b.type = "button"; b.id = "chPinBox"; b.className = "ch-pin"; b.setAttribute("data-act", "chpinjump"); hd.insertAdjacentElement("afterend", b); }
+  b.hidden = !(p && p.id); cv.classList.toggle("haspin", !b.hidden); if(b.hidden) return; b.setAttribute("data-v", p.id);
+  b.innerHTML = ic("fix")+"<span><b>Fixiert</b>"+esc(p.t || "")+"</span>"; }
+function chPinSet(id){ var m = chMsgById(id), c = CH.byId[chOpen]; if(!chOpen || !fbDb) return; var cur = c && c.pin && c.pin.id===id;
+  var pin = cur || !m ? null : {id:id, t:chReText(m), from:m.from || "", by:acct.user.uid, at:Date.now()};
+  if(c) c.pin = pin; chMetaUpd();
+  fbDb.collection("chats").doc(chOpen).update({pin:pin}).catch(function(){ toast("Fixieren fehlgeschlagen", false); });
+  toast(pin ? "Nachricht fixiert" : "Fixierung gelöst", false); }
+function chHide(id){ var me = acct.user && acct.user.uid, c = CH.byId[chOpen]; if(!me || !chOpen || !fbDb) return;
+  if(c){ c.hide = Object.assign({}, c.hide || {}); c.hide[me] = Object.assign({}, c.hide[me] || {}); c.hide[me][id] = true; }
+  var o = {}; o["hide."+me+"."+id] = true; if(c && c.pin && c.pin.id===id){ o.pin = null; c.pin = null; } if(chRe && chRe.id===id){ chRe = null; renderChRe(); }
+  chMetaUpd(); fbDb.collection("chats").doc(chOpen).update(o).catch(function(){ toast("Löschen fehlgeschlagen", false); }); }
+function chActOpen(el){
+  var id = el && el.getAttribute("data-mid"), m = id && chMsgById(id), me = acct.user && acct.user.uid; if(!m || !me) return; chActClose(true);
+  var r = el.getBoundingClientRect(), W = innerWidth, H = innerHeight, mine = m.from===me, gone = chGone(chPartner(chOpen)), c = CH.byId[chOpen], pinned = c && c.pin && c.pin.id===id;
+  // sichtbarer Bereich (bei offener Tastatur nur der Teil darüber); Statusleiste/Home-Balken freihalten
+  var vv = window.visualViewport, vT = vv ? vv.offsetTop : 0, vH = vv ? vv.height : H, top0 = vT + (vT > 0 ? 12 : 60), bot0 = H - (vT + vH) + (vH < H - 100 ? 10 : 28);
+  var a = document.createElement("div"); a.id = "chAct"; a.setAttribute("role", "dialog"); a.setAttribute("aria-modal", "true"); a.setAttribute("aria-label", "Nachricht");
+  var mm = el.cloneNode(true); mm.className = el.className.replace(/\b(rsw|rhl|tail)\b/g, "")+" cha-msg"; mm.removeAttribute("data-mid"); mm.style.transform = ""; mm.querySelectorAll("[data-act],.ch-reic,.ch-tm").forEach(function(x){ if(x.classList.contains("ch-reic") || x.classList.contains("ch-tm")) x.remove(); else x.removeAttribute("data-act"); });
+  mm.style.left = r.left+"px"; mm.style.top = r.top+"px"; mm.style.width = r.width+"px";
+  var my = (m.rx || {})[me] || "";
+  var rx = document.createElement("div"); rx.className = "cha-rx"; rx.innerHTML = gone ? "" : CHRX.map(function(e){ return "<button type=\"button\" data-cha=\"rx\" data-e=\""+e+"\""+(my===e ? " class=\"sel\"" : "")+" aria-label=\"Reaktion "+e+"\">"+e+"</button>"; }).join("")+"<button type=\"button\" class=\"cha-more\" data-cha=\"more\" aria-label=\"Weitere Reaktionen\">"+ic("plus")+"</button>";
+  var mn = document.createElement("div"); mn.className = "cha-menu"; mn.setAttribute("role", "menu");
+  var it = function(k, icn, t, cls, extra){ return "<button type=\"button\" role=\"menuitem\" data-cha=\""+k+"\""+(cls ? " class=\""+cls+"\"" : "")+">"+ic(icn)+"<span>"+t+"</span>"+(extra || "")+"</button>"; };
+  mn.innerHTML = "<small>"+esc(new Date(m.at || 0).toLocaleString("de-DE", {weekday:"short", day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}))+"</small>"+
+    (gone ? "" : it("reply", "reply", "Antworten"))+(m.t ? it("copy", "copy", "Kopieren") : "")+(m.vo ? it("fwdna", "send", "Weiterleiten", "na", "<em>bald</em>") : it("fwd", "send", "Weiterleiten"))+(gone ? "" : it("pin", "fix", pinned ? "Fixierung lösen" : "Fixieren"))+
+    it("sticker", "sticker", "Sticker hinzufügen", "na", "<em>bald</em>")+it("del", "del", "Für dich löschen", "del");
+  a.appendChild(mm); if(!gone) a.appendChild(rx); a.appendChild(mn); document.body.appendChild(a);
+  chActM = {id:id, a:a, el:el};
+  // Platz: Leiste über, Menü unter der Nachricht; passt es nicht, rückt alles zusammen ins Bild (Nachricht notfalls gekürzt)
+  var rh = gone ? 0 : rx.offsetHeight, mh = mn.offsetHeight, rw = rx.offsetWidth, mw = mn.offsetWidth, ht = r.height;
+  var lo = top0 + (rh ? rh + 10 : 0), hi = H - bot0 - mh - 10;
+  if(hi - lo < ht){ ht = Math.max(60, hi - lo); mm.style.maxHeight = ht+"px"; }
+  var y = Math.min(Math.max(r.top, lo), hi - ht);
+  var cl = function(x, w){ return Math.max(12, Math.min(W - 12 - w, x)); };
+  var ax = function(w){ return cl(mine ? r.right - w : r.left, w); };
+  rx.style.left = ax(rw)+"px"; rx.style.top = (y - rh - 10)+"px"; rx.style.transformOrigin = (mine ? "right" : "left")+" bottom";
+  mn.style.left = ax(mw)+"px"; mn.style.top = (y + ht + 10)+"px"; mn.style.transformOrigin = (mine ? "right" : "left")+" top";
+  el.style.visibility = "hidden";
+  requestAnimationFrame(function(){ a.classList.add("on"); mm.style.transform = "translateY("+(y - r.top).toFixed(1)+"px)"; });
+  try { if(navigator.vibrate) navigator.vibrate(10); } catch(x){}
+  a.addEventListener("click", function(ev){ ev.stopPropagation(); var b = ev.target.closest("[data-cha]"); if(!b){ chActClose(); return; } chActDo(b.getAttribute("data-cha"), b); });
+  a.addEventListener("touchmove", function(ev){ if(!ev.target.closest(".cha-rx.grid") && ev.cancelable) ev.preventDefault(); }, {passive:false});
+}
+document.addEventListener("keydown", function(e){ if(e.key==="Escape" && chActM){ e.stopPropagation(); chActClose(); } }, true);
+function chActClose(now){ var o = chActM; chActM = null; if(!o) return; var a = o.a, el = o.el;
+  var fin = function(){ if(a.parentNode) a.remove(); if(el) el.style.visibility = ""; };
+  if(now){ fin(); return; } a.classList.remove("on"); var mm = a.querySelector(".cha-msg"); if(mm) mm.style.transform = ""; setTimeout(fin, 200); }
+function chActDo(k, b){ var o = chActM; if(!o) return; var id = o.id, m = chMsgById(id);
+  if(k==="rx"){ chActClose(); chReact(id, b.getAttribute("data-e")); return; }
+  if(k==="more"){ var rx = o.a.querySelector(".cha-rx"), my = m && (m.rx || {})[acct.user.uid]; rx.classList.add("grid");
+    rx.innerHTML = CHRX.concat(CHRX2).map(function(e){ return "<button type=\"button\" data-cha=\"rx\" data-e=\""+e+"\""+(my===e ? " class=\"sel\"" : "")+" aria-label=\"Reaktion "+e+"\">"+e+"</button>"; }).join("");
+    var r = rx.getBoundingClientRect(), W = innerWidth; rx.style.left = Math.max(12, Math.min(W - 12 - r.width, r.left))+"px"; rx.style.top = Math.max(44, parseFloat(rx.style.top) - (r.height - 56))+"px";
+    var mn = o.a.querySelector(".cha-menu"); if(mn) mn.style.opacity = "0"; return; }
+  if(k==="sticker"){ toast("Sticker sind noch nicht verfügbar", false); return; }
+  if(k==="fwdna"){ toast("Sprachnachrichten weiterleiten ist noch nicht verfügbar", false); return; }
+  chActClose();
+  if(k==="reply") chReSet(id);
+  else if(k==="copy"){ var t = m && m.t || ""; try { navigator.clipboard.writeText(t).then(function(){ toast("Kopiert", false); }, function(){ toast("Kopieren nicht möglich", false); }); } catch(x){ toast("Kopieren nicht möglich", false); } }
+  else if(k==="fwd") chFwdOpen(id);
+  else if(k==="pin") chPinSet(id);
+  else if(k==="del") askConfirm("Für dich löschen?", "Die Nachricht verschwindet nur bei dir. "+(m && m.from===acct.user.uid ? "Dein Chatpartner sieht sie weiterhin." : "Für die andere Person bleibt sie sichtbar."), "Löschen", function(){ chHide(id); });
+}
+// Weiterleiten: Freund wählen (Suche), Nachricht samt Ort/Foto geht als neue Nachricht in dessen Chat
+var chFwd = null;
+function chFwdOpen(id){ var m = chMsgById(id); if(!m) return; if(!FR.friends.length){ toast("Folgt euch zuerst gegenseitig – dann seid ihr Freunde", false); return; }
+  chFwd = {t:m.t || "", place:m.place || null, photo:m.photo || null};
+  var cp = $("catPop"); cp.innerHTML = "<div class=\"pop-card ask-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Weiterleiten\"><div class=\"pop-head\"><h4>Weiterleiten an</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    frSearchHTML("fwd", FR.friends.filter(function(f){ return f.uid; }).map(function(f){ return {uid:f.uid, name:chName(f.uid), email:f.email}; }), "chfwdto", "", null, true)+"</div>";
+  cp.hidden = false; }
+function chFwdTo(u){ var f = chFwd; closeCatPop(); chFwd = null; if(!f || !u || !fbDb || !acct.user) return;
+  var me = acct.user.uid, cid = chId(me, u), now = Date.now(), names = {}, read = {}, isPh = !!f.photo, pl = f.photo || f.place;
+  names[me] = (PROF && PROF.name) || ""; names[u] = chName(u); read[me] = now;
+  var msg = {from:me, t:f.t, at:now, fwd:true}; if(f.photo) msg.photo = f.photo; if(f.place) msg.place = f.place;
+  var cref = fbDb.collection("chats").doc(cid), b = fbDb.batch();
+  b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:f.t.slice(0, 140), from:me, at:now, place:pl ? (isPh ? "Foto · "+pl.n : pl.n) : "", ph:isPh}, read:read}, {merge:true});
+  b.set(cref.collection("msgs").doc(), msg);
+  b.commit().then(function(){ toast("An "+atn(chName(u))+" weitergeleitet", false); }, function(){ toast("Weiterleiten fehlgeschlagen", false); }); }
 function chSend(){
   var me = acct.user && acct.user.uid, inp = $("chIn"), txt = inp ? inp.value.trim().slice(0, 4000) : "";
   if(me && chNewOn && !chOpen && (txt || chDraft)){ toast("Gib zuerst oben den Namen eines Freundes ein", false); var ni = $("chNewIn"); if(ni) try { ni.focus({preventScroll:true}); } catch(e){} return; }
@@ -8238,7 +8375,9 @@ window.addEventListener("popstate", function(e){ if(chPopIgn){ chPopIgn = false;
    In Safari bleibt der äußerste linke Rand frei: dort wischt Safari selbst zurück (führt dank Verlaufseintrag ebenfalls zur Übersicht).
    Eine Nachricht zur Mitte ziehen (eigene nach links, fremde nach rechts) = Antworten: sie folgt dem Finger (ab der Schwelle gebremst),
    das Antwort-Symbol erscheint, beim Loslassen federt sie zurück. Fremde Nachricht nach rechts = Antworten statt Zurück (Zurück bleibt am Rand). */
-(function(){ var x0 = 0, y0 = 0, t0 = 0, dx = 0, mode = 0, conv = null, under = null, rm = null, rmine = false, ric = null, rhit = false, RTH = 56;
+(function(){ var x0 = 0, y0 = 0, t0 = 0, dx = 0, mode = 0, conv = null, under = null, rm = null, rmine = false, ric = null, rhit = false, RTH = 56, lpT = 0, lpOn = false;
+  // gedrückt halten (ohne Bewegung): Reaktionen + Menü
+  function lpStop(){ clearTimeout(lpT); lpT = 0; }
   var standalone = function(){ return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone; };
   function rEnd(){ var m = rm, i = ric, go = rhit; rm = ric = null; rhit = false; mode = 0; if(!m) return;
     m.style.transition = "transform .34s cubic-bezier(.3,1.35,.5,1)"; m.style.transform = "";
@@ -8251,9 +8390,11 @@ window.addEventListener("popstate", function(e){ if(chPopIgn){ chPopIgn = false;
     if(e.target.closest && e.target.closest(".ch-comp,.ch-pick,.ch-draft,textarea,input")){ mode = -1; return; }
     rm = null; var mm = chOpen && !chGone(chPartner(chOpen)) && e.target.closest && e.target.closest("#chMsgs .ch-msg[data-mid]");
     if(mm){ rmine = mm.classList.contains("me"); if(rmine || t.clientX >= 28) rm = mm; }
+    lpStop(); lpOn = false; var lm = chOpen && e.target.closest && e.target.closest("#chMsgs .ch-msg[data-mid]");
+    if(lm) lpT = setTimeout(function(){ lpT = 0; if(mode!==0 || !lm.isConnected) return; mode = -1; rm = null; lpOn = true; chActOpen(lm); }, 430);
     if(!rm && !standalone() && t.clientX < 24){ mode = -1; return; }
     x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); dx = 0; }, {passive:true, capture:true});
-  document.addEventListener("touchmove", function(e){ if(mode < 0) return; var t = e.touches[0], ddx = t.clientX - x0, ddy = t.clientY - y0;
+  document.addEventListener("touchmove", function(e){ if(lpT){ var t1 = e.touches[0]; if(Math.abs(t1.clientX - x0) > 8 || Math.abs(t1.clientY - y0) > 8) lpStop(); } if(mode < 0) return; var t = e.touches[0], ddx = t.clientX - x0, ddy = t.clientY - y0;
     if(!mode){ if(Math.abs(ddy) > 10 && Math.abs(ddy) > Math.abs(ddx)){ mode = -1; rm = null; return; }
       if(rm && (rmine ? -ddx : ddx) > 10 && Math.abs(ddx) > Math.abs(ddy) * 1.5){ mode = 2; chSwOn = true; x0 = t.clientX; rhit = false;
         ric = document.createElement("span"); ric.className = "ch-reic"; ric.innerHTML = ic("reply"); rm.appendChild(ric); rm.classList.add("rsw"); }
@@ -8275,7 +8416,8 @@ window.addEventListener("popstate", function(e){ if(chPopIgn){ chPopIgn = false;
     var c = conv, u = under; if(!c){ reset(); return; }
     c.style.transition = "translate .22s cubic-bezier(.2,.8,.2,1)"; c.style.translate = (go ? w : 0)+"px 0"; if(u) u.style.setProperty("--d", go ? "0" : "1");
     setTimeout(function(){ if(go){ chSwOn = false; conv = under = null; chBackToList(); } else reset(); }, 230); }
-  document.addEventListener("touchend", function(){ end(false); }, {capture:true}); document.addEventListener("touchcancel", function(){ end(true); }, {capture:true});
+  document.addEventListener("touchend", function(e){ lpStop(); if(lpOn){ lpOn = false; if(e.cancelable) e.preventDefault(); } end(false); }, {capture:true, passive:false}); document.addEventListener("touchcancel", function(){ lpStop(); lpOn = false; end(true); }, {capture:true});
+  document.addEventListener("contextmenu", function(e){ var m = chPage && chOpen && e.target.closest && e.target.closest("#chMsgs .ch-msg[data-mid]"); if(!m) return; e.preventDefault(); if(!chActM) chActOpen(m); }, true);
 })();
 /* Ort aus dem Ort-Fenster im Chat teilen: erst Freund wählen */
 function chShareMenu(pid, btn){
@@ -15811,6 +15953,9 @@ document.addEventListener("click", function(e){
     case "chvoseek": vpSeek(t, e.clientX); break;
     case "vrdel": vrStop(false); break;
     case "chrejump": chReJump(t.getAttribute("data-v")); break;
+    case "chpinjump": chReJump(t.getAttribute("data-v")); break;
+    case "chrxtap": var rxm = chMsgById(t.getAttribute("data-v")), rxme = acct.user && acct.user.uid; if(rxm && (rxm.rx||{})[rxme]) chReact(rxm.id, rxm.rx[rxme]); else if(rxm){ var rxe = document.querySelector('#chMsgs .ch-msg[data-mid="'+rxm.id+'"]'); if(rxe) chActOpen(rxe); } break;
+    case "chfwdto": chFwdTo(t.getAttribute("data-uid")); break;
     case "chmap": var chpl = CHPL[t.getAttribute("data-k")]; if(chpl){ var chm = chMatch(chpl); closeChPage();
       if(chm){ if(chm.tid!==S.cur){ grpSel = ""; S.cur = chm.tid; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
         if(P(chm.pid)){ var chdk = dayOf(chm.pid); if(chdk) cur = chdk; tab = chdk ? "day" : "wish"; renderAll(); select(chm.pid); revealPoint(P(chm.pid), 16, true); } }

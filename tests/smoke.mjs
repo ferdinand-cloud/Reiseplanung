@@ -499,6 +499,91 @@ await test("Chat: Nachricht zur Mitte ziehen markiert sie zum Antworten, Zitat s
   await cdp.detach(); await rp(`closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
 });
 
+await test("Chat: Nachricht gedrückt halten – Reaktionen, Antworten, Fixieren, Weiterleiten, Für dich löschen", async () => {
+  await seed();
+  await rp(`window.__sent = []; window.__upd = []; window.__M = []; for(var i = 0; i < 30; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht "+i, at:Date.now() - (30 - i)*60000});
+    var qs = function(){ return {docs:__M.map(function(m){ return {id:m.id, data:function(){ return JSON.parse(JSON.stringify(m)); }}; })}; };
+    fbDb = {runTransaction:function(){ return new Promise(function(){}); }, batch:function(){ return {set:function(r, d){ if(d && d.from && d.at) __sent.push(d); }, update:function(){}, commit:function(){ return Promise.resolve(); }}; },
+      collection:function(){ return {doc:function(cid){ return {get:function(){ return Promise.resolve({exists:false}); }, update:function(o){ __upd.push([cid, o]); return Promise.resolve(); },
+      collection:function(n){ var q = {orderBy:function(){ return q; }, limitToLast:function(){ return q; }, doc:function(id){ return {update:function(o){ __upd.push([id, o]); return Promise.resolve(); }}; }, get:function(){ return Promise.resolve(qs()); },
+        onSnapshot:function(cb){ if(n!=="msgs" || cid!=="u1_u_me") return function(){}; window.__snap = function(){ cb(qs()); }; setTimeout(__snap, 0); return function(){}; }}; return q; }}; }}; }};
+    acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; acct.user.uid = "u_me"; FR.friends = [{uid:"u1", name:"Anna"}, {uid:"u2", name:"Bert"}];
+    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:1000, names:{u1:"Anna"}, read:{u_me:Date.now()}, last:{t:"Nachricht 29", from:"u1", at:1000}}}; CH.list = [CH.byId.u1_u_me]; CH.got = true; CHPROF.u1 = {name:"Anna"}; CHPROF.u2 = {name:"Bert"};
+    delete CHMC.u1_u_me; openChPage("u1_u_me"); true`);
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===30`), null, {timeout:4000});
+  const cdp = await page.context().newCDPSession(page);
+  const box = (id) => page.evaluate(id => { const e = document.querySelector('#chMsgs .ch-msg[data-mid="'+id+'"] .ch-bub'); if(!e) return null; const b = e.getBoundingClientRect(); return {x:(b.left + b.right) / 2, y:(b.top + b.bottom) / 2}; }, id);
+  const hold = async (id, ms = 650) => { await page.evaluate(id => { const e = document.querySelector('#chMsgs .ch-msg[data-mid="'+id+'"]'), bx = document.getElementById("chMsgs"), r = e.getBoundingClientRect(); if(r.top < 300 || r.bottom > bx.getBoundingClientRect().bottom - 20) bx.scrollTop += r.top - 420; }, id);
+    let st = -1; for(let k = 0; k < 20; k++){ await page.waitForTimeout(60); const v = JSON.stringify(await box(id)); if(v===st) break; st = v; }
+    const b = await box(id); await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:b.x, y:b.y}]}); await page.waitForTimeout(ms); await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); await page.waitForTimeout(300);
+    if(!(await rp(`!!$("chAct")`))) throw new Error("Gedrückt halten auf "+id+" öffnet kein Menü"); };
+  const tp = async (sel) => { try { await page.tap(sel, {timeout:3000}); } catch(e){ throw new Error("Antippen fehlgeschlagen: "+sel+" – "+e.message.split("\n")[0]); } };
+  const cha = (k) => tp('#chAct [data-cha="'+k+'"]');
+  // kurz antippen: kein Menü; gedrückt halten: Leiste darüber, Nachricht, Menü darunter
+  const b0 = await box("m28"); await page.touchscreen.tap(b0.x, b0.y); await page.waitForTimeout(600);
+  ok(!(await rp(`!!$("chAct")`)), "Kurzes Antippen öffnet das Menü");
+  await hold("m28");
+  const L = await page.evaluate(() => { const a = document.getElementById("chAct"); if(!a) return null; const r = (s) => a.querySelector(s).getBoundingClientRect();
+    return {on:a.classList.contains("on"), n:a.querySelectorAll(".cha-rx button").length, rxB:r(".cha-rx").bottom, mT:r(".cha-msg").top, mB:r(".cha-msg").bottom, mnT:r(".cha-menu").top, mnB:r(".cha-menu").bottom, H:innerHeight,
+      menu:a.querySelector(".cha-menu").textContent, hid:document.querySelector('#chMsgs .ch-msg[data-mid="m28"]').style.visibility, blur:getComputedStyle(a).backdropFilter}; });
+  ok(L && L.on && L.n===7, "Reaktionsleiste fehlt: "+JSON.stringify(L));
+  ok(L.rxB <= L.mT + 12 && L.mnT >= L.mB - 2 && L.mnB <= L.H, "Leiste/Menü nicht über/unter der Nachricht: "+JSON.stringify(L));
+  ok(["Antworten", "Kopieren", "Weiterleiten", "Fixieren", "Sticker hinzufügen", "Für dich löschen"].every(w => L.menu.includes(w)), "Menüpunkte fehlen: "+L.menu);
+  ok(L.hid==="hidden" && /blur/.test(L.blur), "Original nicht ausgeblendet oder Hintergrund nicht unscharf");
+  await shot("chat-gedrueckt-halten");
+  // Herz: gespeichert als rx.u_me, klein an der Nachricht; Antippen der Reaktion entfernt sie
+  await cha("rx"); await page.waitForTimeout(300);
+  ok(await rp(`!$("chAct") && document.querySelector('#chMsgs .ch-msg[data-mid="m28"]').style.visibility===""`), "Menü schließt nach Reaktion nicht");
+  ok(await rp(`JSON.stringify(__upd[__upd.length-1])===JSON.stringify(["m28", {"rx.u_me":"❤️"}])`), "Reaktion nicht gespeichert: "+await rp(`JSON.stringify(__upd)`));
+  ok(await rp(`var p = document.querySelector('#chMsgs .ch-msg[data-mid="m28"] .ch-rxs'); !!p && p.textContent.includes("❤️")`), "Reaktion nicht an der Nachricht");
+  await tp('#chMsgs .ch-msg[data-mid="m28"] .ch-rxs'); await page.waitForTimeout(200);
+  ok(await rp(`!document.querySelector('#chMsgs .ch-msg[data-mid="m28"] .ch-rxs') && __upd[__upd.length-1][1]["rx.u_me"]===""`), "Antippen entfernt eigene Reaktion nicht");
+  // Reaktion des anderen kommt über den Verlauf
+  await rp(`__M[28].rx = {u1:"😂"}; __snap(); true`); await page.waitForTimeout(150);
+  ok(await rp(`document.querySelector('#chMsgs .ch-msg[data-mid="m28"] .ch-rxs').textContent.includes("😂")`), "Reaktion des anderen nicht sichtbar");
+  // Plus: weitere Reaktionen
+  await hold("m28"); await cha("more"); await page.waitForTimeout(150);
+  ok(await rp(`document.querySelectorAll("#chAct .cha-rx.grid button").length > 25`), "Plus zeigt keine weiteren Reaktionen");
+  await tp('#chAct [data-e="🔥"]'); await page.waitForTimeout(250);
+  ok(await rp(`__upd[__upd.length-1][1]["rx.u_me"]==="🔥"`), "Weitere Reaktion nicht gespeichert");
+  // Hintergrund antippen: schließt, nichts passiert
+  const n0 = await rp(`__upd.length`); await hold("m25"); await page.touchscreen.tap(380, 150); await page.waitForTimeout(300);
+  ok(await rp(`!$("chAct") && __upd.length===${n0} && chOpen==="u1_u_me"`), "Antippen des Hintergrunds schließt nicht sauber");
+  // Antworten = gleiche Funktion wie Wischen
+  await hold("m25"); await cha("reply"); await page.waitForTimeout(250);
+  ok(await rp(`chRe && chRe.id==="m25" && !$("chReBox").hidden`), "Antworten aus dem Menü markiert nicht");
+  await page.click("#chReBox [data-act=chrex]"); await rp(`document.activeElement.blur(); true`); await page.waitForTimeout(500);
+  // Fixieren: Leiste oben, Antippen springt hin; erneut = lösen
+  await hold("m25"); await cha("pin"); await page.waitForTimeout(250);
+  ok(await rp(`var u = __upd[__upd.length-1]; u[0]==="u1_u_me" && u[1].pin && u[1].pin.id==="m25" && !$("chPinBox").hidden && $("chPinBox").textContent.includes("Nachricht 25")`), "Fixieren zeigt keine Leiste");
+  await shot("chat-fixiert");
+  await page.evaluate(() => { const b = document.getElementById("chMsgs"); b.scrollTop = b.scrollHeight; });
+  await tp("#chPinBox"); await page.waitForTimeout(800);
+  ok(await rp(`document.querySelector('#chMsgs .ch-msg[data-mid="m25"]').classList.contains("rhl")`), "Fixierte Leiste springt nicht zur Nachricht");
+  await hold("m25"); ok((await page.locator("#chAct .cha-menu").innerText()).includes("Fixierung lösen"), "Fixierte Nachricht bietet kein Lösen"); await cha("pin"); await page.waitForTimeout(250);
+  ok(await rp(`$("chPinBox").hidden && __upd[__upd.length-1][1].pin===null`), "Fixierung lösen geht nicht");
+  // Weiterleiten an Freund
+  await hold("m27"); await cha("fwd"); await page.waitForTimeout(250);
+  ok(await visible("#catPop .frs"), "Weiterleiten zeigt keine Freunde-Auswahl");
+  await tp('#catPop .frs-row[data-uid="u2"]'); await page.waitForTimeout(250);
+  ok(await rp(`var s = __sent[__sent.length-1]; !!s && s.t==="Nachricht 27" && s.fwd===true && $("catPop").hidden`), "Weiterleiten sendet nicht: "+await rp(`JSON.stringify(__sent)`));
+  // Sticker: noch nicht verfügbar
+  await hold("m27"); await cha("sticker"); await page.waitForTimeout(200);
+  ok((await page.locator("#toast").innerText()).includes("noch nicht verfügbar"), "Sticker ohne Hinweis");
+  // Für dich löschen: mit Bestätigung, dann ausgeblendet
+  await page.touchscreen.tap(380, 150); await page.waitForTimeout(250);
+  await hold("m27"); await cha("del"); await page.waitForTimeout(200);
+  ok(await visible("#cfPop"), "Löschen ohne Bestätigung");
+  await tp("#cfPop .cf-ok"); await page.waitForTimeout(250);
+  ok(await rp(`!document.querySelector('#chMsgs .ch-msg[data-mid="m27"]') && __upd[__upd.length-1][1]["hide.u_me.m27"]===true`), "Für dich löschen blendet nicht aus");
+  // Halten mit Bewegung (Scrollen) öffnet nichts
+  const b1 = await box("m25"); await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:b1.x, y:b1.y}]});
+  for(const d of [10, 25, 40]){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:b1.x, y:b1.y - d}]}); await page.waitForTimeout(20); }
+  await page.waitForTimeout(600); await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); await page.waitForTimeout(200);
+  ok(!(await rp(`!!$("chAct")`)), "Scrollen öffnet das Menü");
+  await cdp.detach(); await rp(`closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; FR.friends = []; true`);
+});
+
 await test("Anmeldung: Reisen aus dem Gerätespeicher sofort, reine Server-Bestätigung (ohne Änderung) wird übernommen", async () => {
   await seed();
   await rp(`window.__T = S.trips.t_test; window.__applied = [];
