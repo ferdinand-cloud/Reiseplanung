@@ -1531,6 +1531,9 @@ li.st .sub{margin-top:1px}
 .jp-pv{display:inline-flex;align-items:center;gap:4px;margin-left:8px;border:0;border-radius:999px;padding:3px 9px;background:var(--fill);color:var(--muted);font:600 12px/1.2 var(--f-body);vertical-align:1px}
 .jp-pv .lk{margin:0;width:12px;height:12px}
 .jp-pv.on{background:var(--ink);color:var(--sheet)}
+.jp-pv.vis-ro svg{width:12px;height:12px}
+.vis-ro{cursor:default}
+.jp-nonote{margin:2px 2px 0;color:var(--muted)}
 .jp-pv.on .lk{color:var(--sheet)}
 .jp-strip button.pv-lk{position:relative}
 .jp-strip button.pv-lk i{position:absolute;right:4px;bottom:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.55);display:grid;place-items:center}
@@ -4602,6 +4605,8 @@ function isPrivN(pid){ var pn = T().privN||{}; return isPrivP(pid) || !!(pn[root
 function phPlace(ph){ var ps = T().photos || {}, r = ""; Object.keys(ps).forEach(function(k){ if((ps[k]||[]).indexOf(ph)>-1) r = k; }); return r; }
 function isPrivPh(ph, pid){ return !!((T().privPh||{})[ph]) || isPrivP(pid || phPlace(ph)); }
 function canPriv(){ return !!acct.user && !isRO(); }
+// Sichtbarkeit sehen (nicht ändern): Besitzer und Mitreisende, auch im Ansichtsmodus abgeschlossener Reisen
+function privSee(){ return !!acct.user && !isViewer(); }
 /* Sichtbarkeit eines Orts in drei Stufen:
    privat (nur Mitreisende) · Reise (Standard: Mitreisende und Beobachter) · veröffentlicht (zusätzlich alle Freunde, wird ihnen vorgeschlagen)
    Privat und Veröffentlichen sind beide bewusste Schritte; ein Ort ist nie beides zugleich. */
@@ -4679,8 +4684,8 @@ function pubPrompt(ro, cur0, apply, toAll){
   };
   el.hidden = false; draw();
 }
-function visBtn(pid, cls, label){ if(!canPriv() || !P(pid) || P(pid).k==="hotel") return ""; var v = visOf4(pid);
-  return "<"+(cls==="ls-vis" ? "span role=\"button\" tabindex=\"0\"" : "button type=\"button\"")+" class=\""+cls+" vlv-"+v+"\" data-act=\"placevispick\" data-pid=\""+pid+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit: "+VISLBL[v]+"\" title=\"Sichtbarkeit: "+VISLBL[v]+"\">"+visIco(v)+(label ? "<span>"+VISLBL[v]+(v==="priv" && privToOf("p", pid).length ? " · "+privToOf("p", pid).length+" Beob." : "")+"</span>" : "")+"</"+(cls==="ls-vis" ? "span" : "button")+">"; }
+function visBtn(pid, cls, label){ if(!privSee() || !P(pid) || P(pid).k==="hotel") return ""; var v = visOf4(pid), ro = !canPriv();
+  return "<"+(ro ? "span role=\"img\"" : cls==="ls-vis" ? "span role=\"button\" tabindex=\"0\"" : "button type=\"button\"")+" class=\""+cls+" vlv-"+v+(ro ? " vis-ro" : "")+"\""+(ro ? "" : " data-act=\"placevispick\" data-pid=\""+pid+"\" aria-haspopup=\"menu\"")+" aria-label=\"Sichtbarkeit: "+VISLBL[v]+"\" title=\"Sichtbarkeit: "+VISLBL[v]+"\">"+visIco(v)+(label ? "<span>"+VISLBL[v]+(v==="priv" && privToOf("p", pid).length ? " · "+privToOf("p", pid).length+" Beob." : "")+"</span>" : "")+"</"+(ro || cls==="ls-vis" ? "span" : "button")+">"; }
 function openPlaceVis(pid, btn){
   var cur0 = visOf4(pid), vis1 = wasVisited(pid);
   var h = "<div class=\"vp-h\">Ort sichtbar für</div>"+["priv","trip","pub","all"].map(function(v){
@@ -13411,6 +13416,8 @@ function renderJPop(){
        (p.k==="hotel" && pv0 ? ILOCK : I(IC.more))+"</button>";
   h += "</div>";
   if(p.note || (hasLoc(p) && ohInfo(p))) h += "<div class=\"jp-info\">"+(p.note ? "<p class=\"note\">"+esc(p.note)+"</p>" : "")+ohLine(p, jp.dk || dayOf(jp.pid), true)+"</div>";
+  if(!canPriv() && privSee() && p.k!=="hotel"){ var vr = visOf4(jp.pid);
+    h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Sichtbarkeit<span class=\"jp-pv vis-ro vlv-"+vr+(vr==="priv" ? " on" : "")+"\">"+visIco(vr)+VISLBL[vr]+"</span></div></div>"; }
   if(canPriv() && p.k!=="hotel"){ var vv = visOf(jp.pid), vis1 = wasVisited(jp.pid);
     h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Sichtbarkeit</div><div class=\"vis-seg\" role=\"radiogroup\" aria-label=\"Sichtbarkeit\">"+
       [["priv", ILOCK+"Privat", "nur Mitreisende"], ["trip", VISTRIP+"Reise", "+ Beobachter"], ["pub", VISPUB+"Freunde", vis1 ? "veröffentlicht" : "nach Besuch"]].map(function(o){
@@ -13419,11 +13426,12 @@ function renderJPop(){
       (vv==="pub" ? "<button type=\"button\" class=\"vis-all"+(isPubA(jp.pid) ? " on" : "")+"\" data-act=\"vis\" data-v=\""+(isPubA(jp.pid) ? "pub" : "all")+"\" aria-pressed=\""+isPubA(jp.pid)+"\">"+VISALL+"<span><b>Auch öffentlich</b><small>"+(isPubA(jp.pid) ? "alle Nutzer sehen den Ort in Entdecken" : "für alle Nutzer in Entdecken zeigen")+"</small></span><i>"+(isPubA(jp.pid) ? "✓" : "")+"</i></button>" : "")+
       (vv!=="priv" ? "<p class=\"note vis-hint\">"+(vv==="pub" ? "Freunde sehen Ort und Bewertung. Notiz und Fotos gibst du über das Auge einzeln für Freunde frei." : "Notiz und Fotos stellst du über das Auge einzeln auf Privat oder Reise.")+"</p>" : "")+
       (vv==="pub" && !recShare ? "<p class=\"note\" style=\"margin:6px 2px 0\">Teilen mit Freunden ist in den Einstellungen ausgeschaltet – der Ort wird erst geteilt, wenn du es wieder einschaltest.</p>" : "")+"</div>"; }
-  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : (function(){ var nv = itemVis("n", rootOf(jp.pid), jp.pid); return "<button type=\"button\" class=\"jp-pv vlv-"+nv+"\" data-act=\"itemvispick\" data-k=\"n\" data-key=\""+rootOf(jp.pid)+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit der Notiz: "+VISLBL[nv]+"\">"+IEYE+VISLBL[nv]+"</button>"; })()) : "")+"</div><textarea id=\"nText\" class=\"jp-t\" data-note=\""+rootOf(jp.pid)+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(noteOf(jp.pid))+"</textarea></div>";
+  var ntx = noteOf(jp.pid);
+  h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Notizen"+(!canPriv() && privSee() && ntx ? (function(){ var nv = isPrivP(jp.pid) ? "priv" : itemVis("n", rootOf(jp.pid), jp.pid); return "<span class=\"jp-pv vis-ro vlv-"+nv+(nv==="priv" ? " on" : "")+"\">"+visIco(nv)+VISLBL[nv]+"</span>"; })() : "")+(canPriv() ? (isPrivP(jp.pid) ? "<span class=\"jp-pv on\">"+ILOCK+"privat</span>" : (function(){ var nv = itemVis("n", rootOf(jp.pid), jp.pid); return "<button type=\"button\" class=\"jp-pv vlv-"+nv+"\" data-act=\"itemvispick\" data-k=\"n\" data-key=\""+rootOf(jp.pid)+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit der Notiz: "+VISLBL[nv]+"\">"+IEYE+VISLBL[nv]+"</button>"; })()) : "")+"</div>"+(isRO() && !ntx ? "<p class=\"note jp-nonote\">Noch keine Notiz.</p></div>" : "<textarea id=\"nText\" class=\"jp-t\" data-note=\""+rootOf(jp.pid)+"\" rows=\"3\" maxlength=\"5000\""+(isRO() ? " readonly" : "")+" placeholder=\""+(isRO() ? "Noch keine Notiz." : "")+(isRO() ? "" : dn ? "Was hast du hier erlebt?" : "Was willst du hier machen, probieren oder kaufen?")+"\">"+esc(ntx)+"</textarea></div>");
   var qn = (function(){ var q = phQueue(); return ph.filter(function(x){ return q.up.indexOf(x) > -1; }).length; })();
   h += "<div class=\"jp-sec\"><div class=\"jp-lbl\">Fotos"+(ph.length ? " · "+ph.length : "")+(qn ? "<small> · "+qn+" noch nicht hochgeladen</small>" : "")+"</div><div class=\"jp-strip\">"+
        "<label class=\"jp-add\" for=\"phIn\"><span>＋</span></label>"+
-       ph.map(function(x){ var own = phPlace(x), od = own && own!==jp.pid ? dayByKey(dayOf(own)) : null; return "<button type=\"button\" data-act=\"phview\" data-ph=\""+x+"\""+(canPriv() && isPrivPh(x, own || jp.pid) ? " class=\"pv-lk\"" : "")+"><img data-ph=\""+x+"\" alt=\"Foto\">"+(canPriv() && isPrivPh(x, own || jp.pid) ? "<i>"+ILOCK+"</i>" : canPriv() && itemVis("ph", x, own || jp.pid)==="pub" ? "<i class=\"vp\">"+VISPUB+"</i>" : "")+(od ? "<em class=\"phday\" style=\"background:"+dayColor(od)+"\">"+esc(shortD(od.key))+"</em>" : "")+"</button>"; }).join("")+
+       ph.map(function(x){ var own = phPlace(x), od = own && own!==jp.pid ? dayByKey(dayOf(own)) : null; return "<button type=\"button\" data-act=\"phview\" data-ph=\""+x+"\""+(privSee() && isPrivPh(x, own || jp.pid) ? " class=\"pv-lk\"" : "")+"><img data-ph=\""+x+"\" alt=\"Foto\">"+(privSee() && isPrivPh(x, own || jp.pid) ? "<i>"+ILOCK+"</i>" : privSee() && itemVis("ph", x, own || jp.pid)==="pub" ? "<i class=\"vp\">"+VISPUB+"</i>" : "")+(od ? "<em class=\"phday\" style=\"background:"+dayColor(od)+"\">"+esc(shortD(od.key))+"</em>" : "")+"</button>"; }).join("")+
        "</div><input type=\"file\" id=\"phIn\" accept=\"image/*,image/heic,image/heif\" multiple hidden>"+
        "<p class=\"note pherr\" id=\"jpPhErr\" hidden><span></span> <button type=\"button\" class=\"tf-link\" data-act=\"phretry\">Erneut laden</button></p></div>";
   if(hasLoc(p)) h += rvSection(p);
@@ -13457,6 +13465,7 @@ function phMetaHTML(ph){
     h += "<button type=\"button\" class=\"pvi"+(pvCm?" on":"")+"\" data-act=\"pvcm\" aria-expanded=\""+pvCm+"\" aria-label=\"Kommentare\">"+SV(IC.comment)+"<span>"+(C.length || "")+"</span></button>";
   }
   var mpid = phPlace(ph) || (jp && jp.pid); if(mpid && P(mpid) && hasLoc(P(mpid))) h += "<button type=\"button\" class=\"pvi\" data-act=\"phmap\" data-pid=\""+mpid+"\" aria-label=\"Auf der Karte zeigen\">"+MAPICO+"</button>";
+  if(!canPriv() && privSee() && jp){ var phr = isPrivPh(ph, phPlace(ph) || jp.pid) ? "priv" : itemVis("ph", ph, phPlace(ph) || jp.pid); h += "<span class=\"pvi pv-vis vis-ro vlv-"+phr+"\" role=\"img\" aria-label=\"Sichtbarkeit des Fotos: "+VISLBL[phr]+"\" title=\""+VISLBL[phr]+"\">"+visIco(phr)+"</span>"; }
   if(canPriv() && jp){ var phv = itemVis("ph", ph, phPlace(ph) || jp.pid);
     h += "<button type=\"button\" class=\"pvi pv-vis vlv-"+phv+"\" data-act=\"itemvispick\" data-k=\"ph\" data-key=\""+ph+"\" aria-haspopup=\"menu\" aria-label=\"Sichtbarkeit des Fotos: "+VISLBL[phv]+"\" title=\""+VISLBL[phv]+"\">"+visIco(phv)+"</button>";
   }

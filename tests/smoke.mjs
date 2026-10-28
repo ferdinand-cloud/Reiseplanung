@@ -751,6 +751,15 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await page.locator("#body .jc-t.empty").count()===0, "Hinweis „Tippen, um Notizen … hinzuzufügen“ im Ansichtsmodus");
   ok(await page.locator("#body [data-act=rtoggle]").count()===0, "Routen-Schalter in der Ansicht sichtbar");
   ok(await page.locator("#tabWish").isHidden(), "Wunschliste in der Ansicht sichtbar");
+  // Ort-Detail im Ansichtsmodus: Sichtbarkeit nur anzeigen, leere Notiz kompakt
+  await rp(`T().notes = {p5:"Toller Blick"}; openJPop("p4", dayOf("p4")); true`); await page.waitForTimeout(250);
+  ok(await page.locator("#jPop .jp-lbl .vis-ro").count() > 0 && await page.locator("#jPop [data-act=vis]").count()===0, "Sichtbarkeit im Ansichtsmodus nicht (nur lesend) zu sehen");
+  ok(await page.locator("#jPop textarea#nText").count()===0 && await page.locator("#jPop .jp-nonote").isVisible(), "Leere Notiz im Ansichtsmodus nicht kompakt");
+  ok(await page.locator("#jPop .jp-strip [data-act=phview]").count() > 0, "Fotos fehlen");
+  await shot("abgeschlossen-ort");
+  await rp(`closeJPop(); openJPop("p5", dayOf("p5")); true`); await page.waitForTimeout(250);
+  ok(await page.locator("#jPop textarea#nText[readonly]").count()===1 && await page.locator("#jPop .jp-lbl .vis-ro").count()===2, "Notiz-Sichtbarkeit im Ansichtsmodus fehlt");
+  await rp(`closeJPop(); true`);
   ok(await rp(`$("sheetOpen").textContent.trim()==="Tagebuch" && $("tabDay").textContent==="Tagebuch"`), "Knopf unten/Reiter heißen im Ansichtsmodus nicht „Tagebuch“");
   await click("#tripBtn");
   ok(await page.locator("#tripMenu > .tm-fin[data-act=finedit]").isVisible() && await page.locator("#tripMenu [data-act=tripedit]").count()===0, "Reise-Menü bietet nicht „Reise bearbeiten“ (oben, hervorgehoben) an");
