@@ -2069,6 +2069,16 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-pla .ch-map{width:32px;height:32px;flex:0 0 32px;background:var(--fill)}
 .ch-pla .btn{white-space:nowrap}
 .ch-draft{padding:6px 12px 0}
+.ch-conv .ch-hbtn{margin-left:auto;width:40px;height:40px;flex:0 0 40px;border:0;border-radius:50%;display:grid;place-items:center;color:var(--ink);cursor:pointer;background:color-mix(in srgb,var(--sheet) 62%,transparent);-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);box-shadow:0 0 0 .5px var(--sep,var(--line)),0 4px 14px rgba(0,0,0,.08)}
+.ch-conv .ch-hbtn svg{width:20px;height:20px}
+.ch-pls{width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 48px);display:flex;flex-direction:column}
+.ch-plsmap{height:min(240px,32dvh);flex:0 0 auto;border-radius:14px;overflow:hidden;margin:0 0 8px;background:var(--fill)}
+.ch-plsl{overflow:auto;min-height:0;flex:1 1 auto}
+.ch-plsl .ls-row.hl{animation:chret 1.7s ease-out}
+.ch-plsn,.ch-plsmk{width:24px;height:24px;flex:0 0 24px;border-radius:50%;display:grid;place-items:center;background:var(--cc);color:#fff;font:700 12px/1 var(--f-body)}
+.ch-plsmk{border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);padding:0;cursor:pointer}
+.ch-plsl .cic{width:26px;height:26px;flex:0 0 26px;border-radius:8px;display:grid;place-items:center;color:var(--cc);background:color-mix(in srgb,var(--cc) 14%,transparent);margin-left:auto}
+.ch-plsl .cic svg{width:15px;height:15px}
 .ch-sug{display:flex;align-items:center;gap:6px;margin:6px 12px 0;min-width:0}
 .ch-sug[hidden]{display:none}
 .ch-sugb{all:unset;box-sizing:border-box;flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:14px;background:var(--fill);cursor:pointer}
@@ -7951,7 +7961,8 @@ var CHSENDIC = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"
 var CHBACK = "<button type=\"button\" class=\"ch-back\" data-act=\"chback\" aria-label=\"Zurück zu den Chats\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.5 4.5 7 10l5.5 5.5\"/></svg></button>";
 function chPartner(cid){ var me = acct.user && acct.user.uid, c = CH.byId[cid]; return c ? chOther(c) : String(cid).split("_").filter(function(x){ return x!==me; })[0]; }
 // Kopf: im neuen Chat das Empfängerfeld („An:“), sonst Bild und Name
-function chHeadIn(u){ return CHBACK+(chNewOn ? "<div class=\"ch-to\"><label for=\"chNewIn\">An:</label><input type=\"text\" id=\"chNewIn\" placeholder=\"Name\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" enterkeyhint=\"next\" value=\""+esc(chNewQ)+"\"></div>" : chAv(u, "ch-av sm")+"<b>"+esc(atn(chName(u)))+"</b>"); }
+function chHeadIn(u){ return CHBACK+(chNewOn ? "<div class=\"ch-to\"><label for=\"chNewIn\">An:</label><input type=\"text\" id=\"chNewIn\" placeholder=\"Name\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" enterkeyhint=\"next\" value=\""+esc(chNewQ)+"\"></div>" : chAv(u, "ch-av sm")+"<b>"+esc(atn(chName(u)))+"</b>"+CHPLBTN); }
+var CHPLBTN = "<button type=\"button\" class=\"ch-hbtn\" data-act=\"chplaces\" aria-label=\"Geteilte Orte auf der Karte\" title=\"Geteilte Orte\">"+ic("map")+"</button>";
 /* Neuer Chat: wer infrage kommt – Freunde und alle, mit denen es schon einen Chat gibt */
 function chCands(){ var seen = {}, out = [];
   FR.friends.forEach(function(f){ if(f.uid && !seen[f.uid]){ seen[f.uid] = 1; out.push(f.uid); } });
@@ -8074,6 +8085,31 @@ function chSugOk(){ var o = CHSUG.cur; if(!o) return; chSugSet(null);
 // empfangene/gesendete Textnachricht mit Karten-Link (mit Koordinaten): Ort-Karte darunter
 function chLinkCard(m){ if(!m.t || m.place || m.photo || m.day || m.t.indexOf("http") < 0) return ""; var L = chLinkPl(m.t); if(!L || L.la==null) return "";
   var key = m.id+"~l"; CHPL[key] = L; return chPlaceCard(L, esc(key)); }
+/* ---------- Geteilte Orte eines Chats: alle Ort-Karten, Orte aus Links und Stopps geteilter Tage auf einer kleinen Karte mit Liste ---------- */
+var CHPLS = {map:null, mks:[]};
+function chPlsList(){ var out = [], hid = chHidden();
+  var add = function(pl, key, m){ if(!pl || !hasLoc(pl)) return; if(out.some(function(x){ return dist(x.pl, pl) < 60 && norm(x.pl.n).slice(0, 6)===norm(pl.n).slice(0, 6); })) return; CHPL[key] = pl; out.push({pl:pl, key:key, from:m.from, at:m.at}); };
+  chMsgs.slice().reverse().forEach(function(m){ if(hid[m.id]) return;
+    if(m.place) add(m.place, m.id, m);
+    if(m.day && m.day.st) m.day.st.forEach(function(st, i){ add(st, m.id+"~d"+i, m); });
+    if(m.t && !m.place && m.t.indexOf("http") > -1){ var L = chLinkPl(m.t); if(L && L.la!=null) add(L, m.id+"~l", m); } });
+  return out; }
+function chPlsStop(){ CHPLS.mks.forEach(function(m){ m.remove(); }); CHPLS.mks = []; if(CHPLS.map){ try { CHPLS.map.remove(); } catch(e){} CHPLS.map = null; } }
+function chPlsOpen(){ if(!chOpen) return; var L = chPlsList(), me = acct.user && acct.user.uid, cp = $("catPop");
+  cp.innerHTML = "<div class=\"pop-card ch-pls\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Geteilte Orte\"><div class=\"pop-head\"><h4>Geteilte Orte"+(L.length ? " · "+L.length : "")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    (L.length ? "<div class=\"ch-plsmap\" id=\"chPlsMap\"></div><div class=\"ls-list ch-plsl\">"+L.map(function(x, i){ var inT = chMatch(x.pl);
+      return "<button type=\"button\" class=\"ls-row\" data-act=\"chplsgo\" data-k=\""+esc(x.key)+"\"><span class=\"ch-plsn\" style=\"--cc:"+catCol(x.pl.c)+"\">"+(i+1)+"</span><span class=\"ls-t\"><b>"+esc(x.pl.n)+"</b><small>"+esc((x.from===me ? "von dir" : "von "+atn(chName(x.from)))+" · "+chTime(x.at))+(inT ? " · ✓ in deiner Reise" : "")+"</small></span><span class=\"cic\" style=\"--cc:"+catCol(x.pl.c)+"\">"+icon(x.pl.c)+"</span></button>"; }).join("")+"</div>"
+      : "<p class=\"note\">In diesem Chat wurden noch keine Orte geteilt. Teile einen Ort mit "+ic("pin", "ii")+" oder schick einen Karten-Link.</p>")+"</div>";
+  cp.hidden = false; chPlsStop();
+  var el = $("chPlsMap"); if(!el || !window.maplibregl) return;
+  var b = new maplibregl.LngLatBounds(); L.forEach(function(x){ b.extend([x.pl.lo, x.pl.la]); });
+  try {
+    var m = CHPLS.map = new maplibregl.Map({container:el, style:STYLE_URL, bounds:b, fitBoundsOptions:{padding:40, maxZoom:15}, attributionControl:false, dragRotate:false, touchPitch:false, pitchWithRotate:false, maxPitch:0, fadeDuration:0, maxTileCacheSize:40, pixelRatio:Math.min(2, window.devicePixelRatio || 1)});
+    L.forEach(function(x, i){ var e = document.createElement("button"); e.type = "button"; e.className = "ch-plsmk"; e.style.setProperty("--cc", catCol(x.pl.c)); e.textContent = i+1; e.setAttribute("aria-label", x.pl.n);
+      e.addEventListener("click", function(ev){ ev.stopPropagation(); var r = document.querySelector(".ch-plsl [data-k=\""+x.key+"\"]"); if(r){ r.scrollIntoView({block:"nearest", behavior:reduceMotion ? "auto" : "smooth"}); r.classList.remove("hl"); void r.offsetWidth; r.classList.add("hl"); } });
+      CHPLS.mks.push(new maplibregl.Marker({element:e}).setLngLat([x.pl.lo, x.pl.la]).addTo(m)); });
+  } catch(e){ el.remove(); }
+}
 /* Antworten: chRe = markierte Nachricht {id, from, t (Kurztext)}; wird als re mit der Antwort gespeichert */
 var chRe = null;
 function chReText(m){ return ((m.t || "").replace(/\s+/g, " ").trim() || (m.vo ? "Sprachnachricht · "+vrFmt(m.vo.d) : m.photo ? "Foto · "+(m.photo.n||"") : m.place ? "Ort · "+(m.place.n||"") : m.day ? "Tag · "+(m.day.dt||"") : "Nachricht")).slice(0, 140); }
@@ -16012,7 +16048,7 @@ function openDayPop(forId, mv){
   $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
 }
-function closeCatPop(){ $("catPop").hidden = true; locSt = null; TK = null; EV = null; }
+function closeCatPop(){ chPlsStop(); $("catPop").hidden = true; locSt = null; TK = null; EV = null; }
 function endPick(){ pick = null; $("pick").hidden = true; if(viaPick) endViaPick(); if(vmPick) endVmPick(); }
 /* Wegpunkt per Karte einer Strecke zuordnen: die beiden Punkte antippen, zwischen denen er liegen soll */
 var vmPick = null;
@@ -16117,6 +16153,8 @@ document.addEventListener("click", function(e){
     case "chdayto": chDayTo(t.getAttribute("data-uid"), t.getAttribute("data-day")); break;
     case "chmap": chShowPl(CHPL[t.getAttribute("data-k")]); break;
     case "chsugok": chSugOk(); break;
+    case "chplaces": chPlsOpen(); break;
+    case "chplsgo": var cpk = CHPL[t.getAttribute("data-k")]; closeCatPop(); chShowPl(cpk); break;
     case "chsugx": if(CHSUG.cur) CHSUG.off[CHSUG.cur.k] = 1; chSugSet(null); break;
     case "chwish": chAddPlace(t.getAttribute("data-k"), null); break;
     case "chplan": var chk0 = t.getAttribute("data-k"); jpPopover("ch", t, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"chday\" data-k=\""+esc(chk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "chplan"); break;

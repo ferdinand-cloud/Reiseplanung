@@ -3819,6 +3819,22 @@ await test("Chat: Ortsnamen und Karten-Links im Text werden als Ort-Karte vorges
     a && a.n==="Eiffelturm" && a.la===48.8584 && b && b.q==="Katz's Delicatessen" && !c`), "Link-Erkennung falsch");
   await rp(`closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
 });
+await test("Chat: geteilte Orte des Chats auf einer Karte mit Liste, Antippen zeigt den Ort", async () => {
+  await seed();
+  await rp(`window.__M = [{id:"m1", from:"u1", t:"", at:Date.now()-300000, place:{n:"Russ & Daughters", c:"essen", la:40.7224, lo:-73.9882, addr:"Houston St"}},
+    {id:"m2", from:"u_me", t:"https://maps.apple.com/?ll=40.7484,-73.9857&q=Empire%20State", at:Date.now()-200000},
+    {id:"m3", from:"u1", t:"", at:Date.now()-100000, day:{dn:2, dt:"Dienstag, 2. Juni", trip:"X", km:0, st:[{n:"Russ & Daughters", c:"essen", la:40.7224, lo:-73.9882}, {n:"Katz Deli", c:"essen", la:40.7223, lo:-73.9874}]}}]; ${CHMOCK} openChPage("u1_u_me"); true`);
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===3`), null, {timeout:4000});
+  await page.tap("#chView .ch-head [data-act=chplaces]"); await page.waitForTimeout(400);
+  const r = await rp(`var rows = [].map.call(document.querySelectorAll("#catPop .ch-plsl .ls-row b"), function(b){ return b.textContent; }); JSON.stringify({rows:rows, map:!!$("chPlsMap"), mk:document.querySelectorAll("#chPlsMap .ch-plsmk").length})`);
+  const o = JSON.parse(r);
+  ok(o.rows.length===3 && o.rows.includes("Russ & Daughters") && o.rows.includes("Empire State") && o.rows.includes("Katz Deli") && o.map && o.mk===3, "Liste/Karte falsch (doppelte Orte zusammengefasst?): "+r);
+  ok(await rp(`document.querySelector("#catPop .ch-plsl").textContent.includes("in deiner Reise")`), "Hinweis „in deiner Reise“ fehlt bei Katz Deli");
+  await shot("chat-geteilte-orte");
+  await page.tap('#catPop .ch-plsl .ls-row:has-text("Empire State")'); await page.waitForTimeout(300);
+  ok(await rp(`$("catPop").hidden && !chPage && sel==="poi" && poiSel.n==="Empire State" && !CHPLS.map`), "Antippen zeigt den Ort nicht auf der Karte oder Pop-up/Karte bleibt");
+  await rp(`CH.byId = {}; CH.list = []; CHMC = {}; true`);
+});
 await test("Chat: Kopf ohne Balken, Verlauf scrollt darunter durch und blendet oben weich aus, Knöpfe als Glas-Kreise", async () => {
   await seed();
   await rp(`window.__M = []; for(var i = 0; i < 30; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht Nummer "+i+" mit etwas mehr Text, damit sie umbricht", at:Date.now() - (30 - i)*60000});
