@@ -442,8 +442,16 @@ await test("Anmeldung: erst Reisen laden, dann Startseite – kein „Noch keine
   const h0 = await page.evaluate(() => document.getElementById("gate").innerHTML);
   await rp(`renderGate(); true`);
   ok(await page.evaluate(h => document.getElementById("gate").innerHTML===h, h0), "Ladeanzeige wird neu gezeichnet (Flackern)");
-  await rp(`bootDone(); true`); await page.waitForTimeout(100);
-  ok(await rp(`$("gate").hidden && !document.body.classList.contains("gated") && !acct.boot`), "Nach dem Laden bleibt die Ladeanzeige stehen");
+  // Verbindungsfehler (z. B. Token noch nicht bestätigt) und leerer Serverstand beenden das Warten nicht sofort
+  await rp(`window.__t0 = S.trips; S = {trips:{}, cur:null}; acctApply([]); true`); await page.waitForTimeout(300);
+  ok(await rp(`acct.boot && !$("gate").hidden`), "Leerer Zwischenstand beendet die Ladeanzeige");
+  // Reisen kommen an: Ladeanzeige weg, Startseite mit Reise (kein „Noch keine Reise“)
+  await rp(`acctApply([{id:"t_test", data:__t0.t_test, updated_at:new Date().toISOString()}]); true`); await page.waitForTimeout(150);
+  ok(await rp(`$("gate").hidden && !document.body.classList.contains("gated") && !acct.boot && !noTrip()`), "Nach dem Laden bleibt die Ladeanzeige stehen oder keine Reise");
+  ok(await page.locator("#sheet .notrip, .notrip h2").count()===0, "„Noch keine Reise“ erscheint trotz geladener Reise");
+  // neues Konto ohne Reisen: nach kurzem Warten „Noch keine Reise“
+  await rp(`bootWait(); renderGate(); S = {trips:{}, cur:null}; acctApply([]); true`); await page.waitForTimeout(4400);
+  ok(await rp(`!acct.boot && $("gate").hidden`), "Neues Konto ohne Reisen bleibt in der Ladeanzeige hängen");
 });
 
 await test("Foto im Chat schicken: Freunde-Suche filtert, Menü bleibt offen", async () => {
