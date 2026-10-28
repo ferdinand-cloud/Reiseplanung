@@ -1904,12 +1904,16 @@ await test("Chat: Sprachnachricht gedrückt halten, links abbrechen, oben festst
   const tStart = (x, y) => cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x, y}]});
   const tMove = async (x, y) => { await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x, y}]}); await page.waitForTimeout(30); };
   const tEnd = () => cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]});
-  await rp(`document.activeElement && document.activeElement.blur(); true`); await page.waitForTimeout(600);
-  const rb = await page.evaluate(() => { const r = document.querySelector("#chView .ch-rec").getBoundingClientRect(); return {x:r.left + r.width/2, y:r.top + r.height/2}; });
+  await rp(`document.activeElement && document.activeElement.blur(); true`);
+  // Eingabezeile gleitet nach dem Schließen der Tastatur zurück: warten, bis der Knopf unten still steht
+  let rb = null;
+  for(let i = 0; i < 60; i++){ await page.waitForTimeout(150);
+    const r = await page.evaluate(() => { const r = document.querySelector("#chView .ch-rec").getBoundingClientRect(); return {x:r.left + r.width/2, y:r.top + r.height/2, b:r.bottom > innerHeight - 70}; });
+    if(rb && r.b && r.x===rb.x && r.y===rb.y) break; rb = r; }
   const vos = () => rp(`__set.filter(function(s){ return s.d && s.d.vo; }).length`);
   // 1) gedrückt halten → Aufnahme läuft (Zeit, Live-Wellenform, Abbrechen-Hinweis), loslassen → gesendet
   await tStart(rb.x, rb.y);
-  await page.waitForFunction(() => window.__rp(`!!VR && VR.st==="rec"`), null, {timeout:8000});
+  await page.waitForFunction(() => window.__rp(`!!VR && VR.st==="rec"`), null, {timeout:8000, polling:100}).catch(async e => { throw new Error("Warten 1: "+e.message); });
   await page.waitForTimeout(1600);
   ok(await visible("#chVRec") && await rp(`$("chVRec").querySelectorAll(".ch-vlive i").length > 5 && /0:0[1-4]/.test($("chVRec").querySelector(".ch-vtm").textContent) && $("chVRec").textContent.includes("Abbrechen")`), "Aufnahme-Leiste fehlt oder ohne Zeit/Wellenform: "+await rp(`$("chVRec").textContent`));
   ok(await visible("#chView .ch-vlk"), "Hinweis zum Feststellen fehlt");
@@ -1922,12 +1926,12 @@ await test("Chat: Sprachnachricht gedrückt halten, links abbrechen, oben festst
   ok(sent.aud==="data:audio/" && sent.audAt===false && sent.audFrom==="u_me", "Ton-Dokument falsch (ohne „at“, mit from): "+JSON.stringify(sent));
   ok(/^Sprachnachricht · 0:0\d$/.test(sent.last) && sent.idle, "Chat-Übersicht/Zustand nach dem Senden falsch: "+JSON.stringify(sent));
   // 2) nach links ziehen → verworfen
-  await tStart(rb.x, rb.y); await page.waitForFunction(() => window.__rp(`!!VR && VR.st==="rec"`), null, {timeout:8000}); await page.waitForTimeout(900);
+  await tStart(rb.x, rb.y); await page.waitForFunction(() => window.__rp(`!!VR && VR.st==="rec"`), null, {timeout:8000, polling:100}).catch(e => { throw new Error("Warten 2: "+e.message); }); await page.waitForTimeout(900);
   for(const d of [20, 50, 90, 130]) await tMove(rb.x - d, rb.y);
   await tEnd(); await page.waitForTimeout(500);
   ok(await vos()===1 && await rp(`!VR && $("chVRec").hidden`), "Nach links ziehen verwirft die Aufnahme nicht");
   // 3) nach oben ziehen → festgestellt, läuft nach dem Loslassen weiter; Knopf sendet
-  await tStart(rb.x, rb.y); await page.waitForFunction(() => window.__rp(`!!VR && VR.st==="rec"`), null, {timeout:8000}); await page.waitForTimeout(400);
+  await tStart(rb.x, rb.y); await page.waitForFunction(() => window.__rp(`!!VR && VR.st==="rec"`), null, {timeout:8000, polling:100}).catch(e => { throw new Error("Warten 3: "+e.message); }); await page.waitForTimeout(400);
   for(const d of [20, 50, 90]) await tMove(rb.x, rb.y - d);
   await tEnd(); await page.waitForTimeout(800);
   ok(await rp(`!!VR && VR.st==="lock" && document.querySelector("#chView .ch-comp").classList.contains("vlock") && !!$("chVRec").querySelector("[data-act=vrdel]")`), "Nach oben ziehen stellt die Aufnahme nicht fest");

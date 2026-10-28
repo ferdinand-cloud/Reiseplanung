@@ -4265,7 +4265,7 @@ var IC = {
   hotel:"<path d=\"M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5\"/><circle cx=\"5.8\" cy=\"9.6\" r=\"1.6\"/>", // Hotel
   ticket:"<path d=\"M2.5 6h15v2.6a1.6 1.6 0 0 0 0 3.2V14.4h-15v-2.6a1.6 1.6 0 0 0 0-3.2z\"/><path d=\"M12.5 6.5v1.5M12.5 9.5v1.4M12.5 12.4v1.5\"/>", // Tickets (Fahrkarten, Eintritt)
   event:"<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M7 3v3M13 3v3M10 8.6l1.1 2.2 2.4.3-1.8 1.6.5 2.4-2.2-1.2-2.2 1.2.5-2.4-1.8-1.6 2.4-.3z\"/>", // Events (Konzerte, Sport, Theater)
-  voice:"<circle cx=\"10\" cy=\"10\" r=\"7.2\"/><circle cx=\"10\" cy=\"10\" r=\"3.4\" fill=\"currentColor\" stroke=\"none\"/>", // Sprachnachricht aufnehmen (Aufnahmepunkt; Mikrofon = Diktieren, Wellen = Sprach-KI)
+  voice:"<rect x=\"7\" y=\"2.5\" width=\"6\" height=\"10\" rx=\"3\"/><path d=\"M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5\"/>", // Sprachnachricht aufnehmen (Mikrofon; im Chat gibt es kein Diktieren, Wellen = Sprach-KI)
   play:"<path d=\"M6.5 4.3v11.4l9.3-5.7z\"/>", // Abspielen (gefüllt per icf)
   pause:"<path d=\"M5.8 4.5h2.8v11H5.8zM11.4 4.5h2.8v11h-2.8z\"/>" // Anhalten (gefüllt per icf)
 };
@@ -8112,7 +8112,7 @@ function chSend(){
 function chGrow(){ var i = $("chIn"); if(!i) return; i.style.height = "auto"; i.style.height = Math.min(120, i.scrollHeight)+"px"; chCompUpd(); }
 function chNewDone(u){ if(!chNewOn) return; chNewOn = false; chNewQ = ""; var hd = document.querySelector("#chView .ch-head"); if(hd) hd.innerHTML = chHeadIn(u); var nr = $("chNewRes"); if(nr) nr.remove(); }
 /* ---------- Sprachnachrichten ----------
-   Ist nichts eingegeben, steht statt Senden der Aufnahme-Knopf (Symbol IC.voice). Gedrückt halten = aufnehmen, loslassen = senden,
+   Ist nichts eingegeben, steht statt Senden der Aufnahme-Knopf (Symbol IC.voice = Mikrofon). Gedrückt halten = aufnehmen, loslassen = senden,
    nach links ziehen = verwerfen, nach oben ziehen = feststellen (freihändig; dann Verwerfen links, Senden rechts). Höchstens 2 Minuten.
    Speicher: kostenlos in Firestore (Storage bräuchte den Bezahltarif). Der Ton liegt als Daten-URL in eigenen Dokumenten
    chats/{cid}/msgs/{aid}, {aid}_1 … (je höchstens VRPART Zeichen) OHNE Feld „at“ – die Verlaufsabfrage (orderBy at) lädt sie daher
