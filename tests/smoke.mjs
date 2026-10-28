@@ -910,6 +910,10 @@ await test("Beobachter-Ansicht: abgeschlossene beobachtete Reise wie eigene Ansi
   ok(await rp(`$("body").querySelectorAll(".adj .jcard").length > 0`), "Beobachter: Tagebuch aller Tage fehlt");
   await click("#layersBtn");
   ok(await visible("#lAllP"), "Beobachter: Filter „Alle Orte der Reise“ fehlt");
+  // Bezirk-Karte: keine Wünsche/Wunschliste in der Ansicht
+  await rp(`closeMenus(); sel = "nb:"+NB[0].n; renderCard(); true`); await page.waitForTimeout(150);
+  ok(await rp(`var c = $("card").textContent; c.indexOf("Wunschliste")<0 && !$("card").querySelector("[data-act=nbshow]") && !!$("card").querySelector("[data-act=nbtoggle]")`), "Bezirk zeigt Wünsche/Wunschliste in der Ansicht");
+  await rp(`sel = null; renderCard(); true`);
   // 3D: Beobachter wird nicht mehr zwangsweise gekippt, gleiche Regeln wie alle (Knopf ab Zoom 15)
   ok(await rp(`applyRO.toString().indexOf("rp-vdef-") < 0`), "Beobachter-Sonderweg für 3D noch aktiv");
 });
