@@ -1525,6 +1525,31 @@ await test("Chat: geteiltes Foto öffnet Ort und Foto, auch wenn Reise-Kennung n
   ok(h.includes('data-ph="ph_b"'), "Foto ohne Vorschaubild wird nicht nachgeladen");
 });
 
+await test("Chat: Foto einer Ort-Karte öffnet die Fotogalerie des Orts", async () => {
+  await seed();
+  // gesendete Karte trägt Kennungen der sichtbaren Fotos, private Fotos nicht
+  const pl = await rp(`(function(){ T().privPh = {ph_b:1}; return chPlaceFrom(S.cur, "p4").then(function(pl){ delete T().privPh; return pl; }); })()`);
+  ok(pl.pid==="p4" && JSON.stringify(pl.phs)==='["ph_a"]' && !!pl.ph, "Karte ohne Foto-Kennungen oder mit privatem Foto: "+JSON.stringify({pid:pl.pid, phs:pl.phs}));
+  // Karte im Chat antippen: Galerie mit allen Fotos des Orts aus der Reise, blättern per Knopf
+  await rp(`(function(){ CHPL.m5 = {n:"Brooklyn Bridge", c:"sight", la:P("p4").la, lo:P("p4").lo, pid:"p4", gid:gidFor(S.cur), phs:["ph_b"], ph:PHC.ph_b, trip:"Testreise"};
+    var d = document.createElement("div"); d.id = "tstCh"; d.style.cssText = "position:fixed;left:0;top:60px;z-index:95"; d.innerHTML = chPlaceCard(CHPL.m5, "m5"); document.body.appendChild(d); })()`);
+  await click("#tstCh .ch-plimg");
+  await page.waitForFunction(() => window.__rp(`!$("chPhView").hidden && !!$("chPvImg").src`), null, {timeout:3000}).catch(() => {});
+  ok(await rp(`!$("chPhView").hidden && CHGAL && CHGAL.list.join()==="ph_a,ph_b" && CHGAL.i===1`), "Galerie öffnet nicht mit beiden Fotos beim geschickten Foto: "+JSON.stringify(await rp(`CHGAL && {l:CHGAL.list, i:CHGAL.i}`)));
+  ok((await page.locator("#chPhView .chpv-cap").innerText()).includes("2 / 2"), "Zähler fehlt");
+  await click("#chPhView .chpv-nav.n");
+  await page.waitForFunction(() => window.__rp(`$("chPvImg").src===PHC.ph_a`), null, {timeout:3000}).catch(() => {});
+  ok(await rp(`CHGAL.i===0 && $("chPvImg").src===PHC.ph_a && !$("chPhView").hidden`), "Blättern zeigt nicht das nächste Foto");
+  await click("#chPhView .chpv-x"); ok(await rp(`$("chPhView").hidden`), "Schließen geht nicht");
+  // Ort nicht in eigenen Reisen, Foto nicht freigegeben: nur das Vorschaubild der Karte
+  await rp(`CHPL.m6 = {n:"Fremder Ort", c:"essen", la:1, lo:1, pid:"pQ", gid:"t_fremd", phs:["ph_geheim"], ph:PHC.ph_c, trip:"Andere Reise"}; $("tstCh").innerHTML = chPlaceCard(CHPL.m6, "m6");`);
+  await click("#tstCh .ch-plimg"); await page.waitForTimeout(300);
+  ok(await rp(`!$("chPhView").hidden && $("chPvImg").src===PHC.ph_c && !document.querySelector("#chPhView .chpv-nav")`), "Nicht freigegebenes Foto: Vorschaubild fehlt");
+  await click("#chPhView .chpv-x"); await rp(`$("tstCh").remove()`);
+  // Entwurf (noch nicht gesendet) ist nicht antippbar
+  ok(!(await rp(`chPlaceCard(CHPL.m5, "", true)`)).includes("chplph"), "Entwurf sollte keine Galerie öffnen");
+});
+
 await test("Privat, aber für einzelne Beobachter freigegeben", async () => {
   await seed();
   await rp(`(function(){ META.t_test = {owner:"u_me", members:["u_me","u_anna","u_ludwig"], memberEmails:{u_anna:"anna@test.de", u_ludwig:"ludwig@test.de"}, invites:[], viewers:["u_anna","u_ludwig"], viewInvites:[]};

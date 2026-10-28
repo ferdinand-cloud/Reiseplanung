@@ -2423,6 +2423,10 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .chpv-x{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;width:36px;height:36px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:16px}
 .chpv-cap{color:#fff;text-align:center;padding:14px;display:flex;flex-direction:column;gap:3px}
 .chpv-cap small{color:rgba(255,255,255,.7)}
+.chpv-nav{position:absolute;top:50%;margin-top:-22px;width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:26px;line-height:1;z-index:1}
+.chpv-nav.p{left:10px}.chpv-nav.n{right:10px}
+#chPvImg{transition:transform .2s}
+.ch-plimg[data-act]{cursor:pointer}
 
 .cphadd{flex:0 0 auto;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--fill);color:var(--ink);cursor:pointer;margin-left:auto}
 .cphadd svg{width:19px;height:19px}
@@ -7516,21 +7520,63 @@ function chPhOpen(key, full){
     return;
   }
   if(!full){ toast("Den Ort gibt es in keiner deiner Reisen (mehr) – das Foto kannst du trotzdem ansehen.", false); return; }
-  var el = $("chPhView"); if(!el){ el = document.createElement("div"); el.id = "chPhView"; el.className = "chphview"; document.body.appendChild(el); var shut = function(){ el.hidden = true; el.innerHTML = ""; el.style.transform = ""; el.style.opacity = ""; };
-    el.addEventListener("click", function(){ if(Date.now() - (el._sw||0) < 400) return; shut(); });
-    var y0 = null; el.addEventListener("touchstart", function(e){ y0 = e.touches.length===1 ? e.touches[0].clientY : null; el.style.transition = "none"; }, {passive:true});
-    el.addEventListener("touchmove", function(e){ if(y0==null) return; var dy = Math.max(0, e.touches[0].clientY - y0); el.style.transform = "translateY("+dy+"px)"; el.style.opacity = String(Math.max(.3, 1 - dy/500)); }, {passive:true});
-    el.addEventListener("touchend", function(e){ if(y0==null) return; var dy = (e.changedTouches[0].clientY - y0); y0 = null; el.style.transition = "transform .2s, opacity .2s"; el._sw = Date.now();
+  chGal([o.ph], 0, o);
+}
+/* Foto-Ansicht im Chat (Vollbild): ein Foto oder die Galerie eines Orts. Wischen nach links/rechts blättert, nach unten schließt.
+   Es liegt immer nur ein großes Bild im DOM. Fotos lädt phGet – was der Empfänger nicht sehen darf (privat, nicht freigegeben),
+   liefern die Firestore-Regeln nicht aus; solche Fotos fallen aus der Galerie heraus. o: {n, trip, th = Vorschaubild als Platzhalter} */
+var CHGAL = null;
+function chGal(list, i, o){
+  var el = $("chPhView"); if(!el){ el = document.createElement("div"); el.id = "chPhView"; el.className = "chphview"; document.body.appendChild(el); var shut = function(){ el.hidden = true; el.innerHTML = ""; el.style.transform = ""; el.style.opacity = ""; CHGAL = null; };
+    el.addEventListener("click", function(e){ var nb = e.target.closest && e.target.closest(".chpv-nav"); if(nb){ chGalGo(+nb.getAttribute("data-d")); return; } if(Date.now() - (el._sw||0) < 400) return; shut(); });
+    var y0 = null, x0 = null, hz = false; el.addEventListener("touchstart", function(e){ var t = e.touches.length===1 ? e.touches[0] : null; y0 = t ? t.clientY : null; x0 = t ? t.clientX : null; hz = false; el.style.transition = "none"; }, {passive:true});
+    el.addEventListener("touchmove", function(e){ if(y0==null) return; var dx = e.touches[0].clientX - x0, dy0 = e.touches[0].clientY - y0;
+      if(!hz && CHGAL && CHGAL.list.length > 1 && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy0)) hz = true;
+      if(hz){ var im = $("chPvImg"); if(im) im.style.transform = "translateX("+dx+"px)"; return; }
+      var dy = Math.max(0, dy0); el.style.transform = "translateY("+dy+"px)"; el.style.opacity = String(Math.max(.3, 1 - dy/500)); }, {passive:true});
+    el.addEventListener("touchend", function(e){ if(y0==null) return; var dx = e.changedTouches[0].clientX - x0, dy = (e.changedTouches[0].clientY - y0); y0 = null; el._sw = Date.now();
+      if(hz){ var im = $("chPvImg"); if(im) im.style.transform = ""; if(Math.abs(dx) > 50) chGalGo(dx < 0 ? 1 : -1); return; }
+      el.style.transition = "transform .2s, opacity .2s";
       if(dy > 110){ el.style.transform = "translateY(100%)"; el.style.opacity = "0"; setTimeout(shut, 200); } else { el.style.transform = ""; el.style.opacity = ""; if(Math.abs(dy) < 8) el._sw = 0; } }); }
-  el.innerHTML = "<button type=\"button\" class=\"chpv-x\" aria-label=\"Schließen\">✕</button>"+(o.th ? "<img id=\"chPvImg\" src=\""+o.th+"\" alt=\"\">" : "")+"<div class=\"chpv-cap\"><b>"+esc(o.n||"Foto")+"</b><small>"+esc(o.trip||"")+"</small></div>";
+  CHGAL = {list:list.filter(Boolean), i:Math.max(0, i||0), o:o || {}};
   el.style.transform = ""; el.style.opacity = ""; el.hidden = false;
+  chGalShow();
+}
+function chGalGo(d){ var g = CHGAL; if(!g || g.list.length < 2) return; g.i = (g.i + d + g.list.length) % g.list.length; chGalShow(); }
+function chGalShow(){
+  var g = CHGAL, el = $("chPhView"); if(!g || !el) return;
+  var o = g.o, n = g.list.length, ph = g.list[g.i], th = n < 2 || !o.thPh || ph===o.thPh ? o.th : ""; // Vorschaubild der Karte gehört zu einem Foto (thPh)
+  el.innerHTML = "<button type=\"button\" class=\"chpv-x\" aria-label=\"Schließen\">✕</button>"+
+    (n > 1 ? "<button type=\"button\" class=\"chpv-nav p\" data-d=\"-1\" aria-label=\"Vorheriges Foto\">‹</button><button type=\"button\" class=\"chpv-nav n\" data-d=\"1\" aria-label=\"Nächstes Foto\">›</button>" : "")+
+    "<img id=\"chPvImg\" alt=\"\""+(th ? " src=\""+th+"\"" : "")+">"+
+    "<div class=\"chpv-cap\"><b>"+esc(o.n||"Foto")+"</b><small>"+esc((n > 1 ? (g.i+1)+" / "+n+(o.trip ? " · " : "") : "")+(o.trip||""))+"</small></div>";
+  if(!ph) return;
   // Foto in voller Größe laden (auch ohne passende Reise: liegt es im Konto oder auf dem Gerät, wird es gezeigt)
-  if(!o.th){ var im0 = document.createElement("img"); im0.id = "chPvImg"; im0.alt = ""; el.insertBefore(im0, el.querySelector(".chpv-cap")); }
-  phGet(o.ph).then(function(d){ var im = $("chPvImg"); if(d && im && !el.hidden) im.src = d; else if(!d && !o.th && !el.hidden){ var cp = el.querySelector(".chpv-cap small"); if(cp) cp.textContent = (o.trip ? o.trip+" · " : "")+(PHERR[o.ph] || "Foto nicht verfügbar"); } }, function(){});
+  phGet(ph).then(function(d){ if(CHGAL!==g || g.list[g.i]!==ph || el.hidden) return; var im = $("chPvImg");
+    if(d){ if(im) im.src = d; return; }
+    // nicht sichtbar für dich: aus der Galerie nehmen, solange noch andere Fotos da sind
+    if(n > 1 && !th){ g.list.splice(g.i, 1); if(g.i >= g.list.length) g.i = 0; chGalShow(); return; }
+    if(!th){ var cp = el.querySelector(".chpv-cap small"); if(cp) cp.textContent = (o.trip ? o.trip+" · " : "")+(PHERR[ph] || "Foto nicht verfügbar"); } }, function(){});
+}
+/* Foto einer im Chat geschickten Ort-Karte antippen: Galerie des Orts. Liegt der Ort in einer eigenen oder geteilten Reise,
+   gelten deren Fotos (so sichtbar, wie du die Reise siehst); sonst die mitgeschickten Kennungen, soweit die Regeln sie freigeben.
+   Ohne beides bleibt das Vorschaubild der Karte. */
+function chPlGal(key){
+  var pl = CHPL[key]; if(!pl) return;
+  var f = pl.pid || pl.phs ? chFindPh({pid:pl.pid, ph:(pl.phs||[])[0], gid:pl.gid, n:pl.n}) : null;
+  // gleiche Kennung in einer anderen Reise: nur gültig, wenn auch der Name passt
+  if(f && f.tid!==pl.gid && gidFor(f.tid)!==pl.gid){ var fp = S.trips[f.tid].places[f.pid]; if(!fp || norm(fp.n||"")!==norm(pl.n||"")) f = null; }
+  if(!f) f = chMatch(pl);
+  var list = [];
+  if(f){ var t = S.trips[f.tid], p = t && t.places[f.pid], r = p && p.of && t.places[p.of] ? p.of : f.pid, seen = {}, priv = (t && t.privPh) || {};
+    if(t) Object.keys(t.places).forEach(function(k){ if(k!==r && !(t.places[k] && t.places[k].of===r)) return; ((t.photos||{})[k]||[]).forEach(function(x){ if(!seen[x] && !(isViewerOf(f.tid) && priv[x])){ seen[x] = 1; list.push(x); } }); }); }
+  if(!list.length) list = (pl.phs||[]).slice();
+  var thPh = pl.phs && pl.phs.length ? pl.phs[pl.phs.length-1] : "", i = thPh && list.indexOf(thPh) > -1 ? list.indexOf(thPh) : Math.max(0, list.length - 1);
+  chGal(list, i, {n:pl.n, trip:pl.trip, th:pl.ph, thPh:thPh || list[i] || ""});
 }
 function chPlaceCard(pl, key, draft){
   var RR = RATES.filter(function(x){ return x[0]===pl.rating; })[0], inT = chMatch(pl);
-  return "<div class=\"ch-pl\">"+(pl.ph ? "<img class=\"ch-plimg\" src=\""+pl.ph+"\" alt=\"\">" : "")+
+  return "<div class=\"ch-pl\">"+(pl.ph ? "<img class=\"ch-plimg\" src=\""+pl.ph+"\""+(draft ? " alt=\"\"" : " alt=\"Fotos ansehen\" data-act=\"chplph\" data-k=\""+key+"\" role=\"button\" tabindex=\"0\"")+">" : "")+
     "<div class=\"ch-plb\"><div class=\"ch-pln\"><span class=\"cic\" style=\"--cc:"+catCol(pl.c)+"\">"+icon(pl.c)+"</span><b>"+esc(pl.n)+"</b></div>"+
     "<small>"+esc([CATNAME[pl.c], pl.addr].filter(Boolean).join(" · "))+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"</small>"+
     (draft ? "" : "<div class=\"ch-pla\">"+
@@ -7641,6 +7687,7 @@ function chPlaceFrom(tid, pid){
   var t = S.trips[tid], p = t && t.places[pid]; if(!p) return Promise.resolve(null);
   var pl = {n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||"", trip:t.name||""}, r = (t.rating||{})[(p.of && t.places[p.of]) ? p.of : pid] || (t.rating||{})[pid]; if(r) pl.rating = r;
   var phs = ((t.photos||{})[pid]||[]).filter(function(x){ return !(t.privPh||{})[x]; });
+  pl.pid = pid; pl.gid = gidFor(tid); if(phs.length) pl.phs = phs.slice(-30); // Galerie beim Empfänger (Zugriff regeln die Firestore-Regeln)
   return phs.length ? recThumb(phs[phs.length-1]).then(function(th){ if(th) pl.ph = th; return pl; }, function(){ return pl; }) : Promise.resolve(pl);
 }
 function chSend(){
@@ -15121,6 +15168,7 @@ document.addEventListener("click", function(e){
     case "chphto": chPhSendTo(t.getAttribute("data-uid"), t.getAttribute("data-ph")); break;
     case "chphopen": chPhOpen(t.getAttribute("data-k")); break;
     case "chphfull": chPhFull(t.getAttribute("data-k")); break;
+    case "chplph": chPlGal(t.getAttribute("data-k")); break;
     case "chshareto": chShareTo(t.getAttribute("data-uid"), t.getAttribute("data-pid")); break;
     case "navsrch": if(gsPage) pageTop("gsView"); else openGsPage(); break;
     case "gstrip": closeGsPage(); var gtr = t.getAttribute("data-trip"); if(S.trips[gtr] && gtr!==S.cur){ grpSel = ""; S.cur = gtr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
