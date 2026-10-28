@@ -1604,7 +1604,9 @@ img.pf-av,img.pe-img,.ag-av img,.ch-head img.ch-av,.gsav img{cursor:zoom-in}
 body.ro .lrow:has(#lSub),body.ro .lrow:has(#lBus),body.ro label:has(#lWish),body.ro label:has(#lSub),body.ro label:has(#lBus),body.ro label:has(#lFerry),body.ro #subLines,body.ro #busLines,body.ro #tabWish{display:none}
 /* Ort-Fenster: Datum, Gruppe, Privat in einer Zeile; Aktionen als schmale Leiste */
 /* Detail-Fenster: × bleibt beim Scrollen oben rechts sichtbar */
-.ag-card.jp > .ag-x{position:sticky;top:0;display:block;margin:-10px -6px -20px auto;z-index:5;box-shadow:0 1px 6px rgba(0,0,0,.18);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.jp-wrap{position:relative;width:min(400px,100%);display:flex;flex-direction:column;max-height:100%}
+.jp-wrap > .ag-card{width:100%}
+.jp-wrap > .ag-x{position:absolute;top:-11px;right:-11px;z-index:5;width:32px;height:32px;background:var(--sheet);box-shadow:0 2px 8px rgba(0,0,0,.22)}
 .ag-card.jp .jp-chips{flex-wrap:nowrap;gap:6px;min-width:0}
 .ag-card.jp .jp-chips > *{flex:0 0 auto}
 .ag-card.jp .jp-chips .jp-day{flex:0 1 auto;min-width:0}
@@ -13470,6 +13472,8 @@ function renderJPop(){
   }
   h += "<p class=\"note\" id=\"jpNote\" hidden></p></div>";
   el.innerHTML = h; el.hidden = false; document.body.classList.add("glass"); fillPhotos(el);
+  // × außerhalb der scrollenden Karte: sitzt fest in der oberen rechten Ecke, halb über dem Rand
+  var jcd = el.querySelector(".ag-card.jp"), jx = jcd && jcd.querySelector(":scope > .ag-x"); if(jx){ var jw = document.createElement("div"); jw.className = "jp-wrap"; el.insertBefore(jw, jcd); jw.appendChild(jcd); jw.appendChild(jx); }
 }
 /* Tag-Chip: zeigt den zugeordneten Tag; Antippen ordnet den Punkt einem anderen Tag zu */
 function dayChip(pid, noTime, short){

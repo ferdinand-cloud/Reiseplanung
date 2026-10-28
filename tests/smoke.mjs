@@ -782,7 +782,8 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await rp(`!$("jPop").querySelector("textarea#nText:not([readonly])")`), "Notiz im Ansichtsmodus bearbeitbar");
   // × bleibt beim Scrollen sichtbar
   await rp(`var c = $("jPop").querySelector(".ag-card"); c.style.maxHeight = "320px"; c.scrollTop = c.scrollHeight; true`); await page.waitForTimeout(150);
-  ok(await rp(`var c = $("jPop").querySelector(".ag-card"), x = c.querySelector(".ag-x").getBoundingClientRect(), r = c.getBoundingClientRect(); c.scrollTop > 0 && x.top >= r.top - 1 && x.bottom <= r.top + 60`), "× scrollt im Detail-Fenster weg");
+  ok(await rp(`var c = $("jPop").querySelector(".ag-card"), x = $("jPop").querySelector(".ag-x").getBoundingClientRect(), r = c.getBoundingClientRect(); c.scrollTop > 0 && x.top < r.top && x.bottom > r.top && x.right > r.right && x.left < r.right && x.top >= 0 && x.right <= innerWidth`), "× sitzt nicht fest halb über der oberen rechten Ecke");
+  await shot("detail-x");
   await click("#jPop .ag-x"); ok(await rp(`!jp`), "× schließt das Detail-Fenster nicht");
   await rp(`sel = null; renderCard(); true`);
   // Ort-Detail im Ansichtsmodus: Sichtbarkeit nur anzeigen, leere Notiz kompakt
