@@ -14634,7 +14634,9 @@ function applyRO(){
   if(finEd && finEd!==S.cur) finEd = ""; // andere Reise gewählt: Bearbeiten endet
   var ro = isRO(), k = ro ? S.cur : "";
   document.body.classList.toggle("ro", ro);
-  var sos = $("sheetOpen") && $("sheetOpen").querySelector("span"), sot = ro ? "Tagesplan" : "Tagesplan & Wunschliste"; if(sos && sos.textContent!==sot) sos.textContent = sot; // Ansicht: keine Wunschliste
+  // Ansicht: keine Wunschliste; abgeschlossene Reise zeigt nur das Tagebuch und heißt auch so
+  var dl = finRO() ? "Tagebuch" : "Tagesplan", sos = $("sheetOpen") && $("sheetOpen").querySelector("span"), sot = ro ? dl : "Tagesplan & Wunschliste"; if(sos && sos.textContent!==sot) sos.textContent = sot;
+  var tdy = $("tabDay"); if(tdy && tdy.textContent!==dl) tdy.textContent = dl;
   if(ro && tab==="wish") tab = "day";
   if(k===roWas) return; roWas = k;
   if(!ro || !isViewer()){ if(mapReady) applyLayers(); return; }

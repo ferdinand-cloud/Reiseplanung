@@ -721,7 +721,7 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await page.locator("#body .jc-t.empty").count()===0, "Hinweis „Tippen, um Notizen … hinzuzufügen“ im Ansichtsmodus");
   ok(await page.locator("#body [data-act=rtoggle]").count()===0, "Routen-Schalter in der Ansicht sichtbar");
   ok(await page.locator("#tabWish").isHidden(), "Wunschliste in der Ansicht sichtbar");
-  ok(await rp(`$("sheetOpen").textContent.trim()==="Tagesplan"`), "Knopf unten nennt im Ansichtsmodus die Wunschliste");
+  ok(await rp(`$("sheetOpen").textContent.trim()==="Tagebuch" && $("tabDay").textContent==="Tagebuch"`), "Knopf unten/Reiter heißen im Ansichtsmodus nicht „Tagebuch“");
   await click("#tripBtn");
   ok(await page.locator("#tripMenu > .tm-fin[data-act=finedit]").isVisible() && await page.locator("#tripMenu [data-act=tripedit]").count()===0, "Reise-Menü bietet nicht „Reise bearbeiten“ (oben, hervorgehoben) an");
   ok(await rp(`$("tripMenu").firstElementChild.getAttribute("data-act")==="finedit"`), "„Reise bearbeiten“ steht nicht oben im Reise-Menü");
@@ -734,6 +734,7 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await page.locator("#body ol.plan").count()===1, "Stopps fehlen beim Bearbeiten");
   ok(await page.locator("#tabWish").isVisible(), "Wunschliste fehlt beim Bearbeiten");
   ok(await rp(`$("sheetOpen").textContent.trim()==="Tagesplan & Wunschliste"`), "Knopf unten nennt beim Bearbeiten nicht die Wunschliste");
+  ok(await rp(`$("tabDay").textContent==="Tagesplan"`), "Reiter heißt beim Bearbeiten nicht „Tagesplan“");
   await click("#tripBtn");
   ok(await page.locator("#tripMenu .tm-fin[data-act=finview]").isVisible() && await page.locator("#tripMenu [data-act=tripedit]").count()===1, "„Bearbeiten beenden“ fehlt im Reise-Menü");
   await shot("abgeschlossen-bearbeiten");
