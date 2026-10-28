@@ -3755,6 +3755,19 @@ body.ro .navtools [data-act="addpop"]{display:none}
   .nav-ui .nav-hero{padding:10px 14px 10px 10px}
   body.navon .navtools{display:grid;left:auto;right:calc(max(12px,env(safe-area-inset-right,0px)) + 52px);top:calc(env(safe-area-inset-top,0px) + 8px) !important}
 }
+/* Breitbild (iPad, Mac): Kopfleiste ebenfalls in einer Zeile – Reise links, Leiste in der Mitte, Suche und Plus rechts auf gleicher Höhe */
+@media (min-width:900px) and (min-height:501px){
+  .top{flex-direction:row;align-items:center;justify-content:space-between;gap:8px}
+  .toprow{display:contents}
+  .top .trip{order:0;flex:0 1 auto;max-width:34%;min-width:76px;margin:0}
+  .tabbar{order:1;flex:0 0 auto;width:auto;min-width:0;margin:0 auto}
+  .tabbar .tb{flex:0 0 48px;width:48px} /* feste Breite: Leiste so schmal wie nötig, damit links Platz für den Reisenamen bleibt */
+  .top #srchBtn{order:2;margin-left:0}
+  .top #camBtn{order:3;margin-left:0}
+  body:not(.side-off):not(.profopen) .top{padding-left:12px}
+  body.side-off .top{left:0} /* der Ausklapp-Griff sitzt mittig am Rand, oben ist frei */
+}
+@media (min-width:900px) and (max-width:1199px) and (min-height:501px){ body:not(.side-off) .top .trip span{display:none} body:not(.side-off) .tabbar .tb{flex-basis:40px;width:40px} } /* neben der Planung ist es eng: nur der Reisename */
 /* Löschen/Entfernen überall gedämpft rot markiert, damit es sich von anderen Funktionen abhebt */
 :root{--del:#C4462F}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--del:#F0766A} }

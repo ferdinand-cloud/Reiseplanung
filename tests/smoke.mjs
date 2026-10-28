@@ -2315,6 +2315,24 @@ await test("Querformat: Planung als Seitenleiste, Kartenknöpfe neben der Leiste
   await page.evaluate(() => { document.querySelector(".top").style.paddingTop = ""; });
 }, QUER);
 
+await test("Breitbild (iPad): Reise-Auswahl, Leiste, Suche und Plus in einer Zeile", async () => {
+  await seed(); await page.waitForTimeout(300);
+  for(const vp of [{width:1366, height:1024}, {width:1024, height:1366}, {width:1180, height:820}]){
+    await page.setViewportSize(vp); await page.waitForTimeout(500);
+    const w = vp.width+"×"+vp.height;
+    ok(await rp(`desktop.matches`), w+": keine Seitenleiste");
+    if(!(await rp(`sideOpen`))){ await click("#edgeBtn"); await page.waitForTimeout(400); }
+    await mapCtrlsOk(w); await oneRow(w); await shot("breit-"+vp.width+"x"+vp.height);
+    await click("#edgeBtn"); await page.waitForTimeout(400);
+    ok(await rp(`!sideOpen`), w+": Planung klappt nicht ein");
+    await mapCtrlsOk(w+" eingeklappt"); await oneRow(w+" eingeklappt"); await shot("breit-"+vp.width+"x"+vp.height+"-zu");
+    await click("#edgeBtn"); await page.waitForTimeout(400);
+  }
+  // Hochformat iPhone bleibt zweizeilig: Reise-Auswahl unter der Leiste
+  await page.setViewportSize({width:390, height:844}); await page.waitForTimeout(500);
+  ok(await page.evaluate(() => document.getElementById("tripBtn").getBoundingClientRect().top >= document.getElementById("tabbar").getBoundingClientRect().bottom - 1), "Hochformat: Reise-Auswahl nicht mehr unter der Leiste");
+}, {vp:{width:1366, height:1024}});
+
 // prüft: Knöpfe, Eingaben und Überschriften der offenen Ansicht liegen nicht unter Notch/Rand (horizontal ins Bild ragende Elemente in Laufbändern ausgenommen)
 async function notchFree(root, where){
   const bad = await page.evaluate((root) => {
