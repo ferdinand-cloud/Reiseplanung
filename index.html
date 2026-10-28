@@ -14632,6 +14632,7 @@ function applyRO(){
   if(finEd && finEd!==S.cur) finEd = ""; // andere Reise gewählt: Bearbeiten endet
   var ro = isRO(), k = ro ? S.cur : "";
   document.body.classList.toggle("ro", ro);
+  var sos = $("sheetOpen") && $("sheetOpen").querySelector("span"), sot = ro ? "Tagesplan" : "Tagesplan & Wunschliste"; if(sos && sos.textContent!==sot) sos.textContent = sot; // Ansicht: keine Wunschliste
   if(ro && tab==="wish") tab = "day";
   if(k===roWas) return; roWas = k;
   if(!ro || !isViewer()){ if(mapReady) applyLayers(); return; }
