@@ -8,8 +8,9 @@
     "web": "node scripts/copy-web.mjs",
     "sync": "node scripts/copy-web.mjs && cap sync",
     "ios": "node scripts/copy-web.mjs && cap sync ios && cap open ios",
+    "ios:lokal": "node scripts/copy-web.mjs && RP_LOKAL=1 cap sync ios && cap open ios",
     "android": "node scripts/copy-web.mjs && cap sync android && cap open android",
-    "icons": "capacitor-assets generate --iconBackgroundColor '#17212c' --splashBackgroundColor '#17212c'"
+    "bilder": "node scripts/make-assets.mjs && capacitor-assets generate --iconBackgroundColor '#17212c' --iconBackgroundColorDark '#17212c' --splashBackgroundColor '#17212c' --splashBackgroundColorDark '#17212c'"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
@@ -20,14 +21,13 @@
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/ios": "^8.5.3",
     "@capacitor/keyboard": "^8.0.6",
-    "@capacitor/local-notifications": "^8.3.1",
-    "@capacitor/push-notifications": "^8.1.3",
     "@capacitor/share": "^8.0.3",
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.4"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^8.5.3"
+    "@capacitor/cli": "^8.5.3",
+    "typescript": "^5.9.3"
   }
 }
