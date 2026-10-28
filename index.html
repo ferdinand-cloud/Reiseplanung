@@ -3887,6 +3887,8 @@ button.tf-pill{border:0;font:inherit;color:inherit}
 .pop > .pop-card,.acctpop > .ag-card,.supop > .su-card{animation:none !important}
 .pop.fx-in > *,.acctpop.fx-in > *,.supop.fx-in > *,.cfpop.fx-in > *{animation:fxIn .4s var(--fx-spring) backwards !important}
 .tripmenu.fx-in,.addmenu.fx-in,.layers.fx-in{animation:fxIn .32s var(--fx-spring) backwards !important}
+/* eigene Einblendung (amin) der Menüs aus: sonst startet sie neu, sobald fx-in nach dem Aufgehen entfernt wird – das Menü zuckte (Plus auf der Karte) */
+.tripmenu,#addMenu,.layers{animation:none}
 @keyframes fxIn{0%{opacity:0;transform:translate(var(--fxdx,0px),var(--fxdy,14px)) scale(var(--fxs,.94))}40%{opacity:1}100%{opacity:1;transform:none}}
 .cfpop.fx-in{animation:popfade .2s ease}
 .pop.fx-fade > *,.acctpop.fx-fade > *,.supop.fx-fade > *,.cfpop.fx-fade > *,.tripmenu.fx-fade,.addmenu.fx-fade,.layers.fx-fade{animation:popfade .2s ease backwards !important}
@@ -13804,7 +13806,7 @@ function libImport(fs){
       "<button type=\"button\" data-act=\"libcur\"><span class=\"ai\">"+IPIN+"</span><span>Aktueller Standort<small>"+(n===1 ? "Fotospot" : "Ein Fotospot")+" hier, im Plan von heute</small></span></button>"+
       "<button type=\"button\" data-act=\"libexif\""+(g ? "" : " disabled")+"><span class=\"ai\">"+ILIB+"</span><span>Aufnahmeort aus Metadaten<small>"+
         (g ? (n===1 ? "Ort und Zeit aus dem Foto" : g+" von "+n+" mit Ortsdaten"+(g<n ? ", Rest an deinen Standort" : "")) : "Keine Ortsdaten im Foto – Safari gibt sie derzeit nicht an Web-Apps weiter")+"</small></span></button>";
-    m.classList.add("wide"); m.hidden = false; $("camBtn").setAttribute("aria-expanded", "true"); placeAddMenu();
+    m.classList.add("wide"); placeAddMenu(); m.hidden = false; $("camBtn").setAttribute("aria-expanded", "true");
   });
 }
 function libApply(useExif){
@@ -13888,7 +13890,7 @@ function openAddPop(){
   m.innerHTML = "<button type=\"button\" data-act=\"camshot\"><span class=\"ai\">"+ICAM+"</span><span>Foto aufnehmen</span></button>"+
     "<button type=\"button\" data-act=\"libpick\"><span class=\"ai\">"+ILIB+"</span><span>Foto aus Mediathek</span></button>"+
     "<button type=\"button\" data-act=\"locset\"><span class=\"ai\">"+IPIN+"</span><span>Standort setzen</span></button>";
-  m.classList.remove("wide"); m.hidden = false; $("camBtn").setAttribute("aria-expanded", "true"); placeAddMenu();
+  m.classList.remove("wide"); placeAddMenu(); m.hidden = false; $("camBtn").setAttribute("aria-expanded", "true");
 }
 function locStart(){
   var tk = todayKey(), D = dayByKey(tk);
@@ -13912,7 +13914,7 @@ function renderLocPop(keep){
     "<label><span>Kommentar</span><textarea id=\"locNote\" rows=\"3\" maxlength=\"5000\" placeholder=\"Was ist hier? Woran willst du dich erinnern?\">"+esc(locSt.note||"")+"</textarea></label>"+
     "<button type=\"submit\" class=\"btn\""+(L ? "" : " disabled")+">"+(D ? "Zu "+esc(D.lbl)+" hinzufügen" : "In Wunschliste speichern")+"</button></form>";
   var ae = document.activeElement, fid = ae && (ae.id==="locName" || ae.id==="locNote") ? ae.id : null, pos = fid ? ae.selectionStart : 0;
-  var m = $("addMenu"); m.innerHTML = h; m.classList.add("wide"); m.hidden = false; placeAddMenu();
+  var m = $("addMenu"); m.innerHTML = h; m.classList.add("wide"); placeAddMenu(); m.hidden = false;
   if(fid){ var e2 = $(fid); e2.focus(); try { e2.setSelectionRange(pos, pos); } catch(e){} }
 }
 function locSave(){

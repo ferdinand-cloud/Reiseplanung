@@ -1229,6 +1229,15 @@ await test("Ganze Linie zeigen: Linie in der Wegbeschreibung antippen, Strecke v
   ok(await rp(`LINEV===null && !document.getElementById("lineV")`), "Ganze Linie lässt sich nicht ausblenden");
 });
 
+await test("Plus auf der Karte: Menü geht einmal auf und zuckt danach nicht erneut", async () => {
+  await seed();
+  await rp(`openAddPop(); true`);
+  ok(await rp(`!document.getElementById("addMenu").hidden`), "Plus-Menü geht nicht auf");
+  await page.waitForTimeout(500);   // fx-in ist entfernt – danach darf keine zweite Einblendung starten
+  const st = await rp(`(function(){ var m = document.getElementById("addMenu"); return {cls:m.classList.contains("fx-in"), anim:getComputedStyle(m).animationName, run:m.getAnimations().length}; })()`);
+  ok(!st.cls && st.anim==="none" && st.run===0, "Menü startet nach dem Aufgehen eine zweite Einblendung: "+JSON.stringify(st));
+});
+
 await test("Suche: Kategorien lassen sich direkt nach dem Öffnen (Tastatur offen) wischen", async () => {
   await seed();
   await rp(`openSearch(); true`); await page.waitForTimeout(150);
