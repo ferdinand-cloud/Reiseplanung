@@ -13206,6 +13206,7 @@ function renderDay(){
     h += "</div>";
   }
 
+  if(finRO()) return h + journalBlock(D); // abgeschlossen, Ansichtsmodus: nur das Tagebuch, Stopps erst beim Bearbeiten
   var hn = HT ? esc(HT.n) : "";
   h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>"+(isRO() ? "Stopps" : "Route")+"</h4>"+(isRO() ? "" : "<button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+routeAnyVisible()+"\" aria-label=\"Alle Etappen auf der Karte ein- oder ausblenden\">"+(routeAnyVisible()?EYE:EYEOFF)+"<span>Karte</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>"+
        "<button type=\"button\" class=\"rtog\" data-act=\"legslist\" role=\"switch\" aria-checked=\""+legsList+"\" aria-label=\"Wege zwischen den Stopps im Tagesplan ein- oder ausblenden\"><span>Wege</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>")+"</div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
@@ -13322,7 +13323,7 @@ function jItem(id, dk){
   var p = P(id), J = (T().journal||{})[dk] || {}, nt = noteOf(id), ph = photosOf(id), isHl = J.hl===p.n;
   return "<li><button type=\"button\" class=\"jcard\" data-act=\"jopen\" data-pid=\""+id+"\" data-day=\""+dk+"\">"+badge(p.c,"width:26px;height:26px")+
     "<span class=\"jc-m\"><b>"+esc(p.n)+(isHl?" <span class=\"star\">★</span>":"")+((CMTS[id]||[]).length?" <span class=\"cmc\">"+ic("comment", "ii")+" "+CMTS[id].length+"</span>":"")+"</b><small>"+(timeOf(id)?timeOf(id)+" · ":"")+(rateOf(id)?"":"noch nicht bewertet")+rateBadge(id)+"</small>"+
-    (nt ? "<span class=\"jc-t\">"+esc(nt)+"</span>" : "<span class=\"jc-t empty\">Tippen, um Notizen und Fotos hinzuzufügen</span>")+
+    (nt ? "<span class=\"jc-t\">"+esc(nt)+"</span>" : isRO() ? "" : "<span class=\"jc-t empty\">Tippen, um Notizen und Fotos hinzuzufügen</span>")+
     (ph.length ? "<span class=\"jc-ph\">"+ph.slice(0,4).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(ph.length>4?"<i>+"+(ph.length-4)+"</i>":"")+"</span>" : "")+
     "</span></button></li>";
 }

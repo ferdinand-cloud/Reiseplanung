@@ -715,6 +715,10 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await rp(`isRO() && finRO() && !isViewer() && document.body.classList.contains("ro")`), "Abgeschlossene Reise nicht in der Beobachter-Ansicht");
   ok(await page.locator("#body .finbar [data-act=finedit]").isVisible(), "Knopf „Reise bearbeiten“ fehlt über dem Tagesplan");
   ok(await page.locator("#body [data-act=done]:visible").count()===0, "Abhaken in der Ansicht sichtbar");
+  ok(await page.locator("#body ol.plan").count()===0 && await page.locator("#body .rhead").count()===0, "Stopps im Ansichtsmodus sichtbar (nur Tagebuch gewünscht)");
+  await rp(`cur = Object.keys(T().order).filter(function(k){ return (T().order[k]||[]).some(function(x){ return T().done[x]; }); })[0]; renderSheet(); true`);
+  ok(await page.locator("#body .jcard").count() > 0, "Tagebuch fehlt im Ansichtsmodus");
+  ok(await page.locator("#body .jc-t.empty").count()===0, "Hinweis „Tippen, um Notizen … hinzuzufügen“ im Ansichtsmodus");
   ok(await page.locator("#body [data-act=rtoggle]").count()===0, "Routen-Schalter in der Ansicht sichtbar");
   ok(await page.locator("#tabWish").isHidden(), "Wunschliste in der Ansicht sichtbar");
   await click("#tripBtn");
@@ -724,7 +728,9 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   // Bearbeiten: volle Ansicht wie bei aktiven Reisen
   await click("#body .finbar [data-act=finedit]");
   ok(await rp(`!isRO() && finEdOn() && !document.body.classList.contains("ro")`), "„Reise bearbeiten“ öffnet nicht die volle Ansicht");
+  await rp(`pickDefaultDay(); renderSheet(); true`);
   ok(await page.locator("#body [data-act=rtoggle]").count()===1, "Routen-Schalter fehlt beim Bearbeiten");
+  ok(await page.locator("#body ol.plan").count()===1, "Stopps fehlen beim Bearbeiten");
   ok(await page.locator("#tabWish").isVisible(), "Wunschliste fehlt beim Bearbeiten");
   ok(await page.locator("#body .finbar [data-act=finview]").isVisible(), "„Fertig“ fehlt beim Bearbeiten");
   await shot("abgeschlossen-bearbeiten");
