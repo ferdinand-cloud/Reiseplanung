@@ -3835,6 +3835,30 @@ await test("Chat: geteilte Orte des Chats auf einer Karte mit Liste, Antippen ze
   ok(await rp(`$("catPop").hidden && !chPage && sel==="poi" && poiSel.n==="Empire State" && !CHPLS.map`), "Antippen zeigt den Ort nicht auf der Karte oder Pop-up/Karte bleibt");
   await rp(`CH.byId = {}; CH.list = []; CHMC = {}; true`);
 });
+await test("Chat: Fotos vom Gerät als Album – Auswahl, Entwurf, Senden (Fotos einzeln ohne at), Raster, Galerie", async () => {
+  await seed();
+  await rp(`window.__M = [{id:"m1", from:"u1", t:"Hallo", at:Date.now()-60000}]; ${CHMOCK} openChPage("u1_u_me"); true`);
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===1`), null, {timeout:4000});
+  const imgs = await page.evaluate(() => ["#c33", "#3a3", "#36c", "#cc3", "#c3c"].map((col, i) => { const c = document.createElement("canvas"); c.width = 2400; c.height = 1600; const g = c.getContext("2d"); g.fillStyle = col; g.fillRect(0, 0, 2400, 1600); g.fillStyle = "#fff"; g.font = "400px sans-serif"; g.fillText(String(i+1), 1000, 1000); return c.toDataURL("image/png").split(",")[1]; }));
+  await page.setInputFiles("#chPhIn", imgs.map((b, i) => ({name:"f"+i+".png", mimeType:"image/png", buffer:Buffer.from(b, "base64")})));
+  await page.waitForFunction(() => window.__rp(`chDraft && chDraft.al && chDraft.al.length===5`), null, {timeout:6000});
+  ok(await rp(`document.querySelectorAll("#chDraftBox .ch-ald").length===5 && document.querySelector("#chView .ch-comp").classList.contains("has")`), "Entwurf zeigt die Fotos nicht oder Senden fehlt");
+  ok(await rp(`chDraft.al.every(function(x){ return x.w===1600 && x.h===1067 && x.d.length < 900000 && x.th.length < 40000; })`), "Fotos nicht verkleinert: "+await rp(`JSON.stringify(chDraft.al.map(function(x){ return [x.w, x.h, x.d.length, x.th.length]; }))`));
+  await page.tap('#chDraftBox [data-act=chalx][data-i="4"]'); await page.waitForTimeout(100);
+  ok(await rp(`chDraft.al.length===4`), "Foto entfernen klappt nicht");
+  await page.fill("#chIn", "Unser Tag"); await page.tap("#chView [data-act=chsend]"); await page.waitForTimeout(300);
+  ok(await rp(`var imgs = __sets.filter(function(d){ return d.img; }); imgs.length===4 && imgs.every(function(d){ return d.from==="u_me" && !("at" in d); })`), "Fotos nicht einzeln ohne at gespeichert");
+  ok(await rp(`var s = __sent[__sent.length-1]; s && s.al && s.al.length===4 && s.t==="Unser Tag" && s.al.every(function(x){ return x.id && x.th && !x.d; })`), "Album-Nachricht falsch");
+  ok(await rp(`__sets.some(function(d){ return d.last && d.last.place==="4 Fotos" && d.last.ph; })`), "Chat-Liste zeigt das Album nicht");
+  // Empfang: Raster; 6 Fotos → 4 Felder mit +2; Antippen öffnet Galerie mit allen
+  await rp(`var th = __sent[__sent.length-1].al[0].th; __M.push(Object.assign({id:"m2"}, __sent[__sent.length-1])); __M.push({id:"m3", from:"u1", t:"", at:Date.now(), al:[0,1,2,3,4,5].map(function(i){ return {id:"x"+i, th:th, w:1600, h:1067}; })}); __snap(); true`);
+  await page.waitForTimeout(200);
+  ok(await rp(`var g = document.querySelector('#chMsgs .ch-msg[data-mid="m3"] .ch-al'); !!g && g.classList.contains("n4") && g.querySelectorAll(".ch-alc").length===4 && g.textContent.includes("+2")`), "Raster falsch");
+  await shot("chat-album");
+  await page.tap('#chMsgs .ch-msg[data-mid="m2"] .ch-alc >> nth=1'); await page.waitForTimeout(400);
+  ok(await rp(`!$("chPhView").hidden && CHGAL.list.length===4 && CHGAL.i===1 && /^data:image\\/jpeg/.test(document.querySelector("#chPvImg").src) && document.querySelector("#chPvImg").naturalWidth===1600`), "Galerie zeigt das große Foto nicht");
+  await rp(`$("chPhView").hidden = true; CHGAL = null; closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
+});
 await test("Chat: Kopf ohne Balken, Verlauf scrollt darunter durch und blendet oben weich aus, Knöpfe als Glas-Kreise", async () => {
   await seed();
   await rp(`window.__M = []; for(var i = 0; i < 30; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht Nummer "+i+" mit etwas mehr Text, damit sie umbricht", at:Date.now() - (30 - i)*60000});

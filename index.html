@@ -2105,6 +2105,19 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-comp textarea{flex:1;min-width:0;resize:none;border:.5px solid var(--sep,var(--line));border-radius:20px;background:var(--fill2,var(--fill));color:var(--ink);font:16px/1.35 var(--f-body);padding:9px 14px;max-height:120px;outline:none}
 .ch-att,.ch-send{width:40px;height:40px;flex:0 0 40px;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer}
 .ch-att{background:var(--fill);color:var(--ink)}
+.ch-attph{cursor:pointer;position:relative}
+.ch-alds{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+.ch-ald{position:relative;flex:0 0 auto}
+.ch-ald img{display:block;width:72px;height:72px;object-fit:cover;border-radius:12px}
+.ch-ald .ch-drx{top:4px;right:4px;width:22px;height:22px;line-height:22px;font-size:11px}
+.ch-al{display:grid;gap:2px;width:240px;max-width:100%;border-radius:16px;overflow:hidden}
+.ch-al.n1{grid-template-columns:1fr}
+.ch-al.n2{grid-template-columns:1fr 1fr}
+.ch-al.n3,.ch-al.n4{grid-template-columns:1fr 1fr}
+.ch-al.n3 .ch-alc:first-child{grid-column:1/3;aspect-ratio:2/1}
+.ch-alc{all:unset;position:relative;display:block;aspect-ratio:1;background:var(--fill);cursor:pointer;overflow:hidden}
+.ch-alc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ch-alc b{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);color:#fff;font:600 22px/1 var(--f-body)}
 .ch-send{background:var(--accent);color:#fff}
 .ch-att svg,.ch-send svg{width:21px;height:21px}
 /* Sprachnachrichten: Aufnahme-Knopf statt Senden, solange nichts eingegeben ist */
@@ -7820,12 +7833,12 @@ function chGalPos(dx, anim, ms){ var r = document.querySelector("#chPhView .chpv
   r.style.transition = anim ? "transform "+(ms||300)+"ms cubic-bezier(.2,.8,.25,1)" : "none"; r.style.transform = "translate3d(calc(-33.3333% + "+dx+"px),0,0)"; }
 function chGalSlide(ph, cur){
   if(!ph && !cur) return "<div class=\"chpv-sl\"></div>";
-  var g = CHGAL, o = g.o, th = !ph || g.list.length < 2 || !o.thPh || ph===o.thPh ? o.th : "", src = (ph && PHC[ph]) || th || "";
+  var g = CHGAL, o = g.o, th = !ph || g.list.length < 2 || !o.thPh || ph===o.thPh ? o.th : "", src = (ph && (PHC[ph] || CHALF[ph] || CHALT[ph])) || th || "";
   return "<div class=\"chpv-sl\""+(ph ? " data-ph=\""+esc(ph)+"\"" : "")+">"+(ph || th ? "<img alt=\"\""+(src ? " src=\""+src+"\"" : "")+">" : "")+"</div>";
 }
 function chGalLoad(sl){
-  var g = CHGAL, ph = sl && sl.getAttribute("data-ph"); if(!g || !ph || PHC[ph]) return;
-  phGet(ph).then(function(d){ if(CHGAL!==g) return; var im = sl.querySelector("img");
+  var g = CHGAL, ph = sl && sl.getAttribute("data-ph"); if(!g || !ph || PHC[ph] || CHALF[ph]) return;
+  (ph.indexOf("ca:")===0 ? chAlGet(ph) : phGet(ph)).then(function(d){ if(CHGAL!==g) return; var im = sl.querySelector("img");
     if(d){ if(!im){ im = document.createElement("img"); im.alt = ""; sl.appendChild(im); } im.src = d; return; }
     var o = g.o, hasTh = !(g.list.length > 1 && o.thPh && ph!==o.thPh) && o.th;
     // nicht sichtbar für dich: aus der Galerie nehmen, solange noch andere Fotos da sind
@@ -7896,7 +7909,7 @@ function chMsgsHTML(){
     if(mk && m.from!==me && (m.at||0) > mk.at){ mk = null; h += "<div class=\"ch-new\" id=\"chNewMk\"><span>Neue Nachrichten</span></div>"; }
     var mine = m.from===me, nx = L[i+1], tail = !nx || nx.from!==m.from || (nx.at - m.at) > 300000;
     h += "<div class=\"ch-msg"+(mine?" me":"")+(tail?" tail":"")+"\" data-mid=\""+esc(m.id)+"\">"+chReQuote(m)+
-      (m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.day ? chDayCard(m.day, esc(m.id)) : "")+(m.vo ? chVoHTML(m) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+chLinkCard(m)+
+      (m.al ? chAlHTML(m) : "")+(m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.day ? chDayCard(m.day, esc(m.id)) : "")+(m.vo ? chVoHTML(m) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+chLinkCard(m)+
       chRxHTML(m)+(tail ? "<small class=\"ch-tm\">"+chTime(m.at, true)+"</small>" : "")+(i===L.length-1 && mine ? chSeenHTML(m) : "")+"</div>";
   });
   return h;
@@ -7948,6 +7961,7 @@ function renderCh(full){
       "<div class=\"ch-pick\" id=\"chPick\" hidden><div class=\"ch-pickh\"><div class=\"gs-box\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"chPickIn\" placeholder=\"Ort aus deinen Reisen teilen\" autocomplete=\"off\"></div><button type=\"button\" class=\"btn g s\" data-act=\"chpick\">Fertig</button></div><div class=\"ag-grp ls-list\" id=\"chPickRes\"></div></div>"+
       "<div class=\"ch-rebar\" id=\"chReBox\" hidden></div><div class=\"ch-sug\" id=\"chSugBox\" hidden></div><div class=\"ch-draft\" id=\"chDraftBox\"></div>"+
       "<div class=\"ch-comp\"><button type=\"button\" class=\"ch-att\" data-act=\"chpick\" aria-label=\"Ort teilen\" title=\"Ort teilen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z\"/><circle cx=\"12\" cy=\"9.5\" r=\"2.5\"/></svg></button>"+
+      "<label class=\"ch-att ch-attph\" aria-label=\"Fotos schicken\" title=\"Fotos schicken\">"+ic("camera")+"<input type=\"file\" id=\"chPhIn\" accept=\"image/*\" multiple hidden></label>"+
       "<textarea id=\"chIn\" rows=\"1\" placeholder=\"Nachricht\" enterkeyhint=\"send\"></textarea><button type=\"button\" class=\"ch-send\" data-act=\"chsend\" aria-label=\"Senden\">"+CHSENDIC+"</button>"+
       "<button type=\"button\" class=\"ch-rec\" aria-label=\"Sprachnachricht: gedrückt halten\" title=\"Sprachnachricht: gedrückt halten\">"+ic("voice", "vi")+CHSENDIC+"</button><span class=\"ch-vlk\" aria-hidden=\"true\">"+ic("lock")+"<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 12l4-4 4 4\"/></svg></span><div class=\"ch-vrec\" id=\"chVRec\" hidden></div></div></div>";
     chVV();
@@ -7996,7 +8010,7 @@ function chNewStart(){ var el = $("chView"); if(!el || !acct.user) return;
 // Vorschlag angetippt: Name übernehmen, weiter zur Nachricht
 function chNewPick(u){ var i = $("chNewIn"); chNewU = u; chNewQ = chName(u); if(i) i.value = chNewQ; renderChNew();
   var m = $("chIn"); if(m) try { m.focus({preventScroll:true}); } catch(e){ m.focus(); } }
-function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; if(chDraft) chSugSet(null); b.innerHTML = chDraft ? "<div class=\"ch-dr\">"+(chIsPhoto(chDraft) ? chPhotoCard(chDraft, "", true) : chIsDay(chDraft) ? chDayCard(chDraft, "", true) : chPlaceCard(chDraft, "", true))+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; chCompUpd(); }
+function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; if(chDraft) chSugSet(null); b.innerHTML = chDraft && chDraft.al ? chAlDraftHTML(chDraft) : chDraft ? "<div class=\"ch-dr\">"+(chIsPhoto(chDraft) ? chPhotoCard(chDraft, "", true) : chIsDay(chDraft) ? chDayCard(chDraft, "", true) : chPlaceCard(chDraft, "", true))+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; chCompUpd(); }
 /* Foto-Nachricht = geteiltes Foto (Kennung + Reise + Ort); ein Ort mit Vorschaubild hat in .ph Bilddaten und ist KEIN Foto */
 // ältere Nachrichten: als Foto gespeicherte Orte (mit Vorschaubild) wieder als Ort behandeln
 function chNorm(m){ if(m && m.photo && !chIsPhoto(m.photo)){ m.place = m.place || m.photo; delete m.photo; } return m; }
@@ -8110,9 +8124,48 @@ function chPlsOpen(){ if(!chOpen) return; var L = chPlsList(), me = acct.user &&
       CHPLS.mks.push(new maplibregl.Marker({element:e}).setLngLat([x.pl.lo, x.pl.la]).addTo(m)); });
   } catch(e){ el.remove(); }
 }
+/* ---------- Fotos vom Gerät im Chat (einzeln oder als Album bis 10) ----------
+   Kostenlos in Firestore wie Sprachnachrichten: jedes Foto (max. 1600 px, JPEG) als eigenes Dokument chats/{cid}/msgs/{id} = {from, img}
+   OHNE „at“ (die Verlaufsabfrage lädt es nie mit), geholt erst beim Ansehen. Die Nachricht trägt al = [{id, th (kleines Vorschaubild), w, h}].
+   Bestehende msgs-Regeln genügen. */
+var CHALMAX = 10, CHALT = {}, CHALF = {};
+function chAlLbl(al){ var n = (al||[]).length; return n===1 ? "Foto" : n+" Fotos"; }
+function chImgData(file, max, q, lim){ return new Promise(function(res, rej){ var url = URL.createObjectURL(file), im = new Image();
+  im.onload = function(){ var k = Math.min(1, max/Math.max(im.naturalWidth, im.naturalHeight)), w = Math.max(1, Math.round(im.naturalWidth*k)), h = Math.max(1, Math.round(im.naturalHeight*k)), c = document.createElement("canvas");
+    c.width = w; c.height = h; c.getContext("2d").drawImage(im, 0, 0, w, h); URL.revokeObjectURL(url);
+    var qq = q, d = c.toDataURL("image/jpeg", qq); while(lim && d.length > lim && qq > 0.35){ qq -= 0.12; d = c.toDataURL("image/jpeg", qq); }
+    if(lim && d.length > lim){ c.width = Math.round(w*0.7); c.height = Math.round(h*0.7); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); d = c.toDataURL("image/jpeg", 0.6); }
+    res({d:d, w:w, h:h}); };
+  im.onerror = function(){ URL.revokeObjectURL(url); rej(new Error("Bild")); }; im.src = url; }); }
+function chAlPick(files){ if(!chOpen && !chNewOn) return;
+  var cur0 = chDraft && chDraft.al ? chDraft.al : [], room = CHALMAX - cur0.length; if(room <= 0){ toast("Höchstens "+CHALMAX+" Fotos auf einmal", false); return; }
+  if(files.length > room) toast("Höchstens "+CHALMAX+" Fotos auf einmal – "+room+" übernommen", false);
+  Promise.all(files.slice(0, room).map(function(f){ return Promise.all([chImgData(f, 1600, 0.8, 900000), chImgData(f, 260, 0.6)]).then(function(r){ return {d:r[0].d, th:r[1].d, w:r[0].w, h:r[0].h}; }, function(){ return null; }); })).then(function(L){
+    L = L.filter(Boolean); if(!L.length){ toast("Fotos konnten nicht gelesen werden", false); return; }
+    chDraft = {al:(chDraft && chDraft.al ? chDraft.al : []).concat(L)}; renderChDraft(); var i = $("chIn"); if(i) try { i.focus({preventScroll:true}); } catch(e){} }); }
+function chAlDraftHTML(o){ return "<div class=\"ch-alds\">"+o.al.map(function(it, i){ return "<span class=\"ch-ald\"><img src=\""+it.th+"\" alt=\"\"><button type=\"button\" class=\"ch-drx\" data-act=\"chalx\" data-i=\""+i+"\" aria-label=\"Foto entfernen\">✕</button></span>"; }).join("")+"</div>"; }
+function chAlSend(txt){ var me = acct.user.uid, cid = chOpen, u = chPartner(cid), L = chDraft.al.slice(), now = Date.now(), inp = $("chIn");
+  chNewDone(u); var mref = fbDb.collection("chats").doc(cid).collection("msgs"), items = L.map(function(it){ var id = uid("al"); CHALF["ca:"+cid+":"+id] = it.d; return {id:id, th:it.th, w:it.w, h:it.h}; });
+  var msg = {from:me, t:txt, at:now, al:items}, re = chRe; if(re) msg.re = re;
+  var names = {}; names[me] = (PROF && PROF.name) || ""; names[u] = chName(u); var read = {}; read[me] = now; var typ = {}; typ[me] = 0; CHTYP.at = 0;
+  chSending = true; chDraft = null; if(inp){ inp.value = ""; chGrow(); } renderChDraft(); chRe = null; renderChRe(); chSugSet(null);
+  Promise.all(L.map(function(it, i){ return mref.doc(items[i].id).set({from:me, img:it.d}); })).then(function(){
+    var cref = fbDb.collection("chats").doc(cid), b = fbDb.batch();
+    b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:chAlLbl(items), ph:true}, read:read, typ:typ}, {merge:true});
+    b.set(mref.doc(), msg); return b.commit(); }).then(function(){ chSending = false; }, function(e){ chSending = false; chDraft = {al:L}; renderChDraft(); if(inp && !inp.value){ inp.value = txt; chCompUpd(); }
+      toast("Fotos nicht gesendet: "+((e && e.message) || ""), false); }); }
+// Raster wie bei Instagram/iMessage: 1 groß, 2 nebeneinander, 3 = eins groß + zwei, ab 4 ein 2×2-Raster mit „+n“
+function chAlHTML(m){ var al = m.al || [], n = al.length, k = esc(m.id), cid = chOpen; if(!n) return "";
+  var show = al.slice(0, 4), cls = n===1 ? "n1" : n===2 ? "n2" : n===3 ? "n3" : "n4";
+  return "<div class=\"ch-al "+cls+"\">"+show.map(function(it, i){ var key = "ca:"+cid+":"+it.id; CHALT[key] = it.th; var src = CHALF[key] || it.th;
+    return "<button type=\"button\" class=\"ch-alc\" data-act=\"chalv\" data-k=\""+k+"\" data-i=\""+i+"\" aria-label=\"Foto "+(i+1)+" von "+n+" ansehen\""+(n===1 && it.w && it.h ? " style=\"aspect-ratio:"+Math.max(0.6, Math.min(1.8, it.w/it.h)).toFixed(3)+"\"" : "")+"><img src=\""+src+"\" alt=\"\">"+(i===3 && n > 4 ? "<b>+"+(n-4)+"</b>" : "")+"</button>"; }).join("")+"</div>"; }
+function chAlView(mid, i){ var m = chMsgById(mid); if(!m || !m.al) return; var cid = chOpen;
+  chGal(m.al.map(function(it){ return "ca:"+cid+":"+it.id; }), i, {trip:m.from===(acct.user && acct.user.uid) ? "Von dir" : "Von "+atn(chName(m.from))}); }
+function chAlGet(key){ if(CHALF[key]) return Promise.resolve(CHALF[key]); if(!fbDb) return Promise.resolve(null); var p = key.split(":");
+  return fbDb.collection("chats").doc(p[1]).collection("msgs").doc(p[2]).get().then(function(d){ var v = d.exists && d.data(); if(!v || typeof v.img!=="string") return null; CHALF[key] = v.img; return v.img; }, function(){ return null; }); }
 /* Antworten: chRe = markierte Nachricht {id, from, t (Kurztext)}; wird als re mit der Antwort gespeichert */
 var chRe = null;
-function chReText(m){ return ((m.t || "").replace(/\s+/g, " ").trim() || (m.vo ? "Sprachnachricht · "+vrFmt(m.vo.d) : m.photo ? "Foto · "+(m.photo.n||"") : m.place ? "Ort · "+(m.place.n||"") : m.day ? "Tag · "+(m.day.dt||"") : "Nachricht")).slice(0, 140); }
+function chReText(m){ return ((m.t || "").replace(/\s+/g, " ").trim() || (m.vo ? "Sprachnachricht · "+vrFmt(m.vo.d) : m.photo ? "Foto · "+(m.photo.n||"") : m.place ? "Ort · "+(m.place.n||"") : m.day ? "Tag · "+(m.day.dt||"") : m.al ? chAlLbl(m.al) : "Nachricht")).slice(0, 140); }
 function chReWho(u, mine){ var me = acct.user && acct.user.uid; return u===me ? (mine ? "dir selbst" : "dir") : atn(chName(u)); }
 function chReSet(id){ var m = chMsgs.filter(function(x){ return x.id===id; })[0]; if(!m || !chOpen || chGone(chPartner(chOpen))) return;
   var box = $("chMsgs"), atEnd = box && box.scrollHeight - box.scrollTop - box.clientHeight < 80;
@@ -8179,7 +8232,7 @@ function chActOpen(el){
   var mn = document.createElement("div"); mn.className = "cha-menu"; mn.setAttribute("role", "menu");
   var it = function(k, icn, t, cls, extra){ return "<button type=\"button\" role=\"menuitem\" data-cha=\""+k+"\""+(cls ? " class=\""+cls+"\"" : "")+">"+ic(icn)+"<span>"+t+"</span>"+(extra || "")+"</button>"; };
   mn.innerHTML = "<small>"+esc(new Date(m.at || 0).toLocaleString("de-DE", {weekday:"short", day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}))+"</small>"+
-    (gone ? "" : it("reply", "reply", "Antworten"))+(m.t ? it("copy", "copy", "Kopieren") : "")+(m.vo ? it("fwdna", "send", "Weiterleiten", "na", "<em>bald</em>") : it("fwd", "send", "Weiterleiten"))+(gone ? "" : it("pin", "fix", pinned ? "Fixierung lösen" : "Fixieren"))+
+    (gone ? "" : it("reply", "reply", "Antworten"))+(m.t ? it("copy", "copy", "Kopieren") : "")+(m.vo || m.al ? it("fwdna", "send", "Weiterleiten", "na", "<em>bald</em>") : it("fwd", "send", "Weiterleiten"))+(gone ? "" : it("pin", "fix", pinned ? "Fixierung lösen" : "Fixieren"))+
     it("sticker", "sticker", "Sticker hinzufügen", "na", "<em>bald</em>")+it("del", "del", "Für dich löschen", "del");
   a.appendChild(mm); if(!gone) a.appendChild(rx); a.appendChild(mn); document.body.appendChild(a);
   chActM = {id:id, a:a, el:el};
@@ -8239,6 +8292,7 @@ function chSend(){
   var me = acct.user && acct.user.uid, inp = $("chIn"), txt = inp ? inp.value.trim().slice(0, 4000) : "";
   if(me && chNewOn && !chOpen && (txt || chDraft)){ toast("Gib zuerst oben den Namen eines Freundes ein", false); var ni = $("chNewIn"); if(ni) try { ni.focus({preventScroll:true}); } catch(e){} return; }
   if(!me || !chOpen || chSending || (!txt && !chDraft) || chGone(chPartner(chOpen))) return;
+  if(chDraft && chDraft.al){ chAlSend(txt); return; }
   var u = chPartner(chOpen);
   // erste Nachricht im neuen Chat: Kopf wird zum normalen Chat-Kopf, Eingabe und Tastatur bleiben
   chNewDone(u);
@@ -8496,6 +8550,7 @@ document.addEventListener("focusin", function(e){ if(chPage && (chOpen || chNewO
 document.addEventListener("focusout", function(){ if(CHKB.on) setTimeout(chVV, 0); });
 // Senden-Knopf nimmt dem Feld den Fokus nicht – die Tastatur bleibt offen wie in Nachrichten-Apps
 document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send, #chView .ch-vrec, #chView .ch-vp, #chView .ch-vw, #chView .ch-rex, #chView .ch-rq, #chNewRes [data-act=chnew]") && chTyping()) e.preventDefault(); }, true);
+document.addEventListener("change", function(e){ if(e.target && e.target.id==="chPhIn"){ var fs = [].slice.call(e.target.files || []); e.target.value = ""; if(fs.length) chAlPick(fs); } });
 document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn"){ chGrow(); chTypPing(); chSugScan(); } if(e.target.id==="chNewIn"){ chNewQ = e.target.value; renderChNew(); } if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
 document.addEventListener("keydown", function(e){
   // Empfängerfeld: Eingabetaste übernimmt den (einzigen) Vorschlag und springt zur Nachricht
@@ -16153,6 +16208,8 @@ document.addEventListener("click", function(e){
     case "chdayto": chDayTo(t.getAttribute("data-uid"), t.getAttribute("data-day")); break;
     case "chmap": chShowPl(CHPL[t.getAttribute("data-k")]); break;
     case "chsugok": chSugOk(); break;
+    case "chalv": chAlView(t.getAttribute("data-k"), +t.getAttribute("data-i")); break;
+    case "chalx": if(chDraft && chDraft.al){ chDraft.al.splice(+t.getAttribute("data-i"), 1); if(!chDraft.al.length) chDraft = null; renderChDraft(); } break;
     case "chplaces": chPlsOpen(); break;
     case "chplsgo": var cpk = CHPL[t.getAttribute("data-k")]; closeCatPop(); chShowPl(cpk); break;
     case "chsugx": if(CHSUG.cur) CHSUG.off[CHSUG.cur.k] = 1; chSugSet(null); break;
