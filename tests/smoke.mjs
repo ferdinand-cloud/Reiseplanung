@@ -407,7 +407,7 @@ await test("Chat: öffnet erst mit geladenem Verlauf, Aktualisieren hält die ge
       collection:function(){ var q = {orderBy:function(){ return q; }, limitToLast:function(){ return q; },
         get:function(o){ __gets.push(cid+(o && o.source ? ":"+o.source : "")); return new Promise(function(r){ setTimeout(function(){ r(qs()); }, 500); }); },
         onSnapshot:function(cb){ window.__snap = function(){ cb(qs()); }; setTimeout(__snap, 0); return function(){}; }}; return q; }}; }}; }};
-    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:1000, last:{t:"Nachricht 39", from:"u1", at:1000}}}; CH.list = [CH.byId.u1_u_me]; CH.got = true;
+    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:1000, read:{u_me:Date.now()}, last:{t:"Nachricht 39", from:"u1", at:1000}}}; CH.list = [CH.byId.u1_u_me]; CH.got = true;
     openChPage(); true`);
   await page.waitForTimeout(250);
   await page.tap('#chView [data-act=chopen][data-v="u1_u_me"]'); await page.waitForTimeout(150);
@@ -444,7 +444,7 @@ await test("Chat: Nachricht zur Mitte ziehen markiert sie zum Antworten, Zitat s
       collection:function(n){ var q = {orderBy:function(){ return q; }, limitToLast:function(){ return q; }, doc:function(){ return {}; }, get:function(){ return Promise.resolve(qs()); },
         onSnapshot:function(cb){ if(n!=="msgs" || cid!=="u1_u_me") return function(){}; window.__snap = function(){ cb(qs()); }; setTimeout(__snap, 0); return function(){}; }}; return q; }}; }}; }};
     acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; acct.user.uid = "u_me";
-    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:1000, names:{u1:"Anna"}, last:{t:"Nachricht 29", from:"u1", at:1000}}}; CH.list = [CH.byId.u1_u_me]; CH.got = true; CHPROF.u1 = {name:"Anna"};
+    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:1000, names:{u1:"Anna"}, read:{u_me:Date.now()}, last:{t:"Nachricht 29", from:"u1", at:1000}}}; CH.list = [CH.byId.u1_u_me]; CH.got = true; CHPROF.u1 = {name:"Anna"};
     CHMC.u1_u_me = null; delete CHMC.u1_u_me; openChPage("u1_u_me"); true`);
   await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===30`), null, {timeout:4000});
   const cdp = await page.context().newCDPSession(page);
@@ -3560,6 +3560,44 @@ await test("Tastatur im Pop-up: Feld weiter unten (Neue Reise) wird über Tastat
   await page.evaluate(() => { document.activeElement.blur(); delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
 });
 await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-quer"); }, QUER);
+
+await test("Chat: Kopf ohne Balken, Verlauf scrollt darunter durch und blendet oben weich aus, Knöpfe als Glas-Kreise", async () => {
+  await seed();
+  await rp(`window.__M = []; for(var i = 0; i < 30; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht Nummer "+i+" mit etwas mehr Text, damit sie umbricht", at:Date.now() - (30 - i)*60000});
+    var qs = function(){ return {docs:__M.map(function(m){ return {id:m.id, data:function(){ return JSON.parse(JSON.stringify(m)); }}; })}; };
+    fbDb = {runTransaction:function(){ return new Promise(function(){}); }, batch:function(){ return {set:function(){}, update:function(){}, commit:function(){ return Promise.resolve(); }}; }, collection:function(){ return {doc:function(cid){ return {get:function(){ return Promise.resolve({exists:false}); }, update:function(){ return Promise.resolve(); },
+      collection:function(n){ var q = {orderBy:function(){ return q; }, limitToLast:function(){ return q; }, doc:function(){ return {}; }, get:function(){ return Promise.resolve(qs()); },
+        onSnapshot:function(cb){ if(n!=="msgs" || cid!=="u1_u_me") return function(){}; setTimeout(function(){ cb(qs()); }, 0); return function(){}; }}; return q; }}; }}; }};
+    acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; acct.user.uid = "u_me";
+    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:1000, names:{u1:"Anna"}, read:{u_me:Date.now()}, last:{t:"Nachricht 29", from:"u1", at:__M[29].at}}}; CH.list = [CH.byId.u1_u_me]; CH.got = true; CHPROF.u1 = {name:"Anna"};
+    CHMC.u1_u_me = null; delete CHMC.u1_u_me; openChPage("u1_u_me"); true`);
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===30`), null, {timeout:4000});
+  await page.waitForTimeout(400);
+  await shot("chat-kopf");
+  ok(await rp(`!$("chNewMk")`), "Trennlinie „Neue Nachrichten“ ohne ungelesene Nachrichten");
+  const st = await page.evaluate(() => { const hd = document.querySelector("#chView .ch-head"), box = document.getElementById("chMsgs"), cs = getComputedStyle(hd), bk = getComputedStyle(hd.querySelector(".ch-back"));
+    const hb = hd.getBoundingClientRect(), mb = box.getBoundingClientRect();
+    return {bg:cs.backgroundColor, line:cs.borderBottomStyle==="none" || parseFloat(cs.borderBottomWidth)===0, under:mb.top <= hb.top + 1, mask:getComputedStyle(box).webkitMaskImage || getComputedStyle(box).maskImage,
+      blur:bk.backdropFilter || bk.webkitBackdropFilter, round:bk.borderRadius, padTop:parseFloat(getComputedStyle(box).paddingTop) >= hb.bottom - mb.top - 2,
+      atEnd:box.scrollHeight - box.scrollTop - box.clientHeight < 4, headH:hb.height}; });
+  ok(st.line && /rgba\(0, 0, 0, 0\)|transparent/.test(st.bg), "Chat-Kopf hat noch einen Balken/Trennlinie: "+JSON.stringify(st));
+  ok(st.under && st.padTop, "Verlauf läuft nicht unter dem Kopf durch: "+JSON.stringify(st));
+  ok(/gradient/.test(st.mask || ""), "Verlauf blendet oben nicht weich aus: "+JSON.stringify(st));
+  ok(/blur/.test(st.blur || "") && st.round==="50%", "Zurück-Knopf ist kein Glas-Kreis: "+JSON.stringify(st));
+  ok(st.atEnd, "Chat öffnet nicht an der neuesten Nachricht");
+  // ganz nach oben gescrollt: erste Nachricht liegt vollständig unter dem Kopf, nicht verdeckt
+  const top = await page.evaluate(() => { const box = document.getElementById("chMsgs"); box.scrollTop = 0; const f = box.querySelector(".ch-msg").getBoundingClientRect(), hb = document.querySelector("#chView .ch-head").getBoundingClientRect(); return {f:f.top, h:hb.bottom}; });
+  ok(top.f >= top.h - 1, "Erste Nachricht beim Hochscrollen vom Kopf verdeckt: "+JSON.stringify(top));
+  // ungelesen ab Nachricht 20: Trennlinie „Neue Nachrichten“ vor der ersten ungelesenen fremden Nachricht, Lesestelle dort (direkt unter dem Kopf)
+  await rp(`chBackToList(); CH.byId.u1_u_me.read = {u_me:__M[19].at}; openChPage("u1_u_me"); true`);
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && !!$("chNewMk")`), null, {timeout:4000});
+  await page.waitForTimeout(400);
+  await shot("chat-neue-nachrichten");
+  const nm = await page.evaluate(() => { const m = document.getElementById("chNewMk"), nx = m.nextElementSibling, hb = document.querySelector("#chView .ch-head").getBoundingClientRect(), r = m.getBoundingClientRect();
+    return {txt:m.textContent, next:nx && nx.getAttribute("data-mid"), n:document.querySelectorAll("#chNewMk").length, y:Math.round(r.top), h:Math.round(hb.bottom)}; });
+  ok(nm.txt==="Neue Nachrichten" && nm.next==="m20" && nm.n===1, "Trennlinie nicht vor der ersten ungelesenen Nachricht: "+JSON.stringify(nm));
+  ok(nm.y >= nm.h - 2 && nm.y <= nm.h + 40, "Lesestelle nicht an der Trennlinie: "+JSON.stringify(nm));
+});
 
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {
   await seed();

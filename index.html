@@ -1958,7 +1958,19 @@ form.gnew{position:relative}
 .chview.conv.kbt .ch-conv{flex:0 0 auto;height:var(--chh,100%);transform:translateY(var(--cht,0px))}
 .chview.conv.kbt .ch-comp{padding-bottom:8px}
 body.chkb .top{transform:translateY(var(--chtop,0px))}
-.ch-conv{display:flex;flex-direction:column;height:100%;max-width:640px;width:100%;margin:0 auto;padding-top:calc(env(safe-area-inset-top,0px) + 72px);box-sizing:border-box}
+.ch-conv{--chhd:calc(env(safe-area-inset-top,0px) + 72px);position:relative;display:flex;flex-direction:column;height:100%;max-width:640px;width:100%;margin:0 auto;box-sizing:border-box}
+/* Kopf ohne Balken (wie Instagram): Verlauf läuft unter Leiste und Kopf durch, wird dort weich unscharf und blendet aus; Knöpfe als einzelne Glas-Kreise */
+.ch-conv>.ch-head{position:absolute;left:0;right:0;top:var(--chhd);z-index:3;border-bottom:0;pointer-events:none}
+.ch-conv>.ch-head>*{pointer-events:auto}
+.ch-conv>.ch-head::before{content:"";position:absolute;left:0;right:0;bottom:-18px;top:calc(-1 * var(--chhd));z-index:-1;pointer-events:none;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  -webkit-mask-image:linear-gradient(#000 calc(100% - 34px),transparent);mask-image:linear-gradient(#000 calc(100% - 34px),transparent)}
+.ch-conv>.ch-msgs,.ch-conv>.ch-newres{padding-top:calc(var(--chhd) + 60px);
+  -webkit-mask-image:linear-gradient(transparent calc(var(--chhd) + 6px),rgba(0,0,0,.2) calc(var(--chhd) + 36px),#000 calc(var(--chhd) + 62px));mask-image:linear-gradient(transparent calc(var(--chhd) + 6px),rgba(0,0,0,.2) calc(var(--chhd) + 36px),#000 calc(var(--chhd) + 62px))}
+.ch-conv>.ch-newres + .ch-msgs{padding-top:10px;-webkit-mask-image:none;mask-image:none}
+.ch-conv>.ch-newres[hidden] + .ch-msgs{padding-top:calc(var(--chhd) + 60px);-webkit-mask-image:linear-gradient(transparent calc(var(--chhd) + 6px),rgba(0,0,0,.2) calc(var(--chhd) + 36px),#000 calc(var(--chhd) + 62px));mask-image:linear-gradient(transparent calc(var(--chhd) + 6px),rgba(0,0,0,.2) calc(var(--chhd) + 36px),#000 calc(var(--chhd) + 62px))}
+.ch-conv .ch-back,.ch-conv .ch-to{background:color-mix(in srgb,var(--sheet) 62%,transparent);-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);box-shadow:0 0 0 .5px var(--sep,var(--line)),0 4px 14px rgba(0,0,0,.08)}
+.ch-conv .ch-back{width:40px;height:40px;flex-basis:40px}
+.ch-conv>.ch-head b{text-shadow:0 0 12px var(--sheet),0 0 4px var(--sheet)}
 /* Zurückwischen: Chat gleitet nach rechts weg, darunter die Übersicht (leicht abgedunkelt, hellt sich auf) */
 .ch-conv.sw{position:relative;z-index:1;background:var(--sheet);box-shadow:-10px 0 28px rgba(0,0,0,.22);will-change:translate}
 .ch-under{position:absolute;inset:0;z-index:0;overflow:hidden;filter:brightness(calc(1 - var(--d,1) * .14));padding:calc(env(safe-area-inset-top,0px) + 76px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);pointer-events:none}
@@ -1970,6 +1982,8 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-back svg{width:19px;height:19px}
 .ch-msgs{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:10px 12px 6px;display:flex;flex-direction:column;gap:2px}
 .ch-empty{text-align:center;margin:auto 20px}
+.ch-new{align-self:stretch;display:flex;align-items:center;gap:12px;margin:14px 8px 4px;font:500 13px/1.2 var(--f-body);color:var(--muted)}
+.ch-new::before,.ch-new::after{content:"";flex:1;height:1px;background:color-mix(in srgb,var(--muted) 55%,transparent)}
 .ch-day{align-self:center;margin:12px 0 6px;font:600 12px/1.2 var(--f-body);color:var(--muted)}
 .ch-msg{display:flex;flex-direction:column;align-items:flex-start;max-width:80%;gap:3px}
 .ch-msg.me{align-self:flex-end;align-items:flex-end}
@@ -7514,6 +7528,8 @@ function chOpenConv(cid){
   var cv = $("chView"); CHRET.sc = cv && chPage && !chOpen && !cv.classList.contains("conv") ? cv.scrollTop : CHRET.sc;
   // eigener Verlaufseintrag: Safaris Zurück (auch Wischen vom linken Rand) führt so genau zur Chat-Übersicht
   try { if(history.state && history.state.rpch) history.replaceState({rpch:cid}, ""); else history.pushState({rpch:cid}, ""); } catch(e){}
+  // „Neue Nachrichten“: Trennlinie über der ersten ungelesenen fremden Nachricht, beim Öffnen dorthin springen
+  var c0 = CH.byId[cid], me0 = acct.user && acct.user.uid; chNewMk = c0 && chUnread(c0) ? {cid:cid, at:(c0.read||{})[me0] || 0, jump:true} : null;
   chNewOn = false; chNewQ = ""; chOpen = cid; chMsgs = (CHMC[cid] || []).slice(); chMsgErr = false; chPickOn = false; chRe = null; renderCh(true);
   chSubMsgs(cid);
 }
@@ -7523,6 +7539,7 @@ function chSubMsgs(cid){
     var L0 = chMsgs[chMsgs.length-1], had = chMsgs.length;
     chMsgs = CHMC[cid] = chRows(qs); var L1 = chMsgs[chMsgs.length-1];
     // nach unten nur bei eigener neuer Nachricht oder beim ersten Verlauf; sonst nur, wenn man schon unten war
+    if(chOpen===cid && L1 && L1.from===me && (!L0 || L1.id!==L0.id) && had) chNewMk = null;   // selbst geantwortet: Trennlinie weg
     if(chOpen===cid){ renderChMsgs(!had || (L1 && L1.from===me && (!L0 || L1.id!==L0.id)) ? true : undefined); if(chUnread(CH.byId[cid] || {})) chMarkRead(cid); }
   }, function(){ chMsgs = []; chMsgErr = true; if(chOpen===cid) renderChMsgs(); });
 }
@@ -7755,11 +7772,13 @@ function chPlaceCard(pl, key, draft){
       (inT ? "<span class=\"dc-in\">✓ In deiner Reise</span>" : (isRO() ? "" : "<button type=\"button\" class=\"btn g s\" data-act=\"chwish\" data-k=\""+key+"\">"+ic("save", "ii")+" Wunschliste</button><button type=\"button\" class=\"btn s\" data-act=\"chplan\" data-k=\""+key+"\">Einplanen</button>"))+(hasLoc(pl) ? zMkBtn(pl, "chmerk", key, "dc-map ch-map") : "")+"<button type=\"button\" class=\"dc-map ch-map\" data-act=\"chmap\" data-k=\""+key+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button></div>")+
     "</div></div>";
 }
+var chNewMk = null;
 function chMsgsHTML(){
-  var me = acct.user && acct.user.uid, h = "", lastDay = "";
+  var me = acct.user && acct.user.uid, h = "", lastDay = "", mk = chNewMk && chNewMk.cid===chOpen ? chNewMk : null;
   if(!chMsgs.length) return "<p class=\"note ch-empty\">Noch keine Nachrichten. Schreib etwas oder teile einen Ort mit "+ic("pin", "ii")+".</p>";
   chMsgs.forEach(function(m, i){
     var d = new Date(m.at||0).toDateString(); if(d!==lastDay){ lastDay = d; h += "<div class=\"ch-day\">"+esc(new Date(m.at||0).toLocaleDateString("de-DE", {weekday:"short", day:"numeric", month:"long"}))+"</div>"; }
+    if(mk && m.from!==me && (m.at||0) > mk.at){ mk = null; h += "<div class=\"ch-new\" id=\"chNewMk\"><span>Neue Nachrichten</span></div>"; }
     var mine = m.from===me, nx = chMsgs[i+1], tail = !nx || nx.from!==m.from || (nx.at - m.at) > 300000;
     h += "<div class=\"ch-msg"+(mine?" me":"")+(tail?" tail":"")+"\" data-mid=\""+esc(m.id)+"\">"+chReQuote(m)+
       (m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+
@@ -7773,7 +7792,10 @@ function renderChMsgs(stick){
   if(stick !== true && !(stick == null && atEnd)){ var bt = box.getBoundingClientRect().top;
     [].some.call(box.querySelectorAll(".ch-msg"), function(m){ var r = m.getBoundingClientRect(); if(r.bottom > bt + 1){ anc = m.getAttribute("data-mid"); off = r.top - bt; return true; } return false; }); }
   box.innerHTML = chMsgsHTML();
-  if(stick === true || (stick == null && atEnd)) box.scrollTop = box.scrollHeight;
+  var nm = stick === true && chNewMk && chNewMk.jump && $("chNewMk");
+  if(nm){ chNewMk.jump = false; var pt = parseFloat(getComputedStyle(box).paddingTop) || 0;   // Lesestelle: Trennlinie direkt unter dem Kopf
+    box.scrollTop = Math.min(box.scrollHeight, box.scrollTop + nm.getBoundingClientRect().top - box.getBoundingClientRect().top - pt + 4); }
+  else if(stick === true || (stick == null && atEnd)) box.scrollTop = box.scrollHeight;
   else if(anc){ var a = box.querySelector(".ch-msg[data-mid=\""+anc+"\"]"); if(a) box.scrollTop += a.getBoundingClientRect().top - box.getBoundingClientRect().top - off; }
   fillPhotos(box);
 }
@@ -7887,7 +7909,8 @@ function chReQuote(m){ var r = m.re; if(!r || !r.id) return ""; var me = acct.us
 function chReJump(id){ var box = $("chMsgs"), e = box && box.querySelector(".ch-msg[data-mid=\""+id+"\"]");
   if(!e){ toast("Die Nachricht ist nicht mehr im Verlauf", false); return; }
   var br = box.getBoundingClientRect(), r = e.getBoundingClientRect();
-  box.scrollTo({top:Math.max(0, box.scrollTop + r.top - br.top - (box.clientHeight - Math.min(r.height, box.clientHeight)) / 2), behavior:"smooth"});
+  var pt = parseFloat(getComputedStyle(box).paddingTop) || 0, vis = box.clientHeight - pt;   // Bereich unter dem Kopf
+  box.scrollTo({top:Math.max(0, box.scrollTop + r.top - br.top - pt - (vis - Math.min(r.height, vis)) / 2), behavior:"smooth"});
   e.classList.remove("rhl"); void e.offsetWidth; e.classList.add("rhl"); setTimeout(function(){ e.classList.remove("rhl"); }, 1500); }
 function chSend(){
   var me = acct.user && acct.user.uid, inp = $("chIn"), txt = inp ? inp.value.trim().slice(0, 4000) : "";
