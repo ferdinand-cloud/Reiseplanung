@@ -2107,6 +2107,25 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-comp textarea{flex:1;min-width:0;resize:none;border:.5px solid var(--sep,var(--line));border-radius:20px;background:var(--fill2,var(--fill));color:var(--ink);font:16px/1.35 var(--f-body);padding:9px 14px;max-height:120px;outline:none}
 .ch-att,.ch-send{width:40px;height:40px;flex:0 0 40px;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer}
 .ch-att{background:var(--fill);color:var(--ink)}
+.ch-gh{all:unset;display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer;pointer-events:auto}
+.ch-gh>span:last-child{display:flex;flex-direction:column;min-width:0}
+.ch-gh small{font-size:12px;color:var(--muted);text-shadow:0 0 10px var(--sheet)}
+.ch-gh b{font:700 16px/1.2 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 0 12px var(--sheet),0 0 4px var(--sheet)}
+.ch-av.gi,.ch-av.init.gi{display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 16%,var(--fill));color:var(--accent)}
+.ch-av.gi svg{width:58%;height:58%}
+.ch-gav{position:relative;display:inline-block;background:none !important;overflow:visible !important}
+.ch-gav>*{position:absolute;width:70%;height:70%;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--sheet);display:grid;place-items:center;font:700 .62em/1 var(--f-body);background:var(--accent);color:#fff}
+.ch-gav>.ch-gav1{background:color-mix(in srgb,var(--accent) 55%,#fff)}
+.ch-av.sm.ch-gav>*{font-size:12px}
+.ch-gav>.ch-gav1{left:0;top:0}.ch-gav>.ch-gav2{right:0;bottom:0}
+.ch-from{font-size:11.5px;color:var(--muted);padding:6px 12px 0;align-self:flex-start}
+.ch-sys{align-self:center;max-width:85%;text-align:center;margin:8px 0;font:500 12px/1.35 var(--f-body);color:var(--muted)}
+.ch-grpn{display:flex;gap:8px;align-items:center}
+.ch-grpn .poll-q{margin:0;flex:1}
+.ch-grpc .ch-grpl{max-height:40dvh;overflow:auto;margin:4px 0 12px}
+.ch-grpc .ch-grpl .ls-row{gap:10px}
+.ch-grprm{margin-left:auto;width:32px;height:32px;border:0;border-radius:50%;background:var(--fill);color:var(--muted);display:grid;place-items:center;cursor:pointer}
+.ch-grprm svg{width:15px;height:15px}
 .ch-pollc .poll-q,.ch-pollc .poll-o{width:100%;box-sizing:border-box;margin:0 0 8px;padding:10px 12px;border:.5px solid var(--sep,var(--line));border-radius:12px;background:var(--fill2,var(--fill));color:var(--ink);font:16px/1.3 var(--f-body)}
 .ch-pollc .poll-q{font-weight:600}
 .ch-pollc .poll-add{display:inline-flex;align-items:center;gap:4px;margin:0 0 10px}
@@ -7588,7 +7607,9 @@ function chLdMark(cid, on){ document.querySelectorAll("#chView [data-act=chopen]
 function chGone(u){ return !!(u && CHPROF[u] && CHPROF[u].deleted); }
 function chId(a, b){ return [a, b].sort().join("_"); }
 function chOther(c){ var me = acct.user && acct.user.uid; return (c.members||[]).filter(function(u){ return u!==me; })[0] || ""; }
-function chName(u){ var f = FR.friends.filter(function(x){ return x.uid===u; })[0]; return (CHPROF[u] && CHPROF[u].name) || (f && f.name) || "Freund"; }
+function chName(u){ var f = FR.friends.filter(function(x){ return x.uid===u; })[0]; if(!f && u && !CHPROF[u]) chProf(u);
+  var gn = ""; if(!f && !(CHPROF[u] && CHPROF[u].name)) CH.list.some(function(c){ return (gn = c.names && c.names[u]) ? true : false; });
+  return (CHPROF[u] && CHPROF[u].name) || (f && f.name) || gn || "Freund"; }
 function chProf(u){
   if(!u || CHPROF[u] || !fbDb) return; CHPROF[u] = {name:"", photo:""};
   fbDb.collection("profiles").doc(u).get().then(function(d){ var v = d.exists && d.data(); if(v){ CHPROF[u] = {name:v.name||"", photo:v.photo||"", deleted:!!v.deleted}; if(chPage) renderCh(); scheduleOverlay(); } }, function(){});
@@ -7611,7 +7632,7 @@ function chWatch(){
       if(chPage && chOpen===ch.doc.id) return;
       if((CHTOAST[ch.doc.id]||0) >= L.at) return; CHTOAST[ch.doc.id] = L.at;   // Tippen, Reaktionen o. Ä. ändern den Chat, aber keine neue Nachricht
       delete CHMC[ch.doc.id]; chPre(ch.doc.id);
-      var nm = chName(L.from); setTimeout(function(){ frToast(atn(nm)+": "+(L.t || (L.place ? (L.ph ? "📷 " : "📍 ")+L.place : "")), "chgo", ch.doc.id); }, 200);
+      var nm = (c.grp ? chGrpName(c)+" · " : "")+atn(chName(L.from)); setTimeout(function(){ frToast(nm+": "+(L.t || (L.place ? (L.ph ? "📷 " : "📍 ")+L.place : "")), "chgo", ch.doc.id); }, 200);
     });
     CH.list = qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }).sort(function(a, b){ return (b.at||0) - (a.at||0); });
     CH.byId = {}; CH.list.forEach(function(c){ CH.byId[c.id] = c; }); CH.got = true;
@@ -7928,14 +7949,16 @@ function chPlaceCard(pl, key, draft){
 }
 var chNewMk = null;
 function chMsgsHTML(){
-  var me = acct.user && acct.user.uid, h = "", lastDay = "", mk = chNewMk && chNewMk.cid===chOpen ? chNewMk : null;
+  var me = acct.user && acct.user.uid, h = "", lastDay = "", mk = chNewMk && chNewMk.cid===chOpen ? chNewMk : null, grp = chIsGrp(chOpen);
   if(!chMsgs.length) return "<p class=\"note ch-empty\">Noch keine Nachrichten. Schreib etwas oder teile einen Ort mit "+ic("pin", "ii")+".</p>";
   var hid = chHidden(), L = chMsgs.filter(function(m){ return !hid[m.id]; });
   if(!L.length) return "<p class=\"note ch-empty\">Keine Nachrichten.</p>";
   L.forEach(function(m, i){
     var d = new Date(m.at||0).toDateString(); if(d!==lastDay){ lastDay = d; h += "<div class=\"ch-day\">"+esc(new Date(m.at||0).toLocaleDateString("de-DE", {weekday:"short", day:"numeric", month:"long"}))+"</div>"; }
     if(mk && m.from!==me && (m.at||0) > mk.at){ mk = null; h += "<div class=\"ch-new\" id=\"chNewMk\"><span>Neue Nachrichten</span></div>"; }
-    var mine = m.from===me, nx = L[i+1], tail = !nx || nx.from!==m.from || (nx.at - m.at) > 300000;
+    if(m.sys){ h += "<div class=\"ch-sys\">"+esc(chSysText(m))+"</div>"; return; }
+    var mine = m.from===me, nx = L[i+1], tail = !nx || nx.from!==m.from || nx.sys || (nx.at - m.at) > 300000, pv0 = L[i-1];
+    if(grp && !mine && (!pv0 || pv0.from!==m.from || pv0.sys || (m.at - pv0.at) > 300000 || new Date(pv0.at||0).toDateString()!==d)) h += "<small class=\"ch-from\">"+esc(atn(chName(m.from)))+"</small>";
     h += "<div class=\"ch-msg"+(mine?" me":"")+(tail?" tail":"")+"\" data-mid=\""+esc(m.id)+"\">"+chReQuote(m)+
       (m.al ? chAlHTML(m) : "")+(m.poll ? chPollHTML(m) : "")+(m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.day ? chDayCard(m.day, esc(m.id)) : "")+(m.vo ? chVoHTML(m) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+chLinkCard(m)+
       chRxHTML(m)+(tail ? "<small class=\"ch-tm\">"+chTime(m.at, true)+"</small>" : "")+(i===L.length-1 && mine ? chSeenHTML(m) : "")+"</div>";
@@ -7969,7 +7992,7 @@ function chListHTML(){ var me = acct.user && acct.user.uid;
     if(!me) return h+"<p class=\"note nt-empty\">Melde dich an, um mit Freunden zu chatten.</p></div>";
     if(CH.list.length){
       h += "<div class=\"ag-grp ls-list ch-list\">"+CH.list.map(function(c){ var u = chOther(c), L = c.last || {}, un = chUnread(c);
-        return "<button type=\"button\" class=\"ls-row"+(un?" un":"")+"\" data-act=\"chopen\" data-v=\""+esc(c.id)+"\">"+chAv(u, "ch-av")+"<span class=\"ls-t\"><b>"+esc(atn(chName(u)))+"</b><small>"+(L.from===me ? "Du: " : "")+esc(L.t || (L.place ? (L.ph ? "📷 " : "📍 ")+L.place : ""))+"</small></span><span class=\"ch-meta\"><small>"+chTime(L.at)+"</small>"+(un ? "<i class=\"ch-dot\"></i>" : "")+"</span></button>"; }).join("")+"</div>";
+        return "<button type=\"button\" class=\"ls-row"+(un?" un":"")+"\" data-act=\"chopen\" data-v=\""+esc(c.id)+"\">"+(c.grp ? chGrpAv(c, "ch-av") : chAv(u, "ch-av"))+"<span class=\"ls-t\"><b>"+esc(c.grp ? chGrpName(c) : atn(chName(u)))+"</b><small>"+(L.from===me ? "Du: " : c.grp && L.from && (L.t || L.place) ? atn(chName(L.from))+": " : "")+esc(L.t || (L.place ? (L.ph ? "📷 " : "📍 ")+L.place : ""))+"</small></span><span class=\"ch-meta\"><small>"+chTime(L.at)+"</small>"+(un ? "<i class=\"ch-dot\"></i>" : "")+"</span></button>"; }).join("")+"</div>";
     } else if(CH.got) h += "<p class=\"note nt-empty\">Noch keine Chats. Tippe auf ＋, um einen Chat mit einem Freund zu beginnen.</p>";
     if(!FR.friends.length) h += "<p class=\"note nt-empty\">Chatten kannst du mit Freunden – Leuten, denen du folgst und die dir folgen.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Leute finden</button></div>";
     return h+"</div>";
@@ -8000,14 +8023,16 @@ function renderCh(full){
 }
 var CHSENDIC = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 19V5M5.5 11.5 12 5l6.5 6.5\"/></svg>";
 var CHBACK = "<button type=\"button\" class=\"ch-back\" data-act=\"chback\" aria-label=\"Zurück zu den Chats\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.5 4.5 7 10l5.5 5.5\"/></svg></button>";
-function chPartner(cid){ var me = acct.user && acct.user.uid, c = CH.byId[cid]; return c ? chOther(c) : String(cid).split("_").filter(function(x){ return x!==me; })[0]; }
+function chPartner(cid){ var me = acct.user && acct.user.uid, c = CH.byId[cid]; if(chIsGrp(cid)) return ""; return c ? chOther(c) : String(cid).split("_").filter(function(x){ return x!==me; })[0]; }
 // Kopf: im neuen Chat das Empfängerfeld („An:“), sonst Bild und Name
-function chHeadIn(u){ return CHBACK+(chNewOn ? "<div class=\"ch-to\"><label for=\"chNewIn\">An:</label><input type=\"text\" id=\"chNewIn\" placeholder=\"Name\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" enterkeyhint=\"next\" value=\""+esc(chNewQ)+"\"></div>" : chAv(u, "ch-av sm")+"<b>"+esc(atn(chName(u)))+"</b>"+CHPLBTN); }
+function chHeadIn(u){ var gc = !chNewOn && chOpen && chIsGrp(chOpen) ? (CH.byId[chOpen] || {id:chOpen, grp:true, members:[]}) : null;
+  if(gc) return CHBACK+"<button type=\"button\" class=\"ch-gh\" data-act=\"chgrpinfo\" aria-label=\"Gruppe: Mitglieder und Einstellungen\">"+chGrpAv(gc, "ch-av sm")+"<span><b>"+esc(chGrpName(gc))+"</b><small>"+(gc.members||[]).length+" Mitglieder</small></span></button>"+CHPLBTN;
+  return CHBACK+(chNewOn ? "<div class=\"ch-to\"><label for=\"chNewIn\">An:</label><input type=\"text\" id=\"chNewIn\" placeholder=\"Name\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" enterkeyhint=\"next\" value=\""+esc(chNewQ)+"\"></div>" : chAv(u, "ch-av sm")+"<b>"+esc(atn(chName(u)))+"</b>"+CHPLBTN); }
 var CHPLBTN = "<button type=\"button\" class=\"ch-hbtn\" data-act=\"chplaces\" aria-label=\"Geteilte Orte auf der Karte\" title=\"Geteilte Orte\">"+ic("map")+"</button>";
 /* Neuer Chat: wer infrage kommt – Freunde und alle, mit denen es schon einen Chat gibt */
 function chCands(){ var seen = {}, out = [];
   FR.friends.forEach(function(f){ if(f.uid && !seen[f.uid]){ seen[f.uid] = 1; out.push(f.uid); } });
-  CH.list.forEach(function(c){ var u = chOther(c); if(u && !seen[u]){ seen[u] = 1; out.push(u); } });
+  CH.list.forEach(function(c){ if(c.grp) return; var u = chOther(c); if(u && !seen[u]){ seen[u] = 1; out.push(u); } });
   return out; }
 // Name genau getroffen → dieser Chat (vorhandener Verlauf erscheint sofort, sonst beginnt er leer)
 var chNewU = "";
@@ -8024,7 +8049,8 @@ function renderChNew(){
   r.hidden = false; if(box) box.hidden = true;
   var cands = chCands(), fr = cands.filter(function(u){ return !q || norm(chName(u)).indexOf(q) > -1; });
   if(!cands.length){ r.innerHTML = "<p class=\"note ch-newnote\">Du hast noch keine Freunde. Chatten kannst du nur mit Leuten, denen du folgst und die dir folgen.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Leute finden</button></div>"; return; }
-  if(!q){ r.innerHTML = "<p class=\"note ch-newnote\">Gib den Namen eines Freundes ein.</p>"; return; }
+  var gb = FR.friends.length >= 2 ? "<button type=\"button\" class=\"ls-row ch-grpnew\" data-act=\"chgrpnew\"><span class=\"ch-av sm init gi\">"+ic("friends")+"</span><span class=\"ls-t\"><b>Neue Gruppe</b><small>Mit mehreren Freunden chatten</small></span></button>" : "";
+  if(!q){ r.innerHTML = (gb ? "<div class=\"ag-grp ls-list ch-newlist\">"+gb+"</div>" : "")+"<p class=\"note ch-newnote\">Gib den Namen eines Freundes ein.</p>"; return; }
   r.innerHTML = fr.length ? "<div class=\"ag-grp ls-list ch-newlist\">"+fr.slice(0, 30).map(function(u){ var ex = CH.byId[chId(me, u)];
     return "<button type=\"button\" class=\"ls-row\" data-act=\"chnew\" data-uid=\""+esc(u)+"\">"+chAv(u, "ch-av sm")+"<span class=\"ls-t\"><b>"+esc(atn(chName(u)))+"</b><small>"+(ex ? "Chat öffnen" : "Neuer Chat")+"</small></span></button>"; }).join("")+"</div>"
     : "<p class=\"note ch-newnote\">Kein Freund mit diesem Namen. Chatten kannst du nur mit Freunden.</p>";
@@ -8235,6 +8261,65 @@ function chVote(id, i){ var me = acct.user && acct.user.uid, m = chMsgById(id); 
   var o = {}; o["pv."+me] = a; fbDb.collection("chats").doc(chOpen).collection("msgs").doc(id).update(o).catch(function(e){ toast("Stimme nicht gespeichert"+((e && e.code)==="permission-denied" ? " (Firestore-Regeln für Abstimmungen fehlen)" : ""), false); }); }
 function chPollEnd(id){ var m = chMsgById(id); if(!m || !m.poll || !chOpen || !fbDb) return; m.poll = Object.assign({}, m.poll, {end:true}); renderChMsgs(false);
   fbDb.collection("chats").doc(chOpen).collection("msgs").doc(id).update({"poll.end":true}).catch(function(){}); }
+/* ---------- Gruppenchats (selbst erstellt, nie automatisch) ----------
+   chats/{g…} = {grp:true, name, members, admin (Ersteller), names, at, last, read}. Kennung „g“ + Zufall ohne „_“ (Zweier-Chats: „uidA_uidB“).
+   Mitglieder: nur Freunde des Erstellers (beim Erstellen/Hinzufügen), höchstens 32. Hinzufügen/Entfernen: Ersteller; Verlassen: jeder; Name: jedes Mitglied.
+   Systemzeilen als Nachricht mit sys = {k:"new"|"add"|"rm"|"leave"|"ren", u:[…], n}. Braucht die neuen Firestore-Regeln (Gruppen). */
+var CHGMAX = 32, CHGN = null;
+function chGrpName(c){ if(c.name) return c.name; var me = acct.user && acct.user.uid; return (c.members||[]).filter(function(u){ return u!==me; }).slice(0, 3).map(function(u){ return atn(chName(u)); }).join(", ") || "Gruppe"; }
+function chGrpAv(c, cls){ var me = acct.user && acct.user.uid, us = (c.members||[]).filter(function(u){ return u!==me; }).slice(0, 2);
+  if(us.length < 2) return "<span class=\""+cls+" init gi\">"+ic("friends")+"</span>";
+  return "<span class=\""+cls+" ch-gav\">"+chAv(us[0], "ch-gav1")+chAv(us[1], "ch-gav2")+"</span>"; }
+function chSysText(m){ var s = m.sys || {}, me = acct.user && acct.user.uid, who = m.from===me ? "Du" : atn(chName(m.from)), us = (s.u||[]).map(function(u){ return u===me ? "dich" : atn(chName(u)); }).join(", ");
+  return s.k==="new" ? who+(m.from===me ? " hast" : " hat")+" die Gruppe „"+(s.n||"")+"“ erstellt" : s.k==="add" ? who+(m.from===me ? " hast " : " hat ")+us+" hinzugefügt" : s.k==="rm" ? who+(m.from===me ? " hast " : " hat ")+us+" entfernt" : s.k==="leave" ? who+(m.from===me ? " hast" : " hat")+" die Gruppe verlassen" : s.k==="ren" ? who+(m.from===me ? " hast" : " hat")+" die Gruppe in „"+(s.n||"")+"“ umbenannt" : ""; }
+function chGrpNew(){ if(!acct.user) return; if(FR.friends.length < 2){ toast("Für eine Gruppe brauchst du mindestens zwei Freunde", false); return; } CHGN = {n:"", sel:{}}; if(FRS.grpn) FRS.grpn.q = ""; chGrpNewRender(true); }
+function chGrpKeep(){ var i = $("grpN"); if(i && CHGN) CHGN.n = i.value; }
+function chGrpNewRender(first){ if(!CHGN) return; var n = Object.keys(CHGN.sel).length, ok = n >= 2 && n < CHGMAX;
+  var h = "<div class=\"pop-card ask-card ch-grpc\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Neue Gruppe\"><div class=\"pop-head\"><h4>Neue Gruppe</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<input type=\"text\" id=\"grpN\" class=\"poll-q\" maxlength=\"60\" placeholder=\"Name der Gruppe (optional)\" value=\""+esc(CHGN.n)+"\">"+
+    fgQuickHTML(FR.friends, "chgrpfg", CHGN.sel)+
+    (n ? "<div class=\"frs-sel\">"+Object.keys(CHGN.sel).map(function(u){ return "<button type=\"button\" class=\"frs-chip\" data-act=\"chgrppick\" data-uid=\""+esc(u)+"\" aria-label=\""+esc(atn(chName(u)))+" entfernen\">"+esc(atn(chName(u)))+"<i aria-hidden=\"true\">×</i></button>"; }).join("")+"</div>" : "")+
+    frSearchHTML("grpn", FR.friends.filter(function(f){ return f.uid; }).map(function(f){ return {uid:f.uid, name:chName(f.uid), email:f.email}; }), "chgrppick", "", CHGN.sel, true)+
+    "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"chgrpmk\""+(ok ? "" : " disabled")+">"+(n >= 2 ? "Gruppe mit "+n+" Freunden erstellen" : "Mindestens 2 Freunde auswählen")+"</button></div></div>";
+  if(first){ var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false; } else catKeep(h); }
+function chGrpCreate(){ chGrpKeep(); if(!CHGN || !fbDb || !acct.user) return; var me = acct.user.uid, us = Object.keys(CHGN.sel); if(us.length < 2) return;
+  var cid = uid("g").toLowerCase().replace(/[^a-z0-9]/g, ""), now = Date.now(), members = [me].concat(us), names = {}, read = {}; read[me] = now;
+  members.forEach(function(u){ names[u] = u===me ? ((PROF && PROF.name) || "") : chName(u); });
+  var nm = CHGN.n.trim().slice(0, 60), doc = {grp:true, name:nm, members:members, admin:me, names:names, at:now, last:{t:"Gruppe erstellt", from:me, at:now, place:"", ph:false}, read:read};
+  CHGN = null; closeCatPop();
+  var cref = fbDb.collection("chats").doc(cid);
+  cref.set(doc).then(function(){ return cref.collection("msgs").doc().set({from:me, t:"", at:now, sys:{k:"new", n:nm || "Gruppe"}}); }).then(function(){
+    var c = Object.assign({id:cid}, doc); if(!CH.byId[cid]){ CH.byId[cid] = c; CH.list.unshift(c); }
+    CHMC[cid] = CHMC[cid] || []; chNewOn = false; chNewQ = ""; openChPage(cid); },
+    function(e){ toast("Gruppe nicht erstellt: "+((e && e.code)==="permission-denied" ? "Firestore-Regeln für Gruppen fehlen noch" : (e && e.message) || ""), false); }); }
+function chGrpSys(cid, sys, upd){ var me = acct.user.uid, now = Date.now(), cref = fbDb.collection("chats").doc(cid), b = fbDb.batch(), read = {}; read[me] = now;
+  b.set(cref, Object.assign({at:now, last:{t:chSysText({from:me, sys:sys}).replace(/^Du hast /, "").slice(0, 140), from:me, at:now, place:"", ph:false}, read:read}, upd || {}), {merge:true});
+  b.set(cref.collection("msgs").doc(), {from:me, t:"", at:now, sys:sys}); return b.commit(); }
+function chGrpInfo(){ var c = CH.byId[chOpen]; if(!c || !c.grp) return; var me = acct.user && acct.user.uid, adm = c.admin===me, cp = $("catPop");
+  var ms = (c.members||[]).slice().sort(function(a, b){ return (b===c.admin) - (a===c.admin) || String(chName(a)).localeCompare(chName(b)); });
+  cp.innerHTML = "<div class=\"pop-card ask-card ch-grpc\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppe\"><div class=\"pop-head\"><h4>Gruppe</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<div class=\"ch-grpn\"><input type=\"text\" id=\"grpRen\" class=\"poll-q\" maxlength=\"60\" placeholder=\"Name der Gruppe\" value=\""+esc(c.name||"")+"\"><button type=\"button\" class=\"btn g s\" data-act=\"chgrpren\">Speichern</button></div>"+
+    "<div class=\"ask-h\"><span>"+ms.length+" Mitglieder</span>"+(adm && ms.length < CHGMAX ? "<button type=\"button\" class=\"tf-link\" data-act=\"chgrpadd\">"+ic("useradd", "ii")+" Hinzufügen</button>" : "")+"</div>"+
+    "<div class=\"ls-list ch-grpl\">"+ms.map(function(u){ return "<div class=\"ls-row\">"+chAv(u, "ch-av sm")+"<span class=\"ls-t\"><b>"+esc(u===me ? "Du" : atn(chName(u)))+"</b>"+(u===c.admin ? "<small>Ersteller</small>" : "")+"</span>"+(adm && u!==me ? "<button type=\"button\" class=\"ch-grprm\" data-act=\"chgrprm\" data-uid=\""+esc(u)+"\" aria-label=\""+esc(atn(chName(u)))+" entfernen\">"+ic("close")+"</button>" : "")+"</div>"; }).join("")+"</div>"+
+    "<button type=\"button\" class=\"btn deltrip\" data-act=\"chgrpleave\">"+ic("close")+"Gruppe verlassen</button></div>";
+  cp.hidden = false; }
+function chGrpRename(){ var i = $("grpRen"), c = CH.byId[chOpen]; if(!i || !c || !fbDb) return; var n = i.value.trim().slice(0, 60); if(n===(c.name||"")){ closeCatPop(); return; }
+  c.name = n; closeCatPop(); var hd = document.querySelector("#chView .ch-head"); if(hd) hd.innerHTML = chHeadIn("");
+  chGrpSys(chOpen, {k:"ren", n:n || "Gruppe"}, {name:n}).catch(function(){ toast("Name nicht gespeichert", false); }); }
+function chGrpAddOpen(){ var c = CH.byId[chOpen]; if(!c) return; var cand = FR.friends.filter(function(f){ return f.uid && (c.members||[]).indexOf(f.uid) < 0; }).map(function(f){ return {uid:f.uid, name:chName(f.uid), email:f.email}; });
+  frsPopOpen("Zur Gruppe hinzufügen", "grpadd", function(){ var c2 = CH.byId[chOpen] || c; return {cand:cand.filter(function(f){ return (c2.members||[]).indexOf(f.uid) < 0; }), act:"chgrpaddu", attrs:""}; }, "Alle deine Freunde sind schon in der Gruppe."); }
+function chGrpAddU(u){ var c = CH.byId[chOpen]; if(!c || !u || !fbDb || (c.members||[]).indexOf(u) > -1) return; if((c.members||[]).length >= CHGMAX){ toast("Höchstens "+CHGMAX+" Mitglieder", false); return; }
+  var ms = c.members.concat([u]), nm = Object.assign({}, c.names); nm[u] = chName(u); c.members = ms; c.names = nm; frsPopRender();
+  chGrpSys(chOpen, {k:"add", u:[u]}, {members:ms, names:nm}).catch(function(e){ toast("Nicht hinzugefügt"+((e && e.code)==="permission-denied" ? " (keine Berechtigung)" : ""), false); }); }
+function chGrpRemove(u){ var c = CH.byId[chOpen]; if(!c) return; askConfirm(atn(chName(u))+" entfernen?", "Die Person sieht die Gruppe danach nicht mehr.", "Entfernen", function(){
+  var ms = c.members.filter(function(x){ return x!==u; }); c.members = ms; chGrpInfo();
+  chGrpSys(chOpen, {k:"rm", u:[u]}, {members:ms}).catch(function(){ toast("Nicht entfernt", false); }); }); }
+function chGrpLeave(){ var c = CH.byId[chOpen], me = acct.user && acct.user.uid; if(!c || !me) return; askConfirm("Gruppe verlassen?", "Du siehst den Verlauf danach nicht mehr. Andere müssen dich neu hinzufügen.", "Verlassen", function(){
+  var cid = chOpen, ms = c.members.filter(function(x){ return x!==me; }); closeCatPop();
+  // erst die Systemzeile (noch als Mitglied), dann austreten
+  chGrpSys(cid, {k:"leave"}).then(function(){ return fbDb.collection("chats").doc(cid).update({members:ms}); }).then(function(){
+    delete CH.byId[cid]; CH.list = CH.list.filter(function(x){ return x.id!==cid; }); delete CHMC[cid]; chBackToList(); chBadge(); toast("Gruppe verlassen", false); },
+    function(){ toast("Verlassen fehlgeschlagen", false); }); }); }
 /* Antworten: chRe = markierte Nachricht {id, from, t (Kurztext)}; wird als re mit der Antwort gespeichert */
 var chRe = null;
 function chReText(m){ return ((m.t || "").replace(/\s+/g, " ").trim() || (m.vo ? "Sprachnachricht · "+vrFmt(m.vo.d) : m.photo ? "Foto · "+(m.photo.n||"") : m.place ? "Ort · "+(m.place.n||"") : m.day ? "Tag · "+(m.day.dt||"") : m.al ? chAlLbl(m.al) : m.poll ? "Abstimmung · "+(m.poll.q||"") : "Nachricht")).slice(0, 140); }
@@ -8274,8 +8359,9 @@ function chReact(id, e){ var me = acct.user && acct.user.uid, m = chMsgById(id);
   renderChMsgs(false); var o = {}; o["rx."+me] = nv;
   fbDb.collection("chats").doc(chOpen).collection("msgs").doc(id).update(o).catch(function(err){ m.rx = old; renderChMsgs(false);
     toast((err && err.code)==="permission-denied" ? "Reaktion nicht gespeichert: Firestore-Regeln für Reaktionen noch nicht veröffentlicht" : "Reaktion nicht gespeichert", false); }); }
-function chMetaUpd(){ var c = CH.byId[chOpen] || {}, sig = JSON.stringify(chHidden())+"|"+JSON.stringify(c.pin || null)+"|"+JSON.stringify(chReadOthers(c));
-  chTypUpd(); if(sig===chMetaUpd.sig) return; chMetaUpd.sig = sig; renderChPin(); if($("chMsgs")) renderChMsgs(false); }
+function chMetaUpd(){ var c = CH.byId[chOpen] || {}, sig = JSON.stringify(chHidden())+"|"+JSON.stringify(c.pin || null)+"|"+JSON.stringify(chReadOthers(c))+"|"+(c.grp ? (c.name||"")+(c.members||[]).join() : "");
+  chTypUpd(); if(sig===chMetaUpd.sig) return;
+  if(c.grp && !chNewOn){ var hd = document.querySelector("#chView .ch-head"); if(hd) hd.innerHTML = chHeadIn(""); } chMetaUpd.sig = sig; renderChPin(); if($("chMsgs")) renderChMsgs(false); }
 // Fixierte Nachricht: Leiste unter dem Kopf, Antippen springt hin
 function renderChPin(){ var cv = document.querySelector("#chView .ch-conv"), hd = cv && cv.querySelector(".ch-head"); if(!hd) return;
   var b = $("chPinBox"), c = chOpen && CH.byId[chOpen], p = c && c.pin;
@@ -16293,6 +16379,16 @@ document.addEventListener("click", function(e){
     case "chdayto": chDayTo(t.getAttribute("data-uid"), t.getAttribute("data-day")); break;
     case "chmap": chShowPl(CHPL[t.getAttribute("data-k")]); break;
     case "chsugok": chSugOk(); break;
+    case "chgrpnew": chGrpNew(); break;
+    case "chgrppick": var gpu = t.getAttribute("data-uid"); if(CHGN){ chGrpKeep(); if(CHGN.sel[gpu]) delete CHGN.sel[gpu]; else CHGN.sel[gpu] = 1; chGrpNewRender(); } break;
+    case "chgrpmk": chGrpCreate(); break;
+    case "chgrpfg": var cfg = fgGet(t.getAttribute("data-g")); if(cfg && CHGN){ chGrpKeep(); var cfu = cfg.m.filter(function(u){ return FR.friends.some(function(f){ return f.uid===u; }); }), cfon = cfu.every(function(u){ return CHGN.sel[u]; }); cfu.forEach(function(u){ if(cfon) delete CHGN.sel[u]; else CHGN.sel[u] = 1; }); chGrpNewRender(); } break;
+    case "chgrpinfo": chGrpInfo(); break;
+    case "chgrpren": chGrpRename(); break;
+    case "chgrpadd": chGrpAddOpen(); break;
+    case "chgrpaddu": chGrpAddU(t.getAttribute("data-uid")); break;
+    case "chgrprm": chGrpRemove(t.getAttribute("data-uid")); break;
+    case "chgrpleave": chGrpLeave(); break;
     case "chplus": jpPopover("chplus", t, "<button type=\"button\" data-act=\"chpick\" role=\"menuitem\"><span class=\"ai\">"+ic("pin")+"</span><span>Ort teilen</span></button><button type=\"button\" data-act=\"chphpick\" role=\"menuitem\"><span class=\"ai\">"+ic("camera")+"</span><span>Fotos</span></button><button type=\"button\" data-act=\"chpoll\" role=\"menuitem\"><span class=\"ai\">"+ic("poll")+"</span><span>Abstimmung</span></button>", "chplus"); break;
     case "chphpick": closeJpMore(); var cpi = $("chPhIn"); if(cpi) cpi.click(); break;
     case "chpoll": closeJpMore(); chPollNew(); break;

@@ -3896,6 +3896,48 @@ await test("Chat: Abstimmung – Plus-Menü, Frage und Antworten (Orte erkannt),
   ok(await rp(`JSON.stringify(__upd[__upd.length-1])===JSON.stringify(["m3", {"poll.end":true}]) && document.querySelector('#chMsgs .ch-msg[data-mid="m3"] .ch-poll').textContent.includes("beendet") && !document.querySelector('#chMsgs .ch-msg[data-mid="m3"] [data-act=chvote]')`), "Beenden klappt nicht");
   await rp(`closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
 });
+await test("Chat: Gruppenchat erstellen (Neue Gruppe im Plus), Namen über Nachrichten, Mitglieder, umbenennen, entfernen, verlassen", async () => {
+  await seed();
+  await rp(`window.__M = []; ${CHMOCK} openChPage(); true`);
+  await page.waitForTimeout(200);
+  await page.tap("#chView [data-act=chnewtog]"); await page.waitForTimeout(250);
+  ok(await rp(`!!document.querySelector("#chNewRes [data-act=chgrpnew]")`), "„Neue Gruppe“ fehlt beim neuen Chat");
+  await page.tap("#chNewRes [data-act=chgrpnew]"); await page.waitForTimeout(200);
+  ok(await rp(`document.querySelector("#catPop [data-act=chgrpmk]").disabled`), "Erstellen mit 0 Freunden möglich");
+  await page.fill("#grpN", "NYC-Crew");
+  await page.tap('#catPop [data-act=chgrppick][data-uid="u1"]'); await page.waitForTimeout(80);
+  await page.tap('#catPop .frs-big [data-act=chgrppick][data-uid="u2"]'); await page.waitForTimeout(80);
+  ok(await rp(`$("grpN").value==="NYC-Crew" && !document.querySelector("#catPop [data-act=chgrpmk]").disabled`), "Auswahl/Name falsch");
+  await page.tap("#catPop [data-act=chgrpmk]");
+  await page.waitForFunction(() => window.__rp(`!!chOpen && chIsGrp(chOpen)`), null, {timeout:4000});
+  const g = await rp(`JSON.stringify(__sets.filter(function(d){ return d.grp; })[0])`); const G = JSON.parse(g);
+  ok(G && G.name==="NYC-Crew" && G.admin==="u_me" && G.members.join()==="u_me,u1,u2", "Gruppen-Dokument falsch: "+g);
+  ok(await rp(`/^g[a-z0-9]+$/.test(chOpen) && chOpen.indexOf("_") < 0`), "Gruppen-Kennung falsch: "+await rp(`chOpen`));
+  ok(await rp(`document.querySelector("#chView .ch-head").textContent.includes("NYC-Crew") && document.querySelector("#chView .ch-head").textContent.includes("3 Mitglieder")`), "Gruppenkopf falsch");
+  // Verlauf: Systemzeile, Namen über fremden Nachrichten, Gesehen von …
+  await rp(`var cid = chOpen; __M = [{id:"s1", from:"u_me", t:"", at:Date.now()-300000, sys:{k:"new", n:"NYC-Crew"}}, {id:"a1", from:"u1", t:"Hi!", at:Date.now()-200000}, {id:"a2", from:"u1", t:"Wann?", at:Date.now()-190000}, {id:"b1", from:"u2", t:"Bin dabei", at:Date.now()-100000}, {id:"c1", from:"u_me", t:"Um 8", at:Date.now()-50000}];
+    CH.byId[cid] = Object.assign({}, CH.byId[cid], {read:{u_me:Date.now(), u1:Date.now(), u2:0}}); CH.list = [CH.byId[cid]]; __snap(); true`); await page.waitForTimeout(200);
+  ok(await rp(`var t = document.querySelector("#chMsgs .ch-sys"); !!t && t.textContent==="Du hast die Gruppe „NYC-Crew“ erstellt"`), "Systemzeile fehlt");
+  ok(await rp(`[].map.call(document.querySelectorAll("#chMsgs .ch-from"), function(e){ return e.textContent; }).join("|")==="@Anna|@Bert"`), "Namen über Nachrichten falsch: "+await rp(`[].map.call(document.querySelectorAll("#chMsgs .ch-from"), function(e){ return e.textContent; }).join("|")`));
+  ok(await rp(`document.querySelector('#chMsgs .ch-msg[data-mid="c1"] .ch-seen').textContent==="Gesehen von @Anna"`), "„Gesehen von“ falsch");
+  // Senden in der Gruppe: members/names bleiben unangetastet
+  await page.fill("#chIn", "Passt"); await page.tap("#chView [data-act=chsend]"); await page.waitForTimeout(150);
+  ok(await rp(`var d = __sets[__sets.length-2]; d && d.last && d.last.t==="Passt" && !("members" in d) && !("names" in d)`), "Senden überschreibt Mitglieder: "+await rp(`JSON.stringify(__sets.slice(-2))`));
+  await shot("chat-gruppe");
+  // Gruppeninfo: umbenennen, entfernen (mit Bestätigung), verlassen
+  await page.tap("#chView .ch-head [data-act=chgrpinfo]"); await page.waitForTimeout(200);
+  ok(await rp(`document.querySelectorAll("#catPop .ch-grpl .ls-row").length===3 && document.querySelector("#catPop .ch-grpl").textContent.includes("Ersteller")`), "Mitgliederliste falsch");
+  await page.fill("#grpRen", "NYC 2026"); await page.tap("#catPop [data-act=chgrpren]"); await page.waitForTimeout(150);
+  ok(await rp(`__sets.some(function(d){ return d.name==="NYC 2026"; }) && __sent.some(function(d){ return d.sys && d.sys.k==="ren"; }) && document.querySelector("#chView .ch-head").textContent.includes("NYC 2026")`), "Umbenennen klappt nicht");
+  await page.tap("#chView .ch-head [data-act=chgrpinfo]"); await page.waitForTimeout(200);
+  await page.tap('#catPop [data-act=chgrprm][data-uid="u2"]'); await page.waitForTimeout(150);
+  await page.tap("#cfPop .cf-ok"); await page.waitForTimeout(150);
+  ok(await rp(`__sets.some(function(d){ return d.members && d.members.join()==="u_me,u1" && !d.grp; }) && __sent.some(function(d){ return d.sys && d.sys.k==="rm" && d.sys.u[0]==="u2"; })`), "Entfernen klappt nicht");
+  await page.tap("#catPop [data-act=chgrpleave]"); await page.waitForTimeout(150);
+  await page.tap("#cfPop .cf-ok"); await page.waitForTimeout(400);
+  ok(await rp(`__sent.some(function(d){ return d.sys && d.sys.k==="leave"; }) && __upd.some(function(x){ return x[1].members && x[1].members.join()==="u1"; }) && !chOpen`), "Verlassen klappt nicht: "+await rp(`JSON.stringify(__upd)`));
+  await rp(`closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
+});
 await test("Chat: Kopf ohne Balken, Verlauf scrollt darunter durch und blendet oben weich aus, Knöpfe als Glas-Kreise", async () => {
   await seed();
   await rp(`window.__M = []; for(var i = 0; i < 30; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht Nummer "+i+" mit etwas mehr Text, damit sie umbricht", at:Date.now() - (30 - i)*60000});
