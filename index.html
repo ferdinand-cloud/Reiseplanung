@@ -2064,6 +2064,14 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-draft{padding:6px 12px 0}
 .ch-draft[hidden]{display:none}
 .ch-dr{position:relative;display:inline-block;max-width:100%}
+.ch-dyb{width:26px;height:26px;flex:0 0 26px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 13px/1 var(--f-body)}
+.ch-dyl{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column}
+.ch-dys{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;min-width:0}
+.ch-dys i{font:600 11.5px/1 var(--f-body);font-style:normal;color:var(--muted);width:14px;text-align:right;flex:0 0 14px}
+.ch-dys .cic{width:22px;height:22px;flex:0 0 22px;border-radius:7px;display:grid;place-items:center;color:var(--cc);background:color-mix(in srgb,var(--cc) 14%,transparent)}
+.ch-dys .cic svg{width:13px;height:13px}
+.ch-dyn{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ch-dym{font-size:12.5px;color:var(--muted);padding:3px 0 0 22px}
 .ch-dr .ch-pl{width:220px}
 .ch-dr .ch-plimg{aspect-ratio:16/7}
 .ch-drx{position:absolute;top:6px;right:6px;width:26px;height:26px;border:0;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font:600 12px/26px var(--f-body);cursor:pointer;padding:0}
@@ -7497,11 +7505,11 @@ function sugMap(i){
 }
 /* ---------- Chat mit Freunden (auch über Orte) ---------- */
 var chNewOn = false, chNewQ = "", chMsgErr = false, chPage = false, chOpen = null, chDraft = null, chPickOn = false, chPickQ = "", chMsgs = [], chMsgUnsub = null, chStart = 0, chSending = false;
-var CHPH = {}, CH = {list:[], byId:{}, got:false}, CHP = {}, CHPROF = {}, CHPL = {};
+var CHPH = {}, CH = {list:[], byId:{}, got:false}, CHP = {}, CHPROF = {}, CHPL = {}, CHDY = {};
 /* Nachrichten je Chat merken (CHMC): ein Chat geht erst auf, wenn sein Verlauf da ist – aus dem Speicher sofort, sonst nach dem Laden (höchstens 2,5 s) */
 var CHMC = {}, CHPRE = {}, chPendId = null;
 function chQ(cid){ return fbDb.collection("chats").doc(cid).collection("msgs").orderBy("at").limitToLast(300); }
-function chRows(qs){ return qs.docs.map(function(d){ var m = d.data(); m.id = d.id; chNorm(m); if(m.photo) CHPH[m.id] = m.photo; if(m.place) CHPL[m.id] = m.place; return m; }); }
+function chRows(qs){ return qs.docs.map(function(d){ var m = d.data(); m.id = d.id; chNorm(m); if(m.photo) CHPH[m.id] = m.photo; if(m.place) CHPL[m.id] = m.place; if(m.day) CHDY[m.id] = m.day; return m; }); }
 function chPre(cid){
   if(CHMC[cid] || !fbDb || !acct.user) return Promise.resolve(); if(CHPRE[cid]) return CHPRE[cid];
   return (CHPRE[cid] = new Promise(function(res){ var ok = false, fin = function(){ if(ok) return; ok = true; delete CHPRE[cid]; res(); };
@@ -7861,7 +7869,7 @@ function chMsgsHTML(){
     if(mk && m.from!==me && (m.at||0) > mk.at){ mk = null; h += "<div class=\"ch-new\" id=\"chNewMk\"><span>Neue Nachrichten</span></div>"; }
     var mine = m.from===me, nx = L[i+1], tail = !nx || nx.from!==m.from || (nx.at - m.at) > 300000;
     h += "<div class=\"ch-msg"+(mine?" me":"")+(tail?" tail":"")+"\" data-mid=\""+esc(m.id)+"\">"+chReQuote(m)+
-      (m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.vo ? chVoHTML(m) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+
+      (m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.day ? chDayCard(m.day, esc(m.id)) : "")+(m.vo ? chVoHTML(m) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+
       chRxHTML(m)+(tail ? "<small class=\"ch-tm\">"+chTime(m.at, true)+"</small>" : "")+"</div>";
   });
   return h;
@@ -7960,7 +7968,7 @@ function chNewStart(){ var el = $("chView"); if(!el || !acct.user) return;
 // Vorschlag angetippt: Name übernehmen, weiter zur Nachricht
 function chNewPick(u){ var i = $("chNewIn"); chNewU = u; chNewQ = chName(u); if(i) i.value = chNewQ; renderChNew();
   var m = $("chIn"); if(m) try { m.focus({preventScroll:true}); } catch(e){ m.focus(); } }
-function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; b.innerHTML = chDraft ? "<div class=\"ch-dr\">"+(chIsPhoto(chDraft) ? chPhotoCard(chDraft, "", true) : chPlaceCard(chDraft, "", true))+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; chCompUpd(); }
+function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; b.innerHTML = chDraft ? "<div class=\"ch-dr\">"+(chIsPhoto(chDraft) ? chPhotoCard(chDraft, "", true) : chIsDay(chDraft) ? chDayCard(chDraft, "", true) : chPlaceCard(chDraft, "", true))+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; chCompUpd(); }
 /* Foto-Nachricht = geteiltes Foto (Kennung + Reise + Ort); ein Ort mit Vorschaubild hat in .ph Bilddaten und ist KEIN Foto */
 // ältere Nachrichten: als Foto gespeicherte Orte (mit Vorschaubild) wieder als Ort behandeln
 function chNorm(m){ if(m && m.photo && !chIsPhoto(m.photo)){ m.place = m.place || m.photo; delete m.photo; } return m; }
@@ -7974,7 +7982,7 @@ function chPlaceFrom(tid, pid){
 }
 /* Antworten: chRe = markierte Nachricht {id, from, t (Kurztext)}; wird als re mit der Antwort gespeichert */
 var chRe = null;
-function chReText(m){ return ((m.t || "").replace(/\s+/g, " ").trim() || (m.vo ? "Sprachnachricht · "+vrFmt(m.vo.d) : m.photo ? "Foto · "+(m.photo.n||"") : m.place ? "Ort · "+(m.place.n||"") : "Nachricht")).slice(0, 140); }
+function chReText(m){ return ((m.t || "").replace(/\s+/g, " ").trim() || (m.vo ? "Sprachnachricht · "+vrFmt(m.vo.d) : m.photo ? "Foto · "+(m.photo.n||"") : m.place ? "Ort · "+(m.place.n||"") : m.day ? "Tag · "+(m.day.dt||"") : "Nachricht")).slice(0, 140); }
 function chReWho(u, mine){ var me = acct.user && acct.user.uid; return u===me ? (mine ? "dir selbst" : "dir") : atn(chName(u)); }
 function chReSet(id){ var m = chMsgs.filter(function(x){ return x.id===id; })[0]; if(!m || !chOpen || chGone(chPartner(chOpen))) return;
   var box = $("chMsgs"), atEnd = box && box.scrollHeight - box.scrollTop - box.clientHeight < 80;
@@ -8085,16 +8093,16 @@ function chActDo(k, b){ var o = chActM; if(!o) return; var id = o.id, m = chMsgB
 // Weiterleiten: Freund wählen (Suche), Nachricht samt Ort/Foto geht als neue Nachricht in dessen Chat
 var chFwd = null;
 function chFwdOpen(id){ var m = chMsgById(id); if(!m) return; if(!FR.friends.length){ toast("Folgt euch zuerst gegenseitig – dann seid ihr Freunde", false); return; }
-  chFwd = {t:m.t || "", place:m.place || null, photo:m.photo || null};
+  chFwd = {t:m.t || "", place:m.place || null, photo:m.photo || null, day:m.day || null};
   var cp = $("catPop"); cp.innerHTML = "<div class=\"pop-card ask-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Weiterleiten\"><div class=\"pop-head\"><h4>Weiterleiten an</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
     frSearchHTML("fwd", FR.friends.filter(function(f){ return f.uid; }).map(function(f){ return {uid:f.uid, name:chName(f.uid), email:f.email}; }), "chfwdto", "", null, true)+"</div>";
   cp.hidden = false; }
 function chFwdTo(u){ var f = chFwd; closeCatPop(); chFwd = null; if(!f || !u || !fbDb || !acct.user) return;
   var me = acct.user.uid, cid = chId(me, u), now = Date.now(), names = {}, read = {}, isPh = !!f.photo, pl = f.photo || f.place;
   names[me] = (PROF && PROF.name) || ""; names[u] = chName(u); read[me] = now;
-  var msg = {from:me, t:f.t, at:now, fwd:true}; if(f.photo) msg.photo = f.photo; if(f.place) msg.place = f.place;
+  var msg = {from:me, t:f.t, at:now, fwd:true}; if(f.photo) msg.photo = f.photo; if(f.place) msg.place = f.place; if(f.day){ msg.day = f.day; pl = f.day; }
   var cref = fbDb.collection("chats").doc(cid), b = fbDb.batch();
-  b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:f.t.slice(0, 140), from:me, at:now, place:pl ? (isPh ? "Foto · "+pl.n : pl.n) : "", ph:isPh}, read:read}, {merge:true});
+  b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:f.t.slice(0, 140), from:me, at:now, place:pl ? chLastPl(pl) : "", ph:isPh}, read:read}, {merge:true});
   b.set(cref.collection("msgs").doc(), msg);
   b.commit().then(function(){ toast("An "+atn(chName(u))+" weitergeleitet", false); }, function(){ toast("Weiterleiten fehlgeschlagen", false); }); }
 function chSend(){
@@ -8104,12 +8112,12 @@ function chSend(){
   var u = chPartner(chOpen);
   // erste Nachricht im neuen Chat: Kopf wird zum normalen Chat-Kopf, Eingabe und Tastatur bleiben
   chNewDone(u);
-  var now = Date.now(), msg = {from:me, t:txt, at:now}, pl = chDraft, isPh = chIsPhoto(pl); if(pl){ if(isPh) msg.photo = pl; else msg.place = pl; }
+  var now = Date.now(), msg = {from:me, t:txt, at:now}, pl = chDraft, isPh = chIsPhoto(pl); if(pl){ if(isPh) msg.photo = pl; else if(chIsDay(pl)) msg.day = pl; else msg.place = pl; }
   var re = chRe; if(re) msg.re = re;
   var names = {}; names[me] = (PROF && PROF.name) || ""; names[u] = chName(u);
   var read = {}; read[me] = now;
   var cref = fbDb.collection("chats").doc(chOpen), b = fbDb.batch();
-  b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:pl ? (isPh ? "Foto · "+pl.n : pl.n) : "", ph:isPh}, read:read}, {merge:true});
+  b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:pl ? chLastPl(pl) : "", ph:isPh}, read:read}, {merge:true});
   b.set(cref.collection("msgs").doc(), msg);
   chSending = true; var keepT = txt, keepP = chDraft; if(inp){ inp.value = ""; chGrow(); } chDraft = null; chCompUpd(); renderChDraft(); chRe = null; renderChRe();
   b.commit().then(function(){ chSending = false; if(chMsgErr && chOpen){ var dr = chDraft; chOpenConv(chOpen); chDraft = dr; renderChDraft(); } }, function(e){ chSending = false; if(inp && !inp.value){ inp.value = keepT; chCompUpd(); } chDraft = keepP; renderChDraft(); if(re && !chRe){ chRe = re; renderChRe(); } toast("Senden fehlgeschlagen: "+((e && e.code)==="permission-denied" ? "keine Berechtigung (Firestore-Regeln für Chats ergänzen?)" : (e && e.message) || ""), false); });
@@ -8444,6 +8452,52 @@ function chAddPlace(key, dk){
   save();
   if(dk && dayByKey(dk)) plan(id, dk); else toast("„"+pl.n+"“ liegt jetzt in der Wunschliste", true);
   dirty(); renderSheet(); scheduleOverlay(); renderChMsgs(false);
+}
+// Ort aus einer Chat-Karte auf der Karte zeigen: eigener Ort (auch in anderer Reise) oder als fremder Punkt
+function chShowPl(chpl){ if(!chpl) return; var chm = chMatch(chpl); closeChPage();
+      if(chm){ if(chm.tid!==S.cur){ grpSel = ""; S.cur = chm.tid; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
+        if(P(chm.pid)){ var chdk = dayOf(chm.pid); if(chdk) cur = chdk; tab = chdk ? "day" : "wish"; renderAll(); select(chm.pid); revealPoint(P(chm.pid), 16, true); } }
+      else { poiSel = {n:chpl.n, cls:"", sub:"", c:chpl.c || "sight", la:chpl.la, lo:chpl.lo, addr:chpl.addr || ""}; sel = null; select("poi"); renderCard(); revealPoint({la:chpl.la, lo:chpl.lo}, 16, true); } }
+// Kurztext für die Chat-Liste (last.place)
+function chLastPl(pl){ return chIsPhoto(pl) ? "Foto · "+pl.n : chIsDay(pl) ? "Tag "+pl.dn+" · "+pl.dt : pl.n; }
+/* ---------- Tag im Chat teilen: Tagesplan als Karte (day = {dn, dt, trip, km, st:[Stopps]}); Empfänger übernimmt ihn auf einen eigenen Tag ---------- */
+function chIsDay(o){ return !!(o && o.st && o.st.length); }
+// gleicher Ort in der aktuellen Reise (wie chMatch, aber nur hier)
+function chMatchCur(pl){ var t = T(), out = ""; Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && p.k!=="hotel" && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = pid; return true; } return false; }); return out; }
+function chDayFrom(dk){
+  var D = dayByKey(dk), t = T(); if(!D) return null;
+  var st = ord(dk).filter(function(id){ var p = P(id); return p && !isHStop(id) && hasLoc(p) && !(t.privP||{})[id]; }).slice(0, 25).map(function(id){ var p = P(id); return {n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||""}; });
+  if(!st.length) return null; var km = 0; for(var i = 0; i < st.length-1; i++) km += dist(st[i], st[i+1]);
+  return {dn:D.n, dt:D.title, trip:t.name||"", km:Math.round(km), st:st};
+}
+function chDayCard(d, key, draft){
+  var n = d.st.length, show = draft ? d.st.slice(0, 3) : d.st;
+  return "<div class=\"ch-pl ch-dy\"><div class=\"ch-plb\"><div class=\"ch-pln\"><span class=\"ch-dyb\" style=\"background:var(--c"+(((+d.dn||1)-1)%10+1)+")\">"+esc(d.dn)+"</span><b>"+esc(d.dt)+"</b></div>"+
+    "<small>"+esc([d.trip, n+(n===1 ? " Stopp" : " Stopps"), d.km ? fmtDist(d.km) : ""].filter(Boolean).join(" · "))+"</small>"+
+    "<ol class=\"ch-dyl\">"+show.map(function(s, i){ return "<li><button type=\"button\" class=\"ch-dys\""+(draft ? " tabindex=\"-1\"" : " data-act=\"chdystop\" data-k=\""+key+"\" data-i=\""+i+"\"")+"><i>"+(i+1)+"</i><span class=\"cic\" style=\"--cc:"+catCol(s.c)+"\">"+icon(s.c)+"</span><span class=\"ch-dyn\">"+esc(s.n)+"</span></button></li>"; }).join("")+(draft && n > 3 ? "<li class=\"ch-dym\">+ "+(n-3)+" weitere</li>" : "")+"</ol>"+
+    (draft || isRO() || !days().length ? "" : "<div class=\"ch-pla\"><button type=\"button\" class=\"btn s\" data-act=\"chdytake\" data-k=\""+key+"\">"+ic("cal", "ii")+" Tag übernehmen</button></div>")+
+    "</div></div>";
+}
+function chDayMenu(dk, btn){
+  if(!acct.user){ toast("Melde dich an, um Tage zu teilen", false); return; }
+  if(!FR.friends.length){ toast("Folgt euch zuerst gegenseitig – dann seid ihr Freunde", false); return; }
+  if(!chDayFrom(dk)){ toast("An diesem Tag gibt es noch keine Stopps zum Teilen", false); return; }
+  var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
+  jpPopover("day", btn, frPickHead("Tag im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"chdayto\" data-uid=\""+esc(f.uid)+"\" data-day=\""+esc(dk)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>"+esc(atn(chName(f.uid)))+"</span></button>"; }).join(""), "chdayshare");
+}
+function chDayTo(u, dk){ closeJpMore(); var cid = chWith(u), o = chDayFrom(dk); if(!cid || !o) return;
+  openChPage(cid, function(){ chDraft = o; renderChDraft(); setTimeout(function(){ var i = $("chIn"); if(i) i.focus(); }, 80); }); }
+// Tag übernehmen: Stopps in Reihenfolge an den gewählten Tag hängen; schon vorhandene Orte werden eingeplant, schon eingeplante übersprungen
+function chDayTake(key, dk){
+  var d = CHDY[key]; if(!chIsDay(d) || isRO() || !dayByKey(dk)) return; closeJpMore();
+  var t = T(), m = chMsgById(key), by = m && m.from, nm = by ? chName(by) : "Freund", n = 0, skip = 0;
+  undoSnap = snapshot();
+  d.st.forEach(function(s){ var id = chMatchCur(s);
+    if(id){ if(dayOf(id)){ skip++; return; } }
+    else { id = uid("w"); t.places[id] = {id:id, n:s.n, c:CATNAME[s.c] ? s.c : "sight", la:s.la, lo:s.lo, addr:s.addr||"", note:"Aus dem Tag von @"+nm+" im Chat", list:(t.lists && t.lists[0] || {}).id || null, rec:{by:by||"", name:nm}}; }
+    ord(dk).splice(insertIdx(dk, P(id)), 0, id); n++; });
+  save(); dirty(); renderSheet(); scheduleOverlay(); renderChMsgs(false);
+  toast(n ? n+(n===1 ? " Stopp" : " Stopps")+" am "+dayByKey(dk).lbl+" eingeplant"+(skip ? " ("+skip+" schon eingeplant)" : "") : "Alle Stopps sind schon eingeplant", !!n);
 }
 /* ---------- Bewertungen an einem Ort: Freunde (Empfehlungen) und öffentlich (vorgesehen) ---------- */
 var rvTab = "friends";
@@ -14117,6 +14171,7 @@ function renderDay(){
   h += rcEntry(D);
   var RO = isRO(), sug = RO ? [] : suggest(cur, 3), sugT = ids.length ? "Passt zu diesem Tag" : (HD ? "Nah am Hotel" : "Vorschläge");
   if(!RO && evAnchor({k:cur})) h += "<button type=\"button\" class=\"dhi devt\" data-act=\"evday\" data-day=\""+cur+"\" title=\"Events\" aria-label=\"Events in der Nähe an diesem Tag\">"+ic("event")+"</button>";
+  if(acct.user && sIds.length && !isViewerOf(S.cur)) h += "<button type=\"button\" class=\"dhi dshr\" data-act=\"dayshare\" data-day=\""+cur+"\" title=\"Tag im Chat schicken\" aria-label=\"Tag im Chat schicken\">"+ic("send")+"</button>";
   if(!RO) h += "<button type=\"button\" class=\"dhi dsug\" data-act=\"sugtoggle\" aria-expanded=\""+sugOpen+"\" title=\""+sugT+"\" aria-label=\""+sugT+": "+sug.length+" Vorschläge\">"+SUGICO+"<b>"+sug.length+"</b></button>";
   h += "</div>";
   if(isViewerOf(S.cur)) h += "<p class=\"note rolenote\">"+ic("eye", "ii")+" Du beobachtest diese Reise – ansehen und kommentieren, aber nichts ändern.</p>";
@@ -15961,10 +16016,12 @@ document.addEventListener("click", function(e){
     case "chpinjump": chReJump(t.getAttribute("data-v")); break;
     case "chrxtap": var rxm = chMsgById(t.getAttribute("data-v")), rxme = acct.user && acct.user.uid; if(rxm && (rxm.rx||{})[rxme]) chReact(rxm.id, rxm.rx[rxme]); else if(rxm){ var rxe = document.querySelector('#chMsgs .ch-msg[data-mid="'+rxm.id+'"]'); if(rxe) chActOpen(rxe); } break;
     case "chfwdto": chFwdTo(t.getAttribute("data-uid")); break;
-    case "chmap": var chpl = CHPL[t.getAttribute("data-k")]; if(chpl){ var chm = chMatch(chpl); closeChPage();
-      if(chm){ if(chm.tid!==S.cur){ grpSel = ""; S.cur = chm.tid; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
-        if(P(chm.pid)){ var chdk = dayOf(chm.pid); if(chdk) cur = chdk; tab = chdk ? "day" : "wish"; renderAll(); select(chm.pid); revealPoint(P(chm.pid), 16, true); } }
-      else { poiSel = {n:chpl.n, cls:"", sub:"", c:chpl.c || "sight", la:chpl.la, lo:chpl.lo, addr:chpl.addr || ""}; sel = null; select("poi"); renderCard(); revealPoint({la:chpl.la, lo:chpl.lo}, 16, true); } } break;
+    case "chdystop": var chds = CHDY[t.getAttribute("data-k")]; chShowPl(chds && chds.st[+t.getAttribute("data-i")]); break;
+    case "chdytake": var chdk0 = t.getAttribute("data-k"); jpPopover("ch", t, "<div class=\"dc-dh\">Übernehmen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"chdytk\" data-k=\""+esc(chdk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "chdytake"); break;
+    case "chdytk": chDayTake(t.getAttribute("data-k"), t.getAttribute("data-day")); break;
+    case "dayshare": chDayMenu(t.getAttribute("data-day"), t); break;
+    case "chdayto": chDayTo(t.getAttribute("data-uid"), t.getAttribute("data-day")); break;
+    case "chmap": chShowPl(CHPL[t.getAttribute("data-k")]); break;
     case "chwish": chAddPlace(t.getAttribute("data-k"), null); break;
     case "chplan": var chk0 = t.getAttribute("data-k"); jpPopover("ch", t, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"chday\" data-k=\""+esc(chk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "chplan"); break;
     case "chday": chAddPlace(t.getAttribute("data-k"), t.getAttribute("data-day")); break;

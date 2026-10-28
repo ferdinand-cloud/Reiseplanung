@@ -3729,6 +3729,44 @@ await test("Tastatur im Pop-up: Feld weiter unten (Neue Reise) wird über Tastat
 });
 await test("Tastatur im Pop-up: Querformat", async () => { await kbPop(KB_ZIEL, "#zPop", "ziel-quer"); }, QUER);
 
+// Chat-Attrappe für neue Chat-Funktionen: __M = Verlauf, __sent = gesendete Nachrichten, __upd = Updates (msgs und chats)
+const CHMOCK = `window.__sent = []; window.__upd = []; window.__sets = []; window.__M = window.__M || [];
+    var qs = function(){ return {docs:__M.map(function(m){ return {id:m.id, data:function(){ return JSON.parse(JSON.stringify(m)); }}; })}; };
+    fbDb = {runTransaction:function(){ return new Promise(function(){}); }, batch:function(){ return {set:function(r, d){ __sets.push(d); if(d && d.from && d.at) __sent.push(d); }, update:function(r, o){ __upd.push(["b", o]); }, commit:function(){ return Promise.resolve(); }}; },
+      collection:function(){ var top = {where:function(){ return top; }, orderBy:function(){ return top; }, limit:function(){ return top; }, get:function(){ return Promise.resolve({docs:[], forEach:function(){}}); }, onSnapshot:function(){ return function(){}; }, add:function(d){ __sets.push(d); return Promise.resolve({id:"new"}); }};
+        top.doc = function(cid){ return {get:function(){ return Promise.resolve({exists:false}); }, set:function(d){ __sets.push(d); return Promise.resolve(); }, update:function(o){ __upd.push([cid, o]); return Promise.resolve(); },
+      collection:function(n){ var q = {orderBy:function(){ return q; }, limitToLast:function(){ return q; }, limit:function(){ return q; }, where:function(){ return q; }, add:function(d){ __sets.push(d); return Promise.resolve({id:"new"}); }, doc:function(id){ return {set:function(d){ __sets.push(d); return Promise.resolve(); }, update:function(o){ __upd.push([id, o]); return Promise.resolve(); }}; }, get:function(){ return Promise.resolve(qs()); },
+        onSnapshot:function(cb){ if(n!=="msgs") return function(){}; window.__snap = function(){ cb(qs()); }; setTimeout(__snap, 0); return function(){}; }}; return q; }}; }; return top; }};
+    FR.friends = [{uid:"u1", name:"Anna"}, {uid:"u2", name:"Bert"}, {uid:"u3", name:"Clara"}]; CHPROF.u1 = {name:"Anna"}; CHPROF.u2 = {name:"Bert"}; CHPROF.u3 = {name:"Clara"};
+    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:1000, names:{u1:"Anna"}, read:{u_me:Date.now()}, last:{t:"Hallo", from:"u1", at:1000}}}; CH.list = [CH.byId.u1_u_me]; CH.got = true;`;
+await test("Chat: Tag teilen – Tagesplan als Karte schicken, Empfänger übernimmt ihn auf einen eigenen Tag", async () => {
+  await seed();
+  await rp(`window.__M = [{id:"m1", from:"u1", t:"Hallo", at:Date.now()-60000}]; ${CHMOCK} true`);
+  // Tageskopf: Knopf „Tag im Chat schicken“ → Freund wählen → Chat mit Tageskarte als Entwurf
+  await page.tap("#sheet [data-act=dayshare]"); await page.waitForTimeout(250);
+  ok(await rp(`!!document.querySelector("[data-act=chdayto][data-uid=u1]")`), "Freunde-Auswahl für den Tag fehlt");
+  await page.tap("[data-act=chdayto][data-uid=u1]");
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && !!document.querySelector("#chDraftBox .ch-dy")`), null, {timeout:4000});
+  ok(await rp(`var b = $("chDraftBox").textContent; b.includes("Katz Deli") && b.includes("3 Stopps")`), "Entwurf zeigt den Tag nicht: "+await rp(`$("chDraftBox").textContent`));
+  await page.tap("#chView [data-act=chsend]"); await page.waitForTimeout(150);
+  ok(await rp(`var s = __sent[0]; !!s && s.day && s.day.st.length===3 && s.day.st[0].n==="Katz Deli" && s.day.trip==="Testreise"`), "Tag nicht gesendet: "+JSON.stringify(await rp(`__sent`)));
+  ok(await rp(`__sets.some(function(d){ return d.last && /^Tag \\d+ · /.test(d.last.place); })`), "Chat-Liste zeigt keinen Tag als letzte Nachricht");
+  // Empfang: Karte mit Stopps; Übernehmen auf einen anderen Tag (neue Orte entstehen, vorhandene werden eingeplant)
+  await rp(`__M.push({id:"m2", from:"u1", t:"", at:Date.now(), day:{dn:1, dt:"Montag, 1. Juni", trip:"Annas Reise", km:1200, st:[{n:"Katz Deli", c:"essen", la:40.7223, lo:-73.9874}, {n:"Russ & Daughters", c:"essen", la:40.7224, lo:-73.9882}, {n:"Brooklyn Bridge", c:"sight", la:40.7061, lo:-73.9969}]}}); __snap(); true`);
+  await page.waitForTimeout(200);
+  ok(await rp(`var c = document.querySelector('#chMsgs .ch-msg[data-mid="m2"] .ch-dy'); !!c && c.querySelectorAll(".ch-dys").length===3 && !!c.querySelector("[data-act=chdytake]")`), "Empfangene Tageskarte fehlt");
+  await shot("chat-tag-karte");
+  await page.tap('#chMsgs .ch-msg[data-mid="m2"] [data-act=chdytake]'); await page.waitForTimeout(200);
+  await page.tap('[data-act=chdytk][data-day="'+await rp(`days()[days().length-1].key`)+'"]'); await page.waitForTimeout(200);
+  const r = await rp(`var k = days()[days().length-1].key, o = ord(k).map(function(id){ return P(id).n; }); JSON.stringify(o)`);
+  ok(r.includes("Russ & Daughters") && !r.includes("Katz Deli") && !r.includes("Brooklyn Bridge"), "Übernahme falsch (Katz ist schon eingeplant, Brücke auch): "+r);
+  ok(await rp(`Object.keys(T().places).filter(function(k){ return T().places[k].n==="Katz Deli"; }).length===1`), "Vorhandener Ort doppelt angelegt");
+  // Stopp antippen zeigt ihn auf der Karte
+  await rp(`openChPage("u1_u_me"); true`); await page.waitForTimeout(300);
+  await page.tap('#chMsgs .ch-msg[data-mid="m2"] .ch-dys >> nth=1'); await page.waitForTimeout(300);
+  ok(await rp(`!chPage && sel==="poi" && poiSel && poiSel.n==="Russ & Daughters"`) || await rp(`!chPage && sel && P(sel) && P(sel).n==="Russ & Daughters"`), "Stopp antippen zeigt ihn nicht auf der Karte");
+  await rp(`CH.byId = {}; CH.list = []; CHMC = {}; true`);
+});
 await test("Chat: Kopf ohne Balken, Verlauf scrollt darunter durch und blendet oben weich aus, Knöpfe als Glas-Kreise", async () => {
   await seed();
   await rp(`window.__M = []; for(var i = 0; i < 30; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht Nummer "+i+" mit etwas mehr Text, damit sie umbricht", at:Date.now() - (30 - i)*60000});
