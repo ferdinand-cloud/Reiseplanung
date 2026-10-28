@@ -7854,6 +7854,9 @@ function navActive(){ var pm = profOpen, np = ntPage, lp = lsPage, dp = dcPage, 
 function avHTML(cls){ var ph = PROF && PROF.photo, nm = (PROF && PROF.name) || myMail() || "?";
   return ph ? "<img class=\""+cls+"\" src=\""+ph+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
 function navAv(){ var e = $("tbAv"); if(!e) return; e.innerHTML = acct.user ? avHTML("tbimg") : "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/><path d=\"M6.2 18.4a7 7 0 0 1 11.6 0\"/></svg>"; }
+// Erneutes Antippen eines Leisten-Knopfs: in der Seite bleiben, Seite und innere Listen (z. B. Entdecken) nach oben scrollen
+function pageTop(id){ var v = $(id); if(!v) return; var l = [v].concat([].slice.call(v.querySelectorAll("*")));
+  l.forEach(function(e){ if(e.scrollTop > 0 && e.scrollHeight > e.clientHeight){ try { e.scrollTo({top:0, behavior:"smooth"}); } catch(x){ e.scrollTop = 0; } } }); }
 function openProfile(){ closeMenus(); closeChPage(); closeGsPage(); closeNtPage(); closeLsPage(); closeDcPage(); profOpen = true; renderProfile(); $("profView").hidden = false; document.body.classList.add("profopen"); navActive(); }
 function closeProfile(){ if(!profOpen) return; profOpen = false; wmStop(); zRenderPop(); $("profView").hidden = true; if(!ntPage) document.body.classList.remove("profopen"); navActive(); }
 /* Titelbild einer Reise: gewähltes Foto, nur Buchstaben oder automatisch (neuestes Foto).
@@ -14728,7 +14731,7 @@ document.addEventListener("click", function(e){
     case "wunpark": setPark(t.getAttribute("data-pid") || id || sel, false); break;
     case "srchopen": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); openSearch(); break;
     case "navmap": closeChPage(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeGsPage(); closeMenus(); break;
-    case "navchat": if(chPage && !chOpen && !chNewOn) closeChPage(); else openChPage(); break;
+    case "navchat": if(chPage && !chOpen && !chNewOn) pageTop("chView"); else openChPage(); break;
     case "chgo": $("toast").hidden = true; openChPage(t.getAttribute("data-v")); break;
     case "chopen": chOpenConv(t.getAttribute("data-v")); break;
     case "chnew": chNewPick(t.getAttribute("data-uid")); break;
@@ -14752,7 +14755,7 @@ document.addEventListener("click", function(e){
     case "chphopen": chPhOpen(t.getAttribute("data-k")); break;
     case "chphfull": chPhFull(t.getAttribute("data-k")); break;
     case "chshareto": chShareTo(t.getAttribute("data-uid"), t.getAttribute("data-pid")); break;
-    case "navsrch": if(gsPage) closeGsPage(); else openGsPage(); break;
+    case "navsrch": if(gsPage) pageTop("gsView"); else openGsPage(); break;
     case "gstrip": closeGsPage(); var gtr = t.getAttribute("data-trip"); if(S.trips[gtr] && gtr!==S.cur){ grpSel = ""; S.cur = gtr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } break;
     case "gsplace": closeGsPage(); closeProfile(); var gpt = t.getAttribute("data-trip"), gpp = t.getAttribute("data-pid");
       if(S.trips[gpt] && gpt!==S.cur){ grpSel = ""; S.cur = gpt; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
@@ -14760,7 +14763,7 @@ document.addEventListener("click", function(e){
     case "gsrec": closeGsPage(); openDcPage(); break;
     case "rvopen": rvTab = t.getAttribute("data-v"); if(sel==="poi" && poiSel){ poiRv = poiRv===rvTab ? "" : rvTab; renderCard(); break; } if(sel && P(sel)){ openJPop(sel, dayOf(sel) || ""); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"start", behavior: reduceMotion ? "auto" : "smooth"}); }, 120); } break;
     case "rvtab": rvTab = t.getAttribute("data-v"); if(sel==="poi" && poiSel && !(jp && $("jPop") && !$("jPop").hidden)){ poiRv = rvTab; renderCard(); break; } renderJPop(); setTimeout(function(){ var r = document.querySelector("#jPop .rvsec"); if(r) r.scrollIntoView({block:"nearest"}); }, 0); break;
-    case "navdisc": if(dcPage) closeDcPage(); else openDcPage(); break;
+    case "navdisc": if(dcPage) pageTop("dcView"); else openDcPage(); break;
     case "dcsrc": dcSrc = t.getAttribute("data-v"); lsSet("rp-dcsrc", dcSrc); renderDc(); break;
     case "dcreport": dcReport(t.getAttribute("data-k")); break;
     case "dcrepgo": dcReportGo(t.getAttribute("data-k"), +t.getAttribute("data-i")); break;
@@ -14820,7 +14823,7 @@ document.addEventListener("click", function(e){
     case "dcmap": var dcr = DC.byKey[t.getAttribute("data-k")]; if(dcr){ closeDcPage(); poiSel = {n:dcr.n, cls:"", sub:"", c:dcr.c || "sight", la:dcr.la, lo:dcr.lo, addr:dcr.addr || ""}; sel = null; select("poi"); renderCard(); revealPoint({la:dcr.la, lo:dcr.lo}, 16, true); } break;
     case "dcreload": DC.at = 0; dcLoad(); if(dcSrc==="all") pubLoad(true); break;
     case "recshare": recShare = !recShare; lsSet("rp-recshare", recShare ? "1" : "0"); if(recShare) recSyncSoon(); else recWipe(); openSettings(); break;
-    case "navlist": if(lsPage) closeLsPage(); else openLsPage(); break;
+    case "navlist": if(lsPage) pageTop("lsView"); else openLsPage(); break;
     case "lstrippick": lsTripMenu(t); break;
     case "lstrip": closeJpMore(); var lst = t.getAttribute("data-trip"); if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
     case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;
@@ -14837,7 +14840,7 @@ document.addEventListener("click", function(e){
     case "lsopen": var lop = t.getAttribute("data-pid"); if(P(lop)) openJPop(lop, dayOf(lop) || ""); break;
     case "lsday": closeLsPage(); var lsd = t.getAttribute("data-day"); if(dayByKey(lsd)){ cur = lsd; tab = "day"; renderAll(); fitDay(); } break;
     case "lsph": var lpid = t.getAttribute("data-pid"); if(P(lpid)){ openJPop(lpid, dayOf(lpid) || "", t.getAttribute("data-ph")); if(jp) jp.ret = "list"; } break;
-    case "navprof": if(profOpen){ var pv0 = $("profView"); if(pv0) try { pv0.scrollTo({top:0, behavior:"smooth"}); } catch(e){ pv0.scrollTop = 0; } } else openProfile(); break;
+    case "navprof": if(profOpen) pageTop("profView"); else openProfile(); break;
     case "navpick":
       var npT = null, npX = "";
       if(t.hasAttribute("data-sub")){ var nst = TRANSIT.stations[+t.getAttribute("data-sub")]; if(nst){ npT = subLL(nst); npT.n = nst[0]; npX = "nosub"; } }
@@ -14919,7 +14922,7 @@ document.addEventListener("click", function(e){
     case "poimore": openPoiMore(t); break;
     case "poigm": closeJpMore(); if(poiSel) window.open(gmInfoUrl(poiSel), "_blank", "noopener"); break;
     case "acctclose": accBack(); break;
-    case "bell": closeMenus(); $("toast").hidden = true; if(ntPage) closeNtPage(); else openNtPage(); break;
+    case "bell": closeMenus(); $("toast").hidden = true; if(ntPage) pageTop("ntView"); else openNtPage(); break;
     case "ntkind": ntKind = t.getAttribute("data-v"); renderNt(); break;
     case "ntgo": ntOpen(t.getAttribute("data-v")); break;
     case "ntread": NT.items.forEach(function(x){ x.read = true; }); ntSave(); ntBadge(); if(ntPage) renderNt(); else openSettings(); break;

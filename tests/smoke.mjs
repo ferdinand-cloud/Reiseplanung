@@ -3432,15 +3432,20 @@ await test("Design: Seiten der Leiste als mattes Glas, darunter keine Knöpfe al
   ok(await page.evaluate(() => !/blur/.test(getComputedStyle(document.getElementById("chView")).backdropFilter || "")), "Chats sollen deckend bleiben");
 });
 
-await test("Profil: Profil-Knopf in der Leiste bleibt im Profil (kein Sprung zur Karte), scrollt nach oben", async () => {
-  await seed(); await rp(`openProfile()`); await page.waitForTimeout(500);
-  await page.evaluate(() => { const v = document.getElementById("profView"); v.insertAdjacentHTML("beforeend", "<div style=\"height:2000px\"></div>"); v.scrollTop = 600; });
-  await page.locator("#tbProf").click(); await page.waitForTimeout(900);
-  const r = await page.evaluate(() => ({open:!document.getElementById("profView").hidden, st:document.getElementById("profView").scrollTop}));
-  ok(r.open, "Profil-Knopf schließt das Profil (springt zur Karte)");
-  ok(r.st===0, "Profil nicht nach oben gescrollt: "+r.st);
-  ok(await rp(`profOpen`)===true, "profOpen falsch");
+await test("Leiste: erneutes Antippen eines Knopfs bleibt auf der Seite (kein Sprung zur Karte), scrollt nach oben", async () => {
+  await seed(); await rp(`$("bellBtn").hidden = false; true`); // Glocke erscheint sonst erst mit Konto
+  for(const [btn, view, flag] of [["#tbProf","profView","profOpen"],["#tbList","lsView","lsPage"],["#tbDisc","dcView","dcPage"],["#tbSearch","gsView","gsPage"],["#tbChat","chView","chPage"],["#bellBtn","ntView","ntPage"]]){
+    try { await page.locator(btn).click({timeout:4000}); } catch(e){ throw new Error(btn+" (1): "+e.message.split("\n").slice(0,6).join(" / ")); } await page.waitForTimeout(500);
+    ok(await rp(flag)===true, btn+" öffnet die Seite nicht");
+    await page.evaluate((v) => { const e = document.getElementById(v); e.insertAdjacentHTML("beforeend", "<div class=\"tsPad\" style=\"height:3000px\"></div>"); e.scrollTop = 600; }, view);
+    try { await page.locator(btn).click({timeout:4000}); } catch(e){ throw new Error(btn+" (2): "+e.message.split("\n").slice(0,6).join(" / ")); } await page.waitForTimeout(900);
+    const r = await page.evaluate((v) => ({open:!document.getElementById(v).hidden, st:document.getElementById(v).scrollTop}), view);
+    ok(r.open && await rp(flag)===true, btn+": erneutes Antippen schließt die Seite (Sprung zur Karte)");
+    ok(r.st===0, btn+": Seite nicht nach oben gescrollt: "+r.st);
+    await page.evaluate((v) => document.querySelectorAll("#"+v+" .tsPad").forEach(e => e.remove()), view);
+  }
   await page.locator("#tbMap").click(); await page.waitForTimeout(300);
+  ok(await rp(`!profOpen && !lsPage && !dcPage && !gsPage && !chPage && !ntPage`), "Karten-Knopf schließt die Seiten nicht");
 });
 
 /* ------------------------------------------------------------------ Ergebnis */
