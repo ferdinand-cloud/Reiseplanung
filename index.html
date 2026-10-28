@@ -275,7 +275,16 @@ body.zsel #sheet .tabs{display:none}
 .daylist .dayall[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--ink)}
 .dayall .ab,.rd-day .b.ab,.dhd .b.ab{background:conic-gradient(var(--dc)) !important}
 .dayall .ab{width:26px;height:26px;border-radius:50%;flex:0 0 26px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
-.adl .dt b{font-size:15px}
+.adh{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:6px 2px 8px;text-align:left;color:var(--ink);font:inherit}
+.adh .b{width:32px;height:32px;flex:0 0 32px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 16px/1 var(--f-display)}
+.adh .b.y{color:#17212c}
+.adh .dt{flex:1;display:grid;gap:2px;min-width:0}
+.adh .dt b{font-size:16px}
+.adh .dt em{font-style:normal;font-size:11px;font-weight:700;background:var(--ink);color:var(--sheet);border-radius:999px;padding:2px 7px;margin-left:4px;vertical-align:1px}
+.adh .dt small{font-size:12.5px;color:var(--muted);font-weight:500}
+.adh svg{width:16px;height:16px;transform:rotate(-90deg);color:var(--muted)}
+.adj .jlist{margin-top:2px}
+.adtx{white-space:pre-wrap;margin-top:8px}
 .daylist .b{width:34px;height:34px;flex:0 0 34px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 17px/1 var(--f-display)}
 .daylist .b.y{color:#17212c}
 .daylist .dt{display:grid;gap:2px;min-width:0}
@@ -4012,6 +4021,7 @@ body.profopen #sheet,body.profopen #sheetOpen,body.profopen .ctrl,body.profopen 
   <label><input type="checkbox" id="lWish" checked><span class="sw" style="background:var(--wish)"></span>Wünsche</label>
   <div class="lines lcats" id="wishCats"></div>
   <label><input type="checkbox" id="lVis" checked><span class="sw" style="background:linear-gradient(135deg,#7d8a96 0 50%,#5E9970 50%)"></span>Besuchte Orte &amp; Fotospots</label>
+  <label><input type="checkbox" id="lAllP"><span class="sw" style="background:conic-gradient(var(--c1) 0 25%,var(--c2) 25% 50%,var(--c3) 50% 75%,var(--c4) 75%)"></span>Alle Orte der Reise</label>
   <label><input type="checkbox" id="lPoi"><span class="sw" style="background:conic-gradient(#e8710a 0 25%,#8a5a2b 25% 50%,#7b3fbf 50% 75%,#5E9970 75%)"></span>Cafés, Lokale &amp; Sehenswertes</label>
   <div class="lines" id="poiCats" hidden></div>
   <label><input type="checkbox" id="lNb"><span class="sw" style="background:repeating-linear-gradient(90deg,var(--hi) 0 4px,transparent 4px 7px)"></span>Bezirke</label>
@@ -10476,6 +10486,8 @@ function hid(id){ return hideDone && !!T().done[id]; }
 /* Kartenfilter „Besuchte Orte & Fotospots“: standardmäßig an; Beobachter haben eine eigene Einstellung */
 function visKey(){ return isRO() ? "nyc-l-vis-ro" : "nyc-l-vis"; }
 function visOn(){ return lsGet(visKey())!=="0"; }
+/* Kartenfilter „Alle Orte der Reise“: standardmäßig aus – mit gewähltem Tag zeigt die Karte nur dessen Orte */
+function allPOn(){ return lsGet("rp-l-allp")==="1"; }
 function mapHid(id){ return hid(id) || (!visOn() && !!T().done[id]); }
 function onScreen(q, pad){ return q[0]>-pad && q[0]<W+pad && q[1]>-pad && q[1]<H+pad; }
 function upright(deg){ deg = ((deg%360)+540)%360-180; if(deg>90) deg-=180; if(deg<-90) deg+=180; return deg; }
@@ -10686,7 +10698,7 @@ function drawOverlay(){
   }); });
   // Fotos aller anderen Punkte (andere Tage, ausgeblendete erledigte Stopps): kleine Foto-Marker, damit Erinnerungen immer auf der Karte sind
   PHMK = [];
-  if(visOn() && !zs) (function(){
+  if(visOn() && !zs && (allPOn() || ALL)) (function(){
     var shown = {}, ps = T().photos || {};
     mapDays().forEach(function(dk){ ord(dk).forEach(function(id){ if(!mapHid(id) && !(P(id) && P(id).k==="hotel")) shown[id] = 1; }); });
     if((layers.wish || wishView()) && !isRO()) wishes().forEach(function(w){ shown[w.id] = 1; });
@@ -10814,7 +10826,7 @@ $("zfit").addEventListener("click", fitDay);
 $("compass").addEventListener("click", function(){ v3dDone = true; map.easeTo({bearing:0, pitch:0, duration: reduceMotion?0:400}); });
 $("b3dBtn").addEventListener("click", v3dToggle);
 window.addEventListener("resize", function(){ requestAnimationFrame(v3dPlace); });
-$("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; if(open){ $("lVis").checked = visOn(); renderWishCats(); renderPoiCats(); if(DEST){ destNeed("tr"); destNeed("nb"); } } this.setAttribute("aria-expanded", open); placeFloating(); });
+$("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; if(open){ $("lVis").checked = visOn(); $("lAllP").checked = allPOn(); renderWishCats(); renderPoiCats(); if(DEST){ destNeed("tr"); destNeed("nb"); } } this.setAttribute("aria-expanded", open); placeFloating(); });
 ["lSub","lBus","lFerry","lWish","lNb","lRoute"].forEach(function(id){
   $(id).addEventListener("change", function(){
     layers = {sub:$("lSub").checked, bus:$("lBus").checked, ferry:$("lFerry").checked, wish:$("lWish").checked, nb:$("lNb").checked, route:$("lRoute").checked, bike:$("lBike").checked}; lsSet("nyc-l-ferry", layers.ferry?"1":"0"); lsSet("nyc-l-nb", layers.nb?"1":"0"); lsSet("nyc-l-route", layers.route?"1":"0"); if(tab==="day") renderSheet();
@@ -10845,6 +10857,7 @@ $("lTr").addEventListener("change", function(){
 });
 TRIDS.forEach(function(id){ $(id).addEventListener("change", trSync); });
 $("lTrDyn").addEventListener("change", function(e){ var m = e.target.getAttribute("data-dm"); if(m) dToggle(m, e.target.checked); });
+$("lAllP").addEventListener("change", function(){ lsSet("rp-l-allp", this.checked ? "1" : "0"); scheduleOverlay(); });
 $("lVis").addEventListener("change", function(){ lsSet(visKey(), this.checked ? "1" : "0"); scheduleOverlay(); });
 
 /* ---------- Eigener Standort ---------- */
@@ -13196,13 +13209,17 @@ function viaBtn(i, v){ return isRO() ? "" : "<button type=\"button\" class=\"via
 var SUGICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7.3 14.5h5.4M8 17h4M10 2.8a5 5 0 0 0-3 9c.6.5.9 1 .9 1.7v1h4.2v-1c0-.7.3-1.2.9-1.7a5 5 0 0 0-3-9z\"/></svg>";
 var GRIPSVG = "<svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg>";
 function renderAllDays(){
-  var tk = todayKey(), tot = 0, dn = 0, rows = "";
+  var tk = todayKey(), tot = 0, dn = 0, body = "";
   days().forEach(function(d){
-    var ids = ord(d.key).filter(function(x){ return !isHStop(x); }), n = ids.filter(function(x){ return T().done[x]; }).length; tot += ids.length; dn += n;
-    rows += "<button type=\"button\" data-act=\"day\" data-day=\""+d.key+"\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span><span class=\"dt\"><b>"+esc(d.title)+(d.key===tk?" <em>Heute</em>":"")+"</b><small>"+(ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps")+(n?" · "+n+" erledigt":"") : "noch leer")+(d.hint?" · "+esc(d.hint):"")+"</small></span></button>";
+    var ids = ord(d.key).filter(function(x){ return !isHStop(x) && P(x); }), done = ids.filter(function(x){ return T().done[x]; }), J = (T().journal||{})[d.key] || {};
+    tot += ids.length; dn += done.length;
+    body += "<div class=\"sec adj\"><button type=\"button\" class=\"adh\" data-act=\"day\" data-day=\""+d.key+"\" aria-label=\""+esc(d.title)+" – Tag öffnen\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span><span class=\"dt\"><b>"+esc(d.title)+(d.key===tk?" <em>Heute</em>":"")+"</b><small>"+(done.length ? done.length+" besucht" : ids.length ? "noch nichts besucht" : "noch leer")+(ids.length > done.length && !isRO() ? " · "+(ids.length-done.length)+" offen" : "")+(d.hint?" · "+esc(d.hint):"")+"</small></span>"+CHEV+"</button>";
+    if(J.hl) body += "<p class=\"jhl\"><span class=\"star\">★</span> Highlight: <b>"+esc(J.hl)+"</b></p>";
+    if(done.length) body += "<ul class=\"jlist\">"+done.map(function(id){ return jItem(id, d.key); }).join("")+"</ul>";
+    if(J.text) body += "<p class=\"note adtx\">"+esc(J.text)+"</p>";
+    body += "</div>";
   });
-  return "<div class=\"dh dhx\"><button type=\"button\" class=\"dhd\" data-act=\"daypop\" aria-label=\"Alle Tage – Tag wechseln\"><span class=\"dring\"><span class=\"b ab\" style=\"--dc:"+allDc()+"\"></span></span><span class=\"dht\"><h2>Alle Tage<svg class=\"dhchev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></h2><p>"+days().length+" Tage · "+tot+(tot===1?" Stopp":" Stopps")+(dn?" · "+dn+" erledigt":"")+"</p></span></button></div>"+
-    "<div class=\"pop-list daylist adl\">"+rows+"</div>";
+  return "<div class=\"dh dhx\"><button type=\"button\" class=\"dhd\" data-act=\"daypop\" aria-label=\"Alle Tage – Tag wechseln\"><span class=\"dring\"><span class=\"b ab\" style=\"--dc:"+allDc()+"\"></span></span><span class=\"dht\"><h2>Alle Tage<svg class=\"dhchev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></h2><p>"+days().length+" Tage · "+tot+(tot===1?" Stopp":" Stopps")+(dn?" · "+dn+" besucht":"")+"</p></span></button></div>"+body;
 }
 function renderDay(){
   if(allOn()) return renderAllDays();
