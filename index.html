@@ -2236,8 +2236,7 @@ a.zsrc svg{width:17px;height:17px}
 .rvc{display:flex;align-items:center;gap:8px;min-width:0;border:0;border-radius:12px;padding:8px 10px;background:var(--fill);color:var(--ink);text-align:left;cursor:pointer}
 .rvc .rvi{font-size:16px;flex:0 0 auto}
 .rvc span:last-child{display:flex;flex-direction:column;min-width:0}
-.rvc b{font:600 13px/1.2 var(--f-body)}
-.rvc small{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rvc small{font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rvc small i{font-style:normal;font-weight:600}
 .rvc.on{background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .rvseg{margin:6px 0 10px}
@@ -2395,10 +2394,8 @@ ol.rt .rt-pt .rt-x small{color:var(--muted)}
 .card .rvc{padding:6px 8px;border-radius:10px;gap:5px}
 .card .rvc .rvi{font-size:13px}
 .card .rvc span:last-child{flex-direction:row;align-items:baseline;gap:4px;overflow:hidden}
-.card .rvc b{font-size:12px;flex:0 0 auto}
-.card .rvc small{font-size:11px;min-width:0}
+.card .rvc small{font-size:12px;min-width:0}
 .card .cnote{font-size:13px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.card .rvc small::before{content:"· "}
 .card .trbox{margin:0;border-radius:10px}
 .card .trsum{padding:6px 9px;font-size:12.5px}
 .card .mecard{border-top:0;padding-top:0;gap:4px}
@@ -7977,8 +7974,8 @@ function friendRecs(p){
 function rvChips(p){
   var fr = friendRecs(p), best = fr.reduce(function(m, r){ return r.rating && (!m || rateRank(r.rating) < rateRank(m)) ? r.rating : m; }, 0), RR = RATES.filter(function(x){ return x[0]===best; })[0];
   var g = gKey && gInfo[gK(p)], gr = g && g.d && g.d.rating, nm0 = (p.n||"").toLowerCase().slice(0, 6), pn = PUB.items.filter(function(r){ var d = r.la ? dist(p, r) : 1e9; return !pubHidden()[r.pid] && (d < 40 || (d < 150 && (r.n||"").toLowerCase().slice(0, 6)===nm0)); });
-  return "<div class=\"rvchips\"><button type=\"button\" class=\"rvc"+(fr.length?" on":"")+"\" data-act=\"rvopen\" data-v=\"friends\"><span class=\"rvi\">"+ic("friends", "ii")+"</span><span><b>Freunde</b><small>"+(fr.length ? (RR ? fr.length+" · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : fr.length+(fr.length===1?" Empfehlung":" Empfehlungen")) : "keine")+"</small></span></button>"+
-    "<button type=\"button\" class=\"rvc\" data-act=\"rvopen\" data-v=\"public\"><span class=\"rvi\">"+ic("globe", "ii")+"</span><span><b>Öffentlich</b><small>"+(pn.length ? pn.length+(pn.length===1 ? " Empfehlung" : " Empfehlungen") : gr ? "★ "+String(gr).replace(".", ",")+" (Google)" : "bald")+"</small></span></button></div>";
+  return "<div class=\"rvchips\"><button type=\"button\" class=\"rvc"+(fr.length?" on":"")+"\" data-act=\"rvopen\" data-v=\"friends\" aria-label=\"Bewertungen von Freunden\" title=\"Freunde\"><span class=\"rvi\">"+ic("friends", "ii")+"</span><span><small>"+(fr.length ? (RR ? fr.length+" · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : fr.length+(fr.length===1?" Empfehlung":" Empfehlungen")) : "keine")+"</small></span></button>"+
+    "<button type=\"button\" class=\"rvc\" data-act=\"rvopen\" data-v=\"public\" aria-label=\"Öffentliche Bewertungen\" title=\"Öffentlich\"><span class=\"rvi\">"+ic("globe", "ii")+"</span><span><small>"+(pn.length ? pn.length+(pn.length===1 ? " Empfehlung" : " Empfehlungen") : gr ? "★ "+String(gr).replace(".", ",")+" (Google)" : "bald")+"</small></span></button></div>";
 }
 /* „3 Freunde empfehlen das“: verschiedene Freunde mit guter Bewertung (ab „Nice“, Highlight oder ohne Bewertung veröffentlicht) */
 function frWho(p){

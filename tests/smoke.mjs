@@ -272,6 +272,9 @@ await test("Neuer Ort (POI): Kacheln, Freunde/Öffentlich, keine Weg-Zeile", asy
   const tiles = await page.locator("#card .jp-tile").allInnerTexts();
   ["Zur Planung","Wunschliste","Route","Mehr"].forEach(x => ok(tiles.some(t => t.includes(x)), "Kachel fehlt: "+x));
   ok(await page.locator("#card .rvchips").count()===1, "Freunde/Öffentlich fehlt");
+  const rvTxt = await page.locator("#card .rvc").allInnerTexts();
+  ok(rvTxt.length===2 && !rvTxt.some(t => /Freunde|Öffentlich/.test(t)), "Bewertungs-Kapseln zeigen noch Text statt nur Symbol: "+rvTxt.join(" | "));
+  ok(await page.locator("#card .rvc[data-v=friends] .rvi svg").count()===1 && await page.locator("#card .rvc[data-v=public] .rvi svg").count()===1, "Symbol in Bewertungs-Kapsel fehlt");
   ok(await page.locator("#card .mecard").count()===0, "Weg-Zeile ist wieder da");
   await click("#card [data-act=poimore]");
   ok(await visible("#jpMenu"), "Mehr-Menü öffnet nicht");
