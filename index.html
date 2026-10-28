@@ -15265,8 +15265,9 @@ document.addEventListener("click", function(e){
     case "gotoday": closeCatPop(); closeJpMore(); if(jp) closeJPop(); cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
     case "trip": closeSettings(); zsSet(""); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tmcur": closeMenus(); closeJpMore(); break;
-    case "tripmode": var tmv = t.getAttribute("data-v"); if(tmv!==tripMode()){ setTripMode(tmv); if(tmv==="view" && tab==="trip" && tdraft) tdraft = null; } closeMenus(); closeJpMore(); renderAll(); break;
-    case "finedit": closeMenus(); closeJpMore(); setTripMode("edit"); renderAll(); break;
+    case "tripmode": case "finedit": // Moduswechsel: Menüs und Reise-Fenster schließen, damit nichts die Kopfzeile verdeckt
+      var tmv = act==="finedit" ? "edit" : t.getAttribute("data-v"); if(tmv!==tripMode()) setTripMode(tmv);
+      closeMenus(); closeJpMore(); if(tab==="trip"){ tdraft = null; tab = sheetTab; } renderAll(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); break;
     case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
     case "topt": if(tdraft){ tdraft.opt = !tdraft.opt; tdraft.err = ""; if(tdraft.opt && /^hotels/.test(tdraft.ok||"")) tdraft.ok = ""; renderSheet(); } break;
