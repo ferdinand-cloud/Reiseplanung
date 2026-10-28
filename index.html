@@ -636,6 +636,15 @@ body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0
 .ag-out{margin-top:16px}
 .ag-out .ag-row{justify-content:center}
 .ag-out .ag-row b{color:#FF3B30}
+.btn.ag-kill{margin-top:22px;padding:11px 12px}
+.ch-conv.gone .ch-comp,.ch-conv.gone .ch-draft,.ch-conv.gone .ch-pick{display:none !important}
+.ch-conv.gone::after{content:"Dieses Konto wurde gelöscht.";display:block;text-align:center;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));font-size:13px;color:var(--muted)}
+.btn.ag-kill svg{width:16px;height:16px}
+.ad-card{text-align:left}
+.ad-card b{text-align:center}
+.ad-card input{display:block;width:100%;box-sizing:border-box;margin:12px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--chip);color:var(--ink);font:16px var(--f-body)}
+.ad-card .ad-msg{color:var(--del);font-size:13px;margin-top:8px}
+.ad-card .cf-ok.del{background:var(--del)}
 .ag-title{margin:6px 0 4px;font:700 19px/1.1 var(--f-display)}
 .frres{padding:0 12px}
 .frres:empty{display:none}
@@ -4411,6 +4420,9 @@ function dist(a,b){
 function tmin(d){ return d<1800 ? d*1.3/80 : 8 + d*1.3/1000*2.2; }
 function fmtDist(m){ return m<950 ? Math.round(m/10)*10+" m" : (m/1000).toFixed(m<10000?1:0).replace(".",",")+" km"; }
 function legText(d){ return d<1800 ? Math.max(1,Math.round(tmin(d)))+" Min. zu Fuß · "+fmtDist(d) : "ca. "+Math.round(tmin(d))+" Min. mit U-Bahn oder Taxi · "+fmtDist(d); }
+// gelöschte Konten: Profil bleibt als „Gelöschter Nutzer“ stehen, Inhalte zeigen diesen Namen ohne „@“
+var DELN = "Gelöschter Nutzer";
+function atn(n){ return n===DELN ? n : "@"+n; }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
 function $(id){ return document.getElementById(id); }
 function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
@@ -4812,7 +4824,7 @@ function privToKey(kind, key){ return (kind==="p" ? "p:"+rootOf(key) : kind==="n
 function privToOf(kind, key){ var a = (T().privTo||{})[privToKey(kind, key)]; return Array.isArray(a) ? a : []; }
 function tripViewers(){ var m = META[gidFor(S.cur)] || META[S.cur]; return (m && m.viewers || []).filter(function(u){ return !acct.user || u!==acct.user.uid; }); }
 function viewerName(u){ var m = META[gidFor(S.cur)] || META[S.cur] || {}, f = FR.friends.filter(function(x){ return x.uid===u; })[0], e = (m.memberEmails||{})[u];
-  return (CHPROF[u] && CHPROF[u].name) ? "@"+CHPROF[u].name : f && f.name ? "@"+f.name : e ? e.split("@")[0] : "Beobachter"; }
+  return (CHPROF[u] && CHPROF[u].name) ? atn(CHPROF[u].name) : f && f.name ? atn(f.name) : e ? e.split("@")[0] : "Beobachter"; }
 function setPrivTo(kind, key, u, on){
   var t = T(), k = privToKey(kind, key); t.privTo = t.privTo || {}; var a = (t.privTo[k]||[]).filter(function(x){ return x!==u; });
   if(on) a.push(u); if(a.length) t.privTo[k] = a; else delete t.privTo[k];
@@ -5252,7 +5264,7 @@ function frWatch(){
     FO.forEach(function(r){ var k = "p:"+r.to; if(r.st==="req"){ seen[k] = 1; return; } if(!seen[k]) return; delete seen[k]; if(!first) msgs.push({u:r.to, at:Date.now(), t:" hat deine Anfrage angenommen – du folgst jetzt"}); });
     Object.keys(seen).forEach(function(k){ if(k.indexOf("p:")===0 && !FO.some(function(r){ return "p:"+r.to===k; })) delete seen[k]; });
     first = false; lsSet(SK, JSON.stringify(seen));
-    msgs.forEach(function(m, i){ setTimeout(function(){ var show = function(nm){ ntAdd({id:"fol:"+m.u+":"+(m.at||0)+":"+m.t.length, type:"friend", text:"@"+nm+m.t, at:m.at}); };
+    msgs.forEach(function(m, i){ setTimeout(function(){ var show = function(nm){ ntAdd({id:"fol:"+m.u+":"+(m.at||0)+":"+m.t.length, type:"friend", text:atn(nm)+m.t, at:m.at}); };
       if(NAMES[m.u]) show(NAMES[m.u]); else fbDb.collection("profiles").doc(m.u).get().then(function(d){ var v = d.exists && d.data(); show(v && v.name || "?"); }, function(){ show("?"); }); }, i*5200); });
   };
   var rows = function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }); };
@@ -5289,7 +5301,7 @@ function frDoSearch(q){
   frSearch.busy = true; renderFrRes();
   fbDb.collection("profiles").where("nameLower", ">=", q).where("nameLower", "<=", q+"").orderBy("nameLower").limit(8).get().then(function(qs){
     if(frSearch.q!==q) return;
-    frSearch.res = qs.docs.filter(function(d){ return d.id!==acct.user.uid; }).map(function(d){ return {uid:d.id, name:d.data().name}; });
+    frSearch.res = qs.docs.filter(function(d){ return d.id!==acct.user.uid && !d.data().deleted; }).map(function(d){ return {uid:d.id, name:d.data().name}; });
     frSearch.busy = false; renderFrRes();
   }, function(){ frSearch.busy = false; frSearch.res = []; renderFrRes(); });
 }
@@ -5308,7 +5320,7 @@ function frResHTML(){
   if(frSearch.busy) return "<p class=\"note\">Suche …</p>";
   if(frSearch.q.length >= 2 && !frSearch.res.length) return "<p class=\"note\">Niemand mit diesem Namen gefunden.</p>";
   return frSearch.res.map(function(r){ var st = frState(r.uid);
-    return "<div class=\"ag-row\"><span class=\"mav\">"+esc(r.name[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.name)+"</b>"+(st ? "<small>"+frStLbl(st)+"</small>" : "")+"</span>"+folBtn(st, r.uid, r.name)+"</div>"; }).join("");
+    return "<div class=\"ag-row\"><span class=\"mav\">"+esc(r.name[0].toUpperCase())+"</span><span class=\"fn\"><b>"+esc(atn(r.name))+"</b>"+(st ? "<small>"+frStLbl(st)+"</small>" : "")+"</span>"+folBtn(st, r.uid, r.name)+"</div>"; }).join("");
 }
 function renderFrRes(){ var el = $("frRes"); if(el) el.innerHTML = frResHTML(); }
 function frName(uid1){ var f = FR.followers.concat(FR.following, FR.inc, FR.out).filter(function(x){ return x.uid===uid1; })[0]; return (f && f.name) || FRNAMES[uid1] || ""; }
@@ -5320,23 +5332,23 @@ function folFollow(uid1, name1){
 }
 function folAccept(uid1){
   var nm = frName(uid1);
-  folRef(uid1, acct.user.uid).update({st:"ok"}).then(function(){ toast("@"+nm+" folgt dir jetzt", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); });
+  folRef(uid1, acct.user.uid).update({st:"ok"}).then(function(){ toast(atn(nm)+" folgt dir jetzt", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); });
 }
 function folDecline(uid1){
   var nm = frName(uid1);
-  askConfirm("Anfrage von @"+nm+" ablehnen?", "@"+nm+" folgt dir dann nicht und erfährt davon nichts.", "Ablehnen", function(){
+  askConfirm("Anfrage von "+atn(nm)+" ablehnen?", atn(nm)+" folgt dir dann nicht und erfährt davon nichts.", "Ablehnen", function(){
     folRef(uid1, acct.user.uid).delete().then(function(){ toast("Anfrage abgelehnt", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); }); });
 }
 function folUnfollow(uid1){
   var nm = frName(uid1), st0 = frState(uid1), mu = st0==="friend";
   if(st0==="requested"){ askConfirm("Anfrage an @"+nm+" zurückziehen?", "", "Zurückziehen", function(){ folRef(acct.user.uid, uid1).delete().then(function(){ toast("Anfrage zurückgezogen", false); renderFrRes(); if(gsPage) renderGs(); }, function(){}); }); return; }
-  askConfirm("@"+nm+" nicht mehr folgen?", mu ? "Ihr folgt euch dann nicht mehr gegenseitig: kein Chat, keine Einladungen, keine „Freunde“-Inhalte mehr. Gemeinsame Reisen bleiben." : "Du siehst dann nichts mehr von @"+nm+" in Entdecken.", "Nicht mehr folgen", function(){
+  askConfirm(atn(nm)+" nicht mehr folgen?", mu ? "Ihr folgt euch dann nicht mehr gegenseitig: kein Chat, keine Einladungen, keine „Freunde“-Inhalte mehr. Gemeinsame Reisen bleiben." : "Du siehst dann nichts mehr von "+atn(nm)+" in Entdecken.", "Nicht mehr folgen", function(){
     folRef(acct.user.uid, uid1).delete().then(function(){ toast("Du folgst @"+nm+" nicht mehr", false); renderFrRes(); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); }); });
 }
 function folRemove(uid1){
   var nm = frName(uid1);
-  askConfirm("Follower @"+nm+" entfernen?", "@"+nm+" folgt dir dann nicht mehr und sieht keine „Freunde“-Inhalte mehr. Es gibt keine Benachrichtigung.", "Entfernen", function(){
-    folRef(uid1, acct.user.uid).delete().then(function(){ toast("@"+nm+" entfernt", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); }); });
+  askConfirm("Follower "+atn(nm)+" entfernen?", atn(nm)+" folgt dir dann nicht mehr und sieht keine „Freunde“-Inhalte mehr. Es gibt keine Benachrichtigung.", "Entfernen", function(){
+    folRef(uid1, acct.user.uid).delete().then(function(){ toast(atn(nm)+" entfernt", false); }, function(e){ toast("Fehlgeschlagen: "+(e && e.message), false); }); });
 }
 /* ---------- Einladungslink: …/?freund=name öffnet nach dem Anmelden die Frage, ob man der Person folgen will ---------- */
 var INVFR = (function(){ var m = /[?&]freund=([^&#]+)/.exec(location.search), v = "";
@@ -5360,7 +5372,7 @@ function invCheck(){
     return fbDb.collection("profiles").doc(u).get().then(function(p){ var nm = (p.exists && p.data().name) || v, st = frState(u);
       if(st==="friend" || st==="following") toast("Du folgst @"+nm+" schon", false);
       else if(st==="requested") toast("Anfrage an @"+nm+" ist schon gesendet", false);
-      else askConfirm("@"+nm+" folgen?", (st==="follower" ? "@"+nm+" folgt dir schon. " : "Du hast den Einladungslink von @"+nm+" geöffnet. ")+"Nimmt @"+nm+" deine Anfrage an, folgst du. Folgt ihr euch gegenseitig, seht ihr eure Empfehlungen und könnt euch schreiben.", "Anfrage senden", function(){ folFollow(u, nm); });
+      else askConfirm(atn(nm)+" folgen?", (st==="follower" ? atn(nm)+" folgt dir schon. " : "Du hast den Einladungslink von "+atn(nm)+" geöffnet. ")+"Nimmt "+atn(nm)+" deine Anfrage an, folgst du. Folgt ihr euch gegenseitig, seht ihr eure Empfehlungen und könnt euch schreiben.", "Anfrage senden", function(){ folFollow(u, nm); });
     });
   }).catch(function(){ toast("Einladung konnte nicht geöffnet werden", false); });
 }
@@ -5374,7 +5386,7 @@ function tripsPageHTML(){
   if(tripsTab==="req"){
     if(!acct.user) return h+"<p class=\"note\">Melde dich an, um Einladungen zu erhalten.</p></div>";
     if(!INVITES.length) return h+"<p class=\"note\">Keine offenen Einladungen. Wenn dich jemand zu einer Reise einlädt, erscheint sie hier.</p></div>";
-    h += "<div class=\"ag-grp\">"+INVITES.map(function(v){ return "<div class=\"ag-row inv\"><span><b>"+esc(v.name)+"</b><small>"+(v.range?esc(v.range)+" · ":"")+"Einladung von "+esc(v.fromName ? "@"+v.fromName : (v.from||"jemandem"))+(v.ziel ? "" : " · als "+(v.viewer?"Beobachter":"Mitreisende/r"))+"</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"invacc\" data-trip=\""+v.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"invdec\" data-trip=\""+v.id+"\">Ablehnen</button></span></div>"; }).join("")+"</div>";
+    h += "<div class=\"ag-grp\">"+INVITES.map(function(v){ return "<div class=\"ag-row inv\"><span><b>"+esc(v.name)+"</b><small>"+(v.range?esc(v.range)+" · ":"")+"Einladung von "+esc(v.fromName ? atn(v.fromName) : (v.from||"jemandem"))+(v.ziel ? "" : " · als "+(v.viewer?"Beobachter":"Mitreisende/r"))+"</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"invacc\" data-trip=\""+v.id+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"invdec\" data-trip=\""+v.id+"\">Ablehnen</button></span></div>"; }).join("")+"</div>";
     return h+"</div>";
   }
   if(tripsTab==="arch"){
@@ -5412,9 +5424,9 @@ function friendsHTML(){
   if(!list.length) h += "<p class=\"note\">"+(ing ? "Du folgst noch niemandem. Such Leute über ihren Benutzernamen." : "Dir folgt noch niemand. Schick deinen Einladungslink.")+"</p>";
   list.forEach(function(f){ var mu = frState(f.uid)==="friend", gs = mu ? fgOf(f.uid) : [], fn = norm(f.name||"");
     var sub = gs.length ? gs.map(function(g){ return g.n; }).join(" · ") : mu ? "Freund · ihr folgt euch" : ing ? "folgt dir nicht" : "folgt dir";
-    h += "<div class=\"ag-row\" data-frn=\""+esc(fn)+"\""+(q && fn.indexOf(q) < 0 ? " hidden" : "")+"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(f.name)+"</b><small>"+esc(sub)+"</small></span>"+
-      (mu && !ing ? "<button type=\"button\" class=\"fg-for"+(gs.length ? " on" : "")+"\" data-act=\"fgfor\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Gruppen für @"+esc(f.name)+"\">"+FGICO+"</button>" : "")+
-      (ing ? folBtn("following", f.uid, f.name) : (mu ? "" : folBtn(frState(f.uid)==="requested" ? "requested" : "follower", f.uid, f.name))+"<button type=\"button\" class=\"fg-for fr-rm\" data-act=\"folrm\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Follower @"+esc(f.name)+" entfernen\" title=\"Follower entfernen\">"+FRRMICO+"</button>")+"</div>"; });
+    h += "<div class=\"ag-row\" data-frn=\""+esc(fn)+"\""+(q && fn.indexOf(q) < 0 ? " hidden" : "")+"><span class=\"mav\">"+esc((f.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>"+esc(atn(f.name))+"</b><small>"+esc(sub)+"</small></span>"+
+      (mu && !ing ? "<button type=\"button\" class=\"fg-for"+(gs.length ? " on" : "")+"\" data-act=\"fgfor\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Gruppen für "+esc(atn(f.name))+"\">"+FGICO+"</button>" : "")+
+      (ing ? folBtn("following", f.uid, f.name) : (mu ? "" : folBtn(frState(f.uid)==="requested" ? "requested" : "follower", f.uid, f.name))+"<button type=\"button\" class=\"fg-for fr-rm\" data-act=\"folrm\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Follower "+esc(atn(f.name))+" entfernen\" title=\"Follower entfernen\">"+FRRMICO+"</button>")+"</div>"; });
   if(list.length > 1) h += "<p class=\"note fr-none\""+(q && !list.some(function(f){ return norm(f.name||"").indexOf(q) > -1; }) ? "" : " hidden")+">Niemand mit diesem Namen.</p>";
   h += "<button type=\"button\" class=\"ag-row\" data-act=\"accview\" data-v=\"search\"><span><b>Leute suchen</b><small>Über den Benutzernamen finden und Anfrage zum Folgen senden</small></span><em class=\"chev\">›</em></button>";
   h += "<button type=\"button\" class=\"ag-row\" data-act=\"invshare\"><span><b>Einladen</b><small>Link verschicken – wer ihn öffnet, kann dir gleich eine Anfrage schicken</small></span><em class=\"chev\">›</em></button>";
@@ -5497,7 +5509,7 @@ function frReqHTML(){
   var h = "<div class=\"pop-card fr-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Anfragen zum Folgen\"><div class=\"pop-head\"><h4>Anfragen zum Folgen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
   if(!FR.inc.length) return h+"<p class=\"note\">Keine offenen Anfragen.</p></div>";
   h += "<div class=\"ag-grp\">";
-  FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>@"+esc(r.name)+"</b><small>möchte dir folgen</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"folacc\" data-uid=\""+esc(r.uid)+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"folrej\" data-uid=\""+esc(r.uid)+"\">Ablehnen</button></span></div>"; });
+  FR.inc.forEach(function(r){ h += "<div class=\"ag-row inv\"><span class=\"mav\">"+esc((r.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>"+esc(atn(r.name))+"</b><small>möchte dir folgen</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"folacc\" data-uid=\""+esc(r.uid)+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"folrej\" data-uid=\""+esc(r.uid)+"\">Ablehnen</button></span></div>"; });
   return h+"</div></div>";
 }
 function openFrPop(kind){ FRPOP = kind; if(kind==="req") frMarkRead(); frPopRender(true); refreshSettings(); }
@@ -5534,7 +5546,7 @@ function renderFgEd(first){
   var h = "<div class=\"pop-card ask-card fg-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppe\"><div class=\"pop-head\"><h4>"+(FGED.id ? "Gruppe bearbeiten" : "Neue Gruppe")+"</h4><button type=\"button\" class=\"x\" data-act=\"fgcancel\" aria-label=\"Schließen\">×</button></div>"+
     "<label class=\"fg-name\"><span class=\"fg-ic\">"+FGICO+"</span><input type=\"text\" id=\"fgName\" maxlength=\"40\" value=\""+esc(FGED.n)+"\" placeholder=\"Name, z. B. Familie\" autocomplete=\"off\" enterkeyhint=\"done\" aria-label=\"Name der Gruppe\"></label>"+
     "<div class=\"ask-h\"><span>"+(n ? n+(n===1 ? " Person" : " Personen") : "Noch niemand in der Gruppe")+"</span><span>nur für dich sichtbar</span></div>"+
-    (n ? "<div class=\"frs-sel\">"+us.map(function(u){ return "<button type=\"button\" class=\"frs-chip\" data-act=\"fgtog\" data-uid=\""+esc(u)+"\" aria-label=\"@"+esc(chName(u))+" entfernen\">@"+esc(chName(u))+"<i aria-hidden=\"true\">×</i></button>"; }).join("")+"</div>" : "")+
+    (n ? "<div class=\"frs-sel\">"+us.map(function(u){ return "<button type=\"button\" class=\"frs-chip\" data-act=\"fgtog\" data-uid=\""+esc(u)+"\" aria-label=\""+esc(atn(chName(u)))+" entfernen\">"+esc(atn(chName(u)))+"<i aria-hidden=\"true\">×</i></button>"; }).join("")+"</div>" : "")+
     frSearchHTML("fg", FR.friends.filter(function(f){ return f.uid; }).map(function(f){ return {uid:f.uid, name:chName(f.uid), email:f.email}; }), "fgtog", "", FGED.sel, true)+
     "<div class=\"pf-acts fg-acts\">"+(FGED.id ? "<button type=\"button\" class=\"btn g\" data-act=\"fgdel\" data-g=\""+esc(FGED.id)+"\">Löschen</button>" : "")+"<button type=\"button\" class=\"btn\" data-act=\"fgsave\">Fertig</button></div></div>";
   if(first){ var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false; } else catKeep(h);
@@ -5549,7 +5561,7 @@ function fgSave(){
 document.addEventListener("keydown", function(e){ if(e.target && e.target.id==="fgName" && e.key==="Enter" && !e.isComposing){ e.preventDefault(); e.target.blur(); } });
 // Gruppen eines Freundes direkt am Freund umschalten (Pop-up am Knopf)
 function fgForHTML(uid0){
-  return "<div class=\"dc-dh\">Gruppen für @"+esc(chName(uid0))+"</div>"+FG.map(function(g){ var on = g.m.indexOf(uid0) > -1;
+  return "<div class=\"dc-dh\">Gruppen für "+esc(atn(chName(uid0)))+"</div>"+FG.map(function(g){ var on = g.m.indexOf(uid0) > -1;
     return "<button type=\"button\" class=\"fg-keep\" data-act=\"fgset\" data-g=\""+esc(g.id)+"\" data-uid=\""+esc(uid0)+"\" role=\"menuitemcheckbox\" aria-checked=\""+on+"\"><span class=\"ai"+(on ? " on" : "")+"\">"+(on ? "✓" : "")+"</span><span>"+esc(g.n)+"</span></button>"; }).join("")+
     "<button type=\"button\" data-act=\"fgnew\" data-uid=\""+esc(uid0)+"\" role=\"menuitem\"><span class=\"ai\">"+FRSADD+"</span><span>Neue Gruppe …</span></button>";
 }
@@ -5597,7 +5609,7 @@ function invWatch(){
     var SK = "rp-invseen-"+acct.user.uid, seen = {}; try { seen = JSON.parse(localStorage.getItem(SK)||"{}"); } catch(e){}
     var neu = INVITES.filter(function(x){ return !seen[x.id]; });
     neu.forEach(function(x){ seen[x.id] = 1; }); lsSet(SK, JSON.stringify(seen));
-    neu.forEach(function(x, i){ setTimeout(function(){ var nm = INVN[x.owner]; ntAdd({id:"inv:"+x.id, type:"invite", trip:x.id, text:(nm ? "@"+nm : (x.from||"Jemand"))+(x.ziel ? " teilt das Ziel „"+x.name+"“ mit dir" : " lädt dich zur Reise „"+x.name+"“ ein")+(x.viewer?" (als Beobachter)":"")}); }, 800 + i*5200); });
+    neu.forEach(function(x, i){ setTimeout(function(){ var nm = INVN[x.owner]; ntAdd({id:"inv:"+x.id, type:"invite", trip:x.id, text:(nm ? atn(nm) : (x.from||"Jemand"))+(x.ziel ? " teilt das Ziel „"+x.name+"“ mit dir" : " lädt dich zur Reise „"+x.name+"“ ein")+(x.viewer?" (als Beobachter)":"")}); }, 800 + i*5200); });
     refreshSettings();
   }, function(){});
 }
@@ -5730,7 +5742,7 @@ function shareBlock(){
   if(!acct.user){ return h+"<p class=\"note\">Melde dich an, um Reisen zu teilen.</p></div>"; }
   if(!m){ return h+"<p class=\"note\">Die Reise wird gerade ins Konto übertragen. Gleich kannst du andere einladen.</p></div>"; }
   var own = m.owner===acct.user.uid, viewer = isViewerOf(id), vw = m.viewers||[], vi = m.viewInvites||[];
-  var nameOf = function(uid0){ var f = FR.friends.filter(function(x){ return x.uid===uid0; })[0]; if(f && f.name) return "@"+f.name; if(INVN[uid0]) return "@"+INVN[uid0];
+  var nameOf = function(uid0){ var f = FR.friends.filter(function(x){ return x.uid===uid0; })[0]; if(f && f.name) return atn(f.name); if(INVN[uid0]) return atn(INVN[uid0]);
     if(uid0 && !(uid0 in INVN) && fbDb){ INVN[uid0] = ""; fbDb.collection("profiles").doc(uid0).get().then(function(d){ var pv = d.exists && d.data(); if(pv && pv.name){ INVN[uid0] = pv.name; if(tab==="trip") renderSheet(); } }, function(){}); }
     return (m.memberEmails||{})[uid0] || "Unbekannt"; };
   if(viewer) h += "<p class=\"note rolenote\">Du bist <b>Beobachter</b>: Du siehst Plan, Tagebuch und Fotos und kannst kommentieren, aber nichts ändern.</p>";
@@ -5739,7 +5751,7 @@ function shareBlock(){
       (own && !me0 ? roleSeg(isV?"viewer":"member", "mrole", " data-uid=\""+uid0+"\"") : "")+"</span>"+
       (own && !me0 ? "<button type=\"button\" class=\"btn g s\" data-act=\"mremove\" data-uid=\""+uid0+"\">Entfernen</button>" : "")+"</li>"; }).join("")+
     (m.invites||[]).map(function(em){ var f = FR.friends.filter(function(x){ return x.email===em; })[0];
-      return "<li class=\"inv\"><span class=\"mav\">"+ic("mail", "ii")+"</span><span class=\"mn\">"+esc(f ? "@"+f.name : em)+"<small class=\"role\">eingeladen als "+(vi.indexOf(em)>-1?"Beobachter":"Mitreisende/r")+"</small></span>"+(viewer?"":"<button type=\"button\" class=\"btn g s\" data-act=\"minvdel\" data-mail=\""+esc(em)+"\">Zurückziehen</button>")+"</li>"; }).join("")+"</ul>";
+      return "<li class=\"inv\"><span class=\"mav\">"+ic("mail", "ii")+"</span><span class=\"mn\">"+esc(f ? atn(f.name) : em)+"<small class=\"role\">eingeladen als "+(vi.indexOf(em)>-1?"Beobachter":"Mitreisende/r")+"</small></span>"+(viewer?"":"<button type=\"button\" class=\"btn g s\" data-act=\"minvdel\" data-mail=\""+esc(em)+"\">Zurückziehen</button>")+"</li>"; }).join("")+"</ul>";
   if(!viewer){
     h += "<div class=\"ag-lbl invlbl\">Einladen als</div>"+roleSeg(invRole, "invrole")+
       "<p class=\"note\">"+(invRole==="viewer" ? "Beobachter sehen alles und können kommentieren, aber nichts ändern." : "Mitreisende planen mit: Stopps, Wunschliste, Tagebuch, Fotos und Kommentare.")+"</p>";
@@ -5859,7 +5871,7 @@ var REPLY = null;
 function cmListHTML(pid){
   var list = CMTS[pid] || [];
   if(!list.length) return "<p class=\"note\">Noch keine Kommentare.</p>";
-  return list.map(function(c){ var mine = acct.user && c.by===acct.user.uid, nm = personName(c.by), who = nm ? "@"+nm : (c.email||"").split("@")[0];
+  return list.map(function(c){ var mine = acct.user && c.by===acct.user.uid, nm = personName(c.by), who = nm ? atn(nm) : (c.email||"").split("@")[0];
     var to = c.replyTo ? (list.filter(function(x){ return x.id===c.replyTo; })[0]) : null;
     return "<div class=\"cm"+(mine?" mine":"")+(c.replyTo?" re":"")+"\"><b>"+esc(who)+"</b> <small>"+(c.at?new Date(c.at).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"")+(to ? " · Antwort" : "")+"</small>"+
       (mine?"<button type=\"button\" class=\"cmdel\" data-act=\"cmdel\" data-cid=\""+c.id+"\" aria-label=\"Kommentar löschen\">×</button>":"")+"<p>"+cmText(c.text)+"</p>"+
@@ -5874,7 +5886,7 @@ function mnUpdate(inp){
   if(!m){ box.hidden = true; return; }
   var q = m[2].toLowerCase(), ppl = tripPeople().filter(function(x){ return x.name.toLowerCase().indexOf(q)===0; });
   if(!ppl.length){ box.innerHTML = "<p class=\"note\">"+(tripPeople().length ? "Niemand mit diesem Namen in der Reise." : "Erwähnen kannst du Mitreisende und Beobachter dieser Reise.")+"</p>"; box.hidden = false; return; }
-  box.innerHTML = ppl.slice(0, 6).map(function(x){ return "<button type=\"button\" data-mn=\""+esc(x.name)+"\" role=\"option\">@"+esc(x.name)+"</button>"; }).join(""); box.hidden = false;
+  box.innerHTML = ppl.slice(0, 6).map(function(x){ return "<button type=\"button\" data-mn=\""+esc(x.name)+"\" role=\"option\">"+esc(atn(x.name))+"</button>"; }).join(""); box.hidden = false;
 }
 document.addEventListener("input", function(e){ if(e.target && /^(cmIn|phcIn)$/.test(e.target.id)) mnUpdate(e.target); });
 document.addEventListener("pointerdown", function(e){
@@ -5907,8 +5919,8 @@ function ntAdd(it, pop){
 }
 function ntName(uid0, fb, cb){
   if(ntNames[uid0]) return cb(ntNames[uid0]);
-  var f = FR.friends.filter(function(x){ return x.uid===uid0; })[0]; if(f && f.name){ ntNames[uid0] = "@"+f.name; return cb(ntNames[uid0]); }
-  fbDb.collection("profiles").doc(uid0).get().then(function(d){ var v = d.exists && d.data(); ntNames[uid0] = v && v.name ? "@"+v.name : (fb || "Jemand"); cb(ntNames[uid0]); }, function(){ cb(fb || "Jemand"); });
+  var f = FR.friends.filter(function(x){ return x.uid===uid0; })[0]; if(f && f.name){ ntNames[uid0] = atn(f.name); return cb(ntNames[uid0]); }
+  fbDb.collection("profiles").doc(uid0).get().then(function(d){ var v = d.exists && d.data(); ntNames[uid0] = v && v.name ? atn(v.name) : (fb || "Jemand"); cb(ntNames[uid0]); }, function(){ cb(fb || "Jemand"); });
 }
 function tripName(id){ var t = S.trips[id]; return t ? t.name : "Reise"; }
 /* Kommentare aller gemeinsamen Reisen beobachten – nur neue, von anderen */
@@ -6023,7 +6035,7 @@ function recCollect(){
   });
   return out;
 }
-function recCmHTML(r, cls){ return (r.cm||[]).map(function(c){ return "<p"+(cls ? " class=\""+cls+"\"" : "")+">"+ic("comment", "ii")+" "+(c.name ? "<b>@"+esc(c.name)+"</b> " : "")+esc(c.text)+"</p>"; }).join(""); }
+function recCmHTML(r, cls){ return (r.cm||[]).map(function(c){ return "<p"+(cls ? " class=\""+cls+"\"" : "")+">"+ic("comment", "ii")+" "+(c.name ? "<b>"+esc(atn(c.name))+"</b> " : "")+esc(c.text)+"</p>"; }).join(""); }
 function recSig(r){ return JSON.stringify([r.n, r.c, r.la, r.lo, r.rating, r.hl, r.note, r.cm, r.trip, r.ph, !!r.all]); }
 /* Öffentliche Empfehlungen: pub/{uid}_{Schlüssel}, mit Geohash (gh) für die Suche nach Gebiet */
 var GH32 = "0123456789bcdefghjkmnpqrstuvwxyz";
@@ -6096,7 +6108,7 @@ var DCREP = ["Unangemessen oder beleidigend", "Werbung oder Spam", "Falscher Ort
 function dcReport(k){
   var r = DC.byKey[k]; if(!r || !r.pub) return;
   var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Beitrag melden\"><div class=\"pop-head\"><h4>Beitrag melden</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
-    "<p class=\"note\" style=\"margin:0 2px 10px\">„"+esc(r.n)+"“ von @"+esc(r.fname||"?")+". Was stimmt nicht? Der Beitrag wird für dich sofort ausgeblendet und geprüft.</p><div class=\"pop-list\">"+
+    "<p class=\"note\" style=\"margin:0 2px 10px\">„"+esc(r.n)+"“ von "+esc(atn(r.fname||"?"))+". Was stimmt nicht? Der Beitrag wird für dich sofort ausgeblendet und geprüft.</p><div class=\"pop-list\">"+
     DCREP.map(function(x, i){ return "<button type=\"button\" data-act=\"dcrepgo\" data-k=\""+esc(k)+"\" data-i=\""+i+"\">"+esc(x)+"</button>"; }).join("")+"</div></div>";
   var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false;
 }
@@ -6260,7 +6272,7 @@ function dcSideHTML(r){
 }
 function dcInfoHTML(r){
   var tg = dcTgt(), A = dcAvg(r), RR = RATES.filter(function(x){ return x[0]===r.rating; })[0], dd = tg && tg.C && r.la ? dist(tg.C, r) : null;
-  return "<div class=\"dc-who\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><b>@"+esc(r.fname||"Freund")+"</b><small>"+esc([r.pub ? "öffentlich" : "Freund", r.demo ? "" : r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+(r.hl ? "<span class=\"dc-hl\">★</span>" : "")+"</div>"+
+  return "<div class=\"dc-who\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><b>"+esc(atn(r.fname||"Freund"))+"</b><small>"+esc([r.pub ? "öffentlich" : "Freund", r.demo ? "" : r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+(r.hl ? "<span class=\"dc-hl\">★</span>" : "")+"</div>"+
     (r.demo ? "<span class=\"dc-demo\">Beispiel – nur zum Ausprobieren</span>" : "")+"<div class=\"dc-name\"><span class=\"cic\" style=\"--cc:"+catCol(r.c)+"\">"+icon(r.c)+"</span><b>"+esc(r.n)+"</b></div>"+
     "<small class=\"dc-sub\">"+esc([CATNAME[r.c], r.addr, dd!=null && dd > 2000 && !tg.z ? fmtDist(dd)+" vom Reiseziel" : ""].filter(Boolean).join(" · "))+"</small>"+
     (A ? "<button type=\"button\" class=\"dc-avg\" data-act=\"dcrate\" data-k=\""+esc(r.key)+"\"><span>Ø</span><i style=\"--rc:"+A.R[2]+"\">"+A.R[1]+"</i>"+(A.n > 1 ? "<small>"+A.n+" Bewertungen</small>" : "")+"</button>" : RR ? "<i class=\"dc-rt\" style=\"--rc:"+RR[2]+"\">"+RR[1]+"</i>" : "")+
@@ -6271,13 +6283,13 @@ var DCX = {};
 function dcLong(r){ return !!((r.cm||[]).length || r.also.some(function(a){ return a.note || (a.cm||[]).length; })); }
 // eingeklappt: Notiz und „empfehlen das“ in einem Absatz, höchstens 2 Zeilen; aufgeklappt: alles samt Notizen der anderen und Kommentaren
 function dcTxtHTML(r){
-  var open = !!DCX[r.key], also = r.also.length ? ic("friends", "ii")+" <b>"+(r.also.length+1)+" empfehlen das</b> · auch "+r.also.map(function(a){ return "@"+esc(a.fname||"Freund"); }).join(", ") : "";
+  var open = !!DCX[r.key], also = r.also.length ? ic("friends", "ii")+" <b>"+(r.also.length+1)+" empfehlen das</b> · auch "+r.also.map(function(a){ return esc(atn(a.fname||"Freund")); }).join(", ") : "";
   var h = "<div class=\"dc-txt\">";
   if(!open) h += (r.note || also) ? "<p class=\"dc-note\">"+(r.note ? "„"+esc(r.note)+"“" : "")+(r.note && also ? "<br>" : "")+(also ? "<span class=\"dc-also\">"+also+"</span>" : "")+"</p>" : "";
   else {
     h += (r.note ? "<p class=\"dc-note\">„"+esc(r.note)+"“</p>" : "")+recCmHTML(r, "dc-cm")+(also ? "<p class=\"dc-also\">"+also+"</p>" : "");
     r.also.forEach(function(a){ var R = RATES.filter(function(x){ return x[0]===a.rating; })[0]; if(!a.note && !(a.cm||[]).length) return;
-      h += "<p class=\"dc-cm\"><b>@"+esc(a.fname||"Freund")+"</b>"+(R ? " <i style=\"--rc:"+R[2]+"\">"+R[1]+"</i>" : "")+(a.note ? " „"+esc(a.note)+"“" : "")+"</p>"+recCmHTML(a, "dc-cm"); });
+      h += "<p class=\"dc-cm\"><b>"+esc(atn(a.fname||"Freund"))+"</b>"+(R ? " <i style=\"--rc:"+R[2]+"\">"+R[1]+"</i>" : "")+(a.note ? " „"+esc(a.note)+"“" : "")+"</p>"+recCmHTML(a, "dc-cm"); });
   }
   return h+"</div><button type=\"button\" class=\"dc-more\" data-act=\"dcx\" data-k=\""+esc(r.key)+"\" aria-expanded=\""+open+"\""+(open || dcLong(r) ? "" : " hidden")+">"+(open ? "weniger anzeigen" : "mehr anzeigen")+"</button>";
 }
@@ -6357,14 +6369,14 @@ function dcRatings(key){
     "<div class=\"dc-rbars\">"+RATES.map(function(R){ var c = cnt[R[0]]||0, w = A ? Math.round(100*c/A.n) : 0; return "<div class=\"dc-rbar\"><span>"+R[1]+"</span><i><em style=\"width:"+w+"%;background:"+R[2]+"\"></em></i><small>"+(c||"")+"</small></div>"; }).join("")+"</div></div>";
   h += "<p class=\"dc-rstat\">"+icf("like", "ii")+" "+(s.likes||0)+" · "+icf("save", "ii")+" "+(s.adds||0)+"× in Wunschlisten übernommen</p><div class=\"dc-rlist\">";
   revs.forEach(function(x){ var R = RATES.filter(function(y){ return y[0]===x.rating; })[0];
-    h += "<div class=\"dc-rv\"><div class=\"dc-rvh\"><span class=\"dc-av\">"+esc(((x.fname||"?")[0]||"?").toUpperCase())+"</span><b>@"+esc(x.fname||"Freund")+"</b>"+(R ? "<i style=\"color:"+R[2]+"\">"+R[1]+"</i>" : "<i class=\"mu\">ohne Bewertung</i>")+(x.hl ? "<span class=\"dc-hl\">★</span>" : "")+"</div>"+
+    h += "<div class=\"dc-rv\"><div class=\"dc-rvh\"><span class=\"dc-av\">"+esc(((x.fname||"?")[0]||"?").toUpperCase())+"</span><b>"+esc(atn(x.fname||"Freund"))+"</b>"+(R ? "<i style=\"color:"+R[2]+"\">"+R[1]+"</i>" : "<i class=\"mu\">ohne Bewertung</i>")+(x.hl ? "<span class=\"dc-hl\">★</span>" : "")+"</div>"+
       "<small>"+esc([x.pub ? "öffentlich" : "Freund", x.trip, x.at ? new Date(x.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+
       (x.note ? "<p>„"+esc(x.note)+"“</p>" : "")+recCmHTML(x, "dc-rcm")+"</div>"; });
   h += "</div></div>";
   var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false;
 }
 function dcSendMenu(key){ var btn = dcMoreBtn(key); if(!btn || !FR.friends.length) return; var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
-  jpPopover("dcs", btn, frPickHead("Im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"dcsendto\" data-k=\""+esc(key)+"\" data-uid=\""+esc(f.uid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "dcsend"); }
+  jpPopover("dcs", btn, frPickHead("Im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"dcsendto\" data-k=\""+esc(key)+"\" data-uid=\""+esc(f.uid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>"+esc(atn(chName(f.uid)))+"</span></button>"; }).join(""), "dcsend"); }
 /* ---------- Ziele: Orte für später merken, auch ohne geplante Reise ----------
    Ein Ziel ist ein Reise-Datensatz ohne Zeitraum (ziel:1) mit frei wählbarem Namen und Gebiet (orte: Mittelpunkt mit
    Umkreis r oder Rahmen bb = [W, S, O, N]). Speichern, Konto-Abgleich und Teilen laufen damit wie bei Reisen.
@@ -6559,7 +6571,7 @@ function zsListHTML(zid, ctx){
   var z = Z(zid); if(!z) return "";
   var it = zsItems(zid), m = it.filter(function(x){ return x.k==="m"; }), v = it.filter(function(x){ return x.k==="v"; });
   var row = function(x, i){ var p = x.p, st = x.k==="m" ? zStatusText(zStatus(zid, p)) : "", RR = x.k==="v" && RATES.filter(function(r){ return r[0]===x.rating; })[0];
-    var sub = x.k==="m" ? [st || esc(CATNAME[p.c]||""), p.rec && p.rec.name ? "von @"+esc(p.rec.name) : ""] : [esc((S.trips[x.tid]||{}).name || "Reise"), RR ? "<i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : ""];
+    var sub = x.k==="m" ? [st || esc(CATNAME[p.c]||""), p.rec && p.rec.name ? "von "+esc(atn(p.rec.name)) : ""] : [esc((S.trips[x.tid]||{}).name || "Reise"), RR ? "<i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : ""];
     return "<button type=\"button\" class=\"ls-row\" data-act=\"zsgo\" data-i=\""+i+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span><span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+sub.filter(Boolean).join(" · ")+"</small></span>"+(hasLoc(p) ? "<span class=\"ls-go\">"+MAPGO+"</span>" : "")+"</button>"; };
   var h = "<div class=\"zs-head\"><span class=\"ls-th ico zic\" style=\"--cc:"+tripColor(zid)+"\">"+ZBM+"</span><span class=\"zs-t\"><b>"+esc(z.name)+"</b><small>Ziel · "+m.length+" gemerkt"+(v.length ? " · "+v.length+" besucht" : "")+"</small></span>"+
     "<button type=\"button\" class=\"zh-ed\" data-act=\"zsplan\" data-z=\""+esc(zid)+"\" data-ctx=\""+ctx+"\" aria-label=\"Reise hierhin planen\">"+ic("cal")+"</button>"+
@@ -6579,7 +6591,7 @@ function scopeObs(ctx){ return scopeAll(ctx).filter(isViewerOf).sort(function(a,
 // Name des Besitzers einer fremden Reise („@name“), lädt das Profil einmal nach
 var OWNN = {};
 function ownerName(id){ var m = META[id], u = m && m.owner; if(!u) return "";
-  var f = FR.friends.filter(function(x){ return x.uid===u; })[0]; if(f && f.name) return "@"+f.name; if(INVN[u]) return "@"+INVN[u]; if(OWNN[u]) return "@"+OWNN[u];
+  var f = FR.friends.filter(function(x){ return x.uid===u; })[0]; if(f && f.name) return atn(f.name); if(INVN[u]) return atn(INVN[u]); if(OWNN[u]) return atn(OWNN[u]);
   if(!(u in OWNN) && typeof fbDb!=="undefined" && fbDb){ OWNN[u] = ""; fbDb.collection("profiles").doc(u).get().then(function(d){ var pv = d.exists && d.data(); if(pv && pv.name){ OWNN[u] = pv.name; renderTop(); } }, function(){}); }
   return ""; }
 function obsSub(id){ var o = ownerName(id); return "Beobachtet"+(o ? " · von "+o : ""); }
@@ -6805,7 +6817,7 @@ function zielsHTML(){
 }
 function zRow(zid, p, st){
   return "<div class=\"ls-row zrow\"><button type=\"button\" class=\"zrow-main\" data-act=\"zshow\" data-z=\""+esc(zid)+"\" data-pid=\""+esc(p.id)+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span><span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+
-    [zStatusText(st) || esc(CATNAME[p.c]||""), p.rec && p.rec.name ? "von @"+esc(p.rec.name) : (p.by && acct.user && p.by!==acct.user.uid && p.byn ? "Tipp von @"+esc(p.byn) : "")].filter(Boolean).join(" · ")+"</small></span></button>"+
+    [zStatusText(st) || esc(CATNAME[p.c]||""), p.rec && p.rec.name ? "von "+esc(atn(p.rec.name)) : (p.by && acct.user && p.by!==acct.user.uid && p.byn ? "Tipp von "+esc(atn(p.byn)) : "")].filter(Boolean).join(" · ")+"</small></span></button>"+
     (p.src ? "<a class=\"zrow-x zsrc\" href=\""+esc(p.src)+"\" target=\"_blank\" rel=\"noopener\" aria-label=\"Quelle öffnen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M8.5 11.5l3-3M7 9.5l-1.5 1.5a2.5 2.5 0 0 0 3.5 3.5L10.5 13M13 10.5l1.5-1.5a2.5 2.5 0 0 0-3.5-3.5L9.5 7\"/></svg></a>" : "")+
     "<button type=\"button\" class=\"zrow-x\" data-act=\"zpldel\" data-z=\""+esc(zid)+"\" data-pid=\""+esc(p.id)+"\" aria-label=\"„"+esc(p.n)+"“ entfernen\">×</button></div>";
 }
@@ -6922,7 +6934,7 @@ function zLinkAdd(i){
 }
 document.addEventListener("input", function(e){ if(e.target && e.target.id==="zLink") zLinkInput(e.target.value); });
 /* Ziel mit Freunden teilen: Eingeladene werden Mitglied (wie Mitreisende) und legen Tipps direkt ins Ziel */
-function zMemName(m, u){ var f = FR.friends.filter(function(x){ return x.uid===u; })[0]; return f && f.name ? "@"+f.name : INVN[u] ? "@"+INVN[u] : ((m.memberEmails||{})[u] || "Freund"); }
+function zMemName(m, u){ var f = FR.friends.filter(function(x){ return x.uid===u; })[0]; return f && f.name ? atn(f.name) : INVN[u] ? atn(INVN[u]) : ((m.memberEmails||{})[u] || "Freund"); }
 function zShareHTML(zid){
   if(!acct.user) return "";
   var m = META[zid], h = "<div class=\"nt-sec\">Mit Freunden teilen</div>";
@@ -6932,7 +6944,7 @@ function zShareHTML(zid){
   var rows = mem.map(function(u){ return "<div class=\"ls-row\"><span class=\"ls-th gsav\">"+esc((zMemName(m, u).replace("@", "")[0]||"?").toUpperCase())+"</span><span class=\"ls-t\"><b>"+esc(zMemName(m, u))+"</b><small>"+(u===m.owner ? "hat das Ziel angelegt" : "kann Tipps hineinlegen")+"</small></span>"+
       (own ? "<button type=\"button\" class=\"btn g s\" data-act=\"zmrem\" data-z=\""+esc(zid)+"\" data-uid=\""+esc(u)+"\">Entfernen</button>" : "")+"</div>"; })
     .concat(inv.map(function(em){ var f = FR.friends.filter(function(x){ return x.email===em; })[0];
-      return "<div class=\"ls-row\"><span class=\"ls-th gsav\">"+ic("mail", "ii")+"</span><span class=\"ls-t\"><b>"+esc(f ? "@"+f.name : em)+"</b><small>eingeladen</small></span><button type=\"button\" class=\"btn g s\" data-act=\"zinvdel\" data-z=\""+esc(zid)+"\" data-mail=\""+esc(em)+"\">Zurückziehen</button></div>"; }));
+      return "<div class=\"ls-row\"><span class=\"ls-th gsav\">"+ic("mail", "ii")+"</span><span class=\"ls-t\"><b>"+esc(f ? atn(f.name) : em)+"</b><small>eingeladen</small></span><button type=\"button\" class=\"btn g s\" data-act=\"zinvdel\" data-z=\""+esc(zid)+"\" data-mail=\""+esc(em)+"\">Zurückziehen</button></div>"; }));
   if(rows.length) h += "<div class=\"ag-grp ls-list\">"+rows.join("")+"</div>";
   var cand = FR.friends.filter(function(f){ return f.email && (m.members||[]).indexOf(f.uid) < 0 && inv.indexOf(f.email) < 0; });
   if(FR.friends.length) h += "<div class=\"ag-grp ls-list\">"+frsPopBtn("Freunde einladen", "zinvpop", " data-z=\""+esc(zid)+"\"")+"</div>";
@@ -6943,7 +6955,7 @@ function zInvite(zid, mail, name){
   var FV = window.firebase.firestore.FieldValue;
   tripRef(zid).update({invites:FV.arrayUnion(mail), viewInvites:FV.arrayRemove(mail)}).then(function(){
     var m = META[zid]; if(m){ m.invites = m.invites || []; if(m.invites.indexOf(mail) < 0) m.invites.push(mail); }
-    toast("@"+name+" zum Ziel eingeladen", false); if(profOpen) renderProfile(); frsPopRender();
+    toast(atn(name)+" zum Ziel eingeladen", false); if(profOpen) renderProfile(); frsPopRender();
   }, function(e){ toast("Einladen fehlgeschlagen: "+(e && e.message), false); });
 }
 function zInviteDel(zid, mail){
@@ -6979,9 +6991,9 @@ function dcvMeta(){
   if(DCV.cm){
     var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
     h += "<div class=\"pv-panel\"><div class=\"pv-ph\"><b>Kommentare"+(cm.length ? " · "+cm.length : "")+"</b><button type=\"button\" class=\"x\" data-act=\"dcvcm\" aria-label=\"Kommentare schließen\">"+PVX+"</button></div>"+
-      "<div class=\"cmlist dcv-cm\">"+(r.note ? "<p><b>@"+esc(r.fname||"Freund")+"</b>"+(RR ? " <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"<br>„"+esc(r.note)+"“</p>" : "")+
+      "<div class=\"cmlist dcv-cm\">"+(r.note ? "<p><b>"+esc(atn(r.fname||"Freund"))+"</b>"+(RR ? " <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+"<br>„"+esc(r.note)+"“</p>" : "")+
       (cm.length ? recCmHTML(r, "") : (r.note ? "" : "<p class=\"note\">Noch keine Kommentare zu diesem Ort.</p>"))+"</div>"+
-      (acct.user && r.by && r.by!==acct.user.uid ? "<button type=\"button\" class=\"btn s\" data-act=\"dcvreply\">@"+esc(r.fname||"Freund")+" im Chat antworten</button>" : "")+"</div>";
+      (acct.user && r.by && r.by!==acct.user.uid ? "<button type=\"button\" class=\"btn s\" data-act=\"dcvreply\">"+esc(atn(r.fname||"Freund"))+" im Chat antworten</button>" : "")+"</div>";
   }
   return h;
 }
@@ -6993,7 +7005,7 @@ function dcFull(key, i){
   L.innerHTML = "<img class=\"pv-amb\" alt=\"\" aria-hidden=\"true\"><div class=\"pv-wrap full\" id=\"pvWrap\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Foto\"><div class=\"pv-track\" id=\"pvTrack\">"+
     r.photos.map(function(u){ return "<div class=\"pv-slide\"><img src=\""+u+"\" alt=\"Foto\" draggable=\"false\"></div>"; }).join("")+"</div>"+
     (n > 1 ? "<button type=\"button\" class=\"pv-arr l\" data-act=\"phstep\" data-v=\"-1\" aria-label=\"Vorheriges Foto\">‹</button><button type=\"button\" class=\"pv-arr r\" data-act=\"phstep\" data-v=\"1\" aria-label=\"Nächstes Foto\">›</button>" : "")+
-    "<div class=\"pv-head\"><span class=\"pv-ttl\">"+esc(r.n)+"<small class=\"dcv-by\">@"+esc(r.fname||"Freund")+"</small></span><button type=\"button\" class=\"pv-fs\" data-act=\"dcvclose\" aria-label=\"Vollbild schließen\">"+PVX+"</button></div>"+
+    "<div class=\"pv-head\"><span class=\"pv-ttl\">"+esc(r.n)+"<small class=\"dcv-by\">"+esc(atn(r.fname||"Freund"))+"</small></span><button type=\"button\" class=\"pv-fs\" data-act=\"dcvclose\" aria-label=\"Vollbild schließen\">"+PVX+"</button></div>"+
     "<span class=\"pv-fsn\" id=\"pvFsN\">"+(n > 1 ? (i+1)+" / "+n : "")+"</span><div id=\"dcvMeta\">"+dcvMeta()+"</div></div>";
   L.hidden = false; document.body.classList.add("pvfull");
   var tr = $("pvTrack"), tmr = 0;
@@ -7005,7 +7017,7 @@ function dcvSendMenu(btn){
   var r = DCV && DC.byKey[DCV.key]; if(!r) return;
   if(!FR.friends.length){ toast("Folgt euch zuerst gegenseitig – dann seid ihr Freunde", false); return; }
   var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
-  jpPopover("dcv", btn, frPickHead("Im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"dcvto\" data-uid=\""+esc(f.uid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "dcvsend");
+  jpPopover("dcv", btn, frPickHead("Im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"dcvto\" data-uid=\""+esc(f.uid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>"+esc(atn(chName(f.uid)))+"</span></button>"; }).join(""), "dcvsend");
 }
 function dcvSendTo(u, key){
   var r = DC.byKey[key || (DCV && DCV.key)]; closeJpMore(); if(!r) return; var cid = chWith(u); if(!cid) return;
@@ -7034,7 +7046,7 @@ function gsPeopleSearch(q){
   gsT = setTimeout(function(){
     fbDb.collection("profiles").where("nameLower", ">=", q).where("nameLower", "<=", q+"\uf8ff").orderBy("nameLower").limit(8).get().then(function(qs){
       if(gsQ.replace(/^@/, "").toLowerCase()!==q) return;
-      gsPeople = qs.docs.filter(function(d){ return d.id!==acct.user.uid; }).map(function(d){ var v = d.data(); return {uid:d.id, name:v.name, photo:v.photo||""}; }); gsBusy = false; renderGs();
+      gsPeople = qs.docs.filter(function(d){ return d.id!==acct.user.uid && !d.data().deleted; }).map(function(d){ var v = d.data(); return {uid:d.id, name:v.name, photo:v.photo||""}; }); gsBusy = false; renderGs();
     }, function(){ gsBusy = false; gsPeople = []; renderGs(); });
   }, 280);
 }
@@ -7049,7 +7061,7 @@ function renderGs(full){
     var recs = DC.items.filter(function(r){ return hit([r.n, r.addr, r.note, r.fname, r.trip, CATNAME[r.c]].join(" ")); });
     var sec = function(title, n, body){ return n ? "<div class=\"nt-sec\">"+title+" · "+n+"</div><div class=\"ag-grp ls-list\">"+body+"</div>" : ""; };
     res += sec("Personen", ppl.length, ppl.map(function(x){ var st = frState(x.uid);
-      return "<div class=\"ls-row\"><span class=\"ls-th gsav\">"+(x.photo ? "<img src=\""+x.photo+"\" alt=\"\">" : esc((x.name[0]||"?").toUpperCase()))+"</span><span class=\"ls-t\"><b>@"+esc(x.name)+"</b><small>"+frStLbl(st)+"</small></span>"+folBtn(st, x.uid, x.name)+"</div>"; }).join(""));
+      return "<div class=\"ls-row\"><span class=\"ls-th gsav\">"+(x.photo ? "<img src=\""+x.photo+"\" alt=\"\">" : esc((x.name[0]||"?").toUpperCase()))+"</span><span class=\"ls-t\"><b>"+esc(atn(x.name))+"</b><small>"+frStLbl(st)+"</small></span>"+folBtn(st, x.uid, x.name)+"</div>"; }).join(""));
     res += sec("Reisen", trips.length, trips.map(function(id){ var t = S.trips[id], cov = tripCover(id);
       return "<button type=\"button\" class=\"ls-row\" data-act=\"gstrip\" data-trip=\""+esc(id)+"\">"+(cov ? "<img class=\"ls-th\" data-ph=\""+cov+"\" alt=\"\">" : "<span class=\"ls-th gsav\">"+esc(((t.name||"?")[0]).toUpperCase())+"</span>")+"<span class=\"ls-t\"><b>"+esc(t.name)+"</b><small>"+esc([rangeLabel(t.start, t.end), isViewerOf(id) ? "beobachtet" : ""].filter(Boolean).join(" · "))+"</small></span></button>"; }).join(""));
     res += sec("Ziele", zls.length, zls.map(function(id){ var z = S.trips[id]; return "<button type=\"button\" class=\"ls-row\" data-act=\"zopen\" data-z=\""+esc(id)+"\"><span class=\"ls-th ico zic\" style=\"--cc:"+tripColor(id)+"\">"+ZBM+"</span><span class=\"ls-t\"><b>"+esc(z.name)+"</b><small>"+zOpenPl(id).length+" gemerkt</small></span></button>"; }).join(""));
@@ -7059,7 +7071,7 @@ function renderGs(full){
         "<span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+esc([S.trips[x.tid].name, CATNAME[p.c], x.done ? "besucht" : ""].filter(Boolean).join(" · "))+"</small></span><span class=\"ls-go\">"+MAPGO+"</span></button>"; }).join(""));
     res += sec("Empfehlungen von Freunden", recs.length, recs.slice(0, 30).map(function(r){ var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
       return "<button type=\"button\" class=\"ls-row\" data-act=\"gsrec\">"+(r.photos && r.photos.length ? "<img class=\"ls-th\" src=\""+r.photos[0]+"\" alt=\"\">" : "<span class=\"ls-th ico\" style=\"--cc:"+catCol(r.c)+"\">"+icon(r.c)+"</span>")+
-        "<span class=\"ls-t\"><b>"+esc(r.n)+"</b><small>@"+esc(r.fname||"")+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+(r.trip ? " · "+esc(r.trip) : "")+"</small></span></button>"; }).join(""));
+        "<span class=\"ls-t\"><b>"+esc(r.n)+"</b><small>"+esc(atn(r.fname||""))+(RR ? " · <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+(r.trip ? " · "+esc(r.trip) : "")+"</small></span></button>"; }).join(""));
     if(!res) res = "<p class=\"note nt-empty\">"+(gsBusy ? "Suche …" : "Nichts gefunden.")+"</p>";
   }
   if(full || !$("gsRes")){
@@ -7124,7 +7136,7 @@ function drawLocs(){
       "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"13\" fill=\"#AF52DE\" stroke=\"#fff\" stroke-width=\"2.5\"/>"+
       (ph ? "<clipPath id=\""+cid+"\"><circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"10.5\"/></clipPath><image href=\""+ph+"\" x=\""+f1(z[0]-10.5)+"\" y=\""+f1(z[1]-10.5)+"\" width=\"21\" height=\"21\" clip-path=\"url(#"+cid+")\" preserveAspectRatio=\"xMidYMid slice\"/>"
           : "<text x=\""+f1(z[0])+"\" y=\""+f1(z[1]+4.5)+"\" text-anchor=\"middle\" font-size=\"13\" font-weight=\"700\" fill=\"#fff\" font-family=\"-apple-system,system-ui,sans-serif\">"+esc((nm[0]||"?").toUpperCase())+"</text>")+"</g>";
-    mkLabel(z[0] + 19, z[1], "@"+nm, true, 3);
+    mkLabel(z[0] + 19, z[1], atn(nm), true, 3);
     LOCMK.push({x:z[0], y:z[1], uid:v.uid, nm:nm, at:v.at});
   });
   return s;
@@ -7318,7 +7330,7 @@ function sugItems(tb, path){
       list.push({n:p.n, c:CATNAME[p.c] ? p.c : "sight", la:p.la, lo:p.lo, d:d, addr:p.addr, zp:p, zr:zid+"/"+pid, sub:"gemerkt in „"+z.name+"“"+(p.rec && p.rec.name ? " · von @"+p.rec.name : ""), inT:zLinked(T(), zid, p)}); }); });
   } else if(tb==="fr"){
     DC.items.forEach(function(r){ if(!r.la) return; var d = sugDist(r, path); if(d <= R){ var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
-      list.push({n:r.n, c:CATNAME[r.c] ? r.c : "sight", la:r.la, lo:r.lo, d:d, addr:r.addr, fr:r, sub:"@"+(r.fname||"Freund")+(RR ? " · "+RR[1] : "")+(r.hl ? " · ★ Highlight" : ""), inT:sugInTrip(r)}); } });
+      list.push({n:r.n, c:CATNAME[r.c] ? r.c : "sight", la:r.la, lo:r.lo, d:d, addr:r.addr, fr:r, sub:atn((r.fname||"Freund"))+(RR ? " · "+RR[1] : "")+(r.hl ? " · ★ Highlight" : ""), inT:sugInTrip(r)}); } });
   } else {
     (SUG.pub[SUG.pubKey] || []).forEach(function(r){ var d = sugDist(r, path); if(d <= SUGR) list.push({n:r.n, c:r.c, la:r.la, lo:r.lo, d:d, addr:r.addr, sub:[r.kind, r.addr].filter(Boolean).join(" · "), pub:1, inT:sugInTrip(r)}); });
   }
@@ -7381,12 +7393,14 @@ function chPre(cid){
 }
 // Lade-Zeichen an der angetippten Chat-Zeile bzw. am Hinweis
 function chLdMark(cid, on){ document.querySelectorAll("#chView [data-act=chopen], #toast [data-act=chgo]").forEach(function(b){ if(b.getAttribute("data-v")===cid) b.classList.toggle("ld", !!on); }); }
+// Chat mit gelöschtem Konto: Verlauf bleibt lesbar, Schreiben geht nicht mehr
+function chGone(u){ return !!(u && CHPROF[u] && CHPROF[u].deleted); }
 function chId(a, b){ return [a, b].sort().join("_"); }
 function chOther(c){ var me = acct.user && acct.user.uid; return (c.members||[]).filter(function(u){ return u!==me; })[0] || ""; }
 function chName(u){ var f = FR.friends.filter(function(x){ return x.uid===u; })[0]; return (CHPROF[u] && CHPROF[u].name) || (f && f.name) || "Freund"; }
 function chProf(u){
   if(!u || CHPROF[u] || !fbDb) return; CHPROF[u] = {name:"", photo:""};
-  fbDb.collection("profiles").doc(u).get().then(function(d){ var v = d.exists && d.data(); if(v){ CHPROF[u] = {name:v.name||"", photo:v.photo||""}; if(chPage) renderCh(); scheduleOverlay(); } }, function(){});
+  fbDb.collection("profiles").doc(u).get().then(function(d){ var v = d.exists && d.data(); if(v){ CHPROF[u] = {name:v.name||"", photo:v.photo||"", deleted:!!v.deleted}; if(chPage) renderCh(); scheduleOverlay(); } }, function(){});
 }
 function chAv(u, cls){ var p = CHPROF[u], nm = chName(u); chProf(u);
   return p && p.photo ? "<img class=\""+cls+"\" src=\""+p.photo+"\" alt=\"\">" : "<span class=\""+cls+" init\">"+esc((nm[0]||"?").toUpperCase())+"</span>"; }
@@ -7405,7 +7419,7 @@ function chWatch(){
       var c = ch.doc.data(), L = c.last || {}; if(first || ch.type==="removed" || !L.at || L.from===me || L.at < chStart) return;
       if(chPage && chOpen===ch.doc.id) return;
       delete CHMC[ch.doc.id]; chPre(ch.doc.id);
-      var nm = chName(L.from); setTimeout(function(){ frToast("@"+nm+": "+(L.t || (L.place ? (L.ph ? "📷 " : "📍 ")+L.place : "")), "chgo", ch.doc.id); }, 200);
+      var nm = chName(L.from); setTimeout(function(){ frToast(atn(nm)+": "+(L.t || (L.place ? (L.ph ? "📷 " : "📍 ")+L.place : "")), "chgo", ch.doc.id); }, 200);
     });
     CH.list = qs.docs.map(function(d){ var v = d.data(); v.id = d.id; return v; }).sort(function(a, b){ return (b.at||0) - (a.at||0); });
     CH.byId = {}; CH.list.forEach(function(c){ CH.byId[c.id] = c; }); CH.got = true;
@@ -7523,7 +7537,7 @@ function renderAsk(first){
     "<textarea id=\"askT\" rows=\"3\" maxlength=\"1000\" aria-label=\"Nachricht\">"+esc(ASK.txt)+"</textarea>"+
     "<div class=\"ask-h\"><span>An</span><button type=\"button\" class=\"tf-link\" data-act=\"askall\">"+(all ? "Keinen" : "Alle")+" auswählen</button></div>"+
     fgQuickHTML(FR.friends, "askgrp", ASK.sel)+
-    (n ? "<div class=\"frs-sel\">"+Object.keys(ASK.sel).map(function(u){ return "<button type=\"button\" class=\"frs-chip\" data-act=\"askpick\" data-uid=\""+esc(u)+"\" aria-label=\"@"+esc(chName(u))+" entfernen\">@"+esc(chName(u))+"<i aria-hidden=\"true\">×</i></button>"; }).join("")+"</div>" : "")+
+    (n ? "<div class=\"frs-sel\">"+Object.keys(ASK.sel).map(function(u){ return "<button type=\"button\" class=\"frs-chip\" data-act=\"askpick\" data-uid=\""+esc(u)+"\" aria-label=\""+esc(atn(chName(u)))+" entfernen\">"+esc(atn(chName(u)))+"<i aria-hidden=\"true\">×</i></button>"; }).join("")+"</div>" : "")+
     frSearchHTML("ask", FR.friends.filter(function(f){ return f.uid; }).map(function(f){ return {uid:f.uid, name:chName(f.uid), email:f.email}; }), "askpick", "", ASK.sel, true)+
     "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"asksend\""+(n ? "" : " disabled")+">"+(n ? "An "+n+(n===1 ? " Freund" : " Freunde")+" senden" : "Freunde auswählen")+"</button></div></div>";
   if(first){ var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false; } else catKeep(h);
@@ -7554,7 +7568,7 @@ function frSearchRes(key){
   if(!hit.length) return "<p class=\"note frs-none\">Kein Freund mit diesem Namen.</p>";
   hit.sort(function(a, b){ var x = norm(a.name||"").indexOf(q), y = norm(b.name||"").indexOf(q); return (x===0 ? 0 : 1) - (y===0 ? 0 : 1) || String(a.name).localeCompare(b.name); });
   return "<div class=\""+(o.big ? "frs-big" : "frs-dd")+"\" role=\"listbox\">"+hit.map(function(f){ var on = o.sel && o.sel[f.uid];
-    return "<button type=\"button\" class=\"frs-row"+(on ? " on" : "")+"\" data-act=\""+o.act+"\" data-uid=\""+esc(f.uid||"")+"\" data-mail=\""+esc(f.email||"")+"\" data-name=\""+esc(f.name||"")+"\""+o.attrs+" aria-pressed=\""+!!on+"\">"+(f.uid ? chAv(f.uid, "frs-av") : "<span class=\"frs-av\">"+esc((f.name||"?")[0].toUpperCase())+"</span>")+"<b>@"+esc(f.name)+"</b><span class=\"frs-add\">"+(on ? "✓" : FRSADD)+"</span></button>"; }).join("")+
+    return "<button type=\"button\" class=\"frs-row"+(on ? " on" : "")+"\" data-act=\""+o.act+"\" data-uid=\""+esc(f.uid||"")+"\" data-mail=\""+esc(f.email||"")+"\" data-name=\""+esc(f.name||"")+"\""+o.attrs+" aria-pressed=\""+!!on+"\">"+(f.uid ? chAv(f.uid, "frs-av") : "<span class=\"frs-av\">"+esc((f.name||"?")[0].toUpperCase())+"</span>")+"<b>"+esc(atn(f.name))+"</b><span class=\"frs-add\">"+(on ? "✓" : FRSADD)+"</span></button>"; }).join("")+
     "</div>";
 }
 document.addEventListener("input", function(e){ var q = e.target; if(!q.classList || !q.classList.contains("frs-in")) return;
@@ -7585,7 +7599,7 @@ function chPhSendMenu(ph, btn){
   if(!acct.user){ toast("Melde dich an, um Fotos zu schicken", false); return; }
   if(!FR.friends.length){ toast("Folgt euch zuerst gegenseitig – dann seid ihr Freunde", false); return; }
   var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
-  jpPopover("ph", btn, frPickHead("Foto im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"chphto\" data-uid=\""+esc(f.uid)+"\" data-ph=\""+esc(ph)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "chph");
+  jpPopover("ph", btn, frPickHead("Foto im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"chphto\" data-uid=\""+esc(f.uid)+"\" data-ph=\""+esc(ph)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>"+esc(atn(chName(f.uid)))+"</span></button>"; }).join(""), "chph");
 }
 function chPhSendTo(u, ph){
   closeJpMore(); var cid = chWith(u); if(!cid) return;
@@ -7752,7 +7766,7 @@ function chListHTML(){ var me = acct.user && acct.user.uid;
     if(!me) return h+"<p class=\"note nt-empty\">Melde dich an, um mit Freunden zu chatten.</p></div>";
     if(CH.list.length){
       h += "<div class=\"ag-grp ls-list ch-list\">"+CH.list.map(function(c){ var u = chOther(c), L = c.last || {}, un = chUnread(c);
-        return "<button type=\"button\" class=\"ls-row"+(un?" un":"")+"\" data-act=\"chopen\" data-v=\""+esc(c.id)+"\">"+chAv(u, "ch-av")+"<span class=\"ls-t\"><b>@"+esc(chName(u))+"</b><small>"+(L.from===me ? "Du: " : "")+esc(L.t || (L.place ? (L.ph ? "📷 " : "📍 ")+L.place : ""))+"</small></span><span class=\"ch-meta\"><small>"+chTime(L.at)+"</small>"+(un ? "<i class=\"ch-dot\"></i>" : "")+"</span></button>"; }).join("")+"</div>";
+        return "<button type=\"button\" class=\"ls-row"+(un?" un":"")+"\" data-act=\"chopen\" data-v=\""+esc(c.id)+"\">"+chAv(u, "ch-av")+"<span class=\"ls-t\"><b>"+esc(atn(chName(u)))+"</b><small>"+(L.from===me ? "Du: " : "")+esc(L.t || (L.place ? (L.ph ? "📷 " : "📍 ")+L.place : ""))+"</small></span><span class=\"ch-meta\"><small>"+chTime(L.at)+"</small>"+(un ? "<i class=\"ch-dot\"></i>" : "")+"</span></button>"; }).join("")+"</div>";
     } else if(CH.got) h += "<p class=\"note nt-empty\">Noch keine Chats. Tippe auf ＋, um einen Chat mit einem Freund zu beginnen.</p>";
     if(!FR.friends.length) h += "<p class=\"note nt-empty\">Chatten kannst du mit Freunden – Leuten, denen du folgst und die dir folgen.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Leute finden</button></div>";
     return h+"</div>";
@@ -7777,12 +7791,13 @@ function renderCh(full){
   }
   if(chNewOn) renderChNew();
   renderChMsgs(full ? true : undefined); renderChDraft();
+  var cvg = el.querySelector(".ch-conv"); if(cvg) cvg.classList.toggle("gone", chGone(u));
   var pk = $("chPick"); if(pk){ pk.hidden = !chPickOn; if(chPickOn) $("chPickRes").innerHTML = chPickHTML(); }
 }
 var CHBACK = "<button type=\"button\" class=\"ch-back\" data-act=\"chback\" aria-label=\"Zurück zu den Chats\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.5 4.5 7 10l5.5 5.5\"/></svg></button>";
 function chPartner(cid){ var me = acct.user && acct.user.uid, c = CH.byId[cid]; return c ? chOther(c) : String(cid).split("_").filter(function(x){ return x!==me; })[0]; }
 // Kopf: im neuen Chat das Empfängerfeld („An:“), sonst Bild und Name
-function chHeadIn(u){ return CHBACK+(chNewOn ? "<div class=\"ch-to\"><label for=\"chNewIn\">An:</label><input type=\"text\" id=\"chNewIn\" placeholder=\"Name\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" enterkeyhint=\"next\" value=\""+esc(chNewQ)+"\"></div>" : chAv(u, "ch-av sm")+"<b>@"+esc(chName(u))+"</b>"); }
+function chHeadIn(u){ return CHBACK+(chNewOn ? "<div class=\"ch-to\"><label for=\"chNewIn\">An:</label><input type=\"text\" id=\"chNewIn\" placeholder=\"Name\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" enterkeyhint=\"next\" value=\""+esc(chNewQ)+"\"></div>" : chAv(u, "ch-av sm")+"<b>"+esc(atn(chName(u)))+"</b>"); }
 /* Neuer Chat: wer infrage kommt – Freunde und alle, mit denen es schon einen Chat gibt */
 function chCands(){ var seen = {}, out = [];
   FR.friends.forEach(function(f){ if(f.uid && !seen[f.uid]){ seen[f.uid] = 1; out.push(f.uid); } });
@@ -7805,7 +7820,7 @@ function renderChNew(){
   if(!cands.length){ r.innerHTML = "<p class=\"note ch-newnote\">Du hast noch keine Freunde. Chatten kannst du nur mit Leuten, denen du folgst und die dir folgen.</p><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Leute finden</button></div>"; return; }
   if(!q){ r.innerHTML = "<p class=\"note ch-newnote\">Gib den Namen eines Freundes ein.</p>"; return; }
   r.innerHTML = fr.length ? "<div class=\"ag-grp ls-list ch-newlist\">"+fr.slice(0, 30).map(function(u){ var ex = CH.byId[chId(me, u)];
-    return "<button type=\"button\" class=\"ls-row\" data-act=\"chnew\" data-uid=\""+esc(u)+"\">"+chAv(u, "ch-av sm")+"<span class=\"ls-t\"><b>@"+esc(chName(u))+"</b><small>"+(ex ? "Chat öffnen" : "Neuer Chat")+"</small></span></button>"; }).join("")+"</div>"
+    return "<button type=\"button\" class=\"ls-row\" data-act=\"chnew\" data-uid=\""+esc(u)+"\">"+chAv(u, "ch-av sm")+"<span class=\"ls-t\"><b>"+esc(atn(chName(u)))+"</b><small>"+(ex ? "Chat öffnen" : "Neuer Chat")+"</small></span></button>"; }).join("")+"</div>"
     : "<p class=\"note ch-newnote\">Kein Freund mit diesem Namen. Chatten kannst du nur mit Freunden.</p>";
 }
 function chNewStart(){ var el = $("chView"); if(!el || !acct.user) return;
@@ -7831,7 +7846,7 @@ function chPlaceFrom(tid, pid){
 function chSend(){
   var me = acct.user && acct.user.uid, inp = $("chIn"), txt = inp ? inp.value.trim().slice(0, 4000) : "";
   if(me && chNewOn && !chOpen && (txt || chDraft)){ toast("Gib zuerst oben den Namen eines Freundes ein", false); var ni = $("chNewIn"); if(ni) try { ni.focus({preventScroll:true}); } catch(e){} return; }
-  if(!me || !chOpen || chSending || (!txt && !chDraft)) return;
+  if(!me || !chOpen || chSending || (!txt && !chDraft) || chGone(chPartner(chOpen))) return;
   var u = chPartner(chOpen);
   // erste Nachricht im neuen Chat: Kopf wird zum normalen Chat-Kopf, Eingabe und Tastatur bleiben
   if(chNewOn){ chNewOn = false; chNewQ = ""; var hd = document.querySelector("#chView .ch-head"); if(hd) hd.innerHTML = chHeadIn(u); var nr = $("chNewRes"); if(nr) nr.remove(); }
@@ -7953,7 +7968,7 @@ function chShareMenu(pid, btn){
   if(!acct.user){ toast("Melde dich an, um Orte zu teilen", false); return; }
   if(!FR.friends.length){ toast("Folgt euch zuerst gegenseitig – dann seid ihr Freunde", false); return; }
   var me = acct.user.uid, fr = FR.friends.slice().sort(function(a, b){ var ca = CH.byId[chId(me, a.uid)], cb = CH.byId[chId(me, b.uid)]; return ((cb && cb.at)||0) - ((ca && ca.at)||0); });
-  jpPopover(pid, btn, frPickHead("Im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"chshareto\" data-uid=\""+esc(f.uid)+"\" data-pid=\""+esc(pid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>@"+esc(chName(f.uid))+"</span></button>"; }).join(""), "chshare");
+  jpPopover(pid, btn, frPickHead("Im Chat schicken an …")+fr.map(function(f){ return "<button type=\"button\" data-frn=\""+esc((chName(f.uid)||"").toLowerCase())+"\" data-act=\"chshareto\" data-uid=\""+esc(f.uid)+"\" data-pid=\""+esc(pid)+"\" role=\"menuitem\"><span class=\"ai\">"+chAv(f.uid, "ch-av xs")+"</span><span>"+esc(atn(chName(f.uid)))+"</span></button>"; }).join(""), "chshare");
 }
 function chShareTo(u, pid){
   closeJpMore(); var cid = chWith(u); if(!cid) return;
@@ -7991,7 +8006,7 @@ function frWho(p){
 }
 function frLine(p){
   var w = frWho(p); if(!w.length) return "";
-  var nm = w.map(function(x){ return "@"+x.name; }), txt = w.length===1 ? nm[0]+" empfiehlt das" : w.length===2 ? nm[0]+" und "+nm[1]+" empfehlen das" : "<b>"+w.length+" Freunde</b> empfehlen das";
+  var nm = w.map(function(x){ return atn(x.name); }), txt = w.length===1 ? nm[0]+" empfiehlt das" : w.length===2 ? nm[0]+" und "+nm[1]+" empfehlen das" : "<b>"+w.length+" Freunde</b> empfehlen das";
   return "<button type=\"button\" class=\"frl\" data-act=\"rvopen\" data-v=\"friends\"><span class=\"frl-av\">"+w.slice(0, 3).map(function(x){ return chAv(x.uid, "frl-a"); }).join("")+"</span><span class=\"frl-t\">"+(w.length===1 ? "<b>"+esc(nm[0])+"</b> empfiehlt das" : w.length===2 ? "<b>"+esc(nm[0])+"</b> und <b>"+esc(nm[1])+"</b> empfehlen das" : txt+"<small>"+esc(nm.slice(0, 3).join(", ")+(w.length > 3 ? " …" : ""))+"</small>")+"</span></button>";
 }
 function rvSection(p){
@@ -8001,7 +8016,7 @@ function rvSection(p){
     if(!acct.user) h += "<p class=\"note\">Melde dich an, um Bewertungen deiner Freunde zu sehen.</p>";
     else if(!fr.length) h += "<p class=\"note\">"+(DC.busy ? "Lädt …" : FR.friends.length ? "Keiner deiner Freunde hat diesen Ort bisher bewertet." : "Folgt euch gegenseitig, um die Bewertungen deiner Freunde zu sehen.")+"</p>";
     fr.forEach(function(r){ var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
-      h += "<div class=\"rvrow\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><div class=\"rvt\"><b>@"+esc(r.fname||"Freund")+"</b>"+(RR ? " <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+(r.hl ? " <span class=\"rvhl\">★ Highlight</span>" : "")+
+      h += "<div class=\"rvrow\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><div class=\"rvt\"><b>"+esc(atn(r.fname||"Freund"))+"</b>"+(RR ? " <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+(r.hl ? " <span class=\"rvhl\">★ Highlight</span>" : "")+
         "<small>"+esc([r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+(r.note ? "<p>„"+esc(r.note)+"“</p>" : "")+recCmHTML(r, "")+
         (r.photos && r.photos.length ? "<div class=\"rvph\">"+r.photos.map(function(u){ return "<img src=\""+u+"\" alt=\"\" loading=\"lazy\">"; }).join("")+"</div>" : "")+"</div></div>"; });
   } else {
@@ -8167,7 +8182,7 @@ function acctHTML(){
   var st = !u ? ["off","Nicht angemeldet"] : acct.state==="sync" ? ["sync","Gleiche ab …"] : acct.state==="error" ? ["err","Abgleich fehlgeschlagen – wird erneut versucht"] : !navigator.onLine ? ["off","Offline – Änderungen folgen später"] : ["ok","Synchronisiert"+(acct.at ? " um "+new Date(acct.at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "")];
   var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mein Konto\">";
   h += "<button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
-  h += "<div class=\"ag-head\"><span class=\"ag-av\">"+(PROF && PROF.photo ? "<img src=\""+PROF.photo+"\" alt=\"\">" : esc(PROF ? PROF.name[0].toUpperCase() : ini))+"</span><div><b class=\"ag-name\">"+(PROF ? "@"+esc(PROF.name) : esc(mail || "Mein Konto"))+(u ? "<button type=\"button\" class=\"ag-edit\" data-act=\"accview\" data-v=\"profile\" aria-label=\"Profil bearbeiten\" title=\"Profil bearbeiten\">"+ic("edit")+"</button>" : "")+"</b>"+(PROF ? "<span class=\"ag-sub\">"+esc(mail)+"</span>" : "")+"<span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+(u ? "<button type=\"button\" class=\"ag-sync\" data-act=\"acsync\" aria-label=\"Jetzt abgleichen\" title=\"Jetzt abgleichen\">"+ic("sync", "ii")+"</button>" : "")+"</span></div></div>";
+  h += "<div class=\"ag-head\"><span class=\"ag-av\">"+(PROF && PROF.photo ? "<img src=\""+PROF.photo+"\" alt=\"\">" : esc(PROF ? PROF.name[0].toUpperCase() : ini))+"</span><div><b class=\"ag-name\">"+(PROF ? esc(atn(PROF.name)) : esc(mail || "Mein Konto"))+(u ? "<button type=\"button\" class=\"ag-edit\" data-act=\"accview\" data-v=\"profile\" aria-label=\"Profil bearbeiten\" title=\"Profil bearbeiten\">"+ic("edit")+"</button>" : "")+"</b>"+(PROF ? "<span class=\"ag-sub\">"+esc(mail)+"</span>" : "")+"<span class=\"ag-st "+st[0]+"\" id=\"acctNote\"><i></i>"+esc(st[1])+(u ? "<button type=\"button\" class=\"ag-sync\" data-act=\"acsync\" aria-label=\"Jetzt abgleichen\" title=\"Jetzt abgleichen\">"+ic("sync", "ii")+"</button>" : "")+"</span></div></div>";
 
   if(u && !PROF) h += "<p class=\"note\">Tipp: Über den Stift oben legst du einen Benutzernamen fest, damit dich andere finden.</p>";
 
@@ -8182,7 +8197,75 @@ function acctHTML(){
   // Sicherung
   h += "<div class=\"ag-lbl\">Sicherung</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"export\"><span><b>Plan als Datei sichern</b></span><em class=\"chev\">›</em></button><label class=\"ag-row\" for=\"impFileG\"><span><b>Sicherung laden</b></span><em class=\"chev\">›</em></label></div>";
   if(u) h += "<div class=\"ag-grp ag-out\"><button type=\"button\" class=\"ag-row\" data-act=\"acout\"><span><b>Abmelden</b></span></button></div>";
+  if(u) h += "<button type=\"button\" class=\"btn deltrip ag-kill\" data-act=\"acdel\">"+ic("del")+"Konto löschen</button>";
   return h+"</div>";
+}
+/* ---------- Konto löschen: mit Passwort bestätigen; Inhalte bleiben als „Gelöschter Nutzer“ ---------- */
+function acdelOpen(msg, busy){
+  var el = $("adPop"); if(!el){ el = document.createElement("div"); el.id = "adPop"; el.className = "cfpop"; document.body.appendChild(el); }
+  var pw = $("adPw"), keep = pw ? pw.value : "";
+  el.innerHTML = "<form class=\"cf-card ad-card\" id=\"adForm\" role=\"alertdialog\" aria-modal=\"true\" aria-labelledby=\"adT\"><b id=\"adT\">Konto endgültig löschen?</b>"+
+    "<p>Dein Konto, dein Benutzername, dein Profilbild und deine Freundesliste werden gelöscht. Kommentare, Empfehlungen, Fotos und Chat-Nachrichten bleiben für andere sichtbar – als „"+DELN+"“.</p>"+
+    "<p>Gemeinsame Reisen gehen an deine Mitreisenden über, Reisen nur für dich werden gelöscht. Das lässt sich nicht rückgängig machen.</p>"+
+    "<input type=\"password\" id=\"adPw\" autocomplete=\"current-password\" placeholder=\"Passwort zur Bestätigung\" aria-label=\"Passwort zur Bestätigung\""+(busy ? " disabled" : "")+">"+
+    (msg ? "<p class=\"ad-msg\" role=\"status\">"+esc(msg)+"</p>" : "")+
+    "<div class=\"cf-row\"><button type=\"button\" class=\"cf-no\" data-act=\"adno\""+(busy ? " disabled" : "")+">Abbrechen</button><button type=\"submit\" class=\"cf-ok del\""+(busy ? " disabled" : "")+">"+(busy ? "Lösche …" : "Löschen")+"</button></div></form>";
+  el.hidden = false; $("adPw").value = keep;
+  el.onclick = function(ev){ ev.stopPropagation(); if(busy) return; if(ev.target===el || ev.target.closest("[data-act=adno]")) acdelClose(); };
+  el.querySelector("form").onsubmit = function(ev){ ev.preventDefault(); if(!busy) acctDelete($("adPw").value); };
+  if(!busy) setTimeout(function(){ var i = $("adPw"); if(i) i.focus(); }, 0);
+}
+function acdelClose(){ var el = $("adPop"); if(el){ el.hidden = true; el.innerHTML = ""; } }
+document.addEventListener("keydown", function(ev){ var el = $("adPop"); if(ev.key==="Escape" && el && !el.hidden && !el.querySelector("[disabled]")){ ev.stopPropagation(); acdelClose(); } }, true);
+// räumt ein Konto ab, ohne fremde Inhalte zu berühren: nur eigene Einträge ändern, die die Regeln schon erlauben
+function acctWipe(me){
+  var FV = window.firebase.firestore.FieldValue, quiet = function(p){ return p.catch(function(){}); }, low = PROF && PROF.nameLower;
+  var each = function(q, fn){ return quiet(q.get().then(function(qs){ return Promise.all(qs.docs.map(function(d){ return quiet(fn(d)); })); })); };
+  // Reisen: eigene Kommentare ohne E-Mail, Standort weg; danach übergeben, löschen oder verlassen
+  var trips = quiet(myTrips().get().then(function(qs){ return Promise.all(qs.docs.map(function(d){
+    var v = d.data() || {}, id = d.id, ref = tripRef(id), mem = (v.members||[]).filter(function(x){ return x!==me; }), vw = v.viewers||[];
+    var prep = Promise.all(["comments", "pcomments"].map(function(c){ return each(ref.collection(c).where("by", "==", me), function(x){ return x.ref.update({email:FV.delete()}); }); }).concat([quiet(ref.collection("loc").doc(me).delete())]));
+    return prep.then(function(){
+      var up = {members:FV.arrayRemove(me), viewers:FV.arrayRemove(me)}; up["memberEmails."+me] = FV.delete();
+      if(v.owner!==me) return quiet(ref.update(up));
+      if(!mem.length) return quiet(ref.set({json:"", deleted:true, updatedAt:Date.now()}, {merge:true})).then(function(){ return quiet(privRef(id).delete()); });
+      var next = mem.filter(function(x){ return vw.indexOf(x) < 0; })[0] || mem[0];
+      up.owner = next; up.members = mem; up.viewers = vw.filter(function(x){ return x!==me && x!==next; });
+      return quiet(ref.update(up));
+    });
+  })); }));
+  var inv = myMail() ? each(fbDb.collection("trips").where("invites", "array-contains", myMail()), function(d){ return d.ref.update({invites:FV.arrayRemove(myMail()), viewInvites:FV.arrayRemove(myMail())}); }) : Promise.resolve();
+  var fol = Promise.all(["from", "to"].map(function(k){ return each(fbDb.collection("follows").where(k, "==", me), function(d){ return d.ref.delete(); }); }));
+  var frq = Promise.all(["from", "to"].map(function(k){ return each(fbDb.collection("friendReqs").where(k, "==", me), function(d){ return d.ref.delete(); }); }));
+  var pub = each(pubCol().where("by", "==", me), function(d){ return d.ref.update({name:DELN}); });
+  return Promise.all([trips, inv, fol, frq, pub]).then(function(){
+    // zuletzt Benutzername freigeben und Profil durch den Platzhalter ersetzen (ohne Foto, nicht mehr suchbar)
+    return (low ? quiet(fbDb.collection("usernames").doc(low).delete()) : Promise.resolve()).then(function(){
+      return fbDb.collection("profiles").doc(me).set({name:DELN, nameLower:DELN.toLowerCase(), deleted:true, at:Date.now()});
+    });
+  });
+}
+function acctDelete(pw){
+  var u = window.firebase.auth().currentUser;
+  if(!u || !acct.user){ acdelOpen("Nicht angemeldet."); return; }
+  if(!pw){ acdelOpen("Bitte dein Passwort eingeben."); return; }
+  if(!navigator.onLine){ acdelOpen("Zum Löschen bitte online gehen."); return; }
+  acdelOpen("", true);
+  var me = u.uid, step = "auth";
+  u.reauthenticateWithCredential(window.firebase.auth.EmailAuthProvider.credential(u.email, pw)).then(function(){
+    step = "data"; return acctWipe(me);
+  }).then(function(){ step = "user"; return u.delete(); }).then(function(){
+    acdelClose(); closeSettings(); acctLocalClear("Dein Konto wurde gelöscht.");
+  }, function(e){
+    var c = e && e.code || "";
+    acdelOpen(step==="auth" ? (/wrong-password|invalid-credential|invalid-login/.test(c) ? "Das Passwort stimmt nicht." : /too-many/.test(c) ? "Zu viele Versuche – bitte später erneut." : acctErr(e))
+      : "Löschen fehlgeschlagen: "+((e && e.message) || "unbekannter Fehler")+". Bitte erneut versuchen.");
+  });
+}
+// lokale Kopie entfernen (Abmelden und Konto löschen)
+function acctLocalClear(msg){
+  try { Object.keys(localStorage).forEach(function(k){ if(k===KEY || /^rp-(linked|pend)/.test(k)) localStorage.removeItem(k); }); } catch(e){}
+  pend = {}; delPend = {}; S = fresh(); acctInitSigs(); pickDefaultDay(); renderAll(); acct.user = null; acct.msg = msg; renderGate();
 }
 /* ---------- Leiste oben & Profilseite ---------- */
 var profOpen = false, profTab = "mine";
@@ -8400,7 +8483,7 @@ function renderProfile(){
   var cnt = function(n){ return " <small class=\"pf-n\">"+n+"</small>"; }, tb = function(v, l, n){ return "<button type=\"button\" role=\"tab\" data-act=\"pftab\" data-v=\""+v+"\" aria-selected=\""+(profTab===v)+"\">"+l+(n==null ? "" : cnt(n))+"</button>"; };
   // Profilkopf: Bild, Name, Follower-Kapsel, Zahnrad; Reisen/Beobachtet zählen in den Reitern (keine Zahlenzeile)
   h += "<div class=\"pf-head\">"+avHTML("pf-av")+
-       "<div class=\"pf-side\"><div class=\"pf-id\"><b>"+(PROF && PROF.name ? "@"+esc(PROF.name) : "Kein Benutzername")+"</b></div>"+
+       "<div class=\"pf-side\"><div class=\"pf-id\"><b>"+(PROF && PROF.name ? esc(atn(PROF.name)) : "Kein Benutzername")+"</b></div>"+
        "<div class=\"pf-stats\">"+ic("friends", "pf-fi")+"<button type=\"button\" data-act=\"openfriends\" data-v=\"fol\"><b>"+FR.followers.length+"</b><span>Follower</span></button><i></i>"+
        "<button type=\"button\" data-act=\"openfriends\" data-v=\"ing\"><b>"+FR.following.length+"</b><span>Gefolgt</span></button></div></div>"+
        "<button type=\"button\" class=\"pf-gear\" data-act=\"openacct\" aria-label=\"Konto &amp; Einstellungen\" title=\"Konto &amp; Einstellungen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg></button></div>";
@@ -11862,7 +11945,7 @@ function tap(x, y){
     viaBanner(); scheduleOverlay(); renderSheetSoon(); return;
   }
   var lhit = LOCMK.filter(function(m){ return Math.hypot(m.x-x, m.y-y) < 20; })[0];
-  if(lhit){ toast("@"+lhit.nm+" war hier · "+locAgo(lhit.at), false); return; }
+  if(lhit){ toast(atn(lhit.nm)+" war hier · "+locAgo(lhit.at), false); return; }
   var vhit = !isRO() && VIAMK.filter(function(m){ return Math.hypot(m.x-x, m.y-y) < 16; }).sort(function(a, b){ return Math.hypot(a.x-x, a.y-y) - Math.hypot(b.x-x, b.y-y); })[0];
   if(vhit){ openViaPop(vhit.li, vhit.vi); return; }
   // Ein- und Ausstieg einer ÖPNV-Etappe: Stationskarte mit „Navigieren“
@@ -13807,7 +13890,7 @@ function dayChip(pid, noTime, short){
 /* ---------- Foto-Ansicht: wischen, liken, kommentieren (Kommentare mit pid "ph:<Foto>", Likes "lk:<Foto>") ---------- */
 function phSocial(){ return !!(acct.user && fbDb && KNOWN[S.cur] && META[S.cur] && ((META[S.cur].members||[]).length > 1 || (META[S.cur].viewers||[]).length)); }
 function phLikes(ph){ return (CMTS["lk:"+ph] || []).filter(function(c, i, a){ return a.findIndex(function(y){ return y.by===c.by; })===i; }); }
-function phWho(c){ var f = FR.friends.filter(function(x){ return x.uid===c.by; })[0]; return f && f.name ? "@"+f.name : (c.email||"").split("@")[0] || "Jemand"; }
+function phWho(c){ var f = FR.friends.filter(function(x){ return x.uid===c.by; })[0], pn = f && f.name ? "" : personName(c.by); return f && f.name ? atn(f.name) : pn ? atn(pn) : (c.email||"").split("@")[0] || "Jemand"; }
 function phMetaHTML(ph){
   var cap = captOf(ph), capH = cap ? "<div class=\"pv-cap\""+(isRO() ? "" : " data-act=\"capedit\" data-ph=\""+ph+"\" role=\"button\" tabindex=\"0\"")+"><p>"+esc(cap)+"</p></div>"
            : (isRO() ? "" : "<div class=\"pv-cap empty\"><button type=\"button\" data-act=\"capedit\" data-ph=\""+ph+"\">＋ Text zum Foto</button></div>");
@@ -14413,7 +14496,7 @@ function lkCheck(){
 function renderLkIn(){
   var d = LKIN; if(!d) return; var canW = !noTrip() && !isRO();
   var h = "<div class=\"pop-card lk-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Geteilte Liste\"><div class=\"pop-head\"><h4>"+esc(d.n)+"</h4><button type=\"button\" class=\"x\" data-act=\"lkclose\" aria-label=\"Schließen\">×</button></div>"+
-    "<p class=\"note\" style=\"margin:0 2px 10px\">"+(d.by ? "Geteilt von @"+esc(d.by)+" · " : "")+d.p.length+(d.p.length===1 ? " Ort" : " Orte")+"</p><ul class=\"srlist lk-list\">"+
+    "<p class=\"note\" style=\"margin:0 2px 10px\">"+(d.by ? "Geteilt von "+esc(atn(d.by))+" · " : "")+d.p.length+(d.p.length===1 ? " Ort" : " Orte")+"</p><ul class=\"srlist lk-list\">"+
     d.p.map(function(p){ return "<li><span class=\"sric\" style=\"color:"+catCol(p.c)+"\">"+icon(p.c)+"</span><span class=\"srt\"><b>"+esc(p.n)+"</b><small>"+esc([CATNAME[p.c], p.addr, p.note].filter(Boolean).join(" · "))+"</small></span></li>"; }).join("")+"</ul>"+
     "<div class=\"pf-acts\">"+(canW ? "<button type=\"button\" class=\"btn g\" data-act=\"lkwish\">In Wunschliste</button>" : "")+"<button type=\"button\" class=\"btn\" data-act=\"lkziel\">Als Ziel merken</button></div></div>";
   var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false;
@@ -15628,7 +15711,7 @@ document.addEventListener("click", function(e){
     case "fgset": fgSet(t.getAttribute("data-g"), t.getAttribute("data-uid")); break;
     case "askgrp": askKeep(); askGrp(t.getAttribute("data-g")); break;
     case "fginv": fgInvite(t.getAttribute("data-g")); break;
-    case "invfriend": t.disabled = true; var fe = t.getAttribute("data-mail"); tripRef(S.cur).update(invUpd(fe)).then(function(){ invLocal(fe); toast("@"+t.getAttribute("data-name")+" eingeladen", false); renderSheet(); frsPopRender(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); }); break;
+    case "invfriend": t.disabled = true; var fe = t.getAttribute("data-mail"); tripRef(S.cur).update(invUpd(fe)).then(function(){ invLocal(fe); toast(atn(t.getAttribute("data-name"))+" eingeladen", false); renderSheet(); frsPopRender(); }, function(e2){ toast("Einladen fehlgeschlagen: "+(e2 && e2.message), false); }); break;
     case "invrole": invRole = t.getAttribute("data-v"); renderSheet(); break;
     case "mrole": var mu = t.getAttribute("data-uid"), mv = t.getAttribute("data-v")==="viewer", FV3 = window.firebase.firestore.FieldValue;
       tripRef(S.cur).update({viewers: mv ? FV3.arrayUnion(mu) : FV3.arrayRemove(mu)}).then(function(){ var m3 = META[S.cur]; if(m3){ m3.viewers = (m3.viewers||[]).filter(function(x){ return x!==mu; }); if(mv) m3.viewers.push(mu); } toast(mv ? "Jetzt Beobachter" : "Jetzt Mitreisende/r", false); renderSheet(); }, function(e3){ toast("Ändern fehlgeschlagen: "+(e3 && e3.message), false); }); break;
@@ -15757,9 +15840,9 @@ document.addEventListener("click", function(e){
       break;
     case "acout": closeSettings(); window.firebase.auth().signOut().then(function(){
         // Gerät freigeben: lokale Kopie entfernen, sie liegt im Konto
-        try { Object.keys(localStorage).forEach(function(k){ if(k===KEY || /^rp-(linked|pend)/.test(k)) localStorage.removeItem(k); }); } catch(e){}
-        pend = {}; delPend = {}; S = fresh(); acctInitSigs(); pickDefaultDay(); renderAll(); acct.user = null; acct.msg = "Abgemeldet."; renderGate();
+        acctLocalClear("Abgemeldet.");
       }); break;
+    case "acdel": acdelOpen(""); break;
     case "settings": case "openacct": closeMenus(); accView = "main"; openSettings(); break;
     case "opentrips": closeMenus(); $("toast").hidden = true; accView = "trips"; if(t.getAttribute("data-v")) tripsTab = t.getAttribute("data-v"); else tripsTab = isShared(S.cur) ? "shared" : "priv"; openSettings(); break;
     case "tripstab": tripsTab = t.getAttribute("data-v"); openSettings(); break;

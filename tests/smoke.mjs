@@ -3702,6 +3702,54 @@ await test("Freundesgruppen: anlegen, am Freund zuordnen, Schnellauswahl beim Fr
   await rp(`closeCatPop(); closeSettings(); fbDb = null; FR.friends = []; FR.followers = []; FR.following = []; FG = []; true`);
 });
 
+await test("Konto löschen: Bestätigung mit Passwort, Reisen übergeben/löschen/verlassen, Inhalte bleiben als „Gelöschter Nutzer“", async () => {
+  await seed();
+  await rp(`window.__upd = []; window.__udel = 0;
+    var D = {trips:[{id:"t1", data:{owner:"u_me", members:["u_me","u_v","u_b"], viewers:["u_v"]}}, {id:"t2", data:{owner:"u_me", members:["u_me"]}}, {id:"t3", data:{owner:"u_x", members:["u_x","u_me"]}}],
+      "trips/t1/comments":[{id:"c1", data:{by:"u_me", email:"me@test.de"}}], pub:[{id:"u_me_k", data:{by:"u_me", name:"ich"}}], follows:[{id:"u_me_u_b", data:{from:"u_me", to:"u_b"}}]};
+    var fq = function(path){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:(D[path]||[]).map(function(x){ return {id:x.id, data:function(){ return x.data; }, ref:fd(path+"/"+x.id)}; })}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(path+"/"+id); }}; return q; },
+      fd = function(path){ return {id:path, collection:function(c){ return fq(path+"/"+c); }, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }, set:function(v){ __upd.push(["set", path, v]); return Promise.resolve(); }, update:function(v){ __upd.push(["upd", path, v]); return Promise.resolve(); }, delete:function(){ __upd.push(["del", path]); return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }}; };
+    fbDb = {collection:function(c){ return fq(c); }, runTransaction:function(){ return Promise.resolve(); }};
+    window.__au = window.firebase.auth; var fu = {uid:"u_me", email:"me@test.de", reauthenticateWithCredential:function(c){ return c.pw==="geheim" ? Promise.resolve() : Promise.reject({code:"auth/wrong-password"}); }, delete:function(){ __udel++; return Promise.resolve(); }};
+    window.firebase.auth = Object.assign(function(){ return {currentUser:fu, signOut:function(){ return Promise.resolve(); }}; }, {EmailAuthProvider:{credential:function(e, p){ return {pw:p}; }}});
+    PROF = {name:"ich", nameLower:"ich"}; closeMenus(); accView = "main"; openSettings(); true`);
+  await page.waitForTimeout(200);
+  ok(await visible("#acctPop [data-act=acdel]"), "Knopf „Konto löschen“ fehlt");
+  await rp(`document.querySelector("#acctPop [data-act=acdel]").scrollIntoView({block:"end"}); true`); await shot("konto-loeschen-knopf");
+  ok(await rp(`var b = document.querySelector("#acctPop [data-act=acdel]"); b.getBoundingClientRect().width > b.closest(".ag-card").clientWidth*0.8`), "Knopf nicht in voller Breite");
+  await click("#acctPop [data-act=acdel]");
+  ok(await visible("#adPop .ad-card"), "Bestätigung fehlt");
+  ok(await rp(`var r = document.querySelector("#adPop .ad-card").getBoundingClientRect(); Math.abs((r.left + r.right)/2 - innerWidth/2) < 3 && Math.abs((r.top + r.bottom)/2 - innerHeight/2) < 40`), "Bestätigung nicht zentriert");
+  ok(/Gelöschter Nutzer/.test(await page.locator("#adPop").innerText()), "Hinweis auf „Gelöschter Nutzer“ fehlt");
+  await shot("konto-loeschen-dialog");
+  // Abbrechen: nichts passiert, Konto-Seite bleibt
+  await click("#adPop [data-act=adno]");
+  ok(!(await visible("#adPop .ad-card")) && await visible("#acctPop [data-act=acdel]") && !(await rp(`__upd.length`)), "Abbrechen schließt nicht oder ändert etwas");
+  // falsches Passwort: Meldung, nichts gelöscht
+  await click("#acctPop [data-act=acdel]");
+  await page.fill("#adPw", "falsch"); await page.locator("#adPop .cf-ok").click(); await page.waitForTimeout(300);
+  ok(/Passwort stimmt nicht/.test(await page.locator("#adPop").innerText()) && !(await rp(`__upd.length || __udel`)), "Falsches Passwort nicht abgefangen");
+  await page.fill("#adPw", "geheim"); await page.locator("#adPop .cf-ok").click();
+  await page.waitForFunction(() => window.__rp("__udel")===1, null, {timeout:4000});
+  const W = await rp(`JSON.stringify(__upd)`), U = JSON.parse(W), has = (k, p, f) => U.some(w => w[0]===k && w[1]===p && (!f || f(w[2]||{})));
+  ok(has("upd", "trips/t1", v => v.owner==="u_b" && JSON.stringify(v.members)==='["u_v","u_b"]' && JSON.stringify(v.viewers)==='["u_v"]'), "Gemeinsame eigene Reise nicht an Mitreisende/n übergeben: "+W);
+  ok(has("set", "trips/t2", v => v.deleted===true), "Eigene Einzel-Reise nicht gelöscht");
+  ok(has("upd", "trips/t3", v => !("owner" in v)) && !has("set", "trips/t3"), "Fremde Reise nicht nur verlassen");
+  ok(has("upd", "trips/t1/comments/c1", v => "email" in v) && !has("del", "trips/t1/comments/c1"), "Kommentar nicht behalten oder E-Mail nicht entfernt");
+  ok(has("del", "trips/t1/loc/u_me") && has("del", "follows/u_me_u_b") && has("del", "usernames/ich"), "Standort, Folgen oder Benutzername nicht entfernt");
+  ok(has("upd", "pub/u_me_k", v => v.name==="Gelöschter Nutzer") && !has("del", "pub/u_me_k"), "Öffentliche Empfehlung nicht als „Gelöschter Nutzer“ behalten");
+  ok(has("set", "profiles/u_me", v => v.deleted===true && v.name==="Gelöschter Nutzer" && !("photo" in v)), "Profil nicht als gelöscht markiert");
+  ok(await rp(`var U2 = __upd.map(function(w){ return w[1]; }); U2.indexOf("profiles/u_me") > U2.indexOf("trips/t1")`), "Profil vor den Reisen geändert");
+  await page.waitForTimeout(200);
+  ok(!(await visible("#adPop .ad-card")) && await rp(`!acct.user && /gelöscht/.test(acct.msg)`), "Nach dem Löschen nicht abgemeldet");
+  // Anzeige: Name ohne „@“, Chat mit gelöschtem Konto ohne Eingabe
+  ok(await rp(`atn("Gelöschter Nutzer")==="Gelöschter Nutzer" && atn("anna")==="@anna"`), "Namensanzeige falsch");
+  await rp(`window.firebase.auth = window.__au; acct.user = {uid:"u_me2", email:"x@test.de"}; fbDb = null; CHPROF.u_g = {name:"Gelöschter Nutzer", photo:"", deleted:true}; CH.byId = {cg:{id:"cg", members:["u_me2","u_g"]}}; CH.list = [CH.byId.cg]; CH.got = true; openChPage("cg"); true`);
+  await page.waitForTimeout(300);
+  ok(await rp(`var c = document.querySelector("#chView .ch-conv"); !!c && c.classList.contains("gone") && !document.getElementById("chIn").offsetParent && !/@Gelöschter/.test(document.querySelector("#chView .ch-head").textContent)`), "Chat mit gelöschtem Konto erlaubt Schreiben oder zeigt „@“");
+  await shot("konto-loeschen");
+});
+
 await test("Follower-Seite: Follower/Gefolgt, neue Follower mit rotem Zähler, zurückfolgen, entfernen, entfolgen, durchsuchen", async () => {
   await seed();
   await rp(`window.__upd = []; var fq = function(path){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(path+"/"+id); }, add:function(){ return Promise.resolve({}); }}; return q; },
