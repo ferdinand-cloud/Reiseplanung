@@ -854,6 +854,15 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   // Bearbeiten: volle Ansicht wie bei aktiven Reisen
   await click("#tripMenu [data-act=tripmode][data-v=edit]");
   ok(await rp(`!isRO() && tripMode()==="edit" && !document.body.classList.contains("ro")`), "Bearbeiten öffnet nicht die volle Ansicht");
+  // nach dem Wechsel bleibt die Kopfzeile bedienbar: Liste öffnen und zurück zur Karte
+  await page.locator("[data-act=navlist]").first().click({timeout:3000}); await page.waitForTimeout(250);
+  ok(await rp(`lsPage && !$("lsView").hidden`), "Liste lässt sich nach dem Wechsel in den Bearbeitungsmodus nicht öffnen");
+  await page.locator("[data-act=navmap]").first().click({timeout:3000}).catch(() => {}); await rp(`closeLsPage && closeLsPage(); true`);
+  // Wechsel aus dem Reise-Fenster: Fenster schließt, Kopfzeile bleibt bedienbar
+  await rp(`setTripMode("view"); tab = "trip"; renderAll(); true`); await page.waitForTimeout(300);
+  await click("#tripPop [data-act=finedit]"); await page.waitForTimeout(300);
+  ok(await rp(`tab!=="trip" && $("tripPop").hidden && tripMode()==="edit"`), "Reise-Fenster bleibt nach dem Wechsel offen");
+  ok(await page.evaluate(() => { const b = document.querySelector("[data-act=navlist]"), q = b.getBoundingClientRect(); return b.contains(document.elementFromPoint(q.x+q.width/2, q.y+q.height/2)); }), "Listen-Knopf nach dem Wechsel verdeckt");
   await rp(`pickDefaultDay(); renderSheet(); true`);
   ok(await page.locator("#body [data-act=rtoggle]").count()===1, "Routen-Schalter fehlt beim Bearbeiten");
   ok(await page.locator("#body ol.plan").count()===1, "Stopps fehlen beim Bearbeiten");
