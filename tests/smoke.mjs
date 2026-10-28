@@ -396,6 +396,56 @@ await test("Chat: Plus öffnet neuen Chat mit Empfängerfeld, bekannter Name zei
   await rp(`closeChPage(); CH.byId = {}; CH.list = []; FR.friends = []; true`);
 });
 
+await test("Chat: öffnet erst mit geladenem Verlauf, Aktualisieren hält die gelesene Stelle", async () => {
+  await seed();
+  await rp(`window.__gets = []; window.__M = []; for(var i = 0; i < 40; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht "+i, at:Date.now() - (40 - i)*60000});
+    var qs = function(){ return {docs:__M.map(function(m){ return {id:m.id, data:function(){ return Object.assign({}, m); }}; })}; };
+    fbDb = {runTransaction:function(){ return new Promise(function(){}); }, batch:function(){ return {set:function(){}, update:function(){}, commit:function(){ return new Promise(function(){}); }}; }, collection:function(){ return {doc:function(cid){ return {get:function(){ return Promise.resolve({exists:false}); }, update:function(){ return Promise.resolve(); },
+      collection:function(){ var q = {orderBy:function(){ return q; }, limitToLast:function(){ return q; },
+        get:function(o){ __gets.push(cid+(o && o.source ? ":"+o.source : "")); return new Promise(function(r){ setTimeout(function(){ r(qs()); }, 500); }); },
+        onSnapshot:function(cb){ window.__snap = function(){ cb(qs()); }; setTimeout(__snap, 0); return function(){}; }}; return q; }}; }}; }};
+    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:1000, last:{t:"Nachricht 39", from:"u1", at:1000}}}; CH.list = [CH.byId.u1_u_me]; CH.got = true;
+    openChPage(); true`);
+  await page.waitForTimeout(250);
+  await page.tap('#chView [data-act=chopen][data-v="u1_u_me"]'); await page.waitForTimeout(150);
+  ok(await rp(`!chOpen && !document.querySelector("#chView .ch-conv") && document.querySelector('#chView [data-v="u1_u_me"]').classList.contains("ld")`), "Chat geht vor dem Laden leer auf oder zeigt kein Laden");
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me"`), null, {timeout:4000});
+  const st = () => page.evaluate(() => { const b = document.getElementById("chMsgs"); return {n:b.querySelectorAll(".ch-msg").length, end:b.scrollHeight - b.scrollTop - b.clientHeight, top:b.scrollTop}; });
+  let s = await st(); ok(s.n===40 && s.end < 5, "Verlauf nicht sofort vollständig unten: "+JSON.stringify(s));
+  // hochscrollen und aktualisieren: bleibt an der Stelle
+  await page.evaluate(() => { document.getElementById("chMsgs").scrollTop = 0; }); await page.waitForTimeout(100);
+  await rp(`chRefresh(); true`); await page.waitForTimeout(800);
+  s = await st(); ok(await rp(`__gets.indexOf("u1_u_me:server") > -1`), "Aktualisieren holt nichts vom Server");
+  ok(s.top < 5, "Aktualisieren springt zur neuesten Nachricht: "+JSON.stringify(s));
+  // fremde neue Nachricht: Stelle bleibt; eigene neue Nachricht: nach unten
+  await page.evaluate(() => { document.getElementById("chMsgs").scrollTop = 120; });
+  await rp(`__M.push({id:"m40", from:"u1", t:"Neu", at:Date.now()}); __snap(); true`); await page.waitForTimeout(100);
+  s = await st(); ok(Math.abs(s.top - 120) <= 2, "Fremde Nachricht verschiebt die Lesestelle: "+JSON.stringify(s));
+  await rp(`chProf("u_x"); renderCh(); true`); await page.waitForTimeout(100);
+  s = await st(); ok(Math.abs(s.top - 120) <= 2, "Neuzeichnen (Profilbild) springt nach unten: "+JSON.stringify(s));
+  await rp(`__M.push({id:"m41", from:"u_me", t:"Meins", at:Date.now()}); __snap(); true`); await page.waitForTimeout(100);
+  s = await st(); ok(s.end < 5, "Eigene Nachricht scrollt nicht nach unten: "+JSON.stringify(s));
+  // erneut öffnen: sofort aus dem Speicher, ohne neues Laden
+  await page.tap("#chView [data-act=chback]"); await page.waitForTimeout(300);
+  const n0 = await rp(`__gets.length`);
+  await page.tap('#chView [data-act=chopen][data-v="u1_u_me"]'); await page.waitForTimeout(60);
+  ok(await rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===42 && __gets.length===${n0}`), "Bekannter Chat öffnet nicht sofort aus dem Speicher");
+  await shot("chat-geladen");
+});
+
+await test("Anmeldung: erst Reisen laden, dann Startseite – kein „Noch keine Reise“ dazwischen", async () => {
+  await seed();
+  await rp(`acct.user = {uid:"u_me", email:"me@test.de"}; bootWait(); renderGate(); true`);
+  await page.waitForTimeout(150);
+  ok(await visible("#gate .gate-load .ldspin") && await rp(`document.body.classList.contains("gated")`), "Keine Ladeanzeige nach der Anmeldung");
+  ok(await page.evaluate(() => { const e = document.elementFromPoint(innerWidth/2, innerHeight/2); return !!(e && e.closest("#gate")); }), "Startseite scheint durch die Ladeanzeige");
+  const h0 = await page.evaluate(() => document.getElementById("gate").innerHTML);
+  await rp(`renderGate(); true`);
+  ok(await page.evaluate(h => document.getElementById("gate").innerHTML===h, h0), "Ladeanzeige wird neu gezeichnet (Flackern)");
+  await rp(`bootDone(); true`); await page.waitForTimeout(100);
+  ok(await rp(`$("gate").hidden && !document.body.classList.contains("gated") && !acct.boot`), "Nach dem Laden bleibt die Ladeanzeige stehen");
+});
+
 await test("Foto im Chat schicken: Freunde-Suche filtert, Menü bleibt offen", async () => {
   await seed();
   await rp(`openJPop("p4", dayOf("p4"), "ph_a")`); await page.waitForTimeout(300);
@@ -796,6 +846,10 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await page.locator("#jPop textarea#nText[readonly]").count()===1 && await page.locator("#jPop .jp-lbl .vis-ro").count()===2, "Notiz-Sichtbarkeit im Ansichtsmodus fehlt");
   await rp(`closeJPop(); true`);
   ok(await rp(`$("sheetOpen").textContent.trim()==="Tagebuch" && $("tabDay").textContent==="Tagebuch"`), "Knopf unten/Reiter heißen im Ansichtsmodus nicht „Tagebuch“");
+  // Knopf unten öffnet das Blatt direkt halbhoch
+  await rp(`setSheet("min"); true`); await page.waitForTimeout(300);
+  await click("#sheetOpen"); await page.waitForTimeout(400);
+  ok(await rp(`sheetState==="mid"`), "Knopf unten öffnet das Blatt nicht halbhoch: "+await rp(`sheetState`));
   await click("#tripBtn");
   ok(await rp(`var m = $("tripMenu"), a = m.children[0], b = m.children[1]; a.classList.contains("tm-cur") && a.getAttribute("aria-current")==="true" && a.textContent.indexOf("Testreise") > -1 && a.textContent.indexOf("✓") > -1 && b.classList.contains("tm-mode")`), "Gewählte Reise (mit Haken) nicht oben, Umschalter nicht direkt darunter");
   ok(await rp(`$("tripMenu").querySelector("[data-act=tripmode][data-v=view]").getAttribute("aria-pressed")==="true"`) && await page.locator("#tripMenu [data-act=tripedit]").count()===0, "Umschalter zeigt nicht „Ansicht“");
@@ -804,6 +858,15 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   // Bearbeiten: volle Ansicht wie bei aktiven Reisen
   await click("#tripMenu [data-act=tripmode][data-v=edit]");
   ok(await rp(`!isRO() && tripMode()==="edit" && !document.body.classList.contains("ro")`), "Bearbeiten öffnet nicht die volle Ansicht");
+  // nach dem Wechsel bleibt die Kopfzeile bedienbar: Liste öffnen und zurück zur Karte
+  await page.locator("[data-act=navlist]").first().click({timeout:3000}); await page.waitForTimeout(250);
+  ok(await rp(`lsPage && !$("lsView").hidden`), "Liste lässt sich nach dem Wechsel in den Bearbeitungsmodus nicht öffnen");
+  await page.locator("[data-act=navmap]").first().click({timeout:3000}).catch(() => {}); await rp(`closeLsPage && closeLsPage(); true`);
+  // Wechsel aus dem Reise-Fenster: Fenster schließt, Kopfzeile bleibt bedienbar
+  await rp(`setTripMode("view"); tab = "trip"; renderAll(); true`); await page.waitForTimeout(300);
+  await click("#tripPop [data-act=finedit]"); await page.waitForTimeout(300);
+  ok(await rp(`tab!=="trip" && $("tripPop").hidden && tripMode()==="edit"`), "Reise-Fenster bleibt nach dem Wechsel offen");
+  ok(await page.evaluate(() => { const b = document.querySelector("[data-act=navlist]"), q = b.getBoundingClientRect(); return b.contains(document.elementFromPoint(q.x+q.width/2, q.y+q.height/2)); }), "Listen-Knopf nach dem Wechsel verdeckt");
   await rp(`pickDefaultDay(); renderSheet(); true`);
   ok(await page.locator("#body [data-act=rtoggle]").count()===1, "Routen-Schalter fehlt beim Bearbeiten");
   ok(await page.locator("#body ol.plan").count()===1, "Stopps fehlen beim Bearbeiten");
