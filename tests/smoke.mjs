@@ -433,6 +433,25 @@ await test("Chat: öffnet erst mit geladenem Verlauf, Aktualisieren hält die ge
   await shot("chat-geladen");
 });
 
+await test("Anmeldung: Reisen aus dem Gerätespeicher sofort, reine Server-Bestätigung (ohne Änderung) wird übernommen", async () => {
+  await seed();
+  await rp(`window.__T = S.trips.t_test; window.__applied = [];
+    var mk = function(cache, changes){ return {size:1, metadata:{fromCache:cache, hasPendingWrites:false}, docChanges:function(){ return changes ? [1] : []; },
+      docs:[{id:"t_test", data:function(){ return {json:JSON.stringify(__T), members:["u_me"], owner:"u_me", updatedAt:1}; }}]}; };
+    window.__mk = mk; var never = new Promise(function(){}), P = function(){ return new Proxy(function(){}, {get:function(t, k){ if(k==="then" || k==="catch" || k==="finally") return never[k].bind(never); return function(){ return k==="onSnapshot" ? function(){} : P(); }; }, apply:function(){ return P(); }}); };
+    fbDb = P(); renameLocal = function(){}; invWatch = function(){}; pvGate = function(){ return Promise.resolve(); };
+    myTrips = function(){ return {onSnapshot:function(o, cb){ window.__opts = o; window.__cb = cb; return function(){}; }}; };
+    var aa = acctApply; acctApply = function(r){ __applied.push(r.length); aa(r); };
+    fbUnsub = null; S = fresh(); renderAll(); bootWait({metadata:{creationTime:"2025-01-01T00:00:00Z"}}); renderGate(); acctLive(); true`);
+  ok(await rp(`!!(__opts && __opts.includeMetadataChanges)`), "Abruf ohne includeMetadataChanges – Server-Bestätigung käme nie an");
+  await rp(`__cb(__mk(true, true)); true`); await page.waitForTimeout(200);
+  ok(await rp(`!acct.boot && $("gate").hidden && !noTrip() && __applied.length===1`), "Reisen aus dem Speicher öffnen die Startseite nicht sofort");
+  await rp(`__cb(__mk(false, false)); true`); await page.waitForTimeout(200);
+  ok(await rp(`__applied.length===2`), "Server-Bestätigung ohne Änderung wird nicht übernommen");
+  await rp(`__cb(__mk(false, false)); true`); await page.waitForTimeout(200);
+  ok(await rp(`__applied.length===2`), "Reine Statusänderung löst erneutes Übernehmen aus");
+});
+
 await test("Anmeldung: erst Reisen laden, dann Startseite – kein „Noch keine Reise“ dazwischen", async () => {
   await seed();
   await rp(`acct.user = {uid:"u_me", email:"me@test.de"}; bootWait(); renderGate(); true`);
