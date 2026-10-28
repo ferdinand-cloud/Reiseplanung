@@ -13741,7 +13741,7 @@ function renderJPop(){
     Lr.hidden = false; document.body.classList.add("pvfull"); pvWindow(vi); fillPhotos(Lr); pvInit(vi); return;
   }
   pvHide();
-  var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
+  var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && ((META[S.cur].members||[]).length > 1 || (META[S.cur].viewers||[]).length)); // auch Reise nur mit Beobachtern: Kommentare
   h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   // eine Zeile: Tag · Uhrzeit · Abhaken · Bewertung · Route · Infos · Mehr (Gruppe, Privat)
@@ -15035,16 +15035,7 @@ function applyRO(){
   var tdy = $("tabDay"); if(tdy && tdy.textContent!==dl) tdy.textContent = dl;
   if(ro && tab==="wish") tab = "day";
   if(k===roWas) return; roWas = k;
-  if(!ro || !isViewer()){ if(mapReady) applyLayers(); return; }
-  // Beobachter: einmal je Reise 3D-Gebäude und farbige Karte an, Verkehrsmittel aus
-  var fk = "rp-vdef-"+k;
-  if(lsGet(fk)!=="1"){
-    lsSet(fk, "1");
-    var reload = !colorOn;
-    b3dOn = true; lsSet("rp-3d", "1"); colorOn = true; lsSet("rp-color", "1");
-    if(map){ if(reload && mapReady){ mapReady = false; map.setStyle(STYLE_URL, {diff:false}); } else { apply3d(true); } }
-    if(map) setTimeout(function(){ if(b3dOn && map.getPitch() < 5) map.easeTo({pitch:50, zoom:Math.max(map.getZoom(), 15), duration: reduceMotion?0:700}); }, 400);
-  }
+  // Beobachter: 3D und farbige Karte sind für alle Standard (Knopf 2D/3D ab Zoom 15) – kein eigenes Kippen mehr
   if(mapReady) applyLayers();
 }
 /* Erledigte Stopps stehen vorn: wer abgehakt wird, rückt direkt hinter die bisher erledigten */
