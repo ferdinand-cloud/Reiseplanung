@@ -774,6 +774,17 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await page.locator("#body .jc-t.empty").count()===0, "Hinweis „Tippen, um Notizen … hinzuzufügen“ im Ansichtsmodus");
   ok(await page.locator("#body [data-act=rtoggle]").count()===0, "Routen-Schalter in der Ansicht sichtbar");
   ok(await page.locator("#tabWish").isHidden(), "Wunschliste in der Ansicht sichtbar");
+  // Ort-Karte im Ansichtsmodus: Knopf „Details“ bleibt, öffnet das Detail-Fenster
+  await rp(`sel = "p4"; renderCard(); true`); await page.waitForTimeout(200);
+  ok(await page.locator("#card [data-act=jpedit]").isVisible(), "Knopf „Details“ fehlt im Ansichtsmodus");
+  await click("#card [data-act=jpedit]");
+  ok(await rp(`!!jp && jp.pid==="p4"`), "„Details“ öffnet im Ansichtsmodus nicht");
+  ok(await rp(`!$("jPop").querySelector("textarea#nText:not([readonly])")`), "Notiz im Ansichtsmodus bearbeitbar");
+  // × bleibt beim Scrollen sichtbar
+  await rp(`var c = $("jPop").querySelector(".ag-card"); c.style.maxHeight = "320px"; c.scrollTop = c.scrollHeight; true`); await page.waitForTimeout(150);
+  ok(await rp(`var c = $("jPop").querySelector(".ag-card"), x = c.querySelector(".ag-x").getBoundingClientRect(), r = c.getBoundingClientRect(); c.scrollTop > 0 && x.top >= r.top - 1 && x.bottom <= r.top + 60`), "× scrollt im Detail-Fenster weg");
+  await click("#jPop .ag-x"); ok(await rp(`!jp`), "× schließt das Detail-Fenster nicht");
+  await rp(`sel = null; renderCard(); true`);
   // Ort-Detail im Ansichtsmodus: Sichtbarkeit nur anzeigen, leere Notiz kompakt
   await rp(`T().notes = {p5:"Toller Blick"}; openJPop("p4", dayOf("p4")); true`); await page.waitForTimeout(250);
   ok(await page.locator("#jPop .jp-lbl .vis-ro").count() > 0 && await page.locator("#jPop [data-act=vis]").count()===0, "Sichtbarkeit im Ansichtsmodus nicht (nur lesend) zu sehen");
