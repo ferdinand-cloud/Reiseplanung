@@ -451,10 +451,13 @@ await test("Chat: Nachricht zur Mitte ziehen markiert sie zum Antworten, Zitat s
   const tStart = (x, y) => cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x, y}]});
   const tMove = async (x, y) => { await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x, y}]}); await page.waitForTimeout(16); };
   const tEnd = () => cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]});
-  const box = (id) => page.evaluate(id => { const b = document.querySelector('#chMsgs .ch-msg[data-mid="'+id+'"] .ch-bub').getBoundingClientRect(); return {l:b.left, r:b.right, y:(b.top + b.bottom) / 2}; }, id);
+  const box0 = (id) => page.evaluate(id => { const b = document.querySelector('#chMsgs .ch-msg[data-mid="'+id+'"] .ch-bub').getBoundingClientRect(); return {l:b.left, r:b.right, y:(b.top + b.bottom) / 2}; }, id);
+  // erst messen, wenn der Verlauf still steht (Neuzeichnen/Scrollen nach dem Öffnen)
+  const box = async (id) => { let a = "", b = null; for(let k = 0; k < 25; k++){ b = await box0(id); const v = JSON.stringify(b); if(v===a) break; a = v; await page.waitForTimeout(60); } return b; };
   // fremde Nachricht nach rechts ziehen: folgt dem Finger, Antwort-Symbol erscheint, federt zurück, Zitatleiste über der Eingabe
   let b = await box("m28"), x = b.l + 20;
-  await tStart(x, b.y); for(const d of [6, 14, 30, 50, 70, 95]) await tMove(x + d, b.y + 2);
+  // mittendrin zeichnet der Verlauf neu (neue Daten vom Server): Geste läuft auf der neuen Nachricht weiter
+  await tStart(x, b.y); for(const d of [6, 14, 30]) await tMove(x + d, b.y + 2); await rp(`__snap(); true`); for(const d of [50, 70, 95]) await tMove(x + d, b.y + 2);
   const mid = await page.evaluate(() => { const m = document.querySelector('#chMsgs .ch-msg[data-mid="m28"]'), i = m.querySelector(".ch-reic"); return {tx:new DOMMatrix(getComputedStyle(m).transform).m41, op:i ? +i.style.opacity : 0, on:!!i && i.classList.contains("on")}; });
   ok(mid.tx > 50 && mid.tx < 95 && mid.op > 0.95 && mid.on, "Nachricht folgt dem Finger nicht gebremst oder kein Antwort-Symbol: "+JSON.stringify(mid));
   await shot("chat-antworten-ziehen");
@@ -539,6 +542,7 @@ await test("Chat: Nachricht gedrückt halten – Reaktionen, Antworten, Fixieren
   await cha("rx"); await page.waitForTimeout(300);
   ok(await rp(`!$("chAct") && document.querySelector('#chMsgs .ch-msg[data-mid="m28"]').style.visibility===""`), "Menü schließt nach Reaktion nicht");
   ok(await rp(`!document.body.classList.contains("chact") && getComputedStyle($("chIn")).userSelect!=="none"`), "Nach dem Schließen bleibt die Seite unmarkierbar oder Eingabe gesperrt");
+  ok(await rp(`var p = document.querySelector('#chMsgs .ch-msg[data-mid="m28"] .ch-rxs'); !!p && p.classList.contains("mine") && !/3\.5px/.test(getComputedStyle(p).boxShadow) && getComputedStyle(p).outlineStyle==="none"`), "Eigene Reaktion hat noch einen Rand");
   ok(await rp(`JSON.stringify(__upd[__upd.length-1])===JSON.stringify(["m28", {"rx.u_me":"❤️"}])`), "Reaktion nicht gespeichert: "+await rp(`JSON.stringify(__upd)`));
   ok(await rp(`var p = document.querySelector('#chMsgs .ch-msg[data-mid="m28"] .ch-rxs'); !!p && p.textContent.includes("❤️")`), "Reaktion nicht an der Nachricht");
   await tp('#chMsgs .ch-msg[data-mid="m28"] .ch-rxs'); await page.waitForTimeout(200);

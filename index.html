@@ -2027,7 +2027,9 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 #chMsgs,#chMsgs *,#chAct,#chAct *,body.chact *:not(input):not(textarea){-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .ch-rxs{position:relative;z-index:1;margin:-7px 8px 0;padding:1px 6px;min-height:22px;border:0;border-radius:12px;background:var(--sheet);color:var(--ink);font:13px/20px var(--f-body);box-shadow:0 0 0 2px var(--bg,var(--sheet)),0 1px 4px rgba(0,0,0,.14);cursor:pointer;display:inline-flex;align-items:center;gap:1px}
 .ch-rxs i{font-style:normal;font-size:12px;color:var(--muted);margin-left:3px}
-.ch-rxs.mine{box-shadow:0 0 0 2px var(--bg,var(--sheet)),0 0 0 3.5px color-mix(in srgb,var(--accent) 45%,transparent)}
+/* eigene Reaktion: nur dezent getönter Hintergrund, kein Rand */
+.ch-rxs.mine{background:color-mix(in srgb,var(--accent) 13%,var(--sheet))}
+.ch-rxs:focus{outline:none}
 #chAct{position:fixed;inset:0;z-index:96;background:color-mix(in srgb,var(--sheet) 35%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3);opacity:0;transition:opacity .18s ease;touch-action:none;overflow:hidden}
 #chAct.on{opacity:1}
 #chAct .cha-msg{position:absolute;margin:0;max-width:none;pointer-events:none;transition:transform .26s cubic-bezier(.2,.9,.3,1.1);overflow:hidden}
@@ -8534,15 +8536,25 @@ window.addEventListener("popstate", function(e){ if(chPopIgn){ chPopIgn = false;
     rm = null; var mm = chOpen && !chGone(chPartner(chOpen)) && e.target.closest && e.target.closest("#chMsgs .ch-msg[data-mid]");
     if(mm){ rmine = mm.classList.contains("me"); if(rmine || t.clientX >= 28) rm = mm; }
     lpStop(); lpOn = false; var lm = chOpen && e.target.closest && e.target.closest("#chMsgs .ch-msg[data-mid]");
-    if(lm) lpT = setTimeout(function(){ lpT = 0; if(mode!==0 || !lm.isConnected) return; mode = -1; rm = null; lpOn = true; chActOpen(lm); }, 430);
+    tgOn(mm || lm ? e.target : null);
+    if(lm) lpT = setTimeout(function(){ lpT = 0; if(!lm.isConnected) lm = document.querySelector("#chMsgs .ch-msg[data-mid=\""+lm.getAttribute("data-mid")+"\"]") || lm; if(mode!==0 || !lm.isConnected) return; mode = -1; rm = null; lpOn = true; chActOpen(lm); }, 430);
     if(!rm && !standalone() && t.clientX < 24){ mode = -1; return; }
     x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); dx = 0; }, {passive:true, capture:true});
-  document.addEventListener("touchmove", function(e){ if(lpT){ var t1 = e.touches[0]; if(Math.abs(t1.clientX - x0) > 8 || Math.abs(t1.clientY - y0) > 8) lpStop(); } if(mode < 0) return; var t = e.touches[0], ddx = t.clientX - x0, ddy = t.clientY - y0;
+  // Wird die berührte Nachricht neu gezeichnet, gehen weitere Touch-Ereignisse nur noch an das alte (losgelöste) Element –
+  // daher hängen die Handler zusätzlich direkt am berührten Element (doppelte Ereignisse werden übersprungen)
+  var tgEl = null;
+  function tgOff(){ if(tgEl){ tgEl.removeEventListener("touchmove", onMove, {passive:false}); tgEl.removeEventListener("touchend", onEnd); tgEl.removeEventListener("touchcancel", onCancel); tgEl = null; } }
+  function tgOn(el){ tgOff(); if(!el || !el.addEventListener) return; tgEl = el; el.addEventListener("touchmove", onMove, {passive:false}); el.addEventListener("touchend", onEnd); el.addEventListener("touchcancel", onCancel); }
+  function onMove(e){ if(e.__chg) return; e.__chg = 1; if(lpT){ var t1 = e.touches[0]; if(Math.abs(t1.clientX - x0) > 8 || Math.abs(t1.clientY - y0) > 8) lpStop(); } if(mode < 0) return; var t = e.touches[0], ddx = t.clientX - x0, ddy = t.clientY - y0;
     if(!mode){ if(Math.abs(ddy) > 10 && Math.abs(ddy) > Math.abs(ddx)){ mode = -1; rm = null; return; }
       if(rm && (rmine ? -ddx : ddx) > 10 && Math.abs(ddx) > Math.abs(ddy) * 1.5){ mode = 2; chSwOn = true; x0 = t.clientX; rhit = false;
         ric = document.createElement("span"); ric.className = "ch-reic"; ric.innerHTML = ic("reply"); rm.appendChild(ric); rm.classList.add("rsw"); }
       else if(rm && rmine && ddx <= 12) return; }
-    if(mode===2){ if(e.cancelable) e.preventDefault(); var d = Math.max(0, rmine ? x0 - t.clientX : t.clientX - x0), v = d < RTH ? d : RTH + (d - RTH) * 0.3, p = Math.min(1, d / RTH);
+    if(mode===2){ if(e.cancelable) e.preventDefault();
+      // Verlauf neu gezeichnet (neue Nachricht, Lesebestätigung): Geste auf dem neuen Element fortsetzen
+      if(!rm.isConnected){ var nm = document.querySelector("#chMsgs .ch-msg[data-mid=\""+rm.getAttribute("data-mid")+"\"]"); if(!nm){ mode = -1; rm = ric = null; chSwOn = false; return; }
+        rm = nm; rm.classList.add("rsw"); ric = document.createElement("span"); ric.className = "ch-reic"+(rhit ? " on" : ""); ric.innerHTML = ic("reply"); rm.appendChild(ric); }
+      var d = Math.max(0, rmine ? x0 - t.clientX : t.clientX - x0), v = d < RTH ? d : RTH + (d - RTH) * 0.3, p = Math.min(1, d / RTH);
       rm.style.transform = "translate3d("+(rmine ? -v : v).toFixed(1)+"px,0,0)";
       if(ric){ ric.style.opacity = p.toFixed(2); ric.style.transform = "scale("+(0.5 + 0.5 * p).toFixed(3)+")"; }
       if(d >= RTH && !rhit){ rhit = true; if(ric) ric.classList.add("on"); try { if(navigator.vibrate) navigator.vibrate(8); } catch(x){} }
@@ -8554,12 +8566,15 @@ window.addEventListener("popstate", function(e){ if(chPopIgn){ chPopIgn = false;
         if(conv) conv.classList.add("sw"); } else return; }
     if(e.cancelable) e.preventDefault();
     dx = Math.max(0, t.clientX - x0); if(conv) conv.style.translate = dx+"px 0";
-    if(under) under.style.setProperty("--d", Math.max(0, 1 - dx / innerWidth).toFixed(3)); }, {passive:false, capture:true});
+    if(under) under.style.setProperty("--d", Math.max(0, 1 - dx / innerWidth).toFixed(3)); }
+  document.addEventListener("touchmove", onMove, {passive:false, capture:true});
   function end(cancel){ if(mode===2){ if(cancel) rhit = false; rEnd(); return; } rm = null; if(mode!==1){ mode = 0; return; } mode = 0; var w = innerWidth, v = dx / Math.max(1, Date.now() - t0), go = !cancel && (dx > w * 0.33 || (v > 0.45 && dx > 50));
     var c = conv, u = under; if(!c){ reset(); return; }
     c.style.transition = "translate .22s cubic-bezier(.2,.8,.2,1)"; c.style.translate = (go ? w : 0)+"px 0"; if(u) u.style.setProperty("--d", go ? "0" : "1");
     setTimeout(function(){ if(go){ chSwOn = false; conv = under = null; chBackToList(); } else reset(); }, 230); }
-  document.addEventListener("touchend", function(e){ lpStop(); if(lpOn){ lpOn = false; if(e.cancelable) e.preventDefault(); } end(false); }, {capture:true, passive:false}); document.addEventListener("touchcancel", function(){ lpStop(); lpOn = false; end(true); }, {capture:true});
+  function onEnd(e){ if(e.__chg) return; e.__chg = 1; tgOff(); lpStop(); if(lpOn){ lpOn = false; if(e.cancelable) e.preventDefault(); } end(false); }
+  function onCancel(e){ if(e.__chg) return; e.__chg = 1; tgOff(); lpStop(); lpOn = false; end(true); }
+  document.addEventListener("touchend", onEnd, {capture:true, passive:false}); document.addEventListener("touchcancel", onCancel, {capture:true});
   document.addEventListener("contextmenu", function(e){ var m = chPage && chOpen && e.target.closest && e.target.closest("#chMsgs .ch-msg[data-mid]"); if(!m) return; e.preventDefault(); if(!chActM) chActOpen(m); }, true);
 })();
 /* Ort aus dem Ort-Fenster im Chat teilen: erst Freund wählen */
