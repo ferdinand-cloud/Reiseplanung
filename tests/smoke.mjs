@@ -3432,6 +3432,17 @@ await test("Design: Seiten der Leiste als mattes Glas, darunter keine Knöpfe al
   ok(await page.evaluate(() => !/blur/.test(getComputedStyle(document.getElementById("chView")).backdropFilter || "")), "Chats sollen deckend bleiben");
 });
 
+await test("Profil: Profil-Knopf in der Leiste bleibt im Profil (kein Sprung zur Karte), scrollt nach oben", async () => {
+  await seed(); await rp(`openProfile()`); await page.waitForTimeout(500);
+  await page.evaluate(() => { const v = document.getElementById("profView"); v.insertAdjacentHTML("beforeend", "<div style=\"height:2000px\"></div>"); v.scrollTop = 600; });
+  await page.locator("#tbProf").click(); await page.waitForTimeout(900);
+  const r = await page.evaluate(() => ({open:!document.getElementById("profView").hidden, st:document.getElementById("profView").scrollTop}));
+  ok(r.open, "Profil-Knopf schließt das Profil (springt zur Karte)");
+  ok(r.st===0, "Profil nicht nach oben gescrollt: "+r.st);
+  ok(await rp(`profOpen`)===true, "profOpen falsch");
+  await page.locator("#tbMap").click(); await page.waitForTimeout(300);
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }

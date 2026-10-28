@@ -14837,7 +14837,7 @@ document.addEventListener("click", function(e){
     case "lsopen": var lop = t.getAttribute("data-pid"); if(P(lop)) openJPop(lop, dayOf(lop) || ""); break;
     case "lsday": closeLsPage(); var lsd = t.getAttribute("data-day"); if(dayByKey(lsd)){ cur = lsd; tab = "day"; renderAll(); fitDay(); } break;
     case "lsph": var lpid = t.getAttribute("data-pid"); if(P(lpid)){ openJPop(lpid, dayOf(lpid) || "", t.getAttribute("data-ph")); if(jp) jp.ret = "list"; } break;
-    case "navprof": if(profOpen) closeProfile(); else openProfile(); break;
+    case "navprof": if(profOpen){ var pv0 = $("profView"); if(pv0) try { pv0.scrollTo({top:0, behavior:"smooth"}); } catch(e){ pv0.scrollTop = 0; } } else openProfile(); break;
     case "navpick":
       var npT = null, npX = "";
       if(t.hasAttribute("data-sub")){ var nst = TRANSIT.stations[+t.getAttribute("data-sub")]; if(nst){ npT = subLL(nst); npT.n = nst[0]; npX = "nosub"; } }
