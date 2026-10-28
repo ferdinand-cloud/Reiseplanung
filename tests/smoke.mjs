@@ -137,7 +137,7 @@ async function seed(){
     var c = document.createElement("canvas"); c.width = 320; c.height = 240; var g = c.getContext("2d");
     ["#c33","#3a3","#36c"].forEach(function(col, i){ g.fillStyle = col; g.fillRect(0, 0, 320, 240); g.fillStyle = "#fff"; g.font = "60px sans-serif"; g.fillText(String(i+1), 140, 140); PHC[["ph_a","ph_b","ph_c"][i]] = c.toDataURL("image/jpeg", .7); });
     acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; fbDb = null; acct.state = "ok"; lsSet("rp-dcdemo", "0"); DCSIG = "";
-    S = {trips:{t_test:t}, cur:"t_test"}; cur = H; tab = "day"; sel = null;
+    S = {trips:{t_test:t}, cur:"t_test"}; cur = H; tab = "day"; sel = null; finEd = "";
     FR.friends = [{uid:"u_anna", name:"anna"},{uid:"u_ludwig", name:"Ludwig"},{uid:"u_clara", name:"Clara"}];
     renderGate(); renderAll();
     return {Y:Y, H:H};
@@ -706,6 +706,37 @@ await test("Profil: Reise über ⋯ abschließen und wieder öffnen (vor dem End
   await rp(`S.trips.t_alt = newTripObj({id:"t_alt", name:"Alt", start:"2020-05-01", end:"2020-05-05"}); save(); renderProfile(); true`); await page.waitForTimeout(200);
   await page.locator("#profView [data-act=pfmore][data-trip=t_alt]").click();
   ok(await page.locator("#jpMenu [data-act=pffin]").count()===0, "Bereits abgeschlossene Reise bietet „abschließen“ an");
+});
+
+await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“ öffnet die volle Planung", async () => {
+  await seed();
+  ok(await rp(`!isRO() && !document.body.classList.contains("ro") && !document.querySelector("#body .finbar")`), "Laufende Reise startet nicht in der vollen Ansicht");
+  await rp(`T().fin = 1; save(); renderAll(); true`); await page.waitForTimeout(200);
+  ok(await rp(`isRO() && finRO() && !isViewer() && document.body.classList.contains("ro")`), "Abgeschlossene Reise nicht in der Beobachter-Ansicht");
+  ok(await page.locator("#body .finbar [data-act=finedit]").isVisible(), "Knopf „Reise bearbeiten“ fehlt über dem Tagesplan");
+  ok(await page.locator("#body [data-act=done]:visible").count()===0, "Abhaken in der Ansicht sichtbar");
+  ok(await page.locator("#body [data-act=rtoggle]").count()===0, "Routen-Schalter in der Ansicht sichtbar");
+  ok(await page.locator("#tabWish").isHidden(), "Wunschliste in der Ansicht sichtbar");
+  await click("#tripBtn");
+  ok(await page.locator("#tripMenu [data-act=finedit]").isVisible() && await page.locator("#tripMenu [data-act=tripedit]").count()===0, "Reise-Menü bietet nicht „Reise bearbeiten“ (volle Ansicht) an");
+  await rp(`closeMenus(); true`);
+  await shot("abgeschlossen-ansicht");
+  // Bearbeiten: volle Ansicht wie bei aktiven Reisen
+  await click("#body .finbar [data-act=finedit]");
+  ok(await rp(`!isRO() && finEdOn() && !document.body.classList.contains("ro")`), "„Reise bearbeiten“ öffnet nicht die volle Ansicht");
+  ok(await page.locator("#body [data-act=rtoggle]").count()===1, "Routen-Schalter fehlt beim Bearbeiten");
+  ok(await page.locator("#tabWish").isVisible(), "Wunschliste fehlt beim Bearbeiten");
+  ok(await page.locator("#body .finbar [data-act=finview]").isVisible(), "„Fertig“ fehlt beim Bearbeiten");
+  await shot("abgeschlossen-bearbeiten");
+  // Fertig: zurück zur Ansicht; andere Reise und zurück: wieder Ansicht
+  await click("#body .finbar [data-act=finview]");
+  ok(await rp(`isRO() && finRO()`), "„Fertig“ führt nicht zurück zur Ansicht");
+  await click("#body .finbar [data-act=finedit]");
+  await rp(`S.trips.t_mal = newTripObj({id:"t_mal", name:"Mallorca", start:"2027-05-01", end:"2027-05-05"}); tripSwitch("t_mal"); tripSwitch("t_test"); true`);
+  ok(await rp(`finRO()`), "Nach Reisewechsel bleibt die abgeschlossene Reise im Bearbeiten-Modus");
+  // Liste zeigt den Knopf ebenfalls
+  await rp(`openLsPage(); true`); await page.waitForTimeout(200);
+  ok(await page.locator("#lsView .finbar [data-act=finedit]").count()===1, "Knopf „Reise bearbeiten“ fehlt in der Liste");
 });
 
 await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kachel", async () => {

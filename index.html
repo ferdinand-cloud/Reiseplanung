@@ -492,6 +492,13 @@ body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0
 .tf-opt[aria-checked="true"] .sw2{background:var(--ok,#34C759)}
 .tf-opt[aria-checked="true"] .sw2::after{transform:translateX(18px)}
 .tst{font-style:normal;font-weight:600}
+/* Abgeschlossene Reise: Hinweis + „Reise bearbeiten“ über Tagesplan und Liste */
+.finbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:8px 8px 8px 12px;border-radius:14px;background:var(--fill2,var(--chip))}
+.finbar > span{display:flex;flex-direction:column;min-width:0;font-size:13px;line-height:1.25}
+.finbar small{color:var(--muted);font-size:12px}
+.finbar .btn{flex:none;display:inline-flex;align-items:center;gap:6px;margin:0}
+.finbar .btn .ii{width:16px;height:16px}
+.lpcard .finbar{margin:8px 0 0}
 .tst-now{color:var(--ok,#2e9b5a)}
 .tst-opt{color:#AF52DE}
 .tf-lbl{margin:18px 4px 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -5691,7 +5698,7 @@ function cmRef(pid){ return tripRef(S.cur).collection(cmCol(pid)); }
 var cmRsT = null;
 function cmResyncSoon(){ clearTimeout(cmRsT); cmRsT = setTimeout(cmResync, 800); }
 function cmResync(){
-  if(!fbDb || !acct.user || cmTrip!==S.cur || isRO() || !KNOWN[S.cur]) return;
+  if(!fbDb || !acct.user || cmTrip!==S.cur || isViewer() || !KNOWN[S.cur]) return;
   Object.keys(CMTS).forEach(function(pid){ (CMTS[pid]||[]).forEach(function(c){
     var want = cmCol(c.pid); if(!c.col || c.col===want || c.moving) return; c.moving = true;
     var from = tripRef(S.cur).collection(c.col).doc(c.id), to = tripRef(S.cur).collection(want).doc(c.id);
@@ -5733,7 +5740,7 @@ function cmSetShare(list, v){
 // freigegebene Kommentare als Kopie am Ort ablegen – Freunde haben keinen Zugriff auf die Kommentare der Reise
 function pubCmSyncSoon(){ clearTimeout(pubCmT); pubCmT = setTimeout(pubCmSync, 1200); }
 function pubCmSync(){
-  if(!acct.user || cmTrip!==S.cur || isRO() || !KNOWN[S.cur]) return;
+  if(!acct.user || cmTrip!==S.cur || isViewer() || !KNOWN[S.cur]) return;
   var t = T(), want = {};
   Object.keys(CMTS).forEach(function(pid){ (CMTS[pid]||[]).forEach(function(c){
     if(c.share!==true || !cmShareable(c)) return; var r = rootOf(pid);
@@ -6515,6 +6522,7 @@ function zShow(zid, pid){
 function tripSwitch(id){ if(!S.trips[id] || id===S.cur) return; grpSel = ""; S.cur = id; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
 function tripEditFrom(id, fromProf){
   if(!S.trips[id] || isViewerOf(id)) return; tripSwitch(id); closeMenus(); closeSettings();
+  if(tripStatus(S.trips[id])==="done") finEd = id; // abgeschlossen: Bearbeiten öffnet die volle Ansicht
   tdraft = tripToDraft(T(), "edit"); if(fromProf) tdraft.back = "prof"; tab = "trip"; renderSheet(); scheduleOverlay();
 }
 /* Mitreisende & Beobachter als eigenes Pop-up (aus dem ⋯-Menü der Kachel und aus „Reise bearbeiten“) */
@@ -7817,6 +7825,7 @@ function renderLs(){
   }
   if(ids.length > 1 || zielIds().length) h += lsTripDD(S.cur);
   else h += "<p class=\"ls-trip1\"><b>"+esc(t.name||"Reise")+"</b>"+(!t.opt && t.start && t.end ? " · "+shortD(t.start)+"–"+shortD(t.end) : "")+" "+tstatHTML(t)+"</p>";
+  h += finBar();
   // besuchte Orte je Tag
   var visited = [], nPh = 0;
   ds.forEach(function(D){ (t.order[D.key]||[]).forEach(function(id){ var p = P(id); if(p && t.done[id] && p.k!=="hotel") visited.push({id:id, D:D}); }); });
@@ -9115,11 +9124,11 @@ function lpShow(pt){
 }
 function lpRender(){
   if(!lpPt) return;
-  var el = $("catPop"), ro = acct.user && isViewerOf(S.cur);
+  var el = $("catPop"), ro = isRO();
   var h = "<div class=\"pop-card lpcard\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Markierter Punkt\"><div class=\"pop-head\"><h4>Markierter Punkt</h4><button type=\"button\" class=\"x\" data-act=\"lpclose\" aria-label=\"Schließen\">×</button></div>";
   h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || (lpPt.off ? "Offline – Adresse folgt mit Internet" : "Unbenannter Ort")))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
   if(noTrip()) h += "<div class=\"lpacts\"><button type=\"button\" class=\"btn lpphoto\" data-act=\"lpmerk\">"+ZBM+"Für später merken</button></div>";
-  else if(ro) h += "<p class=\"note\">Als Beobachter kannst du nichts übernehmen.</p>";
+  else if(ro) h += "<p class=\"note\">"+(isViewer() ? "Als Beobachter kannst du nichts übernehmen." : "Abgeschlossene Reise: Zum Übernehmen erst „Reise bearbeiten“ wählen.")+"</p>"+finBar();
   else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"planpick\" data-lp=\"1\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+(dayByKey(cur) && dayLegs(cur).length ? "<button type=\"button\" class=\"btn g\" data-act=\"lpvia\">Als Wegpunkt für die Gehroute</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button>"+(dayByKey(cur) ? "<label class=\"btn g lpphoto\" for=\"cphIn\" data-act=\"lpphoto\">"+LPCAM+"Als Fotospot – Fotos hinzufügen</label>" : "")+"<button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button><button type=\"button\" class=\"btn g lpphoto\" data-act=\"lpmerk\">"+ZBM+"Für später merken</button></div>";
   if(lpPt.off && !ro) h += "<p class=\"note lpoff\">Offline: Fotospot und Fotos bleiben auf dem Gerät und werden hochgeladen, sobald du wieder Internet hast.</p>";
   el.innerHTML = h+"</div>"; el.hidden = false;
@@ -13132,7 +13141,7 @@ function renderTop(){
     h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur && !zs)+"\"><span>"+esc(x.name)+"</span><small>"+tstatHTML(x)+esc(x.opt ? "" : " · "+rangeLabel(x.start,x.end))+"</small></button>";
   });
   h += scopeBtns("map")+"<hr>"+
-       (zs ? "" : acct.user && isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Reise-Details</span><small>Mitglieder</small></button>" : "<button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button>")+"<button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
+       (zs ? "" : acct.user && isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Reise-Details</span><small>Mitglieder</small></button>" : finRO() ? "<button type=\"button\" data-act=\"finedit\"><span>Reise bearbeiten</span><small>Volle Planungsansicht</small></button>" : "<button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button>"+(finEdOn() ? "<button type=\"button\" data-act=\"finview\"><span>Bearbeiten beenden</span><small>Zurück zur Ansicht</small></button>" : ""))+"<button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
   $("tripMenu").innerHTML = h;
   var d = dayByKey(cur), r = "";
   if(d) r = "<button type=\"button\" class=\"rd-day\" data-act=\"daypop\" aria-haspopup=\"dialog\" aria-label=\""+esc(d.title)+" – Tag wechseln\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span>"+d.wd+"<span class=\"cnt\">"+shortD(d.key)+"</span><span class=\"chev\">"+CHEV+"</span></button>";
@@ -13938,7 +13947,7 @@ function phFile(ph){
   return phGet(ph).then(function(d){ if(!d) throw new Error("Foto nicht geladen"); return fetch(d).then(function(r){ return r.blob(); }).then(function(b){ return new File([b], "Reiseplan-"+ph+".jpg", {type:b.type || "image/jpeg"}); }); });
 }
 function phSaveLib(ph){
-  if(isRO()){ toast("Fotos herunterladen können nur Mitreisende.", false); return; }
+  if(isViewer()){ toast("Fotos herunterladen können nur Mitreisende.", false); return; }
   phFile(ph).then(function(file){
     if(navigator.canShare && navigator.canShare({files:[file]})){
       return navigator.share({files:[file]}).then(function(){ var b = document.querySelector(".pv-save"); if(b) b.classList.remove("hot"); }, function(){});
@@ -14436,7 +14445,7 @@ function renderTrip(){
     if(!t.opt) h += "<div class=\"tf-row\"><span>Abreise</span><b>"+esc(dayByKey(t.end) ? dayByKey(t.end).title : t.end)+(t.dep?" · "+esc(t.dep):"")+"</b></div>";
     (t.hotels.length ? t.hotels : t.opt ? [] : [null]).forEach(function(x, i){ h += "<div class=\"tf-row\"><span>"+(i===0?(t.hotels.length>1?"Hotels":"Hotel"):"")+"</span><b>"+(x ? esc(x.n)+"<small>"+shortD(x.from)+"–"+shortD(x.to)+"</small>" : "noch keins")+"</b></div>"; });
     t.orte.forEach(function(x, i){ h += "<div class=\"tf-row\"><span>"+(i===0?(t.orte.length>1?"Orte":"Ort"):"")+"</span><b>"+esc(x.n)+(x.from?"<small>"+shortD(x.from)+"–"+shortD(x.to)+"</small>":"")+"</b></div>"; });
-    if(!ro) h += "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"tripedit\">Reise bearbeiten</button>";
+    if(!ro) h += finRO() ? "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"finedit\">Reise bearbeiten</button>" : "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"tripedit\">Reise bearbeiten</button>";
     h += "</div>";
     h += shareBlock();
     if(!ro) h += offHTML();
@@ -14585,7 +14594,7 @@ function renderSheet(){
   if(ae && (body.contains(ae) || tp.contains(ae)) && ae.id && /INPUT|TEXTAREA/.test(ae.tagName)){ fk = {id:ae.id, v:ae.value, a:ae.selectionStart, b:ae.selectionEnd}; }
   applyRO();
   var zsv = zsOn(); document.body.classList.toggle("zsel", !!zsv);
-  body.innerHTML = zsv ? zsListHTML(zsv, "map") : noTrip() ? noTripHTML() : sheetTab==="wish" ? renderWish() : renderDay();
+  body.innerHTML = zsv ? zsListHTML(zsv, "map") : noTrip() ? noTripHTML() : finBar()+(sheetTab==="wish" ? renderWish() : renderDay());
   body.scrollTop = st;
   fillPhotos(body);
   // Reise-Ansicht als eigenes Fenster
@@ -14600,14 +14609,25 @@ function renderSheet(){
   renderWishPop(); shRender();
 }
 var RO_ACTS = {"lpphoto":1,"placevis":1,"placevispick":1,"itemvis":1,"itemvispick":1,"vis":1,"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"wpark":1,"wunpark":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"stay2h":1,"staymark":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1,"jpedit":1};
-function isRO(){ return !!(acct.user && S && isViewerOf(S.cur)); }
+function isViewer(){ return !!(acct.user && S && isViewerOf(S.cur)); }
+/* Abgeschlossene Reise: Ansicht wie für Beobachter, bis man „Reise bearbeiten“ wählt (gilt nur in dieser Sitzung und für diese Reise) */
+var finEd = "";
+function finRO(){ return !!(S && S.trips[S.cur] && !isViewerOf(S.cur) && !T().ziel && tripStatus(T())==="done" && finEd!==S.cur); }
+function finEdOn(){ return !!(S && S.trips[S.cur] && !isViewerOf(S.cur) && tripStatus(T())==="done" && finEd===S.cur); }
+function finBar(){
+  if(finRO()) return "<div class=\"finbar\"><span>"+tstatHTML(T())+"<small>Ansicht wie für Beobachter</small></span><button type=\"button\" class=\"btn s\" data-act=\"finedit\">"+ic("edit", "ii")+"Reise bearbeiten</button></div>";
+  if(finEdOn()) return "<div class=\"finbar on\"><span>"+tstatHTML(T())+"<small>Du bearbeitest die Reise</small></span><button type=\"button\" class=\"btn g s\" data-act=\"finview\">Fertig</button></div>";
+  return "";
+}
+function isRO(){ return isViewer() || finRO(); }
 var roWas = null;
 function applyRO(){
+  if(finEd && finEd!==S.cur) finEd = ""; // andere Reise gewählt: Bearbeiten endet
   var ro = isRO(), k = ro ? S.cur : "";
   document.body.classList.toggle("ro", ro);
   if(ro && tab==="wish") tab = "day";
   if(k===roWas) return; roWas = k;
-  if(!ro){ if(mapReady) applyLayers(); return; }
+  if(!ro || !isViewer()){ if(mapReady) applyLayers(); return; }
   // Beobachter: einmal je Reise 3D-Gebäude und farbige Karte an, Verkehrsmittel aus
   var fk = "rp-vdef-"+k;
   if(lsGet(fk)!=="1"){
@@ -14956,7 +14976,7 @@ document.addEventListener("click", function(e){
   if(!t) return;
   if(t.hasAttribute("data-tab") && !t.hasAttribute("data-act")){ tab = t.getAttribute("data-tab"); renderSheet(); scheduleOverlay(); if(sheetState==="peek") setSheet("mid"); return; }
   var act = t.getAttribute("data-act");
-  if(RO_ACTS[act] && isRO()){ e.preventDefault(); toast("Als Beobachter kannst du nur ansehen.", false); return; }
+  if(RO_ACTS[act] && isRO()){ e.preventDefault(); toast(isViewer() ? "Als Beobachter kannst du nur ansehen." : "Abgeschlossene Reise: zum Ändern „Reise bearbeiten“ antippen.", false); return; }
   // Löschen u. Ä. erst nach Bestätigung (Wischen hat stattdessen „Rückgängig“)
   var cf = CONFIRM[act];
   if(cf){
@@ -15146,6 +15166,8 @@ document.addEventListener("click", function(e){
     case "day": cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "gotoday": closeCatPop(); closeJpMore(); if(jp) closeJPop(); cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
     case "trip": closeSettings(); zsSet(""); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
+    case "finedit": closeMenus(); finEd = S.cur; renderAll(); break;
+    case "finview": closeMenus(); finEd = ""; if(tab==="trip" && tdraft) tdraft = null; renderAll(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); break;
     case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
     case "topt": if(tdraft){ tdraft.opt = !tdraft.opt; tdraft.err = ""; if(tdraft.opt && /^hotels/.test(tdraft.ok||"")) tdraft.ok = ""; renderSheet(); } break;
@@ -15629,7 +15651,7 @@ document.addEventListener("submit", function(e){
   if(id==="tForm"){
     var err = saveTrip();
     if(err){ tdraft.err = err; renderSheet(); return; }
-    var wasNew = tdraft.mode==="new"; tdraft = null; save(); dirty();
+    var wasNew = tdraft.mode==="new"; tdraft = null; save(); dirty(); if(wasNew) finEd = S.cur;
     if(wasNew) closeProfile(); // angelegt: direkt zur Karte; Bearbeiten bleibt über der Ursprungsansicht
     if(wasNew || !dayByKey(cur)) pickDefaultDay();
     tab = "day"; activeList = "open"; catFilter = {}; sel = null;
@@ -15981,7 +16003,7 @@ function rcLbSide(){
   var nc = (CMTS["ph:"+ph] || []).length, SV = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   sd.innerHTML = (phSocial() ? "<button type=\"button\" class=\"pvi\" data-act=\"rclbcm\" aria-label=\"Kommentare und Gefällt mir\">"+SV(IC.comment)+"<span>"+(nc || "")+"</span></button>" : "")+
     (acct.user ? "<button type=\"button\" class=\"pvi\" data-act=\"rclbsend\" aria-label=\"Im Chat schicken\">"+SV(IC.send)+"</button>" : "")+
-    (isRO() ? "" : "<button type=\"button\" class=\"pvi\" data-act=\"rclbsave\" aria-label=\"In Fotos sichern\">"+SV(IC.download)+"</button>")+
+    (isViewer() ? "" : "<button type=\"button\" class=\"pvi\" data-act=\"rclbsave\" aria-label=\"In Fotos sichern\">"+SV(IC.download)+"</button>")+
     (phPlace(ph) ? "<button type=\"button\" class=\"pvi\" data-act=\"rclbopen\" aria-label=\"Alle Optionen zum Foto\">"+SV(IC.more)+"</button>" : "");
 }
 function rcLbFull(cm){ var ph = rcLbPh(), pid = ph && phPlace(ph); if(!pid || !P(pid)) return; openJPop(pid, dayOf(pid) || "", ph); if(jp) jp.ret = "recap"; if(cm){ pvCm = true; phMetaRefresh(); } }
