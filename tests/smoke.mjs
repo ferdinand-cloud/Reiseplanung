@@ -724,7 +724,8 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await rp(`$("sheetOpen").textContent.trim()==="Tagebuch" && $("tabDay").textContent==="Tagebuch"`), "Knopf unten/Reiter heißen im Ansichtsmodus nicht „Tagebuch“");
   await click("#tripBtn");
   ok(await page.locator("#tripMenu > .tm-fin[data-act=finedit]").isVisible() && await page.locator("#tripMenu [data-act=tripedit]").count()===0, "Reise-Menü bietet nicht „Reise bearbeiten“ (oben, hervorgehoben) an");
-  ok(await rp(`$("tripMenu").firstElementChild.getAttribute("data-act")==="finedit"`), "„Reise bearbeiten“ steht nicht oben im Reise-Menü");
+  ok(await rp(`var m = $("tripMenu"), a = m.children[0], b = m.children[1]; a.classList.contains("tm-cur") && a.getAttribute("aria-current")==="true" && a.textContent.indexOf("Testreise") > -1 && b.getAttribute("data-act")==="finedit"`), "Gewählte Reise steht nicht oben, „Reise bearbeiten“ nicht direkt darunter");
+  ok(await page.locator("#tripMenu .sc-b.on").count()===0, "„Vergangene Reisen“ ist noch hervorgehoben");
   await shot("abgeschlossen-ansicht");
   // Bearbeiten: volle Ansicht wie bei aktiven Reisen
   await click("#tripMenu [data-act=finedit]");
@@ -749,6 +750,8 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await page.locator("#lsView .finbar").count()===0, "Leiste „Reise bearbeiten“ steht noch in der Liste");
   await click("#lsView [data-act=lstrippick]");
   ok(await page.locator("#jpMenu .tm-fin[data-act=finedit]").isVisible(), "„Reise bearbeiten“ fehlt in der Reise-Auswahl der Liste");
+  ok(await rp(`var c = $("jpMenu").querySelector(".tm-cur"); !!c && c.textContent.indexOf("Testreise") > -1 && c.compareDocumentPosition($("jpMenu").querySelector(".tm-fin")) & 4`), "Gewählte Reise steht in der Liste nicht über „Reise bearbeiten“");
+  ok(await page.locator("#jpMenu .sc-b.on").count()===0, "„Vergangene Reisen“ in der Liste noch hervorgehoben");
 });
 
 await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kachel", async () => {

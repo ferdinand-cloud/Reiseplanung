@@ -500,7 +500,7 @@ body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0
 .tm-fin small{color:var(--muted);font-weight:500}
 .tripmenu button.tm-fin.on,.jpmenu button.tm-fin.on{background:var(--fill);color:inherit}
 .tripmenu button.tm-fin{margin-bottom:4px}
-.jpmenu button.tm-fin{margin-top:6px}
+.jpmenu button.tm-fin{margin:2px 0 4px}
 .tst-now{color:var(--ok,#2e9b5a)}
 .tst-opt{color:#AF52DE}
 .tf-lbl{margin:18px 4px 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -6492,7 +6492,7 @@ function scopeBtns(ctx){
   var nz = zielIds().length, np = scopePast(ctx).length, cur = scopeCur(ctx), b = function(k, ico, lbl, n, on){
     return "<button type=\"button\" class=\"sc-b"+(on ? " on" : "")+"\" data-act=\"scopepop\" data-k=\""+k+"\" data-ctx=\""+ctx+"\" aria-haspopup=\"dialog\"><span class=\"sc-i\">"+ico+"</span><span class=\"sc-l\">"+lbl+"</span><small>"+n+"</small></button>"; };
   if(!nz && !np) return "";
-  return "<div class=\"sc-btns\">"+(nz ? b("z", ZBM, "Ziele", nz, !!Z(cur)) : "")+(np ? b("past", ic("trip"), "Vergangene Reisen", np, !!cur && scopePast(ctx).indexOf(cur) > -1) : "")+"</div>";
+  return "<div class=\"sc-btns\">"+(nz ? b("z", ZBM, "Ziele", nz, ctx==="dc" && !!Z(cur)) : "")+(np ? b("past", ic("trip"), "Vergangene Reisen", np, ctx==="dc" && !!cur && scopePast(ctx).indexOf(cur) > -1) : "")+"</div>";
 }
 function scopePop(k, ctx){
   var zz = k==="z", ids = zz ? zielIds() : scopePast(ctx), cur = scopeCur(ctx), ttl = zz ? "Ziele" : "Vergangene Reisen";
@@ -7812,8 +7812,8 @@ function lsTripDD(cur){ var t = cur && S.trips[cur], zz = t && t.ziel, sub = t ?
   return "<div class=\"ls-dds ls-tripdds\"><button type=\"button\" class=\"ls-dd ls-tripdd\" data-act=\"lstrippick\" aria-haspopup=\"menu\" aria-label=\"Reise wählen\">"+
     (t ? (zz ? "<span class=\"dc-tz\" style=\"--cc:"+tripColor(cur)+"\">"+ZBM+"</span>" : "<i class=\"dc-tdot\" style=\"--cc:"+tripColor(cur)+"\"></i>")+"<span class=\"ls-ddn\">"+esc(t.name||"Reise")+"</span>"+(sub ? "<small>"+esc(sub)+"</small>" : "") : "<span class=\"ls-ddn\">Reise wählen</span>")+CHEV+"</button></div>"; }
 function lsTripMenu(btn){ var ids = scopeNow("ls"), zs = zsOn();
-  var h = (ids.length > 5 ? frPickHead("Reise", "Reise suchen", "Keine Reise gefunden") : "<div class=\"vp-h\">Reise</div>")+ids.map(function(id){ var t = S.trips[id], on = id===S.cur && !isViewerOf(S.cur) && !zs;
-    return "<button type=\"button\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" data-frn=\""+esc(((t.name||"")+" "+(t.start||"").slice(0, 4)).toLowerCase())+"\" role=\"menuitemradio\" aria-checked=\""+on+"\"><span class=\"ai\"><i class=\"dc-tdot\" style=\"--cc:"+tripColor(id)+"\"></i></span><span>"+esc(t.name||"Reise")+(lsTripSub(t) ? "<small class=\"ls-tsub\">"+esc(lsTripSub(t))+"</small>" : "")+"</span>"+(on ? "<span class=\"ck\">✓</span>" : "")+"</button>"; }).join("")+scopeBtns("ls")+(zs ? "" : finRow());
+  var h = (ids.length > 5 ? frPickHead("Reise", "Reise suchen", "Keine Reise gefunden") : "<div class=\"vp-h\">Reise</div>")+curTopHTML("ls")+(zs ? "" : finRow())+ids.map(function(id){ var t = S.trips[id], on = id===S.cur && !isViewerOf(S.cur) && !zs;
+    return "<button type=\"button\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" data-frn=\""+esc(((t.name||"")+" "+(t.start||"").slice(0, 4)).toLowerCase())+"\" role=\"menuitemradio\" aria-checked=\""+on+"\"><span class=\"ai\"><i class=\"dc-tdot\" style=\"--cc:"+tripColor(id)+"\"></i></span><span>"+esc(t.name||"Reise")+(lsTripSub(t) ? "<small class=\"ls-tsub\">"+esc(lsTripSub(t))+"</small>" : "")+"</span>"+(on ? "<span class=\"ck\">✓</span>" : "")+"</button>"; }).join("")+scopeBtns("ls");
   jpPopover("lst", btn, h, "lstrip"); }
 function renderLs(){
   var el = $("lsView"); if(!el) return;
@@ -13142,7 +13142,7 @@ var CHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" str
 function renderTop(){
   var t = T(), zs = zsOn(), zt = zs && Z(zs);
   $("tripBtn").innerHTML = zt ? "<b>"+esc(zt.name)+"</b><span>Ziel</span>"+CHEV : "<b>"+esc(t.name)+"</b><span>"+esc(t.opt ? "Option" : rangeLabel(t.start,t.end))+"</span>"+CHEV; tripFit(); requestAnimationFrame(tripFit);
-  var h = zs ? "" : finRow();
+  var h = curTopHTML("map")+(zs ? "" : finRow());
   // laufende und kommende Reisen direkt, abgeschlossene und Ziele über die Knöpfe darunter
   scopeNow("map").map(function(k){ return S.trips[k]; }).forEach(function(x){
     h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur && !zs)+"\"><span>"+esc(x.name)+"</span><small>"+tstatHTML(x)+esc(x.opt ? "" : " · "+rangeLabel(x.start,x.end))+"</small></button>";
@@ -14622,9 +14622,15 @@ function isViewer(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 var finEd = "";
 function finRO(){ return !!(S && S.trips[S.cur] && !isViewerOf(S.cur) && !T().ziel && tripStatus(T())==="done" && finEd!==S.cur); }
 function finEdOn(){ return !!(S && S.trips[S.cur] && !isViewerOf(S.cur) && tripStatus(T())==="done" && finEd===S.cur); }
+// Aktuelle Auswahl (vergangene Reise oder Ziel) oben im Reise-Menü, wenn sie nicht unter den laufenden/kommenden steht
+function curTopHTML(ctx){
+  var cur = scopeCur(ctx), t = cur && S.trips[cur]; if(!t || scopeNow(ctx).indexOf(cur) > -1) return "";
+  if(ctx==="map") return "<button type=\"button\" class=\"tm-cur\" data-act=\"tmcur\" aria-current=\"true\"><span>"+esc(t.name||"Reise")+"</span><small>"+(t.ziel ? "Ziel" : tstatHTML(t)+esc(t.opt ? "" : " · "+rangeLabel(t.start,t.end)))+"</small></button>";
+  return "<button type=\"button\" class=\"tm-cur\" data-act=\"tmcur\" role=\"menuitemradio\" aria-checked=\"true\"><span class=\"ai\">"+(t.ziel ? "<span class=\"dc-tz\" style=\"--cc:"+tripColor(cur)+"\">"+ZBM+"</span>" : "<i class=\"dc-tdot\" style=\"--cc:"+tripColor(cur)+"\"></i>")+"</span><span>"+esc(t.name||"Reise")+"<small class=\"ls-tsub\">"+esc(t.ziel ? "Ziel" : lsTripSub(t))+"</small></span><span class=\"ck\">✓</span></button>";
+}
 // Moduswechsel oben im Reise-Menü (Karte und Liste): Ansichtsmodus ↔ Bearbeitungsmodus
 function finRow(){
-  if(finRO()) return "<button type=\"button\" class=\"tm-fin\" data-act=\"finedit\">"+ic("edit", "ii")+"<span><b>Reise bearbeiten</b><small>Abgeschlossen · gerade Ansichtsmodus</small></span></button>";
+  if(finRO()) return "<button type=\"button\" class=\"tm-fin\" data-act=\"finedit\">"+ic("edit", "ii")+"<span><b>Reise bearbeiten</b><small>Gerade im Ansichtsmodus</small></span></button>";
   if(finEdOn()) return "<button type=\"button\" class=\"tm-fin on\" data-act=\"finview\">"+ic("eye", "ii")+"<span><b>Bearbeiten beenden</b><small>Zurück zum Ansichtsmodus</small></span></button>";
   return "";
 }
@@ -15178,8 +15184,9 @@ document.addEventListener("click", function(e){
     case "day": cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "gotoday": closeCatPop(); closeJpMore(); if(jp) closeJPop(); cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
     case "trip": closeSettings(); zsSet(""); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
-    case "finedit": closeMenus(); finEd = S.cur; renderAll(); break;
-    case "finview": closeMenus(); finEd = ""; if(tab==="trip" && tdraft) tdraft = null; renderAll(); break;
+    case "tmcur": closeMenus(); closeJpMore(); break;
+    case "finedit": closeMenus(); closeJpMore(); finEd = S.cur; renderAll(); break;
+    case "finview": closeMenus(); closeJpMore(); finEd = ""; if(tab==="trip" && tdraft) tdraft = null; renderAll(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); break;
     case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
     case "topt": if(tdraft){ tdraft.opt = !tdraft.opt; tdraft.err = ""; if(tdraft.opt && /^hotels/.test(tdraft.ok||"")) tdraft.ok = ""; renderSheet(); } break;
