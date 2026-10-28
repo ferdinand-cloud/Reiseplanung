@@ -8810,7 +8810,7 @@ function apply3d(silent){
 }
 /* 3D-Ansicht (wie Apple Karten): Knopf erscheint erst ab Zoom 15, wo die Gebäude Höhe haben; Standard 3D,
    d. h. beim Hineinzoomen kippt die Karte einmal weich. Wahl 2D/3D gemerkt auf dem Gerät. */
-var v3d = lsGet("rp-3dv")!=="0", V3DZ = 15, v3dDone = false;
+var v3d = lsGet("rp-3dv")!=="0", V3DZ = 15, v3dDone = false, v3dT = 0, v3dFingers = 0;
 function v3dPlace(){
   var b = $("b3dBtn"), sb = $("srchBtn"); if(!b || b.hidden || !sb) return;
   if(getComputedStyle(b).position!=="absolute"){ b.style.top = b.style.left = ""; return; }
@@ -8827,11 +8827,16 @@ function v3dShow(){
 }
 function v3dMoveEnd(e){
   if(!map || !mapReady || NAV) return;
-  var z = map.getZoom();
+  var z = map.getZoom(), gesture = !!(e && e.originalEvent);
   if(z < V3DZ - .5) v3dDone = false;
-  if(z < 13.5 && map.getPitch() > 1){ map.easeTo({pitch:0, duration: reduceMotion?0:400}); return; } // Gebäude weg → wieder flach
-  // nur nach eigener Geste kippen: Sprünge der App zu einem Punkt bleiben, wie sie sind (Punkt bleibt sichtbar)
-  if(v3d && !v3dDone && e && e.originalEvent && z >= V3DZ && map.getPitch() < 5){ v3dDone = true; map.easeTo({pitch:50, duration: reduceMotion?0:600}); }
+  // Kippen erst nach dem Ereignis: ein easeTo direkt in moveend stört MapLibres Gesten-Verarbeitung (Karte ließ sich danach nicht mehr bewegen)
+  clearTimeout(v3dT); v3dT = setTimeout(function(){
+    if(!map || NAV || map.isMoving() || v3dFingers) return; // Finger noch auf der Karte: nicht dazwischenfunken (nächstes moveend holt es nach)
+    var z2 = map.getZoom();
+    if(z2 < 13.5 && map.getPitch() > 1){ map.easeTo({pitch:0, duration: reduceMotion?0:400}); return; } // Gebäude weg → wieder flach
+    // nur nach eigener Geste kippen: Sprünge der App zu einem Punkt bleiben, wie sie sind (Punkt bleibt sichtbar)
+    if(gesture && v3d && !v3dDone && z2 >= V3DZ && map.getPitch() < 5){ v3dDone = true; map.easeTo({pitch:50, duration: reduceMotion?0:600}); }
+  }, 60);
 }
 function v3dToggle(){
   if(!map) return;
@@ -8847,6 +8852,7 @@ function initMap(){
   map.on("move", onMove);
   map.on("idle", ferryRetry);
   map.on("moveend", v3dMoveEnd);
+  ["touchstart","touchend","touchcancel"].forEach(function(ev){ $("gl").addEventListener(ev, function(e){ v3dFingers = e.touches ? e.touches.length : 0; if(!v3dFingers && ev!=="touchstart") v3dMoveEnd(); }, {passive:true, capture:true}); });
   map.on("click", function(e){ if(Date.now()-lpAt < 900) return; tap(e.point.x, e.point.y); });
   lpInit();
   map.on("error", function(e){ if(!navigator.onLine) setNet(false); });

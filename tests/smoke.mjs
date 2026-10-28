@@ -3756,6 +3756,35 @@ await test("3D-Karte: Knopf bei Suche und Plus erst ab Zoomstufe, Standard 3D ki
   await rp(`map.jumpTo({zoom:12, pitch:0}); reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches; true`);
 });
 
+await test("3D-Karte: nach Rauszoomen aus 3D (Karte wird flach) lässt sich die Karte weiter verschieben", async () => {
+  await seed(); await rp(`reduceMotion = false; lsSet("rp-3dv", "1"); v3d = true; v3dDone = true; map.jumpTo({center:[-73.985, 40.758], zoom:14.2, pitch:50}); true`);
+  await page.waitForTimeout(300);
+  // Touch-Folge direkt an die Karte (Zwei-Finger-Zusammenziehen bzw. ein Finger), Schritt für Schritt mit echten Frames
+  const touches = (frames) => page.evaluate(async (frames) => {
+    const el = document.querySelector("#gl .maplibregl-canvas"), r = el.getBoundingClientRect();
+    const mk = (pts) => pts.map((p, i) => new Touch({identifier:p[2] || i+1, target:el, clientX:r.left + p[0], clientY:r.top + p[1]}));
+    const fire = (type, pts, all) => el.dispatchEvent(new TouchEvent(type, {bubbles:true, cancelable:true, touches:mk(all), targetTouches:mk(all), changedTouches:mk(pts)}));
+    fire("touchstart", frames[0], frames[0]);
+    for(const f of frames.slice(1)){ await new Promise(r => requestAnimationFrame(() => setTimeout(r, 16))); fire("touchmove", f, f); }
+    const last = frames[frames.length-1];
+    // wie auf dem iPhone: ein Finger geht zuerst hoch, der zweite kurz danach
+    if(last.length > 1){ await new Promise(r => setTimeout(r, 16)); fire("touchend", [[last[1][0], last[1][1], 2]], [last[0]]); await new Promise(r => setTimeout(r, 300)); fire("touchend", [last[0]], []); }
+    else { await new Promise(r => setTimeout(r, 16)); fire("touchend", last, []); }
+  }, frames);
+  const pinch = []; for(let k = 0; k <= 14; k++){ const d = 150 - k*10; pinch.push([[195 - d, 300], [195 + d, 300]]); }
+  await touches(pinch);
+  await page.waitForFunction(() => window.__rp("map.getPitch() < 1 && !map.isMoving()"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`map.getZoom()`) < 13.5, "Geste hat nicht herausgezoomt: "+await rp(`map.getZoom()`));
+  ok(await rp(`map.getPitch()`) < 1, "Karte nach dem Herauszoomen nicht flach: "+await rp(`map.getPitch()`));
+  await page.waitForTimeout(300);
+  const c0 = await rp(`JSON.stringify(map.getCenter())`);
+  const drag = []; for(let k = 0; k <= 10; k++) drag.push([[200 - k*12, 300 + k*6]]);
+  await touches(drag); await page.waitForTimeout(800);
+  ok(await rp(`JSON.stringify(map.getCenter())`) !== c0, "Karte lässt sich nach dem Zurückkippen nicht mehr verschieben");
+  ok(!errs.some(e => /_onEaseFrame|already running/.test(e)), "Fehler der Karte: "+errs.join(" | "));
+  await rp(`reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches; true`);
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }
