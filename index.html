@@ -271,6 +271,11 @@ body.zsel #sheet .tabs{display:none}
 .rd-day .chev{display:block;line-height:0;color:var(--muted)}.rd-day .chev svg{width:12px;height:12px}
 .rail[hidden]{display:none}
 .daylist button{gap:12px}
+.daylist .dayall{justify-content:center;gap:10px;font-weight:700;font-size:15px;background:var(--chip);border-radius:14px;margin-bottom:6px}
+.daylist .dayall[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--ink)}
+.dayall .ab,.rd-day .b.ab,.dhd .b.ab{background:conic-gradient(var(--dc)) !important}
+.dayall .ab{width:26px;height:26px;border-radius:50%;flex:0 0 26px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+.adl .dt b{font-size:15px}
 .daylist .b{width:34px;height:34px;flex:0 0 34px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 17px/1 var(--f-display)}
 .daylist .b.y{color:#17212c}
 .daylist .dt{display:grid;gap:2px;min-width:0}
@@ -8663,6 +8668,11 @@ function suggest(k, n){
 
 /* ---------- UI-Zustand ---------- */
 var cur = "", tab = "day", activeList = "open", catFilter = {}, sel = null, pick = null;
+/* Gesamtansicht „Alle Tage“: Karte zeigt die Stopps und Wege aller Tage (gilt für die Reise, in der sie gewählt wurde) */
+var allD = "";
+function allOn(){ if(allD && (!S || allD!==S.cur || !days().length)) allD = ""; return !!allD && !zsOn(); }
+function mapDays(){ return allOn() ? days().map(function(d){ return d.key; }) : dayByKey(cur) ? [cur] : []; }
+function allDc(){ var ds = days(), n = ds.length || 1; return ds.map(function(d, i){ return dayColor(d)+" "+(i*100/n).toFixed(1)+"% "+((i+1)*100/n).toFixed(1)+"%"; }).join(","); }
 function catOk(c){ return !Object.keys(catFilter).length || !!catFilter[c]; }
 function catAny(){ return Object.keys(catFilter).length > 0; }
 function catKeys(){ return Object.keys(catFilter).filter(function(k){ return k!=="_none"; }); }
@@ -9056,7 +9066,7 @@ function movableAt(x, y){
   if(pick || vmPick || viaPick || isRO() || !map || zsOn()) return null;
   var best = null, bd = 26, D = dayByKey(cur);
   function test(id){ var r = rootOf(id), p = P(r); if(!canMove(p)) return; var q = pt(P(id)), d = Math.hypot(q[0]-x, q[1]-y); if(d < bd){ best = r; bd = d; } }
-  if(D) ord(cur).forEach(test);
+  mapDays().forEach(function(dk){ ord(dk).forEach(test); });
   if(layers.wish || wishView()) wishes().forEach(function(w){ test(w.id); });
   PHMK.forEach(test);
   // Wegpunkte der Route (liegen über den Stopps nur, wenn sie näher sind)
@@ -10572,17 +10582,19 @@ function drawOverlay(){
     });
   }
   // Route des Tages: Hotel → Stopps → Hotel (Fußweg oder ÖPNV)
-  var HT = D && hRim(D), pts = D ? routePts(cur) : [], col = dayColor(cur), viaSvg = ""; VIAMK = []; RTMK = [];
+  var ALL = allOn(), viaSvg = ""; VIAMK = []; RTMK = [];
   if(zs || !layers.route || isRO() || (NAV && NAV.pts)){ /* Route ausgeblendet; Beobachter sehen keine Routen; während der Navigation (auch ausgeblendet) nur deren Weg */ }
-  else if(pts.length){
+  else mapDays().forEach(function(cur){ // Gesamtansicht: Wege aller Tage in ihrer Tagesfarbe
+    var DD = dayByKey(cur), HT = DD && hRim(DD), pts = routePts(cur), col = dayColor(cur);
+    if(!pts.length) return;
     var labels = "";
     if(vmPick){ var vmz = pt({la:vmPick.q[0], lo:vmPick.q[1]}); viaSvg += "<circle class=\"vmring\" cx=\""+f1(vmz[0])+"\" cy=\""+f1(vmz[1])+"\" r=\"13\" fill=\"none\" stroke=\"#FF9F0A\" stroke-width=\"3\"/>";
       if(vmPick.first){ var vf = vmNode(vmPick.first); if(vf && hasLoc(vf)){ var vfz = pt(vf); viaSvg += "<circle cx=\""+f1(vfz[0])+"\" cy=\""+f1(vfz[1])+"\" r=\"19\" fill=\"rgba(255,159,10,.18)\" stroke=\"#FF9F0A\" stroke-width=\"3\"/>"; } } }
     dayLegs(cur).forEach(function(pair, li){
       if(legHidden(pair[0], pair[1])) return;
-      var op = (legSel<0 || legSel===li) ? 1 : .28;
+      var op = (ALL || legSel<0 || legSel===li) ? 1 : .28;
       var vv = legVia(pair[0], pair[1]);
-      vv.forEach(function(q, vi){ var z = pt({la:q[0], lo:q[1]}); VIAMK.push({li:li, vi:vi, x:z[0], y:z[1]});
+      if(!ALL) vv.forEach(function(q, vi){ var z = pt({la:q[0], lo:q[1]}); VIAMK.push({li:li, vi:vi, x:z[0], y:z[1]});
         viaSvg += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"7\" fill=\"#fff\" stroke=\""+col+"\" stroke-width=\"3\" opacity=\""+op+"\"/><circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"2.2\" fill=\""+col+"\" opacity=\""+op+"\"/>"; });
       if(legMode(pair[0], pair[1])==="bike"){
         var br = bikeRoute(pair[0], pair[1]);
@@ -10626,7 +10638,7 @@ function drawOverlay(){
         else if(l.t==="xfer"){ var tx = stLL(l.to); seg([at, tx], "var(--ink)", "1 6", 3); at = tx; }
         else if(l.t==="ride"){
           var ll = l.stops.map(stLL); seg(ridePath(l), NET.r[l.r][1], "", 5.5); at = ll[ll.length-1];
-          ll.forEach(function(q, j){ if(j===0 || j===ll.length-1){ var z = pt(q); RTMK.push({x:z[0], y:z[1], si:j ? l.to : l.from, r:l.r}); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"4.5\" fill=\"var(--land)\" stroke=\""+NET.r[l.r][1]+"\" stroke-width=\"2.5\" opacity=\""+op+"\"/>"; } });
+          ll.forEach(function(q, j){ if(j===0 || j===ll.length-1){ var z = pt(q); if(!ALL) RTMK.push({x:z[0], y:z[1], si:j ? l.to : l.from, r:l.r}); s += "<circle cx=\""+f1(z[0])+"\" cy=\""+f1(z[1])+"\" r=\"4.5\" fill=\"var(--land)\" stroke=\""+NET.r[l.r][1]+"\" stroke-width=\"2.5\" opacity=\""+op+"\"/>"; } });
           if(op===1){
             var m = pt(ll[Math.floor(ll.length/2)]), rr = NET.r[l.r];
             labels += lineBadge(m, l.r);
@@ -10636,10 +10648,10 @@ function drawOverlay(){
       });
     });
     s += labels;
-  }
+  });
   // Hotels der Reise (das Hotel des Tages kräftig)
   if(!zs) T().hotels.filter(hasLoc).forEach(function(h){
-    var q = pt(h); if(!onScreen(q,30)) return; var on = D && D.hotel && D.hotel.id===h.id, op = on ? 1 : .6;
+    var q = pt(h); if(!onScreen(q,30)) return; var on = ALL || (D && D.hotel && D.hotel.id===h.id), op = on ? 1 : .6;
     s += "<g opacity=\""+op+"\">"+mkShadow(q[0], q[1], 12)+"<rect x=\""+f1(q[0]-13)+"\" y=\""+f1(q[1]-13)+"\" width=\"26\" height=\"26\" rx=\"8\" fill=\"#fff\"/><rect x=\""+f1(q[0]-10.5)+"\" y=\""+f1(q[1]-10.5)+"\" width=\"21\" height=\"21\" rx=\"6\" fill=\"#17212c\"/>"+
          "<path d=\"M"+f1(q[0]-6)+" "+f1(q[1]+5)+"v-9.5M"+f1(q[0]-6)+" "+f1(q[1]+1.5)+"h12v3.5M"+f1(q[0]-6)+" "+f1(q[1]+1.5)+"v-3.2h4.2a2.6 2.6 0 0 1 2.6 2.6\" stroke=\"#fff\" stroke-width=\"1.7\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\""+f1(q[0]+3.4)+"\" cy=\""+f1(q[1]-2.2)+"\" r=\"1.9\" fill=\"#fff\"/></g>";
     if(zoomed || sel===h.id) mkLabel(q[0]+18, q[1], h.n, sel===h.id, sel===h.id ? 10 : 2);
@@ -10647,11 +10659,11 @@ function drawOverlay(){
   s += viaSvg;
   // Stopps
   var n = 0, ancIds = {}, slabels = "";
-  if(D && !zs) ord(cur).forEach(function(id){
+  if(!zs) mapDays().forEach(function(dk){ var n = 0, col = dayColor(dk), yl = yel(dk); ord(dk).forEach(function(id){
     var p = P(id); if(p && p.k==="hotel") return; n++;
     if(!hasLoc(p) || mapHid(id)) return;
     var q0 = pt(p); MK.push({x0:q0[0]-15, y0:q0[1]-15, x1:q0[0]+15, y1:q0[1]+15});
-    var q = q0, done = !!T().done[id], isSel = sel===id, fill = done ? "#7d8a96" : col, txt = yel(cur) && !done ? "#17212c" : "#fff", th = firstThumb(id), op = done && !isSel ? .82 : 1;
+    var q = q0, done = !!T().done[id], isSel = sel===id, fill = done ? "#7d8a96" : col, txt = yl && !done ? "#17212c" : "#fff", th = firstThumb(id), op = done && !isSel ? .82 : 1;
     if(isSel) s += "<circle class=\"halo\" cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"26\" fill=\""+col+"\" opacity=\".18\"/>";
     if(th){
       var r = isSel ? 18 : 15.5;
@@ -10666,12 +10678,12 @@ function drawOverlay(){
       if(p.k==="spot") s += "<circle cx=\""+f1(q[0]+R*.72)+"\" cy=\""+f1(q[1]+R*.72)+"\" r=\"5.2\" fill=\"#fff\"/><circle cx=\""+f1(q[0]+R*.72)+"\" cy=\""+f1(q[1]+R*.72)+"\" r=\"3.3\" fill=\"#007AFF\"/>";
       if(zoomed || isSel) mkLabel(q[0] + R + 9, q[1], p.n, true, isSel ? 10 : 3);
     }
-  });
+  }); });
   // Fotos aller anderen Punkte (andere Tage, ausgeblendete erledigte Stopps): kleine Foto-Marker, damit Erinnerungen immer auf der Karte sind
   PHMK = [];
   if(visOn() && !zs) (function(){
     var shown = {}, ps = T().photos || {};
-    if(D) ord(cur).forEach(function(id){ if(!mapHid(id) && !(P(id) && P(id).k==="hotel")) shown[id] = 1; });
+    mapDays().forEach(function(dk){ ord(dk).forEach(function(id){ if(!mapHid(id) && !(P(id) && P(id).k==="hotel")) shown[id] = 1; }); });
     if((layers.wish || wishView()) && !isRO()) wishes().forEach(function(w){ shown[w.id] = 1; });
     Object.keys(ps).forEach(function(pid){
       var q0p = P(pid); if(shown[pid] || !q0p || !hasLoc(q0p) || !(ps[pid]||[]).length || (isRO() && !dayOf(pid))) return;
@@ -10713,6 +10725,12 @@ function fitPoints(pts, minM){
   try {
     map.fitBounds([[minLo,minLa],[maxLo,maxLa]], {padding:pad, maxZoom: zoomFor(minM||1.2, lat), bearing: map.getBearing(), duration: reduceMotion?0:600});
   } catch(e){ map.jumpTo({center:[(minLo+maxLo)/2, lat]}); }
+}
+function fitAll(){
+  var pts = T().hotels.filter(hasLoc);
+  days().forEach(function(d){ pts = pts.concat(routePts(d.key)); });
+  if(pts.length > 1) return fitPoints(pts, 1.6);
+  fitDay();
 }
 function fitDay(){
   if(noTrip()){ if(map) try { map.jumpTo({center:[0, 25], zoom:1.2}); } catch(e){} return; }
@@ -11507,7 +11525,7 @@ function tap(x, y){
     if(zh){ var zit = zsItems(zsm)[zh.i]; if(zit){ zsShow(zsm, zit); return; } } }
   var best = null, bd = 24, D = zsm ? null : dayByKey(cur);
   function test(id, p, rad){ if(!hasLoc(p)) return; var q = pt(p), d = Math.hypot(q[0]-x, q[1]-y); if(d < Math.max(rad, bd) && (!best || d < bd)){ best = id; bd = d; } }
-  if(D) ord(cur).forEach(function(id){ test(id, P(id), 20); });
+  if(D) mapDays().forEach(function(dk){ ord(dk).forEach(function(id){ test(id, P(id), 20); }); });
   if(!zsm) T().hotels.forEach(function(h){ test(h.id, h, 18); });
   if(!best && (layers.wish || wishView()) && !isRO() && !zsm) wishes().forEach(function(w){ test(w.id, w, 16); });
   if(!best) PHMK.forEach(function(pid){ test(pid, P(pid), 14); });
@@ -13151,7 +13169,8 @@ function renderTop(){
        (zs ? "" : acct.user && isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Reise-Details</span><small>Mitglieder</small></button>" : finRO() ? "" : "<button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button>")+"<button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
   $("tripMenu").innerHTML = h;
   var d = dayByKey(cur), r = "";
-  if(d) r = "<button type=\"button\" class=\"rd-day\" data-act=\"daypop\" aria-haspopup=\"dialog\" aria-label=\""+esc(d.title)+" – Tag wechseln\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span>"+d.wd+"<span class=\"cnt\">"+shortD(d.key)+"</span><span class=\"chev\">"+CHEV+"</span></button>";
+  if(d && allOn()) r = "<button type=\"button\" class=\"rd-day\" data-act=\"daypop\" aria-haspopup=\"dialog\" aria-label=\"Alle Tage – Tag wechseln\"><span class=\"b ab\" style=\"--dc:"+allDc()+"\"></span>Alle<span class=\"cnt\">"+days().length+" Tage</span><span class=\"chev\">"+CHEV+"</span></button>";
+  else if(d) r = "<button type=\"button\" class=\"rd-day\" data-act=\"daypop\" aria-haspopup=\"dialog\" aria-label=\""+esc(d.title)+" – Tag wechseln\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span>"+d.wd+"<span class=\"cnt\">"+shortD(d.key)+"</span><span class=\"chev\">"+CHEV+"</span></button>";
   $("rail").innerHTML = r;
   $("rail").hidden = !d || !!zs;
 }
@@ -13171,7 +13190,17 @@ var VIAICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" s
 function viaBtn(i, v){ return isRO() ? "" : "<button type=\"button\" class=\"viab"+(v.length?" on":"")+"\" data-act=\"viaedit\" data-leg=\""+i+"\" title=\"Weg über Wegpunkte lenken\" aria-label=\"Wegpunkte setzen"+(v.length ? ", "+v.length+" gesetzt" : "")+"\">"+VIAICO+(v.length ? "<b>"+v.length+"</b>" : "")+"</button>"; }
 var SUGICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7.3 14.5h5.4M8 17h4M10 2.8a5 5 0 0 0-3 9c.6.5.9 1 .9 1.7v1h4.2v-1c0-.7.3-1.2.9-1.7a5 5 0 0 0-3-9z\"/></svg>";
 var GRIPSVG = "<svg viewBox=\"0 0 20 20\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"5\" r=\"1.6\"/><circle cx=\"13\" cy=\"5\" r=\"1.6\"/><circle cx=\"7\" cy=\"10\" r=\"1.6\"/><circle cx=\"13\" cy=\"10\" r=\"1.6\"/><circle cx=\"7\" cy=\"15\" r=\"1.6\"/><circle cx=\"13\" cy=\"15\" r=\"1.6\"/></svg>";
+function renderAllDays(){
+  var tk = todayKey(), tot = 0, dn = 0, rows = "";
+  days().forEach(function(d){
+    var ids = ord(d.key).filter(function(x){ return !isHStop(x); }), n = ids.filter(function(x){ return T().done[x]; }).length; tot += ids.length; dn += n;
+    rows += "<button type=\"button\" data-act=\"day\" data-day=\""+d.key+"\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span><span class=\"dt\"><b>"+esc(d.title)+(d.key===tk?" <em>Heute</em>":"")+"</b><small>"+(ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps")+(n?" · "+n+" erledigt":"") : "noch leer")+(d.hint?" · "+esc(d.hint):"")+"</small></span></button>";
+  });
+  return "<div class=\"dh dhx\"><button type=\"button\" class=\"dhd\" data-act=\"daypop\" aria-label=\"Alle Tage – Tag wechseln\"><span class=\"dring\"><span class=\"b ab\" style=\"--dc:"+allDc()+"\"></span></span><span class=\"dht\"><h2>Alle Tage<svg class=\"dhchev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></h2><p>"+days().length+" Tage · "+tot+(tot===1?" Stopp":" Stopps")+(dn?" · "+dn+" erledigt":"")+"</p></span></button></div>"+
+    "<div class=\"pop-list daylist adl\">"+rows+"</div>";
+}
 function renderDay(){
+  if(allOn()) return renderAllDays();
   var D = dayByKey(cur);
   if(!D && T().opt) return "<p class=\"empty\">Option ohne Termin: Sammle Orte in der Wunschliste. Für Tagespläne unter „Reise bearbeiten“ die Option ausschalten und An- und Abreise eintragen.</p>";
   if(!D) return "<p class=\"empty\">Diese Reise hat noch keine gültigen Daten. Trage im Reiter „Reise“ An- und Abreise ein.</p>";
@@ -14931,10 +14960,12 @@ function openDayPop(forId, mv){
   var mvFrom = dayPopMove ? dayOf(dayPopFor) : "";
   var rv = dayPopFor ? visitsOf(dayPopFor).map(function(v){ return v.k; }) : [];
   var tk = todayKey(), h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Tag wählen\"><div class=\"pop-head\"><h4>"+(dayPopMove ? "Auf welchen Tag verschieben?" : dayPopFor ? (dayOf(rootOf(dayPopFor)) ? "An welchem Tag nochmal hin?" : "Zu welchem Tag hinzufügen?") : "Tag wählen")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"pop-list daylist\">";
+  var ao = allOn();
+  if(!dayPopFor) h += "<button type=\"button\" class=\"dayall\" data-act=\"dayall\" aria-pressed=\""+ao+"\"><span class=\"ab\" style=\"--dc:"+allDc()+"\"></span>Alle Tage anzeigen</button>";
   days().forEach(function(d){
     var ids = T().order[d.key]||[], dn = ids.filter(function(x){ return T().done[x]; }).length;
     var here = dayPopMove && d.key===mvFrom, already = rv.indexOf(d.key) > -1 && !here;
-    h += "<button type=\"button\" data-act=\""+(dayPopMove?"movepick":dayPopFor?"revpick":"daypick")+"\" data-day=\""+d.key+"\" aria-pressed=\""+(dayPopMove ? here : dayPopFor ? already : cur===d.key)+"\""+(already?" disabled":"")+"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span><span class=\"dt\"><b>"+esc(d.title)+(d.key===tk?" <em>Heute</em>":"")+"</b><small>"+(here ? "aktueller Tag · " : already ? "schon eingeplant · " : "")+(ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps")+(dn?" · "+dn+" erledigt":"") : "noch leer")+(d.hint?" · "+esc(d.hint):"")+"</small></span></button>";
+    h += "<button type=\"button\" data-act=\""+(dayPopMove?"movepick":dayPopFor?"revpick":"daypick")+"\" data-day=\""+d.key+"\" aria-pressed=\""+(dayPopMove ? here : dayPopFor ? already : !ao && cur===d.key)+"\""+(already?" disabled":"")+"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span><span class=\"dt\"><b>"+esc(d.title)+(d.key===tk?" <em>Heute</em>":"")+"</b><small>"+(here ? "aktueller Tag · " : already ? "schon eingeplant · " : "")+(ids.length ? ids.length+(ids.length===1?" Stopp":" Stopps")+(dn?" · "+dn+" erledigt":"") : "noch leer")+(d.hint?" · "+esc(d.hint):"")+"</small></span></button>";
   });
   $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
@@ -15180,8 +15211,9 @@ document.addEventListener("click", function(e){
     case "srchclose": closeSearch(); break;
     case "srcat": srch.cat = t.getAttribute("data-v") || ""; srch.res = srchLocal(srch.q); srch.web = []; renderSearch(false); srchWeb(srch.q); var sb = t; setTimeout(function(){ try { sb.scrollIntoView({inline:"center", block:"nearest", behavior: reduceMotion ? "auto" : "smooth"}); } catch(e){} }, 0); break;
     case "srchgo": srchGo(+t.getAttribute("data-i")); break;
-    case "daypick": closeCatPop(); cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
-    case "day": cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
+    case "dayall": closeCatPop(); allD = S.cur; sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitAll(); break;
+    case "daypick": closeCatPop(); allD = ""; cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
+    case "day": allD = ""; cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "gotoday": closeCatPop(); closeJpMore(); if(jp) closeJPop(); cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
     case "trip": closeSettings(); zsSet(""); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tmcur": closeMenus(); closeJpMore(); break;
