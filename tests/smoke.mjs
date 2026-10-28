@@ -846,6 +846,10 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await page.locator("#jPop textarea#nText[readonly]").count()===1 && await page.locator("#jPop .jp-lbl .vis-ro").count()===2, "Notiz-Sichtbarkeit im Ansichtsmodus fehlt");
   await rp(`closeJPop(); true`);
   ok(await rp(`$("sheetOpen").textContent.trim()==="Tagebuch" && $("tabDay").textContent==="Tagebuch"`), "Knopf unten/Reiter heißen im Ansichtsmodus nicht „Tagebuch“");
+  // Knopf unten öffnet das Blatt direkt halbhoch
+  await rp(`setSheet("min"); true`); await page.waitForTimeout(300);
+  await click("#sheetOpen"); await page.waitForTimeout(400);
+  ok(await rp(`sheetState==="mid"`), "Knopf unten öffnet das Blatt nicht halbhoch: "+await rp(`sheetState`));
   await click("#tripBtn");
   ok(await rp(`var m = $("tripMenu"), a = m.children[0], b = m.children[1]; a.classList.contains("tm-cur") && a.getAttribute("aria-current")==="true" && a.textContent.indexOf("Testreise") > -1 && a.textContent.indexOf("✓") > -1 && b.classList.contains("tm-mode")`), "Gewählte Reise (mit Haken) nicht oben, Umschalter nicht direkt darunter");
   ok(await rp(`$("tripMenu").querySelector("[data-act=tripmode][data-v=view]").getAttribute("aria-pressed")==="true"`) && await page.locator("#tripMenu [data-act=tripedit]").count()===0, "Umschalter zeigt nicht „Ansicht“");

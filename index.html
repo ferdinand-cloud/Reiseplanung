@@ -12538,7 +12538,7 @@ function placeFloating(){
   }
   // Knopf im eingeklappten Zustand: Tippen oder Hochwischen öffnet die Planung
   var so = $("sheetOpen"), soY = null;
-  so.addEventListener("click", function(){ setSheet("peek"); });
+  so.addEventListener("click", function(){ setSheet("mid"); }); // öffnet direkt halbhoch (Karte oben bleibt sichtbar)
   so.addEventListener("touchstart", function(e){ soY = e.touches[0].clientY; }, {passive:true});
   so.addEventListener("touchmove", function(e){ if(soY!==null && soY - e.touches[0].clientY > 30){ soY = null; setSheet("mid"); } }, {passive:true});
   // Griff + Reiter: Pointer-Events (Reiter bleiben antippbar)
