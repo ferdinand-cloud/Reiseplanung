@@ -517,8 +517,9 @@ await test("Entdecken: Reels-Feed mit Auswahl Reise/Ziel/Inspiration, Like, Übe
   await shot("entdecken-bewertungen");
   await rp(`closeCatPop(); $("toast").hidden = true; true`);
   await click("#dcView [data-act=dctgt]");
-  ok((await page.locator("#jpMenu").innerText()).includes("Inspiration") && (await page.locator("#jpMenu").innerText()).includes("Lissabon"), "Auswahl ohne Inspiration oder Ziel");
-  await page.locator("#jpMenu [data-act=dcscopeset]", {hasText:"Lissabon"}).click(); await page.waitForTimeout(250);
+  ok((await page.locator("#jpMenu").innerText()).includes("Inspiration") && await page.locator("#jpMenu [data-act=scopepop][data-k=z]").count()===1, "Auswahl ohne Inspiration oder Ziele-Knopf");
+  await click("#jpMenu [data-act=scopepop][data-k=z]");
+  await page.locator("#catPop [data-act=scopeset]", {hasText:"Lissabon"}).click(); await page.waitForTimeout(250);
   ok((await page.locator("#dcView .dc-reel").innerText()).includes("Time Out") && await page.locator("#dcView .dc-reel").count()===1, "Ziel-Filter greift nicht");
   await click("#dcView [data-act=dctake]"); await page.waitForTimeout(150);
   ok(await rp(`Object.keys(S.trips[zielIds()[0]].places).some(function(k){ return S.trips[zielIds()[0]].places[k].n==="Time Out Market"; })`), "Nicht ins gewählte Ziel übernommen");
@@ -3423,9 +3424,9 @@ await test("Lösch-X sitzt im Suchfeld, auch nach Scrollen (Profil → Ziele, Su
   await xIn(sf, "Suche");
 });
 
-await test("Liste: Reise-Auswahl als Dropdown mit Suche statt Chips (30 Reisen)", async () => {
+await test("Liste: Reise-Auswahl als Dropdown mit Suche statt Chips (30 Reisen), vergangene im eigenen Pop-up", async () => {
   await seed();
-  await rp(`(function(){ var N = ["Lissabon","Tokio","New York","Rom","Paris"]; for(var i = 0; i < 30; i++){ var y = 2000 + i, nm = i < 5 ? N[i] : "Reise "+(i+1);
+  await rp(`(function(){ var N = ["Lissabon","Tokio","New York","Rom","Paris"]; for(var i = 0; i < 30; i++){ var y = i < 20 ? 2000 + i : 2007 + i, nm = i < 5 ? N[i] : "Reise "+(i+1);
       var t = newTripObj({id:"t_r"+i, name:nm, start:y+"-05-01", end:y+"-05-08", hotels:[], orte:[]}); S.trips[t.id] = t; } save(); openLsPage(); return true; })()`);
   await page.waitForTimeout(300);
   ok(await page.locator("#lsView .ls-trips button").count()===0, "Reisen stehen noch als Chips nebeneinander");
@@ -3434,19 +3435,91 @@ await test("Liste: Reise-Auswahl als Dropdown mit Suche statt Chips (30 Reisen)"
   const bb = await page.locator("#lsView .ls-tripdd").boundingBox(); ok(bb.height < 50, "Dropdown zu hoch: "+bb.height);
   await page.tap("#lsView .ls-tripdd"); await page.waitForTimeout(250);
   ok(await page.locator("#jpMenu .frp-q").count()===1, "Suche im Dropdown fehlt");
-  ok(await page.locator("#jpMenu [data-act=lstrip]").count()===31, "nicht alle Reisen im Dropdown: "+await page.locator("#jpMenu [data-act=lstrip]").count());
+  ok(await page.locator("#jpMenu [data-act=lstrip]").count()===11, "Dropdown soll nur laufende/kommende Reisen zeigen: "+await page.locator("#jpMenu [data-act=lstrip]").count());
+  ok(await page.locator("#jpMenu [data-act=lstrip][data-trip=t_r1]").count()===0, "Vergangene Reise steht direkt im Dropdown");
+  ok(await page.locator("#jpMenu [data-act=scopepop][data-k=past]").count()===1 && (await page.locator("#jpMenu [data-act=scopepop][data-k=past]").innerText()).includes("20"), "Knopf „Vergangene Reisen“ fehlt");
   const mb = await page.locator("#jpMenu").boundingBox(); ok(mb.y + mb.height <= 844 && mb.height <= 480, "Dropdown zu groß: "+JSON.stringify(mb));
-  await page.locator("#jpMenu .frp-q").fill("tok"); await page.waitForTimeout(100);
+  await page.locator("#jpMenu .frp-q").fill("testr"); await page.waitForTimeout(100);
   const vis = await page.evaluate(() => [].slice.call(document.querySelectorAll("#jpMenu [data-act=lstrip]")).filter(b => !b.hidden).map(b => b.getAttribute("data-trip")));
-  ok(vis.length===1 && vis[0]==="t_r1", "Suche „tok“ findet nicht nur Tokio: "+vis.join(","));
-  await page.locator("#jpMenu .frp-q").fill("xyz"); await page.waitForTimeout(100);
-  ok((await page.locator("#jpMenu").innerText()).includes("Keine Reise gefunden"), "Hinweis bei leerer Suche fehlt");
-  await page.locator("#jpMenu .frp-q").fill("tok"); await page.waitForTimeout(100);
-  await shot("liste-reise-dropdown");
-  await page.locator("#jpMenu [data-trip=t_r1]").click(); await page.waitForTimeout(300);
+  ok(vis.length===1 && vis[0]==="t_test", "Suche findet nicht nur die Testreise: "+vis.join(","));
+  await page.locator("#jpMenu .frp-q").fill("");
+  await click("#jpMenu [data-act=scopepop][data-k=past]");
+  ok(await visible("#catPop .scpop") && await page.locator("#jpMenu").count()===0, "Pop-up „Vergangene Reisen“ öffnet nicht");
+  ok(await page.locator("#catPop [data-act=scopeset]").count()===20, "nicht alle vergangenen Reisen: "+await page.locator("#catPop [data-act=scopeset]").count());
+  ok(await page.locator("#catPop [data-act=scopeset]").first().getAttribute("data-v")==="t_r19", "Neueste vergangene Reise steht nicht oben");
+  await page.locator("#catPop .sc-q").fill("tok"); await page.waitForTimeout(100);
+  const vis2 = await page.evaluate(() => [].slice.call(document.querySelectorAll("#catPop [data-act=scopeset]")).filter(b => !b.hidden).map(b => b.getAttribute("data-v")));
+  ok(vis2.length===1 && vis2[0]==="t_r1", "Suche „tok“ findet nicht nur Tokio: "+vis2.join(","));
+  await page.locator("#catPop .sc-q").fill("xyz"); await page.waitForTimeout(100);
+  ok((await page.locator("#catPop").innerText()).includes("Keine Reise gefunden"), "Hinweis bei leerer Suche fehlt");
+  await page.locator("#catPop .sc-q").fill("tok"); await page.waitForTimeout(100);
+  await shot("liste-vergangene-reisen");
+  await page.locator("#catPop [data-v=t_r1]").click(); await page.waitForTimeout(300);
   ok(await rp(`S.cur`)==="t_r1", "Auswahl wechselt die Reise nicht");
-  ok(await page.locator("#jpMenu").count()===0, "Dropdown bleibt nach der Auswahl offen");
+  ok(!(await visible("#catPop")), "Pop-up bleibt nach der Auswahl offen");
   ok((await page.locator("#lsView .ls-tripdd").innerText()).includes("Tokio"), "Dropdown zeigt die neue Reise nicht");
+});
+
+await test("Ziele: in Karte, Liste und Entdecken auswählbar (Knopf mit Such-Pop-up), vergangene Reisen nicht direkt gelistet", async () => {
+  await seed();
+  await rp(`(function(){
+    var r = newTripObj({id:"t_rom", name:"Rom 2020", start:"2020-05-01", end:"2020-05-05", hotels:[], orte:[{id:"o1", n:"Rom", la:41.9, lo:12.5, from:"2020-05-01", to:"2020-05-05"}]});
+    r.places.v1 = {id:"v1", n:"Kolosseum", c:"sight", la:41.8902, lo:12.4922, list:"l_main", note:""}; r.order["2020-05-02"] = ["v1"]; r.done = {v1:1}; S.trips.t_rom = r;
+    var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); zielAdd(z, {n:"Trattoria Roma", c:"essen", la:41.9, lo:12.5});
+    zielNew("Lissabon", {id:"o2", n:"Lissabon", la:38.72, lo:-9.14, r:20000}); save(); renderAll(); return true; })()`);
+  // Karte: Reise-Menü
+  await click("#tripBtn");
+  const tm = await page.locator("#tripMenu").innerText();
+  ok(tm.includes("Testreise") && !tm.includes("Rom 2020"), "Reise-Menü: abgeschlossene Reise steht direkt in der Liste: "+tm);
+  ok(await page.locator("#tripMenu [data-act=scopepop][data-k=z]").count()===1 && await page.locator("#tripMenu [data-act=scopepop][data-k=past]").count()===1, "Knöpfe „Ziele“/„Vergangene Reisen“ fehlen im Reise-Menü");
+  await shot("ziele-reisemenue");
+  await click("#tripMenu [data-act=scopepop][data-k=z]");
+  ok(await visible("#catPop .scpop") && await rp(`$("tripMenu").hidden`), "Ziele-Pop-up öffnet nicht");
+  ok(await page.locator("#catPop [data-act=scopeset]").count()===2, "nicht alle Ziele im Pop-up");
+  await page.locator("#catPop .sc-q").fill("rom"); await page.waitForTimeout(100);
+  await shot("ziele-popup");
+  ok(await page.evaluate(() => [].slice.call(document.querySelectorAll("#catPop [data-act=scopeset]")).filter(b => !b.hidden).length)===1, "Ziel-Suche filtert nicht");
+  await page.locator("#catPop [data-act=scopeset]:not([hidden])").click(); await page.waitForTimeout(400);
+  ok(await rp(`zsOn()===zielIds().filter(function(id){ return S.trips[id].name==="Rom"; })[0] && S.cur==="t_test"`), "Ziel nicht gewählt oder aktive Reise verändert");
+  ok((await page.locator("#tripBtn").innerText()).includes("Rom"), "Kopfzeile zeigt das Ziel nicht");
+  const sb = await page.locator("#body").textContent();
+  ok(sb.includes("Gemerkt · 1") && sb.includes("Trattoria Roma") && sb.includes("Besucht auf Reisen · 1") && sb.includes("Kolosseum"), "Blatt zeigt die Orte des Ziels nicht: "+sb);
+  ok(!(await visible("#sheet .tabs")) && await rp(`$("rail").hidden`), "Tagesplan-Reiter/Tagesleiste noch sichtbar");
+  await page.waitForTimeout(700);
+  ok(await rp(`ZSMK.length`)===2, "Karte zeigt nicht beide Orte des Ziels: "+await rp(`ZSMK.length`));
+  ok(await page.locator("#ov text", {hasText:"Katz Deli"}).count()===0, "Karte zeigt noch Stopps der Reise");
+  await shot("ziel-auf-karte");
+  await page.locator("#body [data-act=zsgo]", {hasText:"Trattoria"}).click(); await page.waitForTimeout(300);
+  ok(await rp(`sel==="poi" && poiSel && poiSel.n==="Trattoria Roma" && !!poiSel.zr`), "Antippen zeigt den gemerkten Ort nicht");
+  await rp(`select(null); true`);
+  // Liste: dasselbe Ziel, Auswahl über das Dropdown
+  await rp(`openLsPage(); true`); await page.waitForTimeout(250);
+  ok((await page.locator("#lsView .ls-tripdd").innerText()).includes("Rom") && (await page.locator("#lsView").innerText()).includes("Kolosseum"), "Liste zeigt das Ziel nicht");
+  await page.tap("#lsView .ls-tripdd"); await page.waitForTimeout(250);
+  ok(await page.locator("#jpMenu [data-act=lstrip][data-trip=t_rom]").count()===0 && await page.locator("#jpMenu [data-act=scopepop][data-k=z]").count()===1, "Listen-Dropdown: vergangene Reise direkt oder Ziele-Knopf fehlt");
+  await click("#jpMenu [data-act=scopepop][data-k=z]");
+  await page.locator("#catPop [data-act=scopeset]", {hasText:"Lissabon"}).click(); await page.waitForTimeout(300);
+  ok((await page.locator("#lsView .ls-tripdd").innerText()).includes("Lissabon") && (await page.locator("#lsView").textContent()).includes("Gemerkt · 0"), "Liste wechselt nicht aufs gewählte Ziel");
+  await page.tap("#lsView .ls-tripdd"); await page.waitForTimeout(250);
+  await click("#jpMenu [data-act=lstrip][data-trip=t_test]");
+  ok(await rp(`!zsOn() && S.cur==="t_test"`) && (await page.locator("#lsView .ls-tripdd").innerText()).includes("Testreise"), "Zurück zur Reise klappt nicht");
+  // vergangene Reise über das Pop-up öffnen
+  await page.tap("#lsView .ls-tripdd"); await page.waitForTimeout(250);
+  await click("#jpMenu [data-act=scopepop][data-k=past]");
+  await click("#catPop [data-v=t_rom]");
+  ok(await rp(`S.cur==="t_rom"`), "Vergangene Reise lässt sich nicht öffnen");
+  await rp(`closeLsPage(); S.cur = "t_test"; save(); renderAll(); true`);
+  // Entdecken: Reisen direkt, Ziele und vergangene Reisen über Knöpfe
+  await rp(`openDcPage(); true`); await page.waitForTimeout(300);
+  await click("#dcView [data-act=dctgt]");
+  const dm = await page.locator("#jpMenu").innerText();
+  await shot("entdecken-auswahl");
+  ok(dm.includes("Testreise") && !dm.includes("Rom 2020") && !dm.includes("Lissabon"), "Entdecken-Auswahl listet Ziele/vergangene Reisen direkt: "+dm);
+  ok(await page.locator("#jpMenu [data-act=scopepop][data-k=z]").count()===1 && await page.locator("#jpMenu [data-act=scopepop][data-k=past]").count()===1, "Knöpfe fehlen in Entdecken");
+  await click("#jpMenu [data-act=scopepop][data-k=z]");
+  await page.locator("#catPop [data-act=scopeset]", {hasText:"Lissabon"}).click(); await page.waitForTimeout(300);
+  ok(await rp(`S.trips[dcScope] && S.trips[dcScope].name==="Lissabon"`) && (await page.locator("#dcView .dc-tgt").innerText()).includes("Lissabon"), "Entdecken übernimmt das Ziel nicht");
+  ok(await rp(`!zsOn()`), "Auswahl in Entdecken ändert die Karte");
 });
 
 await test("Bewegung: Pop-up geht am Knopf auf, schließt sofort ohne Zucken, Seiten mit Richtung", async () => {
