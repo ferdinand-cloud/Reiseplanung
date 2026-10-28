@@ -3466,6 +3466,34 @@ await test("Leiste: erneutes Antippen eines Knopfs bleibt auf der Seite (kein Sp
   ok(await rp(`!profOpen && !lsPage && !dcPage && !gsPage && !chPage && !ntPage`), "Karten-Knopf schließt die Seiten nicht");
 });
 
+await test("3D-Karte: Knopf erst ab Zoomstufe, Standard 3D kippt beim Hineinzoomen, 2D/3D umschaltbar und gemerkt", async () => {
+  await seed(); await rp(`reduceMotion = true; lsSet("rp-3dv", ""); v3d = true; v3dDone = false; map.jumpTo({center:[-73.985, 40.758], zoom:12, pitch:0}); true`);
+  await page.waitForTimeout(300);
+  const vis = () => page.evaluate(() => { const g = document.getElementById("cg3d"), r = g.getBoundingClientRect(), cs = getComputedStyle(g); return {on:g.classList.contains("on"), v:cs.visibility, h:r.height}; });
+  const top0 = await page.evaluate(() => document.getElementById("zfit").getBoundingClientRect().top);
+  let s = await vis(); ok(!s.on && s.v==="hidden", "3D-Knopf bei Zoom 12 sichtbar");
+  ok(s.h > 30, "3D-Knopf hält seinen Platz nicht (Höhe "+s.h+")");
+  await rp(`map.jumpTo({zoom:15.6}); true`);
+  await page.waitForFunction(() => window.__rp("map.getPitch() > 40 && !map.isMoving()"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`map.getPitch()`) > 40, "Standard 3D: Karte kippt beim Hineinzoomen nicht: "+await rp(`map.getPitch()`));
+  ok(await rp(`b3dOn`), "3D-Gebäude nicht an");
+  await page.waitForTimeout(300); s = await vis(); ok(s.on && s.v==="visible", "3D-Knopf ab Zoom 15 nicht sichtbar");
+  ok(await page.evaluate(() => document.getElementById("zfit").getBoundingClientRect().top) === top0, "Andere Knöpfe verschieben sich beim Einblenden");
+  ok(await page.locator("#b3dBtn").textContent()==="3D" && await page.locator("#b3dBtn").getAttribute("aria-pressed")==="true", "Knopf zeigt nicht 3D an");
+  await page.evaluate(() => document.getElementById("b3dBtn").click()); // geneigte WebGL-Karte rendert im Test zäh → direkter Klick
+  await page.waitForFunction(() => window.__rp("map.getPitch() < 1 && !map.isMoving()"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`map.getPitch()`) < 1, "2D schaltet nicht zurück: "+await rp(`JSON.stringify({p:map.getPitch(), z:map.getZoom(), m:map.isMoving(), v:v3d, d:v3dDone})`));
+  ok(await rp(`lsGet("rp-3dv")`)==="0" && await page.locator("#b3dBtn").textContent()==="2D", "2D-Wahl nicht gemerkt/angezeigt");
+  // 2D gemerkt: erneutes Hineinzoomen kippt nicht
+  await rp(`map.jumpTo({zoom:12}); true`); await page.waitForTimeout(300);
+  await rp(`map.jumpTo({zoom:16}); true`); await page.waitForTimeout(900);
+  ok(await rp(`map.getPitch()`) < 1, "Trotz 2D-Wahl gekippt");
+  await page.evaluate(() => document.getElementById("b3dBtn").click()); // geneigte WebGL-Karte rendert im Test zäh → direkter Klick
+  await page.waitForFunction(() => window.__rp("map.getPitch() > 40 && !map.isMoving()"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`map.getPitch()`) > 40 && await rp(`lsGet("rp-3dv")`)==="1", "3D schaltet nicht wieder ein");
+  await rp(`map.jumpTo({zoom:12, pitch:0}); reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches; true`);
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }
