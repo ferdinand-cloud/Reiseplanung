@@ -225,6 +225,17 @@ await test("Karte mit gewähltem Tag: nur dessen Orte, Filter „Alle Orte der R
   ok(await rp(`PHMK.indexOf("p4") > -1 && PHMK.indexOf("p5") > -1`), "Orte anderer Tage erscheinen nicht: "+await rp(`PHMK.join()`));
 });
 
+await test("Karte mit gewähltem Tag: besuchte Orte des Tages auch bei „Erledigte ausblenden“ und im Ansichtsmodus", async () => {
+  await seed();
+  const Y = await rp(`(function(){ var ds = days(); hideDone = true; cur = ds[1].key; renderAll(); map.jumpTo({center:[-73.995, 40.72], zoom:12}); return cur; })()`);
+  await page.waitForTimeout(400);
+  const seen = () => rp(`mapDays().indexOf(cur) > -1 && ord(cur).indexOf("p4") > -1 && !mapHid("p4") && !mapHid("p5")`);
+  ok(await seen(), "Bearbeiten: besuchte Orte des Tages fehlen auf der Karte");
+  await rp(`T().fin = 1; finEd = ""; hideDone = true; renderAll(); true`); await page.waitForTimeout(400);
+  ok(await rp(`isRO()`) && await seen(), "Ansichtsmodus: besuchte Orte des Tages fehlen auf der Karte");
+  await rp(`hideDone = false; true`);
+});
+
 await test("Wunschliste-Plus: fragt Tag und Position, Abbrechen bleibt an derselben Stelle", async () => {
   await seed(); await rp(`select(null); cur = todayKey(); tab = "wish"; setSheet("full"); renderSheet();`); await page.waitForTimeout(300);
   const b = page.locator("#sheet .wplan[data-pid=p6]");

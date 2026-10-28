@@ -10488,7 +10488,8 @@ function visKey(){ return isRO() ? "nyc-l-vis-ro" : "nyc-l-vis"; }
 function visOn(){ return lsGet(visKey())!=="0"; }
 /* Kartenfilter „Alle Orte der Reise“: standardmäßig aus – mit gewähltem Tag zeigt die Karte nur dessen Orte */
 function allPOn(){ return lsGet("rp-l-allp")==="1"; }
-function mapHid(id){ return hid(id) || (!visOn() && !!T().done[id]); }
+// „Erledigte ausblenden“ gilt nur für die Liste; auf der Karte entscheidet der Filter „Besuchte Orte & Fotospots“
+function mapHid(id){ return !visOn() && !!T().done[id]; }
 function onScreen(q, pad){ return q[0]>-pad && q[0]<W+pad && q[1]>-pad && q[1]<H+pad; }
 function upright(deg){ deg = ((deg%360)+540)%360-180; if(deg>90) deg-=180; if(deg<-90) deg+=180; return deg; }
 function f1(n){ return n.toFixed(1); }
@@ -10698,12 +10699,13 @@ function drawOverlay(){
   }); });
   // Fotos aller anderen Punkte (andere Tage, ausgeblendete erledigte Stopps): kleine Foto-Marker, damit Erinnerungen immer auf der Karte sind
   PHMK = [];
-  if(visOn() && !zs && (allPOn() || ALL)) (function(){
+  if(visOn() && !zs) (function(){
+    var allP = allPOn() || ALL, mds = mapDays();
     var shown = {}, ps = T().photos || {};
     mapDays().forEach(function(dk){ ord(dk).forEach(function(id){ if(!mapHid(id) && !(P(id) && P(id).k==="hotel")) shown[id] = 1; }); });
     if((layers.wish || wishView()) && !isRO()) wishes().forEach(function(w){ shown[w.id] = 1; });
     Object.keys(ps).forEach(function(pid){
-      var q0p = P(pid); if(shown[pid] || !q0p || !hasLoc(q0p) || !(ps[pid]||[]).length || (isRO() && !dayOf(pid))) return;
+      var q0p = P(pid); if(shown[pid] || !q0p || !hasLoc(q0p) || (!allP && mds.indexOf(dayOf(pid)) < 0) || !(ps[pid]||[]).length || (isRO() && !dayOf(pid))) return;
       var qq = pt(q0p); if(!onScreen(qq, 30)) return;
       var th2 = firstThumb(pid); if(!th2) return;
       var dk2 = dayOf(pid), isSel2 = sel===pid, r2 = isSel2 ? 15 : 11;
