@@ -362,6 +362,33 @@ await test("Chat: nach rechts wischen führt zurück zur Übersicht, Position un
   await cdp.detach(); await rp(`closeChPage(); CH.byId = {}; CH.list = []; true`);
 });
 
+await test("Chat-Übersicht: ohne Kasten, Zeit neben Name, Ungelesen hervorgehoben, Farben je Person, kein Neuzeichnen ohne Änderung", async () => {
+  await seed();
+  await rp(`var n = Date.now(); CHPROF.u1 = {name:"anna", photo:""}; CHPROF.u2 = {name:"bert", photo:""};
+    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:n, last:{t:"Hallo", from:"u1", at:n}, read:{}},
+      u2_u_me:{id:"u2_u_me", members:["u2","u_me"], at:n - 9e4, last:{t:"", place:"Brooklyn Bridge", ph:false, from:"u_me", at:n - 9e4}, read:{u_me:n}}};
+    CH.list = [CH.byId.u1_u_me, CH.byId.u2_u_me]; CH.got = true; openChPage(); true`);
+  await page.waitForTimeout(300);
+  const r = await page.evaluate(() => { const v = document.getElementById("chView"), L = v.querySelector(".ch-list"), rows = L.querySelectorAll(".ls-row"), cs = getComputedStyle(L);
+    const nb = rows[0].querySelector(".ch-l1 b").getBoundingClientRect(), tm = rows[0].querySelector(".ch-l1 .ch-when").getBoundingClientRect(), av = rows.length && [...rows].map(x => getComputedStyle(x.querySelector(".ch-av")).backgroundImage);
+    return {box:cs.backgroundColor==="rgba(0, 0, 0, 0)" && cs.boxShadow==="none", fx:v.classList.contains("ch-fx"), same:Math.abs(nb.top - tm.top) < 8 && tm.left > nb.left,
+      un:rows[0].classList.contains("un") && !!rows[0].querySelector(".ch-dot") && !rows[1].querySelector(".ch-dot"), tcol:getComputedStyle(rows[0].querySelector(".ch-when")).color!==getComputedStyle(rows[1].querySelector(".ch-when")).color,
+      pin:!!rows[1].querySelector(".ch-pv svg") && !/📍|📷/.test(rows[1].textContent), hue:av[0]!==av[1] && av[0].includes("gradient"), head:getComputedStyle(v.querySelector(".ch-page .ls-head")).boxShadow==="none"}; });
+  ok(r.box && r.head, "Übersicht noch mit Kasten oder Kopf-Schatten: "+JSON.stringify(r));
+  ok(r.same, "Zeit steht nicht neben dem Namen");
+  ok(r.un && r.tcol, "Ungelesen nicht hervorgehoben: "+JSON.stringify(r));
+  ok(r.pin, "Ort-Vorschau mit Emoji statt Symbol");
+  ok(r.hue, "Buchstaben-Kreise ohne eigene Farbe je Person");
+  ok(r.fx, "Kein sanftes Einblenden beim Öffnen");
+  await shot("chat-uebersicht");
+  // unveränderte Daten: Zeilen bleiben dieselben Elemente (nichts zuckt); Änderung zeichnet neu, ohne erneutes Einblenden
+  await page.evaluate(() => { window.__row = document.querySelector('#chView [data-v="u1_u_me"]'); });
+  await page.waitForTimeout(950);
+  ok(await rp(`renderCh(); document.querySelector('#chView [data-v="u1_u_me"]')===window.__row && !$("chView").classList.contains("ch-fx")`), "Übersicht wird ohne Änderung neu gezeichnet");
+  ok(await rp(`CH.byId.u1_u_me.read = {u_me:Date.now()}; renderCh(); var r = document.querySelector('#chView [data-v="u1_u_me"]'); r!==window.__row && !r.classList.contains("un") && !$("chView").classList.contains("ch-fx")`), "Änderung wird nicht übernommen");
+  await rp(`closeChPage(); CH.byId = {}; CH.list = []; true`);
+});
+
 await test("Chat: Plus öffnet neuen Chat mit Empfängerfeld, bekannter Name zeigt Verlauf, neuer Name beginnt Chat", async () => {
   await seed();
   await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FR.friends = [{uid:"u1", name:"anna"}, {uid:"u2", name:"bert"}, {uid:"u3", name:"annika"}];
