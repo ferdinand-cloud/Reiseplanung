@@ -3790,6 +3790,35 @@ await test("Chat: „Gesehen“ unter der letzten eigenen Nachricht und „Tippt
   ok(await rp(`__sets.some(function(d){ return d.typ && d.typ.u_me===0; })`), "Senden setzt Tipp-Signal nicht zurück");
   await rp(`closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
 });
+await test("Chat: Ortsnamen und Karten-Links im Text werden als Ort-Karte vorgeschlagen, empfangene Links zeigen eine Karte", async () => {
+  await seed();
+  await rp(`window.__M = [{id:"m1", from:"u1", t:"Schau mal https://www.google.com/maps/place/Russ+%26+Daughters/@40.7224,-73.9882,17z/data=!3m1!4b1!4m6!3m5!1s0x0:0x0!8m2!3d40.72246!4d-73.98823", at:Date.now()-60000}]; ${CHMOCK} openChPage("u1_u_me"); true`);
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===1`), null, {timeout:4000});
+  ok(await rp(`var c = document.querySelector('#chMsgs .ch-msg[data-mid="m1"] .ch-pl'); !!c && c.textContent.includes("Russ & Daughters") && !!c.querySelector("[data-act=chwish]")`), "Empfangener Maps-Link zeigt keine Ort-Karte");
+  ok(await rp(`Math.abs(CHPL["m1~l"].la - 40.72246) < 1e-5`), "Koordinaten aus !3d/!4d nicht genutzt");
+  // Wunschliste aus dem Link
+  await page.tap('#chMsgs .ch-msg[data-mid="m1"] [data-act=chwish]'); await page.waitForTimeout(200);
+  ok(await rp(`Object.keys(T().places).some(function(k){ var p = T().places[k]; return p.n==="Russ & Daughters" && p.rec && p.rec.by==="u1"; })`), "Ort aus Link nicht gemerkt");
+  // Ortsname aus eigener Reise beim Schreiben → Vorschlag, Antippen hängt die Karte an
+  await page.type("#chIn", "Treffen wir uns bei katz deli?"); await page.waitForTimeout(450);
+  ok(await rp(`!$("chSugBox").hidden && $("chSugBox").textContent.includes("Katz Deli")`), "Kein Vorschlag für Ortsnamen");
+  await shot("chat-ort-vorschlag");
+  await page.tap("#chSugBox [data-act=chsugok]"); await page.waitForTimeout(300);
+  ok(await rp(`chDraft && chDraft.n==="Katz Deli" && $("chSugBox").hidden`), "Vorschlag hängt keine Ort-Karte an");
+  await page.tap("#chView [data-act=chsend]"); await page.waitForTimeout(150);
+  ok(await rp(`var s = __sent[__sent.length-1]; s && s.place && s.place.n==="Katz Deli" && s.t.includes("katz deli")`), "Ort-Karte nicht mitgesendet");
+  // Teilwort trifft nicht; × blendet aus
+  await page.type("#chIn", "MoMAs Shop"); await page.waitForTimeout(450);
+  ok(await rp(`$("chSugBox").hidden`), "Teilwort löst Vorschlag aus");
+  await page.fill("#chIn", ""); await page.type("#chIn", "Danach ins MoMA"); await page.waitForTimeout(450);
+  ok(await rp(`!$("chSugBox").hidden`), "Vorschlag für MoMA fehlt");
+  await page.tap("#chSugBox [data-act=chsugx]"); await page.type("#chIn", "!"); await page.waitForTimeout(450);
+  ok(await rp(`$("chSugBox").hidden`), "Ausgeblendeter Vorschlag kommt wieder");
+  // Link-Erkennung
+  ok(await rp(`var a = chLinkPl("https://maps.apple.com/?ll=48.8584,2.2945&q=Eiffelturm"), b = chLinkPl("Katz's Delicatessen\\nhttps://maps.app.goo.gl/AbC123"), c = chLinkPl("https://example.com/@1.5,2.5");
+    a && a.n==="Eiffelturm" && a.la===48.8584 && b && b.q==="Katz's Delicatessen" && !c`), "Link-Erkennung falsch");
+  await rp(`closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
+});
 await test("Chat: Kopf ohne Balken, Verlauf scrollt darunter durch und blendet oben weich aus, Knöpfe als Glas-Kreise", async () => {
   await seed();
   await rp(`window.__M = []; for(var i = 0; i < 30; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht Nummer "+i+" mit etwas mehr Text, damit sie umbricht", at:Date.now() - (30 - i)*60000});
