@@ -3992,6 +3992,45 @@ await test("Bewegung: Foto fliegt aus dem Vorschaubild ins Vollbild und zurück,
   ok(la && la.d==="out" && la.to > 0 && la.to < 120 && la.from < 390, "Nach dem Herunterziehen fliegt das Foto nicht zurück: "+JSON.stringify(la));
 });
 
+await test("Foto-Ansicht: Runterziehen wie in Apple Fotos – Foto folgt dem Finger, wird kleiner, Hintergrund blendet aus, federt zurück", async () => {
+  await seed();
+  await rp(`openJPop("p4", dayOf("p4"))`); await page.waitForTimeout(400);
+  await page.locator("#jPop [data-act=phview]").first().click();
+  await page.waitForFunction(() => window.__rp(`!$("pvLayer").hidden && !$("pvLayer").classList.contains("fx-flying")`), null, {timeout:4000}).catch(() => {});
+  const cdp = await page.context().newCDPSession(page);
+  const T = (type, x, y) => cdp.send("Input.dispatchTouchEvent", {type, touchPoints:type==="touchEnd" ? [] : [{x, y}]});
+  // schräg nach unten ziehen: Foto folgt auch seitlich, wird kleiner, Hintergrund und Knöpfe blenden aus
+  await T("touchStart", 200, 400);
+  for(const [x, y] of [[204, 414], [215, 440], [235, 480], [250, 520]]){ await T("touchMove", x, y); await page.waitForTimeout(20); }
+  await page.waitForTimeout(60);
+  const mid = await page.evaluate(() => { const tr = document.getElementById("pvTrack"), m = new DOMMatrix(getComputedStyle(tr).transform), L = document.getElementById("pvLayer");
+    const a = /rgba\([^)]*,\s*([\d.]+)\)/.exec(L.style.background || ""), ch = L.querySelector(".pv-wrap > :not(.pv-track)");
+    return {tx:Math.round(m.e), ty:Math.round(m.f), sc:+m.a.toFixed(2), bg:a ? +a[1] : 1, ch:ch ? +ch.style.opacity : null}; });
+  ok(mid.tx > 30 && mid.ty > 90 && mid.sc < 0.95 && mid.bg < 0.8 && mid.ch!==null && mid.ch < 0.5, "Foto folgt beim Ziehen nicht frei / wird nicht kleiner / Hintergrund bleibt: "+JSON.stringify(mid));
+  // langsam zurück und loslassen: federt zurück, nichts bleibt hängen
+  for(const [x, y] of [[230, 470], [210, 430], [202, 418]]){ await T("touchMove", x, y); await page.waitForTimeout(30); }
+  await page.waitForTimeout(200); await T("touchEnd");
+  await page.waitForTimeout(600);
+  ok(await rp(`!$("pvLayer").hidden && !$("pvTrack").style.transform && !$("pvLayer").style.background && [].every.call(document.querySelectorAll("#pvLayer .pv-wrap > *"), function(n){ return !n.style.opacity; })`),
+    "Zurückfedern lässt Reste oder schließt: "+JSON.stringify(await rp(`[$("pvLayer").hidden, $("pvTrack").style.transform, $("pvLayer").style.background]`)));
+  // schneller kurzer Wisch nach unten: Schwung schließt
+  // (im Seitenkontext mit echtem Zeitabstand, CDP-Ereignisse kommen im Testbrowser zu langsam für einen echten Schwung)
+  await page.evaluate(async () => { const el = document.querySelector("#pvTrack img") || document.getElementById("pvTrack"), w = (ms) => new Promise(r => setTimeout(r, ms));
+    const ev = (type, y) => { const t = new Touch({identifier:7, target:el, clientX:200, clientY:y}); el.dispatchEvent(new TouchEvent(type, {touches:type==="touchend" ? [] : [t], changedTouches:[t], bubbles:true, cancelable:true})); };
+    ev("touchstart", 400); for(const y of [412, 430, 455, 480]){ await w(14); ev("touchmove", y); } await w(10); ev("touchend", 480); });
+  await page.waitForFunction(() => window.__rp(`$("pvLayer").hidden`), null, {timeout:3000}).catch(() => {});
+  ok(await rp(`$("pvLayer").hidden`), "Schneller Wisch schließt nicht: "+JSON.stringify(await rp(`FX.last`)));
+  // Chat-Foto: Runterziehen schließt ebenso
+  await rp(`chGal(["ph_a"], 0, {n:"Brooklyn Bridge", trip:"Testreise"})`); await page.waitForTimeout(200);
+  await T("touchStart", 200, 400);
+  for(const [x, y] of [[205, 420], [215, 470], [225, 540], [230, 600]]){ await T("touchMove", x, y); await page.waitForTimeout(16); }
+  const cm = await page.evaluate(() => { const sl = document.querySelectorAll("#chPhView .chpv-sl")[1]; const m = new DOMMatrix(getComputedStyle(sl).transform); return {tx:Math.round(m.e), sc:+m.a.toFixed(2)}; });
+  ok(cm.tx > 10 && cm.sc < 0.9, "Chat-Foto folgt dem Finger nicht: "+JSON.stringify(cm));
+  await T("touchEnd");
+  await page.waitForFunction(() => window.__rp(`$("chPhView").hidden`), null, {timeout:3000}).catch(() => {});
+  ok(await rp(`$("chPhView").hidden && !$("chPhView").style.background`), "Chat-Foto schließt nicht sauber");
+});
+
 await test("Bewegung: Wischen unter den Reitern wechselt den Reiter (Profil, Liste)", async () => {
   await seed(); await rp(`openProfile()`); await page.waitForTimeout(500);
   const cdp = await page.context().newCDPSession(page);
