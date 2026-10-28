@@ -1438,6 +1438,35 @@ await test("Fußweg mit Wegpunkten: echter Weg auch wenn ein Teilstück fehlt, b
   } finally { globalThis.FOOTMOCK = false; }
 });
 
+await test("Gruppen: ein Ort in mehreren Gruppen (alte Einzel-Zuordnung bleibt gültig)", async () => {
+  await seed();
+  const id = await rp(`Object.keys(T().places).filter(function(k){ var p = P(k); return !p.of && p.k!=="hotel"; })[0]`);
+  // alter Stand: eine Gruppe als einzelne ID
+  await rp(`(function(){ var t = T(); t.groups = {ga:{n:"Central Park"}, gb:{n:"Abends"}}; T().places["${id}"].g = "ga"; save(); })()`);
+  ok(await rp(`gidsOf(P("${id}")).join()==="ga" && grpNames(P("${id}"))==="Central Park"`), "Alte Einzel-Zuordnung nicht erkannt");
+  await rp(`openGrpPop("${id}")`);
+  ok(await visible("#catPop .glist"), "Gruppen-Auswahl öffnet nicht");
+  await click('#catPop [data-act=grpset][data-g="gb"]');
+  ok(await visible("#catPop .glist"), "Auswahl schließt nach dem ersten Tipp – Mehrfachauswahl nicht möglich");
+  ok(await rp(`JSON.stringify(P("${id}").g)==='["ga","gb"]'`), "Nicht in beiden Gruppen: "+await rp(`JSON.stringify(P("${id}").g)`));
+  ok(await rp(`document.querySelectorAll('#catPop [data-act=grpset][aria-pressed=true]').length===2`), "Beide Gruppen nicht als gewählt markiert");
+  ok(await rp(`grpNames(P("${id}"))==="Abends, Central Park"`), "Namen falsch: "+await rp(`grpNames(P("${id}"))`));
+  ok(await rp(`(grpSel = "ga", grpOk(P("${id}"))) && (grpSel = "gb", grpOk(P("${id}"))) && (grpSel = "none", !grpOk(P("${id}")))`), "Filter nach Gruppe findet den Ort nicht in beiden");
+  await rp(`grpSel = ""`);
+  // neue Gruppe anlegen fügt hinzu statt zu ersetzen
+  await page.fill("#grpNewIn", "Regentag"); await click("#grpNew [type=submit]");
+  ok(await rp(`gidsOf(P("${id}")).length===3`), "Neue Gruppe ersetzt die bisherigen");
+  // abwählen bis zur einzelnen ID; Löschen einer Gruppe nimmt nur sie heraus
+  await click('#catPop [data-act=grpset][data-g="gb"]');
+  await rp(`(function(){ var g = Object.keys(T().groups).filter(function(k){ return T().groups[k].n==="Regentag"; })[0]; setGroup("${id}", g); })()`);
+  ok(await rp(`P("${id}").g==="ga"`), "Bei einer Gruppe nicht als Einzelwert gespeichert: "+await rp(`JSON.stringify(P("${id}").g)`));
+  await rp(`setGroup("${id}", "gb")`);
+  await click('#catPop [data-act=grpedit][data-g="ga"]'); await click('#catPop [data-act=grpdel][data-g="ga"]');
+  ok(await rp(`P("${id}").g==="gb"`), "Gruppe löschen entfernt falsch: "+await rp(`JSON.stringify(P("${id}").g)`));
+  await rp(`openGrpPop("${id}")`); await click('#catPop [data-act=grpset][data-g=""]');
+  ok(await rp(`P("${id}").g===undefined`), "„Keine Gruppe“ leert die Zuordnung nicht");
+});
+
 await test("Ort-Menü (Mehr): Gruppen Planen/Zuordnen/Infos, einzeilige Zeilen, Löschen unten in voller Breite mit Rückfrage", async () => {
   await seed();
   const id = await rp(`Object.keys(T().places).filter(function(k){ return dayOf(k)===cur && P(k).k!=="hotel" && !T().done[k]; })[0]`);
@@ -2349,6 +2378,33 @@ await test("Breitbild (iPad): Reise-Auswahl, Leiste, Suche und Plus in einer Zei
   // Hochformat iPhone bleibt zweizeilig: Reise-Auswahl unter der Leiste
   await page.setViewportSize({width:390, height:844}); await page.waitForTimeout(500);
   ok(await page.evaluate(() => document.getElementById("tripBtn").getBoundingClientRect().top >= document.getElementById("tabbar").getBoundingClientRect().bottom - 1), "Hochformat: Reise-Auswahl nicht mehr unter der Leiste");
+}, {vp:{width:1366, height:1024}});
+
+// Wunschliste → Ort antippen → Haupt-Pop-up schließen: der Punkt bleibt sichtbar, Karten-Pop-up und Leisten verdecken ihn nicht (Hoch- und Querformat, iPhone und iPad)
+await test("Kartenpunkt bleibt nach Schließen des Pop-ups sichtbar (iPad, Querformat)", async () => {
+  await seed(); await page.waitForTimeout(300);
+  for(const vp of [{width:1366, height:1024}, {width:1024, height:1366}, {width:1180, height:820}, {width:844, height:390}, {width:390, height:844}]){
+    await page.setViewportSize(vp); await page.waitForTimeout(500);
+    const w = vp.width+"×"+vp.height;
+    for(const pid of ["p7", "p6"]){
+      await rp(`(function(){ closeJPop(); select(null); tab = "wish"; renderAll(); map.jumpTo({center:[-73.90, 40.80], zoom:12}); })()`);
+      if(await rp(`desktop.matches && !sideOpen`)){ await click("#edgeBtn"); await page.waitForTimeout(400); }
+      if(await rp(`!desktop.matches`)){ await rp(`setSheet("mid")`); await page.waitForTimeout(400); }
+      await page.locator('#sheet li.wi[data-id="'+pid+'"] .nm, #side li.wi[data-id="'+pid+'"] .nm, li.wi[data-id="'+pid+'"] .nm').first().click();
+      await page.waitForTimeout(1300);
+      if(await visible("#jPop")){ await click('#jPop [data-act="jclose"]'); }
+      await page.waitForFunction(() => !window.__rp("map.isMoving()"), null, {timeout:4000}).catch(() => {});
+      await page.waitForTimeout(1300);
+      ok(await visible("#card"), w+": Karten-Pop-up fehlt");
+      const r = await rp(`(function(){ var p = P("${pid}"), q = map.project([p.lo, p.la]), mr = mapEl.getBoundingClientRect(), x = q.x + mr.left, y = q.y + mr.top;
+        var c = $("card").getBoundingClientRect(), top = document.elementFromPoint(x, y);
+        return {x:Math.round(x), y:Math.round(y), card:[Math.round(c.left), Math.round(c.top), Math.round(c.right), Math.round(c.bottom)],
+          inCard: x > c.left - 6 && x < c.right + 6 && y > c.top - 6 && y < c.bottom + 6, onMap: !!top && (mapEl.contains(top) || ($("ov") && $("ov").contains(top))) && x > Math.max(mr.left, 0) + 16 && x < Math.min(mr.right, innerWidth) - 16 && y > document.querySelector(".top").getBoundingClientRect().bottom + 8 && y < Math.min(mr.bottom, innerHeight) - 16, hit: top ? (top.id || top.className || top.tagName) : "" }; })()`);
+      await shot("punkt-sichtbar-"+vp.width+"x"+vp.height+"-"+pid);
+      ok(!r.inCard, w+" "+pid+": Karten-Pop-up verdeckt den Punkt "+JSON.stringify(r));
+      ok(r.onMap, w+" "+pid+": Punkt verdeckt von "+JSON.stringify(r));
+    }
+  }
 }, {vp:{width:1366, height:1024}});
 
 // prüft: Knöpfe, Eingaben und Überschriften der offenen Ansicht liegen nicht unter Notch/Rand (horizontal ins Bild ragende Elemente in Laufbändern ausgenommen)
