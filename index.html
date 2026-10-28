@@ -2733,6 +2733,15 @@ body.navon .top,body.navon #rail{visibility:hidden}
 .tkrow.ok .tkic{--cc:#0b8a4b}
 a.ls-row{text-decoration:none}
 .tkopen{display:grid;place-items:center;color:var(--accent,#0a84ff)}
+.evlist{max-height:min(60vh,520px);overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+.evrow .ls-t{min-width:0}
+.evrow .ls-t small{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.evrow.ok .tkic,.evplan[aria-pressed="true"]{--cc:#0b8a4b;color:#0b8a4b}
+.evrow.off .ls-t b{text-decoration:line-through;opacity:.6}
+.evplan,.evrow .tkopen{display:grid;place-items:center}
+.evplan svg,.evrow .tkopen svg{width:19px;height:19px}
+.evsrc{font-size:11.5px;margin-top:10px}
+.devt svg{width:20px;height:20px}
 .tkopen svg{width:18px;height:18px}
 .tkna small{font-style:italic}
 .tkempty{margin:0 4px 4px;font-size:13px}
@@ -3852,8 +3861,8 @@ body.ro .navtools [data-act="addpop"]{display:none}
 :root{--del:#C4462F}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--del:#F0766A} }
 :root[data-theme="dark"]{--del:#F0766A}
-:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="folrm"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],[data-ai="del"],.btn.warn,.tf-link.warn){color:var(--del) !important}
-.btn:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="folrm"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],.warn){background:color-mix(in srgb,var(--del) 13%,transparent) !important;border-color:color-mix(in srgb,var(--del) 30%,transparent) !important}
+:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="folrm"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="evkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],[data-ai="del"],.btn.warn,.tf-link.warn){color:var(--del) !important}
+.btn:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="folrm"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="evkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],.warn){background:color-mix(in srgb,var(--del) 13%,transparent) !important;border-color:color-mix(in srgb,var(--del) 30%,transparent) !important}
 :is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) :is(b,.ai){color:var(--del) !important}
 :is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) .ai{background:color-mix(in srgb,var(--del) 12%,transparent) !important}
 
@@ -4122,7 +4131,8 @@ var IC = {
   back:"<path d=\"M12 5l-5 5 5 5\"/>", // Zurück (in die Wunschliste)
   park:"<rect x=\"3\" y=\"4\" width=\"14\" height=\"4\" rx=\"1\"/><path d=\"M4.5 8v7.5h11V8M8 11h4\"/>", // Zurückstellen
   hotel:"<path d=\"M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5\"/><circle cx=\"5.8\" cy=\"9.6\" r=\"1.6\"/>", // Hotel
-  ticket:"<path d=\"M2.5 6h15v2.6a1.6 1.6 0 0 0 0 3.2V14.4h-15v-2.6a1.6 1.6 0 0 0 0-3.2z\"/><path d=\"M12.5 6.5v1.5M12.5 9.5v1.4M12.5 12.4v1.5\"/>" // Tickets (Fahrkarten, Eintritt)
+  ticket:"<path d=\"M2.5 6h15v2.6a1.6 1.6 0 0 0 0 3.2V14.4h-15v-2.6a1.6 1.6 0 0 0 0-3.2z\"/><path d=\"M12.5 6.5v1.5M12.5 9.5v1.4M12.5 12.4v1.5\"/>", // Tickets (Fahrkarten, Eintritt)
+  event:"<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M7 3v3M13 3v3M10 8.6l1.1 2.2 2.4.3-1.8 1.6.5 2.4-2.2-1.2-2.2 1.2.5-2.4-1.8-1.6 2.4-.3z\"/>" // Events (Konzerte, Sport, Theater)
 };
 // ic("send") – Linie; icf("like") – gefüllt (aktiv); cls z. B. "ii" für Symbole im Fließtext
 function ic(n, cls, fill){ return "<svg"+(cls ? " class=\""+cls+"\"" : "")+" viewBox=\"0 0 20 20\" fill=\""+(fill||"none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+IC[n]+"</svg>"; }
@@ -8139,6 +8149,8 @@ function acctHTML(){
   h += "<div class=\"ag-lbl\">Bewertungen &amp; Fotos</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"gtoggle\" aria-expanded=\""+gOpen+"\"><span><b>Google-Schlüssel</b><small>"+(gKey ? "Aktiv – nur auf diesem Gerät" : "Nicht eingerichtet")+"</small></span><em class=\"chev\">"+(gOpen?"⌄":"›")+"</em></button>";
   if(gOpen) h += "<div class=\"ag-in\"><div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\">"+esc(gMsg)+"</p>":"")+"</div>";
   h += "</div>";
+  // Events (Ticketmaster): Schlüssel wird im Events-Fenster eingetragen, hier nur Status und Entfernen
+  if(tmKey) h += "<div class=\"ag-lbl\">Events</div><div class=\"ag-grp\"><div class=\"ag-row\"><span><b>Ticketmaster-Schlüssel</b><small>Aktiv – nur auf diesem Gerät</small></span><button type=\"button\" class=\"btn g s\" data-act=\"evkeydel\">Entfernen</button></div></div>";
   // Empfehlungen
   if(u) h += "<div class=\"ag-lbl\">Empfehlungen</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"recshare\" role=\"switch\" aria-checked=\""+recShare+"\"><span><b>Veröffentlichte Orte teilen</b><small>Nur Orte, die du in den Details unter „Sichtbarkeit“ bewusst für Freunde veröffentlichst, erscheinen bei deinen Freunden unter „Entdecken“ und als Vorschlag – mit Bewertung, öffentlicher Notiz und Fotos. Private Notizen und Fotos nie.</small></span><em class=\"sw-mini"+(recShare?" on":"")+"\"></em></button></div>";
   // Sicherung
@@ -10171,6 +10183,7 @@ function tkEdit(id){ if(!TK) return; var A = tkAll(), t = id && A[id];
 function tkSave(){
   if(!TK || !TK.ed) return; tkKeep(); var f = TK.ed, o = {on:TK.on, k:TK.k, st:f.st==="ok" ? "ok" : "plan", at:f.at || Date.now()};
   TKF.forEach(function(x){ var v = String(f[x[0]]||"").trim().slice(0, x[4]); if(v) o[x[0]] = v; });
+  if(f.ev) o.ev = String(f.ev);
   if(o.url){ var u = tkUrl(o.url); if(!u){ f.err = "Der Link sieht nicht gültig aus."; renderTk(); return; } o.url = u; }
   if(o.d && !parseD(o.d)) delete o.d;
   if(!o.n && !o.code && !o.url){ f.err = "Bitte mindestens Name, Code oder Link angeben."; renderTk(); return; }
@@ -10180,6 +10193,110 @@ function tkSave(){
 function tkDel(){
   if(!TK || !TK.ed || !TK.ed.id) return; var id = TK.ed.id, nm = TK.ed.n || "Ticket";
   askConfirm("Ticket löschen?", "„"+nm+"“ wird entfernt.", "Löschen", function(){ var t = T(); if(t.tickets) delete t.tickets[id]; save(); if(TK){ TK.ed = null; renderTk(); } renderSheet(); renderCard(); });
+}
+/* ---------- Events (Ticketmaster Discovery API; Schlüssel nur auf diesem Gerät, wie bei Google) ----------
+   Ort → „Mehr“ → Events: Termine an diesem Ort im Reisezeitraum. Tageskopf → Events: rund um Hotel/Ort des Tages.
+   Einplanen: Veranstaltungsort in den Tagesplan (vorhandener Ort wird genutzt), Uhrzeit = Beginn, Event als geplantes Ticket (k:"event", ev:<Event-ID>).
+   Nur echte Daten aus der Schnittstelle, nichts ergänzt. Antworten 6 h im Speicher, um das Tageslimit (5.000) zu schonen. */
+var tmKey = lsGet("rp-tmkey") || "", EVC = {}, EV = null;
+var EVSEG = {"Music":"Musik", "Sports":"Sport", "Arts & Theatre":"Kunst & Theater", "Family":"Familie", "Film":"Film", "Miscellaneous":"Sonstiges"};
+function evTime(s){ var t = s && s.localTime; if(typeof t==="string") return t.slice(0, 5);
+  if(t && t.hourOfDay!=null){ var p = function(n){ return (n < 10 ? "0" : "")+n; }; return p(+t.hourOfDay)+":"+p(+(t.minuteOfHour||0)); } return ""; }
+function evParse(e){
+  var s = (e.dates && e.dates.start) || {}, v = ((e._embedded && e._embedded.venues) || [])[0] || {}, L = v.location || {}, cl = (e.classifications || [])[0] || {};
+  var pr = (e.priceRanges || [])[0], seg = cl.segment && cl.segment.name, gen = cl.genre && cl.genre.name;
+  return {id:String(e.id||""), n:String(e.name||"").slice(0, 120), d:s.localDate || "", tm:s.timeTBA || s.noSpecificTime ? "" : evTime(s), url:tkUrl(e.url||""),
+    seg:EVSEG[seg] || "", gen:gen && gen!=="Undefined" && gen!=="Other" ? gen : "", vn:String(v.name||"").slice(0, 80),
+    addr:[v.address && v.address.line1, v.city && v.city.name].filter(Boolean).join(", ").slice(0, 120), la:+L.latitude, lo:+L.longitude,
+    pr:pr && pr.min!=null && isFinite(+pr.min) ? "ab "+(+pr.min % 1 ? (+pr.min).toFixed(2).replace(".", ",") : +pr.min)+" "+(pr.currency||"") : "", off:!!(e.dates && e.dates.status && /cancel|postpon/i.test(e.dates.status.code||""))};
+}
+function evAnchor(o){ if(o.pid){ var p = P(rootOf(o.pid)); return hasLoc(p) ? p : null; } var D = dayByKey(o.k); if(!D) return null;
+  var a = hasLoc(D.hotel) ? D.hotel : ortFor(o.k); return hasLoc(a) ? a : null; }
+function evLoad(){
+  var e = EV; if(!e) return; var a = evAnchor(e), ds = days(); if(!a || !ds.length){ e.st = "none"; e.list = []; return; }
+  var d0 = e.k || ds[0].key, d1 = e.k || ds[ds.length-1].key;
+  var q = "geoPoint="+geohash(+a.la, +a.lo, 9)+"&radius="+(e.pid ? 1 : 5)+"&unit=km&size=100&sort=date,asc&locale=*"+
+    "&startDateTime="+addD(d0, -1)+"T00:00:00Z&endDateTime="+addD(d1, 1)+"T23:59:59Z";
+  var c = EVC[q], fit = function(L){
+    return L.filter(function(x){ if(!x.d || x.d < d0 || x.d > d1) return false; if(!e.pid) return true;
+      var near = hasLoc(x) && dist(x, a) < 250, nm = zKey(x.vn) && zKey(x.vn)===zKey(a.n); return near || nm; }); };
+  if(c && Date.now() - c.at < 6*3600e3){ e.st = "ok"; e.list = fit(c.list); return; }
+  if(!navigator.onLine){ e.st = "err"; e.err = "Offline – Events brauchen eine Verbindung."; return; }
+  e.st = "load"; var my = e;
+  fetch("https://app.ticketmaster.com/discovery/v2/events.json?apikey="+encodeURIComponent(tmKey)+"&"+q)
+    .then(function(r){ if(!r.ok) throw r.status; return r.json(); })
+    .then(function(j){ var L = ((j._embedded && j._embedded.events) || []).map(evParse).filter(function(x){ return x.id && x.n; });
+      EVC[q] = {at:Date.now(), list:L}; if(EV!==my) return; my.st = "ok"; my.list = fit(L); renderEv(); })
+    .catch(function(s){ if(EV!==my) return; my.st = "err";
+      my.err = s===401 || s===403 ? "Ticketmaster lehnt den Schlüssel ab. Bitte den „Consumer Key“ aus deinem Ticketmaster-Konto eintragen." : s===429 ? "Tageslimit von Ticketmaster erreicht – morgen wieder." : "Events konnten nicht geladen werden (keine Verbindung?)."; renderEv(); });
+}
+function evOpen(o){ EV = {pid:o.pid ? rootOf(o.pid) : "", k:o.k || "", st:"", list:[], err:"", msg:""}; if(tmKey) evLoad(); renderEv(true); }
+function evPlanned(x){ var A = tkAll(); return Object.keys(A).some(function(id){ return A[id] && A[id].ev===x.id; }); }
+function evHTML(){
+  var e = EV, D = e.k && dayByKey(e.k), p = e.pid && P(e.pid), RO = isRO();
+  var h = "<div class=\"pop-card zpop evpop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Events\">";
+  h += "<div class=\"pop-head\"><h4>Events</h4><button type=\"button\" class=\"x\" data-act=\"evclose\" aria-label=\"Schließen\">×</button></div>";
+  h += "<p class=\"lo-leg\">"+(p ? esc(p.n)+" · im Reisezeitraum" : D ? "Tag "+D.n+" · "+esc(D.lbl)+" · im Umkreis von 5 km" : "")+"</p>";
+  if(!tmKey){
+    h += "<p class=\"note\">Events kommen von Ticketmaster (Konzerte, Sport, Theater, Familie). Dafür brauchst du einen kostenlosen Schlüssel: auf developer.ticketmaster.com ein Konto anlegen und den „Consumer Key“ hier eintragen. Er bleibt nur auf diesem Gerät.</p>"+
+      "<div class=\"gkey\"><input type=\"password\" id=\"evKeyIn\" autocomplete=\"off\" spellcheck=\"false\" autocapitalize=\"off\" placeholder=\"Consumer Key\" aria-label=\"Ticketmaster-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"evkeysave\">Speichern</button></div>"+
+      (e.msg ? "<p class=\"note\" role=\"status\">"+esc(e.msg)+"</p>" : "")+
+      "<div class=\"pf-acts\"><a class=\"btn g\" href=\"https://developer.ticketmaster.com/\" target=\"_blank\" rel=\"noopener\">"+ic("ext", "ii")+" Schlüssel holen</a></div>";
+    return h+"</div>";
+  }
+  if(e.st==="load") h += "<p class=\"loc-st\"><i class=\"spin\"></i><span>Events werden geladen …</span></p>";
+  else if(e.st==="err") h += "<p class=\"note everr\" role=\"alert\">"+esc(e.err)+"</p>";
+  else if(!e.list.length) h += "<p class=\"note evempty\">"+(p ? "Ticketmaster kennt hier im Reisezeitraum keine Events." : "Ticketmaster kennt an diesem Tag in der Nähe keine Events.")+"</p>";
+  else {
+    var last = "";
+    h += "<div class=\"evlist\">"+(D ? "<div class=\"ag-grp ls-list\">" : "")+e.list.map(function(x, i){
+      var on = evPlanned(x), sub = [!D ? "" : x.tm, D ? x.vn : "", x.seg, x.gen, x.pr].filter(Boolean).join(" · "), sec = "";
+      if(!D && x.d!==last){ var dd = dayByKey(x.d); sec = (last ? "</div>" : "")+"<div class=\"nt-sec\">"+(dd ? "Tag "+dd.n+" · "+esc(dd.lbl) : esc(shortD(x.d)))+"</div><div class=\"ag-grp ls-list\">"; last = x.d; }
+      return sec+"<div class=\"ls-row zrow evrow"+(on ? " ok" : "")+(x.off ? " off" : "")+"\"><span class=\"ls-th ico tkic\">"+ic("event")+"</span><span class=\"ls-t\"><b>"+esc(x.n)+"</b><small>"+
+        (!D && x.tm ? esc(x.tm)+" · " : "")+esc(sub)+(x.off ? " · abgesagt/verschoben" : "")+"</small></span>"+
+        (RO || x.off ? "" : "<button type=\"button\" class=\"zrow-x evplan\" data-act=\"evplan\" data-i=\""+i+"\" aria-pressed=\""+on+"\" aria-label=\""+(on ? "Eingeplant" : "Einplanen")+"\">"+ic("cal")+"</button>")+
+        (x.url ? "<a class=\"zrow-x tkopen\" href=\""+esc(x.url)+"\" target=\"_blank\" rel=\"noopener\" aria-label=\"Bei Ticketmaster öffnen\">"+ic("ext")+"</a>" : "")+"</div>"; }).join("")+"</div></div>";
+  }
+  h += "<p class=\"note evsrc\">Quelle: Ticketmaster</p>";
+  return h+"</div>";
+}
+function renderEv(first){
+  if(!EV) return; var cp = $("catPop");
+  if(first || cp.hidden){ cp.innerHTML = evHTML(); cp.hidden = false; } else catKeep(evHTML());
+}
+// passender Ort der Reise zum Veranstaltungsort (nah und gleicher Name), sonst neuer Ort aus den Ticketmaster-Angaben
+function evPlace(x){
+  if(EV && EV.pid && P(EV.pid)) return EV.pid;
+  var hit = ""; Object.keys(T().places).forEach(function(id){ var q = P(id); if(!hit && !q.of && q.k!=="hotel" && q.k!=="photo" && hasLoc(q) && hasLoc(x) && dist(q, x) < 150 && zKey(q.n)===zKey(x.vn)) hit = id; });
+  if(hit || !hasLoc(x)) return hit;
+  var pid = uid("w"), lid = (T().lists[0]||{}).id || null;
+  T().places[pid] = {id:pid, n:(x.vn || x.n).slice(0, 80), c:x.seg==="Kunst & Theater" ? "kultur" : "erlebnis", list:lid, note:"", addr:x.addr, la:+x.la, lo:+x.lo};
+  return pid;
+}
+function evPlan(i){
+  var x = EV && EV.list[i]; if(!x || isRO()) return;
+  if(evPlanned(x)){ toast("„"+x.n+"“ ist schon eingeplant", false); return; }
+  var D = dayByKey(x.d); if(!D){ toast("Der Termin liegt außerhalb der Reise", false); return; }
+  var snap = snapshot(), k = x.d, pid = evPlace(x); if(!pid){ toast("Für dieses Event fehlt der Ort", false); return; }
+  var r = rootOf(pid), vis = function(){ return visitsOf(r).filter(function(v){ return v.k===k; })[0]; };
+  if(!vis()){ var o = ord(k), at = null;
+    if(x.tm) for(var j = 0; j < o.length; j++){ if(timeOf(o[j]) && timeOf(o[j]) > x.tm){ at = j; break; } }
+    if(!dayOf(r)) plan(r, k, at); else revisit(r, k, at); }
+  var v = vis(); if(!v){ S = JSON.parse(snap); save(); renderAll(); return; }
+  var t = T(); if(x.tm){ t.times = t.times || {}; t.times[v.id] = x.tm; }
+  t.tickets = t.tickets && typeof t.tickets==="object" ? t.tickets : {};
+  var tk = {on:"p:"+r, k:"event", n:x.n, prov:"Ticketmaster", d:k, st:"plan", ev:x.id, at:Date.now()}; if(x.tm) tk.tm = x.tm; if(x.url) tk.url = x.url; if(x.pr) tk.price = x.pr.slice(0, 30);
+  t.tickets[uid("tk")] = tk;
+  save(); undoSnap = snap; renderAll();
+  toast("„"+x.n+"“ am "+D.lbl+(x.tm ? " um "+x.tm : "")+" eingeplant", true);
+  renderEv();
+}
+function evKeySave(){
+  var i = $("evKeyIn"), v = (i && i.value || "").trim(); if(!v){ if(i) i.focus(); return; }
+  EV.msg = "Prüfe Schlüssel …"; renderEv();
+  fetch("https://app.ticketmaster.com/discovery/v2/events.json?size=1&apikey="+encodeURIComponent(v))
+    .then(function(r){ if(!r.ok) throw r.status; tmKey = v; lsSet("rp-tmkey", v); if(EV){ EV.msg = ""; evLoad(); renderEv(); } refreshSettings(); })
+    .catch(function(s){ if(!EV) return; EV.msg = s===401 || s===403 ? "Ticketmaster lehnt den Schlüssel ab." : "Prüfung fehlgeschlagen (keine Verbindung?)."; renderEv(); });
 }
 var routeMode = "walk"; // nicht mehr global; jede Etappe hat ihre eigene Wahl
 function legKey(a, b){ return (a.id||((+a.la).toFixed(4)+","+(+a.lo).toFixed(4)))+">"+(b.id||((+b.la).toFixed(4)+","+(+b.lo).toFixed(4))); }
@@ -12430,6 +12547,7 @@ function openCardMore(btn, id, kind){
   if(hasLoc(p) && !isHs && acct.user) sh += row("chshare", I(IC.send), "Im Chat schicken", "", "Einem Freund im Chat schicken", " data-pid=\""+id+"\"");
   // Privat/Reise/Freunde steht bei Orten unter „Sichtbarkeit“ im Detail-Fenster – nur das Hotel hat dieses Feld nicht
   if(isHs && canPriv()){ var pv = isPrivP(id); sh += row("privp", "<span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span>", pv ? "Privat – wieder für alle" : "Als privat markieren", "", "", " aria-checked=\""+pv+"\""); }
+  if(!isHs && hasLoc(p) && days().length) inf += row("evplace", I(IC.event), "Events", "", "Konzerte, Sport, Theater hier im Reisezeitraum");
   inf += row("gmopen", I(IC.ext), "In Google Maps öffnen", "", "Öffnungszeiten, Bewertungen, Fotos");
   var sec = function(t, x){ return x ? "<div class=\"vp-h cm-h\">"+t+"</div>"+x : ""; };
   var h = sec("Planen", pl)+sec("Zuordnen", as)+sec("Teilen", sh)+sec("Infos", inf)+
@@ -12509,7 +12627,8 @@ var CONFIRM = {
   mleave:["Reise verlassen?", "Die Reise verschwindet von deinen Geräten. Wieder hinein kommst du nur mit einer neuen Einladung.", "Verlassen"],
   minvdel:["Einladung zurückziehen?", "", "Zurückziehen"],
   fgdel:["Gruppe löschen?", "Die Personen bleiben deine Freunde – nur die Gruppe verschwindet.", "Löschen"],
-  gkeydel:["Google-Schlüssel entfernen?", "", "Entfernen"]
+  gkeydel:["Google-Schlüssel entfernen?", "", "Entfernen"],
+  evkeydel:["Ticketmaster-Schlüssel entfernen?", "Events lassen sich dann erst nach erneutem Eintragen wieder laden.", "Entfernen"]
 };
 function askConfirm(title, text, ok, fn, no, noHint){
   var el = $("cfPop"); if(!el){ el = document.createElement("div"); el.id = "cfPop"; el.className = "cfpop"; document.body.appendChild(el); }
@@ -13426,6 +13545,7 @@ function renderDay(){
   var h = "<div class=\"dh dhx\"><button type=\"button\" class=\"dhd\" data-act=\"daypop\" aria-label=\""+esc(D.title)+" – Tag wechseln\"><span class=\"dring\""+(sIds.length ? " role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\""+sIds.length+"\" aria-valuenow=\""+nDone+"\"" : "")+" style=\"--p:"+pct+"%\"><span class=\"b"+yel(D)+"\" style=\"background:"+dayColor(D)+"\">"+D.n+"</span></span><span class=\"dht\"><h2>"+esc(D.wd+", "+dd.getUTCDate()+". "+MON[dd.getUTCMonth()].slice(0,3))+"<svg class=\"dhchev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></h2><p>"+esc(meta.join(" · "))+"</p></span></button>";
   h += rcEntry(D);
   var RO = isRO(), sug = RO ? [] : suggest(cur, 3), sugT = ids.length ? "Passt zu diesem Tag" : (HD ? "Nah am Hotel" : "Vorschläge");
+  if(!RO && evAnchor({k:cur})) h += "<button type=\"button\" class=\"dhi devt\" data-act=\"evday\" data-day=\""+cur+"\" title=\"Events\" aria-label=\"Events in der Nähe an diesem Tag\">"+ic("event")+"</button>";
   if(!RO) h += "<button type=\"button\" class=\"dhi dsug\" data-act=\"sugtoggle\" aria-expanded=\""+sugOpen+"\" title=\""+sugT+"\" aria-label=\""+sugT+": "+sug.length+" Vorschläge\">"+SUGICO+"<b>"+sug.length+"</b></button>";
   h += "</div>";
   if(isViewerOf(S.cur)) h += "<p class=\"note rolenote\">"+ic("eye", "ii")+" Du beobachtest diese Reise – ansehen und kommentieren, aber nichts ändern.</p>";
@@ -15191,7 +15311,7 @@ function openDayPop(forId, mv){
   $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
 }
-function closeCatPop(){ $("catPop").hidden = true; locSt = null; TK = null; }
+function closeCatPop(){ $("catPop").hidden = true; locSt = null; TK = null; EV = null; }
 function endPick(){ pick = null; $("pick").hidden = true; if(viaPick) endViaPick(); if(vmPick) endVmPick(); }
 /* Wegpunkt per Karte einer Strecke zuordnen: die beiden Punkte antippen, zwischen denen er liegen soll */
 var vmPick = null;
@@ -15718,6 +15838,12 @@ document.addEventListener("click", function(e){
     case "loptclose": LOPT = null; closeCatPop(); break;
     case "tkleg": closeJpMore(); tkLegOpen(parseInt(t.getAttribute("data-leg"),10)); break;
     case "tkplace": closeJpMore(); tkPlaceOpen(id || sel); break;
+    case "evplace": closeJpMore(); evOpen({pid:id || sel}); break;
+    case "evday": evOpen({k:t.getAttribute("data-day") || cur}); break;
+    case "evclose": closeCatPop(); break;
+    case "evplan": evPlan(+t.getAttribute("data-i")); break;
+    case "evkeysave": evKeySave(); break;
+    case "evkeydel": tmKey = ""; EVC = {}; try { localStorage.removeItem("rp-tmkey"); } catch(e){} refreshSettings(); break;
     case "tkclose": TK = null; closeCatPop(); break;
     case "tknew": tkEdit(null); break;
     case "tkedit": tkEdit(t.getAttribute("data-tk")); break;

@@ -1428,6 +1428,66 @@ await test("Tickets: Fahrkarte je Etappe und Event-Ticket je Ort hinterlegen (Bu
   await shot("ticket-liste");
 });
 
+await test("Events: Ticketmaster-Termine am Ort und am Tag, Einplanen mit Uhrzeit und Ticket", async () => {
+  await seed();
+  const H = await rp(`cur`), N = await rp(`addD(cur, 1)`), REQ = [];
+  await rp(`(function(){ tmKey = ""; EVC = {}; try { localStorage.removeItem("rp-tmkey"); } catch(e){} })()`);
+  const ev = (id, n, d, tm, vn, la, lo, seg, x) => Object.assign({id, name:n, url:"https://www.ticketmaster.com/event/"+id, dates:{start:{localDate:d, localTime:tm+":00"}, status:{code:"onsale"}},
+    classifications:[{segment:{name:seg}, genre:{name:"Rock"}}], priceRanges:[{type:"standard", currency:"USD", min:45.5, max:120}],
+    _embedded:{venues:[{name:vn, location:{latitude:String(la), longitude:String(lo)}, address:{line1:"Teststraße 2"}, city:{name:"New York"}}]}}, x||{});
+  await page.route(/app\.ticketmaster\.com/, rt => { const u = rt.request().url(); REQ.push(u);
+    if(!u.includes("apikey=gut")) return rt.fulfill({ status:401, contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:"{}" });
+    return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body: JSON.stringify({_embedded:{events:[
+      ev("E1", "Konzert im MoMA", H, "19:30", "MoMA", 40.7613, -73.9777, "Music"),
+      ev("E3", "Abgesagte Show", H, "21:00", "Irgendwo", 40.7590, -73.9850, "Arts & Theatre", {dates:{start:{localDate:H, localTime:"21:00:00"}, status:{code:"cancelled"}}}),
+      ev("E2", "Knicks – Celtics", N, "20:00", "Madison Square Garden", 40.7505, -73.9934, "Sports")]}}) }); });
+  await rp(`(function(){ select(null); setSheet("full"); renderSheet(); })()`); await page.waitForTimeout(200);
+  // ohne Schlüssel: Erklärung und Eingabe direkt im Fenster, falscher Schlüssel wird abgelehnt
+  await click(".dh [data-act=evday]");
+  ok(await visible("#catPop .evpop #evKeyIn"), "Schlüssel-Eingabe fehlt");
+  await page.locator("#evKeyIn").fill("falsch"); await click("#catPop [data-act=evkeysave]");
+  await page.waitForFunction(() => /lehnt/.test(document.querySelector("#catPop").innerText), null, {timeout:5000});
+  await page.locator("#evKeyIn").fill("gut"); await click("#catPop [data-act=evkeysave]");
+  await page.waitForSelector("#catPop .evrow", {timeout:5000});
+  ok(await rp(`tmKey==="gut" && lsGet("rp-tmkey")==="gut"`), "Schlüssel nicht gespeichert");
+  const q = new URL(REQ[REQ.length-1]);
+  ok(q.searchParams.get("geoPoint") && q.searchParams.get("radius")==="5" && /T00:00:00Z$/.test(q.searchParams.get("startDateTime")), "Abfrage falsch: "+q.search);
+  // Tag: nur Events dieses Tages, abgesagte durchgestrichen und nicht einplanbar
+  ok(await page.locator("#catPop .evrow").count()===2, "Tagesliste zeigt Events anderer Tage");
+  ok(await page.locator("#catPop .evrow.off [data-act=evplan]").count()===0, "Abgesagtes Event ist einplanbar");
+  ok((await page.locator("#catPop .evrow").first().innerText()).includes("19:30"), "Uhrzeit fehlt");
+  ok((await page.locator("#catPop .evrow a.tkopen").first().getAttribute("href"))==="https://www.ticketmaster.com/event/E1", "Link zu Ticketmaster fehlt");
+  await shot("events-tag");
+  // Einplanen: MoMA ist schon geplant → Uhrzeit setzen + geplantes Ticket, kein doppelter Ort
+  const np = await rp(`Object.keys(T().places).length`);
+  await click("#catPop .evrow [data-act=evplan]");
+  ok(await rp(`timeOf("p3")==="19:30"`), "Uhrzeit nicht übernommen");
+  ok(await rp(`Object.keys(T().places).length===${np}`), "Vorhandener Ort wurde doppelt angelegt");
+  const tk = await rp(`JSON.stringify(tkOn("p:p3").map(function(x){ return [x.k, x.n, x.tm, x.st, x.ev, x.prov]; }))`);
+  ok(tk===JSON.stringify([["event","Konzert im MoMA","19:30","plan","E1","Ticketmaster"]]), "Ticket falsch: "+tk);
+  ok(await page.locator("#catPop .evrow.ok [data-act=evplan][aria-pressed=true]").count()===1, "Eingeplant wird nicht angezeigt");
+  ok(await rp(`pubOf(T()).tickets===undefined`), "Event-Ticket im öffentlichen Teil");
+  await click("#catPop [data-act=evclose]");
+  ok(await page.locator("#catPop").isHidden(), "Fenster schließt nicht");
+  // Ort → Mehr → Events: nur Termine an diesem Ort, im ganzen Reisezeitraum
+  await rp(`(function(){ setSheet("mid"); select("p3"); })()`); await page.waitForTimeout(250);
+  await click("#card [data-act=cardmore]"); await click("#jpMenu [data-act=evplace]");
+  await page.waitForSelector("#catPop .evrow", {timeout:5000});
+  ok(await page.locator("#catPop .evrow").count()===1 && (await page.locator("#catPop .evrow").innerText()).includes("Konzert im MoMA"), "Ort zeigt fremde Events");
+  ok(await page.locator("#catPop .evpop .nt-sec").count()===1, "Datumsüberschrift fehlt");
+  await shot("events-ort");
+  await click("#catPop [data-act=evclose]");
+  // neuer Veranstaltungsort: wird als Ort angelegt und am Event-Tag mit Uhrzeit eingeplant
+  await rp(`(function(){ select(null); cur = "${N}"; setSheet("full"); renderAll(); })()`); await page.waitForTimeout(200);
+  await click(".dh [data-act=evday]"); await page.waitForSelector("#catPop .evrow", {timeout:5000});
+  await click("#catPop .evrow [data-act=evplan]");
+  const msg = await rp(`(function(){ var o = ord("${N}"), id = o.filter(function(x){ return P(x).n==="Madison Square Garden"; })[0]; return id ? [P(id).c, timeOf(id), tkOn("p:"+id).length].join("|") : ""; })()`);
+  ok(msg==="erlebnis|20:00|1", "Neuer Ort nicht richtig eingeplant: "+msg);
+  ok((await page.locator("#toast").innerText()).includes("20:00"), "Hinweis mit Uhrzeit fehlt");
+  await click("#toast [data-act=undo]");
+  ok(await rp(`!ord("${N}").some(function(x){ return P(x) && P(x).n==="Madison Square Garden"; }) && !Object.keys(T().places).some(function(x){ return P(x).n==="Madison Square Garden"; })`), "Rückgängig lässt den neuen Ort stehen");
+});
+
 await test("Linie wählen: bei mehreren möglichen Linien (z. B. A/C/E) eine bestimmte festlegen", async () => {
   await seed();
   await rp(`(function(){ T().order[cur] = ["p2"]; legsList = true; select(null); setSheet("full"); renderSheet(); })()`);
