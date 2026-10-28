@@ -2425,7 +2425,12 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .chpv-cap small{color:rgba(255,255,255,.7)}
 .chpv-nav{position:absolute;top:50%;margin-top:-22px;width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:26px;line-height:1;z-index:1}
 .chpv-nav.p{left:10px}.chpv-nav.n{right:10px}
-#chPvImg{transition:transform .2s}
+.chpv-strip{position:absolute;inset:0;overflow:hidden}
+.chpv-row{display:flex;width:300%;height:100%;will-change:transform;transform:translate3d(-33.3333%,0,0)}
+.chpv-sl{flex:0 0 33.3333%;display:flex;align-items:center;justify-content:center;padding:0 10px;box-sizing:border-box}
+.chpv-sl img{max-width:100%;max-height:80vh;object-fit:contain;-webkit-user-select:none;user-select:none;pointer-events:none}
+.chpv-cap{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);pointer-events:none}
+.chpv-x{z-index:2}
 .ch-plimg[data-act]{cursor:pointer}
 
 .cphadd{flex:0 0 auto;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--fill);color:var(--ink);cursor:pointer;margin-left:auto}
@@ -7522,41 +7527,79 @@ function chPhOpen(key, full){
   if(!full){ toast("Den Ort gibt es in keiner deiner Reisen (mehr) – das Foto kannst du trotzdem ansehen.", false); return; }
   chGal([o.ph], 0, o);
 }
-/* Foto-Ansicht im Chat (Vollbild): ein Foto oder die Galerie eines Orts. Wischen nach links/rechts blättert, nach unten schließt.
-   Es liegt immer nur ein großes Bild im DOM. Fotos lädt phGet – was der Empfänger nicht sehen darf (privat, nicht freigegeben),
-   liefern die Firestore-Regeln nicht aus; solche Fotos fallen aus der Galerie heraus. o: {n, trip, th = Vorschaubild als Platzhalter} */
+/* Foto-Ansicht im Chat (Vollbild): ein Foto oder die Galerie eines Orts. Wie in Apple Fotos folgt das Bild beim Wischen nach
+   links/rechts dem Finger (Nachbarfoto schon sichtbar) und rastet mit Schwung ein; nach unten ziehen schließt.
+   Im DOM liegen nur drei Fotos (vorheriges, aktuelles, nächstes). Fotos lädt phGet – was der Empfänger nicht sehen darf
+   (privat, nicht freigegeben), liefern die Firestore-Regeln nicht aus; solche Fotos fallen aus der Galerie heraus.
+   o: {n, trip, th = Vorschaubild als Platzhalter, thPh = Foto, zu dem das Vorschaubild gehört} */
 var CHGAL = null;
 function chGal(list, i, o){
   var el = $("chPhView"); if(!el){ el = document.createElement("div"); el.id = "chPhView"; el.className = "chphview"; document.body.appendChild(el); var shut = function(){ el.hidden = true; el.innerHTML = ""; el.style.transform = ""; el.style.opacity = ""; CHGAL = null; };
     el.addEventListener("click", function(e){ var nb = e.target.closest && e.target.closest(".chpv-nav"); if(nb){ chGalGo(+nb.getAttribute("data-d")); return; } if(Date.now() - (el._sw||0) < 400) return; shut(); });
-    var y0 = null, x0 = null, hz = false; el.addEventListener("touchstart", function(e){ var t = e.touches.length===1 ? e.touches[0] : null; y0 = t ? t.clientY : null; x0 = t ? t.clientX : null; hz = false; el.style.transition = "none"; }, {passive:true});
-    el.addEventListener("touchmove", function(e){ if(y0==null) return; var dx = e.touches[0].clientX - x0, dy0 = e.touches[0].clientY - y0;
-      if(!hz && CHGAL && CHGAL.list.length > 1 && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy0)) hz = true;
-      if(hz){ var im = $("chPvImg"); if(im) im.style.transform = "translateX("+dx+"px)"; return; }
-      var dy = Math.max(0, dy0); el.style.transform = "translateY("+dy+"px)"; el.style.opacity = String(Math.max(.3, 1 - dy/500)); }, {passive:true});
-    el.addEventListener("touchend", function(e){ if(y0==null) return; var dx = e.changedTouches[0].clientX - x0, dy = (e.changedTouches[0].clientY - y0); y0 = null; el._sw = Date.now();
-      if(hz){ var im = $("chPvImg"); if(im) im.style.transform = ""; if(Math.abs(dx) > 50) chGalGo(dx < 0 ? 1 : -1); return; }
-      el.style.transition = "transform .2s, opacity .2s";
-      if(dy > 110){ el.style.transform = "translateY(100%)"; el.style.opacity = "0"; setTimeout(shut, 200); } else { el.style.transform = ""; el.style.opacity = ""; if(Math.abs(dy) < 8) el._sw = 0; } }); }
-  CHGAL = {list:list.filter(Boolean), i:Math.max(0, i||0), o:o || {}};
+    var sw = null;
+    el.addEventListener("touchstart", function(e){ var t = e.touches.length===1 ? e.touches[0] : null; sw = t && !(CHGAL && CHGAL.anim) ? {x:t.clientX, y:t.clientY, t:Date.now(), mode:null, dx:0, lx:t.clientX, lt:Date.now(), v:0} : null; el.style.transition = "none"; }, {passive:true});
+    el.addEventListener("touchmove", function(e){ if(!sw) return; var t = e.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y, now = Date.now();
+      if(!sw.mode){ if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return; sw.mode = Math.abs(dx) > Math.abs(dy) ? (CHGAL && CHGAL.list.length > 1 ? "h" : null) : (dy > 0 ? "v" : null); if(!sw.mode){ sw = null; return; } }
+      if(sw.mode==="h"){ var g = CHGAL, edge = (dx > 0 && g.i===0) || (dx < 0 && g.i===g.list.length-1); // am Rand gummiartig
+        sw.dx = edge ? dx * 0.35 : dx; if(now > sw.lt){ sw.v = (t.clientX - sw.lx) / (now - sw.lt); sw.lx = t.clientX; sw.lt = now; } chGalPos(sw.dx, false); return; }
+      dy = Math.max(0, dy); el.style.transform = "translateY("+dy+"px)"; el.style.opacity = String(Math.max(.3, 1 - dy/500)); }, {passive:true});
+    el.addEventListener("touchend", function(e){ if(!sw) return; var s0 = sw; sw = null; el._sw = Date.now();
+      if(s0.mode==="h"){ var w = el.clientWidth || innerWidth, d = 0, g = CHGAL;
+        if(s0.dx < -w*0.3 || (s0.v < -0.35 && s0.dx < -20)) d = 1; else if(s0.dx > w*0.3 || (s0.v > 0.35 && s0.dx > 20)) d = -1;
+        if(g && (g.i + d < 0 || g.i + d >= g.list.length)) d = 0;
+        chGalGo(d, s0.v); return; }
+      if(s0.mode!=="v"){ el._sw = 0; return; }
+      var dy = e.changedTouches[0].clientY - s0.y; el.style.transition = "transform .2s, opacity .2s";
+      if(dy > 110 || (dy > 60 && Date.now() - s0.t < 250)){ el.style.transform = "translateY(100%)"; el.style.opacity = "0"; setTimeout(shut, 200); } else { el.style.transform = ""; el.style.opacity = ""; } }); }
+  CHGAL = {list:list.filter(Boolean), i:Math.max(0, i||0), o:o || {}, anim:false};
+  if(CHGAL.i >= CHGAL.list.length) CHGAL.i = Math.max(0, CHGAL.list.length - 1);
   el.style.transform = ""; el.style.opacity = ""; el.hidden = false;
   chGalShow();
 }
-function chGalGo(d){ var g = CHGAL; if(!g || g.list.length < 2) return; g.i = (g.i + d + g.list.length) % g.list.length; chGalShow(); }
+// Streifen mit drei Fotos verschieben: dx = Fingerweg, anim = mit Einrasten
+function chGalPos(dx, anim, ms){ var r = document.querySelector("#chPhView .chpv-row"); if(!r) return;
+  r.style.transition = anim ? "transform "+(ms||300)+"ms cubic-bezier(.2,.8,.25,1)" : "none"; r.style.transform = "translate3d(calc(-33.3333% + "+dx+"px),0,0)"; }
+function chGalSlide(ph, cur){
+  if(!ph && !cur) return "<div class=\"chpv-sl\"></div>";
+  var g = CHGAL, o = g.o, th = !ph || g.list.length < 2 || !o.thPh || ph===o.thPh ? o.th : "", src = (ph && PHC[ph]) || th || "";
+  return "<div class=\"chpv-sl\""+(ph ? " data-ph=\""+esc(ph)+"\"" : "")+">"+(ph || th ? "<img alt=\"\""+(src ? " src=\""+src+"\"" : "")+">" : "")+"</div>";
+}
+function chGalLoad(sl){
+  var g = CHGAL, ph = sl && sl.getAttribute("data-ph"); if(!g || !ph || PHC[ph]) return;
+  phGet(ph).then(function(d){ if(CHGAL!==g) return; var im = sl.querySelector("img");
+    if(d){ if(!im){ im = document.createElement("img"); im.alt = ""; sl.appendChild(im); } im.src = d; return; }
+    var o = g.o, hasTh = !(g.list.length > 1 && o.thPh && ph!==o.thPh) && o.th;
+    // nicht sichtbar für dich: aus der Galerie nehmen, solange noch andere Fotos da sind
+    if(g.list.length > 1 && !hasTh){ var j = g.list.indexOf(ph); if(j > -1){ g.list.splice(j, 1); if(j < g.i || g.i >= g.list.length) g.i = Math.max(0, g.i - 1); } chGalShow(); return; }
+    if(!hasTh && g.list[g.i]===ph){ var cp = document.querySelector("#chPhView .chpv-cap small"); if(cp) cp.textContent = (o.trip ? o.trip+" · " : "")+(PHERR[ph] || "Foto nicht verfügbar"); } }, function(){});
+}
+function chGalCap(){ var g = CHGAL, el = $("chPhView"); if(!g || !el) return; var n = g.list.length, o = g.o, c = el.querySelector(".chpv-cap small");
+  if(c) c.textContent = (n > 1 ? (g.i+1)+" / "+n+(o.trip ? " · " : "") : "")+(o.trip||"");
+  el.querySelectorAll(".chpv-sl img").forEach(function(im){ im.removeAttribute("id"); }); var cur = el.querySelectorAll(".chpv-sl")[1], ci = cur && cur.querySelector("img"); if(ci) ci.id = "chPvImg";
+  var pb = el.querySelector(".chpv-nav.p"), nb = el.querySelector(".chpv-nav.n"); if(pb) pb.hidden = g.i===0; if(nb) nb.hidden = g.i===n-1; }
 function chGalShow(){
   var g = CHGAL, el = $("chPhView"); if(!g || !el) return;
-  var o = g.o, n = g.list.length, ph = g.list[g.i], th = n < 2 || !o.thPh || ph===o.thPh ? o.th : ""; // Vorschaubild der Karte gehört zu einem Foto (thPh)
-  el.innerHTML = "<button type=\"button\" class=\"chpv-x\" aria-label=\"Schließen\">✕</button>"+
+  var n = g.list.length, L = g.list;
+  el.innerHTML = "<div class=\"chpv-strip\"><div class=\"chpv-row\">"+chGalSlide(g.i > 0 ? L[g.i-1] : null)+chGalSlide(L[g.i] || null, true)+chGalSlide(g.i < n-1 ? L[g.i+1] : null)+"</div></div>"+
+    "<button type=\"button\" class=\"chpv-x\" aria-label=\"Schließen\">✕</button>"+
     (n > 1 ? "<button type=\"button\" class=\"chpv-nav p\" data-d=\"-1\" aria-label=\"Vorheriges Foto\">‹</button><button type=\"button\" class=\"chpv-nav n\" data-d=\"1\" aria-label=\"Nächstes Foto\">›</button>" : "")+
-    "<img id=\"chPvImg\" alt=\"\""+(th ? " src=\""+th+"\"" : "")+">"+
-    "<div class=\"chpv-cap\"><b>"+esc(o.n||"Foto")+"</b><small>"+esc((n > 1 ? (g.i+1)+" / "+n+(o.trip ? " · " : "") : "")+(o.trip||""))+"</small></div>";
-  if(!ph) return;
-  // Foto in voller Größe laden (auch ohne passende Reise: liegt es im Konto oder auf dem Gerät, wird es gezeigt)
-  phGet(ph).then(function(d){ if(CHGAL!==g || g.list[g.i]!==ph || el.hidden) return; var im = $("chPvImg");
-    if(d){ if(im) im.src = d; return; }
-    // nicht sichtbar für dich: aus der Galerie nehmen, solange noch andere Fotos da sind
-    if(n > 1 && !th){ g.list.splice(g.i, 1); if(g.i >= g.list.length) g.i = 0; chGalShow(); return; }
-    if(!th){ var cp = el.querySelector(".chpv-cap small"); if(cp) cp.textContent = (o.trip ? o.trip+" · " : "")+(PHERR[ph] || "Foto nicht verfügbar"); } }, function(){});
+    "<div class=\"chpv-cap\"><b>"+esc(g.o.n||"Foto")+"</b><small></small></div>";
+  var sl = el.querySelectorAll(".chpv-sl");
+  if(!sl[1].querySelector("img")){ var im = document.createElement("img"); im.alt = ""; sl[1].appendChild(im); }
+  chGalPos(0, false); chGalCap(); Array.prototype.forEach.call(sl, chGalLoad);
+}
+// zum Nachbarfoto gleiten (d = ±1) oder zurück einrasten (d = 0); danach die Fotos im Streifen weiterreichen
+function chGalGo(d, v){
+  var g = CHGAL, el = $("chPhView"); if(!g || !el || g.anim) return; if(g.i + d < 0 || g.i + d >= g.list.length) d = 0;
+  var w = el.clientWidth || innerWidth, ms = Math.max(180, Math.min(380, v ? Math.round(w / Math.max(1.2, Math.abs(v) * 1.6)) : 300));
+  if(!d){ chGalPos(0, true, 260); return; }
+  g.anim = true; chGalPos(-d * w, true, ms);
+  setTimeout(function(){ if(CHGAL!==g) return; g.anim = false; g.i += d;
+    var r = el.querySelector(".chpv-row"); if(!r) return; var sl = r.children;
+    if(d > 0){ r.appendChild(sl[0]); var nx = g.i < g.list.length-1 ? g.list[g.i+1] : null, last = r.lastChild; last.outerHTML = chGalSlide(nx); }
+    else { r.insertBefore(sl[2], sl[0]); var pv = g.i > 0 ? g.list[g.i-1] : null, first = r.firstChild; first.outerHTML = chGalSlide(pv); }
+    chGalPos(0, false); chGalCap(); chGalLoad(d > 0 ? r.lastChild : r.firstChild);
+  }, ms + 20);
 }
 /* Foto einer im Chat geschickten Ort-Karte antippen: Galerie des Orts. Liegt der Ort in einer eigenen oder geteilten Reise,
    gelten deren Fotos (so sichtbar, wie du die Reise siehst); sonst die mitgeschickten Kennungen, soweit die Regeln sie freigeben.

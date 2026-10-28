@@ -1525,7 +1525,7 @@ await test("Chat: geteiltes Foto öffnet Ort und Foto, auch wenn Reise-Kennung n
   ok(h.includes('data-ph="ph_b"'), "Foto ohne Vorschaubild wird nicht nachgeladen");
 });
 
-await test("Chat: Foto einer Ort-Karte öffnet die Fotogalerie des Orts", async () => {
+await test("Chat: Foto einer Ort-Karte öffnet die Fotogalerie des Orts, Wischen folgt dem Finger", async () => {
   await seed();
   // gesendete Karte trägt Kennungen der sichtbaren Fotos, private Fotos nicht
   const pl = await rp(`(function(){ T().privPh = {ph_b:1}; return chPlaceFrom(S.cur, "p4").then(function(pl){ delete T().privPh; return pl; }); })()`);
@@ -1537,9 +1537,24 @@ await test("Chat: Foto einer Ort-Karte öffnet die Fotogalerie des Orts", async 
   await page.waitForFunction(() => window.__rp(`!$("chPhView").hidden && !!$("chPvImg").src`), null, {timeout:3000}).catch(() => {});
   ok(await rp(`!$("chPhView").hidden && CHGAL && CHGAL.list.join()==="ph_a,ph_b" && CHGAL.i===1`), "Galerie öffnet nicht mit beiden Fotos beim geschickten Foto: "+JSON.stringify(await rp(`CHGAL && {l:CHGAL.list, i:CHGAL.i}`)));
   ok((await page.locator("#chPhView .chpv-cap").innerText()).includes("2 / 2"), "Zähler fehlt");
+  ok(await rp(`document.querySelector("#chPhView .chpv-nav.n").hidden && document.querySelectorAll("#chPhView .chpv-sl img").length===2`), "Am letzten Foto: Weiter-Pfeil oder Nachbarfoto falsch");
+  // Wischen folgt dem Finger: mitten im Ziehen sind beide Fotos zu sehen, beim Loslassen rastet das vorherige ein
+  const mid = await page.evaluate(() => { const el = document.getElementById("chPhView");
+    const T = (x) => new Touch({identifier:1, target:el, clientX:x, clientY:400});
+    el.dispatchEvent(new TouchEvent("touchstart", {touches:[T(100)], changedTouches:[T(100)], bubbles:true}));
+    el.dispatchEvent(new TouchEvent("touchmove", {touches:[T(120)], changedTouches:[T(120)], bubbles:true}));
+    el.dispatchEvent(new TouchEvent("touchmove", {touches:[T(260)], changedTouches:[T(260)], bubbles:true}));
+    const ims = [...el.querySelectorAll(".chpv-sl img")].map(i => { const r = i.getBoundingClientRect(); return r.right > 0 && r.left < innerWidth; });
+    const tf = el.querySelector(".chpv-row").style.transform;
+    el.dispatchEvent(new TouchEvent("touchend", {touches:[], changedTouches:[T(260)], bubbles:true}));
+    return {vis:ims.filter(Boolean).length, tf}; });
+  ok(mid.vis===2 && mid.tf.includes("160px"), "Beim Ziehen nicht beide Fotos sichtbar: "+JSON.stringify(mid));
+  await page.waitForFunction(() => window.__rp(`CHGAL && CHGAL.i===0 && !CHGAL.anim`), null, {timeout:3000}).catch(() => {});
+  ok(await rp(`CHGAL.i===0 && $("chPvImg").src===PHC.ph_a && !$("chPhView").hidden && (document.querySelector("#chPhView .chpv-cap").textContent||"").includes("1 / 2")`), "Wischen rastet nicht beim vorherigen Foto ein");
+  // Pfeil: zurück zum zweiten Foto
   await click("#chPhView .chpv-nav.n");
-  await page.waitForFunction(() => window.__rp(`$("chPvImg").src===PHC.ph_a`), null, {timeout:3000}).catch(() => {});
-  ok(await rp(`CHGAL.i===0 && $("chPvImg").src===PHC.ph_a && !$("chPhView").hidden`), "Blättern zeigt nicht das nächste Foto");
+  await page.waitForFunction(() => window.__rp(`CHGAL.i===1 && !CHGAL.anim`), null, {timeout:3000}).catch(() => {});
+  ok(await rp(`CHGAL.i===1 && $("chPvImg").src===PHC.ph_b`), "Pfeil blättert nicht");
   await click("#chPhView .chpv-x"); ok(await rp(`$("chPhView").hidden`), "Schließen geht nicht");
   // Ort nicht in eigenen Reisen, Foto nicht freigegeben: nur das Vorschaubild der Karte
   await rp(`CHPL.m6 = {n:"Fremder Ort", c:"essen", la:1, lo:1, pid:"pQ", gid:"t_fremd", phs:["ph_geheim"], ph:PHC.ph_c, trip:"Andere Reise"}; $("tstCh").innerHTML = chPlaceCard(CHPL.m6, "m6");`);
