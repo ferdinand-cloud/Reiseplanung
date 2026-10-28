@@ -3976,6 +3976,25 @@ await test("3D-Karte: nach Rauszoomen aus 3D (Karte wird flach) lässt sich die 
   await rp(`reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches; true`);
 });
 
+await test("Detail-Pop-up passt mit vielen Fotos ins Fenster, × erreichbar (schmales iPhone)", async () => {
+  // Fehler: die Fotozeile gab dem Fenster eine Mindestbreite → Rasterspalte breiter als der Bildschirm, Fenster nach rechts verschoben, × außerhalb
+  await seed();
+  await rp(`T().photos.p4 = ["ph_a","ph_b","ph_c","ph_a","ph_b","ph_c"]; T().rating = {p4:6}; T().notes = {p4:"am besten beim Sonnenuntergang"};
+    T().places.p4.n = "High Line → West Village"; T().places.p4.addr = "Start Hudson Yards (W 34th St), Ende Gansevoort St"; true`);
+  for(const vp of [{width:360, height:780}, {width:428, height:926}]){
+    await page.setViewportSize(vp); await page.waitForTimeout(150);
+    await rp(`openJPop("p4", dayOf("p4"))`); await page.waitForTimeout(400);
+    const r = await page.evaluate(() => { const w = document.querySelector("#jPop .jp-wrap"), c = w.querySelector(".ag-card"), x = w.querySelector(".ag-x"); const a = w.getBoundingClientRect(), b = x.getBoundingClientRect();
+      return {l:a.left, r:a.right, xl:b.left, xr:b.right, W:innerWidth, sw:c.scrollWidth, cw:c.clientWidth}; });
+    ok(r.l >= 8 && r.r <= r.W - 8, vp.width+": Fenster ragt über den Rand: "+JSON.stringify(r));
+    ok(Math.abs(r.l - (r.W - r.r)) <= 2, vp.width+": Fenster nicht mittig: "+JSON.stringify(r));
+    ok(r.xl >= 0 && r.xr <= r.W, vp.width+": × nicht erreichbar: "+JSON.stringify(r));
+    ok(r.sw <= r.cw + 1, vp.width+": Inhalt breiter als das Fenster: "+JSON.stringify(r));
+    await page.locator("#jPop .jp-wrap > .ag-x").click(); await page.waitForTimeout(250);
+    ok(await rp(`$("jPop").hidden`), vp.width+": × schließt das Fenster nicht");
+  }
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }

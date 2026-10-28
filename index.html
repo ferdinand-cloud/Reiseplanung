@@ -1606,7 +1606,11 @@ img.pf-av,img.pe-img,.ag-av img,.ch-head img.ch-av,.gsav img{cursor:zoom-in}
 body.ro .lrow:has(#lSub),body.ro .lrow:has(#lBus),body.ro label:has(#lWish),body.ro label:has(#lSub),body.ro label:has(#lBus),body.ro label:has(#lFerry),body.ro #subLines,body.ro #busLines,body.ro #tabWish{display:none}
 /* Ort-Fenster: Datum, Gruppe, Privat in einer Zeile; Aktionen als schmale Leiste */
 /* Detail-Fenster: × bleibt beim Scrollen oben rechts sichtbar */
-.jp-wrap{position:relative;width:min(400px,100%);display:flex;flex-direction:column;max-height:100%}
+/* Pop-ups nie breiter als das Fenster: ohne min-width:0 wird die Rasterspalte so breit wie der längste nicht umbrechbare Inhalt
+   (Safari mittig → Fenster rutscht nach rechts, × außerhalb) */
+.acctpop{grid-template-columns:minmax(0,1fr)}
+.acctpop > *{min-width:0;max-width:100%}
+.jp-wrap{position:relative;width:min(400px,100%);min-width:0;display:flex;flex-direction:column;max-height:100%}
 .jp-wrap > .ag-card{width:100%}
 .jp-wrap > .ag-x{position:absolute;top:-11px;right:-11px;z-index:5;width:32px;height:32px;background:var(--sheet);box-shadow:0 2px 8px rgba(0,0,0,.22)}
 .ag-card.jp .jp-chips{flex-wrap:nowrap;gap:6px;min-width:0}
