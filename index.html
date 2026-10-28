@@ -11995,37 +11995,42 @@ function renderCard(){
   c += "</div>";
   el.innerHTML = c; el.hidden = false; fillPhotos(el); placeFloating();
 }
-/* weitere Aktionen zum gewählten Punkt als Pop-up-Menü: thematische Gruppen (Planen · Zuordnen · Infos), je Zeile ein kurzer Titel,
-   rechts höchstens ein Wert (Hotel, Gruppe, Anzahl); Löschen abgesetzt ganz unten in voller Breite */
+/* weitere Aktionen zu einem Ort als Pop-up-Menü – dasselbe Menü für „Mehr“ an der Ortskarte und „⋯“ im Detail-Fenster:
+   thematische Gruppen (Planen · Zuordnen · Teilen · Infos), je Zeile ein kurzer Titel,
+   rechts höchstens ein Wert (Hotel, Gruppe, Anzahl); Löschen abgesetzt ganz unten in voller Breite (nicht für Beobachter) */
 var moreDel = false;
-function openCardMore(btn){
-  var p = P(sel); if(!p) return;
-  var dk = dayOf(sel), I = function(d, cls){ return "<span class=\"ai"+(cls?" "+cls:"")+"\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg></span>"; };
+function openCardMore(btn, id, kind){
+  id = id || sel; var p = P(id); if(!p) return;
+  var dk = dayOf(id), I = function(d, cls){ return "<span class=\"ai"+(cls?" "+cls:"")+"\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg></span>"; };
   // t = Titel, v = kurzer Wert rechts, tip = Erklärung (nur als Tooltip/Vorlesetext, damit die Zeile einzeilig bleibt)
   var row = function(act, ic, t, v, tip, extra){ return "<button type=\"button\" role=\"menuitem\" data-act=\""+act+"\""+(tip ? " title=\""+tip+"\"" : "")+(extra||"")+">"+ic+"<span class=\"cm-t\"><b>"+t+"</b></span>"+(v ? "<small class=\"cm-v\">"+v+"</small>" : "")+"</button>"; };
-  var hdk = dk && dayByKey(dk), isHs = p.k==="hotel", dn = !!T().done[sel]; // erledigte Punkte: kein Hotel danach, kein Wegpunkt, nicht zurück in die Wunschliste
+  var hdk = dk && dayByKey(dk), isHs = p.k==="hotel", dn = !!T().done[id]; // erledigte Punkte: kein Hotel danach, kein Wegpunkt, nicht zurück in die Wunschliste
   var pl = "", as = "", inf = "";
-  if(hdk && hdk.hotel && !isHs && !dn) pl += row("hotelafter", I(IC.hotel), "Danach ins Hotel", esc(hdk.hotel.n), "Zwischenstopp im Hotel einplanen", " data-pid=\""+sel+"\"");
-  if(dk && !isHs) pl += row("revisit", I(IC.again), "Nochmal besuchen", "", "Zusätzlich an einem weiteren Tag einplanen", " data-pid=\""+sel+"\"");
+  if(hdk && hdk.hotel && !isHs && !dn) pl += row("hotelafter", I(IC.hotel), "Danach ins Hotel", esc(hdk.hotel.n), "Zwischenstopp im Hotel einplanen", " data-pid=\""+id+"\"");
+  if(dk && !isHs) pl += row("revisit", I(IC.again), "Nochmal besuchen", "", "Zusätzlich an einem weiteren Tag einplanen", " data-pid=\""+id+"\"");
   if(dk && dk!==cur) pl += row("gotoday", I(IC.cal), "Tag "+dayByKey(dk).n+" öffnen", esc(dayByKey(dk).lbl), "", " data-day=\""+dk+"\"");
-  if(dk && !dn && !isRO() && p.k!=="hotel" && hasLoc(p)) pl += row("tovia", "<span class=\"ai\">"+VIAICO+"</span>", "Nur als Wegpunkt", "", "Aus dem Tagesplan nehmen, Gehroute führt hier vorbei", " data-pid=\""+sel+"\"");
+  if(dk && !dn && !isRO() && p.k!=="hotel" && hasLoc(p)) pl += row("tovia", "<span class=\"ai\">"+VIAICO+"</span>", "Nur als Wegpunkt", "", "Aus dem Tagesplan nehmen, Gehroute führt hier vorbei", " data-pid=\""+id+"\"");
   if(dk===cur && !dn) pl += row("unplan", I(IC.back), isHs ? "Zwischenstopp entfernen" : p.of ? "Diesen Besuch entfernen" : "Zurück in Wunschliste", "", "Aus dem Tagesplan nehmen");
-  if(!dk && !isHs && !p.of && !isRO()) pl += p.park ? row("wunpark", I(IC.again), "Wieder auf Wunschliste", "", "Zurückstellen aufheben", " data-pid=\""+sel+"\"")
-    : row("wpark", I(IC.park), "Zurückstellen", "", "Aus der Wunschliste nehmen, ohne zu löschen", " data-pid=\""+sel+"\"");
-  if(!isHs) as += row("grppick", I(IC.group), gidsOf(p).length > 1 ? "Gruppen" : gidsOf(p).length ? "Gruppe" : "Zu Gruppe hinzufügen", esc(grpNames(p)));
+  if(!dk && !isHs && !p.of && !isRO()) pl += p.park ? row("wunpark", I(IC.again), "Wieder auf Wunschliste", "", "Zurückstellen aufheben", " data-pid=\""+id+"\"")
+    : row("wpark", I(IC.park), "Zurückstellen", "", "Aus der Wunschliste nehmen, ohne zu löschen", " data-pid=\""+id+"\"");
+  if(!isHs && !isRO()) as += row("grppick", I(IC.group), gidsOf(p).length > 1 ? "Gruppen" : gidsOf(p).length ? "Gruppe" : "Zu Gruppe hinzufügen", esc(grpNames(p)));
   if(!isHs && !p.of && p.k!=="photo" && !isRO()){
-    if(p.c==="hotel" && !stayHotel(sel) && hasLoc(p)) as += row("stay2h", I(IC.hotel), "Als Hotel übernehmen", "", "Als Hotel der Reise übernehmen, Zeitraum im Reise-Fenster prüfen", " data-pid=\""+sel+"\"");
-    if(canStay(p)) as += row("staymark", I(IC.hotel), p.c==="hotel" ? "Keine Unterkunft" : "Als Unterkunft vormerken", "", p.c==="hotel" ? "Aus der Unterkunftsliste nehmen" : "In die Unterkunftsliste der Reise", " data-pid=\""+sel+"\"");
+    if(p.c==="hotel" && !stayHotel(id) && hasLoc(p)) as += row("stay2h", I(IC.hotel), "Als Hotel übernehmen", "", "Als Hotel der Reise übernehmen, Zeitraum im Reise-Fenster prüfen", " data-pid=\""+id+"\"");
+    if(canStay(p)) as += row("staymark", I(IC.hotel), p.c==="hotel" ? "Keine Unterkunft" : "Als Unterkunft vormerken", "", p.c==="hotel" ? "Aus der Unterkunftsliste nehmen" : "In die Unterkunftsliste der Reise", " data-pid=\""+id+"\"");
   }
-  if(!isHs && hasLoc(p)){ var zg = pZiel(p.of || sel);
+  if(!isHs && hasLoc(p)){ var zg = pZiel(p.of || id);
     as += zg ? row("pzopen", "<span class=\"ai\">"+ZBM+"</span>", "Gemerkt", esc(Z(zg.zid).name), "Liegt fürs nächste Mal im Ziel bereit", " data-z=\""+esc(zg.zid)+"\"")
-      : row("pmerk", "<span class=\"ai\">"+ZBM+"</span>", "Fürs nächste Mal merken", "", "Im Ziel merken, damit der Ort bei der nächsten Reise dorthin bereitliegt", " data-pid=\""+(p.of || sel)+"\""); }
-  if(!isHs && !isRO()){ var ntk = tkOn(tkPlaceOn(sel)).length; as += row("tkplace", I(IC.ticket), "Tickets", ntk ? String(ntk) : "", "Eintritt oder Event hinterlegen, buchen"); }
+      : row("pmerk", "<span class=\"ai\">"+ZBM+"</span>", "Fürs nächste Mal merken", "", "Im Ziel merken, damit der Ort bei der nächsten Reise dorthin bereitliegt", " data-pid=\""+(p.of || id)+"\""); }
+  if(!isHs && !isRO()){ var ntk = tkOn(tkPlaceOn(id)).length; as += row("tkplace", I(IC.ticket), "Tickets", ntk ? String(ntk) : "", "Eintritt oder Event hinterlegen, buchen"); }
+  var sh = "";
+  if(hasLoc(p) && !isHs && acct.user) sh += row("chshare", I(IC.send), "Im Chat schicken", "", "Einem Freund im Chat schicken", " data-pid=\""+id+"\"");
+  // Privat/Reise/Freunde steht bei Orten unter „Sichtbarkeit“ im Detail-Fenster – nur das Hotel hat dieses Feld nicht
+  if(isHs && canPriv()){ var pv = isPrivP(id); sh += row("privp", "<span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span>", pv ? "Privat – wieder für alle" : "Als privat markieren", "", "", " aria-checked=\""+pv+"\""); }
   inf += row("gmopen", I(IC.ext), "In Google Maps öffnen", "", "Öffnungszeiten, Bewertungen, Fotos");
   var sec = function(t, x){ return x ? "<div class=\"vp-h cm-h\">"+t+"</div>"+x : ""; };
-  var h = sec("Planen", pl)+sec("Zuordnen", as)+sec("Infos", inf)+
-    "<button type=\"button\" role=\"menuitem\" data-act=\"moredel\" class=\"del cm-del\" title=\"Punkt aus der Reise entfernen\">"+ic("del")+"<b>Löschen</b></button>";
-  jpPopover(sel, btn || document.querySelector("#card [data-act=cardmore]"), h, "cardmore");
+  var h = sec("Planen", pl)+sec("Zuordnen", as)+sec("Teilen", sh)+sec("Infos", inf)+
+    (isRO() ? "" : "<button type=\"button\" role=\"menuitem\" data-act=\"moredel\" class=\"del cm-del\" title=\"Punkt aus der Reise entfernen\">"+ic("del")+"<b>Löschen</b></button>");
+  jpPopover(id, btn || document.querySelector("#card [data-act=cardmore]"), h, kind || "cardmore");
 }
 /* ---------- Bildunterschriften: je Foto ein Text, erscheint unten am Foto ---------- */
 function captOf(ph){ return ((T().capt||{})[ph]) || ""; }
@@ -13108,16 +13113,7 @@ function jpPopover(id, btn, html, kind){
   m.style.transformOrigin = (top < r.top ? "bottom " : "top ")+Math.round(r.left + r.width/2 - left)+"px";
   setTimeout(function(){ document.addEventListener("click", jpMoreOut, true); }, 0);
 }
-function openJpMore(id, btn){
-  var p = P(id); if(!p) return; var g = grpNames(p), pv = isPrivP(id);
-  jpPopover(id, btn, "<button type=\"button\" data-act=\"grppick\" role=\"menuitem\"><span class=\"ai\">"+ic("group")+"</span><span>"+(g ? (gidsOf(p).length > 1 ? "Gruppen: " : "Gruppe: ")+esc(g) : "Zu Gruppe hinzufügen")+"</span></button>"+
-    // Privat/Reise/Freunde stellt man unter „Sichtbarkeit“ im Fenster ein – hier nur, wo es dieses Feld nicht gibt (Hotel)
-    (canPriv() && p.k==="hotel" ? "<button type=\"button\" data-act=\"privp\" role=\"menuitemcheckbox\" aria-checked=\""+pv+"\"><span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span><span>"+(pv ? "Privat – wieder für alle" : "Als privat markieren")+"</span></button>" : "")+
-    (hasLoc(p) && p.k!=="hotel" && acct.user ? "<button type=\"button\" data-act=\"chshare\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+ic("send")+"</span><span>Im Chat schicken</span></button>" : "")+
-    (!isRO() && !p.of && p.k!=="hotel" && canStay(p) ? "<button type=\"button\" data-act=\"staymark\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+ic("hotel")+"</span><span>"+(p.c==="hotel" ? "Keine Unterkunft" : "Als Unterkunft vormerken")+"</span></button>" : "")+
-    (!isRO() && !p.of && p.c==="hotel" && !stayHotel(id) && hasLoc(p) ? "<button type=\"button\" data-act=\"stay2h\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+ic("hotel")+"</span><span>Als Hotel der Reise übernehmen</span></button>" : "")+
-    (dayOf(id) && !T().done[id] && !isRO() && p.k!=="hotel" && hasLoc(p) ? "<button type=\"button\" data-act=\"tovia\" data-pid=\""+id+"\" role=\"menuitem\"><span class=\"ai\">"+VIAICO+"</span><span>Nur als Wegpunkt</span></button>" : ""), "more");
-}
+function openJpMore(id, btn){ openCardMore(btn, id, "more"); }
 function openRatePick(id, btn){
   var v = rateOf(id), dkx = jp && jp.pid===id ? jp.dk : dayOf(id), J = (T().journal||{})[dkx] || {}, hl = !!(P(id) && J.hl===P(id).n);
   var h = "<button type=\"button\" data-act=\"jphl\" role=\"menuitemcheckbox\" aria-checked=\""+hl+"\" class=\"rp-hl"+(hl?" sel":"")+"\"><span class=\"ai hlst\">★</span><span>Highlight des Tages</span>"+(hl ? "<b class=\"ck\">✓</b>" : "")+"</button>";
@@ -13198,9 +13194,8 @@ function renderJPop(){
   if(planned || dn || rr) h += "<button type=\"button\" class=\"jq jq-r"+(rr?" set":"")+(isHl?" hl":"")+"\""+(rr ? " style=\"--rc:"+rr[2]+"\"" : "")+(isRO() ? " disabled" : " data-act=\"ratepick\"")+" aria-haspopup=\"dialog\" aria-label=\"Bewertung"+(rr ? ": "+rr[1] : "")+(isHl ? ", Highlight des Tages" : "")+"\" title=\""+(rr ? rr[1] : "Bewerten")+(isHl ? " · Highlight" : "")+"\">"+
        "<svg viewBox=\"0 0 20 20\" fill=\""+(rr ? "currentColor" : "none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 3.2l2 4.2 4.6.6-3.4 3.2.9 4.5L10 13.5l-4.1 2.2.9-4.5L3.4 8l4.6-.6z\"/></svg></button>";
   if(!isRO() && (hasLoc(p) || p.addr)) h += "<button type=\"button\" class=\"jq\" data-act=\"go\" aria-label=\"Route\" title=\"Route\">"+I(IC.route)+"</button>";
-  h += "<a class=\"jq\" target=\"_blank\" rel=\"noopener\" aria-label=\"Infos in Google Maps\" title=\"Infos in Google Maps\" href=\""+gmInfoUrl(p)+"\">"+I("<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"M10 9.2v4.6\"/><circle cx=\"10\" cy=\"6.4\" r=\".6\" fill=\"currentColor\"/>")+"</a>";
-  // „⋯“: Gruppe, im Chat teilen, Wegpunkt – die Sichtbarkeit steht im Fenster darunter
-  if(!isRO()) h += "<button type=\"button\" class=\"jq"+(grpNames(p)?" grp":"")+"\" data-act=\"jpmore\" aria-haspopup=\"dialog\" aria-label=\"Mehr: Gruppe, im Chat schicken\" title=\""+(grpNames(p) ? (gidsOf(p).length > 1 ? "Gruppen: " : "Gruppe: ")+esc(grpNames(p)) : "Mehr")+"\">"+
+  // „⋯“: dasselbe Menü wie „Mehr“ an der Ortskarte (openCardMore), inkl. Google Maps – die Sichtbarkeit steht im Fenster darunter
+  h += "<button type=\"button\" class=\"jq"+(grpNames(p)?" grp":"")+"\" data-act=\"jpmore\" aria-haspopup=\"dialog\" aria-label=\"Mehr\" title=\""+(grpNames(p) ? (gidsOf(p).length > 1 ? "Gruppen: " : "Gruppe: ")+esc(grpNames(p)) : "Mehr")+"\">"+
        (p.k==="hotel" && pv0 ? ILOCK : I(IC.more))+"</button>";
   h += "</div>";
   if(p.note || (hasLoc(p) && ohInfo(p))) h += "<div class=\"jp-info\">"+(p.note ? "<p class=\"note\">"+esc(p.note)+"</p>" : "")+ohLine(p, jp.dk || dayOf(jp.pid), true)+"</div>";
@@ -14836,7 +14831,7 @@ document.addEventListener("click", function(e){
     case "chwish": chAddPlace(t.getAttribute("data-k"), null); break;
     case "chplan": var chk0 = t.getAttribute("data-k"); jpPopover("ch", t, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"chday\" data-k=\""+esc(chk0)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "chplan"); break;
     case "chday": chAddPlace(t.getAttribute("data-k"), t.getAttribute("data-day")); break;
-    case "chshare": var chsp = t.getAttribute("data-pid"); var chbtn = document.querySelector("#jPop [data-act=jpmore]") || t; closeJpMore(); if(chsp) setTimeout(function(){ chShareMenu(chsp, chbtn); }, 30); break;
+    case "chshare": var chsp = t.getAttribute("data-pid"); var chbtn = (!$("jPop").hidden && document.querySelector("#jPop [data-act=jpmore]")) || document.querySelector("#card [data-act=cardmore]") || t; closeJpMore(); if(chsp) setTimeout(function(){ chShareMenu(chsp, chbtn); }, 30); break;
     case "cphpick": $("cphIn").setAttribute("data-pid", t.getAttribute("data-pid")); break;
     case "phsend": chPhSendMenu(t.getAttribute("data-ph"), t); break;
     case "chphto": chPhSendTo(t.getAttribute("data-uid"), t.getAttribute("data-ph")); break;
@@ -14974,7 +14969,7 @@ document.addEventListener("click", function(e){
     case "srchgo": srchGo(+t.getAttribute("data-i")); break;
     case "daypick": closeCatPop(); cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
     case "day": cur = t.getAttribute("data-day"); sel = null; legSel = -1; if(tab==="trip") tab = "day"; renderAll(); fitDay(); break;
-    case "gotoday": closeCatPop(); cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
+    case "gotoday": closeCatPop(); closeJpMore(); if(jp) closeJPop(); cur = t.getAttribute("data-day"); tab = "day"; renderAll(); fitDay(); break;
     case "trip": closeSettings(); grpSel = ""; S.cur = t.getAttribute("data-trip"); save(); closeMenus(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); break;
     case "tripedit": closeMenus(); tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); break;
     case "tripnew": closeMenus(); closeSettings(); tdraft = {mode:"new", name:"", start:"", end:"", arr:"", dep:"", hotels:[{n:"", loc:"", from:"", to:""}], orte:[{n:"", loc:"", from:"", to:""}], err:""}; tab = "trip"; renderSheet(); var fn = document.querySelector("[data-geo='orte.0']") || document.querySelector("[data-f=name]"); if(fn) fn.focus(); break;
@@ -15003,7 +14998,7 @@ document.addEventListener("click", function(e){
     case "planins": planPopClose(); if(PLANCTX && PLANCTX.lp && lpPt) lpClose(); setTimeout(function(){ openPlanIns(null); }, 30); break;
     case "plancancel": planPopClose(); PLANCTX = null; break;
     case "planinspick": planInsPick(parseInt(t.getAttribute("data-i"), 10)); break;
-    case "unplan": closeCatPop(); unplan(id); renderAll(); break;
+    case "unplan": closeCatPop(); closeJpMore(); unplan(id); renderAll(); if(jp && !$("jPop").hidden) renderJPop(); break;
     case "go": openGo(id || sel); break;
     case "poicat": var pc = t.getAttribute("data-cat"); if(poiOff[pc]) delete poiOff[pc]; else poiOff[pc] = 1; lsSet("nyc-poi-off", JSON.stringify(poiOff)); applyPoi(); break;
     case "poiadd": closeJpMore(); poiAdd(t.getAttribute("data-to"), null, null, t.getAttribute("data-list") || ""); break;
@@ -15131,8 +15126,8 @@ document.addEventListener("click", function(e){
     case "addclose": closeAddMenu(); break;
     case "addpop": var wasOpen = !$("addMenu").hidden; closeMenus(); if(!wasOpen) openAddPop(); break;
     case "cardmore": moreDel = false; openCardMore(t); break;
-    case "gmopen": if(P(sel)) window.open(gmInfoUrl(P(sel)), "_blank", "noopener"); break;
-    case "moredel": var mdId = sel; askConfirm("Ort löschen?", "„"+((P(mdId)||{}).n||"Ort")+"“ wird aus der Reise entfernt.", "Löschen", function(){ if(sel!==mdId) select(mdId); var tb = document.createElement("button"); tb.type = "button"; tb.setAttribute("data-act", "delplace"); tb.hidden = true; document.body.appendChild(tb); tb.click(); tb.remove(); }); break;
+    case "gmopen": var gmp = P(id || sel); if(gmp) window.open(gmInfoUrl(gmp), "_blank", "noopener"); break;
+    case "moredel": var mdId = id || sel; askConfirm("Ort löschen?", "„"+((P(mdId)||{}).n||"Ort")+"“ wird aus der Reise entfernt.", "Löschen", function(){ if(jp && jp.pid===mdId) closeJPop(); if(sel!==mdId) select(mdId); var tb = document.createElement("button"); tb.type = "button"; tb.setAttribute("data-act", "delplace"); tb.hidden = true; document.body.appendChild(tb); tb.click(); tb.remove(); }); break;
     case "locset": locStart(); break;
     case "phdel": var dph = t.getAttribute("data-ph"), dsrc = jp.list || photosAll(jp.pid), rest = dsrc.filter(function(x){ return x!==dph; }), di = dsrc.indexOf(dph); if(jp.list){ jp.list = rest; RC.dirty = true; }
       delPhoto(phPlace(dph) || jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; if(jp.list && jp.view && phPlace(jp.view)) jp.pid = phPlace(jp.view); if(lsPage) renderLs(); if(!jp.view && !!jp.ret){ closeJPop(); break; } renderJPop(); break;
@@ -15250,7 +15245,7 @@ document.addEventListener("click", function(e){
     case "loptopen": closeJpMore(); openLopt(parseInt(t.getAttribute("data-leg"),10)); break;
     case "loptclose": LOPT = null; closeCatPop(); break;
     case "tkleg": closeJpMore(); tkLegOpen(parseInt(t.getAttribute("data-leg"),10)); break;
-    case "tkplace": closeJpMore(); tkPlaceOpen(sel); break;
+    case "tkplace": closeJpMore(); tkPlaceOpen(id || sel); break;
     case "tkclose": TK = null; closeCatPop(); break;
     case "tknew": tkEdit(null); break;
     case "tkedit": tkEdit(t.getAttribute("data-tk")); break;

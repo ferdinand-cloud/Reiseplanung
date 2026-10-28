@@ -1486,7 +1486,7 @@ await test("Ort-Menü (Mehr): Gruppen Planen/Zuordnen/Infos, einzeilige Zeilen, 
       maxH: Math.max(...rows.map(x => x.offsetHeight)), subs: el.querySelectorAll(".cm-t small").length,
       inView: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth,
       first: kids[0].classList.contains("cm-h"), order: rows.map(x => x.getAttribute("data-act")) }; });
-  ok(m.heads.join("|")==="Planen|Zuordnen|Infos", "Gruppen-Überschriften falsch: "+m.heads.join("|"));
+  ok(/^Planen\|Zuordnen(\|Teilen)?\|Infos$/.test(m.heads.join("|")), "Gruppen-Überschriften falsch: "+m.heads.join("|"));
   ok(m.first, "Menü beginnt nicht mit einer Überschrift");
   ok(m.last && m.delAct==="moredel" && m.delFull, "Löschen steht nicht ganz unten in voller Breite: "+JSON.stringify([m.last, m.delAct, m.delW, m.cw]));
   ok(m.over===0, "Zeilen ragen aus dem Menü (lange Texte ohne Kürzung)");
@@ -1500,6 +1500,36 @@ await test("Ort-Menü (Mehr): Gruppen Planen/Zuordnen/Infos, einzeilige Zeilen, 
   await click("#cfPop .cf-no"); await page.waitForTimeout(200);
   ok(await rp(`!!P("${id}") && sel==="${id}"`), "Abbrechen hat gelöscht oder den Ort abgewählt");
   ok(await visible("#card"), "Nach Abbrechen ist die Ort-Karte weg");
+});
+
+await test("Ort-Menü: „Mehr“ an der Karte und „⋯“ im Detail zeigen dieselben Punkte, Beobachter ohne Bearbeiten/Löschen", async () => {
+  await seed();
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de", emailVerified:true}; true`);
+  const id = await rp(`Object.keys(T().places).filter(function(k){ return dayOf(k)===cur && P(k).k!=="hotel" && !T().done[k] && hasLoc(P(k)); })[0]`);
+  ok(!!id, "Kein geplanter Ort am Tag");
+  const acts = () => page.evaluate(() => [...document.querySelectorAll("#jpMenu [data-act]")].map(x => x.getAttribute("data-act")).join(","));
+  const heads = () => page.evaluate(() => [...document.querySelectorAll("#jpMenu .cm-h")].map(x => x.textContent).join("|"));
+  await rp(`(function(){ setSheet("mid"); select("${id}"); })()`); await page.waitForTimeout(250);
+  await click("#card [data-act=cardmore]");
+  const a1 = await acts(), h1 = await heads();
+  ok(a1.includes("chshare") && a1.includes("grppick") && a1.includes("gmopen") && a1.includes("moredel"), "Karten-Menü unvollständig: "+a1);
+  await rp(`closeJpMore(); openJPop("${id}", dayOf("${id}")); true`); await page.waitForTimeout(300);
+  ok(await page.locator("#jPop a[aria-label='Infos in Google Maps']").count()===0, "Google-Maps-Knopf doppelt (steht im ⋯-Menü)");
+  await click("#jPop [data-act=jpmore]");
+  const a2 = await acts(), h2 = await heads();
+  ok(a1===a2 && h1===h2, "Menüs unterschiedlich: Karte "+a1+" / Detail "+a2);
+  await shot("ort-menue-detail");
+  // Löschen aus dem Detail schließt das Fenster und entfernt den Ort
+  await click("#jpMenu .cm-del"); ok(await visible("#cfPop"), "Rückfrage zum Löschen fehlt");
+  await click("#cfPop .cf-ok"); await page.waitForTimeout(300);
+  ok(await rp(`!P("${id}") && $("jPop").hidden`), "Löschen aus dem Detail-Menü wirkt nicht");
+  // Beobachter: ⋯ vorhanden, aber ohne Gruppe/Löschen/Einplanen
+  const id2 = await rp(`Object.keys(T().places).filter(function(k){ return P(k).k!=="hotel" && hasLoc(P(k)); })[0]`);
+  await rp(`window.__isRO0 = isRO; isRO = function(){ return true; }; openJPop("${id2}", dayOf("${id2}")); true`); await page.waitForTimeout(300);
+  await click("#jPop [data-act=jpmore]");
+  const a3 = await acts();
+  ok(a3.includes("gmopen") && !/moredel|grppick|wpark|tovia|tkplace|staymark/.test(a3), "Beobachter-Menü falsch: "+a3);
+  await rp(`closeJpMore(); closeJPop(); isRO = window.__isRO0; true`);
 });
 
 await test("Fürs nächste Mal merken: besuchter Ort und Wunschliste-Ort aus der Reise im Ziel, Ziel bietet sie bei neuer Reise an", async () => {
