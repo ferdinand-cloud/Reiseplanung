@@ -3767,6 +3767,29 @@ await test("Chat: Tag teilen – Tagesplan als Karte schicken, Empfänger übern
   ok(await rp(`!chPage && sel==="poi" && poiSel && poiSel.n==="Russ & Daughters"`) || await rp(`!chPage && sel && P(sel) && P(sel).n==="Russ & Daughters"`), "Stopp antippen zeigt ihn nicht auf der Karte");
   await rp(`CH.byId = {}; CH.list = []; CHMC = {}; true`);
 });
+await test("Chat: „Gesehen“ unter der letzten eigenen Nachricht und „Tippt …“-Anzeige", async () => {
+  await seed();
+  await rp(`window.__M = [{id:"m1", from:"u1", t:"Hallo", at:Date.now()-120000}, {id:"m2", from:"u_me", t:"Hi Anna", at:Date.now()-60000}]; ${CHMOCK} CH.byId.u1_u_me.read = {u_me:Date.now(), u1:Date.now()-90000}; openChPage("u1_u_me"); true`);
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===2`), null, {timeout:4000});
+  ok(await rp(`!document.querySelector("#chMsgs .ch-seen")`), "„Gesehen“, obwohl Anna noch nicht gelesen hat");
+  // Anna öffnet den Chat → read.u1 neuer als die Nachricht
+  await rp(`CH.byId.u1_u_me = Object.assign({}, CH.byId.u1_u_me, {read:{u_me:Date.now(), u1:Date.now()}}); CH.list = [CH.byId.u1_u_me]; chMetaUpd(); true`);
+  ok(await rp(`var s = document.querySelector('#chMsgs .ch-msg[data-mid="m2"] .ch-seen'); !!s && s.textContent==="Gesehen"`), "„Gesehen“ fehlt");
+  // Anna tippt: drei Punkte unten im Verlauf, verschwinden nach 7 s ohne neues Signal
+  await rp(`CH.byId.u1_u_me = Object.assign({}, CH.byId.u1_u_me, {typ:{u1:Date.now()-5500}}); chMetaUpd(); true`);
+  ok(await rp(`var t = document.querySelector("#chMsgs .ch-typ"); !!t && $("chMsgs").lastElementChild===t && t.querySelectorAll(".ch-bub i").length===3`), "„Tippt …“ fehlt");
+  await shot("chat-tippt-gesehen");
+  await page.waitForFunction(() => window.__rp(`!document.querySelector("#chMsgs .ch-typ")`), null, {timeout:3000});
+  // selbst tippen: Signal höchstens alle 4 s, Leeren setzt 0
+  await page.type("#chIn", "abc"); await page.waitForTimeout(100);
+  ok(await rp(`var u = __upd.filter(function(x){ return x[0]==="u1_u_me" && "typ.u_me" in x[1]; }); u.length===1 && u[0][1]["typ.u_me"] > 0`), "Tipp-Signal falsch: "+await rp(`JSON.stringify(__upd)`));
+  await page.fill("#chIn", ""); await page.waitForTimeout(100);
+  ok(await rp(`var u = __upd.filter(function(x){ return x[0]==="u1_u_me" && "typ.u_me" in x[1]; }); u.length===2 && u[1][1]["typ.u_me"]===0`), "Leeren setzt Tipp-Signal nicht zurück");
+  // Nachricht senden: typ 0 mitgeschickt
+  await page.fill("#chIn", "Neu"); await page.tap("#chView [data-act=chsend]"); await page.waitForTimeout(150);
+  ok(await rp(`__sets.some(function(d){ return d.typ && d.typ.u_me===0; })`), "Senden setzt Tipp-Signal nicht zurück");
+  await rp(`closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
+});
 await test("Chat: Kopf ohne Balken, Verlauf scrollt darunter durch und blendet oben weich aus, Knöpfe als Glas-Kreise", async () => {
   await seed();
   await rp(`window.__M = []; for(var i = 0; i < 30; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht Nummer "+i+" mit etwas mehr Text, damit sie umbricht", at:Date.now() - (30 - i)*60000});
