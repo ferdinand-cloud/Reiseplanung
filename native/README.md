@@ -3,27 +3,25 @@
 Dieser Ordner verpackt die PWA aus dem Hauptordner als native App. Die PWA selbst
 wird dabei **nicht** verändert: `npm run web` kopiert sie nach `native/www`.
 
-Stand: Gerüst, noch nicht im Store. Getestet: `npm install`, `cap add android`,
-`cap sync android` laufen durch (10 Plugins erkannt). iOS braucht Xcode (Mac oder
-macOS-Runner bei GitHub Actions).
+Stand 28.10.2026: iOS-Projekt liegt in `native/ios` (Swift Package Manager, kein CocoaPods nötig),
+mit App-Symbol, Startbild und deutschen Berechtigungstexten. Bundle-ID `com.ferdinandcloud.reiseplan`.
+Anleitung für den Mac: Seite „TestFlight-Anleitung“ im Projekt.
 
-## Vor dem ersten echten Build festlegen
+## Betriebsarten
 
-- `appId` in `capacitor.config.json` (z. B. `app.pierce.travel`). **Nicht mehr änderbar,
-  sobald die App in einem Store ist.** Erst nach der Namensentscheidung setzen.
-- `appName` (Name unter dem Symbol).
+- **live** (Standard, `npm run ios`): Die App lädt https://ferdinand-cloud.github.io/Reiseplanung/.
+  Jeder Push auf main ist ohne neuen Build in der App. Anmeldung wie in Safari. Ohne Netz startet sie nicht.
+- **lokal** (`npm run ios:lokal`): Die Web-Dateien stecken in der App. Für die spätere Store-Version.
 
 ## Befehle
 
 ```bash
 cd native
 npm install
-npm run web                 # PWA nach www kopieren
-npx cap add ios             # einmalig, erzeugt native/ios (braucht Mac/Xcode)
-npx cap add android         # einmalig, erzeugt native/android
-npm run icons               # App-Symbole/Startbild aus icons/ erzeugen (assets/ anlegen)
-npm run ios                 # kopieren, synchronisieren, Xcode öffnen
-npm run android             # kopieren, synchronisieren, Android Studio öffnen
+npm run ios          # PWA kopieren, iOS-Projekt synchronisieren, Xcode öffnen
+npm run ios:lokal    # dasselbe, aber Web-Dateien in der App statt live
+npm run android      # Android Studio (Projekt vorher einmal: npx cap add android)
+npm run bilder       # Symbole/Startbilder neu aus assets/icon.svg erzeugen
 ```
 
 ## Was in der App angepasst werden muss (index.html, später)
