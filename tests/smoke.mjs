@@ -847,6 +847,40 @@ await test("Profil: Reise über ⋯ abschließen und wieder öffnen (vor dem End
   ok(await page.locator("#jpMenu [data-act=pffin]").count()===0, "Bereits abgeschlossene Reise bietet „abschließen“ an");
 });
 
+await test("Beobachtete Reisen: eigener Knopf, kein Ansicht/Bearbeiten-Umschalter, erkennbar mit Auge und Besitzer", async () => {
+  await seed();
+  await rp(`(function(){ var o = newTripObj({id:"t_own", name:"Eigene Reise", start:"2027-03-01", end:"2027-03-05"}); S.trips.t_own = o;
+    META.t_test = {owner:"u_o", members:["u_o"], memberEmails:{}, invites:[], viewers:["u_me"], viewInvites:[]}; OWNN.u_o = "ferdinand";
+    T().fin = 1; renderAll(); return true; })()`); await page.waitForTimeout(150);
+  ok(await rp(`isViewer() && !ownTrip() && finRow()===""`), "Beobachter gilt als eigene Reise");
+  ok(await rp(`finJ() && $("tabDay").textContent==="Tagebuch" && $("sheetOpen").textContent.trim()==="Tagebuch"`), "Beobachter einer abgeschlossenen Reise sieht nicht „Tagebuch“");
+  ok(await page.locator("#body ol.plan").count()===0 && await page.locator("#body .rhead").count()===0, "Beobachter sieht Stopps statt nur Tagebuch");
+  await click("#tripBtn"); await page.waitForTimeout(150);
+  ok(await page.locator("#tripMenu .tm-mode").count()===0, "Umschalter Ansicht/Bearbeiten für Beobachter sichtbar");
+  const top = await page.locator("#tripMenu .tm-cur").innerText();
+  ok(await page.locator("#tripMenu .tm-cur.tm-obs svg").count()===1 && top.includes("Beobachtet · von @ferdinand"), "Gewählte beobachtete Reise nicht erkennbar: "+top);
+  ok(await page.locator("#tripBtn .tb-obs svg").isVisible(), "Reise-Knopf zeigt kein Auge für beobachtete Reise");
+  await shot("beobachtet-menue");
+  ok(await page.locator("#tripMenu [data-act=scopepop][data-k=obs]").count()===1, "Knopf „Beobachtete Reisen“ fehlt");
+  ok(await page.locator("#tripMenu [data-act=scopepop][data-k=past]").count()===0, "Beobachtete Reise zählt bei „Vergangene Reisen“");
+  // zur eigenen Reise wechseln: beobachtete steht nicht zwischen den eigenen, nur hinter dem Knopf
+  await click("#tripMenu [data-act=trip][data-trip=t_own]"); await page.waitForTimeout(200);
+  ok(await rp(`S.cur==="t_own" && !isViewer() && ownTrip()`), "Wechsel zur eigenen Reise klappt nicht");
+  await click("#tripBtn"); await page.waitForTimeout(150);
+  ok(await page.locator("#tripMenu .tm-mode").count()===1 && await page.locator("#tripMenu .tm-obs").count()===0, "Eigene Reise sieht aus wie beobachtete");
+  ok(await page.locator("#tripMenu [data-act=trip][data-trip=t_test]").count()===0, "Beobachtete Reise steht zwischen den eigenen");
+  await click("#tripMenu [data-act=scopepop][data-k=obs]"); await page.waitForTimeout(150);
+  ok((await page.locator("#catPop .scpop h4").innerText()).includes("Beobachtete Reisen"), "Pop-up „Beobachtete Reisen“ fehlt");
+  ok((await page.locator("#catPop [data-act=scopeset][data-v=t_test]").innerText()).includes("von @ferdinand"), "Besitzer fehlt im Pop-up");
+  await click("#catPop [data-act=scopeset][data-v=t_test]"); await page.waitForTimeout(200);
+  ok(await rp(`S.cur==="t_test" && isViewer()`), "Auswahl der beobachteten Reise klappt nicht");
+  // Rollen kommen später vom Server: Menü und Leseschutz müssen sich anpassen
+  await rp(`META.t_own = {owner:"u_x", members:["u_x"], memberEmails:{}, invites:[], viewers:["u_me"], viewInvites:[]}; S.cur = "t_own"; renderAll(); delete META.t_own; metaSig = ""; true`);
+  ok(await rp(`acctApply.toString().indexOf("metaSig = ms; renderAll()") > -1`), "Rollenänderung baut Reise-Menü nicht neu");
+  // Entdecken: eigener Knopf auch dort
+  await rp(`S.cur = "t_own"; renderAll(); true`);
+  ok(await rp(`scopeBtns("dc").indexOf("data-k=\\"obs\\"") > -1 && scopeNow("dc").indexOf("t_test") < 0`), "Entdecken trennt beobachtete Reisen nicht");
+});
 await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“ öffnet die volle Planung", async () => {
   await seed();
   ok(await rp(`!isRO() && !document.body.classList.contains("ro") && tripMode()==="edit"`), "Laufende Reise startet nicht im Bearbeitungsmodus");
