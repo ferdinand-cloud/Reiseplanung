@@ -321,10 +321,12 @@ await test("Chat: nach rechts wischen führt zurück zur Übersicht, Position un
     openChPage(); true`);
   await page.waitForTimeout(300);
   const row = '#chView [data-act=chopen][data-v="u_me_u9"]';
-  await page.evaluate(() => { document.getElementById("chView").scrollTop = 260; });
+  // Scrollposition setzen und warten, bis sie hält (ein spätes Neuzeichnen der Übersicht unter Last setzt sie sonst vor dem Antippen zurück)
+  await page.waitForFunction(() => { const v = document.getElementById("chView"); if(v.scrollTop < 255){ v.scrollTop = 260; window.__scT = Date.now(); return false; } return Date.now() - (window.__scT || 0) > 250; }, null, {timeout:5000, polling:50}).catch(() => {});
   const sc0 = await page.evaluate(() => document.getElementById("chView").scrollTop);
   ok(sc0 > 100, "Übersicht lässt sich nicht scrollen: "+sc0);
   await page.tap(row); await page.waitForTimeout(300);
+  ok(await rp(`Math.abs(CHRET.sc - ${sc0}) <= 2`), "Scrollposition beim Öffnen des Chats nicht gemerkt: "+(await rp(`CHRET.sc`)));
   ok(await rp(`chOpen==="u_me_u9" && history.state && history.state.rpch==="u_me_u9"`), "Chat nicht geöffnet oder kein Verlaufseintrag");
   const cdp = await page.context().newCDPSession(page);
   const swipe = async (pts) => { await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:pts[0][0], y:pts[0][1]}]});
