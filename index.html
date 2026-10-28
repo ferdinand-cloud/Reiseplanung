@@ -2003,9 +2003,9 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-rebar{display:flex;align-items:center;gap:10px;margin:6px 12px 0;padding:7px 8px 7px 12px;border-radius:14px;background:var(--fill);border-left:3px solid var(--accent);min-width:0}
 .ch-rebar[hidden]{display:none}
 .ch-rebar>svg{width:17px;height:17px;flex:0 0 17px;color:var(--accent)}
-.ch-ret{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.ch-ret b{font:600 13px/1.25 var(--f-body);color:var(--ink)}
-.ch-ret small{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-rebt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ch-rebt b{font:600 13px/1.25 var(--f-body);color:var(--ink)}
+.ch-rebt small{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch-rex{width:28px;height:28px;flex:0 0 28px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
 .ch-rex svg{width:15px;height:15px}
 .ch-rq{display:flex;flex-direction:column;align-items:flex-start;gap:2px;max-width:100%;cursor:pointer;margin-top:4px}
@@ -7901,7 +7901,7 @@ function chReSet(id){ var m = chMsgs.filter(function(x){ return x.id===id; })[0]
   if(box){ if(atEnd) box.scrollTop = box.scrollHeight; else { var e = box.querySelector(".ch-msg[data-mid=\""+id+"\"]"), d = e ? e.getBoundingClientRect().bottom - box.getBoundingClientRect().bottom + 8 : 0; if(d > 0) box.scrollTop += d; } }
   var i = $("chIn"); if(i) try { i.focus({preventScroll:true}); } catch(e){ i.focus(); } }
 function renderChRe(){ var b = $("chReBox"); if(!b) return; b.hidden = !chRe; if(!chRe){ b.innerHTML = ""; return; }
-  b.innerHTML = ic("reply")+"<span class=\"ch-ret\"><b>Antwort an "+esc(chRe.from===(acct.user && acct.user.uid) ? "dich selbst" : atn(chName(chRe.from)))+"</b><small>"+esc(chRe.t)+"</small></span><button type=\"button\" class=\"ch-rex\" data-act=\"chrex\" aria-label=\"Antworten abbrechen\">"+ic("close")+"</button>"; }
+  b.innerHTML = ic("reply")+"<span class=\"ch-rebt\"><b>Antwort an "+esc(chRe.from===(acct.user && acct.user.uid) ? "dich selbst" : atn(chName(chRe.from)))+"</b><small>"+esc(chRe.t)+"</small></span><button type=\"button\" class=\"ch-rex\" data-act=\"chrex\" aria-label=\"Antworten abbrechen\">"+ic("close")+"</button>"; }
 // Zitat über einer Antwort: wer wem geantwortet hat und der Anfang der Originalnachricht; Antippen springt dorthin
 function chReQuote(m){ var r = m.re; if(!r || !r.id) return ""; var me = acct.user && acct.user.uid, mine = m.from===me;
   var lb = mine ? "Du hast "+chReWho(r.from, true)+" geantwortet" : atn(chName(m.from))+" hat "+(r.from===m.from ? "sich selbst" : chReWho(r.from))+" geantwortet";

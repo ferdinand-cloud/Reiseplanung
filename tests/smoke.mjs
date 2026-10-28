@@ -3599,6 +3599,28 @@ await test("Chat: Kopf ohne Balken, Verlauf scrollt darunter durch und blendet o
   ok(nm.y >= nm.h - 2 && nm.y <= nm.h + 40, "Lesestelle nicht an der Trennlinie: "+JSON.stringify(nm));
 });
 
+await test("Chat: Zurück zur Übersicht zeigt den Chat als normale Zeile", async () => {
+  await seed();
+  await rp(`window.__M = []; for(var i = 0; i < 12; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht "+i, at:Date.now() - (12 - i)*60000});
+    var qs = function(){ return {docs:__M.map(function(m){ return {id:m.id, data:function(){ return JSON.parse(JSON.stringify(m)); }}; })}; };
+    fbDb = {runTransaction:function(){ return new Promise(function(){}); }, batch:function(){ return {set:function(){}, update:function(){}, commit:function(){ return Promise.resolve(); }}; }, collection:function(){ return {doc:function(cid){ return {get:function(){ return Promise.resolve({exists:false}); }, update:function(){ return Promise.resolve(); },
+      collection:function(n){ var q = {orderBy:function(){ return q; }, limitToLast:function(){ return q; }, doc:function(){ return {}; }, get:function(){ return Promise.resolve(qs()); },
+        onSnapshot:function(cb){ setTimeout(function(){ cb(qs()); }, 0); return function(){}; }}; return q; }}; }}; }};
+    acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; acct.user.uid = "u_me";
+    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:2000, names:{u1:"Hannah_zim"}, read:{u_me:__M[5].at}, last:{t:"Nachricht 11", from:"u1", at:__M[11].at}},
+      u2_u_me:{id:"u2_u_me", members:["u2","u_me"], at:1000, names:{u2:"anna"}, read:{u_me:Date.now()}, last:{t:"Huhu", from:"u_me", at:1000}}};
+    CH.list = [CH.byId.u1_u_me, CH.byId.u2_u_me]; CH.got = true; CHPROF.u1 = {name:"Hannah_zim"}; CHPROF.u2 = {name:"anna"};
+    openChPage(); true`);
+  await page.waitForTimeout(300);
+  await page.tap('#chView [data-act=chopen][data-v="u1_u_me"]');
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && !!document.querySelector("#chMsgs .ch-msg")`), null, {timeout:4000});
+  await page.waitForTimeout(300);
+  await page.tap("#chView .ch-back"); await page.waitForTimeout(300);
+  await shot("chat-zurueck");
+  const r = await page.evaluate(() => { const a = document.querySelector('#chView [data-v="u1_u_me"]').getBoundingClientRect(), b = document.querySelector('#chView [data-v="u2_u_me"]').getBoundingClientRect(); return {a:Math.round(a.height), b:Math.round(b.height), ret:document.querySelector('#chView [data-v="u1_u_me"]').classList.contains("ch-ret")}; });
+  ok(r.ret && Math.abs(r.a - r.b) <= 2, "Zurückgekehrter Chat nicht als normale Zeile: "+JSON.stringify(r));
+});
+
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {
   await seed();
   await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); try { localStorage.removeItem("rp-chkb"); } catch(e){} if(typeof KBPRED!=="undefined") KBPRED = true; CHKB.fb = 60000; true`);   // Rückfallebene „keine Tastatur“ (1,2 s) würde unter Last vorzeitig greifen
