@@ -1828,6 +1828,14 @@ await test("Privat, aber für einzelne Beobachter freigegeben", async () => {
   await click("#jPop [data-act=jpmore]");
   ok(await page.locator("#jpMenu [data-act=privp]").count()===0 && await page.locator("#jpMenu [data-act=grppick]").count()===1, "⋯-Menü sollte Gruppe, aber keinen Privat-Schalter zeigen");
   await rp(`closeJpMore()`);
+  // „Auch öffentlich“ als Schalter: Aus-Zustand klar erkennbar
+  await rp(`var t = T(), r = rootOf("p1"); (t.privP||{})[r] = false; t.pubP = t.pubP || {}; t.pubP[r] = true; t.pubA = t.pubA || {}; delete t.pubA[r]; openJPop("p1", cur);`); await page.waitForTimeout(250);
+  const va = page.locator("#jPop .vis-all");
+  ok(await va.count()===1 && await va.getAttribute("role")==="switch" && await va.getAttribute("aria-checked")==="false", "„Auch öffentlich“ ist kein Schalter im Aus-Zustand");
+  ok((await va.innerText()).includes("Aus") && await page.locator("#jPop .vis-all .sw-mini:not(.on)").count()===1, "Aus-Zustand von „Auch öffentlich“ nicht erkennbar");
+  await rp(`T().pubA[rootOf("p1")] = true; openJPop("p1", cur);`); await page.waitForTimeout(250);
+  ok(await page.locator("#jPop .vis-all.on[aria-checked=true] .sw-mini.on").count()===1 && (await page.locator("#jPop .vis-all").innerText()).includes("An"), "An-Zustand von „Auch öffentlich“ fehlt");
+  await rp(`var t = T(), r = rootOf("p1"); delete t.pubA[r]; delete t.pubP[r]; closeJPop && closeJPop();`);
   await rp(`closeJPop ? closeJPop() : ($("jPop").hidden = true)`);
   // Notiz-Freigabe auf öffentlichem Ort
   await rp(`closeJpMore(); setPrivTo("n", "p2", "u_ludwig", true);`);

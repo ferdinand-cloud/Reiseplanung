@@ -2514,8 +2514,9 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .dc-acts:has(.dc-rep){gap:6px}.dc-acts:has(.dc-rep) .btn{padding-left:11px;padding-right:11px}.dc-rep{color:var(--muted)}
 .vlv-all.ls-vis,.vlv-all.cvis{background:color-mix(in srgb,#AF52DE 20%,transparent);color:#AF52DE}.addmenu.jpmenu .ai.vlc-all{color:#AF52DE}
 .vis-all{display:flex;align-items:center;gap:10px;width:100%;margin-top:8px;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
-.vis-all svg{width:20px;height:20px;color:#AF52DE;flex:0 0 auto}.vis-all span{flex:1;min-width:0}.vis-all small{display:block;color:var(--muted);font-size:12px}
-.vis-all i{font-style:normal;font-weight:700;color:#AF52DE}.vis-all.on{border-color:#AF52DE;background:color-mix(in srgb,#AF52DE 10%,transparent)}
+.vis-all svg{width:20px;height:20px;color:var(--muted);flex:0 0 auto}.vis-all span{flex:1;min-width:0}.vis-all small{display:block;color:var(--muted);font-size:12px}
+.vis-all b{color:var(--muted);font-weight:600}.vis-all .sw-mini{background:color-mix(in srgb,var(--ink) 20%,transparent)}.vis-all .sw-mini.on{background:#AF52DE}
+.vis-all.on{border-color:#AF52DE;background:color-mix(in srgb,#AF52DE 10%,transparent)}.vis-all.on svg{color:#AF52DE}.vis-all.on b{color:var(--ink)}
 .wm-stats div{display:flex;flex-direction:column;align-items:center}
 .wm-box{position:relative;height:min(42vh,320px);border-radius:18px;overflow:hidden;margin:2px 0 14px;background:var(--fill)}
 .wm-box .wm-map{position:absolute;inset:0;height:auto;margin:0;border-radius:0}
@@ -13768,7 +13769,7 @@ function renderJPop(){
       [["priv", ILOCK+"Privat", "nur Mitreisende"], ["trip", VISTRIP+"Reise", "+ Beobachter"], ["pub", VISPUB+"Freunde", vis1 ? "veröffentlicht" : "nach Besuch"]].map(function(o){
         return "<button type=\"button\" role=\"radio\" data-act=\"vis\" data-v=\""+o[0]+"\" aria-checked=\""+(vv===o[0])+"\" class=\"vs-"+o[0]+(o[0]==="pub" && !vis1 ? " off" : "")+"\"><b>"+o[1]+"</b><small>"+o[2]+"</small></button>"; }).join("")+"</div>"+
       (vv==="priv" ? privToInline("p", jp.pid) : "")+
-      (vv==="pub" ? "<button type=\"button\" class=\"vis-all"+(isPubA(jp.pid) ? " on" : "")+"\" data-act=\"vis\" data-v=\""+(isPubA(jp.pid) ? "pub" : "all")+"\" aria-pressed=\""+isPubA(jp.pid)+"\">"+VISALL+"<span><b>Auch öffentlich</b><small>"+(isPubA(jp.pid) ? "alle Nutzer sehen den Ort in Entdecken" : "für alle Nutzer in Entdecken zeigen")+"</small></span><i>"+(isPubA(jp.pid) ? "✓" : "")+"</i></button>" : "")+
+      (vv==="pub" ? "<button type=\"button\" class=\"vis-all"+(isPubA(jp.pid) ? " on" : "")+"\" data-act=\"vis\" data-v=\""+(isPubA(jp.pid) ? "pub" : "all")+"\" role=\"switch\" aria-checked=\""+isPubA(jp.pid)+"\">"+VISALL+"<span><b>Auch öffentlich</b><small>"+(isPubA(jp.pid) ? "An – alle Nutzer sehen den Ort in Entdecken" : "Aus – bisher sehen ihn nur Freunde")+"</small></span><em class=\"sw-mini"+(isPubA(jp.pid) ? " on" : "")+"\" aria-hidden=\"true\"></em></button>" : "")+
       (vv!=="priv" ? "<p class=\"note vis-hint\">"+(vv==="pub" ? "Freunde sehen Ort und Bewertung. Notiz und Fotos gibst du über das Auge einzeln für Freunde frei." : "Notiz und Fotos stellst du über das Auge einzeln auf Privat oder Reise.")+"</p>" : "")+
       (vv==="pub" && !recShare ? "<p class=\"note\" style=\"margin:6px 2px 0\">Teilen mit Freunden ist in den Einstellungen ausgeschaltet – der Ort wird erst geteilt, wenn du es wieder einschaltest.</p>" : "")+"</div>"; }
   var ntx = noteOf(jp.pid);
