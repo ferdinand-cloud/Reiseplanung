@@ -2041,6 +2041,44 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-att{background:var(--fill);color:var(--ink)}
 .ch-send{background:var(--accent);color:#fff}
 .ch-att svg,.ch-send svg{width:21px;height:21px}
+/* Sprachnachrichten: Aufnahme-Knopf statt Senden, solange nichts eingegeben ist */
+.ch-comp{position:relative}
+.ch-rec{width:40px;height:40px;flex:0 0 40px;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;background:var(--fill);color:var(--ink);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;position:relative;z-index:2;transition:transform .12s,background .15s,color .15s}
+.ch-rec svg{width:23px;height:23px;pointer-events:none}
+.ch-rec svg+svg,.ch-comp.vlock .ch-rec .vi{display:none}
+.ch-comp.vlock .ch-rec svg+svg{display:block;width:21px;height:21px}
+.ch-comp:not(.has) .ch-send,.ch-comp.has .ch-rec{display:none}
+.ch-rec.hold,.ch-comp.vrec .ch-rec{background:var(--accent);color:#fff;scale:1.18;transition:transform .12s,scale .15s,background .15s}
+.ch-comp.vlock .ch-rec{scale:1}
+.ch-comp.vrec textarea,.ch-comp.vrec .ch-att{visibility:hidden}
+.ch-vrec{position:absolute;left:12px;right:60px;top:8px;height:40px;display:flex;align-items:center;gap:9px;padding:0 14px;border-radius:20px;background:var(--fill2,var(--fill));color:var(--ink);font:15px/1 var(--f-body);overflow:hidden;z-index:1}
+.ch-vrec[hidden]{display:none}
+.ch-vrec[data-st=lock]{padding-left:4px}
+.ch-vdot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:var(--accent);animation:chvdot 1s ease-in-out infinite}
+@keyframes chvdot{50%{opacity:.25}}
+.ch-vtm{font-variant-numeric:tabular-nums;flex:0 0 auto;min-width:34px}
+.ch-vlive{flex:1;min-width:0;height:24px;display:flex;align-items:center;justify-content:flex-end;gap:2px;overflow:hidden}
+.ch-vlive i{flex:0 0 3px;width:3px;border-radius:2px;background:var(--muted);min-height:3px}
+.ch-vcan{flex:0 0 auto;display:flex;align-items:center;gap:2px;font-size:14px;color:var(--muted)}
+.ch-vcan svg{width:15px;height:15px}
+.ch-vdel{width:32px;height:32px;flex:0 0 32px;border:0;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--del) 13%,transparent);color:var(--del);cursor:pointer}
+.ch-vdel svg{width:18px;height:18px}
+.ch-vlk{display:none;position:absolute;right:12px;bottom:calc(100% + 6px);width:40px;padding:8px 0 6px;border-radius:20px;flex-direction:column;align-items:center;gap:2px;background:var(--glass,var(--sheet));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 2px 10px rgba(0,0,0,.12);color:var(--muted);pointer-events:none;z-index:2}
+.ch-vlk svg{width:17px;height:17px}
+.ch-vlk svg+svg{animation:chvlk 1.2s ease-in-out infinite}
+@keyframes chvlk{50%{transform:translateY(-3px)}}
+.ch-comp.vrec:not(.vlock) .ch-vlk{display:flex}
+/* Sprachnachricht im Verlauf: Abspielen, Wellenform (antippen = Stelle), Dauer */
+.ch-vo{display:flex;align-items:center;gap:9px;padding:6px 12px 6px 6px;-webkit-user-select:none;user-select:none}
+.ch-vp{width:34px;height:34px;flex:0 0 34px;border:0;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,currentColor 14%,transparent);color:inherit;cursor:pointer;padding:0}
+.ch-vp svg{width:16px;height:16px}
+.ch-vp .vpa,.ch-vo.pl .ch-vp .vpl{display:none}
+.ch-vo.pl .ch-vp .vpa{display:block}
+.ch-vo.ld .ch-vp svg{opacity:.35;animation:chvdot 1s ease-in-out infinite}
+.ch-vw{display:flex;align-items:center;gap:2px;height:28px;cursor:pointer}
+.ch-vw i{width:3px;flex:0 0 3px;border-radius:2px;background:currentColor;opacity:.38;min-height:3px;transition:opacity .12s}
+.ch-vw i.on{opacity:1}
+.ch-vt{font-size:12.5px;font-variant-numeric:tabular-nums;opacity:.8;min-width:30px}
 .ch-pick{max-height:45%;overflow-y:auto;padding:8px 12px;border-top:.5px solid var(--sep,var(--line))}
 .ch-pick[hidden]{display:none}
 .ch-pickh{display:flex;gap:8px;align-items:center;margin-bottom:8px;position:sticky;top:-8px;background:var(--sheet);padding:6px 0;z-index:1}
@@ -4192,7 +4230,10 @@ var IC = {
   park:"<rect x=\"3\" y=\"4\" width=\"14\" height=\"4\" rx=\"1\"/><path d=\"M4.5 8v7.5h11V8M8 11h4\"/>", // Zurückstellen
   hotel:"<path d=\"M2.5 15.5v-10M2.5 12.5h15v3M17.5 12.5V10a2 2 0 0 0-2-2H9v4.5\"/><circle cx=\"5.8\" cy=\"9.6\" r=\"1.6\"/>", // Hotel
   ticket:"<path d=\"M2.5 6h15v2.6a1.6 1.6 0 0 0 0 3.2V14.4h-15v-2.6a1.6 1.6 0 0 0 0-3.2z\"/><path d=\"M12.5 6.5v1.5M12.5 9.5v1.4M12.5 12.4v1.5\"/>", // Tickets (Fahrkarten, Eintritt)
-  event:"<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M7 3v3M13 3v3M10 8.6l1.1 2.2 2.4.3-1.8 1.6.5 2.4-2.2-1.2-2.2 1.2.5-2.4-1.8-1.6 2.4-.3z\"/>" // Events (Konzerte, Sport, Theater)
+  event:"<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M7 3v3M13 3v3M10 8.6l1.1 2.2 2.4.3-1.8 1.6.5 2.4-2.2-1.2-2.2 1.2.5-2.4-1.8-1.6 2.4-.3z\"/>", // Events (Konzerte, Sport, Theater)
+  voice:"<circle cx=\"10\" cy=\"10\" r=\"7.2\"/><circle cx=\"10\" cy=\"10\" r=\"3.4\" fill=\"currentColor\" stroke=\"none\"/>", // Sprachnachricht aufnehmen (Aufnahmepunkt; Mikrofon = Diktieren, Wellen = Sprach-KI)
+  play:"<path d=\"M6.5 4.3v11.4l9.3-5.7z\"/>", // Abspielen (gefüllt per icf)
+  pause:"<path d=\"M5.8 4.5h2.8v11H5.8zM11.4 4.5h2.8v11h-2.8z\"/>" // Anhalten (gefüllt per icf)
 };
 // ic("send") – Linie; icf("like") – gefüllt (aktiv); cls z. B. "ii" für Symbole im Fließtext
 function ic(n, cls, fill){ return "<svg"+(cls ? " class=\""+cls+"\"" : "")+" viewBox=\"0 0 20 20\" fill=\""+(fill||"none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+IC[n]+"</svg>"; }
@@ -7543,7 +7584,7 @@ function chSubMsgs(cid){
     if(chOpen===cid){ renderChMsgs(!had || (L1 && L1.from===me && (!L0 || L1.id!==L0.id)) ? true : undefined); if(chUnread(CH.byId[cid] || {})) chMarkRead(cid); }
   }, function(){ chMsgs = []; chMsgErr = true; if(chOpen===cid) renderChMsgs(); });
 }
-function chCloseConv(){ chPendId = null; if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } if((chOpen || chNewOn) && !chPopping && history.state && history.state.rpch){ chPopIgn = true; setTimeout(function(){ chPopIgn = false; }, 600); try { history.back(); } catch(e){ chPopIgn = false; } } chOpen = null; chNewOn = false; chNewQ = ""; chMsgs = []; chPickOn = false; chRe = null; chVV(); }
+function chCloseConv(){ chPendId = null; if(VR) vrStop(false); vpStop(); if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } if((chOpen || chNewOn) && !chPopping && history.state && history.state.rpch){ chPopIgn = true; setTimeout(function(){ chPopIgn = false; }, 600); try { history.back(); } catch(e){ chPopIgn = false; } } chOpen = null; chNewOn = false; chNewQ = ""; chMsgs = []; chPickOn = false; chRe = null; chVV(); }
 function chWith(u){ var me = acct.user && acct.user.uid; if(!me || !u) return null; return chId(me, u); }
 function chMatch(pl){ var out = null; Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; if(t.ziel) return false; return Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = {tid:tid, pid:pid}; return true; } return false; }); }); return out; }
 function chPhotoCard(ph, key, draft){
@@ -7781,7 +7822,7 @@ function chMsgsHTML(){
     if(mk && m.from!==me && (m.at||0) > mk.at){ mk = null; h += "<div class=\"ch-new\" id=\"chNewMk\"><span>Neue Nachrichten</span></div>"; }
     var mine = m.from===me, nx = chMsgs[i+1], tail = !nx || nx.from!==m.from || (nx.at - m.at) > 300000;
     h += "<div class=\"ch-msg"+(mine?" me":"")+(tail?" tail":"")+"\" data-mid=\""+esc(m.id)+"\">"+chReQuote(m)+
-      (m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+
+      (m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.vo ? chVoHTML(m) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+
       (tail ? "<small class=\"ch-tm\">"+chTime(m.at, true)+"</small>" : "")+"</div>";
   });
   return h;
@@ -7797,7 +7838,7 @@ function renderChMsgs(stick){
     box.scrollTop = Math.min(box.scrollHeight, box.scrollTop + nm.getBoundingClientRect().top - box.getBoundingClientRect().top - pt + 4); }
   else if(stick === true || (stick == null && atEnd)) box.scrollTop = box.scrollHeight;
   else if(anc){ var a = box.querySelector(".ch-msg[data-mid=\""+anc+"\"]"); if(a) box.scrollTop += a.getBoundingClientRect().top - box.getBoundingClientRect().top - off; }
-  fillPhotos(box);
+  fillPhotos(box); vpUi();
 }
 function chPickHTML(){
   var t = T(), q = norm(chPickQ.trim()), all = [];
@@ -7833,14 +7874,16 @@ function renderCh(full){
       "<div class=\"ch-pick\" id=\"chPick\" hidden><div class=\"ch-pickh\"><div class=\"gs-box\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"chPickIn\" placeholder=\"Ort aus deinen Reisen teilen\" autocomplete=\"off\"></div><button type=\"button\" class=\"btn g s\" data-act=\"chpick\">Fertig</button></div><div class=\"ag-grp ls-list\" id=\"chPickRes\"></div></div>"+
       "<div class=\"ch-rebar\" id=\"chReBox\" hidden></div><div class=\"ch-draft\" id=\"chDraftBox\"></div>"+
       "<div class=\"ch-comp\"><button type=\"button\" class=\"ch-att\" data-act=\"chpick\" aria-label=\"Ort teilen\" title=\"Ort teilen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z\"/><circle cx=\"12\" cy=\"9.5\" r=\"2.5\"/></svg></button>"+
-      "<textarea id=\"chIn\" rows=\"1\" placeholder=\"Nachricht\" enterkeyhint=\"send\"></textarea><button type=\"button\" class=\"ch-send\" data-act=\"chsend\" aria-label=\"Senden\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 19V5M5.5 11.5 12 5l6.5 6.5\"/></svg></button></div></div>";
+      "<textarea id=\"chIn\" rows=\"1\" placeholder=\"Nachricht\" enterkeyhint=\"send\"></textarea><button type=\"button\" class=\"ch-send\" data-act=\"chsend\" aria-label=\"Senden\">"+CHSENDIC+"</button>"+
+      "<button type=\"button\" class=\"ch-rec\" aria-label=\"Sprachnachricht: gedrückt halten\" title=\"Sprachnachricht: gedrückt halten\">"+ic("voice", "vi")+CHSENDIC+"</button><span class=\"ch-vlk\" aria-hidden=\"true\">"+ic("lock")+"<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 12l4-4 4 4\"/></svg></span><div class=\"ch-vrec\" id=\"chVRec\" hidden></div></div></div>";
     chVV();
   }
   if(chNewOn) renderChNew();
-  renderChMsgs(full ? true : undefined); renderChDraft(); renderChRe();
+  renderChMsgs(full ? true : undefined); renderChDraft(); renderChRe(); chCompUpd();
   var cvg = el.querySelector(".ch-conv"); if(cvg) cvg.classList.toggle("gone", chGone(u));
   var pk = $("chPick"); if(pk){ pk.hidden = !chPickOn; if(chPickOn) $("chPickRes").innerHTML = chPickHTML(); }
 }
+var CHSENDIC = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 19V5M5.5 11.5 12 5l6.5 6.5\"/></svg>";
 var CHBACK = "<button type=\"button\" class=\"ch-back\" data-act=\"chback\" aria-label=\"Zurück zu den Chats\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.5 4.5 7 10l5.5 5.5\"/></svg></button>";
 function chPartner(cid){ var me = acct.user && acct.user.uid, c = CH.byId[cid]; return c ? chOther(c) : String(cid).split("_").filter(function(x){ return x!==me; })[0]; }
 // Kopf: im neuen Chat das Empfängerfeld („An:“), sonst Bild und Name
@@ -7878,7 +7921,7 @@ function chNewStart(){ var el = $("chView"); if(!el || !acct.user) return;
 // Vorschlag angetippt: Name übernehmen, weiter zur Nachricht
 function chNewPick(u){ var i = $("chNewIn"); chNewU = u; chNewQ = chName(u); if(i) i.value = chNewQ; renderChNew();
   var m = $("chIn"); if(m) try { m.focus({preventScroll:true}); } catch(e){ m.focus(); } }
-function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; b.innerHTML = chDraft ? "<div class=\"ch-dr\">"+(chIsPhoto(chDraft) ? chPhotoCard(chDraft, "", true) : chPlaceCard(chDraft, "", true))+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; }
+function renderChDraft(){ var b = $("chDraftBox"); if(!b) return; b.innerHTML = chDraft ? "<div class=\"ch-dr\">"+(chIsPhoto(chDraft) ? chPhotoCard(chDraft, "", true) : chPlaceCard(chDraft, "", true))+"<button type=\"button\" class=\"ch-drx\" data-act=\"chdrx\" aria-label=\"Ort entfernen\">✕</button></div>" : ""; b.hidden = !chDraft; chCompUpd(); }
 /* Foto-Nachricht = geteiltes Foto (Kennung + Reise + Ort); ein Ort mit Vorschaubild hat in .ph Bilddaten und ist KEIN Foto */
 // ältere Nachrichten: als Foto gespeicherte Orte (mit Vorschaubild) wieder als Ort behandeln
 function chNorm(m){ if(m && m.photo && !chIsPhoto(m.photo)){ m.place = m.place || m.photo; delete m.photo; } return m; }
@@ -7892,7 +7935,7 @@ function chPlaceFrom(tid, pid){
 }
 /* Antworten: chRe = markierte Nachricht {id, from, t (Kurztext)}; wird als re mit der Antwort gespeichert */
 var chRe = null;
-function chReText(m){ return ((m.t || "").replace(/\s+/g, " ").trim() || (m.photo ? "Foto · "+(m.photo.n||"") : m.place ? "Ort · "+(m.place.n||"") : "Nachricht")).slice(0, 140); }
+function chReText(m){ return ((m.t || "").replace(/\s+/g, " ").trim() || (m.vo ? "Sprachnachricht · "+vrFmt(m.vo.d) : m.photo ? "Foto · "+(m.photo.n||"") : m.place ? "Ort · "+(m.place.n||"") : "Nachricht")).slice(0, 140); }
 function chReWho(u, mine){ var me = acct.user && acct.user.uid; return u===me ? (mine ? "dir selbst" : "dir") : atn(chName(u)); }
 function chReSet(id){ var m = chMsgs.filter(function(x){ return x.id===id; })[0]; if(!m || !chOpen || chGone(chPartner(chOpen))) return;
   var box = $("chMsgs"), atEnd = box && box.scrollHeight - box.scrollTop - box.clientHeight < 80;
@@ -7918,7 +7961,7 @@ function chSend(){
   if(!me || !chOpen || chSending || (!txt && !chDraft) || chGone(chPartner(chOpen))) return;
   var u = chPartner(chOpen);
   // erste Nachricht im neuen Chat: Kopf wird zum normalen Chat-Kopf, Eingabe und Tastatur bleiben
-  if(chNewOn){ chNewOn = false; chNewQ = ""; var hd = document.querySelector("#chView .ch-head"); if(hd) hd.innerHTML = chHeadIn(u); var nr = $("chNewRes"); if(nr) nr.remove(); }
+  chNewDone(u);
   var now = Date.now(), msg = {from:me, t:txt, at:now}, pl = chDraft, isPh = chIsPhoto(pl); if(pl){ if(isPh) msg.photo = pl; else msg.place = pl; }
   var re = chRe; if(re) msg.re = re;
   var names = {}; names[me] = (PROF && PROF.name) || ""; names[u] = chName(u);
@@ -7926,10 +7969,192 @@ function chSend(){
   var cref = fbDb.collection("chats").doc(chOpen), b = fbDb.batch();
   b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:pl ? (isPh ? "Foto · "+pl.n : pl.n) : "", ph:isPh}, read:read}, {merge:true});
   b.set(cref.collection("msgs").doc(), msg);
-  chSending = true; var keepT = txt, keepP = chDraft; if(inp){ inp.value = ""; chGrow(); } chDraft = null; renderChDraft(); chRe = null; renderChRe();
-  b.commit().then(function(){ chSending = false; if(chMsgErr && chOpen){ var dr = chDraft; chOpenConv(chOpen); chDraft = dr; renderChDraft(); } }, function(e){ chSending = false; if(inp && !inp.value) inp.value = keepT; chDraft = keepP; renderChDraft(); if(re && !chRe){ chRe = re; renderChRe(); } toast("Senden fehlgeschlagen: "+((e && e.code)==="permission-denied" ? "keine Berechtigung (Firestore-Regeln für Chats ergänzen?)" : (e && e.message) || ""), false); });
+  chSending = true; var keepT = txt, keepP = chDraft; if(inp){ inp.value = ""; chGrow(); } chDraft = null; chCompUpd(); renderChDraft(); chRe = null; renderChRe();
+  b.commit().then(function(){ chSending = false; if(chMsgErr && chOpen){ var dr = chDraft; chOpenConv(chOpen); chDraft = dr; renderChDraft(); } }, function(e){ chSending = false; if(inp && !inp.value){ inp.value = keepT; chCompUpd(); } chDraft = keepP; renderChDraft(); if(re && !chRe){ chRe = re; renderChRe(); } toast("Senden fehlgeschlagen: "+((e && e.code)==="permission-denied" ? "keine Berechtigung (Firestore-Regeln für Chats ergänzen?)" : (e && e.message) || ""), false); });
 }
-function chGrow(){ var i = $("chIn"); if(!i) return; i.style.height = "auto"; i.style.height = Math.min(120, i.scrollHeight)+"px"; }
+function chGrow(){ var i = $("chIn"); if(!i) return; i.style.height = "auto"; i.style.height = Math.min(120, i.scrollHeight)+"px"; chCompUpd(); }
+function chNewDone(u){ if(!chNewOn) return; chNewOn = false; chNewQ = ""; var hd = document.querySelector("#chView .ch-head"); if(hd) hd.innerHTML = chHeadIn(u); var nr = $("chNewRes"); if(nr) nr.remove(); }
+/* ---------- Sprachnachrichten ----------
+   Ist nichts eingegeben, steht statt Senden der Aufnahme-Knopf (Symbol IC.voice). Gedrückt halten = aufnehmen, loslassen = senden,
+   nach links ziehen = verwerfen, nach oben ziehen = feststellen (freihändig; dann Verwerfen links, Senden rechts). Höchstens 2 Minuten.
+   Speicher: kostenlos in Firestore (Storage bräuchte den Bezahltarif). Der Ton liegt als Daten-URL in eigenen Dokumenten
+   chats/{cid}/msgs/{aid}, {aid}_1 … (je höchstens VRPART Zeichen) OHNE Feld „at“ – die Verlaufsabfrage (orderBy at) lädt sie daher
+   nie mit; geholt wird erst beim Abspielen. Die Nachricht selbst trägt vo = {id, n (Teile), d (Sekunden), mt (Format), wv (Wellenform 0–9)}.
+   Bestehende Regeln für msgs genügen (from = eigenes Konto). Aufnahme mit MediaRecorder (iPhone: audio/mp4 AAC), auch in Capacitor (WKWebView). */
+var VR = null, VRMAX = 120, VRPART = 700000, CHAUD = {}, VP = {el:null, mid:"", ok:false, ld:false, raf:0, unl:false};
+function vrOk(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); }
+function vrMime(){ var L = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/aac", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
+  for(var i = 0; i < L.length; i++) try { if(MediaRecorder.isTypeSupported(L[i])) return L[i]; } catch(e){} return ""; }
+function vrFmt(s){ s = Math.max(0, Math.round(+s || 0)); return Math.floor(s/60)+":"+String(s%60).padStart(2, "0"); }
+// Text oder Anhang da → Senden, sonst Aufnahme-Knopf (ohne Aufnahme-Möglichkeit bleibt Senden)
+function chCompUpd(){ var c = document.querySelector("#chView .ch-comp"), i = $("chIn"); if(!c) return; c.classList.toggle("has", !!((i && i.value.trim()) || chDraft) || !vrOk()); }
+function vrDown(e, b){
+  if(VR){ if(VR.st==="lock") vrStop(true); return; }   // festgestellt: Knopf ist jetzt Senden
+  var me = acct.user && acct.user.uid; if(!me) return;
+  if(chNewOn && !chOpen){ toast("Gib zuerst oben den Namen eines Freundes ein", false); return; }
+  if(!chOpen || chGone(chPartner(chOpen))) return;
+  if(!vrOk()){ toast("Sprachnachrichten kann dieser Browser nicht aufnehmen", false); return; }
+  vpStop(); vpUnlock();
+  // Ton-Analyse für die Wellenform: muss auf dem iPhone direkt beim Antippen entstehen
+  var AC = window.AudioContext || window.webkitAudioContext, ctx = null; try { ctx = AC ? new AC() : null; } catch(x){ ctx = null; }
+  var v = VR = {pid:e.pointerId, x0:e.clientX, y0:e.clientY, held:true, st:"wait", t0:Date.now(), ts:0, ctx:ctx, pk:[], cid:chOpen, dx:0, dy:0};
+  b.classList.add("hold");
+  navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}}).then(function(st){
+    if(VR!==v || !v.held){ st.getTracks().forEach(function(t){ t.stop(); }); if(VR===v){ VR = null; vrEnd(v); vrReset(); }
+      if(VR!==v) toast(Date.now() - v.t0 > 700 ? "Mikrofon ist bereit – zum Aufnehmen gedrückt halten" : "Zum Aufnehmen gedrückt halten", false); return; }
+    vrBegin(v, st);
+  }, function(err){ if(VR===v){ VR = null; vrEnd(v); vrReset(); }
+    toast(/NotAllowed|Permission|Security/i.test((err && (err.name || err.message)) || "") ? "Kein Zugriff aufs Mikrofon – bitte in den Einstellungen erlauben" : "Mikrofon nicht verfügbar", false); });
+}
+function vrBegin(v, st){
+  var mt = vrMime(), mr = null;
+  try { mr = new MediaRecorder(st, mt ? {mimeType:mt, audioBitsPerSecond:48000} : {audioBitsPerSecond:48000}); }
+  catch(x){ try { mr = new MediaRecorder(st); } catch(y){ mr = null; } }
+  v.stream = st; if(!mr){ VR = null; vrEnd(v); vrReset(); toast("Aufnahme nicht möglich", false); return; }
+  v.st = "rec"; v.mr = mr; v.ch = []; v.mt = String(mr.mimeType || mt || "audio/mp4").split(";")[0]; v.ts = Date.now();
+  mr.ondataavailable = function(ev){ if(ev.data && ev.data.size) v.ch.push(ev.data); };
+  mr.start(400);
+  if(v.ctx) try { if(v.ctx.state==="suspended") v.ctx.resume(); var src = v.ctx.createMediaStreamSource(st); v.an = v.ctx.createAnalyser(); v.an.fftSize = 512; src.connect(v.an); v.buf = new Uint8Array(v.an.fftSize); } catch(x){ v.an = null; }
+  v.iv = setInterval(function(){ vrTick(v); }, 80);
+  vrUi();
+}
+// alle 80 ms: Lautstärke-Spitze merken, Zeit und Live-Wellenform zeigen
+function vrTick(v){
+  if(VR!==v) return; var a = 0;
+  if(v.an){ v.an.getByteTimeDomainData(v.buf); for(var i = 0; i < v.buf.length; i++){ var d = Math.abs(v.buf[i] - 128); if(d > a) a = d; } a /= 128; }
+  v.pk.push(a);
+  if((Date.now() - v.ts) / 1000 >= VRMAX){ vrStop(true); toast("Höchstens 2 Minuten – Sprachnachricht gesendet", false); return; }
+  vrUi();
+}
+function vrUi(){
+  var v = VR, box = $("chVRec"), c = document.querySelector("#chView .ch-comp"); if(!box || !c || !v || v.st==="wait") return;
+  c.classList.add("vrec"); c.classList.toggle("vlock", v.st==="lock");
+  if(box.getAttribute("data-st")!==v.st){ box.setAttribute("data-st", v.st);
+    box.innerHTML = (v.st==="lock" ? "<button type=\"button\" class=\"ch-vdel\" data-act=\"vrdel\" aria-label=\"Sprachnachricht verwerfen\">"+ic("del")+"</button>" : "")+
+      "<i class=\"ch-vdot\" aria-hidden=\"true\"></i><span class=\"ch-vtm\">0:00</span><span class=\"ch-vlive\" aria-hidden=\"true\"></span>"+
+      (v.st==="lock" ? "" : "<span class=\"ch-vcan\">"+ic("back")+"Abbrechen</span>"); }
+  box.hidden = false;
+  box.querySelector(".ch-vtm").textContent = vrFmt(Math.floor((Date.now() - v.ts) / 1000));
+  box.querySelector(".ch-vlive").innerHTML = v.pk.slice(-34).map(function(a){ return "<i style=\"height:"+Math.round(14 + Math.min(1, a * 2.4) * 86)+"%\"></i>"; }).join("");
+  var cn = box.querySelector(".ch-vcan"); if(cn){ cn.style.opacity = String(Math.max(0.2, 1 + v.dx / 120)); cn.style.transform = "translateX("+Math.round(v.dx * 0.5)+"px)"; }
+  var lk = c.querySelector(".ch-vlk"); if(lk) lk.style.transform = "translateY("+Math.round(v.dy * 0.5)+"px)";
+}
+// Finger ziehen: nach links verwerfen, nach oben feststellen; der Knopf folgt in die stärkere Richtung
+function vrMove(e){
+  var v = VR; if(!v || v.st==="lock") return; var b = document.querySelector("#chView .ch-rec");
+  v.dx = Math.min(0, e.clientX - v.x0); v.dy = Math.min(0, e.clientY - v.y0);
+  if(v.st==="rec" && v.dx < -110){ vrStop(false); return; }
+  if(v.st==="rec" && v.dy < -70 && Math.abs(v.dy) > Math.abs(v.dx)){ v.st = "lock"; v.dx = v.dy = 0; if(b) b.style.transform = ""; var lk = document.querySelector("#chView .ch-vlk"); if(lk) lk.style.transform = ""; vrUi(); return; }
+  if(b) b.style.transform = Math.abs(v.dx) > Math.abs(v.dy) ? "translateX("+Math.round(v.dx * 0.6)+"px)" : "translateY("+Math.round(v.dy * 0.6)+"px)";
+  vrUi();
+}
+function vrUp(cancel){
+  var v = VR; if(!v) return; v.held = false;
+  if(v.st==="lock" || v.st==="wait") return;   // festgestellt läuft weiter; „wait“: Mikrofon-Freigabe läuft noch
+  if(cancel){ vrStop(false); return; }
+  if(Date.now() - v.ts < 700){ vrStop(false); toast("Zum Aufnehmen gedrückt halten", false); return; }
+  vrStop(true);
+}
+function vrEnd(v){ clearInterval(v.iv); if(v.stream) v.stream.getTracks().forEach(function(t){ t.stop(); }); if(v.ctx) try { v.ctx.close(); } catch(x){} }
+function vrReset(){ var c = document.querySelector("#chView .ch-comp"), box = $("chVRec"), b = document.querySelector("#chView .ch-rec"), lk = document.querySelector("#chView .ch-vlk");
+  if(c) c.classList.remove("vrec", "vlock"); if(box){ box.hidden = true; box.innerHTML = ""; box.removeAttribute("data-st"); }
+  if(b){ b.classList.remove("hold"); b.style.transform = ""; } if(lk) lk.style.transform = ""; }
+// Aufnahme beenden; send = verschicken, sonst verwerfen
+function vrStop(send){
+  var v = VR; if(!v) return; VR = null; clearInterval(v.iv); vrReset();
+  var dur = v.ts ? (Date.now() - v.ts) / 1000 : 0, mr = v.mr, done = false;
+  if(!mr){ vrEnd(v); return; }
+  var fin = function(){ if(done) return; done = true; vrEnd(v); if(!send) return;
+    var bl = new Blob(v.ch, {type:v.mt}); if(!bl.size){ toast("Die Aufnahme ist leer", false); return; } vrSend(v.cid, bl, dur, v.pk); };
+  mr.onstop = fin;
+  try { if(mr.state!=="inactive") mr.stop(); else fin(); } catch(x){ fin(); }
+}
+// Wellenform: n Balken (0–9), relativ zur lautesten Stelle; kurze Nachrichten bekommen weniger Balken
+function vrWave(pk, dur){ var n = Math.max(18, Math.min(40, Math.round(12 + dur * 1.5))), mx = Math.max.apply(null, pk.concat([0.02])), out = "";
+  for(var i = 0; i < n; i++){ var a = Math.floor(i * pk.length / n), z = Math.max(a + 1, Math.floor((i + 1) * pk.length / n)), m = 0;
+    for(var j = a; j < z && j < pk.length; j++) if(pk[j] > m) m = pk[j]; out += Math.min(9, Math.round(m / mx * 9)); }
+  return out; }
+function vrSend(cid, bl, dur, pk){
+  var me = acct.user && acct.user.uid; if(!me || !fbDb || !cid) return;
+  var fr = new FileReader();
+  fr.onerror = function(){ toast("Sprachnachricht konnte nicht gelesen werden", false); };
+  fr.onload = function(){
+    var data = String(fr.result || ""), u = chPartner(cid), mt = bl.type || "audio/mp4";
+    if(data.length > VRPART * 8){ toast("Die Sprachnachricht ist zu groß", false); return; }
+    var cref = fbDb.collection("chats").doc(cid), mref = cref.collection("msgs"), aref = mref.doc(), aid = aref.id || uid("vo"), n = Math.ceil(data.length / VRPART), b = fbDb.batch(), now = Date.now();
+    for(var i = 0; i < n; i++) b.set(i ? mref.doc(aid+"_"+i) : aref, {from:me, aud:data.slice(i * VRPART, (i + 1) * VRPART), i:i, n:n, mt:mt});
+    CHAUD[aid] = URL.createObjectURL(bl);   // eigene Nachricht sofort abspielbar
+    var msg = {from:me, t:"", at:now, vo:{id:aid, n:n, d:Math.round(dur * 10) / 10, mt:mt, wv:vrWave(pk, dur)}};
+    if(chRe && chOpen===cid){ msg.re = chRe; chRe = null; renderChRe(); }
+    var names = {}, read = {}; names[me] = (PROF && PROF.name) || ""; names[u] = chName(u); read[me] = now;
+    b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:"Sprachnachricht · "+vrFmt(dur), from:me, at:now, place:"", ph:false, vo:true}, read:read}, {merge:true});
+    b.set(mref.doc(), msg);
+    if(chOpen===cid) chNewDone(u);
+    b.commit().then(function(){ if(chMsgErr && chOpen===cid) chOpenConv(cid); }, function(e){
+      toast("Sprachnachricht nicht gesendet: "+((e && e.code)==="permission-denied" ? "keine Berechtigung" : (e && e.message) || ""), false); });
+  };
+  fr.readAsDataURL(bl);
+}
+/* Abspielen: ein gemeinsames Audio-Element. iOS erlaubt späteres Abspielen nur, wenn es einmal direkt beim Antippen gestartet wurde (vpUnlock). */
+var VPSIL = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+function vpEl(){ if(VP.el) return VP.el; var a = VP.el = new Audio(); a.preload = "auto";
+  a.addEventListener("ended", function(){ VP.mid = ""; VP.ok = false; vpUi(); });
+  a.addEventListener("pause", vpUi); a.addEventListener("play", function(){ cancelAnimationFrame(VP.raf); (function lp(){ vpUi(); if(!a.paused && VP.mid) VP.raf = requestAnimationFrame(lp); })(); });
+  return a; }
+function vpUnlock(){ if(VP.unl) return; VP.unl = true; var a = vpEl(); try { a.src = VPSIL; var p = a.play(); if(p && p.catch) p.catch(function(){}); } catch(e){} }
+function vpStop(){ if(VP.el && !VP.el.paused) try { VP.el.pause(); } catch(e){} VP.mid = ""; VP.ok = false; VP.ld = false; }
+function vpLoad(vo, cid){
+  if(CHAUD[vo.id]) return Promise.resolve(CHAUD[vo.id]);
+  if(!fbDb) return Promise.reject(new Error("offline"));
+  var mref = fbDb.collection("chats").doc(cid).collection("msgs"), ids = [];
+  for(var i = 0; i < (vo.n || 1); i++) ids.push(i ? vo.id+"_"+i : vo.id);
+  return Promise.all(ids.map(function(id){ return mref.doc(id).get(); })).then(function(ds){
+    var s = ds.map(function(d){ var v = d.exists && d.data(); if(!v || typeof v.aud!=="string") throw new Error("fehlt"); return v.aud; }).join("");
+    var k = s.indexOf(","), bin = atob(s.slice(k + 1)), arr = new Uint8Array(bin.length); for(var j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
+    return (CHAUD[vo.id] = URL.createObjectURL(new Blob([arr], {type:vo.mt || s.slice(5, s.indexOf(";")) || "audio/mp4"})));
+  });
+}
+function vpMsg(mid){ return chMsgs.filter(function(x){ return x.id===mid; })[0]; }
+// f = Stelle 0…1 (Antippen der Wellenform), sonst Abspielen/Anhalten
+function vpToggle(mid, f){
+  var m = vpMsg(mid); if(!m || !m.vo) return; var a = vpEl();
+  if(VP.mid===mid && VP.ok){ if(f!=null) a.currentTime = f * vpDur(m); if(a.paused || f!=null){ var p = a.play(); if(p && p.catch) p.catch(function(){}); } else a.pause(); vpUi(); return; }
+  if(VP.mid===mid && VP.ld) return;
+  if(!a.paused) a.pause(); vpUnlock();
+  VP.mid = mid; VP.ok = false; VP.ld = true; vpUi();
+  vpLoad(m.vo, chOpen).then(function(url){
+    if(VP.mid!==mid) return; VP.ld = false; VP.ok = true;
+    var go = function(){ if(f) try { a.currentTime = f * vpDur(m); } catch(e){} };
+    a.src = url; if(f) a.addEventListener("loadedmetadata", go, {once:true});
+    var p = a.play(); if(p && p.catch) p.catch(function(){ VP.ok = false; VP.mid = ""; vpUi(); toast("Abspielen nicht möglich – bitte nochmal antippen", false); });
+    vpUi();
+  }, function(){ if(VP.mid===mid){ VP.mid = ""; VP.ld = false; vpUi(); } toast("Sprachnachricht konnte nicht geladen werden", false); });
+}
+function vpDur(m){ var a = VP.el; return a && VP.mid===m.id && isFinite(a.duration) && a.duration > 0 ? a.duration : +(m.vo && m.vo.d) || 0; }
+function vpSeek(w, x){ var r = w.getBoundingClientRect(); if(!r.width) return; vpToggle(w.getAttribute("data-k"), Math.max(0, Math.min(0.99, (x - r.left) / r.width))); }
+function vpUi(){
+  var box = $("chMsgs"); if(!box) return; var a = VP.el;
+  box.querySelectorAll(".ch-vo").forEach(function(el){
+    var mid = el.getAttribute("data-mid"), cur = !!VP.mid && mid===VP.mid, on = cur && VP.ok && a && !a.paused;
+    el.classList.toggle("pl", on); el.classList.toggle("ld", cur && VP.ld);
+    var bt = el.querySelector(".ch-vp"); if(bt) bt.setAttribute("aria-label", on ? "Sprachnachricht anhalten" : "Sprachnachricht abspielen");
+    var d = +el.getAttribute("data-d") || 0, t = cur && VP.ok && a ? a.currentTime : 0, dd = cur && a && isFinite(a.duration) && a.duration > 0 ? a.duration : d, p = dd ? Math.min(1, t / dd) : 0;
+    var bars = el.querySelectorAll(".ch-vw i"), k = Math.round(p * bars.length);
+    for(var i = 0; i < bars.length; i++) bars[i].classList.toggle("on", i < k);
+    var tl = el.querySelector(".ch-vt"); if(tl) tl.textContent = vrFmt(cur && t > 0 ? t : d);
+  });
+}
+function chVoHTML(m){ var v = m.vo, w = String(v.wv || "").replace(/[^0-9]/g, "") || "333333333333333333", k = esc(m.id);
+  return "<div class=\"ch-bub ch-vo\" data-mid=\""+k+"\" data-d=\""+(+v.d || 0)+"\"><button type=\"button\" class=\"ch-vp\" data-act=\"chvoplay\" data-k=\""+k+"\" aria-label=\"Sprachnachricht abspielen\">"+icf("play", "vpl")+icf("pause", "vpa")+"</button>"+
+    "<span class=\"ch-vw\" data-act=\"chvoseek\" data-k=\""+k+"\" role=\"slider\" aria-label=\"Stelle wählen\" aria-valuemin=\"0\" aria-valuemax=\""+Math.round(+v.d || 0)+"\">"+w.split("").map(function(c){ return "<i style=\"height:"+Math.round(16 + (+c) * 9.3)+"%\"></i>"; }).join("")+"</span>"+
+    "<small class=\"ch-vt\">"+vrFmt(v.d)+"</small></div>"; }
+// Aufnahme-Knopf: Zeiger-Ereignisse (Finger, Maus); kein Scrollen, kein Lupen-/Kopiermenü, Tastatur bleibt, wie sie ist
+document.addEventListener("pointerdown", function(e){ var b = e.target.closest && e.target.closest("#chView .ch-rec"); if(!b) return; e.preventDefault(); vrDown(e, b); }, true);
+document.addEventListener("pointermove", function(e){ if(VR && VR.pid===e.pointerId) vrMove(e); }, true);
+document.addEventListener("pointerup", function(e){ if(VR && VR.pid===e.pointerId) vrUp(false); }, true);
+document.addEventListener("pointercancel", function(e){ if(VR && VR.pid===e.pointerId) vrUp(true); }, true);
+document.addEventListener("touchstart", function(e){ if(e.target.closest && e.target.closest("#chView .ch-rec")) e.preventDefault(); }, {capture:true, passive:false});
+document.addEventListener("contextmenu", function(e){ if(e.target.closest && e.target.closest("#chView .ch-rec")) e.preventDefault(); }, true);
 /* Chat und Tastatur (iOS). Grundsatz: Die Chat-Fläche (#chView) deckt IMMER den ganzen Bildschirm ab – es kann nie die Karte
    durchscheinen. Nur der Inhalt (.ch-conv: Kopf, Verlauf, Eingabe) bekommt beim Tippen die Höhe des sichtbaren Bereichs
    (visualViewport.height) und sitzt an dessen Oberkante (offsetTop). Damit stimmt die Lage, egal ob iOS die Seite verschiebt,
@@ -7990,7 +8215,7 @@ setInterval(function(){ if(!CHKB.on || CHKB.anim) return; var vv = window.visual
 document.addEventListener("focusin", function(e){ if(chPage && (chOpen || chNewOn) && e.target && isTypeField(e.target) && $("chView").contains(e.target)) chVV(); });
 document.addEventListener("focusout", function(){ if(CHKB.on) setTimeout(chVV, 0); });
 // Senden-Knopf nimmt dem Feld den Fokus nicht – die Tastatur bleibt offen wie in Nachrichten-Apps
-document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send, #chView .ch-rex, #chView .ch-rq, #chNewRes [data-act=chnew]") && chTyping()) e.preventDefault(); }, true);
+document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send, #chView .ch-vrec, #chView .ch-vp, #chView .ch-vw, #chView .ch-rex, #chView .ch-rq, #chNewRes [data-act=chnew]") && chTyping()) e.preventDefault(); }, true);
 document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn") chGrow(); if(e.target.id==="chNewIn"){ chNewQ = e.target.value; renderChNew(); } if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
 document.addEventListener("keydown", function(e){
   // Empfängerfeld: Eingabetaste übernimmt den (einzigen) Vorschlag und springt zur Nachricht
@@ -15582,6 +15807,9 @@ document.addEventListener("click", function(e){
     case "chpickp": chPickOn = false; $("chPick").hidden = true; chPlaceFrom(t.getAttribute("data-trip"), t.getAttribute("data-pid")).then(function(pl){ chDraft = pl; renderChDraft(); var ci = $("chIn"); if(ci) ci.focus(); }); break;
     case "chdrx": chDraft = null; renderChDraft(); break;
     case "chrex": chRe = null; renderChRe(); break;
+    case "chvoplay": vpToggle(t.getAttribute("data-k")); break;
+    case "chvoseek": vpSeek(t, e.clientX); break;
+    case "vrdel": vrStop(false); break;
     case "chrejump": chReJump(t.getAttribute("data-v")); break;
     case "chmap": var chpl = CHPL[t.getAttribute("data-k")]; if(chpl){ var chm = chMatch(chpl); closeChPage();
       if(chm){ if(chm.tid!==S.cur){ grpSel = ""; S.cur = chm.tid; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
