@@ -7707,6 +7707,12 @@ function chVV(){ var el = $("chView"); if(!el) return; var vv = window.visualVie
 // iOS scrollt beim Fokus auch Behälter mit overflow:hidden, um das Feld zu zeigen – die Chat-Fläche selbst bleibt immer oben
 document.addEventListener("scroll", function(e){ var el = e.target; if(el && el.id==="chView" && el.classList.contains("conv") && el.scrollTop) el.scrollTop = 0; }, true);
 if(window.visualViewport){ ["resize", "scroll"].forEach(function(n){ window.visualViewport.addEventListener(n, function(){ if(CHKB.on) chVV(); }); }); }
+/* Tastaturwechsel (z. B. auf Emoji/Genmoji, die höher sind): iOS meldet die neue sichtbare Höhe nicht immer per Ereignis.
+   Solange im Chat getippt wird, prüft die App deshalb zusätzlich regelmäßig die sichtbare Höhe und führt die Eingabe nach. */
+window.addEventListener("resize", function(){ if(CHKB.on) chVV(); });
+CHKB.lv = "";
+setInterval(function(){ if(!CHKB.on || CHKB.anim) return; var vv = window.visualViewport; if(!vv) return;
+  var k = Math.round(vv.height)+"/"+Math.round(vv.offsetTop); if(k===CHKB.lv) return; CHKB.lv = k; chVV(); }, 200);
 document.addEventListener("focusin", function(e){ if(chPage && (chOpen || chNewOn) && e.target && isTypeField(e.target) && $("chView").contains(e.target)) chVV(); });
 document.addEventListener("focusout", function(){ if(CHKB.on) setTimeout(chVV, 0); });
 // Senden-Knopf nimmt dem Feld den Fokus nicht – die Tastatur bleibt offen wie in Nachrichten-Apps
@@ -8416,6 +8422,8 @@ if(/[?&]kbdiag/.test(location.search)) (function(){ var vv = window.visualViewpo
   window.addEventListener("scroll", function(){ log("wscroll"); }, {passive:true});
   if(vv){ vv.addEventListener("resize", function(){ log("vresize"); }); vv.addEventListener("scroll", function(){ log("vscroll"); }); }
   window.addEventListener("resize", function(){ log("wresize"); });
+  // ändert sich die sichtbare Höhe ohne Ereignis (z. B. Wechsel auf die Emoji-Tastatur), erscheint eine Zeile „poll“
+  var lk = ""; setInterval(function(){ if(!vv) return; var k = Math.round(vv.height)+"/"+Math.round(vv.offsetTop)+"/"+innerHeight; if(k!==lk){ if(lk) log("poll"); lk = k; } }, 250);
   log("start"); })();
 /* Unteransichten im Konto-Fenster (z. B. Follower → Leute suchen): × und Tipp daneben führen zur Ansicht zurück, aus der sie geöffnet wurden */
 var ACCSTK = [];

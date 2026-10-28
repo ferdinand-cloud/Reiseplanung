@@ -3251,9 +3251,17 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
   // 4) Zweites Antippen: gemerkte Höhe → Eingabe steht sofort an der richtigen Stelle (kein Nachrutschen)
   const g3 = await glide("focus"); smooth(g3, "Zweites Antippen", VH);
   p = await pos(); ok(Math.abs(p.inp.b - VH) <= 1, "Gemerkte Tastaturhöhe nicht genutzt: "+JSON.stringify(p.inp));
+  // 4b) Wechsel auf die (höhere) Emoji-Tastatur: iOS meldet die neue Höhe teils OHNE resize-Ereignis – Eingabe muss trotzdem nachrücken
+  await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => 0}); }, VH - 60);
+  for(let i = 0; i < 30 && Math.abs((await pos()).inp.b - (VH - 60)) > 1; i++) await page.waitForTimeout(50);
+  p = await pos(); same(p, "Emoji-Tastatur"); ok(Math.abs(p.inp.b - (VH - 60)) <= 1, "Eingabe rückt bei höherer Emoji-Tastatur nicht nach (ohne Ereignis): "+JSON.stringify(p.inp));
+  await page.evaluate(h => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); }, VH);
+  for(let i = 0; i < 30 && Math.abs((await pos()).inp.b - VH) > 1; i++) await page.waitForTimeout(50);
+  p = await pos(); ok(Math.abs(p.inp.b - VH) <= 1, "Eingabe kehrt nach Rückwechsel zur normalen Tastatur nicht zurück: "+JSON.stringify(p.inp));
   // 5) Senden lässt die Tastatur offen (Fokus bleibt im Feld)
   await page.evaluate(() => { const b = document.querySelector("#chView .ch-send"); const ev = new MouseEvent("mousedown", {bubbles:true, cancelable:true}); b.dispatchEvent(ev); window.__md = ev.defaultPrevented; });
   ok(await page.evaluate(() => window.__md), "Senden-Knopf nimmt dem Feld den Fokus (Tastatur ginge zu)");
+  await page.evaluate(() => { delete visualViewport.height; delete visualViewport.offsetTop; });
   await page.evaluate(() => document.activeElement.blur()); await page.waitForTimeout(50); await rp(`CHKB.fb = 1200; true`);
 });
 
