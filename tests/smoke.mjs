@@ -194,7 +194,8 @@ await test("Tag wählen: „Alle Tage anzeigen“ zeigt die gesamte Reise auf de
   ok(await rp(`allOn()`), "Gesamtansicht nicht aktiv");
   ok(!(await visible("#catPop")), "Pop-up bleibt offen");
   ok(await rp(`$("rail").textContent.indexOf("Alle") > -1`), "Tageskreis zeigt nicht „Alle“");
-  ok(await rp(`$("body").textContent.indexOf("Alle Tage") > -1 && $("body").querySelectorAll(".adl [data-act=day]").length===days().length`), "Blatt zeigt keine Tagesübersicht");
+  ok(await rp(`$("body").textContent.indexOf("Alle Tage") > -1 && $("body").querySelectorAll(".adj [data-act=day]").length===days().length && !$("body").querySelector(".daylist")`), "Blatt zeigt kein Tagebuch aller Tage");
+  ok(await rp(`!!$("body").querySelector(".adj .jcard[data-pid=p4][data-day='${k.Y}']")`), "Tagebuch aller Tage: besuchter Ort von gestern fehlt");
   await page.waitForTimeout(300);
   ok(await rp(`(function(){ var h = $("ov").innerHTML; return h.indexOf(dayColor("${k.M}")) > -1 && h.indexOf(dayColor("${k.H}")) > -1; })()`), "Karte zeigt nicht die Stopps aller Tage");
   await shot("alle-tage-karte");
@@ -211,6 +212,17 @@ await test("Tag wählen: „Alle Tage anzeigen“ zeigt die gesamte Reise auf de
   await click("#catPop .dayall"); ok(await rp(`allOn()`), "Ansichtsmodus: Gesamtansicht nicht aktiv");
   await rp(`T().fin = 0; allD = ""; renderAll(); openDayPop("p1", true); true`);
   ok(!(await rp(`!!$("catPop").querySelector(".dayall")`)), "Verschieben-Pop-up zeigt „Alle Tage“");
+});
+
+await test("Karte mit gewähltem Tag: nur dessen Orte, Filter „Alle Orte der Reise“ zeigt alle", async () => {
+  await seed(); await rp(`map.jumpTo({center:[-73.995, 40.72], zoom:12}); true`); await page.waitForTimeout(400);
+  ok(await rp(`PHMK.length`)===0, "Fotos anderer Tage erscheinen ohne Filter: "+await rp(`PHMK.join()`));
+  await click("#layersBtn");
+  ok(await visible("#lAllP"), "Filter „Alle Orte der Reise“ fehlt");
+  ok(!(await page.locator("#lAllP").isChecked()), "Filter ist standardmäßig an");
+  await page.locator("#lAllP").check(); await page.waitForTimeout(300);
+  ok(await rp(`lsGet("rp-l-allp")`)==="1", "Einstellung wird nicht gespeichert");
+  ok(await rp(`PHMK.indexOf("p4") > -1 && PHMK.indexOf("p5") > -1`), "Orte anderer Tage erscheinen nicht: "+await rp(`PHMK.join()`));
 });
 
 await test("Wunschliste-Plus: fragt Tag und Position, Abbrechen bleibt an derselben Stelle", async () => {
