@@ -3863,6 +3863,39 @@ await test("Chat: Fotos vom Gerät als Album – Auswahl, Entwurf, Senden (Fotos
   ok(await rp(`!$("chPhView").hidden && CHGAL.list.length===4 && CHGAL.i===1 && /^data:image\\/jpeg/.test(document.querySelector("#chPvImg").src) && document.querySelector("#chPvImg").naturalWidth===1600`), "Galerie zeigt das große Foto nicht");
   await rp(`$("chPhView").hidden = true; CHGAL = null; closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
 });
+await test("Chat: Abstimmung – Plus-Menü, Frage und Antworten (Orte erkannt), abstimmen, Ergebnis, Einplanen nur von Hand, beenden", async () => {
+  await seed();
+  await rp(`window.__M = [{id:"m1", from:"u1", t:"Hallo", at:Date.now()-60000}]; ${CHMOCK} openChPage("u1_u_me"); true`);
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===1`), null, {timeout:4000});
+  await page.tap("#chView [data-act=chplus]"); await page.waitForTimeout(200);
+  ok(await rp(`["chpick", "chphpick", "chpoll"].every(function(a){ return !!document.querySelector("#jpMenu [data-act="+a+"]"); })`), "Plus-Menü unvollständig");
+  await page.tap("#jpMenu [data-act=chpoll]"); await page.waitForTimeout(200);
+  ok(await rp(`!$("catPop").hidden && document.activeElement===$("pollQ") && document.querySelector("#catPop [data-act=chpollsend]").disabled`), "Abstimmungs-Fenster falsch");
+  await page.fill("#pollQ", "Wohin heute Abend?");
+  const o = await page.$$("#catPop .poll-o"); await o[0].fill("Katz Deli"); await o[1].fill("Pizza irgendwo");
+  await page.tap("#catPop [data-act=chpolladd]"); await page.waitForTimeout(100);
+  ok(await rp(`document.querySelectorAll("#catPop .poll-o").length===3 && document.activeElement===document.querySelectorAll("#catPop .poll-o")[2] && $("pollQ").value==="Wohin heute Abend?"`), "Antwort hinzufügen verliert Eingaben");
+  await page.tap("#catPop [data-act=chpollsend]"); await page.waitForTimeout(200);
+  ok(await rp(`var s = __sent[__sent.length-1]; s && s.poll && s.poll.q==="Wohin heute Abend?" && s.poll.o.length===2 && s.poll.o[0].pl && s.poll.o[0].pl.n==="Katz Deli" && !s.poll.o[1].pl && $("catPop").hidden`), "Abstimmung falsch gesendet: "+JSON.stringify(await rp(`__sent`)));
+  // Empfang einer Abstimmung mit Ort, der nicht in der Reise ist; abstimmen speichert pv.u_me
+  await rp(`__M.push({id:"m2", from:"u1", t:"", at:Date.now(), poll:{q:"Frühstück?", mu:false, o:[{t:"Russ & Daughters", pl:{n:"Russ & Daughters", c:"essen", la:40.7224, lo:-73.9882}}, {t:"Bagel"}]}, pv:{u1:[0]}}); __snap(); true`); await page.waitForTimeout(200);
+  ok(await rp(`var p = document.querySelector('#chMsgs .ch-msg[data-mid="m2"] .ch-poll'); !!p && p.querySelectorAll(".ch-pollb").length===2 && p.textContent.includes("1 Stimme") && !!p.querySelector("[data-act=chplan]")`), "Abstimmung nicht dargestellt");
+  ok(await rp(`!Object.keys(T().places).some(function(k){ return T().places[k].n==="Russ & Daughters"; })`), "Ort wurde automatisch übernommen");
+  await page.tap('#chMsgs .ch-msg[data-mid="m2"] [data-act=chvote][data-i="1"]'); await page.waitForTimeout(150);
+  ok(await rp(`JSON.stringify(__upd[__upd.length-1])===JSON.stringify(["m2", {"pv.u_me":[1]}]) && document.querySelector('#chMsgs .ch-msg[data-mid="m2"] .ch-pollr.on .ch-pollt').textContent==="Bagel"`), "Stimme nicht gespeichert: "+await rp(`JSON.stringify(__upd)`));
+  await page.tap('#chMsgs .ch-msg[data-mid="m2"] [data-act=chvote][data-i="0"]'); await page.waitForTimeout(150);
+  ok(await rp(`__upd[__upd.length-1][1]["pv.u_me"].join()==="0" && document.querySelector('#chMsgs .ch-msg[data-mid="m2"] .ch-poll').textContent.includes("2 Stimmen")`), "Einfachauswahl wechselt nicht");
+  await shot("chat-abstimmung");
+  // manuell einplanen
+  await page.tap('#chMsgs .ch-msg[data-mid="m2"] [data-act=chplan]'); await page.waitForTimeout(200);
+  await page.tap('#jpMenu [data-act=chday] >> nth=0'); await page.waitForTimeout(200);
+  ok(await rp(`Object.keys(T().places).some(function(k){ var p = T().places[k]; return p.n==="Russ & Daughters" && dayOf(k) && p.rec && p.rec.by==="u1"; })`), "Einplanen aus der Abstimmung klappt nicht");
+  // eigene Abstimmung beenden
+  await rp(`__M.push(Object.assign({id:"m3"}, __sent[__sent.length-1])); __snap(); true`); await page.waitForTimeout(150);
+  await page.tap('#chMsgs .ch-msg[data-mid="m3"] [data-act=chpollend]'); await page.waitForTimeout(150);
+  ok(await rp(`JSON.stringify(__upd[__upd.length-1])===JSON.stringify(["m3", {"poll.end":true}]) && document.querySelector('#chMsgs .ch-msg[data-mid="m3"] .ch-poll').textContent.includes("beendet") && !document.querySelector('#chMsgs .ch-msg[data-mid="m3"] [data-act=chvote]')`), "Beenden klappt nicht");
+  await rp(`closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
+});
 await test("Chat: Kopf ohne Balken, Verlauf scrollt darunter durch und blendet oben weich aus, Knöpfe als Glas-Kreise", async () => {
   await seed();
   await rp(`window.__M = []; for(var i = 0; i < 30; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht Nummer "+i+" mit etwas mehr Text, damit sie umbricht", at:Date.now() - (30 - i)*60000});

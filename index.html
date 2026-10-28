@@ -2107,6 +2107,31 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-comp textarea{flex:1;min-width:0;resize:none;border:.5px solid var(--sep,var(--line));border-radius:20px;background:var(--fill2,var(--fill));color:var(--ink);font:16px/1.35 var(--f-body);padding:9px 14px;max-height:120px;outline:none}
 .ch-att,.ch-send{width:40px;height:40px;flex:0 0 40px;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer}
 .ch-att{background:var(--fill);color:var(--ink)}
+.ch-pollc .poll-q,.ch-pollc .poll-o{width:100%;box-sizing:border-box;margin:0 0 8px;padding:10px 12px;border:.5px solid var(--sep,var(--line));border-radius:12px;background:var(--fill2,var(--fill));color:var(--ink);font:16px/1.3 var(--f-body)}
+.ch-pollc .poll-q{font-weight:600}
+.ch-pollc .poll-add{display:inline-flex;align-items:center;gap:4px;margin:0 0 10px}
+.ch-pollc .poll-mu{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);margin:2px 0 6px}
+.ch-poll{width:270px;max-width:100%;box-sizing:border-box;padding:12px;border-radius:18px;background:var(--sheet);box-shadow:0 0 0 .5px var(--hair),0 2px 10px rgba(0,0,0,.08);display:flex;flex-direction:column;gap:7px}
+.ch-pollh{display:flex;align-items:flex-start;gap:7px;color:var(--ink)}
+.ch-pollh svg{width:16px;height:16px;flex:0 0 16px;margin-top:2px;color:var(--accent)}
+.ch-pollh b{font:600 15px/1.3 var(--f-body)}
+.ch-pollr{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+.ch-pollb{all:unset;box-sizing:border-box;flex:1;min-width:0;position:relative;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--fill);overflow:hidden;cursor:pointer;font:14px/1.25 var(--f-body);color:var(--ink)}
+.ch-pollb::before{content:"";position:absolute;inset:0 auto 0 0;width:var(--p);background:color-mix(in srgb,var(--accent) 18%,transparent);transition:width .35s cubic-bezier(.2,.8,.25,1)}
+.ch-pollb>*{position:relative}
+.ch-pollb[disabled]{cursor:default}
+.ch-pollck{width:18px;height:18px;flex:0 0 18px;border-radius:50%;border:1.5px solid var(--muted);display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;box-sizing:border-box}
+.ch-pollr.on .ch-pollck{background:var(--accent);border-color:var(--accent)}
+.ch-pollr.win .ch-pollb{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.ch-pollt{flex:1;min-width:0;display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis}
+.ch-pollt .cic{width:20px;height:20px;flex:0 0 20px;border-radius:6px;display:grid;place-items:center;color:var(--cc);background:color-mix(in srgb,var(--cc) 14%,transparent)}
+.ch-pollt .cic svg{width:12px;height:12px}
+.ch-polln{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted)}
+.ch-pollr .ch-map{width:32px;height:32px;flex:0 0 32px;background:var(--fill);border:0;border-radius:50%;display:grid;place-items:center;color:var(--ink);cursor:pointer}
+.ch-pollr .ch-map svg{width:16px;height:16px}
+.ch-pollw{flex-basis:100%;font-size:11.5px;color:var(--muted);padding-left:36px}
+.ch-pollf{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ch-pollf small{font-size:12px;color:var(--muted)}
 .ch-attph{cursor:pointer;position:relative}
 .ch-alds{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
 .ch-ald{position:relative;flex:0 0 auto}
@@ -4318,6 +4343,7 @@ var IC = {
   event:"<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M7 3v3M13 3v3M10 8.6l1.1 2.2 2.4.3-1.8 1.6.5 2.4-2.2-1.2-2.2 1.2.5-2.4-1.8-1.6 2.4-.3z\"/>", // Events (Konzerte, Sport, Theater)
   voice:"<rect x=\"7\" y=\"2.5\" width=\"6\" height=\"10\" rx=\"3\"/><path d=\"M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5\"/>", // Sprachnachricht aufnehmen (Mikrofon; im Chat gibt es kein Diktieren, Wellen = Sprach-KI)
   play:"<path d=\"M6.5 4.3v11.4l9.3-5.7z\"/>", // Abspielen (gefüllt per icf)
+  poll:"<path d=\"M4.5 16.5v-6M10 16.5v-13M15.5 16.5v-9\"/>", // Abstimmung
   pause:"<path d=\"M5.8 4.5h2.8v11H5.8zM11.4 4.5h2.8v11h-2.8z\"/>" // Anhalten (gefüllt per icf)
 };
 // ic("send") – Linie; icf("like") – gefüllt (aktiv); cls z. B. "ii" für Symbole im Fließtext
@@ -7911,7 +7937,7 @@ function chMsgsHTML(){
     if(mk && m.from!==me && (m.at||0) > mk.at){ mk = null; h += "<div class=\"ch-new\" id=\"chNewMk\"><span>Neue Nachrichten</span></div>"; }
     var mine = m.from===me, nx = L[i+1], tail = !nx || nx.from!==m.from || (nx.at - m.at) > 300000;
     h += "<div class=\"ch-msg"+(mine?" me":"")+(tail?" tail":"")+"\" data-mid=\""+esc(m.id)+"\">"+chReQuote(m)+
-      (m.al ? chAlHTML(m) : "")+(m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.day ? chDayCard(m.day, esc(m.id)) : "")+(m.vo ? chVoHTML(m) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+chLinkCard(m)+
+      (m.al ? chAlHTML(m) : "")+(m.poll ? chPollHTML(m) : "")+(m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.day ? chDayCard(m.day, esc(m.id)) : "")+(m.vo ? chVoHTML(m) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+chLinkCard(m)+
       chRxHTML(m)+(tail ? "<small class=\"ch-tm\">"+chTime(m.at, true)+"</small>" : "")+(i===L.length-1 && mine ? chSeenHTML(m) : "")+"</div>";
   });
   return h;
@@ -7962,8 +7988,7 @@ function renderCh(full){
       "<div class=\"ch-msgs\" id=\"chMsgs\"></div>"+
       "<div class=\"ch-pick\" id=\"chPick\" hidden><div class=\"ch-pickh\"><div class=\"gs-box\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"chPickIn\" placeholder=\"Ort aus deinen Reisen teilen\" autocomplete=\"off\"></div><button type=\"button\" class=\"btn g s\" data-act=\"chpick\">Fertig</button></div><div class=\"ag-grp ls-list\" id=\"chPickRes\"></div></div>"+
       "<div class=\"ch-rebar\" id=\"chReBox\" hidden></div><div class=\"ch-sug\" id=\"chSugBox\" hidden></div><div class=\"ch-draft\" id=\"chDraftBox\"></div>"+
-      "<div class=\"ch-comp\"><button type=\"button\" class=\"ch-att\" data-act=\"chpick\" aria-label=\"Ort teilen\" title=\"Ort teilen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z\"/><circle cx=\"12\" cy=\"9.5\" r=\"2.5\"/></svg></button>"+
-      "<label class=\"ch-att ch-attph\" aria-label=\"Fotos schicken\" title=\"Fotos schicken\">"+ic("camera")+"<input type=\"file\" id=\"chPhIn\" accept=\"image/*\" multiple hidden></label>"+
+      "<div class=\"ch-comp\"><button type=\"button\" class=\"ch-att\" data-act=\"chplus\" aria-label=\"Anhängen: Ort, Fotos, Abstimmung\" title=\"Anhängen\" aria-haspopup=\"menu\">"+ic("plus")+"</button><input type=\"file\" id=\"chPhIn\" accept=\"image/*\" multiple hidden>"+
       "<textarea id=\"chIn\" rows=\"1\" placeholder=\"Nachricht\" enterkeyhint=\"send\"></textarea><button type=\"button\" class=\"ch-send\" data-act=\"chsend\" aria-label=\"Senden\">"+CHSENDIC+"</button>"+
       "<button type=\"button\" class=\"ch-rec\" aria-label=\"Sprachnachricht: gedrückt halten\" title=\"Sprachnachricht: gedrückt halten\">"+ic("voice", "vi")+CHSENDIC+"</button><span class=\"ch-vlk\" aria-hidden=\"true\">"+ic("lock")+"<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 12l4-4 4 4\"/></svg></span><div class=\"ch-vrec\" id=\"chVRec\" hidden></div></div></div>";
     chVV();
@@ -8153,7 +8178,7 @@ function chAlSend(txt){ var me = acct.user.uid, cid = chOpen, u = chPartner(cid)
   chSending = true; chDraft = null; if(inp){ inp.value = ""; chGrow(); } renderChDraft(); chRe = null; renderChRe(); chSugSet(null);
   Promise.all(L.map(function(it, i){ return mref.doc(items[i].id).set({from:me, img:it.d}); })).then(function(){
     var cref = fbDb.collection("chats").doc(cid), b = fbDb.batch();
-    b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:chAlLbl(items), ph:true}, read:read, typ:typ}, {merge:true});
+    b.set(cref, chDocSet(cid, {at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:chAlLbl(items), ph:true}, read:read, typ:typ}), {merge:true});
     b.set(mref.doc(), msg); return b.commit(); }).then(function(){ chSending = false; }, function(e){ chSending = false; chDraft = {al:L}; renderChDraft(); if(inp && !inp.value){ inp.value = txt; chCompUpd(); }
       toast("Fotos nicht gesendet: "+((e && e.message) || ""), false); }); }
 // Raster wie bei Instagram/iMessage: 1 groß, 2 nebeneinander, 3 = eins groß + zwei, ab 4 ein 2×2-Raster mit „+n“
@@ -8165,9 +8190,54 @@ function chAlView(mid, i){ var m = chMsgById(mid); if(!m || !m.al) return; var c
   chGal(m.al.map(function(it){ return "ca:"+cid+":"+it.id; }), i, {trip:m.from===(acct.user && acct.user.uid) ? "Von dir" : "Von "+atn(chName(m.from))}); }
 function chAlGet(key){ if(CHALF[key]) return Promise.resolve(CHALF[key]); if(!fbDb) return Promise.resolve(null); var p = key.split(":");
   return fbDb.collection("chats").doc(p[1]).collection("msgs").doc(p[2]).get().then(function(d){ var v = d.exists && d.data(); if(!v || typeof v.img!=="string") return null; CHALF[key] = v.img; return v.img; }, function(){ return null; }); }
+/* Chat-Dokument beim Senden ergänzen: Zweier-Chat mit members/names (legt ihn bei Bedarf an), Gruppe nur at/last/read/typ (Mitglieder bleiben) */
+function chIsGrp(cid){ var c = CH.byId[cid]; return !!(c && c.grp) || /^g[a-z0-9]+$/i.test(String(cid||"")) && String(cid).indexOf("_") < 0; }
+function chDocSet(cid, o){ if(chIsGrp(cid)) return o; var me = acct.user.uid, u = chPartner(cid), names = {}; names[me] = (PROF && PROF.name) || ""; names[u] = chName(u);
+  return Object.assign({members:[me, u].sort(), names:names}, o); }
+/* ---------- Abstimmungen: Frage + 2–6 Antworten (Mehrfachauswahl wählbar); Stimmen als pv.{uid} = [Antwort-Nummern] an der Nachricht.
+   Antworten mit Namen eines eigenen Orts tragen den Ort mit – übernommen wird nur von Hand (Einplanen/Karte), nie automatisch.
+   Fremde Stimmen brauchen die Firestore-Regel „pv nur eigener Eintrag“ (wie Reaktionen). Der Ersteller kann die Abstimmung beenden (end). */
+var CHPOLL = null;
+function chPollNew(){ if(!chOpen || chGone(chPartner(chOpen))) { if(chNewOn) toast("Gib zuerst oben den Namen eines Freundes ein", false); return; } CHPOLL = {q:"", o:["", ""], mu:false}; chPollRender(true); }
+function chPollKeep(){ if(!CHPOLL) return; var q = $("pollQ"); if(q) CHPOLL.q = q.value; document.querySelectorAll("#catPop .poll-o").forEach(function(e, i){ CHPOLL.o[i] = e.value; }); var mu = $("pollMu"); if(mu) CHPOLL.mu = mu.checked; }
+function chPollOk(){ return CHPOLL && CHPOLL.q.trim() && CHPOLL.o.filter(function(x){ return x.trim(); }).length >= 2; }
+// first: neu geöffnet (Frage fokussieren), sonst nach „Antwort hinzufügen“ die neue Antwort
+function chPollRender(first){ var focus = first; if(!CHPOLL) return; var cp = $("catPop"), P0 = CHPOLL;
+  cp.innerHTML = "<div class=\"pop-card ch-pollc\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Abstimmung\"><div class=\"pop-head\"><h4>Abstimmung</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<input type=\"text\" id=\"pollQ\" class=\"poll-q\" maxlength=\"200\" placeholder=\"Frage, z. B. Wohin heute Abend?\" value=\""+esc(P0.q)+"\">"+
+    P0.o.map(function(o, i){ return "<input type=\"text\" class=\"poll-o\" maxlength=\"100\" placeholder=\"Antwort "+(i+1)+" – Text oder Name eines Orts\" value=\""+esc(o)+"\">"; }).join("")+
+    (P0.o.length < 6 ? "<button type=\"button\" class=\"tf-link poll-add\" data-act=\"chpolladd\">"+ic("plus", "ii")+" Antwort hinzufügen</button>" : "")+
+    "<label class=\"poll-mu\"><input type=\"checkbox\" id=\"pollMu\""+(P0.mu ? " checked" : "")+"> Mehrere Antworten erlauben</label>"+
+    "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"chpollsend\""+(chPollOk() ? "" : " disabled")+">Senden</button></div></div>";
+  cp.hidden = false; var f = focus ? $("pollQ") : cp.querySelectorAll(".poll-o")[P0.o.length-1]; if(f) try { f.focus({preventScroll:true}); } catch(e){} }
+document.addEventListener("input", function(e){ if(!CHPOLL || !e.target.closest || !e.target.closest(".ch-pollc")) return; chPollKeep(); var b = document.querySelector("#catPop [data-act=chpollsend]"); if(b) b.disabled = !chPollOk(); });
+function chPollPl(txt){ var h = chNameHit(txt); if(!h || norm(h.n).trim()!==norm(txt).trim()) return null; var p = S.trips[h.tid].places[h.pid]; return {n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||""}; }
+function chPollSend(){ chPollKeep(); if(!chPollOk() || !chOpen || !fbDb || !acct.user) return; var me = acct.user.uid, now = Date.now(), cid = chOpen;
+  var o = CHPOLL.o.map(function(x){ return x.trim(); }).filter(Boolean).map(function(x){ var r = {t:x}, pl = chPollPl(x); if(pl) r.pl = pl; return r; });
+  var poll = {q:CHPOLL.q.trim(), o:o, mu:!!CHPOLL.mu}; CHPOLL = null; closeCatPop(); chNewDone(chPartner(cid));
+  var cref = fbDb.collection("chats").doc(cid), b = fbDb.batch(), read = {}; read[me] = now;
+  b.set(cref, chDocSet(cid, {at:now, last:{t:"Abstimmung: "+poll.q.slice(0, 120), from:me, at:now, place:"", ph:false}, read:read}), {merge:true});
+  b.set(cref.collection("msgs").doc(), {from:me, t:"", at:now, poll:poll});
+  b.commit().catch(function(e){ toast("Abstimmung nicht gesendet: "+((e && e.message) || ""), false); }); }
+function chPollHTML(m){ var P0 = m.poll, me = acct.user && acct.user.uid, pv = m.pv || {}, k = esc(m.id), cnt = P0.o.map(function(){ return 0; }), who = P0.o.map(function(){ return []; }), voters = 0;
+  Object.keys(pv).forEach(function(u){ var a = pv[u]; if(!Array.isArray(a) || !a.length) return; voters++; a.forEach(function(i){ if(cnt[i]!=null){ cnt[i]++; who[i].push(u); } }); });
+  var mine = pv[me] || [], max = Math.max.apply(null, cnt), end = !!P0.end, gone = chGone(chPartner(chOpen));
+  return "<div class=\"ch-poll\"><div class=\"ch-pollh\">"+ic("poll", "ii")+"<b>"+esc(P0.q)+"</b></div>"+
+    P0.o.map(function(o, i){ var pc = voters ? Math.round(cnt[i]/voters*100) : 0, on = mine.indexOf(i) > -1, key = m.id+"~p"+i; if(o.pl) CHPL[key] = o.pl;
+      return "<div class=\"ch-pollr"+(on ? " on" : "")+(end && cnt[i]===max && max ? " win" : "")+"\"><button type=\"button\" class=\"ch-pollb\""+(end || gone ? " disabled" : " data-act=\"chvote\" data-k=\""+k+"\" data-i=\""+i+"\"")+" aria-pressed=\""+on+"\" style=\"--p:"+pc+"%\"><span class=\"ch-pollck\">"+(on ? "✓" : "")+"</span><span class=\"ch-pollt\">"+(o.pl ? "<span class=\"cic\" style=\"--cc:"+catCol(o.pl.c)+"\">"+icon(o.pl.c)+"</span>" : "")+esc(o.t)+"</span><span class=\"ch-polln\">"+cnt[i]+"</span></button>"+
+        (o.pl ? "<button type=\"button\" class=\"dc-map ch-map\" data-act=\"chmap\" data-k=\""+esc(key)+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button>"+(isRO() || chMatch(o.pl) ? "" : "<button type=\"button\" class=\"dc-map ch-map\" data-act=\"chplan\" data-k=\""+esc(key)+"\" aria-label=\""+esc(o.t)+" einplanen\" title=\"Einplanen\">"+ic("cal")+"</button>") : "")+
+        (who[i].length && (CH.byId[chOpen]||{}).grp ? "<small class=\"ch-pollw\">"+esc(who[i].map(function(u){ return u===me ? "du" : atn(chName(u)); }).join(", "))+"</small>" : "")+"</div>"; }).join("")+
+    "<div class=\"ch-pollf\"><small>"+voters+(voters===1 ? " Stimme" : " Stimmen")+(P0.mu ? " · Mehrfachauswahl" : "")+(end ? " · beendet" : "")+"</small>"+(m.from===me && !end ? "<button type=\"button\" class=\"tf-link\" data-act=\"chpollend\" data-k=\""+k+"\">Beenden</button>" : "")+"</div></div>"; }
+function chVote(id, i){ var me = acct.user && acct.user.uid, m = chMsgById(id); if(!me || !m || !m.poll || m.poll.end || !chOpen || !fbDb) return;
+  var a = ((m.pv || {})[me] || []).slice(), j = a.indexOf(i);
+  if(m.poll.mu){ if(j > -1) a.splice(j, 1); else a.push(i); a.sort(); } else a = j > -1 ? [] : [i];
+  m.pv = Object.assign({}, m.pv); m.pv[me] = a; renderChMsgs(false);
+  var o = {}; o["pv."+me] = a; fbDb.collection("chats").doc(chOpen).collection("msgs").doc(id).update(o).catch(function(e){ toast("Stimme nicht gespeichert"+((e && e.code)==="permission-denied" ? " (Firestore-Regeln für Abstimmungen fehlen)" : ""), false); }); }
+function chPollEnd(id){ var m = chMsgById(id); if(!m || !m.poll || !chOpen || !fbDb) return; m.poll = Object.assign({}, m.poll, {end:true}); renderChMsgs(false);
+  fbDb.collection("chats").doc(chOpen).collection("msgs").doc(id).update({"poll.end":true}).catch(function(){}); }
 /* Antworten: chRe = markierte Nachricht {id, from, t (Kurztext)}; wird als re mit der Antwort gespeichert */
 var chRe = null;
-function chReText(m){ return ((m.t || "").replace(/\s+/g, " ").trim() || (m.vo ? "Sprachnachricht · "+vrFmt(m.vo.d) : m.photo ? "Foto · "+(m.photo.n||"") : m.place ? "Ort · "+(m.place.n||"") : m.day ? "Tag · "+(m.day.dt||"") : m.al ? chAlLbl(m.al) : "Nachricht")).slice(0, 140); }
+function chReText(m){ return ((m.t || "").replace(/\s+/g, " ").trim() || (m.vo ? "Sprachnachricht · "+vrFmt(m.vo.d) : m.photo ? "Foto · "+(m.photo.n||"") : m.place ? "Ort · "+(m.place.n||"") : m.day ? "Tag · "+(m.day.dt||"") : m.al ? chAlLbl(m.al) : m.poll ? "Abstimmung · "+(m.poll.q||"") : "Nachricht")).slice(0, 140); }
 function chReWho(u, mine){ var me = acct.user && acct.user.uid; return u===me ? (mine ? "dir selbst" : "dir") : atn(chName(u)); }
 function chReSet(id){ var m = chMsgs.filter(function(x){ return x.id===id; })[0]; if(!m || !chOpen || chGone(chPartner(chOpen))) return;
   var box = $("chMsgs"), atEnd = box && box.scrollHeight - box.scrollTop - box.clientHeight < 80;
@@ -8234,7 +8304,7 @@ function chActOpen(el){
   var mn = document.createElement("div"); mn.className = "cha-menu"; mn.setAttribute("role", "menu");
   var it = function(k, icn, t, cls, extra){ return "<button type=\"button\" role=\"menuitem\" data-cha=\""+k+"\""+(cls ? " class=\""+cls+"\"" : "")+">"+ic(icn)+"<span>"+t+"</span>"+(extra || "")+"</button>"; };
   mn.innerHTML = "<small>"+esc(new Date(m.at || 0).toLocaleString("de-DE", {weekday:"short", day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}))+"</small>"+
-    (gone ? "" : it("reply", "reply", "Antworten"))+(m.t ? it("copy", "copy", "Kopieren") : "")+(m.vo || m.al ? it("fwdna", "send", "Weiterleiten", "na", "<em>bald</em>") : it("fwd", "send", "Weiterleiten"))+(gone ? "" : it("pin", "fix", pinned ? "Fixierung lösen" : "Fixieren"))+
+    (gone ? "" : it("reply", "reply", "Antworten"))+(m.t ? it("copy", "copy", "Kopieren") : "")+(m.vo || m.al || m.poll ? it("fwdna", "send", "Weiterleiten", "na", "<em>bald</em>") : it("fwd", "send", "Weiterleiten"))+(gone ? "" : it("pin", "fix", pinned ? "Fixierung lösen" : "Fixieren"))+
     it("sticker", "sticker", "Sticker hinzufügen", "na", "<em>bald</em>")+it("del", "del", "Für dich löschen", "del");
   a.appendChild(mm); if(!gone) a.appendChild(rx); a.appendChild(mn); document.body.appendChild(a);
   chActM = {id:id, a:a, el:el};
@@ -8303,7 +8373,7 @@ function chSend(){
   var names = {}; names[me] = (PROF && PROF.name) || ""; names[u] = chName(u);
   var read = {}; read[me] = now; var typ = {}; typ[me] = 0; CHTYP.at = 0;
   var cref = fbDb.collection("chats").doc(chOpen), b = fbDb.batch();
-  b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:pl ? chLastPl(pl) : "", ph:isPh}, read:read, typ:typ}, {merge:true});
+  b.set(cref, chDocSet(chOpen, {at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:pl ? chLastPl(pl) : "", ph:isPh}, read:read, typ:typ}), {merge:true});
   b.set(cref.collection("msgs").doc(), msg);
   chSending = true; var keepT = txt, keepP = chDraft; if(inp){ inp.value = ""; chGrow(); } chDraft = null; chCompUpd(); renderChDraft(); chRe = null; renderChRe(); chSugSet(null);
   b.commit().then(function(){ chSending = false; if(chMsgErr && chOpen){ var dr = chDraft; chOpenConv(chOpen); chDraft = dr; renderChDraft(); } }, function(e){ chSending = false; if(inp && !inp.value){ inp.value = keepT; chCompUpd(); } chDraft = keepP; renderChDraft(); if(re && !chRe){ chRe = re; renderChRe(); } toast("Senden fehlgeschlagen: "+((e && e.code)==="permission-denied" ? "keine Berechtigung (Firestore-Regeln für Chats ergänzen?)" : (e && e.message) || ""), false); });
@@ -8423,7 +8493,7 @@ function vrSend(cid, bl, dur, pk){
     var msg = {from:me, t:"", at:now, vo:{id:aid, n:n, d:Math.round(dur * 10) / 10, mt:mt, wv:vrWave(pk, dur)}};
     if(chRe && chOpen===cid){ msg.re = chRe; chRe = null; renderChRe(); }
     var names = {}, read = {}; names[me] = (PROF && PROF.name) || ""; names[u] = chName(u); read[me] = now;
-    b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:"Sprachnachricht · "+vrFmt(dur), from:me, at:now, place:"", ph:false, vo:true}, read:read}, {merge:true});
+    b.set(cref, chDocSet(cid, {at:now, last:{t:"Sprachnachricht · "+vrFmt(dur), from:me, at:now, place:"", ph:false, vo:true}, read:read}), {merge:true});
     b.set(mref.doc(), msg);
     if(chOpen===cid) chNewDone(u);
     b.commit().then(function(){ if(chMsgErr && chOpen===cid) chOpenConv(cid); }, function(e){
@@ -16205,7 +16275,7 @@ document.addEventListener("click", function(e){
     case "chnewtog": chNewStart(); break;
     case "chback": chBackToList(); break;
     case "chsend": chSend(); break;
-    case "chpick": chPickOn = !chPickOn; chPickQ = ""; var chpk = $("chPick"); if(chpk){ chpk.hidden = !chPickOn; if(chPickOn){ $("chPickIn").value = ""; $("chPickRes").innerHTML = chPickHTML(); } } break;
+    case "chpick": closeJpMore(); chPickOn = !chPickOn; chPickQ = ""; var chpk = $("chPick"); if(chpk){ chpk.hidden = !chPickOn; if(chPickOn){ $("chPickIn").value = ""; $("chPickRes").innerHTML = chPickHTML(); } } break;
     case "chpickp": chPickOn = false; $("chPick").hidden = true; chPlaceFrom(t.getAttribute("data-trip"), t.getAttribute("data-pid")).then(function(pl){ chDraft = pl; renderChDraft(); var ci = $("chIn"); if(ci) ci.focus(); }); break;
     case "chdrx": chDraft = null; renderChDraft(); break;
     case "chrex": chRe = null; renderChRe(); break;
@@ -16223,6 +16293,13 @@ document.addEventListener("click", function(e){
     case "chdayto": chDayTo(t.getAttribute("data-uid"), t.getAttribute("data-day")); break;
     case "chmap": chShowPl(CHPL[t.getAttribute("data-k")]); break;
     case "chsugok": chSugOk(); break;
+    case "chplus": jpPopover("chplus", t, "<button type=\"button\" data-act=\"chpick\" role=\"menuitem\"><span class=\"ai\">"+ic("pin")+"</span><span>Ort teilen</span></button><button type=\"button\" data-act=\"chphpick\" role=\"menuitem\"><span class=\"ai\">"+ic("camera")+"</span><span>Fotos</span></button><button type=\"button\" data-act=\"chpoll\" role=\"menuitem\"><span class=\"ai\">"+ic("poll")+"</span><span>Abstimmung</span></button>", "chplus"); break;
+    case "chphpick": closeJpMore(); var cpi = $("chPhIn"); if(cpi) cpi.click(); break;
+    case "chpoll": closeJpMore(); chPollNew(); break;
+    case "chpolladd": chPollKeep(); if(CHPOLL && CHPOLL.o.length < 6){ CHPOLL.o.push(""); chPollRender(false); } break;
+    case "chpollsend": chPollSend(); break;
+    case "chvote": chVote(t.getAttribute("data-k"), +t.getAttribute("data-i")); break;
+    case "chpollend": chPollEnd(t.getAttribute("data-k")); break;
     case "chalv": chAlView(t.getAttribute("data-k"), +t.getAttribute("data-i")); break;
     case "chalx": if(chDraft && chDraft.al){ chDraft.al.splice(+t.getAttribute("data-i"), 1); if(!chDraft.al.length) chDraft = null; renderChDraft(); } break;
     case "chplaces": chPlsOpen(); break;
