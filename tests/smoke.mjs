@@ -436,6 +436,69 @@ await test("Chat: öffnet erst mit geladenem Verlauf, Aktualisieren hält die ge
   await shot("chat-geladen");
 });
 
+await test("Chat: Nachricht zur Mitte ziehen markiert sie zum Antworten, Zitat springt zur Originalnachricht", async () => {
+  await seed();
+  await rp(`window.__sent = []; window.__M = []; for(var i = 0; i < 30; i++) __M.push({id:"m"+String(i).padStart(2,"0"), from:i % 3 ? "u1" : "u_me", t:"Nachricht "+i, at:Date.now() - (30 - i)*60000});
+    var qs = function(){ return {docs:__M.map(function(m){ return {id:m.id, data:function(){ return JSON.parse(JSON.stringify(m)); }}; })}; };
+    fbDb = {runTransaction:function(){ return new Promise(function(){}); }, batch:function(){ return {set:function(r, d){ if(d && d.from && d.at) __sent.push(d); }, update:function(){}, commit:function(){ return Promise.resolve(); }}; }, collection:function(){ return {doc:function(cid){ return {get:function(){ return Promise.resolve({exists:false}); }, update:function(){ return Promise.resolve(); },
+      collection:function(n){ var q = {orderBy:function(){ return q; }, limitToLast:function(){ return q; }, doc:function(){ return {}; }, get:function(){ return Promise.resolve(qs()); },
+        onSnapshot:function(cb){ if(n!=="msgs" || cid!=="u1_u_me") return function(){}; window.__snap = function(){ cb(qs()); }; setTimeout(__snap, 0); return function(){}; }}; return q; }}; }}; }};
+    acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; acct.user.uid = "u_me";
+    CH.byId = {u1_u_me:{id:"u1_u_me", members:["u1","u_me"], at:1000, names:{u1:"Anna"}, last:{t:"Nachricht 29", from:"u1", at:1000}}}; CH.list = [CH.byId.u1_u_me]; CH.got = true; CHPROF.u1 = {name:"Anna"};
+    CHMC.u1_u_me = null; delete CHMC.u1_u_me; openChPage("u1_u_me"); true`);
+  await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===30`), null, {timeout:4000});
+  const cdp = await page.context().newCDPSession(page);
+  const tStart = (x, y) => cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x, y}]});
+  const tMove = async (x, y) => { await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x, y}]}); await page.waitForTimeout(16); };
+  const tEnd = () => cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]});
+  const box = (id) => page.evaluate(id => { const b = document.querySelector('#chMsgs .ch-msg[data-mid="'+id+'"] .ch-bub').getBoundingClientRect(); return {l:b.left, r:b.right, y:(b.top + b.bottom) / 2}; }, id);
+  // fremde Nachricht nach rechts ziehen: folgt dem Finger, Antwort-Symbol erscheint, federt zurück, Zitatleiste über der Eingabe
+  let b = await box("m28"), x = b.l + 20;
+  await tStart(x, b.y); for(const d of [6, 14, 30, 50, 70, 95]) await tMove(x + d, b.y + 2);
+  const mid = await page.evaluate(() => { const m = document.querySelector('#chMsgs .ch-msg[data-mid="m28"]'), i = m.querySelector(".ch-reic"); return {tx:new DOMMatrix(getComputedStyle(m).transform).m41, op:i ? +i.style.opacity : 0, on:!!i && i.classList.contains("on")}; });
+  ok(mid.tx > 50 && mid.tx < 95 && mid.op > 0.95 && mid.on, "Nachricht folgt dem Finger nicht gebremst oder kein Antwort-Symbol: "+JSON.stringify(mid));
+  await shot("chat-antworten-ziehen");
+  await tEnd(); await page.waitForTimeout(450);
+  ok(await rp(`chOpen==="u1_u_me" && !document.querySelector("#chView .ch-under") && !document.querySelector("#chView .ch-conv").style.translate`), "Ziehen nach rechts auf fremder Nachricht löst Zurück aus");
+  ok(await rp(`var m = document.querySelector('#chMsgs .ch-msg[data-mid="m28"]'); !m.style.transform && !m.querySelector(".ch-reic") && !m.classList.contains("rsw")`), "Nachricht federt nicht zurück oder Reste bleiben");
+  ok(await rp(`chRe && chRe.id==="m28" && !$("chReBox").hidden && $("chReBox").textContent.includes("Antwort an @Anna") && $("chReBox").textContent.includes("Nachricht 28")`), "Zitatleiste fehlt oder falsch");
+  ok(await rp(`document.activeElement===$("chIn")`), "Eingabefeld nicht fokussiert");
+  ok(await rp(`var r = $("chReBox").getBoundingClientRect(), c = document.querySelector("#chView .ch-comp").getBoundingClientRect(); r.bottom <= c.top + 1 && r.height > 20`), "Zitatleiste nicht direkt über der Eingabe");
+  await shot("chat-antworten-leiste");
+  await page.tap("#chReBox [data-act=chrex]"); await page.waitForTimeout(100);
+  ok(await rp(`!chRe && $("chReBox").hidden`), "X schließt die Zitatleiste nicht");
+  // kurz ziehen (unter der Schwelle): nichts markiert
+  b = await box("m28"); x = b.l + 20;
+  await tStart(x, b.y); for(const d of [6, 14, 24, 30]) await tMove(x + d, b.y); await tEnd(); await page.waitForTimeout(400);
+  ok(await rp(`!chRe && chOpen==="u1_u_me"`), "Kurzes Ziehen markiert schon zum Antworten");
+  // senkrecht über eine Nachricht wischen: kein Antworten
+  await tStart(x, b.y); for(const d of [8, 20, 40, 70]) await tMove(x + 3, b.y - d); await tEnd(); await page.waitForTimeout(400);
+  ok(await rp(`!chRe && chOpen==="u1_u_me"`), "Senkrechtes Wischen markiert zum Antworten");
+  // eigene Nachricht nach links ziehen
+  b = await box("m27"); x = b.r - 15;
+  await tStart(x, b.y); for(const d of [6, 14, 30, 50, 75, 90]) await tMove(x - d, b.y + 1); await tEnd(); await page.waitForTimeout(450);
+  ok(await rp(`chRe && chRe.id==="m27" && $("chReBox").textContent.includes("Antwort an dich selbst")`), "Eigene Nachricht nach links markiert nicht zum Antworten");
+  // Antwort senden: Zitat wird mitgeschickt, Leiste verschwindet
+  await page.fill("#chIn", "Meine Antwort"); await page.tap("#chView [data-act=chsend]"); await page.waitForTimeout(150);
+  ok(await rp(`var s = __sent[__sent.length-1]; !!s && s.t==="Meine Antwort" && s.re && s.re.id==="m27" && s.re.t==="Nachricht 27" && s.re.from==="u_me"`), "Antwort ohne Zitat gesendet: "+JSON.stringify(await rp(`__sent`)));
+  ok(await rp(`!chRe && $("chReBox").hidden`), "Zitatleiste bleibt nach dem Senden");
+  // gesendete Antwort zeigt das Zitat; Antippen springt zur Originalnachricht
+  await rp(`__M.push(Object.assign({id:"m30"}, __sent[__sent.length-1])); __M.push({id:"m31", from:"u1", t:"Fremde Antwort", at:Date.now(), re:{id:"m01", from:"u1", t:"Nachricht 1"}}); __snap(); true`); await page.waitForTimeout(150);
+  ok(await rp(`var q = document.querySelector('#chMsgs .ch-msg[data-mid="m30"] .ch-rq'); !!q && q.textContent.includes("Du hast dir selbst geantwortet") && q.textContent.includes("Nachricht 27")`), "Eigene Antwort zeigt kein Zitat");
+  ok(await rp(`var q = document.querySelector('#chMsgs .ch-msg[data-mid="m31"] .ch-rq'); !!q && q.textContent.includes("@Anna hat sich selbst geantwortet")`), "Fremde Antwort zeigt kein Zitat");
+  await shot("chat-antworten-zitat");
+  await page.evaluate(() => { const b = document.getElementById("chMsgs"); b.scrollTop = b.scrollHeight; });
+  await page.tap('#chMsgs .ch-msg[data-mid="m31"] .ch-rq'); await page.waitForTimeout(900);
+  const j = await page.evaluate(() => { const bx = document.getElementById("chMsgs").getBoundingClientRect(), m = document.querySelector('#chMsgs .ch-msg[data-mid="m01"]'), r = m.getBoundingClientRect(); return {vis:r.top >= bx.top - 1 && r.bottom <= bx.bottom + 1, hl:m.classList.contains("rhl"), t:r.top, bt:bx.top, bb:bx.bottom, st:document.getElementById("chMsgs").scrollTop}; });
+  ok(j.vis && j.hl, "Antippen des Zitats springt nicht zur Originalnachricht: "+JSON.stringify(j));
+  // eigene Nachricht nach rechts ziehen = weiterhin Zurück (Chat folgt dem Finger, Übersicht darunter)
+  b = await box("m03"); x = b.l + 10;
+  await tStart(x, b.y); for(const d of [15, 35, 70]) await tMove(x + d, b.y);
+  ok(await rp(`parseFloat(document.querySelector("#chView .ch-conv").style.translate) > 20 && !!document.querySelector("#chView .ch-under") && !chRe && !document.querySelector("#chMsgs .ch-reic")`), "Eigene Nachricht nach rechts ziehen löst nicht mehr Zurück aus");
+  await tEnd(); await page.waitForTimeout(400);
+  await cdp.detach(); await rp(`closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
+});
+
 await test("Anmeldung: Reisen aus dem Gerätespeicher sofort, reine Server-Bestätigung (ohne Änderung) wird übernommen", async () => {
   await seed();
   await rp(`window.__T = S.trips.t_test; window.__applied = [];

@@ -1977,6 +1977,30 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-bub{padding:8px 13px;border-radius:19px;background:var(--fill);color:var(--ink);font:15.5px/1.35 var(--f-body);overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
 .ch-msg.me .ch-bub{background:var(--accent);color:#fff}
 .ch-tm{font-size:11px;color:var(--muted);padding:0 6px}
+/* Antworten: Nachricht zur Mitte ziehen (eigene nach links, fremde nach rechts) → Zitatleiste über der Eingabe */
+.ch-msgs{overflow-x:hidden;touch-action:pan-y}
+.ch-msg{position:relative}
+.ch-msg.rsw{will-change:transform;-webkit-user-select:none;user-select:none}
+.ch-msg.rsw .ch-bub{-webkit-user-select:none;user-select:none}
+.ch-reic{position:absolute;top:50%;left:-38px;width:30px;height:30px;margin-top:-15px;border-radius:50%;display:grid;place-items:center;background:var(--fill);color:var(--ink);opacity:0;transform:scale(.5);pointer-events:none}
+.ch-msg.me .ch-reic{left:auto;right:-38px}
+.ch-reic svg{width:17px;height:17px}
+.ch-reic.on{background:var(--accent);color:#fff;transition:background .15s,color .15s}
+.ch-rebar{display:flex;align-items:center;gap:10px;margin:6px 12px 0;padding:7px 8px 7px 12px;border-radius:14px;background:var(--fill);border-left:3px solid var(--accent);min-width:0}
+.ch-rebar[hidden]{display:none}
+.ch-rebar>svg{width:17px;height:17px;flex:0 0 17px;color:var(--accent)}
+.ch-ret{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ch-ret b{font:600 13px/1.25 var(--f-body);color:var(--ink)}
+.ch-ret small{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-rex{width:28px;height:28px;flex:0 0 28px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.ch-rex svg{width:15px;height:15px}
+.ch-rq{display:flex;flex-direction:column;align-items:flex-start;gap:2px;max-width:100%;cursor:pointer;margin-top:4px}
+.ch-msg.me .ch-rq{align-items:flex-end}
+.ch-rq small{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted);padding:0 6px}
+.ch-rq small svg{width:12px;height:12px}
+.ch-rqb{max-width:100%;padding:6px 12px;border-radius:16px;background:transparent;box-shadow:inset 0 0 0 1px var(--sep,var(--line));color:var(--muted);font:14px/1.3 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-msg.rhl .ch-bub,.ch-msg.rhl .ch-pl,.ch-msg.rhl .ch-phc{animation:chrhl 1.4s ease-out}
+@keyframes chrhl{0%,30%{filter:brightness(.82)}100%{filter:none}}
 .ch-pl{width:260px;max-width:100%;border-radius:16px;overflow:hidden;background:var(--sheet);box-shadow:0 0 0 .5px var(--hair),0 2px 10px rgba(0,0,0,.08)}
 .ch-plimg{display:block;width:100%;aspect-ratio:16/10;object-fit:cover}
 .ch-plb{padding:10px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -4136,6 +4160,7 @@ var IC = {
   note:"<path d=\"M5.5 2.5h6l3 3v12h-9z\"/><path d=\"M11.5 2.5v3h3M8 10h4.5M8 13h4.5\"/>", // Details, Notizen
   del:"<path d=\"M4.5 6h11M8 6V4h4v2M6 6l.8 10h6.4L14 6\"/>", // Löschen
   close:"<path d=\"M5 5l10 10M15 5L5 15\"/>", // Schließen
+  reply:"<path d=\"M8 5 3.5 9.5 8 14\"/><path d=\"M3.5 9.5H12a4.5 4.5 0 0 1 4.5 4.5v1.5\"/>", // Antworten
   more:"<circle cx=\"5\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"10\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"10\" r=\"1.3\" fill=\"currentColor\"/>", // Mehr
   group:"<rect x=\"3\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"3\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/>", // Gruppe
   share:"<path d=\"M10 12.5V3M6.5 6.5L10 3l3.5 3.5\"/><path d=\"M5 9.5H4.5v7h11v-7H15\"/>", // Als Link teilen
@@ -5988,7 +6013,7 @@ function ntAgo(t){
   return new Date(t).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"})+" "+new Date(t).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
 }
 var NTIC = {mention:"<circle cx=\"10\" cy=\"10\" r=\"3\"/><path d=\"M13 10v1.2a2.3 2.3 0 0 0 4.5 0V10a7.5 7.5 0 1 0-3 6\"/>",
-  reply:"<path d=\"M8 5 3.5 9.5 8 14\"/><path d=\"M3.5 9.5H12a4.5 4.5 0 0 1 4.5 4.5v1.5\"/>",
+  reply:IC.reply,
   comment:IC.comment,
   friend:IC.useradd,
   invite:IC.mail,
@@ -7489,7 +7514,7 @@ function chOpenConv(cid){
   var cv = $("chView"); CHRET.sc = cv && chPage && !chOpen && !cv.classList.contains("conv") ? cv.scrollTop : CHRET.sc;
   // eigener Verlaufseintrag: Safaris Zurück (auch Wischen vom linken Rand) führt so genau zur Chat-Übersicht
   try { if(history.state && history.state.rpch) history.replaceState({rpch:cid}, ""); else history.pushState({rpch:cid}, ""); } catch(e){}
-  chNewOn = false; chNewQ = ""; chOpen = cid; chMsgs = (CHMC[cid] || []).slice(); chMsgErr = false; chPickOn = false; renderCh(true);
+  chNewOn = false; chNewQ = ""; chOpen = cid; chMsgs = (CHMC[cid] || []).slice(); chMsgErr = false; chPickOn = false; chRe = null; renderCh(true);
   chSubMsgs(cid);
 }
 function chSubMsgs(cid){
@@ -7501,7 +7526,7 @@ function chSubMsgs(cid){
     if(chOpen===cid){ renderChMsgs(!had || (L1 && L1.from===me && (!L0 || L1.id!==L0.id)) ? true : undefined); if(chUnread(CH.byId[cid] || {})) chMarkRead(cid); }
   }, function(){ chMsgs = []; chMsgErr = true; if(chOpen===cid) renderChMsgs(); });
 }
-function chCloseConv(){ chPendId = null; if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } if((chOpen || chNewOn) && !chPopping && history.state && history.state.rpch){ chPopIgn = true; setTimeout(function(){ chPopIgn = false; }, 600); try { history.back(); } catch(e){ chPopIgn = false; } } chOpen = null; chNewOn = false; chNewQ = ""; chMsgs = []; chPickOn = false; chVV(); }
+function chCloseConv(){ chPendId = null; if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } if((chOpen || chNewOn) && !chPopping && history.state && history.state.rpch){ chPopIgn = true; setTimeout(function(){ chPopIgn = false; }, 600); try { history.back(); } catch(e){ chPopIgn = false; } } chOpen = null; chNewOn = false; chNewQ = ""; chMsgs = []; chPickOn = false; chRe = null; chVV(); }
 function chWith(u){ var me = acct.user && acct.user.uid; if(!me || !u) return null; return chId(me, u); }
 function chMatch(pl){ var out = null; Object.keys(S.trips).some(function(tid){ var t = S.trips[tid]; if(t.ziel) return false; return Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = {tid:tid, pid:pid}; return true; } return false; }); }); return out; }
 function chPhotoCard(ph, key, draft){
@@ -7736,7 +7761,7 @@ function chMsgsHTML(){
   chMsgs.forEach(function(m, i){
     var d = new Date(m.at||0).toDateString(); if(d!==lastDay){ lastDay = d; h += "<div class=\"ch-day\">"+esc(new Date(m.at||0).toLocaleDateString("de-DE", {weekday:"short", day:"numeric", month:"long"}))+"</div>"; }
     var mine = m.from===me, nx = chMsgs[i+1], tail = !nx || nx.from!==m.from || (nx.at - m.at) > 300000;
-    h += "<div class=\"ch-msg"+(mine?" me":"")+(tail?" tail":"")+"\" data-mid=\""+esc(m.id)+"\">"+
+    h += "<div class=\"ch-msg"+(mine?" me":"")+(tail?" tail":"")+"\" data-mid=\""+esc(m.id)+"\">"+chReQuote(m)+
       (m.photo ? chPhotoCard(m.photo, esc(m.id)) : "")+(m.place ? chPlaceCard(m.place, esc(m.id)) : "")+(m.t ? "<div class=\"ch-bub\">"+esc(m.t).replace(/\n/g, "<br>")+"</div>" : "")+
       (tail ? "<small class=\"ch-tm\">"+chTime(m.at, true)+"</small>" : "")+"</div>";
   });
@@ -7784,13 +7809,13 @@ function renderCh(full){
       (chNewOn ? "<div class=\"ch-newres\" id=\"chNewRes\"></div>" : "")+
       "<div class=\"ch-msgs\" id=\"chMsgs\"></div>"+
       "<div class=\"ch-pick\" id=\"chPick\" hidden><div class=\"ch-pickh\"><div class=\"gs-box\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M13 13l4.5 4.5\"/></svg><input type=\"search\" id=\"chPickIn\" placeholder=\"Ort aus deinen Reisen teilen\" autocomplete=\"off\"></div><button type=\"button\" class=\"btn g s\" data-act=\"chpick\">Fertig</button></div><div class=\"ag-grp ls-list\" id=\"chPickRes\"></div></div>"+
-      "<div class=\"ch-draft\" id=\"chDraftBox\"></div>"+
+      "<div class=\"ch-rebar\" id=\"chReBox\" hidden></div><div class=\"ch-draft\" id=\"chDraftBox\"></div>"+
       "<div class=\"ch-comp\"><button type=\"button\" class=\"ch-att\" data-act=\"chpick\" aria-label=\"Ort teilen\" title=\"Ort teilen\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z\"/><circle cx=\"12\" cy=\"9.5\" r=\"2.5\"/></svg></button>"+
       "<textarea id=\"chIn\" rows=\"1\" placeholder=\"Nachricht\" enterkeyhint=\"send\"></textarea><button type=\"button\" class=\"ch-send\" data-act=\"chsend\" aria-label=\"Senden\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 19V5M5.5 11.5 12 5l6.5 6.5\"/></svg></button></div></div>";
     chVV();
   }
   if(chNewOn) renderChNew();
-  renderChMsgs(full ? true : undefined); renderChDraft();
+  renderChMsgs(full ? true : undefined); renderChDraft(); renderChRe();
   var cvg = el.querySelector(".ch-conv"); if(cvg) cvg.classList.toggle("gone", chGone(u));
   var pk = $("chPick"); if(pk){ pk.hidden = !chPickOn; if(chPickOn) $("chPickRes").innerHTML = chPickHTML(); }
 }
@@ -7809,7 +7834,7 @@ function chNewMatch(){ var q = norm(chNewQ.trim().replace(/^@/, "")); if(!q) ret
   if(chNewU && norm(chName(chNewU))===q) return chNewU;
   var hit = chCands().filter(function(u){ return norm(chName(u))===q; }); return hit.length===1 ? hit[0] : ""; }
 function chNewSet(u){ var cid = u ? chWith(u) : null; if(cid===chOpen) return;
-  if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } chOpen = cid; chMsgs = cid && CHMC[cid] ? CHMC[cid].slice() : []; chMsgErr = false;
+  if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } chOpen = cid; chMsgs = cid && CHMC[cid] ? CHMC[cid].slice() : []; chMsgErr = false; chRe = null; renderChRe();
   if(cid) chSubMsgs(cid); }
 function renderChNew(){
   var r = $("chNewRes"), box = $("chMsgs"); if(!r) return; var me = acct.user && acct.user.uid, q = norm(chNewQ.trim().replace(/^@/, ""));
@@ -7826,7 +7851,7 @@ function renderChNew(){
 function chNewStart(){ var el = $("chView"); if(!el || !acct.user) return;
   CHRET.sc = chPage && !chOpen && !el.classList.contains("conv") ? el.scrollTop : CHRET.sc;
   try { if(history.state && history.state.rpch) history.replaceState({rpch:"new"}, ""); else history.pushState({rpch:"new"}, ""); } catch(e){}
-  if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } chOpen = null; chMsgs = []; chNewOn = true; chNewQ = ""; chNewU = ""; chDraft = null; chPickOn = false; renderCh(true);
+  if(chMsgUnsub){ chMsgUnsub(); chMsgUnsub = null; } chOpen = null; chMsgs = []; chNewOn = true; chNewQ = ""; chNewU = ""; chDraft = null; chPickOn = false; chRe = null; renderCh(true);
   var i = $("chNewIn"); if(i) try { i.focus({preventScroll:true}); } catch(e){ i.focus(); } }
 // Vorschlag angetippt: Name übernehmen, weiter zur Nachricht
 function chNewPick(u){ var i = $("chNewIn"); chNewU = u; chNewQ = chName(u); if(i) i.value = chNewQ; renderChNew();
@@ -7843,6 +7868,27 @@ function chPlaceFrom(tid, pid){
   pl.pid = pid; pl.gid = gidFor(tid); if(phs.length) pl.phs = phs.slice(-30); // Galerie beim Empfänger (Zugriff regeln die Firestore-Regeln)
   return phs.length ? recThumb(phs[phs.length-1]).then(function(th){ if(th) pl.ph = th; return pl; }, function(){ return pl; }) : Promise.resolve(pl);
 }
+/* Antworten: chRe = markierte Nachricht {id, from, t (Kurztext)}; wird als re mit der Antwort gespeichert */
+var chRe = null;
+function chReText(m){ return ((m.t || "").replace(/\s+/g, " ").trim() || (m.photo ? "Foto · "+(m.photo.n||"") : m.place ? "Ort · "+(m.place.n||"") : "Nachricht")).slice(0, 140); }
+function chReWho(u, mine){ var me = acct.user && acct.user.uid; return u===me ? (mine ? "dir selbst" : "dir") : atn(chName(u)); }
+function chReSet(id){ var m = chMsgs.filter(function(x){ return x.id===id; })[0]; if(!m || !chOpen || chGone(chPartner(chOpen))) return;
+  var box = $("chMsgs"), atEnd = box && box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  chRe = {id:m.id, from:m.from||"", t:chReText(m)}; renderChRe();
+  // Leiste nimmt unten Platz weg: unten bleiben bzw. die markierte Nachricht sichtbar halten
+  if(box){ if(atEnd) box.scrollTop = box.scrollHeight; else { var e = box.querySelector(".ch-msg[data-mid=\""+id+"\"]"), d = e ? e.getBoundingClientRect().bottom - box.getBoundingClientRect().bottom + 8 : 0; if(d > 0) box.scrollTop += d; } }
+  var i = $("chIn"); if(i) try { i.focus({preventScroll:true}); } catch(e){ i.focus(); } }
+function renderChRe(){ var b = $("chReBox"); if(!b) return; b.hidden = !chRe; if(!chRe){ b.innerHTML = ""; return; }
+  b.innerHTML = ic("reply")+"<span class=\"ch-ret\"><b>Antwort an "+esc(chRe.from===(acct.user && acct.user.uid) ? "dich selbst" : atn(chName(chRe.from)))+"</b><small>"+esc(chRe.t)+"</small></span><button type=\"button\" class=\"ch-rex\" data-act=\"chrex\" aria-label=\"Antworten abbrechen\">"+ic("close")+"</button>"; }
+// Zitat über einer Antwort: wer wem geantwortet hat und der Anfang der Originalnachricht; Antippen springt dorthin
+function chReQuote(m){ var r = m.re; if(!r || !r.id) return ""; var me = acct.user && acct.user.uid, mine = m.from===me;
+  var lb = mine ? "Du hast "+chReWho(r.from, true)+" geantwortet" : atn(chName(m.from))+" hat "+(r.from===m.from ? "sich selbst" : chReWho(r.from))+" geantwortet";
+  return "<div class=\"ch-rq\" data-act=\"chrejump\" data-v=\""+esc(r.id)+"\" role=\"button\" tabindex=\"0\"><small>"+ic("reply")+esc(lb)+"</small><div class=\"ch-rqb\">"+esc(r.t||"")+"</div></div>"; }
+function chReJump(id){ var box = $("chMsgs"), e = box && box.querySelector(".ch-msg[data-mid=\""+id+"\"]");
+  if(!e){ toast("Die Nachricht ist nicht mehr im Verlauf", false); return; }
+  var br = box.getBoundingClientRect(), r = e.getBoundingClientRect();
+  box.scrollTo({top:Math.max(0, box.scrollTop + r.top - br.top - (box.clientHeight - Math.min(r.height, box.clientHeight)) / 2), behavior:"smooth"});
+  e.classList.remove("rhl"); void e.offsetWidth; e.classList.add("rhl"); setTimeout(function(){ e.classList.remove("rhl"); }, 1500); }
 function chSend(){
   var me = acct.user && acct.user.uid, inp = $("chIn"), txt = inp ? inp.value.trim().slice(0, 4000) : "";
   if(me && chNewOn && !chOpen && (txt || chDraft)){ toast("Gib zuerst oben den Namen eines Freundes ein", false); var ni = $("chNewIn"); if(ni) try { ni.focus({preventScroll:true}); } catch(e){} return; }
@@ -7851,13 +7897,14 @@ function chSend(){
   // erste Nachricht im neuen Chat: Kopf wird zum normalen Chat-Kopf, Eingabe und Tastatur bleiben
   if(chNewOn){ chNewOn = false; chNewQ = ""; var hd = document.querySelector("#chView .ch-head"); if(hd) hd.innerHTML = chHeadIn(u); var nr = $("chNewRes"); if(nr) nr.remove(); }
   var now = Date.now(), msg = {from:me, t:txt, at:now}, pl = chDraft, isPh = chIsPhoto(pl); if(pl){ if(isPh) msg.photo = pl; else msg.place = pl; }
+  var re = chRe; if(re) msg.re = re;
   var names = {}; names[me] = (PROF && PROF.name) || ""; names[u] = chName(u);
   var read = {}; read[me] = now;
   var cref = fbDb.collection("chats").doc(chOpen), b = fbDb.batch();
   b.set(cref, {members:[me, u].sort(), names:names, at:now, last:{t:txt.slice(0, 140), from:me, at:now, place:pl ? (isPh ? "Foto · "+pl.n : pl.n) : "", ph:isPh}, read:read}, {merge:true});
   b.set(cref.collection("msgs").doc(), msg);
-  chSending = true; var keepT = txt, keepP = chDraft; if(inp){ inp.value = ""; chGrow(); } chDraft = null; renderChDraft();
-  b.commit().then(function(){ chSending = false; if(chMsgErr && chOpen){ var dr = chDraft; chOpenConv(chOpen); chDraft = dr; renderChDraft(); } }, function(e){ chSending = false; if(inp && !inp.value) inp.value = keepT; chDraft = keepP; renderChDraft(); toast("Senden fehlgeschlagen: "+((e && e.code)==="permission-denied" ? "keine Berechtigung (Firestore-Regeln für Chats ergänzen?)" : (e && e.message) || ""), false); });
+  chSending = true; var keepT = txt, keepP = chDraft; if(inp){ inp.value = ""; chGrow(); } chDraft = null; renderChDraft(); chRe = null; renderChRe();
+  b.commit().then(function(){ chSending = false; if(chMsgErr && chOpen){ var dr = chDraft; chOpenConv(chOpen); chDraft = dr; renderChDraft(); } }, function(e){ chSending = false; if(inp && !inp.value) inp.value = keepT; chDraft = keepP; renderChDraft(); if(re && !chRe){ chRe = re; renderChRe(); } toast("Senden fehlgeschlagen: "+((e && e.code)==="permission-denied" ? "keine Berechtigung (Firestore-Regeln für Chats ergänzen?)" : (e && e.message) || ""), false); });
 }
 function chGrow(){ var i = $("chIn"); if(!i) return; i.style.height = "auto"; i.style.height = Math.min(120, i.scrollHeight)+"px"; }
 /* Chat und Tastatur (iOS). Grundsatz: Die Chat-Fläche (#chView) deckt IMMER den ganzen Bildschirm ab – es kann nie die Karte
@@ -7920,7 +7967,7 @@ setInterval(function(){ if(!CHKB.on || CHKB.anim) return; var vv = window.visual
 document.addEventListener("focusin", function(e){ if(chPage && (chOpen || chNewOn) && e.target && isTypeField(e.target) && $("chView").contains(e.target)) chVV(); });
 document.addEventListener("focusout", function(){ if(CHKB.on) setTimeout(chVV, 0); });
 // Senden-Knopf nimmt dem Feld den Fokus nicht – die Tastatur bleibt offen wie in Nachrichten-Apps
-document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send, #chNewRes [data-act=chnew]") && chTyping()) e.preventDefault(); }, true);
+document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send, #chView .ch-rex, #chView .ch-rq, #chNewRes [data-act=chnew]") && chTyping()) e.preventDefault(); }, true);
 document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn") chGrow(); if(e.target.id==="chNewIn"){ chNewQ = e.target.value; renderChNew(); } if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
 document.addEventListener("keydown", function(e){
   // Empfängerfeld: Eingabetaste übernimmt den (einzigen) Vorschlag und springt zur Nachricht
@@ -7940,24 +7987,43 @@ function chBackToList(fromPop){ var el = $("chView"), nw = chNewOn, cid = nw ? n
   setTimeout(function(){ row.classList.remove("ch-ret"); }, 1700); }
 window.addEventListener("popstate", function(e){ if(chPopIgn){ chPopIgn = false; return; } if(chPage && (chOpen || chNewOn) && !(e.state && e.state.rpch)) chBackToList(true); });
 /* Im Chat von links nach rechts wischen = zurück. Der Chat folgt dem Finger, darunter liegt schon die Übersicht.
-   In Safari bleibt der äußerste linke Rand frei: dort wischt Safari selbst zurück (führt dank Verlaufseintrag ebenfalls zur Übersicht). */
-(function(){ var x0 = 0, y0 = 0, t0 = 0, dx = 0, mode = 0, conv = null, under = null;
+   In Safari bleibt der äußerste linke Rand frei: dort wischt Safari selbst zurück (führt dank Verlaufseintrag ebenfalls zur Übersicht).
+   Eine Nachricht zur Mitte ziehen (eigene nach links, fremde nach rechts) = Antworten: sie folgt dem Finger (ab der Schwelle gebremst),
+   das Antwort-Symbol erscheint, beim Loslassen federt sie zurück. Fremde Nachricht nach rechts = Antworten statt Zurück (Zurück bleibt am Rand). */
+(function(){ var x0 = 0, y0 = 0, t0 = 0, dx = 0, mode = 0, conv = null, under = null, rm = null, rmine = false, ric = null, rhit = false, RTH = 56;
   var standalone = function(){ return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone; };
+  function rEnd(){ var m = rm, i = ric, go = rhit; rm = ric = null; rhit = false; mode = 0; if(!m) return;
+    m.style.transition = "transform .34s cubic-bezier(.3,1.35,.5,1)"; m.style.transform = "";
+    if(i){ i.style.transition = "opacity .18s, transform .18s"; i.style.opacity = "0"; i.style.transform = "scale(.5)"; }
+    setTimeout(function(){ m.style.transition = ""; m.classList.remove("rsw"); if(i) i.remove(); chSwOn = false; }, 350);
+    if(go) chReSet(m.getAttribute("data-mid")); }
   function reset(){ chSwOn = false; mode = 0; if(conv){ conv.style.translate = ""; conv.style.transition = ""; conv.classList.remove("sw"); } if(under) under.remove(); conv = under = null; }
   document.addEventListener("touchstart", function(e){ mode = 0; var el = $("chView"), t = e.touches[0];
     if(e.touches.length!==1 || !chPage || !(chOpen || chNewOn) || !el || !el.classList.contains("conv") || !el.contains(e.target)) { mode = -1; return; }
     if(e.target.closest && e.target.closest(".ch-comp,.ch-pick,.ch-draft,textarea,input")){ mode = -1; return; }
-    if(!standalone() && t.clientX < 24){ mode = -1; return; }
+    rm = null; var mm = chOpen && !chGone(chPartner(chOpen)) && e.target.closest && e.target.closest("#chMsgs .ch-msg[data-mid]");
+    if(mm){ rmine = mm.classList.contains("me"); if(rmine || t.clientX >= 28) rm = mm; }
+    if(!rm && !standalone() && t.clientX < 24){ mode = -1; return; }
     x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); dx = 0; }, {passive:true, capture:true});
   document.addEventListener("touchmove", function(e){ if(mode < 0) return; var t = e.touches[0], ddx = t.clientX - x0, ddy = t.clientY - y0;
-    if(!mode){ if(Math.abs(ddy) > 10 && Math.abs(ddy) > Math.abs(ddx)){ mode = -1; return; }
+    if(!mode){ if(Math.abs(ddy) > 10 && Math.abs(ddy) > Math.abs(ddx)){ mode = -1; rm = null; return; }
+      if(rm && (rmine ? -ddx : ddx) > 10 && Math.abs(ddx) > Math.abs(ddy) * 1.5){ mode = 2; chSwOn = true; x0 = t.clientX; rhit = false;
+        ric = document.createElement("span"); ric.className = "ch-reic"; ric.innerHTML = ic("reply"); rm.appendChild(ric); rm.classList.add("rsw"); }
+      else if(rm && rmine && ddx <= 12) return; }
+    if(mode===2){ if(e.cancelable) e.preventDefault(); var d = Math.max(0, rmine ? x0 - t.clientX : t.clientX - x0), v = d < RTH ? d : RTH + (d - RTH) * 0.3, p = Math.min(1, d / RTH);
+      rm.style.transform = "translate3d("+(rmine ? -v : v).toFixed(1)+"px,0,0)";
+      if(ric){ ric.style.opacity = p.toFixed(2); ric.style.transform = "scale("+(0.5 + 0.5 * p).toFixed(3)+")"; }
+      if(d >= RTH && !rhit){ rhit = true; if(ric) ric.classList.add("on"); try { if(navigator.vibrate) navigator.vibrate(8); } catch(x){} }
+      else if(d < RTH && rhit){ rhit = false; if(ric) ric.classList.remove("on"); }
+      return; }
+    if(!mode){
       if(ddx > 12 && ddx > Math.abs(ddy) * 1.5){ var el = $("chView"); mode = 1; chSwOn = true; x0 = t.clientX; conv = el.querySelector(".ch-conv");
         under = document.createElement("div"); under.className = "ch-under"; under.setAttribute("aria-hidden", "true"); under.innerHTML = chListHTML(); el.insertBefore(under, el.firstChild); under.scrollTop = CHRET.sc || 0;
         if(conv) conv.classList.add("sw"); } else return; }
     if(e.cancelable) e.preventDefault();
     dx = Math.max(0, t.clientX - x0); if(conv) conv.style.translate = dx+"px 0";
     if(under) under.style.setProperty("--d", Math.max(0, 1 - dx / innerWidth).toFixed(3)); }, {passive:false, capture:true});
-  function end(cancel){ if(mode!==1){ mode = 0; return; } mode = 0; var w = innerWidth, v = dx / Math.max(1, Date.now() - t0), go = !cancel && (dx > w * 0.33 || (v > 0.45 && dx > 50));
+  function end(cancel){ if(mode===2){ if(cancel) rhit = false; rEnd(); return; } rm = null; if(mode!==1){ mode = 0; return; } mode = 0; var w = innerWidth, v = dx / Math.max(1, Date.now() - t0), go = !cancel && (dx > w * 0.33 || (v > 0.45 && dx > 50));
     var c = conv, u = under; if(!c){ reset(); return; }
     c.style.transition = "translate .22s cubic-bezier(.2,.8,.2,1)"; c.style.translate = (go ? w : 0)+"px 0"; if(u) u.style.setProperty("--d", go ? "0" : "1");
     setTimeout(function(){ if(go){ chSwOn = false; conv = under = null; chBackToList(); } else reset(); }, 230); }
@@ -15492,6 +15558,8 @@ document.addEventListener("click", function(e){
     case "chpick": chPickOn = !chPickOn; chPickQ = ""; var chpk = $("chPick"); if(chpk){ chpk.hidden = !chPickOn; if(chPickOn){ $("chPickIn").value = ""; $("chPickRes").innerHTML = chPickHTML(); } } break;
     case "chpickp": chPickOn = false; $("chPick").hidden = true; chPlaceFrom(t.getAttribute("data-trip"), t.getAttribute("data-pid")).then(function(pl){ chDraft = pl; renderChDraft(); var ci = $("chIn"); if(ci) ci.focus(); }); break;
     case "chdrx": chDraft = null; renderChDraft(); break;
+    case "chrex": chRe = null; renderChRe(); break;
+    case "chrejump": chReJump(t.getAttribute("data-v")); break;
     case "chmap": var chpl = CHPL[t.getAttribute("data-k")]; if(chpl){ var chm = chMatch(chpl); closeChPage();
       if(chm){ if(chm.tid!==S.cur){ grpSel = ""; S.cur = chm.tid; save(); tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); }
         if(P(chm.pid)){ var chdk = dayOf(chm.pid); if(chdk) cur = chdk; tab = chdk ? "day" : "wish"; renderAll(); select(chm.pid); revealPoint(P(chm.pid), 16, true); } }
