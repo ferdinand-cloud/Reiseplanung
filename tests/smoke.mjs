@@ -1658,6 +1658,24 @@ await test("Tagesplan unterwegs: Etappe ab Standort behält Bus/Bahn und Ausstie
   await rp(`me = {la:40.7735, lo:-73.9515, acc:10}; meA = window.__a;`);
   ok(await rp(`(function(){ me = {la:40.7000, lo:-73.9500, acc:10}; return meAnchor()!==window.__a; })()`), "Bei echtem Abweichen wird nicht neu berechnet");
 });
+await test("Navigation aus dem Ort-Pop-up: Pop-up und Listen schließen beim Start", async () => {
+  await seed();
+  await rp(`nav3d = false; me = {la:40.7215, lo:-73.9890, acc:8}; openLsPage(); openJPop("p2", dayOf("p2"));`); await page.waitForTimeout(250);
+  ok(await visible("#jPop"), "Ort-Pop-up nicht offen");
+  await click("#jPop [data-act=go]"); await page.waitForTimeout(200);
+  await click("#catPop [data-act=navstart][data-mode=walk]");
+  await page.waitForFunction(() => window.__rp("!!NAV"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`!!NAV`), "Navigation nicht gestartet");
+  ok(await rp(`$("jPop").hidden && !jp`), "Ort-Pop-up bleibt nach dem Navi-Start offen");
+  ok(await rp(`!lsPage && $("lsView").hidden`), "Liste bleibt nach dem Navi-Start offen");
+  ok(await rp(`$("catPop").hidden`), "Routen-Pop-up bleibt offen");
+  // auch über das Verkehrsmittel-Menü (Hotel, Station, Kartenpunkt)
+  await rp(`navEnd(true); openJPop("p2", dayOf("p2")); navPick({la:40.75, lo:-73.99, n:"Test"}, document.querySelector("#jPop [data-act=go]"));`); await page.waitForTimeout(250);
+  await click("[data-act=navgo][data-mode=walk]");
+  ok(await rp(`!!NAV && $("jPop").hidden`), "Pop-up bleibt beim Start über das Verkehrsmittel-Menü offen");
+  await rp(`navEnd(true)`);
+});
+
 await test("Navigation in der App: starten, Hinweise, ausblenden, ankommen, abhaken", async () => {
   await seed();
   await rp(`nav3d = false; me = {la:40.7215, lo:-73.9890, acc:8}; openGo("p2");`); await page.waitForTimeout(200); // prüft die flache 2D-Ansicht

@@ -12475,9 +12475,15 @@ function navPick(tg, btn, ext){
   if(ext!=="noext") h += "<a role=\"menuitem\" target=\"_blank\" rel=\"noopener\" href=\"https://www.google.com/maps/dir/?api=1&destination="+NAVPICK.la+","+NAVPICK.lo+"&travelmode=walking\"><span class=\"ai lmi\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M11 4h5v5M16 4l-7 7M14 11v5H4V6h5\"/></svg></span><span class=\"cm-t\"><b>In Google Maps öffnen</b></span></a>";
   jpPopover("nav", btn, h, "navpick");
 }
+// Navigation starten ist eine abgeschlossene Aktion: alle Pop-ups, Detail- und Listenansichten schließen, damit die Navigation sichtbar ist
+function navClearViews(){
+  closeJpMore(); closeMenus(); planPopClose(); if(DCV) dcvClose(); if(zOpen) zClosePop(); pvHide();
+  if(jp || !$("jPop").hidden) closeJPop(); closeRecap();
+  closeLsPage(); closeChPage(); closeDcPage(); closeGsPage(); closeNtPage(); closeProfile();
+}
 function navStart(p, mode, pref){
   if(!p || !hasLoc(p)) return;
-  navEnd(true);
+  navEnd(true); try { navClearViews(); } catch(e){}
   NAV = {tgt:{la:p.la, lo:p.lo, n:p.n, id:p.id || null}, pref:pref || p, mode:mode || "walk", follow:true, hidden:false, first:true, busy:false, err:""};
   closeCatPop(); select(null); if(!desktop.matches) setSheet("min");
   document.body.classList.add("navon"); try { startCompass(); } catch(e){}
