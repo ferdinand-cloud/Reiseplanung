@@ -1432,6 +1432,10 @@ li.st.done > .stc{background:var(--fill2);box-shadow:none}
 
 /* ================= Minimal: weniger Rahmen, mehr Luft, nur das Nötige ================= */
 .body{gap:22px;padding-top:6px}
+/* Kopfbereiche eng zusammen: Wunschliste Suche → Filter-Chips → Kacheln/Liste, Tagesplan Tageskopf → Route (sonst Lücke + Rand = ~30px) */
+#body > .wtop ~ *{margin-top:-12px}
+#body > #wishRes > .wtiles:first-child{margin-top:0}
+#body > .dh + .sec{margin-top:-10px}
 .sec h4{font:600 15px/1.2 var(--f-body);color:var(--ink);letter-spacing:-.01em}
 /* Tageskopf ohne großen Kreis */
 .dh{gap:12px;align-items:flex-start}

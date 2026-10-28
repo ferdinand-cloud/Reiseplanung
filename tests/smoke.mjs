@@ -2056,6 +2056,17 @@ await test("Ebene Wünsche aus: nach Listenwechsel und Einklappen keine Wunsch-P
   ok(await rp(`WISHN>0`), "Nach Ausklappen fehlen die Wünsche der Liste auf der Karte");
 });
 
+await test("Wunschliste: kleine Abstände Suche → Filter-Chips → Kacheln; Tageskopf → Route", async () => {
+  await seed();
+  await rp(`T().places.p6.park = 1; select(null); tab = "wish"; setSheet("full"); renderSheet();`); await page.waitForTimeout(300);
+  const g = await rp(`(function(){ var r = function(s){ return document.querySelector("#body "+s).getBoundingClientRect(); }; var a = r(".wtop"), b = r(".fchips"), c = r("#wishRes .wtiles"); return {g1: b.top - a.bottom, g2: c.top - b.bottom}; })()`);
+  ok(g.g1 >= 4 && g.g1 <= 12, "Abstand Suche → Chips zu groß/klein: "+g.g1);
+  ok(g.g2 >= 4 && g.g2 <= 12, "Abstand Chips → Kacheln zu groß/klein: "+g.g2);
+  await rp(`tab = "day"; renderSheet();`); await page.waitForTimeout(300);
+  const d = await rp(`(function(){ var h = document.querySelector("#body > .dh"), s = h && h.nextElementSibling; return s ? s.getBoundingClientRect().top - h.getBoundingClientRect().bottom : -1; })()`);
+  ok(d >= 4 && d <= 14, "Abstand Tageskopf → Route zu groß/klein: "+d);
+});
+
 await test("Wünsche zurückstellen, ein-/ausblenden, zurückholen, weiterhin löschbar", async () => {
   await seed();
   await rp(`select("p6")`); await page.waitForTimeout(200);
