@@ -9226,11 +9226,11 @@ function renderSearch(focus){
     h = near.length ? "<div class=\"srlbl\">"+esc(CATNAME[srch.cat])+" in der Nähe · "+near.length+"</div><ul class=\"srlist\">"+near.map(function(x){ var r = x.r; return "<li><button type=\"button\" class=\"srow\" data-act=\"srchgo\" data-i=\""+x.i+"\"><span class=\"sric\">"+icon(r.c || "sight")+"</span><span class=\"srt\"><b>"+esc(r.n)+"</b><small>"+esc(r.sub||"")+"</small></span>"+(r.d!=null ? "<span class=\"srd\">"+fmtDist(r.d)+"</span>" : "")+"</button></li>"; }).join("")+"</ul>"
       : "<p class=\"note\">Keine "+esc(CATNAME[srch.cat])+" im aktuellen Kartenausschnitt oder in deinem Plan. Gib einen Suchbegriff ein, um weiter zu suchen.</p>";
   }
-  else if(!q.trim()) h = "<p class=\"note\">Durchsucht deinen Plan, die Wunschliste, die Punkte auf der Karte und weitere Orte – im gewählten Umkreis um „"+esc(srLocName())+"“.</p>";
+  else if(!q.trim()) h = "<p class=\"note\">Durchsucht "+(isRO() ? "die Orte der Reise" : "deinen Plan, die Wunschliste")+", die Punkte auf der Karte und weitere Orte – im gewählten Umkreis um „"+esc(srLocName())+"“.</p>";
   else {
     var grp = function(kind, title){ var xs = all.map(function(r, i){ return {r:r, i:i}; }).filter(function(x){ return x.r.kind===kind; }); if(!xs.length) return "";
       return "<div class=\"srlbl\">"+title+" · "+xs.length+"</div><ul class=\"srlist\">"+xs.map(function(x){ var r = x.r; return "<li><button type=\"button\" class=\"srow\" data-act=\"srchgo\" data-i=\""+x.i+"\"><span class=\"sric\">"+icon(r.c || "sight")+"</span><span class=\"srt\"><b>"+hlq(r.n, q)+"</b><small>"+esc(r.sub||"")+"</small></span>"+(r.d!=null ? "<span class=\"srd\">"+fmtDist(r.d)+"</span>" : "")+"</button></li>"; }).join("")+"</ul>"; };
-    h = grp("place", "Dein Plan & Wunschliste") + grp("poi", "Auf der Karte") + grp("web", "Weitere Orte");
+    h = grp("place", isRO() ? "Orte der Reise" : "Dein Plan & Wunschliste") + grp("poi", "Auf der Karte") + grp("web", "Weitere Orte");
     if(!h) h = "<p class=\"note\">"+(q.trim().length < 3 ? "Weiter tippen …" : "Suche läuft … (im Umkreis von "+esc((SRRAD.filter(function(x){ return x[0]===srch.rad; })[0]||[0,"–"])[1])+" um „"+esc(srLocName())+"“)")+"</p>";
   }
   $("srchRes").innerHTML = h;
@@ -12496,9 +12496,10 @@ function renderCard(){
     var nn = sel.slice(3), i = nbByName(nn), all = Object.keys(T().places).map(P).filter(function(p){ return !p.of && nbOf(p)===nn; });
     var open = all.filter(function(p){ return !dayOf(p.id); }).length;
     var cc = {}; all.forEach(function(p){ cc[p.c] = (cc[p.c]||0)+1; });
-    var c0 = x+"<h3>"+esc(nn)+"</h3><p>"+esc(NB[i].b)+" · "+all.length+(all.length===1?" Ort":" Orte")+" aus der Wunschliste, davon "+open+" offen</p>";
-    if(all.length) c0 += "<p>"+CATS.filter(function(c){ return cc[c[0]]; }).map(function(c){ return "<span class=\"cat\">"+icon(c[0])+cc[c[0]]+"</span>"; }).join(" &nbsp;")+"</p>";
-    c0 += "<div class=\"row\">"+(all.length?"<button class=\"btn\" type=\"button\" data-act=\"nbshow\" data-nb=\""+esc(nn)+"\">Wünsche hier zeigen</button>":"")+
+    var ro = isRO(); // Ansicht/Beobachter: keine Wunschliste, also auch keine Wünsche im Bezirk
+    var c0 = x+"<h3>"+esc(nn)+"</h3><p>"+esc(NB[i].b)+(ro ? "" : " · "+all.length+(all.length===1?" Ort":" Orte")+" aus der Wunschliste, davon "+open+" offen")+"</p>";
+    if(all.length && !ro) c0 += "<p>"+CATS.filter(function(c){ return cc[c[0]]; }).map(function(c){ return "<span class=\"cat\">"+icon(c[0])+cc[c[0]]+"</span>"; }).join(" &nbsp;")+"</p>";
+    c0 += "<div class=\"row\">"+(all.length && !ro?"<button class=\"btn\" type=\"button\" data-act=\"nbshow\" data-nb=\""+esc(nn)+"\">Wünsche hier zeigen</button>":"")+
           "<button class=\"btn g\" type=\"button\" data-act=\"nbtoggle\" data-nb=\""+esc(nn)+"\">"+(nbHi[nn]?"Hervorhebung aufheben":"Hervorheben")+"</button></div>";
     el.innerHTML = c0; el.hidden = false; placeFloating(); return;
   }
@@ -13741,7 +13742,7 @@ function renderJPop(){
     Lr.hidden = false; document.body.classList.add("pvfull"); pvWindow(vi); fillPhotos(Lr); pvInit(vi); return;
   }
   pvHide();
-  var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && (META[S.cur].members||[]).length > 1);
+  var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && ((META[S.cur].members||[]).length > 1 || (META[S.cur].viewers||[]).length)); // auch Reise nur mit Beobachtern: Kommentare
   h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   // eine Zeile: Tag · Uhrzeit · Abhaken · Bewertung · Route · Infos · Mehr (Gruppe, Privat)
@@ -15024,16 +15025,7 @@ function applyRO(){
   var tdy = $("tabDay"); if(tdy && tdy.textContent!==dl) tdy.textContent = dl;
   if(ro && tab==="wish") tab = "day";
   if(k===roWas) return; roWas = k;
-  if(!ro || !isViewer()){ if(mapReady) applyLayers(); return; }
-  // Beobachter: einmal je Reise 3D-Gebäude und farbige Karte an, Verkehrsmittel aus
-  var fk = "rp-vdef-"+k;
-  if(lsGet(fk)!=="1"){
-    lsSet(fk, "1");
-    var reload = !colorOn;
-    b3dOn = true; lsSet("rp-3d", "1"); colorOn = true; lsSet("rp-color", "1");
-    if(map){ if(reload && mapReady){ mapReady = false; map.setStyle(STYLE_URL, {diff:false}); } else { apply3d(true); } }
-    if(map) setTimeout(function(){ if(b3dOn && map.getPitch() < 5) map.easeTo({pitch:50, zoom:Math.max(map.getZoom(), 15), duration: reduceMotion?0:700}); }, 400);
-  }
+  // Beobachter: 3D und farbige Karte sind für alle Standard (Knopf 2D/3D ab Zoom 15) – kein eigenes Kippen mehr
   if(mapReady) applyLayers();
 }
 /* Erledigte Stopps stehen vorn: wer abgehakt wird, rückt direkt hinter die bisher erledigten */

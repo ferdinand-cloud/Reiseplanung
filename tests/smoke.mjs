@@ -881,6 +881,42 @@ await test("Beobachtete Reisen: eigener Knopf, kein Ansicht/Bearbeiten-Umschalte
   await rp(`S.cur = "t_own"; renderAll(); true`);
   ok(await rp(`scopeBtns("dc").indexOf("data-k=\\"obs\\"") > -1 && scopeNow("dc").indexOf("t_test") < 0`), "Entdecken trennt beobachtete Reisen nicht");
 });
+await test("Beobachter-Ansicht: abgeschlossene beobachtete Reise wie eigene Ansicht (Tagebuch, Details, ×, Kommentare, Alle Tage, Filter, Blatt halbhoch)", async () => {
+  await seed();
+  await rp(`META.t_test = {owner:"u_o", members:["u_o"], memberEmails:{}, invites:[], viewers:["u_me"], viewInvites:[]}; OWNN.u_o = "ferdinand"; KNOWN.t_test = 1; T().fin = 1; renderAll(); true`); await page.waitForTimeout(200);
+  ok(await rp(`isViewer() && isRO() && finJ() && document.body.classList.contains("ro")`), "Beobachter nicht in der Ansicht");
+  ok(await rp(`$("sheetOpen").textContent.trim()==="Tagebuch" && $("tabDay").textContent==="Tagebuch"`), "Beobachter: Knopf/Reiter heißen nicht „Tagebuch“");
+  ok(await page.locator("#body ol.plan").count()===0 && await page.locator("#body .rhead").count()===0, "Beobachter: Stopps sichtbar");
+  await rp(`cur = Object.keys(T().order).filter(function(k){ return (T().order[k]||[]).some(function(x){ return T().done[x]; }); })[0]; renderSheet(); true`);
+  ok(await page.locator("#body .jcard").count() > 0 && await page.locator("#body .jc-t.empty").count()===0, "Beobachter: Tagebuch fehlt oder zeigt Notiz-Hinweis");
+  ok(await page.locator("#tabWish").isHidden(), "Beobachter: Wunschliste sichtbar");
+  // Details-Knopf, × und Kommentare
+  await rp(`sel = "p4"; renderCard(); true`); await page.waitForTimeout(200);
+  ok(await page.locator("#card [data-act=jpedit]").isVisible(), "Beobachter: Knopf „Details“ fehlt");
+  await click("#card [data-act=jpedit]");
+  ok(await rp(`!!jp && jp.pid==="p4"`), "Beobachter: „Details“ öffnet nicht");
+  ok(await page.locator("#jPop .jp-wrap > .ag-x").isVisible(), "Beobachter: × am Detail-Fenster fehlt");
+  ok(await page.locator("#jPop #cmIn").count()===1, "Beobachter: Kommentarfeld fehlt");
+  ok(await rp(`!$("jPop").querySelector("textarea#nText:not([readonly])")`), "Beobachter: Notiz bearbeitbar");
+  ok(await page.locator("#jPop .vis-ro, #jPop [data-act=vis]").count()===0, "Beobachter sieht Sichtbarkeit (bewusst nur Besitzer/Mitreisende)");
+  await click("#jPop .jp-wrap > .ag-x"); ok(await rp(`!jp`), "Beobachter: × schließt nicht");
+  await rp(`sel = null; renderCard(); setSheet("min"); true`); await page.waitForTimeout(300);
+  await click("#sheetOpen"); await page.waitForTimeout(400);
+  ok(await rp(`sheetState==="mid"`), "Beobachter: Knopf unten öffnet nicht halbhoch");
+  // Alle Tage und Filter „Alle Orte der Reise“
+  await click("#rail [data-act=daypop]");
+  ok(await visible("#catPop .dayall"), "Beobachter: „Alle Tage anzeigen“ fehlt");
+  await click("#catPop .dayall"); ok(await rp(`allOn()`), "Beobachter: Gesamtansicht nicht aktiv");
+  ok(await rp(`$("body").querySelectorAll(".adj .jcard").length > 0`), "Beobachter: Tagebuch aller Tage fehlt");
+  await click("#layersBtn");
+  ok(await visible("#lAllP"), "Beobachter: Filter „Alle Orte der Reise“ fehlt");
+  // Bezirk-Karte: keine Wünsche/Wunschliste in der Ansicht
+  await rp(`closeMenus(); sel = "nb:"+NB[0].n; renderCard(); true`); await page.waitForTimeout(150);
+  ok(await rp(`var c = $("card").textContent; c.indexOf("Wunschliste")<0 && !$("card").querySelector("[data-act=nbshow]") && !!$("card").querySelector("[data-act=nbtoggle]")`), "Bezirk zeigt Wünsche/Wunschliste in der Ansicht");
+  await rp(`sel = null; renderCard(); true`);
+  // 3D: Beobachter wird nicht mehr zwangsweise gekippt, gleiche Regeln wie alle (Knopf ab Zoom 15)
+  ok(await rp(`applyRO.toString().indexOf("rp-vdef-") < 0`), "Beobachter-Sonderweg für 3D noch aktiv");
+});
 await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“ öffnet die volle Planung", async () => {
   await seed();
   ok(await rp(`!isRO() && !document.body.classList.contains("ro") && tripMode()==="edit"`), "Laufende Reise startet nicht im Bearbeitungsmodus");
