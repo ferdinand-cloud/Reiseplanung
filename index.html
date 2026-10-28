@@ -8954,7 +8954,7 @@ function renderSearch(focus){
   var el = $("srchPop"), q = srch.q;
   var head = "<div class=\"ag-card srch\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Suchen\"><button type=\"button\" class=\"ag-x\" data-act=\"srchclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Suchen</h3>"+
     "<input type=\"search\" id=\"srchIn\" class=\"frq\" placeholder=\"Ort, Café, Adresse, Notiz …\" autocomplete=\"off\" autocapitalize=\"off\" enterkeyhint=\"search\" value=\""+esc(q)+"\"><div class=\"srloc\" id=\"srLoc\"></div><div class=\"srcats\" id=\"srCats\" role=\"tablist\" aria-label=\"Kategorie\"></div><div id=\"srchRes\"></div></div>";
-  if(!el.querySelector("#srchIn")) el.innerHTML = head;
+  if(!el.querySelector("#srchIn")){ el.innerHTML = head; hsFix($("srCats")); }
   var sl = $("srLoc"); if(sl){ var rl = (SRRAD.filter(function(x){ return x[0]===srch.rad; })[0]||[0,"Unbegrenzt"])[1];
     sl.innerHTML = "<button type=\"button\" data-act=\"srlocpick\" aria-haspopup=\"menu\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 18s5.5-5.2 5.5-9.5a5.5 5.5 0 0 0-11 0C4.5 12.8 10 18 10 18z\"/><circle cx=\"10\" cy=\"8.5\" r=\"2\"/></svg><span>Bei <b>"+esc(srLocName())+"</b></span></button>"+
       "<button type=\"button\" data-act=\"srradpick\" aria-haspopup=\"menu\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"10\" r=\"7\" stroke-dasharray=\"2.5 2.5\"/><circle cx=\"10\" cy=\"10\" r=\"1.6\" fill=\"currentColor\"/></svg><span>Umkreis <b>"+rl+"</b></span></button>"; }
@@ -8973,6 +8973,27 @@ function renderSearch(focus){
   }
   $("srchRes").innerHTML = h;
   if(focus){ var i = $("srchIn"); if(i){ i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch(e){} } }
+}
+/* iOS: Eine waagrechte Leiste in einem Pop-up, das beim Öffnen gleich die Tastatur holt (Einblend-Animation + Verschieben über der
+   Tastatur), nimmt das Wischen teils erst an, nachdem die Tastatur einmal zu war. Darum: Scrollbereich nach dem Einblenden neu
+   anmelden und, falls iOS trotzdem nicht scrollt, selbst wischen (mit Auslauf). Scrollt iOS selbst, bleibt alles unberührt. */
+function hsFix(el){
+  if(!el || el._hs) return; el._hs = 1;
+  var s = null, raf = 0;
+  function renew(){ if(!document.contains(el)) return; el.style.overflowX = "hidden"; void el.offsetWidth; el.style.overflowX = ""; }
+  setTimeout(renew, 450); setTimeout(renew, 900);
+  el.addEventListener("touchstart", function(e){ cancelAnimationFrame(raf); if(e.touches.length!==1){ s = null; return; } var t = e.touches[0];
+    s = {x:t.clientX, y:t.clientY, l:el.scrollLeft, mode:null, man:false, lx:t.clientX, lt:Date.now(), v:0}; }, {passive:true});
+  el.addEventListener("touchmove", function(e){ if(!s || e.touches.length!==1) return; var t = e.touches[0], dx = t.clientX - s.x, dy = t.clientY - s.y;
+    if(!s.mode){ if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return; s.mode = Math.abs(dx) > Math.abs(dy) ? "h" : "v"; }
+    if(s.mode!=="h") return;
+    if(!s.man){ if(!e.cancelable || el.scrollLeft!==s.l){ s = null; return; }   // iOS scrollt selbst
+      if(Math.abs(dx) < 14) return; s.man = true; s.x = t.clientX; s.l = el.scrollLeft; dx = 0; }
+    e.preventDefault(); el.scrollLeft = s.l - dx;
+    var now = Date.now(), dt = Math.max(1, now - s.lt); s.v = s.v*0.4 + ((t.clientX - s.lx)/dt)*0.6; s.lx = t.clientX; s.lt = now; }, {passive:false});
+  function end(){ var s0 = s; s = null; if(!s0 || !s0.man || Date.now() - s0.lt > 80) return; var v = s0.v*16, last = performance.now();
+    (function step(now){ var k = Math.min(3, (now - last)/16); last = now; v *= Math.pow(0.95, k); if(Math.abs(v) < 0.4) return; var b = el.scrollLeft; el.scrollLeft -= v*k; if(el.scrollLeft===b) return; raf = requestAnimationFrame(step); })(last); }
+  el.addEventListener("touchend", end); el.addEventListener("touchcancel", function(){ s = null; });
 }
 function hlq(txt, q){ var t = esc(txt), w = norm(q).split(/\s+/).filter(Boolean)[0]; if(!w) return t; var i = norm(txt).indexOf(w); if(i < 0) return t; return esc(txt.slice(0,i))+"<mark>"+esc(txt.slice(i, i+w.length))+"</mark>"+esc(txt.slice(i+w.length)); }
 function srchGo(i){

@@ -1229,6 +1229,19 @@ await test("Ganze Linie zeigen: Linie in der Wegbeschreibung antippen, Strecke v
   ok(await rp(`LINEV===null && !document.getElementById("lineV")`), "Ganze Linie lässt sich nicht ausblenden");
 });
 
+await test("Suche: Kategorien lassen sich direkt nach dem Öffnen (Tastatur offen) wischen", async () => {
+  await seed();
+  await rp(`openSearch(); true`); await page.waitForTimeout(150);
+  ok(await rp(`document.activeElement && document.activeElement.id==="srchIn"`), "Eingabefeld nicht aktiv");
+  // iOS nimmt das Wischen hier teils nicht an – dann wischt die App selbst. Nachgestellt mit Touch-Ereignissen ohne eigenes Scrollen des Browsers.
+  const l = await rp(`(function(){ var el = document.getElementById("srCats"), r = el.getBoundingClientRect(), y = r.top + r.height/2, x0 = r.right - 30;
+    function ev(type, x){ var t = new Touch({identifier:1, target:el, clientX:x, clientY:y}); el.dispatchEvent(new TouchEvent(type, {touches: type==="touchend" ? [] : [t], changedTouches:[t], bubbles:true, cancelable:true})); }
+    el.scrollLeft = 0; ev("touchstart", x0); for(var i = 1; i <= 10; i++) ev("touchmove", x0 - i*15); ev("touchend", x0 - 150);
+    return el.scrollLeft; })()`);
+  ok(l > 60, "Kategorien lassen sich nicht wischen: scrollLeft "+l);
+  ok(await rp(`document.activeElement && document.activeElement.id==="srchIn"`), "Wischen nimmt der Eingabe den Fokus");
+});
+
 await test("Suche: Ort und Umkreis einstellbar, weit entfernte Treffer ausgeblendet", async () => {
   await seed();
   globalThis.PHOTONREQ = [];
