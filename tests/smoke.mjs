@@ -3841,6 +3841,8 @@ await test("Bewegung: Foto fliegt aus dem Vorschaubild ins Vollbild und zurück,
   const rec = () => page.evaluate(() => new Promise(res => { const ws = []; const t0 = performance.now(); (function f(){ const e = document.querySelector(".fx-fly"); if(e) ws.push(Math.round(e.getBoundingClientRect().width)); if(performance.now() - t0 < 900) requestAnimationFrame(f); else res(ws); })(); }));
   let r = rec(); await page.locator("#jPop [data-act=phview]").first().click(); let ws = await r, la = await rp(`FX.last`);
   ok(ws.length && la && la.d==="in" && la.from < 120 && la.to > 300, "Foto fliegt nicht aus dem Vorschaubild: "+JSON.stringify(la)+" "+ws.join(","));
+  // unter Last (parallele Testprozesse) kann der Flug länger dauern: auf das Aufräumen warten statt fester Zeit
+  await page.waitForFunction(() => window.__rp(`!$("pvLayer").classList.contains("fx-flying") && !document.querySelector(".fx-fly")`), null, {timeout:4000}).catch(() => {});
   ok(await rp(`!$("pvLayer").classList.contains("fx-flying") && !document.querySelector(".fx-fly")`), "Flug räumt nicht auf");
   ok(await rp(`!!document.querySelector("#pvLayer .pv-amb[src]")`), "Weicher Fotohintergrund fehlt");
   r = rec(); await click("#pvLayer [data-act=phback]"); ws = await r; la = await rp(`FX.last`);
