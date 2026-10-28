@@ -492,13 +492,15 @@ body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0
 .tf-opt[aria-checked="true"] .sw2{background:var(--ok,#34C759)}
 .tf-opt[aria-checked="true"] .sw2::after{transform:translateX(18px)}
 .tst{font-style:normal;font-weight:600}
-/* Abgeschlossene Reise: Hinweis + „Reise bearbeiten“ über Tagesplan und Liste */
-.finbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:8px 8px 8px 12px;border-radius:14px;background:var(--fill2,var(--chip))}
-.finbar > span{display:flex;flex-direction:column;min-width:0;font-size:13px;line-height:1.25}
-.finbar small{color:var(--muted);font-size:12px}
-.finbar .btn{flex:none;display:inline-flex;align-items:center;gap:6px;margin:0}
-.finbar .btn .ii{width:16px;height:16px}
-.lpcard .finbar{margin:8px 0 0}
+/* Abgeschlossene Reise: Moduswechsel oben im Reise-Menü, deutlich hervorgehoben */
+.tripmenu button.tm-fin,.jpmenu button.tm-fin{display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;text-align:left;background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent);border-radius:11px}
+.tm-fin .ii{width:18px;height:18px;flex:none}
+.tm-fin > span{display:flex;flex-direction:column;min-width:0}
+.tm-fin b{font-weight:650}
+.tm-fin small{color:var(--muted);font-weight:500}
+.tripmenu button.tm-fin.on,.jpmenu button.tm-fin.on{background:var(--fill);color:inherit}
+.tripmenu button.tm-fin{margin-bottom:4px}
+.jpmenu button.tm-fin{margin-top:6px}
 .tst-now{color:var(--ok,#2e9b5a)}
 .tst-opt{color:#AF52DE}
 .tf-lbl{margin:18px 4px 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -7811,7 +7813,7 @@ function lsTripDD(cur){ var t = cur && S.trips[cur], zz = t && t.ziel, sub = t ?
     (t ? (zz ? "<span class=\"dc-tz\" style=\"--cc:"+tripColor(cur)+"\">"+ZBM+"</span>" : "<i class=\"dc-tdot\" style=\"--cc:"+tripColor(cur)+"\"></i>")+"<span class=\"ls-ddn\">"+esc(t.name||"Reise")+"</span>"+(sub ? "<small>"+esc(sub)+"</small>" : "") : "<span class=\"ls-ddn\">Reise wählen</span>")+CHEV+"</button></div>"; }
 function lsTripMenu(btn){ var ids = scopeNow("ls"), zs = zsOn();
   var h = (ids.length > 5 ? frPickHead("Reise", "Reise suchen", "Keine Reise gefunden") : "<div class=\"vp-h\">Reise</div>")+ids.map(function(id){ var t = S.trips[id], on = id===S.cur && !isViewerOf(S.cur) && !zs;
-    return "<button type=\"button\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" data-frn=\""+esc(((t.name||"")+" "+(t.start||"").slice(0, 4)).toLowerCase())+"\" role=\"menuitemradio\" aria-checked=\""+on+"\"><span class=\"ai\"><i class=\"dc-tdot\" style=\"--cc:"+tripColor(id)+"\"></i></span><span>"+esc(t.name||"Reise")+(lsTripSub(t) ? "<small class=\"ls-tsub\">"+esc(lsTripSub(t))+"</small>" : "")+"</span>"+(on ? "<span class=\"ck\">✓</span>" : "")+"</button>"; }).join("")+scopeBtns("ls");
+    return "<button type=\"button\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" data-frn=\""+esc(((t.name||"")+" "+(t.start||"").slice(0, 4)).toLowerCase())+"\" role=\"menuitemradio\" aria-checked=\""+on+"\"><span class=\"ai\"><i class=\"dc-tdot\" style=\"--cc:"+tripColor(id)+"\"></i></span><span>"+esc(t.name||"Reise")+(lsTripSub(t) ? "<small class=\"ls-tsub\">"+esc(lsTripSub(t))+"</small>" : "")+"</span>"+(on ? "<span class=\"ck\">✓</span>" : "")+"</button>"; }).join("")+scopeBtns("ls")+(zs ? "" : finRow());
   jpPopover("lst", btn, h, "lstrip"); }
 function renderLs(){
   var el = $("lsView"); if(!el) return;
@@ -7825,7 +7827,6 @@ function renderLs(){
   }
   if(ids.length > 1 || zielIds().length) h += lsTripDD(S.cur);
   else h += "<p class=\"ls-trip1\"><b>"+esc(t.name||"Reise")+"</b>"+(!t.opt && t.start && t.end ? " · "+shortD(t.start)+"–"+shortD(t.end) : "")+" "+tstatHTML(t)+"</p>";
-  h += finBar();
   // besuchte Orte je Tag
   var visited = [], nPh = 0;
   ds.forEach(function(D){ (t.order[D.key]||[]).forEach(function(id){ var p = P(id); if(p && t.done[id] && p.k!=="hotel") visited.push({id:id, D:D}); }); });
@@ -9134,7 +9135,7 @@ function lpRender(){
   var h = "<div class=\"pop-card lpcard\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Markierter Punkt\"><div class=\"pop-head\"><h4>Markierter Punkt</h4><button type=\"button\" class=\"x\" data-act=\"lpclose\" aria-label=\"Schließen\">×</button></div>";
   h += "<div class=\"lpinfo\"><b>"+esc(lpPt.busy ? "Adresse wird gesucht …" : (lpPt.n || (lpPt.off ? "Offline – Adresse folgt mit Internet" : "Unbenannter Ort")))+"</b><small>"+esc((lpPt.addr && lpPt.addr!==lpPt.n ? lpPt.addr+" · " : "")+lpPt.la.toFixed(5)+", "+lpPt.lo.toFixed(5))+"</small></div>";
   if(noTrip()) h += "<div class=\"lpacts\"><button type=\"button\" class=\"btn lpphoto\" data-act=\"lpmerk\">"+ZBM+"Für später merken</button></div>";
-  else if(ro) h += "<p class=\"note\">"+(isViewer() ? "Als Beobachter kannst du nichts übernehmen." : "Abgeschlossene Reise: Zum Übernehmen erst „Reise bearbeiten“ wählen.")+"</p>"+finBar();
+  else if(ro) h += "<p class=\"note\">"+(isViewer() ? "Als Beobachter kannst du nichts übernehmen." : "Abgeschlossene Reise: Zum Übernehmen erst „Reise bearbeiten“ wählen.")+"</p>";
   else h += "<div class=\"lpacts\">"+(dayByKey(cur) ? "<button type=\"button\" class=\"btn\" data-act=\"planpick\" data-lp=\"1\">Zum Tagesplan "+esc(dayByKey(cur).lbl)+" hinzufügen</button>" : "")+(dayByKey(cur) && dayLegs(cur).length ? "<button type=\"button\" class=\"btn g\" data-act=\"lpvia\">Als Wegpunkt für die Gehroute</button>" : "")+"<button type=\"button\" class=\"btn"+(dayByKey(cur)?" g":"")+"\" data-act=\"lpwish\">Als Wunschziel übernehmen</button>"+(dayByKey(cur) ? "<label class=\"btn g lpphoto\" for=\"cphIn\" data-act=\"lpphoto\">"+LPCAM+"Als Fotospot – Fotos hinzufügen</label>" : "")+"<button type=\"button\" class=\"btn g\" data-act=\"lphotel\">Als Hotel übernehmen</button><button type=\"button\" class=\"btn g lpphoto\" data-act=\"lpmerk\">"+ZBM+"Für später merken</button></div>";
   if(lpPt.off && !ro) h += "<p class=\"note lpoff\">Offline: Fotospot und Fotos bleiben auf dem Gerät und werden hochgeladen, sobald du wieder Internet hast.</p>";
   el.innerHTML = h+"</div>"; el.hidden = false;
@@ -13141,13 +13142,13 @@ var CHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" str
 function renderTop(){
   var t = T(), zs = zsOn(), zt = zs && Z(zs);
   $("tripBtn").innerHTML = zt ? "<b>"+esc(zt.name)+"</b><span>Ziel</span>"+CHEV : "<b>"+esc(t.name)+"</b><span>"+esc(t.opt ? "Option" : rangeLabel(t.start,t.end))+"</span>"+CHEV; tripFit(); requestAnimationFrame(tripFit);
-  var h = "";
+  var h = zs ? "" : finRow();
   // laufende und kommende Reisen direkt, abgeschlossene und Ziele über die Knöpfe darunter
   scopeNow("map").map(function(k){ return S.trips[k]; }).forEach(function(x){
     h += "<button type=\"button\" data-act=\"trip\" data-trip=\""+x.id+"\" aria-current=\""+(x.id===S.cur && !zs)+"\"><span>"+esc(x.name)+"</span><small>"+tstatHTML(x)+esc(x.opt ? "" : " · "+rangeLabel(x.start,x.end))+"</small></button>";
   });
   h += scopeBtns("map")+"<hr>"+
-       (zs ? "" : acct.user && isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Reise-Details</span><small>Mitglieder</small></button>" : finRO() ? "<button type=\"button\" data-act=\"finedit\"><span>Reise bearbeiten</span><small>Volle Planungsansicht</small></button>" : "<button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button>"+(finEdOn() ? "<button type=\"button\" data-act=\"finview\"><span>Bearbeiten beenden</span><small>Zurück zur Ansicht</small></button>" : ""))+"<button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
+       (zs ? "" : acct.user && isViewerOf(S.cur) ? "<button type=\"button\" data-act=\"opentrip\"><span>Reise-Details</span><small>Mitglieder</small></button>" : finRO() ? "" : "<button type=\"button\" data-act=\"tripedit\">Reise bearbeiten</button>")+"<button type=\"button\" data-act=\"tripnew\">+ Neue Reise anlegen</button>";
   $("tripMenu").innerHTML = h;
   var d = dayByKey(cur), r = "";
   if(d) r = "<button type=\"button\" class=\"rd-day\" data-act=\"daypop\" aria-haspopup=\"dialog\" aria-label=\""+esc(d.title)+" – Tag wechseln\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span>"+d.wd+"<span class=\"cnt\">"+shortD(d.key)+"</span><span class=\"chev\">"+CHEV+"</span></button>";
@@ -14601,7 +14602,7 @@ function renderSheet(){
   if(ae && (body.contains(ae) || tp.contains(ae)) && ae.id && /INPUT|TEXTAREA/.test(ae.tagName)){ fk = {id:ae.id, v:ae.value, a:ae.selectionStart, b:ae.selectionEnd}; }
   applyRO();
   var zsv = zsOn(); document.body.classList.toggle("zsel", !!zsv);
-  body.innerHTML = zsv ? zsListHTML(zsv, "map") : noTrip() ? noTripHTML() : finBar()+(sheetTab==="wish" ? renderWish() : renderDay());
+  body.innerHTML = zsv ? zsListHTML(zsv, "map") : noTrip() ? noTripHTML() : sheetTab==="wish" ? renderWish() : renderDay();
   body.scrollTop = st;
   fillPhotos(body);
   // Reise-Ansicht als eigenes Fenster
@@ -14621,9 +14622,10 @@ function isViewer(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 var finEd = "";
 function finRO(){ return !!(S && S.trips[S.cur] && !isViewerOf(S.cur) && !T().ziel && tripStatus(T())==="done" && finEd!==S.cur); }
 function finEdOn(){ return !!(S && S.trips[S.cur] && !isViewerOf(S.cur) && tripStatus(T())==="done" && finEd===S.cur); }
-function finBar(){
-  if(finRO()) return "<div class=\"finbar\"><span>"+tstatHTML(T())+"<small>Ansicht wie für Beobachter</small></span><button type=\"button\" class=\"btn s\" data-act=\"finedit\">"+ic("edit", "ii")+"Reise bearbeiten</button></div>";
-  if(finEdOn()) return "<div class=\"finbar on\"><span>"+tstatHTML(T())+"<small>Du bearbeitest die Reise</small></span><button type=\"button\" class=\"btn g s\" data-act=\"finview\">Fertig</button></div>";
+// Moduswechsel oben im Reise-Menü (Karte und Liste): Ansichtsmodus ↔ Bearbeitungsmodus
+function finRow(){
+  if(finRO()) return "<button type=\"button\" class=\"tm-fin\" data-act=\"finedit\">"+ic("edit", "ii")+"<span><b>Reise bearbeiten</b><small>Abgeschlossen · gerade Ansichtsmodus</small></span></button>";
+  if(finEdOn()) return "<button type=\"button\" class=\"tm-fin on\" data-act=\"finview\">"+ic("eye", "ii")+"<span><b>Bearbeiten beenden</b><small>Zurück zum Ansichtsmodus</small></span></button>";
   return "";
 }
 function isRO(){ return isViewer() || finRO(); }

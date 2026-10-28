@@ -710,10 +710,10 @@ await test("Profil: Reise über ⋯ abschließen und wieder öffnen (vor dem End
 
 await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“ öffnet die volle Planung", async () => {
   await seed();
-  ok(await rp(`!isRO() && !document.body.classList.contains("ro") && !document.querySelector("#body .finbar")`), "Laufende Reise startet nicht in der vollen Ansicht");
+  ok(await rp(`!isRO() && !document.body.classList.contains("ro") && !document.querySelector(".tm-fin")`), "Laufende Reise startet nicht in der vollen Ansicht");
   await rp(`T().fin = 1; save(); renderAll(); true`); await page.waitForTimeout(200);
   ok(await rp(`isRO() && finRO() && !isViewer() && document.body.classList.contains("ro")`), "Abgeschlossene Reise nicht in der Beobachter-Ansicht");
-  ok(await page.locator("#body .finbar [data-act=finedit]").isVisible(), "Knopf „Reise bearbeiten“ fehlt über dem Tagesplan");
+  ok(await page.locator("#body .finbar").count()===0, "Leiste „Reise bearbeiten“ steht noch im Tagesplan");
   ok(await page.locator("#body [data-act=done]:visible").count()===0, "Abhaken in der Ansicht sichtbar");
   ok(await page.locator("#body ol.plan").count()===0 && await page.locator("#body .rhead").count()===0, "Stopps im Ansichtsmodus sichtbar (nur Tagebuch gewünscht)");
   await rp(`cur = Object.keys(T().order).filter(function(k){ return (T().order[k]||[]).some(function(x){ return T().done[x]; }); })[0]; renderSheet(); true`);
@@ -723,28 +723,31 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await page.locator("#tabWish").isHidden(), "Wunschliste in der Ansicht sichtbar");
   ok(await rp(`$("sheetOpen").textContent.trim()==="Tagesplan"`), "Knopf unten nennt im Ansichtsmodus die Wunschliste");
   await click("#tripBtn");
-  ok(await page.locator("#tripMenu [data-act=finedit]").isVisible() && await page.locator("#tripMenu [data-act=tripedit]").count()===0, "Reise-Menü bietet nicht „Reise bearbeiten“ (volle Ansicht) an");
-  await rp(`closeMenus(); true`);
+  ok(await page.locator("#tripMenu > .tm-fin[data-act=finedit]").isVisible() && await page.locator("#tripMenu [data-act=tripedit]").count()===0, "Reise-Menü bietet nicht „Reise bearbeiten“ (oben, hervorgehoben) an");
+  ok(await rp(`$("tripMenu").firstElementChild.getAttribute("data-act")==="finedit"`), "„Reise bearbeiten“ steht nicht oben im Reise-Menü");
   await shot("abgeschlossen-ansicht");
   // Bearbeiten: volle Ansicht wie bei aktiven Reisen
-  await click("#body .finbar [data-act=finedit]");
+  await click("#tripMenu [data-act=finedit]");
   ok(await rp(`!isRO() && finEdOn() && !document.body.classList.contains("ro")`), "„Reise bearbeiten“ öffnet nicht die volle Ansicht");
   await rp(`pickDefaultDay(); renderSheet(); true`);
   ok(await page.locator("#body [data-act=rtoggle]").count()===1, "Routen-Schalter fehlt beim Bearbeiten");
   ok(await page.locator("#body ol.plan").count()===1, "Stopps fehlen beim Bearbeiten");
   ok(await page.locator("#tabWish").isVisible(), "Wunschliste fehlt beim Bearbeiten");
   ok(await rp(`$("sheetOpen").textContent.trim()==="Tagesplan & Wunschliste"`), "Knopf unten nennt beim Bearbeiten nicht die Wunschliste");
-  ok(await page.locator("#body .finbar [data-act=finview]").isVisible(), "„Fertig“ fehlt beim Bearbeiten");
+  await click("#tripBtn");
+  ok(await page.locator("#tripMenu .tm-fin[data-act=finview]").isVisible() && await page.locator("#tripMenu [data-act=tripedit]").count()===1, "„Bearbeiten beenden“ fehlt im Reise-Menü");
   await shot("abgeschlossen-bearbeiten");
-  // Fertig: zurück zur Ansicht; andere Reise und zurück: wieder Ansicht
-  await click("#body .finbar [data-act=finview]");
-  ok(await rp(`isRO() && finRO()`), "„Fertig“ führt nicht zurück zur Ansicht");
-  await click("#body .finbar [data-act=finedit]");
+  // Beenden: zurück zur Ansicht; andere Reise und zurück: wieder Ansicht
+  await click("#tripMenu [data-act=finview]");
+  ok(await rp(`isRO() && finRO()`), "„Bearbeiten beenden“ führt nicht zurück zur Ansicht");
+  await rp(`finEd = S.cur; renderAll(); true`);
   await rp(`S.trips.t_mal = newTripObj({id:"t_mal", name:"Mallorca", start:"2027-05-01", end:"2027-05-05"}); tripSwitch("t_mal"); tripSwitch("t_test"); true`);
   ok(await rp(`finRO()`), "Nach Reisewechsel bleibt die abgeschlossene Reise im Bearbeiten-Modus");
-  // Liste zeigt den Knopf ebenfalls
-  await rp(`openLsPage(); true`); await page.waitForTimeout(200);
-  ok(await page.locator("#lsView .finbar [data-act=finedit]").count()===1, "Knopf „Reise bearbeiten“ fehlt in der Liste");
+  // Liste: Moduswechsel in der Reise-Auswahl, keine Leiste
+  await rp(`S.trips.t_mal.fin = 0; openLsPage(); true`); await page.waitForTimeout(200);
+  ok(await page.locator("#lsView .finbar").count()===0, "Leiste „Reise bearbeiten“ steht noch in der Liste");
+  await click("#lsView [data-act=lstrippick]");
+  ok(await page.locator("#jpMenu .tm-fin[data-act=finedit]").isVisible(), "„Reise bearbeiten“ fehlt in der Reise-Auswahl der Liste");
 });
 
 await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kachel", async () => {
