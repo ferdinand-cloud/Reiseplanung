@@ -713,6 +713,28 @@ body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0
 .jc-ph img{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--chip)}
 .jc-ph i{font-style:normal;font-size:12px;color:var(--muted);align-self:center}
 .star{color:#f4b400}
+/* Gruppe am Tag: Kopfzeile im Tagesplan, aufklappbarer Eintrag im Tagebuch */
+li.dgh{list-style:none;margin:10px 0 -2px}
+.dgh-b{display:flex;align-items:center;gap:6px;border:0;background:none;padding:2px 4px;color:var(--muted);font:inherit;font-size:13px;max-width:100%}
+.dgh-b b{color:var(--ink);font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.dgh-b svg{width:15px;height:15px;flex:0 0 15px}
+.dgh-b .ii{opacity:.6}
+li.st.dgm{margin-left:12px}
+.jgrp{list-style:none}
+.jg-h > svg:last-child{width:16px;height:16px;flex:0 0 16px;align-self:center;color:var(--muted);transition:transform .2s}
+.jg-h[aria-expanded="false"] > svg:last-child{transform:rotate(-90deg)}
+.jg-ic{width:26px;height:26px;flex:0 0 26px;border-radius:50%;display:grid;place-items:center;background:var(--chip);color:var(--ink)}
+.jg-ic svg{width:15px;height:15px}
+.jg-l{margin:8px 0 0 14px}
+.dg-hint{margin:8px 2px}
+.dg-list{max-height:min(46vh,360px);overflow-y:auto}
+.dg-list .cic{width:22px;height:22px;flex:0 0 22px;display:grid;place-items:center}
+.dg-ok{width:100%;margin-top:10px;justify-content:center}
+.dg-ok[aria-disabled="true"]{opacity:.5}
+.dg-del{margin-top:10px}
+.ch-dyg{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);padding:4px 2px 0}
+.ch-dyg svg{width:13px;height:13px}
+.ch-dyg b{color:var(--ink);font-weight:650}
 .jhl{margin:0 0 4px;font-size:14px}
 .jp .rate{display:flex;flex-wrap:wrap;gap:5px}
 .jp .rate button{padding:6px 10px;font-size:13px}
@@ -4914,7 +4936,7 @@ function renameLocal(){
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["hfree","places","done","times","journal","order","legMode","legAlt","legOpt","legLine","via","rating","notes","photos","groups","privP","privN","privPh","privTo","capt","tickets","stayB"];
+var MAPK = ["hfree","dg","places","done","times","journal","order","legMode","legAlt","legOpt","legLine","via","rating","notes","photos","groups","privP","privN","privPh","privTo","capt","tickets","stayB"];
 /* ---------- Privat: Orte, Notizen und Fotos, die Beobachter nicht bekommen ----------
    Mitreisende lesen und schreiben die vollständige Reise in trips/{id}/priv/data;
    das Reise-Dokument selbst (für Beobachter lesbar) enthält nur den öffentlichen Teil. */
@@ -8985,7 +9007,8 @@ function chIsDay(o){ return !!(o && o.st && o.st.length); }
 function chMatchCur(pl){ var t = T(), out = ""; Object.keys(t.places||{}).some(function(pid){ var p = t.places[pid]; if(p && !p.of && p.k!=="hotel" && hasLoc(p) && dist(p, pl) < 120 && (p.n||"").toLowerCase().slice(0, 6)===(pl.n||"").toLowerCase().slice(0, 6)){ out = pid; return true; } return false; }); return out; }
 function chDayFrom(dk){
   var D = dayByKey(dk), t = T(); if(!D) return null;
-  var st = ord(dk).filter(function(id){ var p = P(id); return p && !isHStop(id) && hasLoc(p) && !(t.privP||{})[id]; }).slice(0, 25).map(function(id){ var p = P(id); return {n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||""}; });
+  var st = ord(dk).filter(function(id){ var p = P(id); return p && !isHStop(id) && hasLoc(p) && !(t.privP||{})[id]; }).slice(0, 25).map(function(id){ var p = P(id), o = {n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||""}, g = dgFor(dk, id); if(g) o.g = grpName(g); return o; });
+  st.forEach(function(s, i){ if(s.g && (st[i-1]||{}).g!==s.g && (st[i+1]||{}).g!==s.g) delete s.g; }); // Gruppe nur ab zwei Spots hintereinander
   if(!st.length) return null; var km = 0; for(var i = 0; i < st.length-1; i++) km += dist(st[i], st[i+1]);
   return {dn:D.n, dt:D.title, trip:t.name||"", km:Math.round(km), st:st};
 }
@@ -8993,7 +9016,7 @@ function chDayCard(d, key, draft){
   var n = d.st.length, show = draft ? d.st.slice(0, 3) : d.st;
   return "<div class=\"ch-pl ch-dy\"><div class=\"ch-plb\"><div class=\"ch-pln\"><span class=\"ch-dyb\" style=\"background:var(--c"+(((+d.dn||1)-1)%10+1)+")\">"+esc(d.dn)+"</span><b>"+esc(d.dt)+"</b></div>"+
     "<small>"+esc([d.trip, n+(n===1 ? " Stopp" : " Stopps"), d.km ? fmtDist(d.km) : ""].filter(Boolean).join(" · "))+"</small>"+
-    "<ol class=\"ch-dyl\">"+show.map(function(s, i){ return "<li><button type=\"button\" class=\"ch-dys\""+(draft ? " tabindex=\"-1\"" : " data-act=\"chdystop\" data-k=\""+key+"\" data-i=\""+i+"\"")+"><i>"+(i+1)+"</i><span class=\"cic\" style=\"--cc:"+catCol(s.c)+"\">"+icon(s.c)+"</span><span class=\"ch-dyn\">"+esc(s.n)+"</span></button></li>"; }).join("")+(draft && n > 3 ? "<li class=\"ch-dym\">+ "+(n-3)+" weitere</li>" : "")+"</ol>"+
+    "<ol class=\"ch-dyl\">"+show.map(function(s, i){ return (s.g && (i===0 || d.st[i-1].g!==s.g) ? "<li class=\"ch-dyg\">"+GRPICO+"<b>"+esc(s.g)+"</b><small>"+(function(){ var c = 0; for(var j = i; j < d.st.length && d.st[j].g===s.g; j++) c++; return c+" Spots"; })()+"</small></li>" : "")+"<li><button type=\"button\" class=\"ch-dys\""+(draft ? " tabindex=\"-1\"" : " data-act=\"chdystop\" data-k=\""+key+"\" data-i=\""+i+"\"")+"><i>"+(i+1)+"</i><span class=\"cic\" style=\"--cc:"+catCol(s.c)+"\">"+icon(s.c)+"</span><span class=\"ch-dyn\">"+esc(s.n)+"</span></button></li>"; }).join("")+(draft && n > 3 ? "<li class=\"ch-dym\">+ "+(n-3)+" weitere</li>" : "")+"</ol>"+
     (draft || isRO() || !days().length ? "" : "<div class=\"ch-pla\"><button type=\"button\" class=\"btn s\" data-act=\"chdytake\" data-k=\""+key+"\">"+ic("cal", "ii")+" Tag übernehmen</button></div>")+
     "</div></div>";
 }
@@ -14102,6 +14125,7 @@ function openCardMore(btn, id, kind){
   if(dk===cur && !dn) pl += row("unplan", I(IC.back), isHs ? "Zwischenstopp entfernen" : p.of ? "Diesen Besuch entfernen" : "Zurück in Wunschliste", "", "Aus dem Tagesplan nehmen");
   if(!dk && !isHs && !p.of && !isRO()) pl += p.park ? row("wunpark", I(IC.again), "Wieder auf Wunschliste", "", "Zurückstellen aufheben", " data-pid=\""+id+"\"")
     : row("wpark", I(IC.park), "Zurückstellen", "", "Aus der Wunschliste nehmen, ohne zu löschen", " data-pid=\""+id+"\"");
+  if(dk && !isHs && !isRO()){ var dg0 = dgFor(dk, id); as += row("dgpick", I(IC.group), dg0 ? "Gruppe am Tag" : "Am Tag gruppieren", dg0 ? esc(grpName(dg0)) : "", "Mehrere Spots dieses Tages zusammenfassen – im Tagebuch ein Eintrag, auf der Karte einzeln", " data-pid=\""+id+"\" data-day=\""+dk+"\""); }
   if(!isHs && !isRO()) as += row("grppick", I(IC.group), gidsOf(p).length > 1 ? "Gruppen" : gidsOf(p).length ? "Gruppe" : "Zu Gruppe hinzufügen", esc(grpNames(p)));
   if(!isHs && !p.of && p.k!=="photo" && !isRO()){
     if(p.c==="hotel" && !stayHotel(id) && hasLoc(p)) as += row("stay2h", I(IC.hotel), "Als Hotel übernehmen", "", "Als Hotel der Reise übernehmen, Zeitraum im Reise-Fenster prüfen", " data-pid=\""+id+"\"");
@@ -15092,7 +15116,7 @@ function renderAllDays(){
     tot += ids.length; dn += done.length;
     body += "<div class=\"sec adj\"><button type=\"button\" class=\"adh\" data-act=\"day\" data-day=\""+d.key+"\" aria-label=\""+esc(d.title)+" – Tag öffnen\"><span class=\"b"+yel(d)+"\" style=\"background:"+dayColor(d)+"\">"+d.n+"</span><span class=\"dt\"><b>"+esc(d.title)+(d.key===tk?" <em>Heute</em>":"")+"</b><small>"+(done.length ? done.length+" besucht" : ids.length ? "noch nichts besucht" : "noch leer")+(ids.length > done.length && !isRO() ? " · "+(ids.length-done.length)+" offen" : "")+(d.hint?" · "+esc(d.hint):"")+"</small></span>"+CHEV+"</button>";
     if(J.hl) body += "<p class=\"jhl\"><span class=\"star\">★</span> Highlight: <b>"+esc(J.hl)+"</b></p>";
-    if(done.length) body += "<ul class=\"jlist\">"+done.map(function(id){ return jItem(id, d.key); }).join("")+"</ul>";
+    if(done.length) body += "<ul class=\"jlist\">"+jItems(done, d.key)+"</ul>";
     if(J.text) body += "<p class=\"note adtx\">"+esc(J.text)+"</p>";
     body += "</div>";
   });
@@ -15173,7 +15197,7 @@ function renderDay(){
   var hRow = function(tok, lbl){ var hs = tok==="@hs", sub = lbl+(hs && HS!==HT ? " · Check-out" : !hs && HS!==HT ? " · Check-in" : ""), tm = stayTime(hs ? HS : HT, hs ? "co" : "ci"); return "<li class=\"ht hx\" data-id=\""+tok+"\"><span class=\"h\">H</span><span><b>"+(hs ? hnS : hn)+"</b> <span class=\"sub\">"+sub+(tm ? " "+esc(tm) : "")+"</span></span>"+(isRO() ? "" : "<button type=\"button\" class=\"grip\" aria-label=\"Hotel ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben – Ziele können auch nach dem Hotel stehen\">"+GRIPSVG+"</button>")+"</li>"; };
   if(HS && (!LG.length || LG[0][0]===HS)) h += hRow("@hs", "Start");
   var prev = HS, n = 0;
-  var nHid = 0, shown = 0;
+  var nHid = 0, shown = 0, dgPrev = "";
   ids.forEach(function(id, i){
     var p = P(id), isH = p.k==="hotel"; if(!isH) n++;
     if(hid(id)){ nHid++; return; }
@@ -15182,7 +15206,10 @@ function renderDay(){
     if(li0 > -1) h += legLi(LG[li0][0], p, li0);
     else if(!hasLoc(p) && (i>0 || HS)) h += "<li class=\"leg\">Strecke unbekannt</li>";
     var opts = days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===cur?" selected":"")+">"+d.lbl+"</option>"; }).join("");
-    h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
+    var dgi = dgFor(cur, id);
+    if(dgi && dgi!==dgPrev){ var dgn = 0; for(var q = i; q < ids.length && dgFor(cur, ids[q])===dgi; q++) if(!hid(ids[q])) dgn++; h += dgHead(cur, dgi, dgn); }
+    dgPrev = dgi;
+    h += "<li class=\"st"+(T().done[id]?" done":"")+(dgi?" dgm":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
       "<div class=\"lcol\">"+(isH ? "<button type=\"button\" class=\"no hs\" data-act=\"stopopen\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":"H")+"</button>"
             : "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>")+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\">"+GRIPSVG+"</button>"+"</div>"+
       "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? "<span class=\"privmk\" title=\"Privat – nur Mitreisende\">"+ILOCK+"privat</span>" : "")+(canPriv() && isPubP(id) ? "<span class=\"pubmk\" title=\"Für Freunde veröffentlicht\">"+VISPUB+"</span>" : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+ohRowMark(id)+esc(p.k==="hotel" ? (hFree(cur) && i===0 ? "Start im Hotel" : hFree(cur) && i===ids.length-1 ? "Zurück ins Hotel" : "Zwischenstopp im Hotel") : evLoc(p) || p.nl ? "" : CATNAME[p.c])+(evLoc(p) ? evInBtn(p) : evNlBtn(p))+(function(){ var gn = grpNames(P(rootOf(id))||p); return gn ? " · <span class=\"sgrp\" title=\"Gruppe\">"+GRPICO+esc(gn)+"</span>" : ""; })()+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
@@ -15258,6 +15285,22 @@ function jItem(id, dk){
     (ph.length ? "<span class=\"jc-ph\">"+ph.slice(0,4).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(ph.length>4?"<i>+"+(ph.length-4)+"</i>":"")+"</span>" : "")+
     "</span></button></li>";
 }
+// Tagebuch-Einträge: Spots einer Gruppe am Tag (ab zwei besuchten) als ein aufklappbarer Eintrag an der Stelle des ersten
+var jgOpen = {}; try { jgOpen = JSON.parse(lsGet("rp-jg")||"{}") || {}; } catch(e){ jgOpen = {}; }
+function jItems(ids, dk){ var seen = {}, out = "";
+  ids.forEach(function(id){ var g = dgFor(dk, id), mem = g ? ids.filter(function(x){ return dgFor(dk, x)===g; }) : [];
+    if(mem.length < 2){ out += jItem(id, dk); return; }
+    if(!seen[g]){ seen[g] = 1; out += jGroup(dk, g, mem); } });
+  return out; }
+function jGroup(dk, g, mem){
+  var key = dk+"|"+g, op = !!jgOpen[key], J = (T().journal||{})[dk] || {}, ph = [], hl = false, nc = 0;
+  mem.forEach(function(id){ ph = ph.concat(photosOf(id)); if(J.hl && J.hl===P(id).n) hl = true; nc += (CMTS[id]||[]).length; });
+  return "<li class=\"jgrp\"><button type=\"button\" class=\"jcard jg-h\" data-act=\"jgtoggle\" data-k=\""+esc(key)+"\" aria-expanded=\""+op+"\">"+
+    "<span class=\"jg-ic\">"+GRPICO+"</span><span class=\"jc-m\"><b>"+esc(grpName(g))+(hl ? " <span class=\"star\">★</span>" : "")+(nc ? " <span class=\"cmc\">"+ic("comment", "ii")+" "+nc+"</span>" : "")+"</b>"+
+    "<small>"+mem.length+" Spots"+(ph.length ? " · "+ph.length+(ph.length===1 ? " Foto" : " Fotos") : "")+"</small>"+
+    (!op && ph.length ? "<span class=\"jc-ph\">"+ph.slice(0,4).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(ph.length>4 ? "<i>+"+(ph.length-4)+"</i>" : "")+"</span>" : "")+
+    "</span>"+CHEV+"</button>"+(op ? "<ul class=\"jlist jg-l\">"+mem.map(function(id){ return jItem(id, dk); }).join("")+"</ul>" : "")+"</li>";
+}
 function journalBlock(D){
   var J = (T().journal||{})[D.key] || {}, done = ord(D.key).filter(function(id){ return T().done[id] && P(id); });
   var nNotes = done.filter(function(id){ return noteOf(id) || photosOf(id).length; }).length;
@@ -15266,7 +15309,7 @@ function journalBlock(D){
   if(!jOpen) return h+"</div>";
   h += "<div class=\"jr\">";
   if(J.hl) h += "<p class=\"jhl\"><span class=\"star\">★</span> Highlight: <b>"+esc(J.hl)+"</b></p>";
-  h += done.length ? "<ul class=\"jlist\">"+done.map(function(id){ return jItem(id, D.key); }).join("")+"</ul>"
+  h += done.length ? "<ul class=\"jlist\">"+jItems(done, D.key)+"</ul>"
                    : "<p class=\"note\">Hake Stopps im Tagesplan ab. Dann erscheinen sie hier, und du kannst zu jedem Notizen und Fotos festhalten.</p>";
   if(J.text) h += "<label><span>Weitere Notizen zum Tag</span><textarea id=\"jText\" data-j=\"text\" rows=\"3\" maxlength=\"5000\">"+esc(J.text)+"</textarea></label>";
   h += "</div></div>";
@@ -16133,6 +16176,66 @@ function openGrpPop(pid){
 function setGroup(pid, gid, on){ var p = T().places[pid]; if(!p) return; var a = Array.isArray(p.g) ? p.g.slice() : p.g ? [p.g] : [], i = a.indexOf(gid);
   if(!gid) a = []; else if(i < 0) a.push(gid); else if(!on) a.splice(i, 1);
   setGids(p, a); save(); }
+/* ---------- Gruppen am Tag (z. B. viele Fotospots an der Brooklyn Bridge): eine Reise-Gruppe gilt an einem Tag als zusammengehörig (T().dg[Tag] = {gid:1}).
+   Tagesplan: Kopfzeile über den Spots, Tagebuch: ein aufklappbarer Eintrag. Karte, Route und Reihenfolge bleiben einzelne Orte. ---------- */
+function dgOf(k){ var o = (T().dg||{})[k] || {}; return Object.keys(o).filter(function(g){ return o[g] && grpName(g); }).sort(function(a, b){ return grpName(a).localeCompare(grpName(b), "de"); }); }
+function dgRoot(id){ return T().places[rootOf(id)] || P(id); } // Besuche (p.of) gehören zur Gruppe ihres Orts
+function dgFor(k, id){ var gs = dgOf(k), p; if(!gs.length || isHStop(id) || !(p = dgRoot(id))) return ""; for(var i = 0; i < gs.length; i++) if(inGrp(p, gs[i])) return gs[i]; return ""; }
+function dgMembers(k, gid){ return ord(k).filter(function(id){ return P(id) && dgFor(k, id)===gid; }); }
+function dgSetIn(p, gid, on){ var a = Array.isArray(p.g) ? p.g.slice() : p.g ? [p.g] : [], i = a.indexOf(gid); if(on && i < 0) a.push(gid); else if(!on && i > -1) a.splice(i, 1); else return; setGids(p, a); }
+function dgHead(k, gid, n){ var nm = esc(grpName(gid)), in0 = GRPICO+"<b>"+nm+"</b><small>"+n+(n===1 ? " Spot" : " Spots")+"</small>";
+  return "<li class=\"dgh\">"+(isRO() ? "<span class=\"dgh-b\">"+in0+"</span>" : "<button type=\"button\" class=\"dgh-b\" data-act=\"dgedit\" data-day=\""+k+"\" data-g=\""+gid+"\" aria-label=\"Gruppe "+nm+" bearbeiten\">"+in0+ic("edit", "ii")+"</button>")+"</li>"; }
+var DG = null;
+function openDgPop(k, gid, pid){
+  if(!dayByKey(k) || isRO()) return;
+  var sel = {}, n = "";
+  if(gid && grpName(gid)){ dgMembers(k, gid).forEach(function(x){ sel[x] = 1; }); n = grpName(gid); }
+  else { gid = "";
+    // Vorschlag: vorhandene Reise-Gruppe des Spots, sonst der Spot selbst
+    var g0 = pid && dgRoot(pid) ? gidsOf(dgRoot(pid))[0] : "";
+    if(g0){ n = grpName(g0); ord(k).forEach(function(x){ if(P(x) && !isHStop(x) && inGrp(dgRoot(x), g0)) sel[x] = 1; }); }
+    if(pid) sel[pid] = 1; }
+  DG = {k:k, gid:gid, sel:sel, n:n}; renderDgPop();
+}
+function renderDgPop(){
+  if(!DG) return; var D = dayByKey(DG.k); if(!D){ DG = null; return; }
+  var inp = $("dgName"); if(inp) DG.n = inp.value;
+  var L = document.querySelector("#catPop .dg-list"), st = L ? L.scrollTop : 0;
+  var ids = ord(DG.k).filter(function(id){ return P(id) && !isHStop(id); }), ns = ids.filter(function(id){ return DG.sel[id]; }).length;
+  var h = "<div class=\"pop-card dg-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Spots gruppieren\"><div class=\"pop-head\"><h4>"+(DG.gid ? "Gruppe am Tag "+D.n : "Spots gruppieren · Tag "+D.n)+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<form class=\"gnew\" id=\"dgForm\"><input type=\"text\" id=\"dgName\" maxlength=\"40\" placeholder=\"Name, z. B. Brooklyn Bridge\" value=\""+esc(DG.n)+"\" autocomplete=\"off\" aria-label=\"Name der Gruppe\"></form>"+
+    "<p class=\"note dg-hint\">Im Tagebuch stehen die Spots dann als ein aufklappbarer Eintrag. Auf der Karte bleiben sie einzeln.</p>"+
+    "<div class=\"pop-list glist dg-list\">"+ids.map(function(id){ var p = P(id); return "<button type=\"button\" data-act=\"dgtog\" data-pid=\""+id+"\" aria-pressed=\""+!!DG.sel[id]+"\"><span class=\"cic\">"+icon(p.c)+"</span><span>"+esc(p.n)+"</span></button>"; }).join("")+"</div>"+
+    "<button type=\"button\" class=\"btn dg-ok\" data-act=\"dgsave\""+(ns < 2 ? " aria-disabled=\"true\"" : "")+">"+(DG.gid ? "Speichern" : "Gruppieren")+(ns ? " · "+ns+(ns===1 ? " Spot" : " Spots") : "")+"</button>"+
+    (DG.gid ? "<button type=\"button\" class=\"btn deltrip dg-del\" data-act=\"dgdel\">"+ic("del")+"Gruppe auflösen</button>" : "")+"</div>";
+  $("catPop").innerHTML = h; $("catPop").hidden = false;
+  var L2 = document.querySelector("#catPop .dg-list"); if(L2 && st) L2.scrollTop = st;
+}
+function dgSave(){
+  if(!DG) return; var t = T(), k = DG.k, inp = $("dgName"), nm = ((inp && inp.value) || "").trim().slice(0, 40);
+  var sel = ord(k).filter(function(id){ return DG.sel[id] && P(id) && !isHStop(id); });
+  if(sel.length < 2){ toast("Wähle mindestens zwei Spots", false); return; }
+  if(!nm){ toast("Gib der Gruppe einen Namen", false); if(inp) inp.focus(); return; }
+  t.groups = t.groups || {};
+  var gid = DG.gid && t.groups[DG.gid] ? DG.gid : "";
+  if(gid){ if(t.groups[gid].n!==nm) t.groups[gid] = {n:nm}; }
+  else { var ex = groups().filter(function(g){ return g.n.toLowerCase()===nm.toLowerCase(); })[0]; gid = ex ? ex.id : uid("g"); if(!ex) t.groups[gid] = {n:nm}; }
+  // Mitglieder = gewählte Spots des Tages; abgewählte Spots dieses Tages verlassen die Gruppe
+  ord(k).forEach(function(id){ var p = P(id) && !isHStop(id) ? dgRoot(id) : null; if(p) dgSetIn(p, gid, sel.indexOf(id) > -1); });
+  // die Spots rücken im Tagesplan zusammen, an die Stelle des ersten
+  var o = ord(k), first = -1; o.forEach(function(id, i){ if(first < 0 && sel.indexOf(id) > -1) first = i; });
+  var rest = o.filter(function(id){ return sel.indexOf(id) < 0; }), before = o.slice(0, first).filter(function(id){ return sel.indexOf(id) < 0; }).length;
+  t.order[k] = rest.slice(0, before).concat(sel, rest.slice(before));
+  t.dg = t.dg || {}; t.dg[k] = Object.assign({}, t.dg[k] || {}); t.dg[k][gid] = 1;
+  DG = null; closeCatPop(); save(); renderSheet(); renderCard(); scheduleOverlay(); if(jp && !$("jPop").hidden) renderJPop();
+  toast("„"+nm+"“: "+sel.length+" Spots gruppiert", false);
+}
+function dgDel(){
+  if(!DG || !DG.gid) return; var k = DG.k, gid = DG.gid;
+  askConfirm("Gruppe auflösen?", "Die Spots bleiben im Tagesplan und im Tagebuch, nur nicht mehr zusammengefasst.", "Auflösen", function(){
+    var t = T(); if(t.dg && t.dg[k]){ var o = Object.assign({}, t.dg[k]); delete o[gid]; if(Object.keys(o).length) t.dg[k] = o; else delete t.dg[k]; }
+    DG = null; closeCatPop(); save(); renderSheet(); renderCard(); toast("Gruppe aufgelöst", false); });
+}
 function norm(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[’']/g,"'"); }
 function qMatch(p){
   if(!wishQuery.trim()) return true;
@@ -16388,7 +16491,7 @@ function renderTrip(){
       if(!J.hl && !J.text && !done.length) return; any = true;
       jh += "<div class=\"jday\"><button type=\"button\" class=\"pill"+yel(d)+"\" style=\"background:"+dayColor(d)+"\" data-act=\"gotoday\" data-day=\""+d.key+"\">Tag "+d.n+" · "+esc(d.lbl)+"</button>";
       if(J.hl) jh += "<p class=\"jhl\"><span class=\"star\">★</span> "+esc(J.hl)+"</p>";
-      if(done.length) jh += "<ul class=\"jlist\">"+done.filter(function(id){ return P(id); }).map(function(id){ return jItem(id, d.key); }).join("")+"</ul>";
+      if(done.length) jh += "<ul class=\"jlist\">"+jItems(done.filter(function(id){ return P(id); }), d.key)+"</ul>";
       if(J.text) jh += "<textarea class=\"jedit\" id=\"jText-"+d.key+"\" data-j=\"text\" data-jd=\""+d.key+"\" rows=\"3\" maxlength=\"5000\" aria-label=\"Weitere Notizen "+esc(d.lbl)+"\">"+esc(J.text)+"</textarea>";
       jh += "</div>";
     });
@@ -17411,6 +17514,12 @@ document.addEventListener("click", function(e){
     case "rngopen": rngOpen(t.getAttribute("data-f")); break;
     case "ohopen": ohOpen = ohOpen===t.getAttribute("data-id") ? null : t.getAttribute("data-id"); renderCard(); break;
     case "depopen": var dsi = t.getAttribute("data-st"); depOpen[dsi] = !depOpen[dsi]; renderCard(); break;
+    case "jgtoggle": var jgk = t.getAttribute("data-k"); if(jgOpen[jgk]) delete jgOpen[jgk]; else jgOpen[jgk] = 1; lsSet("rp-jg", JSON.stringify(jgOpen)); renderSheet(); break;
+    case "dgpick": closeJpMore(); openDgPop(t.getAttribute("data-day"), dgFor(t.getAttribute("data-day"), t.getAttribute("data-pid")), t.getAttribute("data-pid")); break;
+    case "dgedit": openDgPop(t.getAttribute("data-day"), t.getAttribute("data-g")); break;
+    case "dgtog": if(DG){ var dgp = t.getAttribute("data-pid"); if(DG.sel[dgp]) delete DG.sel[dgp]; else DG.sel[dgp] = 1; renderDgPop(); } break;
+    case "dgsave": dgSave(); break;
+    case "dgdel": dgDel(); break;
     case "jtoggle": jOpen = !jOpen; lsSet("nyc-j-open", jOpen?"1":"0"); renderSheet(); break;
     case "jins": jAppend([id], true); break;
     case "jall": jAppend(ord(cur).filter(function(x){ return T().done[x] && P(x); }), true); break;
@@ -17668,6 +17777,7 @@ document.addEventListener("submit", function(e){
     cmRef(jp.pid).add(cdoc).catch(function(e2){ toast("Kommentar nicht gespeichert: "+(e2 && e2.message), false); });
     return;
   }
+  if(id==="dgForm"){ dgSave(); return; }
   if(id==="grpNew"){
     var gn = ($("grpNewIn").value||"").trim(); if(!gn){ $("grpNewIn").focus(); return; }
     var tg2 = T(); tg2.groups = tg2.groups || {};

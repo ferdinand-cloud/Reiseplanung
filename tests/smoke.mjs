@@ -2352,6 +2352,51 @@ await test("Gruppen: ein Ort in mehreren Gruppen (alte Einzel-Zuordnung bleibt g
   ok(await rp(`P("${id}").g===undefined`), "„Keine Gruppe“ leert die Zuordnung nicht");
 });
 
+await test("Gruppe am Tag: Spots zusammenfassen – Kopfzeile im Tagesplan, Tagebuch aufklappbar, Karte einzeln, Chat, auflösen", async () => {
+  await seed();
+  const ids = await rp(`(function(){ var a = Object.keys(T().places).filter(function(k){ var p = P(k); return !p.of && p.k!=="hotel" && hasLoc(p); }).slice(0, 4); a.forEach(function(k){ Object.keys(T().order).forEach(function(d){ T().order[d] = T().order[d].filter(function(x){ return x!==k; }); }); delete T().done[k]; }); T().order[cur] = a.slice(); renderAll(); return a; })()`);
+  ok(ids.length===4, "Zu wenige Orte im Testdatensatz");
+  await rp(`(function(){ setSheet("mid"); select("${ids[1]}"); })()`); await page.waitForTimeout(250);
+  await click("#card [data-act=cardmore]");
+  ok(await visible("#jpMenu [data-act=dgpick]"), "„Am Tag gruppieren“ fehlt im Ort-Menü");
+  await click("#jpMenu [data-act=dgpick]");
+  ok(await visible("#catPop .dg-list"), "Gruppieren-Fenster öffnet nicht");
+  ok(await rp(`document.querySelector('#catPop [data-act=dgtog][data-pid="${ids[1]}"]').getAttribute("aria-pressed")==="true"`), "Ausgangs-Spot nicht vorgewählt");
+  await click(`#catPop [data-act=dgtog][data-pid="${ids[3]}"]`);
+  ok(await visible("#catPop .dg-list"), "Fenster schließt nach dem Antippen eines Spots");
+  await page.fill("#dgName", "Brooklyn Bridge"); await click("#catPop [data-act=dgsave]");
+  ok(!(await visible("#catPop")), "Fenster bleibt nach dem Gruppieren offen");
+  ok(await rp(`ord(cur).join()===${JSON.stringify([ids[0], ids[1], ids[3], ids[2]].join())}`), "Spots rücken nicht zusammen: "+await rp(`ord(cur).join()`));
+  const gid = await rp(`dgOf(cur)[0]`);
+  ok(gid && await rp(`grpName("${gid}")==="Brooklyn Bridge" && inGrp(P("${ids[1]}"), "${gid}") && inGrp(P("${ids[3]}"), "${gid}") && !inGrp(P("${ids[0]}"), "${gid}")`), "Reise-Gruppe nicht angelegt/zugeordnet");
+  // Tagesplan: eine Kopfzeile, Spots eingerückt, Karte und Route weiter mit allen einzelnen Spots
+  ok(await rp(`(function(){ var h = $("body").querySelectorAll("li.dgh"); return h.length===1 && /Brooklyn Bridge/.test(h[0].textContent) && /2 Spots/.test(h[0].textContent) && $("body").querySelectorAll("li.st.dgm").length===2; })()`), "Kopfzeile im Tagesplan fehlt oder falsch");
+  ok(await rp(`routePts(cur).length===4`), "Route fasst Spots zusammen (soll einzeln bleiben)");
+  await rp(`(function(){ setSheet("full"); return true; })()`); await page.waitForTimeout(400);
+  await page.evaluate(() => { const e = document.querySelector("#body li.dgh"); if(e) e.scrollIntoView({block:"center"}); }); await shot("gruppe-tagesplan");
+  // Tagebuch: Gruppe als ein Eintrag, zugeklappt; aufgeklappt einzelne Spots
+  await rp(`(function(){ ${JSON.stringify(ids)}.forEach(function(k){ T().done[k] = Date.now(); }); jOpen = true; hideDone = false; renderAll(); return true; })()`);
+  ok(await rp(`$("body").querySelectorAll(".jlist > .jgrp").length===1 && $("body").querySelectorAll(".jlist > li > .jcard[data-act=jopen]").length===2 && !$("body").querySelector(".jg-l")`), "Tagebuch zeigt die Gruppe nicht als einen zugeklappten Eintrag");
+  ok(await rp(`/2 Spots/.test($("body").querySelector(".jg-h").textContent)`), "Anzahl Spots fehlt im Tagebuch-Eintrag");
+  await page.evaluate(() => { const e = document.querySelector("#body .jgrp"); if(e) e.scrollIntoView({block:"center"}); }); await shot("gruppe-tagebuch-zu");
+  await click("#body .jg-h");
+  ok(await rp(`$("body").querySelector(".jg-h").getAttribute("aria-expanded")==="true" && $("body").querySelectorAll(".jg-l .jcard[data-act=jopen]").length===2`), "Aufgeklappt fehlen die einzelnen Spots");
+  await shot("gruppe-tagebuch-auf");
+  await click(`#body .jg-l .jcard[data-pid="${ids[3]}"]`);
+  ok(await visible("#jPop .jp"), "Spot in der Gruppe öffnet kein Detail");
+  await rp(`(function(){ jp = null; renderJPop(); return true; })()`);
+  // Chat: Tag teilen nennt die Gruppe
+  ok(await rp(`(function(){ var o = chDayFrom(cur); return o.st.filter(function(s){ return s.g==="Brooklyn Bridge"; }).length===2 && chDayCard(o, "x").indexOf("ch-dyg") > -1; })()`), "Tag im Chat zeigt die Gruppe nicht");
+  // Auflösen über die Kopfzeile, mit Rückfrage; Reise-Gruppe bleibt
+  await rp(`(function(){ T().done = {}; renderAll(); return true; })()`);
+  await click("#body li.dgh [data-act=dgedit]");
+  ok(await visible("#catPop .dg-del"), "Auflösen fehlt beim Bearbeiten");
+  await click("#catPop .dg-del");
+  ok(await visible("#cfPop"), "Keine Rückfrage beim Auflösen");
+  await click("#cfPop .cf-ok");
+  ok(await rp(`dgOf(cur).length===0 && !$("body").querySelector("li.dgh") && inGrp(P("${ids[1]}"), "${gid}")`), "Auflösen falsch");
+});
+
 await test("Ort-Menü (Mehr): Gruppen Planen/Zuordnen/Infos, einzeilige Zeilen, Löschen unten in voller Breite mit Rückfrage", async () => {
   await seed();
   const id = await rp(`Object.keys(T().places).filter(function(k){ return dayOf(k)===cur && P(k).k!=="hotel" && !T().done[k]; })[0]`);
