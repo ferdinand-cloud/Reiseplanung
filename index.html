@@ -4201,8 +4201,8 @@ body.ro .navtools [data-act="addpop"]{display:none}
 :root{--del:#C4462F}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--del:#F0766A} }
 :root[data-theme="dark"]{--del:#F0766A}
-:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="folrm"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="evkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],[data-ai="del"],.btn.warn,.tf-link.warn){color:var(--del) !important}
-.btn:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="folrm"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="evkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],.warn){background:color-mix(in srgb,var(--del) 13%,transparent) !important;border-color:color-mix(in srgb,var(--del) 30%,transparent) !important}
+:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="folrm"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="tlkeydel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="evkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],[data-ai="del"],.btn.warn,.tf-link.warn){color:var(--del) !important}
+.btn:is([data-act="zdel"],[data-act="zareadel"],[data-act="zpldel"],[data-act="zmrem"],[data-act="zinvdel"],[data-act="trippurge"],[data-act="folrm"],[data-act="fgdel"],[data-act="avdel"],[data-act="offdel"],[data-act="tlkeydel"],[data-act="mremove"],[data-act="minvdel"],[data-act="mleave"],[data-act="cmdel"],[data-act="ntclear"],[data-act="gkeydel"],[data-act="evkeydel"],[data-act="viadel"],[data-act="viaclear"],[data-act="grpdel"],[data-act="tdel"],[data-act="moredel"],[data-act="phdel"],.warn){background:color-mix(in srgb,var(--del) 13%,transparent) !important;border-color:color-mix(in srgb,var(--del) 30%,transparent) !important}
 :is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) :is(b,.ai){color:var(--del) !important}
 :is([data-act="moredel"],[data-act="phdel"],[data-act="viadel"],[data-act="viaclear"]) .ai{background:color-mix(in srgb,var(--del) 12%,transparent) !important}
 
@@ -9233,7 +9233,7 @@ function renderAcct(){
   h += "<div class=\"sec\"><h4>Sicherung</h4><div class=\"backup\"><button type=\"button\" class=\"btn g s\" data-act=\"export\">Plan als Datei sichern</button><label class=\"btn g s\" for=\"impFile\">Sicherung laden</label><input type=\"file\" id=\"impFile\" accept=\"application/json,.json\"></div></div>";
   return h;
 }
-var gOpen = false;
+var gOpen = false, tlOpen = false, tlMsg = "";
 function acctHTML(){
   var u = acct.user, mail = u ? (u.email||"") : "", ini = (mail[0]||"?").toUpperCase();
   var st = !u ? ["off","Nicht angemeldet"] : acct.state==="sync" ? ["sync","Gleiche ab …"] : acct.state==="error" ? ["err","Abgleich fehlgeschlagen – wird erneut versucht"] : !navigator.onLine ? ["off","Offline – Änderungen folgen später"] : ["ok","Synchronisiert"+(acct.at ? " um "+new Date(acct.at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "")];
@@ -9246,6 +9246,11 @@ function acctHTML(){
   // Google
   h += "<div class=\"ag-lbl\">Bewertungen &amp; Fotos</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"gtoggle\" aria-expanded=\""+gOpen+"\"><span><b>Google-Schlüssel</b><small>"+(gKey ? "Aktiv – nur auf diesem Gerät" : "Nicht eingerichtet")+"</small></span><em class=\"chev\">"+(gOpen?"⌄":"›")+"</em></button>";
   if(gOpen) h += "<div class=\"ag-in\"><div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\">"+esc(gMsg)+"</p>":"")+"</div>";
+  h += "</div>";
+  // ÖPNV-Karte (Transitland): Schlüssel nur auf dem Gerät, nicht im öffentlichen Code
+  var tk = lsGet("rp-tlkey") || "";
+  h += "<div class=\"ag-lbl\">ÖPNV-Karte</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"tltoggle\" aria-expanded=\""+tlOpen+"\"><span><b>Transitland-Schlüssel</b><small>"+(tk ? (TL.bad ? "Abgelehnt – ÖPNV aus OpenStreetMap" : "Aktiv – nur auf diesem Gerät") : "Nicht eingerichtet – ÖPNV aus OpenStreetMap")+"</small></span><em class=\"chev\">"+(tlOpen?"⌄":"›")+"</em></button>";
+  if(tlOpen) h += "<div class=\"ag-in\"><div class=\"gkey\"><input type=\"password\" id=\"tlKeyIn\" autocomplete=\"off\" spellcheck=\"false\" autocapitalize=\"off\" placeholder=\""+(tk?"••••••••"+esc(tk.slice(-4)):"iwa_live_…")+"\" aria-label=\"Transitland-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"tlkeysave\">Speichern</button>"+(tk?"<button type=\"button\" class=\"btn g s\" data-act=\"tlkeydel\">Entfernen</button>":"")+"</div>"+(tlMsg?"<p class=\"note\">"+esc(tlMsg)+"</p>":"")+"</div>";
   h += "</div>";
   // Events (Ticketmaster): Schlüssel wird im Events-Fenster eingetragen, hier nur Status und Entfernen
   if(tmKey) h += "<div class=\"ag-lbl\">Events</div><div class=\"ag-grp\"><div class=\"ag-row\"><span><b>Ticketmaster-Schlüssel</b><small>Aktiv – nur auf diesem Gerät</small></span><button type=\"button\" class=\"btn g s\" data-act=\"evkeydel\">Entfernen</button></div></div>";
@@ -12181,7 +12186,7 @@ function vtApply(){
    Fertige Vektorkacheln mit Linien und Haltestellen aus den offiziellen Fahrplänen (GTFS) – wie Apple Karten: nichts wird live
    zusammengesucht, die Karte zeichnet nur fertige Stücke. Ersetzt die Overpass-Abfragen für Linien; ohne (gültigen) Schlüssel bleibt das Kachelraster oben.
    Kostenlos nur nicht kommerziell (Tarif „Explorer“, faire Nutzung); Linien ab Zoom 9, Busse ab Zoom 12. */
-var TLKEY = "";
+var TLKEY = ""; // Schlüssel kommt nicht ins öffentliche Repo: wird auf dem Gerät eingetragen (Menü → Einstellungen, rp-tlkey)
 var TL = {bad:false, err:0, tm:0, bike:[], msg:false};
 var TLZ = 9, TLZB = 12;
 function tlKey(){ return TL.bad ? "" : (lsGet("rp-tlkey") || TLKEY); }
@@ -12197,7 +12202,9 @@ var TLC = ["case", ["==", ["length", ["to-string", ["get","route_color"]]], 7], 
   ["match", TLM, "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "bus", "#1f6fd1", DCOL.train]];
 var TLRAIL = ["any", ["in", "0", ["to-string", ["get","route_types_basic"]]], ["in", "1", ["to-string", ["get","route_types_basic"]]], ["in", "2", ["to-string", ["get","route_types_basic"]]]];
 function tlSetup(){
-  if(!mapReady || !tlKey() || map.getSource("tl-r")) return;
+  if(!mapReady || !tlKey()) return;
+  if(map.getSource("tl-r")){ if(TL.k!==tlKey()){ TL.k = tlKey(); ["tl-r","tl-s"].forEach(function(s){ var src = map.getSource(s); if(src && src.setTiles) src.setTiles([tlUrl(s==="tl-r" ? "routes" : "stops")]); }); } return; }
+  TL.k = tlKey();
   var gl = !!map.getStyle().glyphs, halo = isDark() ? "#111a22" : "#ffffff", none = {visibility:"none", "line-cap":"round", "line-join":"round"}, bef = map.getLayer("dtr") ? "dtr" : undefined;
   map.addSource("tl-r", {type:"vector", tiles:[tlUrl("routes")], minzoom:0, maxzoom:14, attribution:"ÖPNV: Transitland"});
   map.addSource("tl-s", {type:"vector", tiles:[tlUrl("stops")], minzoom:0, maxzoom:14});
@@ -14327,6 +14334,7 @@ var CONFIRM = {
   minvdel:["Einladung zurückziehen?", "", "Zurückziehen"],
   fgdel:["Gruppe löschen?", "Die Personen bleiben deine Freunde – nur die Gruppe verschwindet.", "Löschen"],
   gkeydel:["Google-Schlüssel entfernen?", "", "Entfernen"],
+  tlkeydel:["Transitland-Schlüssel entfernen?", "Der ÖPNV kommt dann wieder aus OpenStreetMap.", "Entfernen"],
   evkeydel:["Ticketmaster-Schlüssel entfernen?", "Events lassen sich dann erst nach erneutem Eintragen wieder laden.", "Entfernen"]
 };
 function askConfirm(title, text, ok, fn, no, noHint){
@@ -17559,6 +17567,14 @@ document.addEventListener("click", function(e){
     case "phdel": var dph = t.getAttribute("data-ph"), dsrc = jp.list || photosAll(jp.pid), rest = dsrc.filter(function(x){ return x!==dph; }), di = dsrc.indexOf(dph); if(jp.list){ jp.list = rest; RC.dirty = true; }
       delPhoto(phPlace(dph) || jp.pid, dph); jp.view = rest.length ? rest[Math.min(di, rest.length-1)] : null; if(jp.list && jp.view && phPlace(jp.view)) jp.pid = phPlace(jp.view); if(lsPage) renderLs(); if(!jp.view && !!jp.ret){ closeJPop(); break; } renderJPop(); break;
     case "gtoggle": gOpen = !gOpen; openSettings(); break;
+    case "tltoggle": tlOpen = !tlOpen; openSettings(); break;
+    case "tlkeysave":
+      var tv = ($("tlKeyIn").value||"").trim(); if(!tv){ $("tlKeyIn").focus(); break; }
+      tlMsg = "Prüfe Schlüssel …"; refreshSettings();
+      fetch("https://transit.land/api/v2/tiles/routes/tiles/0/0/0.pbf?apikey="+encodeURIComponent(tv))
+        .then(function(r){ if(r.status===401 || r.status===403) throw r.status; if(!r.ok) throw "net"; lsSet("rp-tlkey", tv); TL.bad = false; TL.nst = 0; TL.err = 0; TL.sig = ""; tlMsg = "Schlüssel funktioniert – der ÖPNV kommt jetzt von Transitland."; refreshSettings(); applyLayers(); })
+        .catch(function(e){ tlMsg = e===401 || e===403 ? "Transitland lehnt den Schlüssel ab." : "Prüfung fehlgeschlagen (keine Verbindung oder vom Browser blockiert)."; refreshSettings(); });
+      break;
     case "jpmore": openJpMore(jp ? jp.pid : id, t); break;
     case "ratepick": openRatePick(t.closest("#jPop") && jp ? jp.pid : id, t); break;
     case "cphopen": var cpp = sel; if(P(cpp)){ openJPop(cpp, dayOf(cpp) || "", t.getAttribute("data-ph")); if(jp) jp.ret = "card"; } break; // Foto aus der Ortskarte: beim Schließen zurück zur Karte
@@ -17639,6 +17655,7 @@ document.addEventListener("click", function(e){
         .then(function(r){ if(!r.ok) throw r.status; gKey = gv; lsSet("nyc-gkey", gv); gInfo = {}; gMsg = "Schlüssel funktioniert."; refreshSettings(); renderCard(); })
         .catch(function(e){ gMsg = e===403||e===400 ? "Google lehnt den Schlüssel ab. Ist die Places API (New) aktiviert und die Website freigegeben?" : "Prüfung fehlgeschlagen (keine Verbindung?)."; refreshSettings(); });
       break;
+    case "tlkeydel": try { localStorage.removeItem("rp-tlkey"); } catch(e){} TL.sig = ""; tlMsg = "Schlüssel entfernt – ÖPNV wieder aus OpenStreetMap."; refreshSettings(); applyLayers(); break;
     case "gkeydel": gKey = ""; gInfo = {}; gMsg = "Schlüssel entfernt."; try { localStorage.removeItem("nyc-gkey"); } catch(e){} refreshSettings(); renderCard(); break;
     case "gofrom": goSt.from = t.getAttribute("data-from"); renderGo(); break;
     case "goapp": goApp = t.getAttribute("data-app"); lsSet("nyc-go-app", goApp); renderGo(); break;

@@ -136,6 +136,7 @@ async function seed(){
     t.photos = {p4:["ph_a","ph_b"], p5:["ph_c"]};
     var c = document.createElement("canvas"); c.width = 320; c.height = 240; var g = c.getContext("2d");
     ["#c33","#3a3","#36c"].forEach(function(col, i){ g.fillStyle = col; g.fillRect(0, 0, 320, 240); g.fillStyle = "#fff"; g.font = "60px sans-serif"; g.fillText(String(i+1), 140, 140); PHC[["ph_a","ph_b","ph_c"][i]] = c.toDataURL("image/jpeg", .7); });
+    TLKEY = ""; // Tests ohne echten Transitland-Schlüssel (kein Kontingent verbrauchen); der Transitland-Test setzt einen eigenen
     acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; fbDb = null; acct.state = "ok"; lsSet("rp-dcdemo", "0"); DCSIG = "";
     S = {trips:{t_test:t}, cur:"t_test"}; cur = H; tab = "day"; sel = null; finEd = ""; finM = "";
     FR.friends = [{uid:"u_anna", name:"anna"},{uid:"u_ludwig", name:"Ludwig"},{uid:"u_clara", name:"Clara"}];
@@ -1491,7 +1492,7 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   await page.route(/transit\.land\/api\/v2\/tiles/, rt => { TLQ.push(rt.request().url()); return rt.fulfill({ status:204, headers:{"access-control-allow-origin":"*"}, body:"" }); });
   await seed();
   const F = (t, k, c, bb) => ({properties:{route_type_basic:t, route_short_name:k, route_color:c, route_long_name:"Linie "+k, bbox:JSON.stringify(bb || [13.3, 52.4, 13.6, 52.6])}});
-  await rp(`lsSet("rp-tlkey", "testkey"); DL = {}; DOFF = {}; TL.sig = ""; tlFeats = function(){ return ${JSON.stringify([F(2, "S1", "#dd6ca7"), F(1, "U2", "#"), F(0, "M10", ""), F(3, "100", "#a5027d"), F(1, "U9", "#f3791d", [10, 50, 10.1, 50.1])])}; }; true`);
+  await rp(`lsSet("rp-tlkey", "testkey"); tlSetup(); DL = {}; DOFF = {}; TL.sig = ""; tlFeats = function(){ return ${JSON.stringify([F(2, "S1", "#dd6ca7"), F(1, "U2", "#"), F(0, "M10", ""), F(3, "100", "#a5027d"), F(1, "U9", "#f3791d", [10, 50, 10.1, 50.1])])}; }; true`);
   await jump(13.4, 52.52, 13);
   await page.waitForTimeout(200);
   ok(await rp(`DEST===null && VT.out && tlOn() && !!map.getSource("tl-r") && map.getSource("tl-r").tiles[0].indexOf("apikey=testkey") > -1 && map.getSource("tl-r").maxzoom===14`), "Transitland-Kacheln nicht als Kartenquelle eingerichtet");
@@ -1523,6 +1524,14 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   await jump(13.41, 52.52, 13);
   await page.waitForFunction(() => window.__rp("vtStat().load===0"), null, {timeout:8000});
   ok(OVQ.some(q => q.includes("subway|light_rail")), "Ohne gültigen Schlüssel kein Ersatz über OpenStreetMap");
+  // Schlüssel wird auf dem Gerät eingetragen (nicht im öffentlichen Code): Einstellungen → ÖPNV-Karte
+  ok(await rp(`TLKEY===""`), "Schlüssel steht im Code");
+  await rp(`closeMenus(); tlOpen = true; openSettings(); true`); await page.waitForTimeout(200);
+  ok(await page.locator("#tlKeyIn").isVisible(), "Feld für den Transitland-Schlüssel fehlt in den Einstellungen");
+  await page.locator("#tlKeyIn").fill("neuerkey"); await click("[data-act=tlkeysave]");
+  await page.waitForFunction(() => window.__rp("lsGet('rp-tlkey')==='neuerkey' && !TL.bad"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`lsGet('rp-tlkey')==='neuerkey' && !TL.bad`), "Schlüssel nicht gespeichert: "+await rp(`tlMsg + ' / ' + lsGet('rp-tlkey')`));
+  ok(TLQ.some(u => u.includes("apikey=neuerkey")), "Schlüssel wird vor dem Speichern nicht geprüft");
   await rp(`lsSet("rp-tlkey", ""); TL.bad = false; true`);
 });
 
