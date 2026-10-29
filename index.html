@@ -100,6 +100,7 @@ button{cursor:pointer}
 .ctrl>button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--sheet);box-shadow:0 2px 8px var(--scrim);font:600 20px/1 var(--f-body);display:grid;place-items:center;padding:0}
 .ctrl svg{width:20px;height:20px}
 #layersBtn[aria-expanded="true"]{background:var(--ink);color:var(--sheet)}
+#layersBtn{position:relative}#layersBtn.vtl::after{content:"";position:absolute;inset:-2px;border-radius:inherit;border:2px solid transparent;border-top-color:var(--acc,#0A84FF);animation:locspin .9s linear infinite;pointer-events:none}
 #compass svg{transition:transform .15s}
 .layers{position:fixed;z-index:19;right:calc(max(12px,env(safe-area-inset-right,0px)) + 48px);background:var(--sheet);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 20px var(--scrim);padding:10px 12px;display:grid;gap:8px;min-width:200px}
 .layers{max-height:calc(100vh - 220px);overflow-y:auto;width:min(330px, calc(100vw - 80px))}
@@ -5975,6 +5976,11 @@ function offExtras(){
   } catch(e){}
   return out;
 }
+function offTiles(d){
+  var box = function(r){ var la = r/111320, lo = r/(111320*Math.cos(d.la*Math.PI/180)); return [d.la-la, d.lo-lo, d.la+la, d.lo+lo]; }, out = [];
+  [["a", d.r], ["b", d.r], ["c", Math.min(d.r, 4000)]].forEach(function(x){ var b = box(x[1]); out = out.concat(vtCover(x[0], b[0], b[1], b[2], b[3])); });
+  return out;
+}
 /* ÖPNV fürs Offline-Paket: New York ist eingebaut (Fahrpläne, Busse, Fähren), dazu Citi-Bike-Stationen;
    andere Ziele der Reise: Bahnen, Busse und Bezirke aus OpenStreetMap in den Gerätespeicher */
 function offTransit(run){
@@ -5988,12 +5994,19 @@ function offTransit(run){
       if(!st.length) throw 0; lsSet("rp-cb-info", JSON.stringify({at:Date.now(), s:st})); }); });
   }
   ds.forEach(function(d){ var ok = true;
-    ["tr", "bus", "nb"].forEach(function(part){ jobs.push(function(){
-      return destGet(d.k+":"+part).then(function(v){
+    jobs.push(function(){
+      return destGet(d.k+":nb").then(function(v){
         if(v && Date.now() - v.at < 30*864e5) return;
-        return (part==="nb" ? nbFetch(d) : trFetch(d, part==="bus")).then(function(v2){
-          destPut(d.k+":"+part, v2);
-          if(DEST && DEST.k===d.k){ DEST[part] = v2; DEST.st[part] = ""; destApply(part); } });
+        return nbFetch(d).then(function(v2){
+          destPut(d.k+":nb", v2);
+          if(DEST && DEST.k===d.k){ DEST.nb = v2; DEST.st.nb = ""; destApply("nb"); } });
+      }).catch(function(e){ ok = false; throw e; });
+    });
+    // ÖPNV-Kacheln rund ums Ziel: Bahnen und Trams im Suchgebiet, Busse im Kern (bis 4 km)
+    offTiles(d).forEach(function(k){ jobs.push(function(){
+      return vtGet(k).then(function(v){
+        if(v && Date.now() - v.at < 30*864e5) return;
+        return vtFetch(k).then(function(v2){ vtPut(k, v2); VT.mem[k] = v2; VT.st[k] = ""; vtApply(); });
       }).catch(function(e){ ok = false; throw e; });
     }); });
     jobs.push(function(){ if(ok) res.n.push(d.n || "Ziel"); return Promise.resolve(); });
@@ -10216,6 +10229,8 @@ function initMap(){
   map.on("move", onMove);
   map.on("idle", ferryRetry);
   map.on("moveend", v3dMoveEnd);
+  // ÖPNV nach Kartenausschnitt: nach kurzer Ruhe die sichtbaren Kacheln laden
+  map.on("moveend", function(){ clearTimeout(VT.tm); VT.tm = setTimeout(vtView, VTWAIT); });
   ["touchstart","touchend","touchcancel"].forEach(function(ev){ $("gl").addEventListener(ev, function(e){ v3dFingers = e.touches ? e.touches.length : 0; if(!v3dFingers && ev!=="touchstart") v3dMoveEnd(); }, {passive:true, capture:true}); });
   map.on("click", function(e){ if(Date.now()-lpAt < 900) return; tap(e.point.x, e.point.y); });
   lpInit();
@@ -11875,7 +11890,7 @@ function applyLayers(){
   $("lSub").checked = layers.sub; $("lBus").checked = layers.bus; $("lFerry").checked = layers.ferry; $("lWish").checked = layers.wish; $("lNb").checked = layers.nb; $("lRoute").checked = layers.route; $("lVis").checked = visOn(); $("lBike").checked = !!layers.bike;
   trSync();
   if(mapReady && map.getLayer("cb")) map.setLayoutProperty("cb", "visibility", layers.bike && (!DEST || CB.sys.length > 0) ? "visible" : "none");
-  renderLineMenus(); dApplyMap(); destUi();
+  renderLineMenus(); dApplyMap(); destUi(); vtView();
 }
 /* ---------- Kartenebenen je Reiseziel ----------
    New York nutzt die eingebauten Daten (MTA, NYC Ferry, Citi Bike, Viertel). Liegt die Reise woanders, kommen ÖPNV-Linien,
@@ -11887,13 +11902,20 @@ var DSTMODE = {subway:"metro", light_rail:"light", monorail:"light", funicular:"
 var DCOL = {metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"};
 var DPAL = ["#C8102E","#0072CE","#E5A800","#00965E","#7D55C7","#E87722","#00A3AD","#A6192E","#5B7F95","#C6007E"];
 var DRMAX = 10000; // Suchradius höchstens 10 km: in großen Städten sonst zu viele Daten für Overpass und das iPhone
-var DRWAY = 35000; // Bahnlinien aus dem Suchgebiet bis 35 km weiterzeichnen (S-Bahn ins Umland), nicht am Rand des Suchgebiets abschneiden
-var DTRV = 2; // Stand der gespeicherten ÖPNV-Daten: ältere (am Suchrand abgeschnittene Linien) neu laden
+/* ÖPNV nach Kartenausschnitt: Linien kommen nicht mehr aus einem Umkreis ums Ziel, sondern aus einem festen Kachelraster für das, was die Karte zeigt.
+   a = Metro, S-Bahn, Züge, Fähren (ab Zoom 10, Kacheln 0,5°) · b = Tram, Seilbahnen, Stationen, Leihräder (ab Zoom 12, 0,1°) · c = Busse (ab Zoom 14, 0,05°, nur eingeschaltet) */
+var VTL = {a:{z:10, s:0.5, tol:0.0001}, b:{z:12, s:0.1, tol:0.00003}, c:{z:14, s:0.05, tol:0.00003}};
+var VTV = 1, VTMAX = 400, VTMEM = 160, VTPAR = 2, VTWAIT = 400;
+var VT = {mem:{}, st:{}, q:[], run:0, out:false, keys:[], sig:"", tm:0};
+var VV = {tr:null, bus:null};
 var OVP = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 var DEST = null, NB_NYC = NB, NBKEY = "nyc-nb-hi", DOFF = {}, dQ = "", dOpen = {}, dWant = false, DMEM = {};
+lsList("rp-doff").forEach(function(id){ DOFF[id] = 1; }); // ausgeblendete Linien gelten überall, nicht je Ziel
 var DL = (function(){ try { return JSON.parse(lsGet("rp-dl")||"{}") || {}; } catch(e){ return {}; } })();
 function inNYC(c){ return c.la > 40.45 && c.la < 41.0 && c.lo > -74.35 && c.lo < -73.6; }
 function isDest(){ return !!DEST; }
+/* Kartenebenen aus OpenStreetMap: Reise außerhalb New Yorks oder Karte zeigt gerade einen Ort außerhalb New Yorks */
+function dynOn(){ return !!DEST || VT.out; }
 /* Mittelpunkt des Ziels: Ort des aktuellen Tags (Reisen mit mehreren Städten), sonst Mitte der Reise */
 function destNow(o0){
   var t = T(); if(!t) return null;
@@ -11926,26 +11948,25 @@ function destAll(){
   return out;
 }
 function destSet(d, pts){
-  if(d){ d.pts = pts || []; d.st = {tr:"", bus:"", nb:""}; d.tr = null; d.bus = null; d.nb = null; }
-  DEST = d; dQ = ""; dOpen = {}; dWant = false; DOFF = {};
-  document.body.classList.toggle("dyn", !!d);
+  if(d){ d.pts = pts || []; d.st = {nb:""}; d.nb = null; }
+  DEST = d; dQ = ""; dOpen = {}; dWant = false;
+  document.body.classList.toggle("dyn", dynOn());
   $("attr").textContent = "© OpenFreeMap · © OpenMapTiles · © OpenStreetMap-Mitwirkende" + (d ? "" : " · ÖPNV: MTA");
   CB.st = []; CB.byId = {}; CB.infoAt = 0; CB.statAt = 0; CB.err = ""; CB.errAt = 0; CB.sys = d ? [] : CBNYC; CB.dk = d ? null : ""; LMNAME.bike = cbName();
-  if(!d){ nbUse(NB_NYC, "nyc-nb-hi"); destApply(); if(cbNeeded()) cbLoad(); return; }
-  lsList("rp-doff-"+d.k).forEach(function(id){ DOFF[id] = 1; });
+  if(!d){ nbUse(NB_NYC, "nyc-nb-hi"); destApply(); vtView(); if(cbNeeded()) cbLoad(); return; }
+  lsList("rp-doff-"+d.k).forEach(function(id){ DOFF[id] = 1; }); // früher je Ziel gemerkt: übernehmen
   nbUse([], "rp-nb-hi-"+d.k);
   var ix = destIdx().filter(function(e){ return e.k!==d.k; }); ix.unshift({k:d.k, la:d.la, lo:d.lo, r:d.r, n:d.n}); lsSet("rp-dest", JSON.stringify(ix.slice(0, 12)));
-  destApply(); if(cbNeeded()) cbLoad();
-  var PT = ["tr","bus","nb"]; d.rd = false;
+  destApply(); vtView(); if(cbNeeded()) cbLoad();
+  var PT = ["nb"]; d.rd = false;
   d.rdP = Promise.all(PT.map(function(p){ return destGet(d.k+":"+p); })).then(function(vs){
     d.rd = true; if(DEST!==d) return;
     vs.forEach(function(v, i){ var p = PT[i];
-      if(v){ d[p] = v; destApply(p); if(Date.now() - v.at > 60*864e5 || (p==="tr" && v.v!==DTRV)) destNeed(p, true); }
+      if(v){ d[p] = v; destApply(p); if(Date.now() - v.at > 60*864e5) destNeed(p, true); }
       else if(destWanted(p)) destNeed(p); });
   });
 }
-function destWanted(part){ var on = DMODES.some(function(m){ return m[0]!=="bus" && DL[m[0]]; }) || layers.bike;
-  return part==="nb" ? layers.nb || !$("layers").hidden : part==="bus" ? !!DL.bus : on || !$("layers").hidden; }
+function destWanted(part){ return part==="nb" && (layers.nb || !$("layers").hidden); }
 /* Zwischenspeicher: im Speicher und im Gerätespeicher (IndexedDB) */
 function destGet(id){ if(DMEM[id]) return Promise.resolve(DMEM[id]); return idbDo("readonly", function(st){ return st.get("dest:"+id); }).then(function(r){ var v = r && r.data && r.data.at ? r.data : null; if(v) DMEM[id] = v; return v; }).catch(function(){ return null; }); }
 function destPut(id, v){ DMEM[id] = v; idbDo("readwrite", function(st){ st.put({id:"dest:"+id, data:v}); }).catch(function(){}); }
@@ -11962,14 +11983,15 @@ function ovq(q, i){
     .catch(function(e){ if(i+1 < OVP.length) return ovq(q, i+1); throw e; });
 }
 function destBB(d){ var a = d.r/111320, b = d.r/(111320*Math.cos(d.la*Math.PI/180)); return [(d.la-a).toFixed(4), (d.lo-b).toFixed(4), (d.la+a).toFixed(4), (d.lo+b).toFixed(4)].join(","); }
-/* bei Bedarf laden: tr = Bahnen, Fähren, Stationen, Leihräder · bus = Buslinien · nb = Bezirke */
+/* bei Bedarf laden: nb = Bezirke (ÖPNV kommt aus dem Kachelraster, siehe vtView) */
 function destNeed(part, force){
+  if(part!=="nb"){ if(force) vtRetry(); else vtView(); return; }
   var d = DEST; if(!d) return;
   if(!d.rd){ d.rdP.then(function(){ destNeed(part, force); }); return; }
   if(d.st[part]==="load" || (d[part] && !force)) return;
   if(!navigator.onLine){ if(!d[part]){ d.st[part] = "off"; destUi(); if(part==="nb") applyNb(); } return; }
   d.st[part] = "load"; destUi(); if(part==="nb") applyNb();
-  (part==="nb" ? nbFetch(d) : trFetch(d, part==="bus")).then(function(v){
+  nbFetch(d).then(function(v){
     destPut(d.k+":"+part, v);
     if(DEST!==d) return;
     d[part] = v; d.st[part] = ""; destApply(part);
@@ -11978,48 +12000,147 @@ function destNeed(part, force){
 function okCol(c){ c = String(c||"").trim(); if(/^#?[0-9a-f]{6}$/i.test(c)) return (c.charAt(0)==="#" ? c : "#"+c).toUpperCase(); if(/^#[0-9a-f]{3}$/i.test(c)) return c.toUpperCase(); return ""; }
 function txtCol(c){ var h = c.replace("#",""); if(h.length===3) h = h.replace(/./g, function(x){ return x+x; }); var n = parseInt(h, 16), l = 0.299*(n>>16) + 0.587*(n>>8&255) + 0.114*(n&255); return l > 165 ? "#111111" : "#FFFFFF"; }
 function natCmp(a, b){ return String(a).localeCompare(String(b), "de", {numeric:true}); }
-/* Bahnen: Linien, die das Suchgebiet berühren, laufen bis DRWAY weiter (sonst endet z. B. die Berliner S-Bahn ringförmig am Stadtrand).
-   Zu viele Daten (Zeitlimit) → wie bisher nur das Suchgebiet */
-function trFetch(d, bus, small){
-  var bb = destBB(d), wb = bus || small ? bb : destBB({la:d.la, lo:d.lo, r:Math.max(d.r, DRWAY)}), q = bus
-    ? "[out:json][timeout:40];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;"
-    : "[out:json][timeout:40];(rel[type=route][route~\"^(subway|light_rail|monorail|tram|funicular|ferry)$\"]("+bb+");rel[type=route][route=train][service!~\"^(long_distance|high_speed|night|car_shuttle)$\"]("+bb+");)->.r;.r out body;way(r.r)("+wb+");out skel geom;"+
-      "(way[railway=funicular]("+bb+");way[aerialway~\"^(cable_car|gondola)$\"]("+bb+"););out geom;node[railway=station][name]("+bb+");out;node[amenity=bicycle_rental]("+bb+");out;"+
-      "rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+");out count;";
-  var p = ovq(q).then(function(j){ var v = trParse(j); if(!bus) v.v = DTRV; return v; });
-  return bus || small ? p : p.catch(function(){ return trFetch(d, false, true); });
+/* Kachelraster: Schlüssel „Ebene:x_y“, Kachel = Rechteck aus ganzen Vielfachen der Kachelgröße (Grad) */
+function vtBB(k){ var lv = k.charAt(0), s = VTL[lv].s, xy = k.slice(2).split("_").map(Number);
+  return [xy[1]*s, xy[0]*s, (xy[1]+1)*s, (xy[0]+1)*s].map(function(v){ return v.toFixed(4); }).join(","); }
+function vtCover(lv, s0, w0, n0, e0){
+  var s = VTL[lv].s, out = [], x0 = Math.floor(w0/s), x1 = Math.floor(e0/s), y0 = Math.floor(s0/s), y1 = Math.floor(n0/s);
+  for(var x = x0; x <= x1; x++) for(var y = y0; y <= y1; y++) out.push(lv+":"+x+"_"+y);
+  return out;
 }
-function trParse(j){
-  var W = {}, used = {}, rels = [], st = [], bk = [], nbus = 0;
+/* sichtbare Kacheln einer Ebene (Kartenausschnitt plus etwas Rand) */
+function vtKeys(lv){
+  var b = map.getBounds(), dla = (b.getNorth() - b.getSouth())*0.1, dlo = (b.getEast() - b.getWest())*0.1;
+  var ks = vtCover(lv, b.getSouth()-dla, b.getWest()-dlo, b.getNorth()+dla, b.getEast()+dlo);
+  // New York hat eingebaute Daten: keine Kacheln mitten in der Stadt (auch nicht kurz beim Wechsel der Reise, bevor die Karte hinfliegt)
+  ks = ks.filter(function(k){ var bb = vtBB(k).split(",").map(Number); return !inNYC({la:(bb[0]+bb[2])/2, lo:(bb[1]+bb[3])/2}); });
+  return ks.length > 40 ? [] : ks;
+}
+function vtQuery(lv, bb){
+  if(lv==="a") return "[out:json][timeout:40];(rel[type=route][route~\"^(subway|light_rail|monorail|ferry)$\"]("+bb+");rel[type=route][route=train][service!~\"^(long_distance|high_speed|night|car_shuttle)$\"]("+bb+");)->.r;.r out body;way(r.r)("+bb+");out skel geom;";
+  if(lv==="b") return "[out:json][timeout:40];rel[type=route][route~\"^(tram|funicular)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;"+
+    "(way[railway=funicular]("+bb+");way[aerialway~\"^(cable_car|gondola)$\"]("+bb+"););out geom;node[railway=station][name]("+bb+");out;node[amenity=bicycle_rental]("+bb+");out;"+
+    "rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+");out count;";
+  return "[out:json][timeout:40];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;";
+}
+/* eine Kachel laden; zu viele Daten (große Städte, große Kacheln) → in vier Teile zerlegen */
+function vtFetch(k){
+  var lv = k.charAt(0), bb = vtBB(k);
+  return ovq(vtQuery(lv, bb)).catch(function(e){
+    if(lv!=="a" || !e || e.message!=="zu viele Daten") throw e;
+    var c = bb.split(",").map(Number), ms = (c[0]+c[2])/2, mw = (c[1]+c[3])/2, parts = [[c[0],c[1],ms,mw],[c[0],mw,ms,c[3]],[ms,c[1],c[2],mw],[ms,mw,c[2],c[3]]], els = [];
+    return parts.reduce(function(pr, q){ return pr.then(function(){ return ovq(vtQuery(lv, q.map(function(v){ return v.toFixed(4); }).join(","))).then(function(j){ els = els.concat(j.elements||[]); }); }); }, Promise.resolve())
+      .then(function(){ return {elements:els}; });
+  }).then(function(j){ return vtParse(j, VTL[lv].tol); });
+}
+/* Kachel zerlegen: Linien (Verkehrsmittel:Name), ihre Wege, Stationen, Leihrad-Stationen, Zahl der Buslinien */
+function vtParse(j, tol){
+  var W = {}, used = {}, ln = {}, lw = {}, st = [], bk = [], nbus = 0;
   (j.elements||[]).forEach(function(e){
     var tg = e.tags || {};
-    if(e.type==="way" && e.geometry) W[e.id] = {g:simp(e.geometry.filter(Boolean).map(function(p){ return [+p.lon.toFixed(5), +p.lat.toFixed(5)]; }), 0.00003), t:tg};
-    else if(e.type==="relation" && tg.type==="route") rels.push(e);
+    if(e.type==="way" && e.geometry){ if(!W[e.id]) W[e.id] = {g:simp(e.geometry.filter(Boolean).map(function(p){ return [+p.lon.toFixed(5), +p.lat.toFixed(5)]; }), tol), t:tg}; else if(e.tags) W[e.id].t = tg; }
     else if(e.type==="node" && tg.amenity==="bicycle_rental"){ if(!tg.shop && tg.bicycle_rental!=="shop") bk.push([+e.lon.toFixed(5), +e.lat.toFixed(5), String(tg.name || tg.network || "").slice(0, 60)]); }
     else if(e.type==="node" && tg.railway==="station" && tg.name) st.push([+e.lon.toFixed(5), +e.lat.toFixed(5), String(tg.name).slice(0, 60), DSTMODE[tg.station] || "train"]);
-    else if(e.type==="count") nbus = +(tg.relations || tg.total || 0);
+    else if(e.type==="count") nbus += +(tg.relations || tg.total || 0);
   });
-  var L = {}, order = [];
-  var line = function(m, k){ var id = m+":"+k; if(!L[id]){ L[id] = {m:m, k:k, n:"", c:"", w:{}}; order.push(id); } return L[id]; };
-  rels.forEach(function(r){
-    var tg = r.tags, m = DRMODE[tg.route], k = String(tg.ref || tg.name || "").trim().slice(0, 40); if(!m || !k) return;
-    var l = line(m, k), c = okCol(tg.colour || tg.color), nm = String(tg.name || "").slice(0, 80);
-    if(c && !l.c) l.c = c; if(nm && (!l.n || nm.length < l.n.length)) l.n = nm;
-    (r.members||[]).forEach(function(mb){ if(mb.type!=="way") return; used[mb.ref] = 1; if(W[mb.ref]) l.w[mb.ref] = 1; });
+  var add = function(m, k, n, c, ws){ var id = m+":"+k, l = ln[id] || (ln[id] = {m:m, k:k, n:"", c:""}), a = lw[id] || (lw[id] = []);
+    if(c && !l.c) l.c = c; if(n && (!l.n || n.length < l.n.length)) l.n = n;
+    ws.forEach(function(w){ used[w] = 1; if(W[w] && W[w].g.length > 1 && a.indexOf(w) < 0) a.push(w); }); };
+  (j.elements||[]).forEach(function(r){
+    var tg = r.tags || {}; if(r.type!=="relation" || tg.type!=="route") return;
+    var m = DRMODE[tg.route], k = String(tg.ref || tg.name || "").trim().slice(0, 40); if(!m || !k) return;
+    add(m, k, String(tg.name || "").slice(0, 80), okCol(tg.colour || tg.color), (r.members||[]).filter(function(mb){ return mb.type==="way"; }).map(function(mb){ return mb.ref; }));
   });
   // Standseil- und Seilbahnen ohne Linien-Relation (z. B. die Elevadores in Lissabon)
   Object.keys(W).forEach(function(id){ var t = W[id].t; if(used[id] || !(t.railway==="funicular" || /^(cable_car|gondola)$/.test(t.aerialway||""))) return;
-    var k = String(t.name || (t.aerialway ? "Seilbahn" : "Standseilbahn")).slice(0, 40), l = line("funi", k); l.n = l.n || k; l.w[id] = 1; });
-  var lines = [], feats = [], pi = {};
-  order.sort(function(a, b){ return natCmp(L[a].k, L[b].k); }).forEach(function(id){
-    var l = L[id], ws = Object.keys(l.w).map(function(w){ return W[w].g; }).filter(function(g){ return g.length > 1; });
-    if(!ws.length) return;
-    if(!l.c) l.c = /^(metro|light|tram)$/.test(l.m) ? DPAL[(pi[l.m] = (pi[l.m]||0) + 1) % DPAL.length] : DCOL[l.m] || "#5B6B7A";
-    lines.push({m:l.m, k:l.k, n:l.n, c:l.c});
-    feats.push({type:"Feature", properties:{m:l.m, id:id, k:l.k, c:l.c}, geometry:{type:"MultiLineString", coordinates:ws}});
+    var k = String(t.name || (t.aerialway ? "Seilbahn" : "Standseilbahn")).slice(0, 40); add("funi", k, k, "", [+id]); });
+  var w = {}; Object.keys(lw).forEach(function(id){ if(!lw[id].length){ delete lw[id]; delete ln[id]; return; } lw[id].forEach(function(x){ w[x] = W[x].g; }); });
+  return {at:Date.now(), v:VTV, ln:ln, lw:lw, w:w, st:st, bike:bk.slice(0, 3000), nbus:nbus};
+}
+/* feste Farbe je Linie ohne eigene Farbe in OpenStreetMap (gleich in jeder Kachel) */
+function vtCol(m, k){ if(!/^(metro|light|tram)$/.test(m)) return DCOL[m] || "#5B6B7A"; var h = 0; for(var i = 0; i < k.length; i++) h = (h*31 + k.charCodeAt(i))|0; return DPAL[Math.abs(h) % DPAL.length]; }
+/* sichtbare Kacheln zu einer Linienliste zusammensetzen: dieselbe Linie über mehrere Kacheln = eine Linie */
+function vtAgg(keys){
+  var L = {}, order = [], st = [], bk = [], seen = {}, nbus = 0, any = false;
+  keys.forEach(function(k){ var t = VT.mem[k]; if(!t) return; any = true; nbus = Math.max(nbus, t.nbus || 0);
+    Object.keys(t.ln).forEach(function(id){ var l = t.ln[id], o = L[id];
+      if(!o){ o = L[id] = {m:l.m, k:l.k, n:l.n, c:l.c, w:{}, g:[]}; order.push(id); }
+      if(!o.c && l.c) o.c = l.c; if(l.n && (!o.n || l.n.length < o.n.length)) o.n = l.n;
+      (t.lw[id]||[]).forEach(function(w){ if(o.w[w] || !t.w[w]) return; o.w[w] = 1; o.g.push(t.w[w]); }); });
+    t.st.forEach(function(s){ var x = "s"+s[0]+","+s[1]; if(!seen[x]){ seen[x] = 1; st.push(s); } });
+    t.bike.forEach(function(s){ var x = "b"+s[0]+","+s[1]; if(!seen[x]){ seen[x] = 1; bk.push(s); } });
   });
-  var has = {}; lines.forEach(function(l){ has[l.m] = 1; });
-  return {at:Date.now(), lines:lines, geo:{type:"FeatureCollection", features:feats}, st:st.filter(function(s){ return has[s[3]]; }), bike:bk.slice(0, 3000), nbus:nbus};
+  if(!any) return {tr:null, bus:null};
+  var mk = function(bus){ var lines = [], feats = [];
+    order.filter(function(id){ return (L[id].m==="bus")===bus; }).sort(function(a, b){ return natCmp(L[a].k, L[b].k); }).forEach(function(id){
+      var l = L[id]; if(!l.g.length) return; if(!l.c) l.c = vtCol(l.m, l.k);
+      lines.push({m:l.m, k:l.k, n:l.n, c:l.c});
+      feats.push({type:"Feature", properties:{m:l.m, id:id, k:l.k, c:l.c}, geometry:{type:"MultiLineString", coordinates:l.g}}); });
+    return {lines:lines, geo:{type:"FeatureCollection", features:feats}}; };
+  var tr = mk(false), bs = mk(true), has = {}; tr.lines.forEach(function(l){ has[l.m] = 1; });
+  tr.st = st.filter(function(s){ return has[s[3]]; }); tr.bike = bk.slice(0, 3000); tr.nbus = nbus;
+  var hasC = keys.some(function(k){ return k.charAt(0)==="c" && VT.mem[k]; });
+  return {tr:tr, bus:hasC ? bs : null};
+}
+/* Gerätespeicher je Kachel (IndexedDB), älteste fliegen ab VTMAX Kacheln raus */
+function vtGet(k){ return idbDo("readonly", function(st){ return st.get("vt:"+k); }).then(function(r){ return r && r.data && r.data.at && r.data.v===VTV ? r.data : null; }).catch(function(){ return null; }); }
+function vtPut(k, v){
+  idbDo("readwrite", function(st){ st.put({id:"vt:"+k, data:v}); }).catch(function(){});
+  var ix = []; try { ix = JSON.parse(lsGet("rp-vt")||"[]"); } catch(e){} if(!Array.isArray(ix)) ix = [];
+  ix = ix.filter(function(x){ return x!==k; }); ix.push(k);
+  var old = ix.length > VTMAX ? ix.splice(0, ix.length - VTMAX) : [];
+  lsSet("rp-vt", JSON.stringify(ix));
+  if(old.length) idbDo("readwrite", function(st){ old.forEach(function(x){ st.delete("vt:"+x); }); }).catch(function(){});
+}
+/* welche Ebenen gebraucht werden: Verkehrsmittel eingeschaltet oder Ebenen-Menü offen */
+function vtWant(){
+  if(!dynOn()) return {};
+  var open = !$("layers").hidden && !isRO(), rail = DMODES.some(function(m){ return m[0]!=="bus" && dOn(m[0]); }) || dWant;
+  return {a:rail || open, b:rail || open || layers.bike, c:dOn("bus") || (open && !!dOpen.bus && !isRO())};
+}
+/* Karte bewegt, Ebene geschaltet: sichtbare Kacheln bestimmen, fehlende laden, Linien neu zusammensetzen */
+function vtView(){
+  if(!mapReady || !map) return;
+  var c = map.getCenter(), out = map.getZoom() >= 8 && !inNYC({la:c.lat, lo:c.lng}); // weit herausgezoomt: Menü der Reise behalten
+  if(out!==VT.out){ VT.out = out; document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; } // applyLayers ruft vtView erneut
+  var z = map.getZoom(), w = vtWant(), keys = [];
+  Object.keys(VTL).forEach(function(lv){ if(w[lv] && z >= VTL[lv].z) keys = keys.concat(vtKeys(lv)); });
+  VT.keys = keys; VT.q = VT.q.filter(function(k){ return keys.indexOf(k) > -1; });
+  keys.forEach(function(k){ if(VT.mem[k] || VT.st[k]) return; vtLoad(k); });
+  vtApply(); vtPump();
+}
+function vtLoad(k){
+  VT.st[k] = "load";
+  vtGet(k).then(function(v){
+    if(v){ VT.mem[k] = v; VT.st[k] = ""; if(Date.now() - v.at > 60*864e5 && navigator.onLine){ VT.st[k] = "old"; VT.q.push(k); vtPump(); } vtApply(); return; }
+    if(!navigator.onLine){ VT.st[k] = "off"; vtApply(); return; }
+    if(VT.keys.indexOf(k) < 0){ delete VT.st[k]; return; }
+    VT.q.push(k); vtPump();
+  });
+}
+/* höchstens VTPAR Abfragen gleichzeitig (Overpass); weggeschobene Kacheln fallen aus der Warteschlange */
+function vtPump(){
+  while(VT.run < VTPAR && VT.q.length){
+    var k = VT.q.shift(); if(VT.keys.indexOf(k) < 0){ if(VT.st[k]==="load") delete VT.st[k]; continue; }
+    VT.run++; VT.st[k] = VT.st[k] || "load";
+    (function(k){ vtFetch(k).then(function(v){ VT.mem[k] = v; VT.st[k] = ""; vtPut(k, v); },
+      function(){ if(!VT.mem[k]) VT.st[k] = "err"; else VT.st[k] = ""; })
+      .then(function(){ VT.run--; vtApply(); vtPump(); }); })(k);
+  }
+  vtBusy();
+}
+function vtRetry(){ Object.keys(VT.st).forEach(function(k){ if(VT.st[k]==="err" || VT.st[k]==="off") delete VT.st[k]; }); vtView(); }
+function vtStat(){ var s = {load:0, err:0, off:0, ok:0}; VT.keys.forEach(function(k){ var x = VT.st[k]; if(VT.mem[k]) s.ok++; else if(x==="err") s.err++; else if(x==="off") s.off++; else s.load++; }); return s; }
+function vtBusy(){ var b = $("layersBtn"); if(b) b.classList.toggle("vtl", VT.keys.some(function(k){ return !VT.mem[k] && VT.st[k]==="load"; }) || VT.run > 0); }
+function vtApply(){
+  // Arbeitsspeicher: nur sichtbare Kacheln und die zuletzt gesehenen behalten
+  var mk = Object.keys(VT.mem);
+  if(mk.length > VTMEM) mk.filter(function(k){ return VT.keys.indexOf(k) < 0; }).sort(function(a, b){ return VT.mem[a].at - VT.mem[b].at; }).slice(0, mk.length - VTMEM).forEach(function(k){ delete VT.mem[k]; delete VT.st[k]; });
+  var sig = VT.keys.filter(function(k){ return VT.mem[k]; }).map(function(k){ return k+"@"+VT.mem[k].at; }).join("|");
+  if(sig!==VT.sig){ VT.sig = sig; VV = vtAgg(VT.keys);
+    if(dWant && VV.tr){ var ms = dModes().filter(function(m){ return m!=="bus"; }); if(ms.length){ dWant = false; if(!ms.some(dOn)){ DL[ms[0]] = 1; lsSet("rp-dl", JSON.stringify(DL)); } } }
+    dData(); }
+  vtBusy(); dApplyMap(); destUi(); scheduleOverlay();
 }
 /* Bezirke: die kleinste Verwaltungseinheit, die (fast) alle Orte der Reise enthält, und deren nächste Unterteilung */
 function nbFetch(d){
@@ -12112,24 +12233,24 @@ function nbUse(list, key){
   nbSel = {}; applyNb(); scheduleOverlay();
 }
 function dOn(m){ return !!DL[m] && (!isRO() || m==="bike"); }
-function dModes(){ var d = DEST, has = {}; if(!d) return [];
-  ((d.tr && d.tr.lines) || []).forEach(function(l){ has[l.m] = 1; }); if((d.tr && d.tr.nbus) || (d.bus && d.bus.lines.length)) has.bus = 1;
+function dModes(){ var has = {}; if(!dynOn()) return [];
+  ((VV.tr && VV.tr.lines) || []).forEach(function(l){ has[l.m] = 1; }); if((VV.tr && VV.tr.nbus) || (VV.bus && VV.bus.lines.length)) has.bus = 1;
+  if(dOn("bus")) has.bus = 1; // eingeschaltete Busse bleiben im Menü, auch wenn der Ausschnitt gerade keine zeigt
   return DMODES.map(function(m){ return m[0]; }).filter(function(m){ return has[m]; }); }
-function dLines(m){ var d = DEST; if(!d) return []; return ((m==="bus" ? d.bus && d.bus.lines : d.tr && d.tr.lines) || []).filter(function(l){ return l.m===m; }); }
-function dBike(){ return (DEST && DEST.tr && DEST.tr.bike) || []; }
-function dSaveOff(){ if(DEST) lsSet("rp-doff-"+DEST.k, JSON.stringify(Object.keys(DOFF))); }
+function dLines(m){ if(!dynOn()) return []; return ((m==="bus" ? VV.bus && VV.bus.lines : VV.tr && VV.tr.lines) || []).filter(function(l){ return l.m===m; }); }
+function dBike(){ return (dynOn() && VV.tr && VV.tr.bike) || []; }
+function dSaveOff(){ lsSet("rp-doff", JSON.stringify(Object.keys(DOFF))); }
 /* Daten in Karte und Menü übernehmen */
 function destApply(part){
   if(DEST && part==="nb") nbUse(DEST.nb.nb, NBKEY);
-  if(DEST && part==="tr" && dWant){ dWant = false; var ms = dModes().filter(function(m){ return m!=="bus"; }); if(ms.length && !ms.some(dOn)){ DL[ms[0]] = 1; lsSet("rp-dl", JSON.stringify(DL)); } }
   dData(); applyLayers(); scheduleOverlay();
 }
 function dData(){
   if(map && map.getSource("dtr")){
-    var e = {type:"FeatureCollection", features:[]}, d = DEST;
-    if(map.getSource("dtr")) map.getSource("dtr").setData(d && d.tr ? d.tr.geo : e);
-    if(map.getSource("dbus")) map.getSource("dbus").setData(d && d.bus ? d.bus.geo : e);
-    if(map.getSource("dst")) map.getSource("dst").setData({type:"FeatureCollection", features:(d && d.tr ? d.tr.st : []).map(function(s){ return {type:"Feature", properties:{n:s[2], m:s[3]}, geometry:{type:"Point", coordinates:[s[0], s[1]]}}; })});
+    var e = {type:"FeatureCollection", features:[]}, d = VV;
+    if(map.getSource("dtr")) map.getSource("dtr").setData(d.tr ? d.tr.geo : e);
+    if(map.getSource("dbus")) map.getSource("dbus").setData(d.bus ? d.bus.geo : e);
+    if(map.getSource("dst")) map.getSource("dst").setData({type:"FeatureCollection", features:(d.tr ? d.tr.st : []).map(function(s){ return {type:"Feature", properties:{n:s[2], m:s[3]}, geometry:{type:"Point", coordinates:[s[0], s[1]]}}; })});
     if(map.getSource("dbike")) map.getSource("dbike").setData({type:"FeatureCollection", features:dBike().map(function(s){ return {type:"Feature", properties:{n:s[2]}, geometry:{type:"Point", coordinates:[s[0], s[1]]}}; })});
   }
 }
@@ -12137,6 +12258,11 @@ function dAddLayers(){
   var e = {type:"FeatureCollection", features:[]}, gl = !!map.getStyle().glyphs, halo = isDark() ? "#111a22" : "#ffffff";
   ["dtr","dbus","dst","dbike"].forEach(function(s){ if(!map.getSource(s)) map.addSource(s, {type:"geojson", data:e}); });
   var W = function(a, b){ return ["interpolate",["linear"],["zoom"],10,["match",["get","m"],"tram",1,"funi",1.4,a],16,["match",["get","m"],"tram",3,"funi",3.5,b]]; };
+  // Grundgerüst: Gleise aus den Kartenkacheln (überall, ohne Abfrage, offline mit dem Kartenpaket), grau unter den farbigen Linien
+  var srcs = map.getStyle().sources, vs = null; Object.keys(srcs).forEach(function(k){ if(!vs && srcs[k].type==="vector") vs = k; });
+  if(vs) try { map.addLayer({id:"vt-rail", type:"line", source:vs, "source-layer":"transportation", minzoom:8,
+    filter:["any", ["==",["get","class"],"rail"], ["==",["get","class"],"transit"]],
+    paint:{"line-color":isDark() ? "#7c8894" : "#8a96a3", "line-opacity":.55, "line-width":["interpolate",["linear"],["zoom"],8,.6,12,1.2,16,2.4]}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}); } catch(e){}
   map.addLayer({id:"dbus", type:"line", source:"dbus", paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,1,16,3], "line-opacity":.6}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
   map.addLayer({id:"dtr", type:"line", source:"dtr", filter:["!=",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":W(1.6, 5)}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
   map.addLayer({id:"dtr-f", type:"line", source:"dtr", filter:["==",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{"line-cap":"round", visibility:"none"}});
@@ -12152,7 +12278,7 @@ function dAddLayers(){
 }
 function dApplyMap(){
   if(!mapReady || !map.getLayer("dtr")) return;
-  var dy = !!DEST, on = dy ? DMODES.map(function(m){ return m[0]; }).filter(dOn) : [], off = ["!", ["in", ["get","id"], ["literal", Object.keys(DOFF)]]];
+  var dy = dynOn(), on = dy ? DMODES.map(function(m){ return m[0]; }).filter(dOn) : [], off = ["!", ["in", ["get","id"], ["literal", Object.keys(DOFF)]]];
   var vis = function(l, v){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", v ? "visible" : "none"); };
   var rail = on.filter(function(m){ return m!=="bus"; });
   ["dtr","dtr-f","dtr-lbl"].forEach(function(l){ vis(l, dy && rail.length); });
@@ -12162,19 +12288,21 @@ function dApplyMap(){
   vis("dbus", dy && dOn("bus")); vis("dbus-lbl", dy && dOn("bus")); map.setFilter("dbus", off); if(map.getLayer("dbus-lbl")) map.setFilter("dbus-lbl", off);
   vis("dst", dy && rail.length); vis("dst-lbl", dy && rail.length);
   map.setFilter("dst", ["in", ["get","m"], ["literal", rail]]); if(map.getLayer("dst-lbl")) map.setFilter("dst-lbl", ["in", ["get","m"], ["literal", rail]]);
-  vis("dbike", dy && layers.bike && !CB.sys.length); // OpenStreetMap-Stationen nur, solange kein Leihrad-System mit Live-Daten bekannt ist
+  vis("dbike", dy && layers.bike && !(DEST && CB.sys.length)); // OpenStreetMap-Stationen nur, solange kein Leihrad-System mit Live-Daten bekannt ist
+  vis("vt-rail", dy && rail.length && !isRO()); // graues Grundgerüst aus den Kartenkacheln: sofort da, bis die Linien geladen sind
 }
 /* Menü: ÖPNV → Verkehrsmittel des Ziels → einzelne Linien (wie U-Bahn/Bus in New York) */
 var DCHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 6l4 4 4-4\"/></svg>";
 function destUi(){
   var el = $("lTrDyn"); if(!el) return;
-  var d = DEST, br = $("lBike").closest("label");
-  if(br) br.style.display = d && (!d.tr || !dBike().length) ? "none" : "";
-  if(!d){ el.innerHTML = ""; trSync(); return; }
-  var h = "", ms = dModes(), ro = isRO();
-  if(!d.tr) h += "<p class=\"note dnote\">"+(d.st.tr==="err" ? "ÖPNV von "+esc(d.n || "diesem Ziel")+" kam nicht an (Server ausgelastet oder zu viele Daten). <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>"
-    : d.st.tr==="off" ? "Offline: ÖPNV von "+esc(d.n || "diesem Ziel")+" lädt, sobald du wieder Internet hast." : "ÖPNV von "+esc(d.n || "diesem Ziel")+" wird geladen …")+"</p>";
-  else if(!ms.length) h += "<p class=\"note dnote\">Keine ÖPNV-Linien in OpenStreetMap gefunden.</p>";
+  var dy = dynOn(), br = $("lBike").closest("label");
+  if(br) br.style.display = dy && !dBike().length && !(DEST && CB.sys.length) ? "none" : "";
+  if(!dy){ el.innerHTML = ""; trSync(); return; }
+  var h = "", ms = dModes(), ro = isRO(), vs = vtStat(), z = mapReady ? map.getZoom() : 12, retry = " <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>";
+  if(z < VTL.a.z) h += "<p class=\"note dnote\">Näher heranzoomen, um den ÖPNV in diesem Kartenausschnitt zu sehen.</p>";
+  else if(!VV.tr || !ms.length) h += "<p class=\"note dnote\">"+(vs.load ? "ÖPNV in diesem Kartenausschnitt wird geladen …" : vs.err ? "ÖPNV in diesem Kartenausschnitt kam nicht an (Server ausgelastet oder zu viele Daten)."+retry
+    : vs.off ? "Offline: ÖPNV in diesem Kartenausschnitt lädt, sobald du wieder Internet hast." : VV.tr ? "Keine ÖPNV-Linien in diesem Kartenausschnitt (OpenStreetMap)." : "ÖPNV in diesem Kartenausschnitt wird geladen …")+"</p>";
+  else if(vs.err) h += "<p class=\"note dnote\">Ein Teil des Kartenausschnitts kam nicht an."+retry+"</p>";
   if(!ro) ms.forEach(function(m){
     var ls = dLines(m), on = dOn(m), n = ls.filter(function(l){ return !DOFF[l.m+":"+l.k]; }).length, open = on && !!dOpen[m];
     var cs = m==="bus" ? ["var(--bus)"] : ls.slice(0, 4).map(function(l){ return l.c; }), sw = cs.length > 1 ? "linear-gradient(90deg,"+cs.map(function(c, i){ return c+" "+(i*100/cs.length)+"% "+((i+1)*100/cs.length)+"%"; }).join(",")+")" : (cs[0] || DCOL[m]);
@@ -12182,7 +12310,8 @@ function destUi(){
       "<button type=\"button\" class=\"lfbtn lchev"+(open ? " open" : "")+(on && n < ls.length ? " act" : "")+"\" data-act=\"dfold\" data-m=\""+m+"\" aria-expanded=\""+open+"\" aria-label=\""+DMNAME[m]+": Linien auswählen\""+(on ? "" : " hidden")+">"+DCHEV+"</button></div>";
     if(!open) return;
     h += "<div class=\"lines\" id=\"dLines-"+m+"\">";
-    if(m==="bus" && !d.bus) h += "<span class=\"cnt\">"+(d.st.bus==="err" ? "Buslinien konnten nicht geladen werden. <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"bus\">Erneut versuchen</button>" : "Buslinien werden geladen …")+"</span>";
+    if(m==="bus" && z < VTL.c.z) h += "<span class=\"cnt\">Busse erscheinen beim Heranzoomen auf Straßenebene.</span>";
+    else if(m==="bus" && !VV.bus) h += "<span class=\"cnt\">"+(vs.err ? "Buslinien konnten nicht geladen werden. <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"bus\">Erneut versuchen</button>" : "Buslinien werden geladen …")+"</span>";
     else {
       var short = ls.every(function(l){ return l.k.length <= 4; }), q = m==="bus" ? dQ.trim().toLowerCase() : "", sh = ls.filter(function(l){ return !q || (l.k+" "+l.n).toLowerCase().indexOf(q) > -1; });
       var btn = function(l){ var id = l.m+":"+l.k, pr = !DOFF[id], t = l.n && l.n!==l.k ? " title=\""+esc(l.n)+"\"" : "";
@@ -12202,10 +12331,9 @@ function destUi(){
 }
 function dToggle(m, v){
   DL[m] = v ? 1 : 0; lsSet("rp-dl", JSON.stringify(DL));
-  if(v) destNeed(m==="bus" ? "bus" : "tr");
   applyLayers(); scheduleOverlay();
 }
-function trIds(){ if(!DEST) return TRIDS; var ids = dModes().map(function(m){ return "ld-"+m; }); if(dBike().length) ids.push("lBike"); return ids; }
+function trIds(){ if(!dynOn()) return TRIDS; var ids = dModes().map(function(m){ return "ld-"+m; }); if(dBike().length) ids.push("lBike"); return ids; }
 var ovPending = false;
 function scheduleOverlay(){ if(ovPending) return; ovPending = true; requestAnimationFrame(function(){ ovPending = false; drawOverlay(); }); }
 function routePts(k){ return ord(k).map(P).filter(function(p){ return hasLoc(p) && !p.nl; }); }
@@ -12559,7 +12687,7 @@ $("zfit").addEventListener("click", fitDay);
 $("compass").addEventListener("click", function(){ v3dDone = true; map.easeTo({bearing:0, pitch:0, duration: reduceMotion?0:400}); });
 $("b3dBtn").addEventListener("click", v3dToggle);
 window.addEventListener("resize", function(){ requestAnimationFrame(v3dPlace); });
-$("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; if(open){ $("lVis").checked = visOn(); $("lAllP").checked = allPOn(); renderWishCats(); renderPoiCats(); if(DEST){ destNeed("tr"); destNeed("nb"); } } this.setAttribute("aria-expanded", open); placeFloating(); });
+$("layersBtn").addEventListener("click", function(){ var open = $("layers").hidden; $("layers").hidden = !open; if(open){ $("lVis").checked = visOn(); $("lAllP").checked = allPOn(); renderWishCats(); renderPoiCats(); if(DEST) destNeed("nb"); } this.setAttribute("aria-expanded", open); vtView(); placeFloating(); });
 ["lSub","lBus","lFerry","lWish","lNb","lRoute"].forEach(function(id){
   $(id).addEventListener("change", function(){
     layers = {sub:$("lSub").checked, bus:$("lBus").checked, ferry:$("lFerry").checked, wish:$("lWish").checked, nb:$("lNb").checked, route:$("lRoute").checked, bike:$("lBike").checked}; lsSet("nyc-l-ferry", layers.ferry?"1":"0"); lsSet("nyc-l-nb", layers.nb?"1":"0"); lsSet("nyc-l-route", layers.route?"1":"0"); if(tab==="day") renderSheet();
@@ -12569,7 +12697,7 @@ $("layersBtn").addEventListener("click", function(){ var open = $("layers").hidd
   });
 });
 
-$("lBike").addEventListener("change", function(){ layers.bike = this.checked; lsSet("nyc-l-bike", layers.bike ? "1" : "0"); applyLayers(); if(layers.bike && DEST) destNeed("tr"); if(layers.bike){ cbLoad(); if(map.getZoom() < 13.5) map.easeTo({zoom:14, duration: reduceMotion ? 0 : 500}); } });
+$("lBike").addEventListener("change", function(){ layers.bike = this.checked; lsSet("nyc-l-bike", layers.bike ? "1" : "0"); applyLayers(); if(layers.bike){ cbLoad(); if(map.getZoom() < 13.5) map.easeTo({zoom:14, duration: reduceMotion ? 0 : 500}); } });
 /* ÖPNV-Gruppe: ein Schalter für U-Bahn, Bus, Fähren und Bike Share, Auswahl aufklappbar wie die Filter der anderen Ebenen */
 var TRIDS = ["lSub","lBus","lFerry","lBike"], trOpen0 = false;
 function trSync(){
@@ -12579,9 +12707,9 @@ function trSync(){
   $("lTrGrp").hidden = !trOpen0; var b = $("lTrBtn"); b.classList.toggle("open", trOpen0); b.setAttribute("aria-expanded", trOpen0);
 }
 $("lTr").addEventListener("change", function(){
-  var want = this.checked, ids = trIds().filter(function(id){ return !(isRO() && id!=="lBike"); }), sk = DEST ? "rp-dl-trsel" : "nyc-l-trsel", d0 = ids[0] || "";
+  var want = this.checked, ids = trIds().filter(function(id){ return !(isRO() && id!=="lBike"); }), sk = dynOn() ? "rp-dl-trsel" : "nyc-l-trsel", d0 = ids[0] || "";
   // Ziel außerhalb New Yorks, Linien noch nicht geladen: laden und danach das erste Verkehrsmittel einschalten
-  if(DEST && want && !ids.length){ dWant = true; destNeed("tr"); trSync(); return; }
+  if(dynOn() && want && !ids.length){ dWant = true; vtView(); trSync(); return; }
   var set = want ? (lsGet(sk) || d0).split(",").filter(function(id){ return ids.indexOf(id) > -1; }) : [];
   if(want && !set.length) set = [ids[0]];
   if(!want) lsSet(sk, ids.filter(function(id){ return $(id).checked; }).join(",") || d0);
@@ -12669,7 +12797,7 @@ var DM_ROLES = {
     {ch:"plan", t:"Reihenfolge ändern", p:"Halte einen Stopp am Griff links gedrückt und zieh ihn an die gewünschte Stelle. Die Route passt sich automatisch an.", on:".m-sheet", a:"sort", real:{v:"day", el:"#body li.st .grip"}},
     {ch:"plan", s:"card", t:"Ort antippen", p:"Ein Tipp auf einen Ort öffnet seine Karte: Tipps von Freunden, die nächste Haltestelle und darunter Zur Planung, Route, Details und Mehr.", ring:".mc-plan", f:[38,262], real:{v:"wish", el:"#body li.wi"}},
     {ch:"plan", s:"tk", t:"Tickets immer dabei", p:"Fahrkarten je Etappe und Eintrittskarten je Ort hinterlegst du mit Code, Link und Preis – sichtbar nur für Mitreisende. Du findest sie am Verkehrsmittel einer Etappe und unter Mehr am Ort.", ring:".mk-add", f:[112,222], real:{v:"day", el:"#body [data-act=lmpick]"}},
-    {ch:"go", s:"lay", t:"Die Karte kennt dein Reiseziel", p:"Über die Ebenen blendest du ÖPNV, Bezirke und Cafés ein – vom Verkehrsmittel bis zur einzelnen Linie. Das gilt nicht nur für New York: Für jedes Reiseziel lädt die App Linien und Bezirke dazu.", ring:".ml-tr", f:[150,70], real:{v:"map", el:"#layersBtn"}},
+    {ch:"go", s:"lay", t:"Die Karte kennt dein Reiseziel", p:"Über die Ebenen blendest du ÖPNV, Bezirke und Cafés ein – vom Verkehrsmittel bis zur einzelnen Linie. Das gilt nicht nur für New York: Wohin du die Karte auch schiebst, lädt die App die Linien dazu, am Reiseziel auch die Bezirke.", ring:".ml-tr", f:[150,70], real:{v:"map", el:"#layersBtn"}},
     {ch:"go", s:"bike", t:"Leihräder in vielen Städten", p:"Bike Share zeigt Stationen mit freien Rädern und Plätzen live – in New York und vielen weiteren Städten. Plane eine Etappe mit dem Rad, die Navigation führt dich zur Station.", ring:".mb-card", f:[112,250], real:{v:"layers", el:"#layers label:has(#lBike)"}},
     {ch:"go", s:"off", t:"Auch ohne Netz unterwegs", p:"Lade Karte und ÖPNV deiner Reise vorab herunter. Ohne Netz gehen Plan, Standort, Fotospots und Fotos weiter – hochgeladen wird, sobald wieder Internet da ist.", ring:".mf-btn", f:[60,125], real:{v:"trip", el:"#offBox"}},
     {ch:"go", t:"Unterwegs festhalten", p:"Mit ＋ hältst du Fotos und neue Orte fest, erledigte Stopps hakst du ab. Der Pfeil zeigt deinen Standort.", on:".m-loc,.m-add,.m-sheet", ring:".m-add", f:[205,50], real:{v:"map", el:"#camBtn"}},
