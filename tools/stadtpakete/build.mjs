@@ -366,6 +366,7 @@ async function tfl(p) {
   for (let i = 0; i < 4; i++) {
     const r = await fetch(u, { signal: AbortSignal.timeout(60000), headers: { "user-agent": "Reiseplan-Stadtpakete/1" } }).catch((e) => ({ ok: false, status: e.message }));
     if (r.ok) { await sleep(250); return r.json(); }
+    if (r.status === 404) throw new Error("TfL " + p + " 404"); // gibt es nicht (z. B. Fahrplan der Overground): nicht wiederholen
     log("  TfL", p, r.status); await sleep(r.status === 429 ? 30000 : 3000);
   }
   throw new Error("TfL " + p);
@@ -420,7 +421,7 @@ async function londonRail(C) {
     if (!any) continue;
     const name = ln.modeName === "tube" || ln.modeName === "overground" || ln.id === "elizabeth" ? ln.name : ln.name;
     L.push([m, name.slice(0, 40), "", col, col ? (TFLDARK[ln.id] ? "#111111" : "#FFFFFF") : ""]);
-    W.push(w.map((n, j) => n ? Math.max(60, Math.min(1800, Math.round(13 * 3600 / n / 2))) : (m === "metro" ? 180 : 450)));
+    W.push(w.map((n, j) => n ? Math.max(60, Math.min(1800, Math.round(13 * 3600 / n / 2))) : (m === "metro" ? 180 : ln.id === "elizabeth" ? 240 : 450)));
     G.push([...new Set(seg.flatMap((r) => clipRuns(r, C.ext)).map((r) => polyEnc(simp(r, 0.00004))))]);
     log("  ", ln.id, m, "Stationen bisher", ST.length);
   }
