@@ -1042,7 +1042,16 @@ await test("Profil: Reise über ⋯ abschließen und wieder öffnen (vor dem End
   // Reise mit vergangenem Enddatum: kein „abschließen“ nötig
   await rp(`S.trips.t_alt = newTripObj({id:"t_alt", name:"Alt", start:"2020-05-01", end:"2020-05-05"}); save(); renderProfile(); true`); await page.waitForTimeout(200);
   await page.locator("#profView [data-act=pfmore][data-trip=t_alt]").click();
-  ok(await page.locator("#jpMenu [data-act=pffin]").count()===0, "Bereits abgeschlossene Reise bietet „abschließen“ an");
+  ok((await page.locator("#jpMenu [data-act=pffin]").innerText()).includes("Wieder öffnen"), "Reise mit vergangenem Enddatum bietet kein „Wieder öffnen“");
+  // Fehler 29.10.: nach „Wieder öffnen“ blieb sie abgeschlossen und das Menü bot nichts mehr an
+  await click("#jpMenu [data-act=pffin]");
+  ok(await rp(`S.trips.t_alt.reo===1 && !S.trips.t_alt.fin && tripStatus(S.trips.t_alt)!=="done"`), "Wieder geöffnete vergangene Reise gilt weiter als abgeschlossen");
+  ok(await rp(`scopePast("map").indexOf("t_alt") < 0`), "Wieder geöffnete Reise steht noch unter „Vergangene Reisen“");
+  await page.locator("#profView [data-act=pfmore][data-trip=t_alt]").click();
+  ok((await page.locator("#jpMenu [data-act=pffin]").innerText()).includes("Reise abschließen"), "Wieder geöffnete Reise lässt sich nicht abschließen");
+  await click("#jpMenu [data-act=pffin]");
+  ok(await rp(`S.trips.t_alt.fin===1 && !S.trips.t_alt.reo && tripStatus(S.trips.t_alt)==="done"`), "Wieder geöffnete Reise lässt sich nicht erneut abschließen");
+  ok(await rp(`S.trips.t_alt.start==="2020-05-01" && S.trips.t_alt.end==="2020-05-05"`), "Zeitraum wurde verändert");
 });
 
 await test("Beobachtete Reisen: eigener Knopf, kein Ansicht/Bearbeiten-Umschalter, erkennbar mit Auge und Besitzer", async () => {
