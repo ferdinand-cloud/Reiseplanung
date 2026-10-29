@@ -11930,11 +11930,23 @@ function applyLayers(){
 /* ---------- Kartenebenen je Reiseziel ----------
    New York nutzt die eingebauten Daten (MTA, NYC Ferry, Citi Bike, Viertel). Liegt die Reise woanders, kommen ÖPNV-Linien,
    Stationen, Leihrad-Stationen und Bezirke aus OpenStreetMap (Overpass): je Ziel einmal geladen und auf dem Gerät gespeichert. */
-var DMODES = [["metro","Metro / U-Bahn"],["light","Stadtbahn"],["tram","Tram"],["train","S-Bahn & Züge"],["funi","Seilbahnen"],["bus","Busse"],["ferry","Fähren"]];
+var DMODES = [["metro","Metro / U-Bahn"],["light","Stadtbahn"],["tram","Tram"],["sbahn","S-Bahn"],["reg","Regionalverkehr"],["long","Fernverkehr"],["train","Sonstige Züge"],["funi","Seilbahnen"],["bus","Busse"],["ferry","Fähren"]];
 var DMNAME = {}; DMODES.forEach(function(m){ DMNAME[m[0]] = m[1]; });
 var DRMODE = {subway:"metro", light_rail:"light", monorail:"light", tram:"tram", train:"train", funicular:"funi", ferry:"ferry", bus:"bus", trolleybus:"bus"};
+/* Züge nach Art: GTFS-Erweiterungstyp (101 Hochgeschwindigkeit, 102 Fern, 103/106 Regional, 109 S-Bahn), OSM service, sonst Linienname (ICE, RE, S1 …) */
+var RAILRT = {100:"", 101:"long", 102:"long", 105:"long", 103:"reg", 106:"reg", 107:"reg", 109:"sbahn"};
+var RAILSV = {high_speed:"long", long_distance:"long", night:"long", regional:"reg", commuter:"sbahn"};
+function railCls(k, rt, sv){
+  var c = RAILRT[+rt] || RAILSV[sv || ""]; if(c) return c;
+  var n = String(k || "").toUpperCase().trim();
+  if(/^(ICE|ICD|IC|EC|ECE|EN|NJ|RJX?|TGV|THA|EST|FR|FA|FB|AVE|ALVIA|WB|FLX)(\s?\d|$)|FLIX|SLEEPER|EUROSTAR|NIGHTJET|INTERCITY|EUROCITY|OUIGO/.test(n)) return "long";
+  if(/^S\s?\d|^S-?BAHN|^RER/.test(n)) return "sbahn";
+  if(/^(RE|RB|IRE|RS|FEX|MEX|REX|IR|TER|RX|R)(\s?\d|$)|REGIO/.test(n)) return "reg";
+  return "train";
+}
+function railFam(m){ return m==="train" || m==="sbahn" || m==="reg" || m==="long"; }
 var DSTMODE = {subway:"metro", light_rail:"light", monorail:"light", funicular:"funi", train:"train"};
-var DCOL = {metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"};
+var DCOL = {metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", sbahn:"#3F8A5A", reg:"#7A6A9B", long:"#9A3B3B", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"};
 var DPAL = ["#C8102E","#0072CE","#E5A800","#00965E","#7D55C7","#E87722","#00A3AD","#A6192E","#5B7F95","#C6007E"];
 var DRMAX = 10000; // Suchradius höchstens 10 km: in großen Städten sonst zu viele Daten für Overpass und das iPhone
 /* ÖPNV nach Kartenausschnitt: Linien kommen nicht mehr aus einem Umkreis ums Ziel, sondern aus einem festen Kachelraster für das, was die Karte zeigt.
@@ -11948,6 +11960,7 @@ var OVP = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.sys
 var DEST = null, NB_NYC = NB, NBKEY = "nyc-nb-hi", DOFF = {}, dQ = "", dOpen = {}, dWant = false, DMEM = {};
 lsList("rp-doff").forEach(function(id){ DOFF[id] = 1; }); // ausgeblendete Linien gelten überall, nicht je Ziel
 var DL = (function(){ try { return JSON.parse(lsGet("rp-dl")||"{}") || {}; } catch(e){ return {}; } })();
+if("train" in DL && !("sbahn" in DL)){ DL.sbahn = DL.reg = DL.long = DL.train; lsSet("rp-dl", JSON.stringify(DL)); } // Züge seit v442 nach Art getrennt
 function inNYC(c){ return c.la > 40.45 && c.la < 41.0 && c.lo > -74.35 && c.lo < -73.6; }
 function isDest(){ return !!DEST; }
 /* Kartenebenen aus OpenStreetMap: Reise außerhalb New Yorks oder Karte zeigt gerade einen Ort außerhalb New Yorks */
@@ -12086,6 +12099,7 @@ function vtParse(j, tol){
   (j.elements||[]).forEach(function(r){
     var tg = r.tags || {}; if(r.type!=="relation" || tg.type!=="route") return;
     var m = DRMODE[tg.route], k = String(tg.ref || tg.name || "").trim().slice(0, 40); if(!m || !k) return;
+    if(m==="train") m = railCls(k, 0, tg.service);
     add(m, k, String(tg.name || "").slice(0, 80), okCol(tg.colour || tg.color), (r.members||[]).filter(function(mb){ return mb.type==="way"; }).map(function(mb){ return mb.ref; }));
   });
   // Standseil- und Seilbahnen ohne Linien-Relation (z. B. die Elevadores in Lissabon)
@@ -12115,7 +12129,7 @@ function vtAgg(keys){
       feats.push({type:"Feature", properties:{m:l.m, id:id, k:l.k, c:l.c}, geometry:{type:"MultiLineString", coordinates:l.g}}); });
     return {lines:lines, geo:{type:"FeatureCollection", features:feats}}; };
   var tr = mk(false), bs = mk(true), has = {}; tr.lines.forEach(function(l){ has[l.m] = 1; });
-  tr.st = st.filter(function(s){ return has[s[3]]; }); tr.bike = bk.slice(0, 3000); tr.nbus = nbus;
+  tr.st = st.filter(function(s){ return has[s[3]] || (s[3]==="train" && (has.sbahn || has.reg || has.long)); }); tr.bike = bk.slice(0, 3000); tr.nbus = nbus;
   var hasC = keys.some(function(k){ return k.charAt(0)==="c" && VT.mem[k]; });
   return {tr:tr, bus:hasC ? bs : null};
 }
@@ -12226,11 +12240,26 @@ function tlUrl(l){ return "https://transit.land/api/v2/tiles/"+l+"/tiles/{z}/{x}
 /* GTFS-Grundtyp → Verkehrsmittel der App (S-Bahn und Regionalzüge sind in GTFS „Bahn“) */
 var TLMODE = {0:"tram", 1:"metro", 2:"train", 3:"bus", 11:"bus", 4:"ferry", 5:"tram", 6:"funi", 7:"funi", 12:"light"};
 function tlMode(t){ return TLMODE[+t] || "train"; }
-var TLM = ["match", ["to-number", ["get","route_type_basic"]], 0,"tram", 1,"metro", 2,"train", 3,"bus", 11,"bus", 4,"ferry", 5,"tram", 6,"funi", 7,"funi", 12,"light", "train"];
 var TLK = ["to-string", ["coalesce", ["get","route_short_name"], ["get","route_long_name"], ""]];
-var TLID = ["concat", TLM, ":", TLK];
-var TLC = ["case", ["==", ["length", ["to-string", ["get","route_color"]]], 7], ["to-string", ["get","route_color"]],
-  ["match", TLM, "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "bus", "#1f6fd1", DCOL.train]];
+/* Bahn-Art je Linienname (TLCLS, aus den geladenen Kacheln per railCls): Kartenausdrücke kennen keine regulären Ausdrücke, daher eine Liste je Art */
+var TLCLS = {}, TLM, TLID, TLC;
+function tlExprs(){
+  var g = {}, rail = "train";
+  Object.keys(TLCLS).forEach(function(k){ var c = TLCLS[k]; if(c!=="train" && k) (g[c] = g[c] || []).push(k); });
+  var cs = Object.keys(g); if(cs.length){ rail = ["match", TLK]; cs.forEach(function(c){ rail.push(g[c], c); }); rail.push("train"); }
+  TLM = ["match", ["to-number", ["get","route_type_basic"]], 0,"tram", 1,"metro", 2,rail, 3,"bus", 11,"bus", 4,"ferry", 5,"tram", 6,"funi", 7,"funi", 12,"light", rail];
+  TLID = ["concat", TLM, ":", TLK];
+  TLC = ["case", ["==", ["length", ["to-string", ["get","route_color"]]], 7], ["to-string", ["get","route_color"]],
+    ["match", TLM, "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "sbahn", DCOL.sbahn, "reg", DCOL.reg, "long", DCOL.long, "bus", "#1f6fd1", DCOL.train]];
+}
+tlExprs();
+function tlWidth(){ return ["interpolate",["linear"],["zoom"],10,["match",TLM,"tram",1,"funi",1.4,1.6],16,["match",TLM,"tram",3,"funi",3.5,5]]; }
+/* neue Linien-Arten bekannt: Ausdrücke neu setzen */
+function tlRestyle(){
+  tlExprs(); if(!mapReady || !map.getLayer("tl-rail")) return;
+  map.setPaintProperty("tl-rail", "line-color", TLC); map.setPaintProperty("tl-rail", "line-width", tlWidth());
+  map.setPaintProperty("tl-ferry", "line-color", TLC); if(map.getLayer("tl-lbl")) map.setPaintProperty("tl-lbl", "text-color", TLC);
+}
 var TLRAIL = ["any", ["in", "0", ["to-string", ["get","route_types_basic"]]], ["in", "1", ["to-string", ["get","route_types_basic"]]], ["in", "2", ["to-string", ["get","route_types_basic"]]]];
 function tlSetup(){
   if(!mapReady || !tlKey()) return;
@@ -12243,7 +12272,7 @@ function tlSetup(){
   map.addLayer({id:"tl-probe", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-opacity":0, "line-width":1}, layout:{visibility:"none"}}, bef);
   map.addLayer({id:"tl-bus", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZB, paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],12,1,16,3], "line-opacity":.6}, layout:none}, bef);
   map.addLayer({id:"tl-rail", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-color":TLC,
-    "line-width":["interpolate",["linear"],["zoom"],10,["match",TLM,"tram",1,"funi",1.4,1.6],16,["match",TLM,"tram",3,"funi",3.5,5]]}, layout:none}, bef);
+    "line-width":tlWidth()}, layout:none}, bef);
   map.addLayer({id:"tl-ferry", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-color":TLC, "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{visibility:"none", "line-cap":"round"}}, bef);
   map.addLayer({id:"tl-st", type:"circle", source:"tl-s", "source-layer":"stops", minzoom:13,
     filter:["any", ["all", ["==", ["get","location_type"], 1], ["any", ["==", ["to-string", ["get","route_types_basic"]], "[]"], TLRAIL]], ["all", ["==", ["get","location_type"], 0], ["!", ["has","parent_station"]], TLRAIL]],
@@ -12275,17 +12304,19 @@ function tlFeats(){ try { return map.getSource("tl-r") ? map.querySourceFeatures
 /* Linien im Kartenausschnitt fürs Menü: Verkehrsmittel → einzelne Linien */
 function tlList(){
   if(!tlOn() || !mapReady) return;
-  var z = map.getZoom(), b = map.getBounds(), L = {}, ids = [];
+  var z = map.getZoom(), b = map.getBounds(), L = {}, ids = [], nc = 0;
   if(z >= TLZ) tlFeats().forEach(function(f){
     var p = f.properties || {}; if(p.clustered) return;
+    var m = tlMode(p.route_type_basic), k = String(p.route_short_name || p.route_long_name || "").trim().slice(0, 40); if(!k) return;
+    if(m==="train"){ if(!(k in TLCLS)){ if(nc > 3000) TLCLS = {}; TLCLS[k] = railCls(k, p.route_type) === "train" && p.route_long_name ? railCls(p.route_long_name, p.route_type) : railCls(k, p.route_type); nc++; } m = TLCLS[k]; }
     var bb = null; try { bb = JSON.parse(p.bbox || "null"); } catch(e){}
     if(bb && (bb[0] > b.getEast() || bb[2] < b.getWest() || bb[1] > b.getNorth() || bb[3] < b.getSouth())) return;
-    var m = tlMode(p.route_type_basic), k = String(p.route_short_name || p.route_long_name || "").trim().slice(0, 40); if(!k) return;
     var id = m+":"+k, c = okCol(p.route_color);
     if(!L[id]){ L[id] = {m:m, k:k, n:String(p.route_long_name || "").slice(0, 80), c:c}; ids.push(id); } else if(!L[id].c && c) L[id].c = c;
   });
   var mk = function(bus){ return ids.filter(function(id){ return (L[id].m==="bus")===bus; }).sort(function(a, b2){ return natCmp(L[a].k, L[b2].k); })
     .map(function(id){ var l = L[id]; if(!l.c) l.c = vtCol(l.m, l.k); return l; }); };
+  if(nc){ tlRestyle(); TL.sig = ""; tlApply(); }
   var E = {type:"FeatureCollection", features:[]}, tr = mk(false), bs = mk(true), sig = ids.join("|")+"#"+TL.bike.length+"#"+(z >= TLZ);
   if(sig===TL.sig){ destUi(); return; }
   TL.sig = sig;
@@ -12462,7 +12493,8 @@ function dApplyMap(){
   map.setFilter("dtr-f", ["all", ["==",["get","m"],"ferry"], ["in", ["get","m"], ["literal", rail]], off]);
   vis("dbus", dy && dOn("bus")); vis("dbus-lbl", dy && dOn("bus")); map.setFilter("dbus", off); if(map.getLayer("dbus-lbl")) map.setFilter("dbus-lbl", off);
   vis("dst", dy && rail.length); vis("dst-lbl", dy && rail.length);
-  map.setFilter("dst", ["in", ["get","m"], ["literal", rail]]); if(map.getLayer("dst-lbl")) map.setFilter("dst-lbl", ["in", ["get","m"], ["literal", rail]]);
+  var srail = rail.some(railFam) ? rail.concat(["train"]) : rail; // Bahnhöfe kennen nur „Zug“, nicht die Art
+  map.setFilter("dst", ["in", ["get","m"], ["literal", srail]]); if(map.getLayer("dst-lbl")) map.setFilter("dst-lbl", ["in", ["get","m"], ["literal", srail]]);
   vis("dbike", dy && layers.bike && !(DEST && CB.sys.length)); // OpenStreetMap-Stationen nur, solange kein Leihrad-System mit Live-Daten bekannt ist
   vis("vt-rail", dy && rail.length && !isRO()); // graues Grundgerüst aus den Kartenkacheln: sofort da, bis die Linien geladen sind
   tlApply();

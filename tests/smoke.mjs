@@ -1501,6 +1501,11 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   ok(grp.includes("Metro") && grp.includes("S-Bahn") && grp.includes("Tram") && grp.includes("Busse"), "Verkehrsmittel aus Transitland fehlen: "+grp);
   ok(await rp(`VV.tr.lines.length===3 && !VV.tr.lines.some(function(l){ return l.k==="U9"; })`), "Linie außerhalb des Ausschnitts steht in der Liste");
   ok(await rp(`VV.tr.lines.filter(function(l){ return l.k==="U2"; })[0].c.length===7`), "Linie ohne Farbe bekommt keine Ersatzfarbe");
+  // Züge nach Art getrennt: Fern-, Regional-, S-Bahn, Sonstige (Linienname, GTFS-Erweiterungstyp, OSM service)
+  ok(await rp(`VV.tr.lines.filter(function(l){ return l.k==="S1"; })[0].m==="sbahn"`), "S1 nicht als S-Bahn erkannt");
+  ok(await rp(`[["ICE",0],["FlixTrain FLX10",0],["European Sleeper",0],["RE3",0],["RB63",0],["FEX",0],["S25",0],["RER A",0],["10300",0],["3",0],["X",101],["Y",109],["Z",106]].map(function(a){ return railCls(a[0], a[1]); }).join()`)==="long,long,long,reg,reg,reg,sbahn,sbahn,train,train,long,sbahn,reg", "Zug-Arten falsch: "+await rp(`[["ICE",0],["FlixTrain FLX10",0],["European Sleeper",0],["RE3",0],["RB63",0],["FEX",0],["S25",0],["RER A",0],["10300",0],["3",0],["X",101],["Y",109],["Z",106]].map(function(a){ return railCls(a[0], a[1]); }).join()`));
+  ok(await rp(`railCls("Foo", 0, "high_speed")==="long" && JSON.stringify(TLM).indexOf("\\"S1\\"") > -1`), "Bahn-Art fehlt in den Kartenausdrücken");
+  ok(grp.includes("S-Bahn") && !grp.includes("Züge"), "Menü zeigt noch „S-Bahn & Züge“: "+grp);
   ok(!OVQ.some(q => q.includes("subway") || q.includes("tram")), "Linien werden trotz Transitland bei Overpass abgefragt");
   ok(await rp(`var a = document.querySelector("#attr a[href*='transit.land/terms']"); !!a && a.textContent==="Transitland"`), "Quellenangabe Transitland mit Link fehlt");
   ok(await rp(`map.getLayoutProperty("tl-probe","visibility")==="visible"`), "Kacheln werden für das Menü nicht geladen");
@@ -1535,7 +1540,7 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   ok(TLQ.some(u => u.includes("apikey=neuerkey")), "Schlüssel wird vor dem Speichern nicht geprüft");
   // gemeinsamer Schlüssel aus Firebase (config/transit) gilt für alle Angemeldeten, ohne Eintrag auf dem Gerät
   await rp(`lsSet("rp-tlkey", ""); TL.bad = false; var o = fbDb; fbDb = {collection:function(c){ return {doc:function(d){ return {get:function(){ return Promise.resolve({exists:c==="config" && d==="transit", data:function(){ return {tlkey:"gemeinsam"}; }}); }}; }}; }}; tlCfgLoad(); fbDb = o; true`);
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => window.__rp(`tlKey()==="gemeinsam" && map.getSource("tl-r").tiles[0].indexOf("apikey=gemeinsam") > -1`), null, {timeout:5000}).catch(() => {});
   ok(await rp(`tlKey()==="gemeinsam" && lsGet("rp-tlcfg")==="gemeinsam" && map.getSource("tl-r").tiles[0].indexOf("apikey=gemeinsam") > -1`), "Gemeinsamer Schlüssel aus Firebase wird nicht genutzt");
   // gemeinsamer Schlüssel aktiv: Einstellungszeile nur für den Verwalter
   await rp(`var p0 = PROF; PROF = {name:"anna", nameLower:"anna"}; tlOpen = false; openSettings(); window.__p0 = p0; true`); await page.waitForTimeout(150);
