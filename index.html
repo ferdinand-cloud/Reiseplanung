@@ -576,7 +576,9 @@ body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0
 .tf-link.warn{color:#FF3B30;text-decoration:none}
 .tf-add{justify-content:center;font-weight:600;color:var(--ink);cursor:pointer}
 .tf .err{margin:12px 4px 0;color:#FF3B30;font-weight:600;font-size:14px}
-.tf-foot{position:sticky;bottom:-18px;display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin:18px -18px -18px;padding:12px 18px calc(14px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--sheet) 88%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid color-mix(in srgb,var(--ink) 8%,transparent)}
+.tf-foot{position:sticky;bottom:-18px;display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin:18px -18px -18px;padding:12px 18px calc(14px + env(safe-area-inset-bottom,0px));z-index:2;isolation:isolate;background:none}
+/* Fußleiste wie das Glas-Pop-up: keine deckende Fläche, nur Unschärfe mit weichem Übergang nach oben */
+.tf-foot::before{content:"";position:absolute;left:0;right:0;top:-16px;bottom:0;z-index:-1;pointer-events:none;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 22px,#000 calc(100% - 12px),transparent);mask-image:linear-gradient(to bottom,transparent,#000 22px,#000 calc(100% - 12px),transparent)}
 .tf-foot .btn{padding:12px 14px;font-size:15px;justify-content:center}
 .lpring{position:fixed;z-index:35;width:0;height:0;pointer-events:none}
 .lpring::before,.lpring::after{content:"";position:absolute;left:0;top:0;border-radius:50%;transform:translate(-50%,-50%) scale(.2);opacity:0}

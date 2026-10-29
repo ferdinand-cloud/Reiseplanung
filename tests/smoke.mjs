@@ -4864,6 +4864,22 @@ await test("Detail-Pop-up passt mit vielen Fotos ins Fenster, × erreichbar (sch
   }
 });
 
+await test("Reise bearbeiten: Fußleiste Abbrechen/Speichern ohne deckenden Hintergrund (Glas wie das Pop-up)", async () => {
+  await seed();
+  await rp(`acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; META[S.cur] = {owner:"u_me", members:["u_me"], roles:{u_me:"owner"}}; tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet(); true`); await page.waitForTimeout(300);
+  ok(await visible("#tripPop .tf-foot"), "Fußleiste fehlt");
+  const st = await page.evaluate(() => { const f = document.querySelector("#tripPop .tf-foot"), cs = getComputedStyle(f), b = getComputedStyle(f, "::before");
+    return {bg:cs.backgroundColor, img:cs.backgroundImage, bt:cs.borderTopWidth, pos:cs.position, bf:b.backdropFilter || b.webkitBackdropFilter, mask:b.maskImage || b.webkitMaskImage}; });
+  ok(/rgba\(0, 0, 0, 0\)|transparent/.test(st.bg) && st.img==="none", "Fußleiste hat deckenden Hintergrund: "+JSON.stringify(st));
+  ok(st.bt==="0px" && st.pos==="sticky", "Trennlinie/Sticky falsch: "+JSON.stringify(st));
+  ok(/blur/.test(st.bf) && /gradient/.test(st.mask), "Keine Unschärfe mit weichem Übergang: "+JSON.stringify(st));
+  // Knöpfe bleiben bedienbar (Unschärfe-Schicht liegt dahinter)
+  const hit = await page.evaluate(() => { const b = document.querySelector("#tripPop .tf-foot [data-act=tcancel]"), r = b.getBoundingClientRect(); const e = document.elementFromPoint(r.left + r.width/2, r.top + r.height/2); return e===b || [e && e.className, e && e.id, r.top, innerHeight]; });
+  ok(hit===true, "Abbrechen ist verdeckt: "+JSON.stringify(hit));
+  await click("#tripPop [data-act=tcancel]"); await page.waitForTimeout(200);
+  ok(!(await visible("#tripPop #tForm")), "Abbrechen schließt das Formular nicht");
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }
