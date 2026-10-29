@@ -11985,9 +11985,9 @@ function isDest(){ return !!DEST; }
 function dynOn(){ return !!DEST || VT.out; }
 /* Mittelpunkt des Ziels: Ort des aktuellen Tags (Reisen mit mehreren Städten), sonst Mitte der Reise */
 function destNow(o0){
-  var t = T(); if(!t) return null;
+  var zs = zsOn(), t = zs ? Z(zs) : T(); if(!t) return null; // Ziel-Ansicht (z. B. Paris ohne Reise): Gebiet des Ziels, nicht der aktiven Reise
   var os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); }), o = o0 || null, C = null;
-  if(!o0 && os.length > 1 && cur) o = os.filter(function(x){ return (!x.from || x.from <= cur) && (!x.to || x.to >= cur); })[0];
+  if(!o0 && !zs && os.length > 1 && cur) o = os.filter(function(x){ return (!x.from || x.from <= cur) && (!x.to || x.to >= cur); })[0];
   o = o || (t.ziel || os.length > 1 ? os[0] : null);
   if(o) C = o.bb ? {la:(o.bb[1]+o.bb[3])/2, lo:(o.bb[0]+o.bb[2])/2} : {la:o.la, lo:o.lo};
   else C = tripCenter(t);
@@ -11997,11 +11997,13 @@ function destNow(o0){
   return {la:+C.la.toFixed(4), lo:+C.lo.toFixed(4), r:Math.round(Math.min(DRMAX, Math.max(5000, r + 2500))), n:String((o && o.n) || t.name || "").slice(0, 60), pts:pts.slice(0, 300).map(function(p){ return [p.la, p.lo]; })};
 }
 function destIdx(){ try { var a = JSON.parse(lsGet("rp-dest")||"[]"); return Array.isArray(a) ? a : []; } catch(e){ return []; } }
+/* Karte zeigt eine andere Stadt, die Reise ist in New York: keine New-Yorker Bezirke im Menü */
+function nbOut(){ if(!DEST) nbUse(VT.out ? [] : NB_NYC, "nyc-nb-hi"); }
 function destNear(e, C){ return dist(e, C) < Math.max(3000, e.r*0.4); }
 function destSync(){
   var C = destNow();
   // Karte zeigt New York (egal welche Reise): eingebaute MTA-, Fähren-, Citi-Bike- und Bezirksdaten statt der Daten des Reiseziels
-  if(!C || inNYC(C) || VT.nyc){ if(DEST) destSet(null); return; }
+  if(!C || inNYC(C) || VT.nyc){ if(DEST) destSet(null); nbOut(); return; }
   if(DEST && destNear(DEST, C)){ DEST.pts = C.pts; return; }
   destSet(destOf(C), C.pts);
 }
@@ -12017,6 +12019,7 @@ function destAll(){
 }
 function destSet(d, pts){
   if(d){ d.pts = pts || []; d.st = {nb:""}; d.nb = null; }
+  var cq = d && cpAt(d); if(cq) cpLoad(cq.id, "rail"); // Stadtpaket des Ziels schon laden (Routen, Karte beim Heranzoomen)
   DEST = d; dQ = ""; dOpen = {}; dWant = false;
   document.body.classList.toggle("dyn", dynOn());
   attrSync();
@@ -12176,7 +12179,7 @@ function vtView(){
   var c = map.getCenter(), out = map.getZoom() >= 8 && !inNYC({la:c.lat, lo:c.lng}); // weit herausgezoomt: Menü der Reise behalten
   var ny = map.getZoom() >= 8 && !out;
   if(ny!==VT.nyc){ VT.nyc = ny; VT.out = out; destSync(); document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; }
-  if(out!==VT.out){ VT.out = out; document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; } // applyLayers ruft vtView erneut
+  if(out!==VT.out){ VT.out = out; nbOut(); document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; } // applyLayers ruft vtView erneut
   var cpc = out ? cpAt({la:c.lat, lo:c.lng}) : null, cpi = cpc ? cpc.id : "";
   if(cpi!==(VT.cp||"")){ VT.cp = cpi; CPSIG = ""; VT.sig = ""; if(cpi) cpLoad(cpi, "rail"); applyLayers(); return; } // Stadtpaket statt Transitland/OpenStreetMap
   var z = map.getZoom(), w = vtWant(), keys = [];
@@ -13029,6 +13032,7 @@ function fitAll(){
   fitDay();
 }
 function fitDay(){
+  var zs = zsOn(); if(zs){ zsFit(zs); return; } // Ziel-Ansicht: auf das Ziel, nicht auf die aktive Reise
   if(noTrip()){ if(map) try { map.jumpTo({center:[0, 25], zoom:1.2}); } catch(e){} return; }
   var D = dayByKey(cur), pts = [];
   if(D){ if(D.hotel) pts.push(D.hotel); pts = pts.concat(routePts(cur)); }

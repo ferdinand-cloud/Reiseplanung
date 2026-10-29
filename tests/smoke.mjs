@@ -1814,6 +1814,27 @@ await test("Stadtpakete: Berlin aus den VBB-Daten statt Transitland, ganze Linie
   ok(await rp(`!cpView() && !document.body.classList.contains("dyn")`), "In New York bleibt das Stadtpaket aktiv");
 });
 
+await test("Ziel Paris ohne Reise: Mittelpunkt-Knopf bleibt beim Ziel, keine New-Yorker Bezirke, Stadtpaket", async () => {
+  const CPQ = [];
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => { CPQ.push(rt.request().url()); return rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }); });
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
+  await seed();
+  await rp(`CP = {}; layers.nb = true; var zid = zielNew("Paris", {id:"zo", n:"Paris", la:48.8566, lo:2.3522}); zsSet(zid); renderAll(); fitDay(); true`);
+  await page.waitForTimeout(900);
+  const a = await rp(`(function(){ var c = map.getCenter(); return {la:c.lat, lo:c.lng, in:map.getBounds().contains([2.3522, 48.8566]), dest:DEST && DEST.k, nyc:NB.some(function(n){ return n.n==="SoHo"; })}; })()`);
+  ok(a.in && Math.abs(a.la - 48.86) < 0.6, "Karte nicht beim Ziel Paris: "+JSON.stringify(a));
+  ok(a.dest && !a.nyc, "Ziel Paris nutzt New-Yorker Bezirke: "+JSON.stringify(a));
+  ok(CPQ.some(u => u.endsWith("/paris.json")), "Stadtpaket Paris nicht angefragt");
+  // Mittelpunkt erneut (Knopf): bleibt in Paris
+  await rp(`map.jumpTo({center:[2.2, 48.7], zoom:11}); fitDay(); true`); await page.waitForTimeout(700);
+  ok(await rp(`map.getBounds().contains([2.3522, 48.8566]) && Math.abs(map.getCenter().lat - 48.86) < 0.6`), "Mittelpunkt springt nicht zum Ziel");
+  // New-York-Reise, Karte zeigt Paris: Bezirke-Menü ohne New-Yorker Bezirke; zurück in New York wieder da
+  await rp(`zsSet(""); renderAll(); true`); await jump(2.35, 48.86, 12); await page.waitForTimeout(300);
+  ok(await rp(`!DEST && !NB.some(function(n){ return n.n==="SoHo"; })`), "New-Yorker Bezirke beim Blick auf Paris");
+  await jump(-73.99, 40.73, 13); await page.waitForTimeout(300);
+  ok(await rp(`NB.some(function(n){ return n.n==="SoHo"; })`), "New-Yorker Bezirke fehlen wieder in New York");
+});
+
 await test("ÖPNV über NYC hinaus (Transitous): Etappe zum Flughafen Newark mit NJ Transit und AirTrain", async () => {
   await seed();
   // Polyline (Google-Kodierung, Genauigkeit 6) wie bei MOTIS
