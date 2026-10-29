@@ -1,0 +1,47 @@
+# Stadtpakete: ÖPNV für Berlin, Paris und London aus den offiziellen Fahrplandaten aufbereiten (wöchentlich und von Hand).
+# Ergebnis liegt im Zweig „stadtpakete“ (nur die aktuellen Dateien, ohne Verlauf, damit das Repo nicht wächst);
+# die App lädt sie über raw.githubusercontent.com. Scheitert eine Stadt, bleibt ihr letzter Stand erhalten.
+name: Stadtpakete
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      staedte:
+        description: "Städte (leer = alle), z. B. london"
+        required: false
+  push:
+    branches: [main]
+    paths: ["tools/stadtpakete/**", ".github/workflows/stadtpakete.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: stadtpakete
+  cancel-in-progress: false
+jobs:
+  bauen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Letzten Stand holen
+        run: |
+          mkdir -p out
+          if git fetch --depth 1 origin stadtpakete; then git --work-tree=out checkout FETCH_HEAD -- . && git reset -q; fi
+          rm -rf out/.git; ls -la out
+      - name: Pakete bauen
+        run: node --max-old-space-size=6000 tools/stadtpakete/build.mjs ${{ github.event.inputs.staedte }} --out out
+      - name: Veröffentlichen
+        run: |
+          cd out
+          printf '# Stadtpakete\n\nAutomatisch gebaut von .github/workflows/stadtpakete.yml – nicht von Hand ändern.\nQuellen: VBB (CC BY 4.0), Île-de-France Mobilités (ODbL), Transport for London (Powered by TfL Open Data), Bus Open Data Service (OGL v3).\n' > README.md
+          ls -la
+          git init -q -b stadtpakete
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Stadtpakete $(date -u +%Y-%m-%d)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" stadtpakete
