@@ -136,6 +136,7 @@ async function seed(){
     t.photos = {p4:["ph_a","ph_b"], p5:["ph_c"]};
     var c = document.createElement("canvas"); c.width = 320; c.height = 240; var g = c.getContext("2d");
     ["#c33","#3a3","#36c"].forEach(function(col, i){ g.fillStyle = col; g.fillRect(0, 0, 320, 240); g.fillStyle = "#fff"; g.font = "60px sans-serif"; g.fillText(String(i+1), 140, 140); PHC[["ph_a","ph_b","ph_c"][i]] = c.toDataURL("image/jpeg", .7); });
+    CP = {}; CPS.forEach(function(c){ cpGet(c.id).st = {rail:"none", bus:"none"}; }); // Stadtpakete nur im eigenen Test
     TLKEY = ""; TL.cfg = ""; // Tests ohne echten Transitland-Schlüssel (kein Kontingent verbrauchen); der Transitland-Test setzt einen eigenen
     acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; fbDb = null; acct.state = "ok"; lsSet("rp-dcdemo", "0"); DCSIG = "";
     S = {trips:{t_test:t}, cur:"t_test"}; cur = H; tab = "day"; sel = null; finEd = ""; finM = "";
@@ -1749,6 +1750,65 @@ await test("Routenoptionen je Etappe: Zeit (Abfahrt/Ankunft) und bevorzugte Verk
   ok((await page.locator("#jpMenu [data-act=loptopen]").innerText()).includes("Ankunft bis 12:00"), "Optionen im Menü nicht sichtbar");
   await click("#jpMenu [data-act=loptopen]"); await click("#catPop [data-act=loptreset]"); await click("#catPop [data-act=loptsave]");
   ok(await rp(`legGet("legOpt", dayLegs(cur)[${li}][1])===undefined`), "Zurücksetzen löscht die Optionen nicht");
+});
+
+await test("Stadtpakete: Berlin aus den VBB-Daten statt Transitland, ganze Linien, Farben, Routen ohne Netz", async () => {
+  const OVQ = [], TLQ = [], CPQ = [];
+  const enc = (pts) => { let o = "", pla = 0, plo = 0; const e1 = (v) => { v = v < 0 ? ~(v << 1) : v << 1; let s = ""; while(v >= 32){ s += String.fromCharCode((32 | (v & 31)) + 63); v >>= 5; } return s + String.fromCharCode(v + 63); };
+    pts.forEach(([la, lo]) => { const a = Math.round(la*1e5), b = Math.round(lo*1e5); o += e1(a - pla) + e1(b - plo); pla = a; plo = b; }); return o; };
+  // U2 West–Ost mit Bogen, S1 Nord–Süd, Tram M10; Umstieg Alexanderplatz (U2 ↔ S1)
+  const U2 = [[52.520, 13.350], [52.522, 13.365], [52.521, 13.380], [52.524, 13.395], [52.522, 13.410], [52.520, 13.450]];
+  const S1 = [[52.560, 13.410], [52.540, 13.411], [52.522, 13.410], [52.500, 13.412], [52.480, 13.410]];
+  const pkg = {v:1, id:"berlin", part:"rail", n:"Berlin", src:"VBB", lic:"CC BY 4.0", at:"2026-10-29", bb:[12.88, 52.29, 13.82, 52.71],
+    L:[["metro", "U2", "", "#DA421E", "#FFFFFF"], ["sbahn", "S1", "", "#DA6BA2", "#FFFFFF"], ["tram", "M10", "", "#BE1414", ""]],
+    H:["U Ruhleben", "S+U Pankow", "S Wannsee", "S Oranienburg", "Warschauer Str."],
+    S:[["U Zoo", 5252000, 1335000], ["U Bismarckstr.", 5252100, 1338000], ["S+U Alexanderplatz", 5252200, 1341000], ["U Warschauer Str.", 5252000, 1345000], ["S Gesundbrunnen", 5254000, 1341100], ["S Südkreuz", 5248000, 1341000], ["Tram Nord", 5253000, 1342000]],
+    E:[0,1,0,1,120,7, 1,2,0,1,150,7, 2,3,0,1,180,7, 3,2,0,0,180,7, 2,1,0,0,150,7, 1,0,0,0,120,7, 4,2,1,2,240,7, 2,5,1,2,300,7, 5,2,1,3,300,7, 2,4,1,3,240,7, 6,2,2,4,200,7],
+    W:[[150, 150, 300], [300, 300, 600], [300, 300, 300]],
+    G:[[enc(U2)], [enc(S1)], [enc([[52.530, 13.420], [52.522, 13.410]])]], D:[[0, "metro"], [1, "metro"], [2, "metro", "sbahn"], [3, "metro"], [4, "sbahn"], [5, "sbahn"]]};
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => { OVQ.push(ovBody(rt)); return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }); });
+  await page.route(/transit\.land\/api\/v2\/tiles/, rt => { TLQ.push(rt.request().url()); return rt.fulfill({ status:204, headers:{"access-control-allow-origin":"*"}, body:"" }); });
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => { const u = rt.request().url(); CPQ.push(u);
+    if(u.endsWith("/berlin.json")) return rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(pkg) });
+    return rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }); });
+  await page.route(/api\.transitous\.org/, rt => rt.abort());
+  await seed();
+  await rp(`CP = {}; lsSet("rp-tlkey", "testkey"); DL = {}; DOFF = {}; true`);
+  // New York: kein Paket geladen
+  ok(!CPQ.length, "Stadtpaket ohne Bedarf geladen");
+  await jump(13.4, 52.52, 13);
+  await page.waitForFunction(() => window.__rp("!!VV.tr && VV.tr.lines.length===3"), null, {timeout:6000}).catch(() => {});
+  ok(CPQ.some(u => u.endsWith("/berlin.json")) && !CPQ.some(u => u.includes("paris") || u.includes("london")), "Berliner Paket nicht (allein) geladen: "+CPQ.join(" "));
+  ok(await rp(`!!cpView() && cpView().id==="berlin" && !tlOn() && VV.tr.lines.length===3`), "Stadtpaket hat keinen Vorrang vor Transitland: "+await rp(`JSON.stringify({cp:VT.cp, tl:tlOn(), n:VV.tr && VV.tr.lines.length})`));
+  await click("#layersBtn"); await click("#lTrBtn");
+  const grp = await page.locator("#lTrGrp").innerText();
+  ok(grp.includes("Metro") && grp.includes("S-Bahn") && grp.includes("Tram") && !grp.includes("Busse"), "Verkehrsmittel aus dem Paket fehlen: "+grp.replace(/\n/g," / ")+" "+await rp(`JSON.stringify({vv:VV.tr.lines, all:cpGeo(cpView()).tr.lines, b:map.getBounds().toArray()})`));
+  await page.locator("label:has(#lTr)").click(); await page.waitForTimeout(200);
+  ok(await rp(`DL.metro && map.getLayoutProperty("dtr","visibility")==="visible" && (!map.getLayer("tl-rail") || map.getLayoutProperty("tl-rail","visibility")==="none")`), "Linien aus dem Paket nicht sichtbar oder Transitland noch an");
+  const geo = await rp(`(function(){ var f = map.getSource("dtr")._data.features.filter(function(x){ return x.properties.k==="U2"; })[0]; return {c:f.properties.c, n:f.geometry.coordinates[0].length, o:f.properties.o}; })()`);
+  ok(geo.c==="#DA421E" && geo.n===6, "U2 ohne genaue Farbe oder ganzen Streckenverlauf: "+JSON.stringify(geo));
+  ok(await rp(`map.getSource("dst")._data.features.some(function(f){ return f.properties.n==="S+U Alexanderplatz" && f.properties.m==="train"; })`), "Bahnhof aus dem Paket fehlt");
+  ok(await rp(`document.getElementById("attr").textContent.indexOf("ÖPNV: VBB") > -1`), "Quellenangabe VBB fehlt");
+  ok(!OVQ.some(q => q.includes("subway") || q.includes("tram")) && !TLQ.length, "Trotz Stadtpaket bei Overpass/Transitland gefragt: "+OVQ.length+"/"+TLQ.length);
+  // Linie ausblenden wie überall (gleiche Kennung metro:U2)
+  await click("[data-act=dfold][data-m=metro]"); await click("#dLines-metro [data-id='metro:U2']");
+  ok(await rp(`DOFF["metro:U2"] && JSON.stringify(map.getFilter("dtr")).indexOf("metro:U2") > -1`), "Linie lässt sich nicht ausblenden");
+  await shot("stadtpaket-berlin");
+  // Route Zoo → Gesundbrunnen: U2 bis Alexanderplatz, dort in die S1; ohne Netz sofort aus dem Paket
+  const r = await rp(`(function(){ var A = {la:52.5205, lo:13.3505}, B = {la:52.5398, lo:13.4111};
+    var R = cpAlts(A, B, cur), r = R[0], rd = r.legs.filter(function(l){ return l.t==="ride"; });
+    return {n:rd.map(function(l){ return lineName(l.r); }), col:NET.r[rd[0].r][1], kind:extKind(rd[0].r), hd:rd[0].hd, from:NET.s[rd[0].from][0], to:NET.s[rd[0].to][0], st:rd[0].stops.length, path:ridePath(rd[0]).length, tk:rd[0].tk, secs:r.secs, cp:r.cp, walk:r.walk}; })()`);
+  ok(!r.walk && r.n.join(">")==="U2>S1" && r.col==="#DA421E" && r.kind==="U-Bahn" && r.hd==="S+U Pankow" && r.from==="U Zoo" && r.to==="S+U Alexanderplatz", "Route aus dem Stadtpaket falsch: "+JSON.stringify(r));
+  ok(r.st===3 && r.path >= 5 && r.tk===300 && r.cp==="berlin", "Streckenverlauf/Takt der Fahrt fehlt: "+JSON.stringify(r));
+  ok(r.secs > 900 && r.secs < 1800, "Dauer unplausibel: "+r.secs);
+  ok(await rp(`cpAlts({la:52.52, lo:13.35}, {la:48.85, lo:2.35}, cur)===null && cpAlts({la:40.75, lo:-73.99}, {la:40.73, lo:-73.99}, cur)===null`), "Stadtpaket für Strecken außerhalb der Stadt zuständig");
+  // Transitous nicht erreichbar → Verbindung aus dem Paket
+  await rp(`(function(){ var t = T(); t.places.pb1 = {id:"pb1", n:"Zoo", c:"sight", la:52.5205, lo:13.3505, list:"l_main", note:"", addr:"Berlin"}; t.places.pb2 = {id:"pb2", n:"Gesundbrunnen", c:"sight", la:52.5398, lo:13.4111, list:"l_main", note:"", addr:"Berlin"}; ALTCACHE = {}; transitAlts(P("pb1"), P("pb2"), cur); })()`);
+  await page.waitForFunction(() => window.__rp(`(function(){ var X = transitAlts(P("pb1"), P("pb2"), cur); return !!(X && X[0] && X[0].cp==="berlin"); })()`), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`transitAlts(P("pb1"), P("pb2"), cur)[0].cp==="berlin"`), "Ohne Transitous keine Verbindung aus dem Stadtpaket");
+  // zurück nach New York: eingebaute Daten
+  await jump(-73.99, 40.73, 13);
+  ok(await rp(`!cpView() && !document.body.classList.contains("dyn")`), "In New York bleibt das Stadtpaket aktiv");
 });
 
 await test("ÖPNV über NYC hinaus (Transitous): Etappe zum Flughafen Newark mit NJ Transit und AirTrain", async () => {

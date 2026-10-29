@@ -1,16 +1,17 @@
 // Reiseplan – Service Worker: App offline verfügbar, besuchte Kartenbereiche zwischengespeichert
-const VERSION = "reiseplan-v444";
+const VERSION = "reiseplan-v445";
 const SHELL = ["./", "./index.html", "./maplibre-gl.js", "./maplibre-gl.css", "./manifest.webmanifest", "./bus.json", "./firebase.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 const TILES = "reiseplan-tiles";
 const MAX_TILES = 3000;
+const CITY = "reiseplan-stadt"; // Stadtpakete (ÖPNV Berlin, Paris, London)
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== TILES && !k.startsWith("reiseplan-offline-")).map((k) => caches.delete(k))))
+  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== TILES && k !== CITY && !k.startsWith("reiseplan-offline-")).map((k) => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 
@@ -35,6 +36,15 @@ self.addEventListener("fetch", (e) => {
   // Eigene Dateien: Zwischenspeicher zuerst
   if (url.origin === location.origin) {
     e.respondWith(caches.match(req).then((hit) => hit || fetch(req)));
+    return;
+  }
+  // Stadtpakete: sofort aus dem Speicher (auch offline), im Hintergrund aktualisieren
+  if (url.hostname === "raw.githubusercontent.com" && url.pathname.includes("/stadtpakete/")) {
+    e.respondWith(caches.open(CITY).then(async (c) => {
+      const hit = await c.match(req);
+      const net = fetch(req).then((res) => { if (res.ok) c.put(req, res.clone()); return res; }).catch(() => hit || Response.error());
+      return hit || net;
+    }));
     return;
   }
   // Kartenkacheln, Schriften, Stil: Zwischenspeicher zuerst, im Hintergrund aktualisieren
