@@ -5515,7 +5515,7 @@ function authApply(u){
       if(u && was!==u.uid){ BL0 = Date.now(); BLOG = []; }
       blog("Anmeldung: "+(u ? "ja" : "nein")+", vorher "+(was ? "angemeldet" : "nicht")+", noTrip "+noTrip());
       if(u && was!==u.uid && noTrip()) bootWait(u); else if(!u) bootDone(true);
-      if(u && was!==u.uid) tlCfgLoad();
+      if(u) tlCfgLoad(); // bei jedem Start, nicht nur bei neuer Anmeldung (die Anmeldung bleibt über Neustarts bestehen)
       if(u && was!==u.uid){ acctMigrate().then(function(){ acctLive(); setTimeout(phFlush, 1500); cmWatch(); frWatch(); ntStart(); }); }
       if(!u){ pvStopAll(); if(fbUnsub){ fbUnsub(); fbUnsub = null; } if(invUnsub){ invUnsub(); invUnsub = null; } if(cmUnsub){ cmUnsub(); cmUnsub = null; } frStop(); ntStop(); acct.state = "off"; INVITES = []; invBadge(); }
       acct.ready = true; renderGate(); refreshSettings();
@@ -9251,6 +9251,7 @@ function acctHTML(){
   // ÖPNV-Karte (Transitland): Schlüssel nur auf dem Gerät, nicht im öffentlichen Code
   var tk = lsGet("rp-tlkey") || "";
   h += "<div class=\"ag-lbl\">ÖPNV-Karte</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"tltoggle\" aria-expanded=\""+tlOpen+"\"><span><b>Transitland-Schlüssel</b><small>"+(tk ? (TL.bad ? "Abgelehnt – ÖPNV aus OpenStreetMap" : "Eigener Schlüssel – nur auf diesem Gerät") : TL.cfg ? (TL.bad ? "Abgelehnt – ÖPNV aus OpenStreetMap" : "Aktiv – für alle eingerichtet") : "Nicht eingerichtet – ÖPNV aus OpenStreetMap")+"</small></span><em class=\"chev\">"+(tlOpen?"⌄":"›")+"</em></button>";
+  if(tlOpen && (TL.bad || TL.cfgSt)) h += "<div class=\"ag-in\"><p class=\"note\">"+esc([TL.bad ? TL.why : "", TL.cfgSt || ""].filter(Boolean).join(" · "))+"</p></div>";
   if(tlOpen) h += "<div class=\"ag-in\"><div class=\"gkey\"><input type=\"password\" id=\"tlKeyIn\" autocomplete=\"off\" spellcheck=\"false\" autocapitalize=\"off\" placeholder=\""+(tk?"••••••••"+esc(tk.slice(-4)):"iwa_live_…")+"\" aria-label=\"Transitland-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"tlkeysave\">Speichern</button>"+(tk?"<button type=\"button\" class=\"btn g s\" data-act=\"tlkeydel\">Entfernen</button>":"")+"</div>"+(tlMsg?"<p class=\"note\">"+esc(tlMsg)+"</p>":"")+"</div>";
   h += "</div>";
   // Events (Ticketmaster): Schlüssel wird im Events-Fenster eingetragen, hier nur Status und Entfernen
@@ -12196,10 +12197,11 @@ function tlCfgLoad(){
   if(!fbDb) return;
   fbDb.collection("config").doc("transit").get().then(function(d){
     var k = d.exists ? String((d.data() || {}).tlkey || "").trim() : "";
+    TL.cfgSt = !d.exists ? "Dokument config/transit nicht gefunden" : k ? "" : "Feld tlkey fehlt oder ist leer"; refreshSettings();
     if(k===TL.cfg) return;
     TL.cfg = k; if(k) lsSet("rp-tlcfg", k); else { try { localStorage.removeItem("rp-tlcfg"); } catch(e){} }
     TL.bad = false; TL.nst = 0; TL.sig = ""; applyLayers(); refreshSettings();
-  }, function(){});
+  }, function(e){ TL.cfgSt = "Lesen aus Firebase fehlgeschlagen ("+((e && e.code) || "Fehler")+")"; refreshSettings(); });
 }
 function tlOn(){ return !!tlKey() && dynOn(); }
 function tlUrl(l){ return "https://transit.land/api/v2/tiles/"+l+"/tiles/{z}/{x}/{y}.pbf?apikey="+encodeURIComponent(tlKey()); }
@@ -12284,7 +12286,7 @@ function tlError(e){
   var st = e.error && e.error.status;
   // ohne Status (z. B. vom Browser blockiert) mehrmals hintereinander: wie ungültiger Schlüssel behandeln, damit der ÖPNV nicht ganz fehlt
   if(!st && navigator.onLine) TL.nst = (TL.nst||0) + 1;
-  if(st===401 || st===403 || TL.nst >= 4){ TL.bad = true; TL.sig = ""; ["tl-probe","tl-bus","tl-rail","tl-ferry","tl-st","tl-bst","tl-lbl","tl-st-lbl"].forEach(function(l){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", "none"); });
+  if(st===401 || st===403 || TL.nst >= 4){ TL.why = st ? "Transitland lehnt den Schlüssel ab ("+st+")" : "Transitland nicht erreichbar (vom Browser blockiert?)"; TL.bad = true; TL.sig = ""; ["tl-probe","tl-bus","tl-rail","tl-ferry","tl-st","tl-bst","tl-lbl","tl-st-lbl"].forEach(function(l){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", "none"); });
     if(!TL.msg){ TL.msg = true; toast(st ? "Transitland-Schlüssel ungültig – ÖPNV kommt wieder aus OpenStreetMap." : "Transitland nicht erreichbar – ÖPNV kommt wieder aus OpenStreetMap.", false); } applyLayers(); return; }
   TL.err = st || 1; destUi();
 }
