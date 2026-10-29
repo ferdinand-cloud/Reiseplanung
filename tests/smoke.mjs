@@ -3923,6 +3923,8 @@ await test("Chat: Abstimmung – Plus-Menü, Frage und nummerierte Antworten get
   ok(await rp(`JSON.stringify(__upd[__upd.length-1])===JSON.stringify(["m2", {"pv.u_me":[1]}]) && document.querySelector('#chMsgs .ch-msg[data-mid="m2"] .ch-pollr.on .ch-pollt').textContent==="Bagel"`), "Stimme nicht gespeichert: "+await rp(`JSON.stringify(__upd)`));
   await page.tap('#chMsgs .ch-msg[data-mid="m2"] [data-act=chvote][data-i="0"]'); await page.waitForTimeout(150);
   ok(await rp(`__upd[__upd.length-1][1]["pv.u_me"].join()==="0" && document.querySelector('#chMsgs .ch-msg[data-mid="m2"] .ch-poll').textContent.includes("2 Stimmen")`), "Einfachauswahl wechselt nicht");
+  // Abstände: Karte hat Luft zur Nachricht davor (mind. 10 px)
+  ok(await rp(`var a = document.querySelector('#chMsgs .ch-msg[data-mid="m1"]'), b = document.querySelector('#chMsgs .ch-msg[data-mid="m2"]'); b.getBoundingClientRect().top - a.getBoundingClientRect().bottom >= 10`), "Abstand zwischen Nachricht und Abstimmung zu klein");
   await shot("chat-abstimmung");
   // manuell einplanen
   await page.tap('#chMsgs .ch-msg[data-mid="m2"] [data-act=chplan]'); await page.waitForTimeout(200);

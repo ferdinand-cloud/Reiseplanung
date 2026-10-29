@@ -2008,14 +2008,17 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-head b{font:700 16px/1.2 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch-back{width:36px;height:36px;border:0;border-radius:50%;background:var(--fill);color:var(--ink);display:grid;place-items:center;cursor:pointer;flex:0 0 36px}
 .ch-back svg{width:19px;height:19px}
-.ch-msgs{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:10px 12px 6px;display:flex;flex-direction:column;gap:2px}
+.ch-msgs{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:10px 12px 6px;display:flex;flex-direction:column;gap:4px}
 .ch-empty{text-align:center;margin:auto 20px}
 .ch-new{align-self:stretch;display:flex;align-items:center;gap:12px;margin:14px 8px 4px;font:500 13px/1.2 var(--f-body);color:var(--muted)}
 .ch-new::before,.ch-new::after{content:"";flex:1;height:1px;background:color-mix(in srgb,var(--muted) 55%,transparent)}
 .ch-day{align-self:center;margin:12px 0 6px;font:600 12px/1.2 var(--f-body);color:var(--muted)}
-.ch-msg{display:flex;flex-direction:column;align-items:flex-start;max-width:80%;gap:3px}
+.ch-msg{display:flex;flex-direction:column;align-items:flex-start;max-width:80%;gap:5px}
 .ch-msg.me{align-self:flex-end;align-items:flex-end}
-.ch-msg.tail{margin-bottom:8px}
+.ch-msg.tail{margin-bottom:14px}
+/* Karten und Medien (Abstimmung, Album, Ort, Tag, Foto) brauchen mehr Luft zu den Nachbarn */
+.ch-msg:has(>.ch-poll,>.ch-al,>.ch-pl,>.ch-phc){margin-top:6px;margin-bottom:6px}
+.ch-msg.tail:has(>.ch-poll,>.ch-al,>.ch-pl,>.ch-phc){margin-bottom:14px}
 .ch-bub{padding:8px 13px;border-radius:19px;background:var(--fill);color:var(--ink);font:15.5px/1.35 var(--f-body);overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
 .ch-msg.me .ch-bub{background:var(--accent);color:#fff}
 .ch-tm{font-size:11px;color:var(--muted);padding:0 6px}
