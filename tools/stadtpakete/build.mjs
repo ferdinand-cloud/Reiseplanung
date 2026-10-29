@@ -69,7 +69,7 @@ async function download(urls, file) {
   for (const u of urls) {
     try {
       log("lade", u);
-      const r = await fetch(u, { redirect: "follow", headers: { "user-agent": "Reiseplan-Stadtpakete/1 (github.com/ferdinand-cloud/Reiseplanung)" } });
+      const r = await fetch(u, { redirect: "follow", signal: AbortSignal.timeout(600000), headers: { "user-agent": "Reiseplan-Stadtpakete/1 (github.com/ferdinand-cloud/Reiseplanung)" } });
       if (!r.ok) throw new Error("HTTP " + r.status);
       const buf = Buffer.from(await r.arrayBuffer());
       if (buf.length < 10000 || buf[0] !== 0x50 || buf[1] !== 0x4b) throw new Error("keine ZIP-Datei (" + buf.length + " Bytes)");
@@ -364,7 +364,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function tfl(p) {
   const u = "https://api.tfl.gov.uk" + p;
   for (let i = 0; i < 4; i++) {
-    const r = await fetch(u, { headers: { "user-agent": "Reiseplan-Stadtpakete/1" } }).catch((e) => ({ ok: false, status: e.message }));
+    const r = await fetch(u, { signal: AbortSignal.timeout(60000), headers: { "user-agent": "Reiseplan-Stadtpakete/1" } }).catch((e) => ({ ok: false, status: e.message }));
     if (r.ok) { await sleep(250); return r.json(); }
     log("  TfL", p, r.status); await sleep(r.status === 429 ? 30000 : 3000);
   }
