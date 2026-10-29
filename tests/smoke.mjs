@@ -4921,6 +4921,27 @@ await test("Reise bearbeiten: Fußleiste Abbrechen/Speichern ohne deckenden Hint
   ok(!(await visible("#tripPop #tForm")), "Abbrechen schließt das Formular nicht");
 });
 
+// Ferdinand (29.10.): Punkte verrutschen beim Zoomen, nach Neuladen wieder richtig – die Karte änderte ihre Größe ohne window-resize
+// (iOS-Safari-Leiste, Tastatur o. Ä.); MapLibre passt sich selbst an, das SVG-Overlay behielt die alte Fläche und wurde gestreckt
+await test("Kartenpunkte bleiben beim Zoomen an ihrer Stelle, auch wenn sich die Kartenfläche ohne resize ändert", async () => {
+  await seed(); await page.waitForTimeout(500);
+  const off = () => rp(`(function(){ var out = 0; ["p1","p2","p3"].forEach(function(id){ var p = P(id), q = map.project([p.lo, p.la]), mr = mapEl.getBoundingClientRect(), best = 1e9, n = String(ord(cur).indexOf(id)+1);
+    document.querySelectorAll("#ov text").forEach(function(t){ if(t.textContent!==n) return; var r = t.getBoundingClientRect(); best = Math.min(best, Math.hypot(r.left + r.width/2 - mr.left - q.x, r.top + r.height/2 - mr.top - q.y)); });
+    if(q.x > 0 && q.x < mr.width && q.y > 0 && q.y < mr.height) out = Math.max(out, best); }); return Math.round(out); })()`);
+  await rp(`map.jumpTo({center:[-73.99, 40.74], zoom:12.5})`); await page.waitForTimeout(500);
+  ok(await off() < 6, "Ausgangslage: Punkte nicht an ihrer Stelle");
+  // Kartenfläche ändert ihre Höhe (wie beim Ein-/Ausklappen der Safari-Leiste), ohne window-resize
+  await page.evaluate(() => { const m = document.getElementById("map"); m.style.inset = "auto"; m.style.top = "0"; m.style.left = "0"; m.style.width = "390px"; m.style.height = "700px"; });
+  await page.waitForTimeout(500);
+  for(const z of [13, 14, 15]){
+    await page.mouse.move(195, 420); await page.mouse.wheel(0, -250); await page.waitForTimeout(500);
+    const d = await off(); ok(d < 6, "Zoom "+(await rp(`map.getZoom().toFixed(1)`))+": Punkte um "+d+" px verrutscht");
+  }
+  await page.evaluate(() => { document.getElementById("map").style.height = "600px"; }); await page.waitForTimeout(500);
+  ok(await off() < 6, "Kleinere Fläche: Punkte verrutscht");
+  ok(await rp(`W===mapEl.clientWidth && H===mapEl.clientHeight`), "Kartenmaße W/H nicht nachgeführt");
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }

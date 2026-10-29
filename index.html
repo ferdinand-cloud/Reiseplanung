@@ -12268,6 +12268,8 @@ function drawOverlay(){
   if(sel==="poi" && poiSel){ var pq2 = pt(poiSel); s += "<circle cx=\""+f1(pq2[0])+"\" cy=\""+f1(pq2[1])+"\" r=\"11\" fill=\"none\" stroke=\"var(--ink)\" stroke-width=\"2.5\"/>"; }
   ov.setAttribute("viewBox","0 0 "+W+" "+H);
   ov.innerHTML = s;
+  // Kartenfläche hat sich ohne resize-Ereignis geändert (iOS-Leiste, Tastatur …): MapLibre folgt selbst, das Overlay würde gestreckt → nachführen und neu zeichnen
+  if(mapEl.clientWidth && (mapEl.clientWidth!==W || mapEl.clientHeight!==H)) requestAnimationFrame(resize);
 }
 
 /* ---------- Ausschnitt ---------- */
@@ -17381,6 +17383,8 @@ window.addEventListener("orientationchange", function(){ [350, 900].forEach(func
 // Als App vom Home-Bildschirm meldet iOS die neuen Maße teils erst nach resize/orientationchange.
 if(window.ResizeObserver){ (function(){ var t = document.querySelector(".top"), lh = 0; new ResizeObserver(function(){ var h = Math.round(t.getBoundingClientRect().height); if(h===lh) return; lh = h; placeFloating(); tbPillSync(); }).observe(t, {box:"border-box"}); })(); }
 window.addEventListener("resize", resize);
+// Kartenfläche ändert sich auch ohne window-resize (Safari-Leiste, Tastatur, Seitenwechsel): sonst bleibt das Overlay auf der alten Fläche und Punkte verrutschen beim Zoomen
+if(window.ResizeObserver) new ResizeObserver(function(){ var r = mapEl.getBoundingClientRect(); if(r.width && (r.width!==W || r.height!==H)) requestAnimationFrame(resize); }).observe(mapEl);
 
 /* ---------- Start ---------- */
 var hadData = !!lsGet(KEY);
