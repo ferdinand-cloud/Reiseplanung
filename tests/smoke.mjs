@@ -1184,7 +1184,7 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await page.locator("#body [data-act=rtoggle]").count()===1, "Routen-Schalter fehlt beim Bearbeiten");
   ok(await page.locator("#body ol.plan").count()===1, "Stopps fehlen beim Bearbeiten");
   ok(await page.locator("#tabWish").isVisible(), "Wunschliste fehlt beim Bearbeiten");
-  ok(await rp(`$("sheetOpen").textContent.trim()==="Tagesplan & Wunschliste"`), "Knopf unten nennt beim Bearbeiten nicht die Wunschliste");
+  ok(await rp(`$("sheetOpen").textContent.trim()==="Planung"`), "Knopf unten heißt beim Bearbeiten nicht „Planung“");
   ok(await rp(`$("tabDay").textContent==="Tagesplan"`), "Reiter heißt beim Bearbeiten nicht „Tagesplan“");
   await click("#tripBtn");
   ok(await rp(`$("tripMenu").querySelector("[data-act=tripmode][data-v=edit]").getAttribute("aria-pressed")==="true"`) && await page.locator("#tripMenu [data-act=tripedit]").count()===1, "Umschalter zeigt nicht „Bearbeiten“");
@@ -2299,8 +2299,8 @@ await test("Fürs nächste Mal merken: besuchter Ort und Wunschliste-Ort aus der
   ok(nt===2, "Neue Reise bietet die gemerkten Orte nicht an ("+nt+")");
 });
 
-await test("Unterkunftsliste: Ort als Unterkunft vormerken, eigene Liste, als Hotel übernehmen, Abbrechen führt zurück", async () => {
-  await seed();
+await test("Unterkünfte: eigener Reiter – vormerken, Nächte-Leiste, einplanen, Wechseltag, nicht mehr gebucht", async () => {
+  const d = await seed();
   // Park aus der Suche: keine Unterkunft-Option; selbst gesetzter Ort (z. B. Ferienwohnung): Option da
   await rp(`select("p7")`); await page.waitForTimeout(200);
   await click("#card [data-act=cardmore]");
@@ -2310,26 +2310,58 @@ await test("Unterkunftsliste: Ort als Unterkunft vormerken, eigene Liste, als Ho
   await click("#card [data-act=cardmore]");
   await click("#jpMenu [data-act=staymark]"); await page.waitForTimeout(200);
   ok(await rp(`T().places.p7.c==="hotel" && T().places.p7.c0==="park"`), "Ort wird nicht als Unterkunft markiert");
+  // nicht mehr in der Wunschliste, keine Liste „Unterkünfte“ mehr
   await rp(`select(null); tab = "wish"; setSheet("full"); renderSheet();`); await page.waitForTimeout(300);
-  ok(await rp(`document.querySelector("#body .fchips .fchip").getAttribute("data-k")==="list"`), "Listen-Kachel (Unterkünfte) steht nicht ganz links");
+  ok(await page.locator('#wishRes li[data-id="p7"]').count()===0, "Unterkunft steht noch in der Wunschliste");
   await click("#body .fchip[data-k=list]");
-  ok(await visible("#catPop [data-act=wlist][data-l=stay]"), "Liste „Unterkünfte“ fehlt in der Listenauswahl");
-  await click("#catPop [data-act=wlist][data-l=stay]"); await page.waitForTimeout(200);
-  await shot("unterkunftsliste");
-  ok(await rp(`activeList==="stay" && document.querySelectorAll("#wishRes li.wi").length===1 && !!document.querySelector('#wishRes li[data-id="p7"]')`), "Unterkunftsliste zeigt nicht nur die Unterkunft");
-  ok((await page.locator("#body .wadd").getAttribute("aria-label")).includes("Unterkunft"), "+ legt keine Unterkunft an");
-  ok(await rp(`CATS.some(function(c){ return c[0]==="hotel" && c[1]==="Unterkunft"; })`), "Kategorie Unterkunft fehlt");
-  await click("#wishRes li[data-id=p7] [data-act=stay2h]"); await page.waitForTimeout(300);
-  ok(await rp(`tab==="trip" && tdraft && tdraft.hotels.some(function(h){ return h.src==="p7" && h.n==="High Line"; })`), "Als Hotel übernehmen füllt das Reise-Fenster nicht");
-  await click("#tripPop [data-act=tcancel]"); await page.waitForTimeout(250);
-  ok(await rp(`tab==="wish" && activeList==="stay" && !T().hotels.some(function(h){ return h.src==="p7"; })`), "Abbrechen führt nicht zur Unterkunftsliste zurück");
-  await click("#wishRes li[data-id=p7] [data-act=stay2h]"); await page.waitForTimeout(300);
-  await rp(`document.getElementById("tForm").requestSubmit()`); await page.waitForTimeout(500);
-  ok(await rp(`T().hotels.some(function(h){ return h.src==="p7" && h.n==="High Line"; }) && T().hotels.some(function(h){ return h.id==="h1"; })`), "Unterkunft wurde nicht als Hotel gespeichert");
-  await rp(`tab = "wish"; activeList = "stay"; renderSheet();`); await page.waitForTimeout(200);
-  await shot("unterkunft-gewaehlt");
-  ok(await visible("#wishRes li[data-id=p7] .wsel") && await page.locator("#wishRes li[data-id=p7] [data-act=stay2h]").count()===0, "Gewählte Unterkunft nicht als Hotel der Reise gekennzeichnet");
-  await rp(`stayMark("p7")`);
+  ok(await page.locator("#catPop [data-act=wlist][data-l=stay]").count()===0, "Liste „Unterkünfte“ noch in der Wunschliste");
+  await rp(`closeCatPop()`);
+  // eigener Reiter mit Nächte-Leiste: Hotel Test deckt alle 5 Nächte
+  await click("#tabStay"); await page.waitForTimeout(250);
+  ok(await rp(`tab==="stay" && $("tabStay").getAttribute("aria-selected")==="true"`), "Reiter Unterkünfte öffnet nicht");
+  ok(await page.locator("#body .sn").count()===5 && await page.locator("#body .sn.gap").count()===0, "Nächte-Leiste falsch: "+await page.locator("#body .sn").count());
+  ok(await page.locator('#body .scard.cand[data-pid="p7"]').count()===1, "Kandidat fehlt im Reiter");
+  ok(await rp(`$("tabStay").textContent==="Unterkünfte2"`), "Anzahl am Reiter falsch: "+await rp(`$("tabStay").textContent`));
+  // Hotel Test nur bis zur 3. Nacht: zwei Nächte offen
+  await rp(`T().hotels[0].to = days()[3].key; dirty(); renderSheet();`); await page.waitForTimeout(150);
+  ok(await page.locator("#body .sn.gap").count()===2 && await page.locator("#body .sgap").count()===1, "Offene Nächte werden nicht gezeigt");
+  // Kandidat einplanen: Vorschlag = offene Nächte; Preis und Buchung eintragen
+  await click('#body .scard.cand[data-pid="p7"] [data-act=staybook]'); await page.waitForTimeout(200);
+  ok(await rp(`STAY && STAY.from===days()[3].key && STAY.to===days()[5].key`), "Nächte-Wähler schlägt nicht die offenen Nächte vor: "+await rp(`JSON.stringify(STAY)`));
+  await page.fill("#syCi", "15:00"); await page.fill("#syPr", "240"); await page.fill("#syNr", "AB12");
+  await shot("unterkunft-einplanen");
+  await click("#catPop [data-act=staysave]"); await page.waitForTimeout(250);
+  const H2 = await rp(`(function(){ var h = T().hotels.filter(function(x){ return x.src==="p7"; })[0]; return h ? {from:h.from, to:h.to, ci:h.ci, nr:stayB(h.id).nr, pr:stayB(h.id).pr} : null; })()`);
+  ok(H2 && H2.ci==="15:00" && H2.nr==="AB12" && H2.pr==="240", "Einplanen speichert nicht: "+JSON.stringify(H2));
+  ok(await page.locator("#body .sn.gap").count()===0 && await page.locator("#body .scard.cand").count()===0, "Nach dem Einplanen noch Lücke oder Kandidat");
+  await shot("unterkuenfte-reiter");
+  // Buchungsdaten privat: nicht im öffentlichen Teil
+  ok(await rp(`!pubOf(T()).stayB && !!privReadd(pubOf(T()), T()).stayB`), "Buchungsdaten landen im öffentlichen Teil");
+  // Wechseltag: Start im alten Hotel (Check-out), Ende im neuen (Check-in)
+  const sw = await rp(`(function(){ var k = days()[3].key, D = dayByKey(k); return [hRimS(D) && hRimS(D).n, hRim(D) && hRim(D).n]; })()`);
+  ok(sw[0]==="Hotel Test" && sw[1]==="High Line", "Wechseltag falsch: "+sw);
+  await rp(`cur = days()[3].key; tab = "day"; renderSheet();`); await page.waitForTimeout(200);
+  const hx = await page.locator("#body li.hx").allTextContents();
+  ok(hx.length===2 && hx[0].includes("Hotel Test") && hx[0].includes("Check-out") && hx[1].includes("High Line") && hx[1].includes("Check-in 15:00"), "Tagesplan am Wechseltag: "+hx.join(" | "));
+  // Reise bearbeiten: keine Hotel-Eingabe mehr, nur Verweis auf den Reiter
+  await rp(`tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet();`); await page.waitForTimeout(200);
+  ok(await page.locator("#tripPop [data-act=tstay]").count()===1 && await page.locator('#tripPop [data-act=tadd][data-path=hotels]').count()===0, "Reise bearbeiten hat noch eigene Hotel-Eingabe");
+  await rp(`document.getElementById("tForm").requestSubmit()`); await page.waitForTimeout(300);
+  ok(await rp(`T().hotels.length===2 && T().hotels.some(function(h){ return h.src==="p7" && h.ci==="15:00"; })`), "Speichern der Reise verliert Unterkünfte");
+  await rp(`tdraft = tripToDraft(T(), "edit"); tab = "trip"; renderSheet();`); await page.waitForTimeout(200);
+  await click("#tripPop [data-act=tstay]"); await page.waitForTimeout(250);
+  ok(await rp(`tab==="stay" && !tdraft && $("tripPop").hidden`), "Verweis führt nicht zum Reiter");
+  // nicht mehr gebucht → wieder Kandidat
+  const hid = await rp(`T().hotels.filter(function(x){ return x.src==="p7"; })[0].id`);
+  await click(`#body [data-act=stayedit][data-h="${hid}"]`); await page.waitForTimeout(200);
+  await click("#catPop [data-act=stayunbook]"); await page.waitForTimeout(150);
+  await click("#cfPop .cf-ok"); await page.waitForTimeout(250);
+  ok(await rp(`!T().hotels.some(function(x){ return x.src==="p7"; }) && !!T().places.p7 && T().places.p7.c==="hotel"`), "Nicht mehr gebucht entfernt nicht oder löscht den Ort");
+  ok(await page.locator('#body .scard.cand[data-pid="p7"]').count()===1 && await page.locator("#body .sgap").count()===1, "Nach dem Entfernen kein Kandidat bzw. keine Lücke");
+  // Beobachter-Ansicht: nur Gebucht, ohne Knöpfe
+  await rp(`finEd = S.cur; finM = "view"; renderAll();`); await page.waitForTimeout(200);
+  ok(await rp(`tab==="stay"`) && await page.locator("#body [data-act=staybook],#body [data-act=staygap],#body [data-act=stayadd],#body .scard.cand").count()===0, "Ansicht zeigt Planungs-Knöpfe");
+  await rp(`finEd = ""; finM = ""; stayMark("p7")`);
   ok(await rp(`T().places.p7.c==="park" && !T().places.p7.c0`), "Markierung lässt sich nicht zurücknehmen");
 });
 
@@ -2339,7 +2371,7 @@ await test("Ebene Wünsche aus: nach Listenwechsel und Einklappen keine Wunsch-P
   for(let i=0; i<30 && !(await rp(`WISHN>0`)); i++) await page.waitForTimeout(100);
   ok(await rp(`WISHN>0`), "Offene Wunschliste zeigt keine Wünsche auf der Karte");
   await click("#body .fchip[data-k=list]");
-  await click("#catPop [data-act=wlist][data-l=stay]"); await page.waitForTimeout(200);
+  await click("#catPop [data-act=wlist][data-l=l_main]"); await page.waitForTimeout(200);
   await click("#body .fchip[data-k=list]");
   await click("#catPop [data-act=wlist][data-l=open]"); await page.waitForTimeout(200);
   await rp(`setSheet("min")`); await page.waitForTimeout(300);

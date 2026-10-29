@@ -373,6 +373,30 @@ body.gated .tabbar,body.kb-sheet .tabbar,body.notrip .tabs,body.notrip #rail,bod
 /* Wunschliste: aufgeräumter Kopf und kompakte Zeilen */
 .wtop{display:flex;gap:8px;align-items:center}
 .wtop .search{flex:1;min-width:0;margin:0}
+/* Reiter Unterkünfte */
+.stay-top{justify-content:space-between;margin-bottom:4px}
+.stay-tt{display:flex;flex-direction:column;min-width:0}.stay-tt b{font-size:17px}.stay-tt small{color:var(--muted);font-size:13px}
+.sn-bar{display:flex;gap:3px;margin:10px 0 0}
+.sn{flex:1;min-width:0;border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);cursor:pointer}
+.sn i{display:block;width:100%;height:24px;border-radius:6px;background:var(--sc,#7A8494)}
+.sn.gap i{background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--ink) 9%,transparent) 0 5px,color-mix(in srgb,var(--ink) 17%,transparent) 5px 10px)}
+.sn small{font-size:11px;line-height:1}
+.sn-leg{margin:6px 2px 0;font-size:13px;color:var(--muted)}
+.scard{display:flex;align-items:center;gap:8px;background:var(--sheet);border-radius:14px;padding:8px 10px;margin:0 0 8px;box-shadow:0 1px 2px rgba(14,22,30,.06)}
+.scard .sc-m{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:0;background:none;padding:2px 0;text-align:left;color:var(--ink);cursor:pointer}
+.sc-ic{flex:0 0 36px;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--sc,#7A8494);color:#fff}
+.sc-ic svg{width:20px;height:20px}
+.sc-t{display:flex;flex-direction:column;min-width:0}.sc-t b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sc-t small{font-size:13px;color:var(--muted);margin-top:1px}
+.sc-x{flex:0 0 36px;width:36px;height:36px;border:0;border-radius:50%;background:var(--fill,var(--chip));color:var(--ink);display:grid;place-items:center}
+.sc-x svg{width:18px;height:18px}
+.scard .btn.s{flex:0 0 auto}
+.sgap{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1.5px dashed color-mix(in srgb,var(--ink) 22%,transparent);border-radius:14px;padding:10px 12px;margin:0 0 8px;color:var(--muted);font-size:14px}
+.sgap span{display:flex;flex-direction:column}.sgap small{font-size:12px}
+.stay-sort{margin:0 0 8px}
+.staypop select{min-width:0;flex:1;font:inherit;color:var(--ink);background:none;border:0;text-align:right;padding:4px 0}
+.staypop .sy-two{display:flex;align-items:center;gap:8px}.staypop .sy-two > span{flex:0 0 auto}
+.staypop .sy-two input[type=time]{flex:0 0 104px;width:104px;min-width:0;font:inherit;color:var(--ink);background:var(--fill,var(--chip));border:0;border-radius:8px;padding:6px 8px}
+.stay-ov{margin:6px 2px 0;color:#B7791F}
 .wadd{flex:0 0 44px;width:44px;height:44px;border-radius:50%;border:0;background:var(--ink);color:var(--sheet);font-size:26px;line-height:1;font-weight:400;display:grid;place-items:center;padding:0 0 3px}
 .fchips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:10px -2px 0;padding:0 2px 2px}
 .fchips::-webkit-scrollbar{display:none}
@@ -4362,11 +4386,12 @@ body.profopen #sheet,body.profopen #sheetOpen,body.profopen .ctrl,body.profopen 
     <div class="tabs" role="tablist">
       <button type="button" role="tab" id="tabDay" data-tab="day">Tagesplan</button>
       <button type="button" role="tab" id="tabWish" data-tab="wish">Wunschliste</button>
+      <button type="button" role="tab" id="tabStay" data-tab="stay">Unterkünfte</button>
     </div>
   </div>
   <div class="body" id="body"></div>
 </section>
-<button type="button" id="sheetOpen" aria-label="Planung öffnen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l5-5 5 5"/></svg><span>Tagesplan &amp; Wunschliste</span></button>
+<button type="button" id="sheetOpen" aria-label="Planung öffnen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l5-5 5 5"/></svg><span>Planung</span></button>
 
 <script>
 (function(){
@@ -4871,12 +4896,12 @@ function renameLocal(){
 var BASE = {}; try { BASE = JSON.parse(lsGet("rp-base")||"{}") || {}; } catch(e){ BASE = {}; }
 function saveBase(){ lsSet("rp-base", JSON.stringify(BASE)); }
 function setBase(id, t){ if(t) BASE[id] = JSON.parse(JSON.stringify(t)); else delete BASE[id]; saveBase(); }
-var MAPK = ["hfree","places","done","times","journal","order","legMode","legAlt","legOpt","legLine","via","rating","notes","photos","groups","privP","privN","privPh","privTo","capt","tickets"];
+var MAPK = ["hfree","places","done","times","journal","order","legMode","legAlt","legOpt","legLine","via","rating","notes","photos","groups","privP","privN","privPh","privTo","capt","tickets","stayB"];
 /* ---------- Privat: Orte, Notizen und Fotos, die Beobachter nicht bekommen ----------
    Mitreisende lesen und schreiben die vollständige Reise in trips/{id}/priv/data;
    das Reise-Dokument selbst (für Beobachter lesbar) enthält nur den öffentlichen Teil. */
 function jclone(o){ return o===undefined ? undefined : JSON.parse(JSON.stringify(o)); }
-function privOf(t){ return !!(t && ["privP","privN","privPh","tickets"].some(function(k){ return t[k] && Object.keys(t[k]).length; })); }
+function privOf(t){ return !!(t && ["privP","privN","privPh","tickets","stayB"].some(function(k){ return t[k] && Object.keys(t[k]).length; })); }
 function privSet(t){ var P0 = t.privP || {}, out = Object.keys(P0).filter(function(id){ return t.places && t.places[id]; });
   Object.keys(t.places||{}).forEach(function(id){ var q = t.places[id]; if(q && q.of && P0[q.of] && out.indexOf(id)<0) out.push(id); }); return out; }
 function pubOf(M){
@@ -4896,14 +4921,14 @@ function pubOf(M){
     Object.keys(N0).forEach(function(pid){ if(c.notes) delete c.notes[pid]; });
     Object.keys(c.photos||{}).forEach(function(pid){ c.photos[pid] = (c.photos[pid]||[]).filter(function(x){ return !H0[x]; }); if(!c.photos[pid].length) delete c.photos[pid]; });
   }
-  delete c.privP; delete c.privN; delete c.privPh; delete c.privTo; delete c.tickets; // Tickets nur für Mitreisende
+  delete c.privP; delete c.privN; delete c.privPh; delete c.privTo; delete c.tickets; delete c.stayB; // Tickets und Buchungsdaten nur für Mitreisende
   return c;
 }
 // private Teile aus „full“ in einen öffentlichen Stand zurückholen (falls jemand nur den öffentlichen Teil geschrieben hat)
 function privReadd(pub, full){
   var r = jclone(pub);
   if(!full || !privOf(full)) return r;
-  ["privP","privN","privPh","privTo","tickets"].forEach(function(k){ if(full[k]) r[k] = Object.assign({}, full[k], r[k]||{}); });
+  ["privP","privN","privPh","privTo","tickets","stayB"].forEach(function(k){ if(full[k]) r[k] = Object.assign({}, full[k], r[k]||{}); });
   r.places = r.places || {}; r.order = r.order || {};
   privSet(full).forEach(function(pid){
     if(!full.places[pid] || r.places[pid]) return;
@@ -8815,7 +8840,8 @@ document.addEventListener("focusin", function(e){ if(chPage && (chOpen || chNewO
 document.addEventListener("focusout", function(){ if(CHKB.on) setTimeout(chVV, 0); });
 // Senden-Knopf nimmt dem Feld den Fokus nicht – die Tastatur bleibt offen wie in Nachrichten-Apps
 document.addEventListener("mousedown", function(e){ if(e.target && e.target.closest && e.target.closest("#chView .ch-send, #chView .ch-vrec, #chView .ch-vp, #chView .ch-vw, #chView .ch-rex, #chView .ch-rq, #chNewRes [data-act=chnew]") && chTyping()) e.preventDefault(); }, true);
-document.addEventListener("change", function(e){ if(e.target && e.target.id==="chPhIn"){ var fs = [].slice.call(e.target.files || []); e.target.value = ""; if(fs.length) chAlPick(fs); } });
+document.addEventListener("change", function(e){ if(e.target && (e.target.id==="syFrom" || e.target.id==="syTo") && STAY){ stayKeep(); if(STAY.to <= STAY.from){ var ds = days(), i = ds.map(function(D){ return D.key; }).indexOf(STAY.from); if(ds[i+1]) STAY.to = ds[i+1].key; } STAY.err = ""; renderStayPop(); return; }
+  if(e.target && e.target.id==="chPhIn"){ var fs = [].slice.call(e.target.files || []); e.target.value = ""; if(fs.length) chAlPick(fs); } });
 document.addEventListener("input", function(e){ if(!e.target) return; if(e.target.id==="chIn"){ chGrow(); chTypPing(); chSugScan(); } if(e.target.id==="chNewIn"){ chNewQ = e.target.value; renderChNew(); } if(e.target.id==="chPickIn"){ chPickQ = e.target.value; $("chPickRes").innerHTML = chPickHTML(); } });
 document.addEventListener("keydown", function(e){
   // Empfängerfeld: Eingabetaste übernimmt den (einzigen) Vorschlag und springt zur Nachricht
@@ -9867,7 +9893,7 @@ function days(){
     var hint = [];
     if(first && t.arr) hint.push("Ankunft "+t.arr);
     if(last && t.dep) hint.push("Abreise "+t.dep);
-    out.push({key:k, i:i, n:i+1, wd:WD[d.getUTCDay()], lbl:WD[d.getUTCDay()]+" "+shortD(k), title:WDL[d.getUTCDay()]+", "+d.getUTCDate()+". "+MON[d.getUTCMonth()], hint:hint.join(" · "), hotel:hotelFor(k), ort:ortFor(k)});
+    out.push({key:k, i:i, n:i+1, wd:WD[d.getUTCDay()], lbl:WD[d.getUTCDay()]+" "+shortD(k), title:WDL[d.getUTCDay()]+", "+d.getUTCDate()+". "+MON[d.getUTCMonth()], hint:hint.join(" · "), hotel:hotelFor(k), hotelS:hotelStart(k), ort:ortFor(k)});
     k = addD(k,1); i++;
   }
   return (DAYCACHE = out);
@@ -9878,8 +9904,13 @@ function hotelFor(k){
   return hs.filter(function(h){ return h.from<=k && k<h.to; })[0] || hs.filter(function(h){ return h.to===k; })[0] || hs.filter(function(h){ return h.from<=k && k<=h.to; })[0] || null;
 }
 /* Hotel als Start und Ende des Tages: Vorlage. Wird es verschoben, stehen Start und Ende als normale Hotel-Stopps im Plan (T().hfree[Tag]) */
+/* Wechseltag: Start im Hotel der Vornacht (Check-out), Ende im Hotel der neuen Nacht (Check-in) */
+function nightHotel(k){ return T().hotels.filter(hasLoc).filter(function(h){ return h.from<=k && k<h.to; })[0] || null; }
+function hotelStart(k){ var d = parseD(k); if(!d) return null; var pk = new Date(d.getTime() - 864e5).toISOString().slice(0, 10); return pk >= T().start ? nightHotel(pk) : null; }
 function hFree(k){ var f = T().hfree; return !!(f && f[k]); }
 function hRim(k){ var D = typeof k==="object" ? k : dayByKey(k); return D && D.hotel && !hFree(D.key) ? D.hotel : null; }
+function hRimS(k){ var D = typeof k==="object" ? k : dayByKey(k); return D && !hFree(D.key) ? (D.hotelS || D.hotel || null) : null; }
+function hStartOf(D){ return D ? D.hotelS || D.hotel || null : null; }
 function isHStop(id){ var p = P(id); return !!(p && p.k==="hotel"); }
 function ortFor(k){
   var os = T().orte.filter(hasLoc);
@@ -9893,7 +9924,12 @@ function dayOf(id){ var ds = days(); for(var i=0;i<ds.length;i++){ if((T().order
 function listName(id){ var ls = T().lists; for(var i=0;i<ls.length;i++){ if(ls[i].id===id) return ls[i].name; } return "Ohne Liste"; }
 function timeOf(id){ return T().times[id] || ""; }
 function P(id){ return T().places[id]; }
-function wishes(){ var t = T(); return Object.keys(t.places).filter(function(id){ return !t.places[id].of && !t.places[id].park && !dayOf(id); }).map(function(id){ return t.places[id]; }); }
+function wishes0(){ var t = T(); return Object.keys(t.places).filter(function(id){ return !t.places[id].of && !t.places[id].park && !dayOf(id); }).map(function(id){ return t.places[id]; }); }
+// Unterkünfte stehen nicht in der Wunschliste, sondern im eigenen Reiter
+function wishes(){ return wishes0().filter(function(p){ return p.c!=="hotel"; }); }
+// Karte: im Reiter Unterkünfte die Kandidaten zeigen
+function mapWishes(){ return stayView() ? (layers.wish ? wishes() : []).concat(stayCands()) : wishes(); }
+function wishOn(){ return layers.wish || wishView() || stayView(); }
 /* Zurückgestellte Wünsche: nicht gelöscht, aber aus Wunschliste, Karte und Vorschlägen heraus; lassen sich ein- und ausblenden */
 function parkedWishes(){ var t = T(); return Object.keys(t.places).filter(function(id){ return !t.places[id].of && t.places[id].park && !dayOf(id); }).map(function(id){ return t.places[id]; }); }
 var wParkedOpen = lsGet("rp-wpark")==="1";
@@ -9930,12 +9966,12 @@ function hotelStop(k, after){
 
 /* ---------- Vorschläge ---------- */
 function bestInsert(k, p){
-  var o = ord(k), H = hRim(k), pts = [];
+  var o = ord(k), H = hRim(k), HS = hRimS(k), pts = [];
   o.forEach(function(id,i){ var q = P(id); if(hasLoc(q)) pts.push({i:i, q:q}); });
-  if(!H && !pts.length) return {idx:o.length, extra:0};
+  if(!H && !HS && !pts.length) return {idx:o.length, extra:0};
   var best = {idx:o.length, extra:Infinity};
   for(var j=0; j<=pts.length; j++){
-    var prev = j===0 ? H : pts[j-1].q, next = j===pts.length ? H : pts[j].q;
+    var prev = j===0 ? HS : pts[j-1].q, next = j===pts.length ? H : pts[j].q;
     var extra = (prev ? tmin(dist(prev,p)) : 0) + (next ? tmin(dist(p,next)) : 0) - (prev && next ? tmin(dist(prev,next)) : 0);
     if(extra < best.extra){ best = {idx: j===pts.length ? o.length : pts[j].i, extra:extra}; }
   }
@@ -10366,7 +10402,7 @@ function movableAt(x, y){
   var best = null, bd = 26, D = dayByKey(cur);
   function test(id){ var r = rootOf(id), p = P(r); if(!canMove(p)) return; var q = pt(P(id)), d = Math.hypot(q[0]-x, q[1]-y); if(d < bd){ best = r; bd = d; } }
   mapDays().forEach(function(dk){ ord(dk).forEach(test); });
-  if(layers.wish || wishView()) wishes().forEach(function(w){ test(w.id); });
+  if(wishOn()) mapWishes().forEach(function(w){ test(w.id); });
   PHMK.forEach(test);
   // Wegpunkte der Route (liegen über den Stopps nur, wenn sie näher sind)
   if(layers.route && D) VIAMK.forEach(function(m){ var d = Math.hypot(m.x-x, m.y-y); if(d < Math.min(bd, 22)){ best = "via:"+m.li+":"+m.vi; bd = d; } });
@@ -10547,19 +10583,140 @@ function stayToHotel(pid){ var p = P(pid); if(!p || !hasLoc(p)){ toast("Für die
 function stayMark(pid){ var p = T().places[pid]; if(!p) return; closeJpMore();
   if(p.c==="hotel"){ p.c = CATNAME[p.c0] && p.c0!=="hotel" ? p.c0 : "sight"; delete p.c0; } else { p.c0 = p.c; p.c = "hotel"; }
   save(); renderAll(); toast(p.c==="hotel" ? "„"+p.n+"“ steht jetzt in der Unterkunftsliste" : "„"+p.n+"“ ist keine Unterkunft mehr", false); }
-function toHotel(p, src){
-  tdraft = tripToDraft(T(), "edit");
-  var t = T(), e0 = tdraft.hotels.filter(function(x){ return !(x.n||"").trim() && !(x.loc||"").trim(); })[0];
-  var hNew = {n:p.n || "", loc:locStr(p), from:t.start, to:t.end};
-  if(src) hNew.src = src;
-  if(e0){ e0.n = hNew.n; e0.loc = hNew.loc; e0.from = e0.from || t.start; e0.to = e0.to || t.end; if(src) e0.src = src; } else tdraft.hotels.push(hNew);
-  var hi = e0 ? tdraft.hotels.indexOf(e0) : tdraft.hotels.length-1; tdraft.ok = "hotels."+hi;
-  if(src) tdraft.back = "stay"; // Abbrechen führt zurück zur Unterkunftsliste
-  tab = "trip"; renderSheet(); scheduleOverlay();
-  var f = document.querySelector("#tripPop [data-f=\"hotels."+hi+".n\"]");
-  var fs = f ? f.closest("fieldset") : null; if(fs) fs.scrollIntoView({block:"center"}); if(f){ f.focus(); }
-  toast("Hotel eingetragen – Name und Daten prüfen, dann „Speichern“", false);
+/* ---------- Unterkünfte: eigener Reiter (Nächte, gebucht, Lücken, Kandidaten) ----------
+   Gebucht = T().hotels (from = Check-in-Tag, to = Check-out-Tag, ci/co = Uhrzeit); Kandidaten = Orte mit Kategorie Unterkunft.
+   Preis, Buchungsnummer und Link stehen in T().stayB[id] (privat: nur Besitzer und Mitreisende) */
+var STAYCOL = ["#5B7FA8","#8A9A7A","#A8875B","#8A6FA8","#5B9AA8","#A86F7A"];
+var staySort = /^(rate|price|dist)$/.test(lsGet("rp-staysort")||"") ? lsGet("rp-staysort") : "rate", STAY = null;
+function stayTime(h, k){ return h && typeof h[k]==="string" && /^\d\d:\d\d$/.test(h[k]) ? h[k] : ""; }
+function stayB(id){ var o = T().stayB; return (o && o[id]) || {}; }
+function stayHotels(){ return (T().hotels||[]).slice().sort(function(a, b){ return (a.from||"").localeCompare(b.from||""); }); }
+function stayCol(h){ var i = stayHotels().indexOf(h); return STAYCOL[(i < 0 ? 0 : i) % STAYCOL.length]; }
+function stayNights(){ var ds = days(); return ds.slice(0, -1); } // Nacht k = von Tag k auf den nächsten
+function nightAny(k){ return stayHotels().filter(function(h){ return h.from<=k && k<h.to; })[0] || null; }
+function nCount(a, b){ var x = parseD(a), y = parseD(b); return x && y ? Math.round((y - x)/864e5) : 0; }
+function nLbl(n){ return n+(n===1 ? " Nacht" : " Nächte"); }
+function dLbl(k){ var D = dayByKey(k), d = parseD(k); return D ? D.wd+" "+shortD(k) : d ? WD[d.getUTCDay()]+" "+shortD(k) : k; }
+function nextKey(k){ var d = parseD(k); return d ? new Date(d.getTime() + 864e5).toISOString().slice(0, 10) : k; }
+function stayGaps(){ var out = [], g = null;
+  stayNights().forEach(function(D){ if(nightAny(D.key)){ g = null; return; } if(g) g.to = nextKey(D.key); else out.push(g = {from:D.key, to:nextKey(D.key)}); });
+  return out; }
+function stayCands(){ var t = T(); return Object.keys(t.places).map(P).filter(function(p){ return p && p.c==="hotel" && !p.of && p.k!=="hotel" && !p.park && !stayHotel(p.id); }); }
+function stayRef(){ var pts = []; days().forEach(function(D){ routePts(D.key).forEach(function(p){ if(p.k!=="hotel" && p.c!=="hotel") pts.push(p); }); });
+  if(!pts.length) pts = (T().orte||[]).filter(hasLoc); if(!pts.length) return null;
+  var la = 0, lo = 0; pts.forEach(function(p){ la += p.la; lo += p.lo; }); return {la:la/pts.length, lo:lo/pts.length}; }
+function stayRateIdx(id){ var v = rateOf(id), i = -1; RATES.forEach(function(r, j){ if(r[0]===v) i = j; }); return i < 0 ? 99 : i; }
+function stayPrice(id){ var v = parseFloat(String(stayB(id).pr||"").replace(",", ".")); return isFinite(v) && v > 0 ? v : 0; }
+function stayCount(){ return (T().hotels||[]).length + stayCands().length; }
+function renderStay(){
+  var t = T(), RO = isRO(), ns = stayNights(), hs = stayHotels(), h = "<div class=\"stay\">";
+  if(!RO) h += "<div class=\"wtop stay-top\"><div class=\"stay-tt\"><b>Unterkünfte</b><small>"+(t.opt ? "Option ohne Termin" : rangeLabel(t.start, t.end))+"</small></div><button type=\"button\" class=\"wadd\" data-act=\"stayadd\" aria-label=\"Unterkunft suchen\" title=\"Unterkunft suchen\">+</button></div>";
+  if(ns.length){
+    var nb = 0; h += "<div class=\"sn-bar\" role=\"list\" aria-label=\"Nächte\">"+ns.map(function(D){ var H = nightAny(D.key); if(H) nb++;
+      return "<button type=\"button\" role=\"listitem\" class=\"sn"+(H ? "" : " gap")+"\" data-act=\"staynight\" data-k=\""+D.key+"\""+(H ? " style=\"--sc:"+stayCol(H)+"\"" : "")+" title=\""+esc(D.lbl+(H ? ": "+H.n : ": noch offen"))+"\"><i></i><small>"+esc(D.wd)+"</small></button>"; }).join("")+"</div>";
+    var gs = stayGaps();
+    h += "<p class=\"sn-leg\">"+nb+" von "+ns.length+(ns.length===1 ? " Nacht" : " Nächten")+" geplant"+(gs.length ? " · "+gs.map(function(g){ return dLbl(g.from)+(nCount(g.from, g.to) > 1 ? "–"+dLbl(g.to) : ""); }).join(", ")+" noch offen" : "")+"</p>";
+  }
+  // Gebucht, dazwischen die offenen Nächte in zeitlicher Reihenfolge
+  var rows = hs.map(function(x){ return {k:x.from||"", h:x}; }).concat(ns.length ? stayGaps().map(function(g){ return {k:g.from, g:g}; }) : []).sort(function(a, b){ return a.k.localeCompare(b.k) || (a.g ? 1 : -1); });
+  h += "<div class=\"nt-sec\">Gebucht</div>";
+  if(!rows.length) h += "<p class=\"note\">"+(t.opt ? "Sobald die Reise einen Termin hat, planst du hier die Nächte." : "Noch keine Unterkunft gebucht.")+"</p>";
+  rows.forEach(function(r){
+    if(r.g){ var n = nCount(r.g.from, r.g.to);
+      h += "<div class=\"sgap\"><span>"+esc(dLbl(r.g.from)+" → "+dLbl(r.g.to))+": noch keine Unterkunft<small>"+nLbl(n)+"</small></span>"+(RO ? "" : "<button type=\"button\" class=\"btn g s\" data-act=\"staygap\" data-f=\""+r.g.from+"\" data-t=\""+r.g.to+"\">Wählen</button>")+"</div>"; return; }
+    var x = r.h, n2 = nCount(x.from, x.to), ci = stayTime(x, "ci"), co = stayTime(x, "co"), b = RO ? {} : stayB(x.id), pr = !RO && stayPrice(x.id);
+    var sub2 = [ci ? "Check-in "+ci : "", co ? "Check-out "+co : "", b.nr ? "Buchung "+b.nr : "", pr ? "ca. "+String(pr).replace(".", ",")+" € / Nacht" : ""].filter(Boolean).join(" · ");
+    h += "<div class=\"scard\"><button type=\"button\" class=\"sc-m\" data-act=\"stayedit\" data-h=\""+esc(x.id)+"\"><span class=\"sc-ic\" style=\"--sc:"+stayCol(x)+"\">"+icon("hotel")+"</span><span class=\"sc-t\"><b>"+esc(x.n)+"</b><small>"+esc(dLbl(x.from)+" – "+dLbl(x.to)+" · "+nLbl(n2))+"</small>"+(sub2 ? "<small>"+esc(sub2)+"</small>" : "")+"</span></button>"+
+      (hasLoc(x) ? "<button type=\"button\" class=\"sc-x\" data-act=\"stayshow\" data-h=\""+esc(x.id)+"\" aria-label=\"Auf der Karte zeigen\" title=\"Auf der Karte zeigen\">"+ic("map")+"</button>" : "")+"</div>";
+  });
+  if(!RO){
+    var cs = stayCands(), ref = stayRef();
+    h += "<div class=\"nt-sec\">Kandidaten</div>";
+    if(cs.length > 1) h += "<div class=\"fchips stay-sort\" role=\"group\" aria-label=\"Sortieren\">"+[["rate","Bewertung"],["price","Preis"],["dist","Lage"]].filter(function(o){ return o[0]!=="dist" || ref; }).map(function(o){ return "<button type=\"button\" class=\"fchip"+(staySort===o[0]?" on":"")+"\" data-act=\"staysort\" data-v=\""+o[0]+"\" aria-pressed=\""+(staySort===o[0])+"\">"+o[1]+"</button>"; }).join("")+"</div>";
+    var key = function(p){ return staySort==="price" ? (stayPrice(p.id) || 1e9) : staySort==="dist" && ref && hasLoc(p) ? dist(p, ref) : staySort==="dist" ? 1e12 : stayRateIdx(p.id); };
+    cs.sort(function(a, b){ return key(a) - key(b) || (a.n||"").localeCompare(b.n||"", "de"); });
+    if(!cs.length) h += "<p class=\"note\">Noch keine Kandidaten. Mit + suchst du eine Unterkunft; im Ort-Menü kannst du auch „Als Unterkunft vormerken“ wählen.</p>";
+    cs.forEach(function(p){
+      var r0 = rateDef(rateOf(p.id)), pr2 = stayPrice(p.id), sub = [r0 ? r0[1] : "", pr2 ? "ca. "+String(pr2).replace(".", ",")+" € / Nacht" : "", ref && hasLoc(p) ? fmtDist(dist(p, ref))+" zu den Zielen" : ""].filter(Boolean).join(" · ");
+      h += "<div class=\"scard cand\" data-pid=\""+p.id+"\"><button type=\"button\" class=\"sc-m\" data-act=\"stayplace\" data-pid=\""+p.id+"\"><span class=\"sc-ic\">"+icon("hotel")+"</span><span class=\"sc-t\"><b>"+esc(p.n)+"</b>"+(sub ? "<small>"+esc(sub)+"</small>" : "")+"</span></button>"+
+        (ns.length ? "<button type=\"button\" class=\"btn s\" data-act=\"staybook\" data-pid=\""+p.id+"\">Einplanen</button>" : "")+"</div>";
+    });
+  }
+  return h+"</div>";
 }
+/* Pop-up: einplanen bzw. Aufenthalt bearbeiten */
+function stayOpen(o){
+  var t = T(), ns = stayNights(); if(!ns.length) return;
+  var g = stayGaps()[0], f0 = o.f || (g ? g.from : t.start), t0 = o.t || (g ? g.to : t.end);
+  if(o.hid){ var H = (t.hotels||[]).filter(function(x){ return x.id===o.hid; })[0]; if(!H) return; var b = stayB(H.id);
+    STAY = {hid:H.id, n:H.n, from:H.from, to:H.to, ci:H.ci||"", co:H.co||"", pr:b.pr||"", nr:b.nr||"", url:b.url||"", err:""}; }
+  else if(o.pid){ var p = P(o.pid); if(!p || !hasLoc(p)){ toast("Für diese Unterkunft fehlt die Lage auf der Karte", false); return; } var b2 = stayB(p.id);
+    STAY = {pid:p.id, n:p.n, from:f0, to:t0, ci:"", co:"", pr:b2.pr||"", nr:"", url:"", err:""}; }
+  else if(o.pt){ STAY = {pt:{la:o.pt.la, lo:o.pt.lo, addr:o.pt.addr||""}, n:o.pt.n||"", from:f0, to:t0, ci:"", co:"", pr:"", nr:"", url:"", err:""}; }
+  else return;
+  if(STAY.to <= STAY.from) STAY.to = nextKey(STAY.from);
+  renderStayPop(true);
+}
+var STAYF = [["ci","syCi","Check-in","time",5],["co","syCo","Check-out","time",5],["pr","syPr","€ / Nacht","text",12],["nr","syNr","Buchungsnummer","text",80],["url","syUrl","Link","url",500]];
+function stayKeep(){ if(!STAY) return; var n = $("syN"); if(n) STAY.n = n.value; ["syFrom","syTo"].forEach(function(i){ var e = $(i); if(e) STAY[i==="syFrom" ? "from" : "to"] = e.value; }); STAYF.forEach(function(x){ var e = $(x[1]); if(e) STAY[x[0]] = e.value; }); }
+function stayPopHTML(){
+  var s = STAY, ds = days(), ed = !!s.hid, h = "<div class=\"pop-card zpop staypop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Unterkunft\">";
+  h += "<div class=\"pop-head\"><h4>"+(ed ? "Aufenthalt" : "Unterkunft einplanen")+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
+  h += s.pt ? "<div class=\"ag-grp zform\"><label class=\"tf-row\"><span>Name</span><input type=\"text\" id=\"syN\" value=\""+esc(s.n)+"\" maxlength=\"80\" placeholder=\"z. B. Ferienwohnung\" autocomplete=\"off\"></label></div>" : "<p class=\"lo-leg\">"+esc(s.n)+"</p>";
+  var opt = function(list, v){ return list.map(function(D){ return "<option value=\""+D.key+"\""+(D.key===v ? " selected" : "")+">"+esc(D.lbl)+"</option>"; }).join(""); };
+  var n = nCount(s.from, s.to);
+  h += "<div class=\"nt-sec\">Nächte<small> · "+nLbl(n)+"</small></div><div class=\"ag-grp zform\">"+
+    "<div class=\"tf-row sy-two\"><span>Check-in</span><select id=\"syFrom\" aria-label=\"Check-in-Tag\">"+opt(ds.slice(0, -1), s.from)+"</select><input type=\"time\" id=\"syCi\" value=\""+esc(s.ci||"")+"\" aria-label=\"Check-in-Uhrzeit\"></div>"+
+    "<div class=\"tf-row sy-two\"><span>Check-out</span><select id=\"syTo\" aria-label=\"Check-out-Tag\">"+opt(ds.filter(function(D){ return D.key > s.from; }), s.to)+"</select><input type=\"time\" id=\"syCo\" value=\""+esc(s.co||"")+"\" aria-label=\"Check-out-Uhrzeit\"></div></div>";
+  var ov = (T().hotels||[]).filter(function(x){ return x.id!==s.hid && x.from < s.to && s.from < x.to; });
+  if(ov.length) h += "<p class=\"note stay-ov\">Überschneidet sich mit „"+esc(ov[0].n)+"“ ("+esc(dLbl(ov[0].from)+" – "+dLbl(ov[0].to))+").</p>";
+  h += "<div class=\"nt-sec\">Buchung<small> · nur für Mitreisende</small></div><div class=\"ag-grp zform\">"+STAYF.slice(2).map(function(x){ return "<label class=\"tf-row\"><span>"+x[2]+"</span><input type=\""+x[3]+"\" id=\""+x[1]+"\" value=\""+esc(s[x[0]]||"")+"\" maxlength=\""+x[4]+"\""+(x[0]==="pr" ? " inputmode=\"decimal\" placeholder=\"z. B. 240\"" : x[0]==="url" ? " placeholder=\"https://…\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"" : " autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"")+" autocomplete=\"off\"></label>"; }).join("")+"</div>";
+  if(s.err) h += "<p class=\"err\" role=\"alert\">"+esc(s.err)+"</p>";
+  h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"catclose\">Abbrechen</button><button type=\"button\" class=\"btn\" data-act=\"staysave\">"+(ed ? "Speichern" : "Einplanen")+"</button></div>";
+  if(ed){ var H = (T().hotels||[]).filter(function(x){ return x.id===s.hid; })[0], src = H && H.src && T().places[H.src];
+    if(src) h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"stayplace\" data-pid=\""+src.id+"\">Fotos, Bewertung, Notiz</button></div>";
+    h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g warn\" data-act=\"stayunbook\">Nicht mehr gebucht</button></div>"; }
+  return h+"</div>";
+}
+function renderStayPop(first){ if(!STAY) return; var cp = $("catPop"); if(first || cp.hidden){ cp.innerHTML = stayPopHTML(); cp.hidden = false; } else catKeep(stayPopHTML()); }
+function staySetB(id, o){ var t = T(), b = {}; ["pr","nr","url"].forEach(function(k){ var v = String(o[k]||"").trim(); if(v) b[k] = v; });
+  t.stayB = t.stayB && typeof t.stayB==="object" ? t.stayB : {}; if(Object.keys(b).length) t.stayB[id] = b; else delete t.stayB[id]; }
+function staySave(){
+  if(!STAY) return; stayKeep(); var s = STAY, t = T();
+  if(!parseD(s.from) || !parseD(s.to) || s.to <= s.from){ s.err = "Der Check-out muss nach dem Check-in liegen."; renderStayPop(); return; }
+  if(s.pt && !(s.n||"").trim()){ s.err = "Bitte gib einen Namen ein."; renderStayPop(); return; }
+  var u = String(s.url||"").trim(); if(u && !/^https?:\/\//i.test(u)) u = "https://"+u; if(u && !/^https?:\/\/[^\s.]+\.[^\s]+$/i.test(u)){ s.err = "Der Link sieht nicht gültig aus."; renderStayPop(); return; } s.url = u;
+  var tm = function(v){ return /^\d\d:\d\d$/.test(v||"") ? v : ""; }, H;
+  if(s.hid){ H = t.hotels.filter(function(x){ return x.id===s.hid; })[0]; if(!H){ closeCatPop(); return; } }
+  else { var p = s.pid ? P(s.pid) : null, q = p || s.pt; H = {id:uid("h"), n:String(p ? p.n : s.n).trim().slice(0, 80), la:q.la, lo:q.lo}; if(q.addr) H.addr = q.addr; if(p) H.src = p.id; t.hotels.push(H); }
+  H.from = s.from; H.to = s.to; if(tm(s.ci)) H.ci = s.ci; else delete H.ci; if(tm(s.co)) H.co = s.co; else delete H.co;
+  staySetB(H.id, s); if(s.pid && s.pr){ var pb = Object.assign({}, stayB(s.pid), {pr:s.pr}); staySetB(s.pid, pb); }
+  var nm = H.n, ed = !!s.hid; STAY = null; closeCatPop(); save(); dirty(); renderAll();
+  toast(ed ? "Aufenthalt gespeichert" : "„"+nm+"“ eingeplant: "+dLbl(H.from)+" – "+dLbl(H.to), false);
+}
+function stayUnbook(){
+  if(!STAY || !STAY.hid) return; var hid = STAY.hid, t = T(), H = t.hotels.filter(function(x){ return x.id===hid; })[0]; if(!H) return;
+  askConfirm("Nicht mehr gebucht?", "„"+H.n+"“ wird aus den Nächten genommen und bleibt als Kandidat erhalten.", "Entfernen", function(){
+    var t2 = T(); t2.hotels = t2.hotels.filter(function(x){ return x.id!==hid; });
+    if(!(H.src && t2.places[H.src]) && hasLoc(H)){ var nid = uid("p"); t2.places[nid] = {id:nid, n:H.n, c:"hotel", la:H.la, lo:H.lo, addr:H.addr||"", list:(t2.lists[0]||{}).id||""};
+      var b = stayB(hid); if(b.pr) staySetB(nid, {pr:b.pr}); }
+    if(t2.stayB) delete t2.stayB[hid];
+    STAY = null; closeCatPop(); save(); dirty(); renderAll(); toast("„"+H.n+"“ ist wieder Kandidat", false);
+  });
+}
+// offene Nächte: Kandidaten zur Wahl, sonst gleich suchen
+function stayGapOpen(f, to){
+  var cs = stayCands().filter(hasLoc);
+  if(!cs.length){ stayAdd(); return; }
+  var h = "<div class=\"pop-card zpop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Unterkunft wählen\"><div class=\"pop-head\"><h4>"+esc(dLbl(f)+" → "+dLbl(to))+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div><div class=\"ag-grp ls-list\">"+
+    cs.map(function(p){ var r0 = rateDef(rateOf(p.id)); return "<button type=\"button\" class=\"ls-row\" data-act=\"staybook\" data-pid=\""+p.id+"\" data-f=\""+f+"\" data-t=\""+to+"\"><span class=\"ls-th ico\">"+icon("hotel")+"</span><span class=\"ls-t\"><b>"+esc(p.n)+"</b>"+(r0 ? "<small>"+esc(r0[1])+"</small>" : "")+"</span></button>"; }).join("")+
+    "</div><div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"stayadd\">"+ic("search", "ii")+" Andere Unterkunft suchen</button></div></div>";
+  var cp = $("catPop"); cp.innerHTML = h; cp.hidden = false;
+}
+function stayAdd(){ closeCatPop(); srch.cat = "hotel"; openSearch(); }
+function stayShow(hid){ var H = hotelById(hid); if(!H || !hasLoc(H)) return; select(H.id); if(desktop.matches) revealPoint(H, 16, true); else { setSheet("min"); setTimeout(function(){ revealPoint(H, 16, true); }, 60); } }
+// Übernahme als Hotel (Ort-Menü, Langdruck auf der Karte): Nächte im Pop-up wählen
+function toHotel(p, src){ if(src) stayOpen({pid:src}); else stayOpen({pt:p}); }
 
 /* ---------- ÖPNV-Routing (U-Bahn, offline aus dem Fahrplan) ---------- */
 var WALK = 1.33/1.3;        // Gehgeschwindigkeit in m/s inkl. Umwegfaktor
@@ -11430,7 +11587,7 @@ function meRideHold(a){
 function dayLegs(k){
   var D = dayByKey(k); if(!D) return [];
   // Route nur über offene Ziele: Start am Standort (heute) bzw. am vorherigen Ziel im Plan, zuletzt zurück zum Hotel
-  var HT = hRim(D), out = [], live = k===todayKey() ? meAnchor() : null, prevOpen = null, lastAny = HT, lead = !HT;
+  var HT = hRim(D), HS = hRimS(D), out = [], live = k===todayKey() ? meAnchor() : null, prevOpen = null, lastAny = HS, lead = !HS;
   ord(k).forEach(function(id){
     var p = P(id); if(!hasLoc(p)) return;
     if(T().done[id]){ lastAny = p; lead = false; return; }
@@ -11964,10 +12121,10 @@ function drawOverlay(){
     if(zoomed) mkLabel(q[0]+16, q[1], x.p.n, false, x.k==="m" ? 2 : 1);
   });
   if(tab==="day" && sugOpen && D) suggest(cur,3).forEach(function(x){ sugIds[x.w.id] = 1; });
-  if((layers.wish || wishView()) && !isRO() && !zs){
-    wishes().forEach(function(w){
+  if(wishOn() && !isRO() && !zs){
+    mapWishes().forEach(function(w){
       if(!hasLoc(w)) return;
-      if((!catOk(w.c) || (tab==="wish" && (!nbMatch(w) || !qMatch(w) || !grpOk(w)))) && sel!==w.id) return;
+      if(((!catOk(w.c) && w.c!=="hotel") || (tab==="wish" && (!nbMatch(w) || !qMatch(w) || !grpOk(w)))) && sel!==w.id) return;
       var q = pt(w); if(!onScreen(q,30)) return;
       var strong = (tab==="wish" && activeList!=="open" && (w.list||"none")===activeList) || sugIds[w.id];
       wishMarks.push({w:w, q:q, strong:strong});
@@ -11992,7 +12149,7 @@ function drawOverlay(){
   var ALL = allOn(), viaSvg = ""; VIAMK = []; RTMK = [];
   if(zs || !layers.route || isRO() || (NAV && NAV.pts)){ /* Route ausgeblendet; Beobachter sehen keine Routen; während der Navigation (auch ausgeblendet) nur deren Weg */ }
   else mapDays().forEach(function(cur){ // Gesamtansicht: Wege aller Tage in ihrer Tagesfarbe
-    var DD = dayByKey(cur), HT = DD && hRim(DD), pts = routePts(cur), col = dayColor(cur);
+    var DD = dayByKey(cur), HT = DD && hRim(DD), HS = DD && hRimS(DD), pts = routePts(cur), col = dayColor(cur);
     if(!pts.length) return;
     var labels = "";
     if(vmPick){ var vmz = pt({la:vmPick.q[0], lo:vmPick.q[1]}); viaSvg += "<circle class=\"vmring\" cx=\""+f1(vmz[0])+"\" cy=\""+f1(vmz[1])+"\" r=\"13\" fill=\"none\" stroke=\"#FF9F0A\" stroke-width=\"3\"/>";
@@ -12024,7 +12181,7 @@ function drawOverlay(){
         return;
       }
       if(legMode(pair[0], pair[1])==="walk" || legMode(pair[0], pair[1])==="bike"){
-        var hotelLeg = (HT && (pair[0]===HT || pair[1]===HT)) || pair[0].k==="hotel" || pair[1].k==="hotel";
+        var hotelLeg = (HT && (pair[0]===HT || pair[1]===HT)) || (HS && pair[0]===HS) || pair[0].k==="hotel" || pair[1].k==="hotel";
         var dw = walkPath(pair[0], pair[1], vv).map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
         s += "<path d=\""+dw+"\" stroke=\"var(--land)\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\""+(.9*op)+"\"/>";
         s += "<path d=\""+dw+"\" stroke=\""+col+"\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(hotelLeg?" stroke-dasharray=\"2 7\"":"")+" opacity=\""+op+"\"/>";
@@ -12058,7 +12215,7 @@ function drawOverlay(){
   });
   // Hotels der Reise (das Hotel des Tages kräftig)
   if(!zs) T().hotels.filter(hasLoc).forEach(function(h){
-    var q = pt(h); if(!onScreen(q,30)) return; var on = ALL || (D && D.hotel && D.hotel.id===h.id), op = on ? 1 : .6;
+    var q = pt(h); if(!onScreen(q,30)) return; var on = ALL || (D && ((D.hotel && D.hotel.id===h.id) || (D.hotelS && D.hotelS.id===h.id))), op = on ? 1 : .6;
     s += "<g opacity=\""+op+"\">"+mkShadow(q[0], q[1], 12)+"<rect x=\""+f1(q[0]-13)+"\" y=\""+f1(q[1]-13)+"\" width=\"26\" height=\"26\" rx=\"8\" fill=\"#fff\"/><rect x=\""+f1(q[0]-10.5)+"\" y=\""+f1(q[1]-10.5)+"\" width=\"21\" height=\"21\" rx=\"6\" fill=\"#17212c\"/>"+
          "<path d=\"M"+f1(q[0]-6)+" "+f1(q[1]+5)+"v-9.5M"+f1(q[0]-6)+" "+f1(q[1]+1.5)+"h12v3.5M"+f1(q[0]-6)+" "+f1(q[1]+1.5)+"v-3.2h4.2a2.6 2.6 0 0 1 2.6 2.6\" stroke=\"#fff\" stroke-width=\"1.7\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\""+f1(q[0]+3.4)+"\" cy=\""+f1(q[1]-2.2)+"\" r=\"1.9\" fill=\"#fff\"/></g>";
     if(zoomed || sel===h.id) mkLabel(q[0]+18, q[1], h.n, sel===h.id, sel===h.id ? 10 : 2);
@@ -12092,7 +12249,7 @@ function drawOverlay(){
     var allP = allPOn() || ALL, mds = mapDays();
     var shown = {}, ps = T().photos || {};
     mapDays().forEach(function(dk){ ord(dk).forEach(function(id){ if(!mapHid(id) && !(P(id) && P(id).k==="hotel")) shown[id] = 1; }); });
-    if((layers.wish || wishView()) && !isRO()) wishes().forEach(function(w){ shown[w.id] = 1; });
+    if(wishOn() && !isRO()) mapWishes().forEach(function(w){ shown[w.id] = 1; });
     Object.keys(ps).forEach(function(pid){
       var q0p = P(pid); if(shown[pid] || !q0p || !hasLoc(q0p) || (!allP && mds.indexOf(dayOf(pid)) < 0) || !(ps[pid]||[]).length || (isRO() && !dayOf(pid))) return;
       var qq = pt(q0p); if(!onScreen(qq, 30)) return;
@@ -12322,7 +12479,7 @@ var DM_ROLES = {
     {ch:"plan", s:"trips", t:"Deine Reisen auf einen Blick", p:"Tippe oben auf die Reise: Dort wechselst du zwischen Reisen und siehst ihren Status – Aktuell, In Planung, Option oder Abgeschlossen. Die laufende Reise steht immer zuerst.", ring:".mt-now", f:[60,50], real:{v:"tripmenu", el:"#tripMenu"}},
     {ch:"plan", s:"opt", t:"Noch nicht sicher? Als Option anlegen", p:"Bei „Neue Reise anlegen“ schaltest du „Option“ ein: Die Reise braucht dann keinen Termin und kein Hotel, nur Name und Ziel. Sammle schon Ideen und leg sie später fest.", ring:".mo-sw", f:[192,64], real:{v:"tripmenu", el:"#tripMenu [data-act=tripnew]"}},
     {ch:"plan", t:"Orte sammeln", p:"Über die Lupe findest du Cafés, Sehenswürdigkeiten und mehr. Alles, was dich interessiert, landet auf deiner Wunschliste. Mit dem ＋ planst du einen Ort für einen Tag ein.", on:".m-srch,.m-sheet", ring:".m-srch", v:"wish", f:[199,232], real:{v:"map", el:"#srchBtn"}},
-    {ch:"plan", s:"stay", t:"Unterkünfte vergleichen", p:"In der Liste „Unterkünfte“ sammelst du mögliche Hotels – mit Bewertung, Fotos und Tipps wie bei jedem Ort. Deine Wahl übernimmst du mit einem Tipp als Hotel der Reise.", ring:".ms-h2", f:[176,226], real:{v:"wish", el:"#body .fchip[data-k=list]"}},
+    {ch:"plan", s:"stay", t:"Unterkünfte planen", p:"Im eigenen Reiter „Unterkünfte“ siehst du für jede Nacht, wo ihr schlaft, und offene Nächte fallen sofort auf. Kandidaten vergleichst du nach Bewertung, Preis und Lage; „Einplanen“ legt die Nächte fest.", ring:".ms-h2", f:[176,226], real:{v:"stay", el:"#tabStay"}},
     {ch:"plan", t:"Tag für Tag planen", p:"Links wählst du den Reisetag. Im Tagesplan stehen deine Stopps in der richtigen Reihenfolge, auf der Karte siehst du die Route mit Fußwegen und U-Bahn.", on:".m-rail,.m-sheet,.m-route,.m-pin,.m-hotel", ring:".m-rail", f:[22,87], real:{v:"day", el:"#rail"}},
     {ch:"plan", t:"Reihenfolge ändern", p:"Halte einen Stopp am Griff links gedrückt und zieh ihn an die gewünschte Stelle. Die Route passt sich automatisch an.", on:".m-sheet", a:"sort", real:{v:"day", el:"#body li.st .grip"}},
     {ch:"plan", s:"card", t:"Ort antippen", p:"Ein Tipp auf einen Ort öffnet seine Karte: Tipps von Freunden, die nächste Haltestelle und darunter Zur Planung, Route, Details und Mehr.", ring:".mc-plan", f:[38,262], real:{v:"wish", el:"#body li.wi"}},
@@ -12430,11 +12587,11 @@ function dmScreensHTML(){
     "<div class=\"mzo-fade\"><div class=\"mzo-l\">Zeitraum</div><div class=\"mzo-g\"><span>Anreise</span><i>Datum</i></div><div class=\"mzo-l\">Hotels</div><div class=\"mzo-g\"><span>Hotel</span><i>Lage fehlt</i></div></div>"+
     "<div class=\"mzo-l\">Reiseziel</div><div class=\"mzo-g\"><span>Ort</span><b>Tokio</b></div><div class=\"mzo-g\"><span>Ort</span><b>Kyoto</b></div>"+
     "<div class=\"mzo-f\"><span>Abbrechen</span><span class=\"p\">Reise anlegen</span></div></div>"+
-  // Unterkünfte in der Wunschliste
-  "<div class=\"ms mz mz-stay\" data-sc=\"stay\"><div class=\"mzs-sh\"><span class=\"m-handle\"></span><div class=\"m-tabs\"><span>Tagesplan</span><span class=\"a\">Wunschliste</span></div>"+
-    "<div class=\"mzs-ch\"><span class=\"y\">Unterkünfte ⌄</span><span>Bezirke ⌄</span><span>Kategorie ⌄</span></div>"+
-    "<div class=\"mzs-r\"><i>"+I("hotel")+"</i><span><b>voco Times Square South</b><small>Hotel der Reise · 21.–27.10.</small></span></div>"+
-    "<div class=\"mzs-r\"><i>"+I("hotel")+"</i><span><b>The Hoxton Williamsburg</b><small>Very Good · Tipp von @anna</small></span><em class=\"mk ms-h2\">Als Hotel</em></div>"+
+  // Unterkünfte im eigenen Reiter
+  "<div class=\"ms mz mz-stay\" data-sc=\"stay\"><div class=\"mzs-sh\"><span class=\"m-handle\"></span><div class=\"m-tabs\"><span>Tagesplan</span><span>Wunschliste</span><span class=\"a\">Unterkünfte</span></div>"+
+    "<div class=\"mzs-ch\"><span class=\"y\">5 von 6 Nächten</span><span>Mo 26. offen</span></div>"+
+    "<div class=\"mzs-r\"><i>"+I("hotel")+"</i><span><b>voco Times Square South</b><small>Gebucht · Mi 21. – So 25. · 4 Nächte</small></span></div>"+
+    "<div class=\"mzs-r\"><i>"+I("hotel")+"</i><span><b>The Hoxton Williamsburg</b><small>Very Good · Tipp von @anna</small></span><em class=\"mk ms-h2\">Einplanen</em></div>"+
     "<div class=\"mzs-r\"><i>"+I("hotel")+"</i><span><b>Arlo SoHo</b><small>2 Fotos · 450 m zur U-Bahn</small></span></div></div></div>"+
   // Tickets
   "<div class=\"ms mz mz-tk\" data-sc=\"tk\"><div class=\"mz-pop\"><div class=\"mzk-h\"><b>Tickets</b><span class=\"x\">✕</span></div><small class=\"mzk-s\">Top of the Rock</small>"+
@@ -12588,6 +12745,7 @@ var DM_VIEW = {
   map: function(){ dmPages(); },
   day: function(){ dmPages(); if(tab!=="day"){ tab = "day"; renderSheet(); } dmSheetUp(); },
   wish: function(){ dmPages(); if(tab!=="wish"){ tab = "wish"; renderSheet(); } dmSheetUp(); },
+  stay: function(){ dmPages(); if(tab!=="stay"){ tab = "stay"; renderSheet(); } dmSheetUp(); },
   trip: function(){ dmPages(); if(!tdraft && tab!=="trip"){ tab = "trip"; renderSheet(); } dmSheetUp(); },
   tripmenu: function(){ dmPages(); $("tripMenu").hidden = false; $("tripBtn").setAttribute("aria-expanded", true); placeFloating(); },
   layers: function(){ dmPages(); if($("layers").hidden) $("layersBtn").click(); var g = $("lTrGrp"); if(g && g.hidden && $("lTrBtn")){ $("lTrBtn").click(); dmPrev.lgrp = true; } },
@@ -12936,7 +13094,7 @@ function tap(x, y){
   function test(id, p, rad){ if(!hasLoc(p)) return; var q = pt(p), d = Math.hypot(q[0]-x, q[1]-y); if(d < Math.max(rad, bd) && (!best || d < bd)){ best = id; bd = d; } }
   if(D) mapDays().forEach(function(dk){ ord(dk).forEach(function(id){ test(id, P(id), 20); }); });
   if(!zsm) T().hotels.forEach(function(h){ test(h.id, h, 18); });
-  if(!best && (layers.wish || wishView()) && !isRO() && !zsm) wishes().forEach(function(w){ test(w.id, w, 16); });
+  if(!best && wishOn() && !isRO() && !zsm) mapWishes().forEach(function(w){ test(w.id, w, 16); });
   if(!best) PHMK.forEach(function(pid){ test(pid, P(pid), 14); });
   if(!best && layers.sub && !isRO()){ var sb = -1, sd = 16; TRANSIT.stations.forEach(function(st, si){ if(!stationOn(st)) return; var q = toS(st[1], st[2]), d = Math.hypot(q[0]-x, q[1]-y); if(d < sd){ sd = d; sb = si; } }); if(sb > -1){ select("sub:"+sb); return; } }
   if(!best && layers.bike && map.getLayer("cb")){ var cbf = map.queryRenderedFeatures([[x-12, y-12], [x+12, y+12]], {layers:["cb"]})[0]; if(cbf){ select("cb:"+cbf.properties.id); cbLoad(); return; } }
@@ -13499,7 +13657,7 @@ var GOMODES = [
 var goSt = null, goApp = lsGet("nyc-go-app") || (/iPhone|iPad|Macintosh/.test(navigator.userAgent) ? "apple" : "google");
 function goLoc(p){ return hasLoc(p) ? (+p.la).toFixed(6)+","+(+p.lo).toFixed(6) : p.n+", "+(p.addr ? p.addr+(/Brooklyn|Queens|Bronx|NY|New York/.test(p.addr)?"":", New York, NY") : "New York, NY"); }
 function goPrev(id){
-  var k = dayOf(id), D = k && dayByKey(k), prev = D ? hRim(D) : null, ids = k ? ord(k) : [];
+  var k = dayOf(id), D = k && dayByKey(k), prev = D ? hRimS(D) : null, ids = k ? ord(k) : [];
   for(var i=0;i<ids.length && ids[i]!==id;i++){ var q = P(ids[i]); if(q && hasLoc(q)) prev = q; }
   return prev && hasLoc(prev) ? prev : null;
 }
@@ -13535,7 +13693,7 @@ function renderGo(live){
   var from = goSt.from==="prev" ? prev : "me", a = from==="me" ? me : prev;
   var h = "<div class=\"pop-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Route starten\"><div class=\"pop-head\"><h4>Route zu "+esc(p.n)+"</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
   h += "<div class=\"gp-lbl\">Start</div><div class=\"gp-from\" role=\"group\" aria-label=\"Start\"><button type=\"button\" data-act=\"gofrom\" data-from=\"me\" aria-pressed=\""+(goSt.from==="me")+"\">Mein Standort</button>";
-  if(prev) h += "<button type=\"button\" data-act=\"gofrom\" data-from=\"prev\" aria-pressed=\""+(goSt.from==="prev")+"\">"+(D && prev===D.hotel ? "Hotel" : "Vorheriger Stopp")+": "+esc(prev.n)+"</button>";
+  if(prev) h += "<button type=\"button\" data-act=\"gofrom\" data-from=\"prev\" aria-pressed=\""+(goSt.from==="prev")+"\">"+(D && (prev===D.hotel || prev===D.hotelS) ? "Hotel" : "Vorheriger Stopp")+": "+esc(prev.n)+"</button>";
   h += "</div><div class=\"gp-lbl\">In der App navigieren</div><div class=\"gp-nav\" role=\"group\" aria-label=\"In der App navigieren\">"+
     [["walk", LMWALK, "Zu Fuß"], ["bike", LMBIKE, esc(cbName())], ["oepnv", LMSUB, "U-Bahn & Bus"], ["ferry", LMFERRY, "Fähre"], ["car", LMCAR, "Auto"]].map(function(m){ return "<button type=\"button\" data-act=\"navstart\" data-mode=\""+m[0]+"\">"+m[1]+"<b>"+m[2]+"</b></button>"; }).join("")+"</div>";
   // andere Karten-App: ein Knopf, dann Auswahl Apple Karten / Google Maps – das Verkehrsmittel wählt man dort
@@ -13756,12 +13914,13 @@ function setSheet(s, px){ sheetPx = px || 0; sheetState = s; document.body.class
 // Wünsche auf der Karte ohne Ebene „Wünsche“ nur, solange die Wunschliste wirklich offen ist (eingeklappt zählt die Ebene)
 function planOpen(){ return desktop.matches ? sideOpen : sheetState!=="min"; }
 function wishView(){ return tab==="wish" && planOpen(); }
+function stayView(){ return tab==="stay" && planOpen(); }
 var lastPlanOpen = null;
 function syncSide(){
   document.body.classList.toggle("side-off", desktop.matches && !sideOpen);
   if(typeof tbPillSync==="function") setTimeout(tbPillSync, 0); // quer ändert sich die Breite der Leiste oben
   var open = planOpen();
-  if(lastPlanOpen!==null && open!==lastPlanOpen && tab==="wish" && !layers.wish && typeof scheduleOverlay==="function") scheduleOverlay();
+  if(lastPlanOpen!==null && open!==lastPlanOpen && (tab==="wish" || tab==="stay") && !layers.wish && typeof scheduleOverlay==="function") scheduleOverlay();
   lastPlanOpen = open;
   $("sideBtn").setAttribute("aria-expanded", open);
   $("sideBtn").setAttribute("aria-label", open ? "Planung einklappen" : "Planung ausklappen");
@@ -14620,8 +14779,8 @@ function renderDay(){
   var D = dayByKey(cur);
   if(!D && T().opt) return "<p class=\"empty\">Option ohne Termin: Sammle Orte in der Wunschliste. Für Tagespläne unter „Reise bearbeiten“ die Option ausschalten und An- und Abreise eintragen.</p>";
   if(!D) return "<p class=\"empty\">Diese Reise hat noch keine gültigen Daten. Trage im Reiter „Reise“ An- und Abreise ein.</p>";
-  var ids = ord(cur), pts = routePts(cur), HT = hRim(D), HD = D.hotel, km = 0;
-  if(pts.length){ var all = (HT?[HT]:[]).concat(pts, HT?[HT]:[]); for(var i=0;i<all.length-1;i++) km += dist(all[i],all[i+1]); }
+  var ids = ord(cur), pts = routePts(cur), HT = hRim(D), HS = hRimS(D), HD = D.hotel, km = 0;
+  if(pts.length){ var all = (HS?[HS]:[]).concat(pts, HT?[HT]:[]); for(var i=0;i<all.length-1;i++) km += dist(all[i],all[i+1]); }
   var sIds = ids.filter(function(x){ return !isHStop(x); }); // Hotel-Stopps zählen nicht als Stopp
   var meta = [sIds.length ? sIds.length+(sIds.length===1?" Stopp":" Stopps") : "noch leer"];
   var nDone = sIds.filter(function(x){ return T().done[x]; }).length;
@@ -14655,7 +14814,7 @@ function renderDay(){
   }
 
   if(finJ()) return h + journalBlock(D); // abgeschlossen, Ansichtsmodus: nur das Tagebuch, Stopps erst beim Bearbeiten
-  var hn = HT ? esc(HT.n) : "";
+  var hn = HT ? esc(HT.n) : "", hnS = HS ? esc(HS.n) : "";
   h += "<div class=\"sec\"><div class=\"rhead\" style=\"--dc:"+dayColor(D)+"\"><h4>"+(isRO() ? "Stopps" : "Route")+"</h4>"+(isRO() ? "" : "<button type=\"button\" class=\"rtog\" data-act=\"rtoggle\" role=\"switch\" aria-checked=\""+routeAnyVisible()+"\" aria-label=\"Alle Etappen auf der Karte ein- oder ausblenden\">"+(routeAnyVisible()?EYE:EYEOFF)+"<span>Karte</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>"+
        "<button type=\"button\" class=\"rtog\" data-act=\"legslist\" role=\"switch\" aria-checked=\""+legsList+"\" aria-label=\"Wege zwischen den Stopps im Tagesplan ein- oder ausblenden\"><span>Wege</span><span class=\"sw2\" aria-hidden=\"true\"></span></button>")+"</div>"+(ids.some(function(x){ return T().done[x]; }) ? "<label class=\"hdrow\"><input type=\"checkbox\" data-act=\"hidedone\""+(hideDone?" checked":"")+"> Erledigte ausblenden</label>" : "")+"<ol class=\"plan\">";
   var LG = isRO() ? [] : dayLegs(cur); // Beobachter sehen keine Etappen und Verbindungen
@@ -14687,9 +14846,9 @@ function renderDay(){
   // Wege zwischen den Stopps im Tagesplan ausgeblendet: nur die Stopps zeigen (Startzeile „Mein Standort“ bleibt)
   var legLi = function(a, b, i){ if(legsList) return legLi0(a, b, i); return a.id==="me" ? "<li class=\"ht me\"><span class=\"h\" style=\"background:#007AFF\">●</span><span><b>Mein Standort</b></span></li>" : ""; };
   // Start- und End-Hotel der Vorlage lassen sich wie Stopps ziehen (data-id @hs/@he)
-  var hRow = function(tok, lbl){ return "<li class=\"ht hx\" data-id=\""+tok+"\"><span class=\"h\">H</span><span><b>"+hn+"</b> <span class=\"sub\">"+lbl+"</span></span>"+(isRO() ? "" : "<button type=\"button\" class=\"grip\" aria-label=\"Hotel ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben – Ziele können auch nach dem Hotel stehen\">"+GRIPSVG+"</button>")+"</li>"; };
-  if(HT && (!LG.length || LG[0][0]===HT)) h += hRow("@hs", "Start");
-  var prev = HT, n = 0;
+  var hRow = function(tok, lbl){ var hs = tok==="@hs", sub = lbl+(hs && HS!==HT ? " · Check-out" : !hs && HS!==HT ? " · Check-in" : ""), tm = stayTime(hs ? HS : HT, hs ? "co" : "ci"); return "<li class=\"ht hx\" data-id=\""+tok+"\"><span class=\"h\">H</span><span><b>"+(hs ? hnS : hn)+"</b> <span class=\"sub\">"+sub+(tm ? " "+esc(tm) : "")+"</span></span>"+(isRO() ? "" : "<button type=\"button\" class=\"grip\" aria-label=\"Hotel ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben – Ziele können auch nach dem Hotel stehen\">"+GRIPSVG+"</button>")+"</li>"; };
+  if(HS && (!LG.length || LG[0][0]===HS)) h += hRow("@hs", "Start");
+  var prev = HS, n = 0;
   var nHid = 0, shown = 0;
   ids.forEach(function(id, i){
     var p = P(id), isH = p.k==="hotel"; if(!isH) n++;
@@ -14697,7 +14856,7 @@ function renderDay(){
     shown++;
     var li0 = -1; LG.forEach(function(pr, j){ if(pr[1]===p) li0 = j; });
     if(li0 > -1) h += legLi(LG[li0][0], p, li0);
-    else if(!hasLoc(p) && (i>0 || HT)) h += "<li class=\"leg\">Strecke unbekannt</li>";
+    else if(!hasLoc(p) && (i>0 || HS)) h += "<li class=\"leg\">Strecke unbekannt</li>";
     var opts = days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===cur?" selected":"")+">"+d.lbl+"</option>"; }).join("");
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
       "<div class=\"lcol\">"+(isH ? "<button type=\"button\" class=\"no hs\" data-act=\"stopopen\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":"H")+"</button>"
@@ -15435,7 +15594,7 @@ function jAppend(ids, focus){
 var jTimer = null;
 
 /* ---------- Inhalt: Wunschliste ---------- */
-function inList(p, lid){ return lid==="stay" ? p.c==="hotel" : (p.list||"none")===lid; }
+function inList(p, lid){ return p.c!=="hotel" && (p.list||"none")===lid; }
 function openCount(lid){ return wishes().filter(function(w){ return inList(w, lid); }).length; }
 function nbKeys(){ return Object.keys(nbSel); }
 function nbMatch(p){ var k = nbKeys(); return !k.length || !!nbSel[nbOf(p)]; }
@@ -15549,7 +15708,8 @@ function renderWish(){
   var cc = {}; catPool.forEach(function(p){ cc[p.c] = (cc[p.c]||0)+1; });
   var keys = nbKeys();
   var nbLabel = !keys.length ? "Alle Bezirke" : keys.length===1 ? keys[0] : keys[0]+" + "+(keys.length-1);
-  var multi = true; // „Unterkünfte“ gibt es immer als eigene Liste
+  if(activeList==="stay") activeList = "open"; // früher eigene Liste, jetzt eigener Reiter
+  var multi = true;
 
   // Kopf: Suche + Hinzufügen, darunter eine Zeile Filter-Chips; Details jeweils im Auswahlfenster
   var gs = groups();
@@ -15603,7 +15763,6 @@ function openWFilt(k){
   } else if(k==="list"){
     h += row("wlist", "data-l=\"open\"", activeList==="open", "Alle offenen Wünsche", wishes().length);
     T().lists.forEach(function(l){ h += row("wlist", "data-l=\""+l.id+"\"", activeList===l.id, esc(l.name), openCount(l.id)); });
-    h += row("wlist", "data-l=\"stay\"", activeList==="stay", ic("hotel", "ii")+" Unterkünfte", openCount("stay"));
     if(openCount("none") || activeList==="none") h += row("wlist", "data-l=\"none\"", activeList==="none", "Ohne Liste", openCount("none"));
     h += "</div></div>";
   } else {
@@ -15950,7 +16109,7 @@ function renderTrip(){
     out += "<button type=\"button\" class=\"tf-row tf-add\" data-act=\"tadd\" data-path=\""+kind+"\">+ "+addLbl+"</button></div>";
     return out;
   }
-  if(!d.opt) h2 += items("hotels", "Hotels", "Hotel hinzufügen", "Hotel oder Adresse suchen …", "H");
+  if(!d.opt) h2 += d.mode==="edit" ? tfStayRow() : items("hotels", "Hotels", "Hotel hinzufügen", "Hotel oder Adresse suchen …", "H");
   h2 += items("orte", d.mode==="new" ? "Reiseziel" : "Orte", "Ort hinzufügen", "Stadt suchen, z. B. Boston …", ic("pin", "ii"));
   if(d.err) h2 += "<p class=\"err\" role=\"alert\">"+esc(d.err)+"</p>";
   h2 += "<div class=\"tf-foot\"><button class=\"btn g\" type=\"button\" data-act=\"tcancel\">Abbrechen</button><button class=\"btn\" type=\"submit\">"+(d.mode==="new"?"Reise anlegen":"Speichern")+"</button></div></form>";
@@ -15959,6 +16118,13 @@ function renderTrip(){
   h2 += (d.mode==="edit" && canDelTrip(S.cur) ? "<div class=\"row tf-del\"><button type=\"button\" class=\"btn deltrip\" data-act=\"deltrip\">"+ic("del")+"Reise löschen</button></div>" : "");
   return h2;
 }
+// Reise bearbeiten: Unterkünfte nur noch als Verweis auf den eigenen Reiter (keine doppelte Eingabe)
+function tfStayRow(){
+  var hs = T().hotels || [], ns = stayNights(), nb = ns.filter(function(D){ return nightAny(D.key); }).length;
+  return "<div class=\"tf-lbl\">Unterkünfte</div><div class=\"tf-grp\"><button type=\"button\" class=\"tf-row tf-sum\" data-act=\"tstay\"><span class=\"tf-ic\">"+icon("hotel", "ii")+"</span><span class=\"tf-t\"><b>"+(hs.length ? esc(hs.map(function(h){ return h.n; }).join(", ")) : "Noch keine Unterkunft")+"</b><small>"+nb+" von "+ns.length+" Nächten geplant · im Reiter „Unterkünfte“</small></span><em class=\"chev\">›</em></button></div>";
+}
+function tfDirty(){ var d = tdraft, o = tripToDraft(T(), "edit"); if(!d) return false; var pick = function(x){ return JSON.stringify([x.name, x.start, x.end, x.arr||"", x.dep||"", !!x.opt, x.orte.map(function(q){ return [q.n, q.loc, q.from, q.to]; })]); }; return pick(d)!==pick(o); }
+function tfToStay(){ if(tfDirty()){ toast("Erst speichern oder abbrechen, dann Unterkünfte planen", false); return; } tdraft = null; tab = "stay"; renderSheet(); scheduleOverlay(); if(sheetState==="peek" || sheetState==="min") setSheet("mid"); }
 function saveTrip(){
   var d = tdraft, name = (d.name||"").trim();
   if(!name) return "Bitte gib der Reise einen Namen.";
@@ -15968,7 +16134,7 @@ function saveTrip(){
   tfClampItems();
   if((parseD(d.end)-parseD(d.start))/864e5 > 59) return "Eine Reise kann im Prototyp höchstens 60 Tage haben.";
   var hotels = [], orte = [], err = null;
-  d.hotels.forEach(function(x,i){
+  if(d.mode!=="edit") d.hotels.forEach(function(x,i){
     if(err) return; if(x.tbd || (!(x.n||"").trim() && !(x.loc||"").trim())) return; var loc = parseLoc(x.loc);
     if(!(x.n||"").trim()) { err = "Hotel "+(i+1)+": Bitte gib einen Namen ein."; return; }
     if(!loc){ err = "Hotel "+(i+1)+": Lage nicht erkannt. Füge einen langen Maps-Link oder Koordinaten ein oder wähle sie auf der Karte."; return; }
@@ -15991,7 +16157,8 @@ function saveTrip(){
     S.trips[t.id] = t; S.cur = t.id;
   } else {
     var t2 = T();
-    delete t2.opt; t2.name = name.slice(0,60); t2.start = d.start; t2.end = d.end; t2.arr = d.arr; t2.dep = d.dep; t2.hotels = hotels; t2.orte = orte;
+    delete t2.opt; t2.name = name.slice(0,60); t2.start = d.start; t2.end = d.end; t2.arr = d.arr; t2.dep = d.dep; t2.orte = orte;
+    t2.hotels.forEach(function(h){ if(h.from < d.start) h.from = d.start; if(h.to > d.end) h.to = d.end; }); // Unterkünfte bleiben, Nächte im neuen Zeitraum
     Object.keys(t2.order).forEach(function(k){ if(k < d.start || k > d.end) delete t2.order[k]; }); // Stopps außerhalb wandern zurück in die Wunschliste
   }
   return null;
@@ -16030,21 +16197,23 @@ function closeTrip(){ if(tab!=="trip") return; var back = tdraft && tdraft.back;
 function wishTab(){
   var wAll = wishes().length, wPool = listPool().filter(function(p){ return !dayOf(p.id) && catOk(p.c) && nbMatch(p) && grpOk(p) && qMatch(p); }).length;
   var wFilt = wPool!==wAll || activeList!=="open";
+  var sc = noTrip() ? 0 : stayCount(), st = $("tabStay"), sh = "Unterkünfte"+(sc ? "<small>"+sc+"</small>" : ""); if(st && st.innerHTML!==sh) st.innerHTML = sh;
   $("tabWish").innerHTML = "Wunschliste<small"+(wFilt?" class=\"filt\" title=\""+wPool+" von "+wAll+" (gefiltert)\"":"")+">"+wPool+(wFilt?"<i> / "+wAll+"</i>":"")+"</small>";
 }
 function renderSheet(){
 
   wishTab();
   if(sorting){ sheetPending = true; return; }
-  if(tab==="day" || tab==="wish") sheetTab = tab;
+  if(tab==="day" || tab==="wish" || tab==="stay") sheetTab = tab;
   $("tabDay").setAttribute("aria-selected", sheetTab==="day");
   $("tabWish").setAttribute("aria-selected", sheetTab==="wish");
+  $("tabStay").setAttribute("aria-selected", sheetTab==="stay");
   var body = $("body"), st = body.scrollTop, ae = document.activeElement, fk = null;
   var tp = $("tripPop"), card = tp.querySelector(".ag-card"), tst = card ? card.scrollTop : 0;
   if(ae && (body.contains(ae) || tp.contains(ae)) && ae.id && /INPUT|TEXTAREA/.test(ae.tagName)){ fk = {id:ae.id, v:ae.value, a:ae.selectionStart, b:ae.selectionEnd}; }
   applyRO();
   var zsv = zsOn(); document.body.classList.toggle("zsel", !!zsv);
-  body.innerHTML = zsv ? zsListHTML(zsv, "map") : noTrip() ? noTripHTML() : sheetTab==="wish" ? renderWish() : renderDay();
+  body.innerHTML = zsv ? zsListHTML(zsv, "map") : noTrip() ? noTripHTML() : sheetTab==="wish" ? renderWish() : sheetTab==="stay" ? renderStay() : renderDay();
   body.scrollTop = st;
   fillPhotos(body);
   // Reise-Ansicht als eigenes Fenster
@@ -16058,7 +16227,7 @@ function renderSheet(){
   if(fk){ var ne = $(fk.id); if(ne){ if(ne.value!==fk.v && /TEXTAREA|INPUT/.test(ne.tagName)) ne.value = fk.v; try { ne.focus({preventScroll:true}); ne.setSelectionRange(fk.a, fk.b); } catch(e){} } }
   renderWishPop(); shRender();
 }
-var RO_ACTS = {"lpphoto":1,"placevis":1,"placevispick":1,"itemvis":1,"itemvispick":1,"vis":1,"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"wpark":1,"wunpark":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"stay2h":1,"staymark":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1}; // Details (jpedit) dürfen alle öffnen: ansehen und kommentieren
+var RO_ACTS = {"lpphoto":1,"placevis":1,"placevispick":1,"itemvis":1,"itemvispick":1,"vis":1,"rateover":1,"sugadd":1,"done":1,"plan":1,"planpick":1,"planend":1,"planins":1,"planinspick":1,"unplan":1,"swdel":1,"delplace":1,"wpark":1,"wunpark":1,"revisit":1,"revpick":1,"phmovepop":1,"phmoveto":1,"movepop":1,"movepick":1,"grppick":1,"grpset":1,"grpmanage":1,"grpdel":1,"grpedit":1,"newwish":1,"newlist":1,"dellist":1,"lmode":1,"legalt":1,"rate":1,"jphl":1,"jhl":1,"jins":1,"phdel":1,"tripedit":1,"deltrip":1,"reset":1,"lpday":1,"lpwish":1,"lphotel":1,"stay2h":1,"staymark":1,"stayadd":1,"staybook":1,"staygap":1,"staysave":1,"stayunbook":1,"poiadd":1,"undo":1,"tadd":1,"tdel":1,"pick":1,"arm":1,"move":1,"time":1}; // Details (jpedit) dürfen alle öffnen: ansehen und kommentieren
 function isViewer(){ return !!(acct.user && S && isViewerOf(S.cur)); }
 /* Abgeschlossene Reise: Ansicht wie für Beobachter, bis man „Reise bearbeiten“ wählt (gilt nur in dieser Sitzung und für diese Reise) */
 /* Ansichts- und Bearbeitungsmodus eigener Reisen: abgeschlossene starten in der Ansicht, alle anderen im Bearbeiten.
@@ -16090,7 +16259,7 @@ function applyRO(){
   var ro = isRO(), k = ro ? S.cur : "";
   document.body.classList.toggle("ro", ro);
   // Ansicht: keine Wunschliste; abgeschlossene Reise zeigt nur das Tagebuch und heißt auch so
-  var dl = finJ() ? "Tagebuch" : "Tagesplan", sos = $("sheetOpen") && $("sheetOpen").querySelector("span"), sot = ro ? dl : "Tagesplan & Wunschliste"; if(sos && sos.textContent!==sot) sos.textContent = sot;
+  var dl = finJ() ? "Tagebuch" : "Tagesplan", sos = $("sheetOpen") && $("sheetOpen").querySelector("span"), sot = ro ? dl : "Planung"; if(sos && sos.textContent!==sot) sos.textContent = sot;
   var tdy = $("tabDay"); if(tdy && tdy.textContent!==dl) tdy.textContent = dl;
   if(ro && tab==="wish") tab = "day";
   if(k===roWas) return; roWas = k;
@@ -16130,15 +16299,15 @@ function applyVisibleOrder(vis){
 /* sichtbare Reihenfolge mit Start-/End-Hotel (@hs/@he): bleiben sie vorn und hinten, gilt die Vorlage;
    sonst werden beide zu normalen Hotel-Stopps im Plan (freier Tag) */
 function applyOrderH(vis){
-  var D = dayByKey(cur), H = D && D.hotel, plain = vis.filter(function(x){ return x.charAt(0)!=="@"; }), s0 = vis.indexOf("@hs"), e0 = vis.indexOf("@he");
-  if(!H || hFree(cur) || ((s0 < 1) && (e0 < 0 || e0===vis.length-1))) return applyVisibleOrder(plain) && (hFreeTidy(cur), true);
+  var D = dayByKey(cur), H = D && D.hotel, HS = hStartOf(D), plain = vis.filter(function(x){ return x.charAt(0)!=="@"; }), s0 = vis.indexOf("@hs"), e0 = vis.indexOf("@he");
+  if(!H || !HS || hFree(cur) || ((s0 < 1) && (e0 < 0 || e0===vis.length-1))) return applyVisibleOrder(plain) && (hFreeTidy(cur), true);
   var t = T(), a = ord(cur), set = {}; plain.forEach(function(id){ set[id] = 1; });
   var q = plain.slice(), out = a.map(function(id){ return set[id] ? q.shift() : id; });
-  var mk = function(){ var nid = uid("v"); t.places[nid] = {id:nid, of:H.id, k:"hotel", n:H.n, c:"hotel", la:H.la, lo:H.lo, addr:H.addr || ""}; return nid; };
+  var mk = function(s){ var X = s ? HS : H, nid = uid("v"); t.places[nid] = {id:nid, of:X.id, k:"hotel", n:X.n, c:"hotel", la:X.la, lo:X.lo, addr:X.addr || ""}; return nid; };
   var res = {};
-  vis.forEach(function(x, i){ if(x!=="@hs" && x!=="@he") return; var nid = res[x] = mk();
+  vis.forEach(function(x, i){ if(x!=="@hs" && x!=="@he") return; var nid = res[x] = mk(x==="@hs");
     if(i===0) out.unshift(nid); else if(i===vis.length-1) out.push(nid); else { var pv = vis[i-1]; out.splice(out.indexOf(res[pv] || pv)+1, 0, nid); } });
-  if(s0 < 0) out.unshift(mk());   // Start-Zeile war nicht zu sehen (heute ab Standort): Start bleibt vorn
+  if(s0 < 0) out.unshift(mk(true));   // Start-Zeile war nicht zu sehen (heute ab Standort): Start bleibt vorn
   if(e0 < 0) out.push(mk());
   t.order[cur] = out; t.hfree = t.hfree || {}; t.hfree[cur] = 1; save(); return true;
 }
@@ -16306,10 +16475,10 @@ function planDo(at){
   sel = id; renderAll();
 }
 function planNodes(){
-  var k = (PLANCTX && PLANCTX.k) || cur, D = dayByKey(k), H = D && hRim(D), o = ord(k), nodes = [];
+  var k = (PLANCTX && PLANCTX.k) || cur, D = dayByKey(k), H = D && hRim(D), HS = D && hRimS(D), o = ord(k), nodes = [];
   // heute mit bekanntem Standort: Start ist der aktuelle Ort, nicht das Hotel
   var live = k===todayKey() ? meAnchor() : null;
-  nodes.push(live ? {n:"Mein Standort", h:true, me:true} : H ? {n:H.n, h:true} : {n:"Tagesbeginn", h:true, pseudo:true});
+  nodes.push(live ? {n:"Mein Standort", h:true, me:true} : HS ? {n:HS.n, h:true} : {n:"Tagesbeginn", h:true, pseudo:true});
   o.forEach(function(id, i){ if(T().done[id]) return; var p = P(id); nodes.push({n:p ? p.n : "?", id:id, oi:i, no:stopNo(id, k) || i+1, hs:p && p.k==="hotel"}); });
   nodes.push(H ? {n:H.n, h:true} : {n:"Tagesende", h:true, pseudo:true});
   return nodes;
@@ -16381,7 +16550,7 @@ function openDayPop(forId, mv){
   $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
 }
-function closeCatPop(){ chPlsStop(); $("catPop").hidden = true; locSt = null; TK = null; EV = null; }
+function closeCatPop(){ chPlsStop(); $("catPop").hidden = true; locSt = null; TK = null; EV = null; STAY = null; }
 function endPick(){ pick = null; $("pick").hidden = true; if(viaPick) endViaPick(); if(vmPick) endVmPick(); }
 /* Wegpunkt per Karte einer Strecke zuordnen: die beiden Punkte antippen, zwischen denen er liegen soll */
 var vmPick = null;
@@ -16843,6 +17012,17 @@ document.addEventListener("click", function(e){
     case "lpday": lpToDay(); break;
     case "lphotel": lpToHotel(); break;
     case "stay2h": stayToHotel(t.getAttribute("data-pid")); break;
+    case "stayadd": stayAdd(); break;
+    case "tstay": tfToStay(); break;
+    case "staynight": var snk = t.getAttribute("data-k"), snh = nightAny(snk); if(isRO()){ if(snh) stayShow(snh.id); break; } if(snh) stayOpen({hid:snh.id}); else { var sng = stayGaps().filter(function(g){ return g.from<=snk && snk<g.to; })[0]; if(sng) stayGapOpen(sng.from, sng.to); } break;
+    case "stayedit": if(isRO()) stayShow(t.getAttribute("data-h")); else stayOpen({hid:t.getAttribute("data-h")}); break;
+    case "stayshow": stayShow(t.getAttribute("data-h")); break;
+    case "staygap": stayGapOpen(t.getAttribute("data-f"), t.getAttribute("data-t")); break;
+    case "staybook": stayOpen({pid:t.getAttribute("data-pid"), f:t.getAttribute("data-f")||"", t:t.getAttribute("data-t")||""}); break;
+    case "stayplace": var spp = t.getAttribute("data-pid"); STAY = null; closeCatPop(); if(P(spp)){ select(spp); openJPop(spp, ""); } break;
+    case "staysort": staySort = t.getAttribute("data-v"); lsSet("rp-staysort", staySort); renderSheet(); break;
+    case "staysave": staySave(); break;
+    case "stayunbook": stayUnbook(); break;
     case "staymark": stayMark(t.getAttribute("data-pid")); break;
     case "pmerk": pMerk(t.getAttribute("data-pid")); break;
     case "pzopen": closeJpMore(); var pzz = t.getAttribute("data-z"); select(null); openZiele(pzz); break;
@@ -17228,7 +17408,7 @@ function rcStops(k){
 }
 function rcPhotos(list){ var out = []; list.forEach(function(id){ photosOf(id).forEach(function(ph){ out.push({ph:ph, id:id}); }); }); return out; }
 function rcKm(D, list){
-  var pts = list.map(P).filter(hasLoc), HT = hRim(D) && hasLoc(D.hotel) ? D.hotel : null, all = (HT?[HT]:[]).concat(pts, HT && pts.length?[HT]:[]), m = 0;
+  var pts = list.map(P).filter(hasLoc), HT = hRim(D) && hasLoc(D.hotel) ? D.hotel : null, HS = hRimS(D), all = (HS?[HS]:[]).concat(pts, HT && pts.length?[HT]:[]), m = 0;
   for(var i=0;i<all.length-1;i++) m += dist(all[i], all[i+1]);
   return m;
 }
