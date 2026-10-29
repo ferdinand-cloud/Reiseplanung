@@ -12194,14 +12194,26 @@ var TLZ = 9, TLZB = 12;
 /* Schlüssel: eigener auf dem Gerät (Einstellungen) vor dem gemeinsamen aus Firebase (config/transit, nur für Angemeldete lesbar) */
 function tlKey(){ return TL.bad ? "" : (lsGet("rp-tlkey") || TL.cfg || TLKEY); }
 function tlCfgLoad(){
-  if(!fbDb) return;
-  fbDb.collection("config").doc("transit").get().then(function(d){
-    var k = d.exists ? String((d.data() || {}).tlkey || "").trim() : "";
-    TL.cfgSt = !d.exists ? "Dokument config/transit nicht gefunden" : k ? "" : "Feld tlkey fehlt oder ist leer"; refreshSettings();
+  var db = fbDb; if(!db) return;
+  // Schlüsselfeld tolerant lesen (tlkey, auch tikey/TLKey vertippt)
+  function keyOf(o){ o = o || {}; for(var f in o){ if(/^t[il]_?key$/i.test(f.trim()) && String(o[f] || "").trim()) return String(o[f]).trim(); } return ""; }
+  function done(k, st){
+    TL.cfgSt = st; refreshSettings();
     if(k===TL.cfg) return;
     TL.cfg = k; if(k) lsSet("rp-tlcfg", k); else { try { localStorage.removeItem("rp-tlcfg"); } catch(e){} }
     TL.bad = false; TL.nst = 0; TL.sig = ""; applyLayers(); refreshSettings();
-  }, function(e){ TL.cfgSt = "Lesen aus Firebase fehlgeschlagen ("+((e && e.code) || "Fehler")+")"; refreshSettings(); });
+  }
+  function fail(e){ TL.cfgSt = "Lesen aus Firebase fehlgeschlagen ("+((e && e.code) || "Fehler")+")"; refreshSettings(); }
+  db.collection("config").doc("transit").get().then(function(d){
+    var k = d.exists ? keyOf(d.data()) : "";
+    if(k) return done(k, "");
+    // Dokument mit anderer ID (z. B. automatische ID): ganze Sammlung durchsuchen
+    db.collection("config").limit(20).get().then(function(q){
+      var hit = "", ids = [];
+      q.forEach(function(x){ ids.push(x.id); if(!hit) hit = keyOf(x.data()); });
+      done(hit, hit ? "" : !ids.length ? "Sammlung config ist leer" : d.exists ? "Feld tlkey fehlt oder ist leer" : "Kein Dokument mit Feld tlkey (gefunden: "+ids.join(", ")+")");
+    }, fail);
+  }, fail);
 }
 function tlOn(){ return !!tlKey() && dynOn(); }
 function tlUrl(l){ return "https://transit.land/api/v2/tiles/"+l+"/tiles/{z}/{x}/{y}.pbf?apikey="+encodeURIComponent(tlKey()); }

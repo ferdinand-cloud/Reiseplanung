@@ -1537,6 +1537,10 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   await rp(`lsSet("rp-tlkey", ""); TL.bad = false; var o = fbDb; fbDb = {collection:function(c){ return {doc:function(d){ return {get:function(){ return Promise.resolve({exists:c==="config" && d==="transit", data:function(){ return {tlkey:"gemeinsam"}; }}); }}; }}; }}; tlCfgLoad(); fbDb = o; true`);
   await page.waitForTimeout(200);
   ok(await rp(`tlKey()==="gemeinsam" && lsGet("rp-tlcfg")==="gemeinsam" && map.getSource("tl-r").tiles[0].indexOf("apikey=gemeinsam") > -1`), "Gemeinsamer Schlüssel aus Firebase wird nicht genutzt");
+  // Dokument mit automatischer ID statt „transit“ (und vertipptes Feld tikey) wird trotzdem gefunden
+  await rp(`TL.cfg = ""; lsSet("rp-tlcfg", ""); var o = fbDb; fbDb = {collection:function(c){ return {doc:function(){ return {get:function(){ return Promise.resolve({exists:false}); }}; }, limit:function(){ return {get:function(){ return Promise.resolve({forEach:function(f){ f({id:"Xa9auto", data:function(){ return {tikey:" zweit "}; }}); }}); }}; }}; }}; tlCfgLoad(); fbDb = o; true`);
+  await page.waitForTimeout(200);
+  ok(await rp(`tlKey()==="zweit" && !TL.cfgSt`), "Schlüssel in Dokument mit automatischer ID wird nicht gefunden: "+await rp(`TL.cfgSt`));
   await rp(`TL.cfg = ""; lsSet("rp-tlcfg", ""); true`);
 });
 
