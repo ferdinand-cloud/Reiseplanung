@@ -2188,7 +2188,17 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-polln{font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted)}
 .ch-pollr .ch-map{width:32px;height:32px;flex:0 0 32px;background:var(--fill);border:0;border-radius:50%;display:grid;place-items:center;color:var(--ink);cursor:pointer}
 .ch-pollr .ch-map svg{width:16px;height:16px}
-.ch-pollw{flex-basis:100%;font-size:11.5px;color:var(--muted);padding-left:36px}
+.ch-pollw{flex-basis:100%;font-size:11.5px;color:var(--muted);padding-left:36px;margin-top:-1px}
+.ch-pollav{display:flex;flex:0 0 auto}
+.ch-pollwho{max-height:calc(100dvh - 48px);overflow:auto}
+.ch-pwq{margin:0 2px 14px;font:600 16px/1.3 var(--f-body);color:var(--ink)}
+.ch-pws{margin:0 0 14px}
+.ch-pws .poll-lb{display:flex;justify-content:space-between;gap:10px;padding:0 4px 6px;font:600 12px/1.2 var(--f-body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.ch-pwl{border-radius:14px;background:var(--fill);overflow:hidden}
+.ch-pwl .ls-row{gap:10px;padding:8px 12px}
+.ch-pwn{margin:0 4px;font-size:13px}
+.ch-pollav .ch-av{width:20px;height:20px;flex:0 0 20px;font-size:10px;box-shadow:0 0 0 1.5px var(--fill)}
+.ch-pollav .ch-av+.ch-av{margin-left:-6px}
 .ch-pollf{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .ch-pollf small{font-size:12px;color:var(--muted)}
 .ch-attph{cursor:pointer;position:relative}
@@ -8299,10 +8309,18 @@ function chPollHTML(m){ var P0 = m.poll, me = acct.user && acct.user.uid, pv = m
   var mine = pv[me] || [], max = Math.max.apply(null, cnt), end = !!P0.end, gone = chGone(chPartner(chOpen));
   return "<div class=\"ch-poll\"><div class=\"ch-pollh\">"+ic("poll", "ii")+"<b>"+esc(P0.q)+"</b></div>"+
     P0.o.map(function(o, i){ var pc = voters ? Math.round(cnt[i]/voters*100) : 0, on = mine.indexOf(i) > -1, key = m.id+"~p"+i; if(o.pl) CHPL[key] = o.pl;
-      return "<div class=\"ch-pollr"+(on ? " on" : "")+(end && cnt[i]===max && max ? " win" : "")+"\"><button type=\"button\" class=\"ch-pollb\""+(end || gone ? " disabled" : " data-act=\"chvote\" data-k=\""+k+"\" data-i=\""+i+"\"")+" aria-pressed=\""+on+"\" style=\"--p:"+pc+"%\"><span class=\"ch-pollck\">"+(on ? "✓" : "")+"</span><span class=\"ch-pollt\">"+(o.pl ? "<span class=\"cic\" style=\"--cc:"+catCol(o.pl.c)+"\">"+icon(o.pl.c)+"</span>" : "")+esc(o.t)+"</span><span class=\"ch-polln\">"+cnt[i]+"</span></button>"+
+      return "<div class=\"ch-pollr"+(on ? " on" : "")+(end && cnt[i]===max && max ? " win" : "")+"\"><button type=\"button\" class=\"ch-pollb\""+(end || gone ? " disabled" : " data-act=\"chvote\" data-k=\""+k+"\" data-i=\""+i+"\"")+" aria-pressed=\""+on+"\" style=\"--p:"+pc+"%\"><span class=\"ch-pollck\">"+(on ? "✓" : "")+"</span><span class=\"ch-pollt\">"+(o.pl ? "<span class=\"cic\" style=\"--cc:"+catCol(o.pl.c)+"\">"+icon(o.pl.c)+"</span>" : "")+esc(o.t)+"</span>"+(who[i].length ? "<span class=\"ch-pollav\" aria-hidden=\"true\">"+who[i].slice(0, 3).map(function(u){ return u===me ? chAv(u, "ch-av xs me") : chAv(u, "ch-av xs"); }).join("")+"</span>" : "")+"<span class=\"ch-polln\">"+cnt[i]+"</span></button>"+
         (o.pl ? "<button type=\"button\" class=\"dc-map ch-map\" data-act=\"chmap\" data-k=\""+esc(key)+"\" aria-label=\"Auf der Karte zeigen\">"+MAPGO+"</button>"+(isRO() || chMatch(o.pl) ? "" : "<button type=\"button\" class=\"dc-map ch-map\" data-act=\"chplan\" data-k=\""+esc(key)+"\" aria-label=\""+esc(o.t)+" einplanen\" title=\"Einplanen\">"+ic("cal")+"</button>") : "")+
-        (who[i].length && (CH.byId[chOpen]||{}).grp ? "<small class=\"ch-pollw\">"+esc(who[i].map(function(u){ return u===me ? "du" : atn(chName(u)); }).join(", "))+"</small>" : "")+"</div>"; }).join("")+
-    "<div class=\"ch-pollf\"><small>"+voters+(voters===1 ? " Stimme" : " Stimmen")+(P0.mu ? " · Mehrfachauswahl" : "")+(end ? " · beendet" : "")+"</small>"+(m.from===me && !end ? "<button type=\"button\" class=\"tf-link\" data-act=\"chpollend\" data-k=\""+k+"\">Beenden</button>" : "")+"</div></div>"; }
+        "</div>"; }).join("")+
+    "<div class=\"ch-pollf\"><small>"+voters+(voters===1 ? " Stimme" : " Stimmen")+(P0.mu ? " · Mehrfachauswahl" : "")+(end ? " · beendet" : "")+"</small>"+(voters ? "<button type=\"button\" class=\"tf-link\" data-act=\"chpollwho\" data-k=\""+k+"\">Stimmen ansehen</button>" : "")+(m.from===me && !end ? "<button type=\"button\" class=\"tf-link\" data-act=\"chpollend\" data-k=\""+k+"\">Beenden</button>" : "")+"</div></div>"; }
+// Übersicht: je Antwort, wer sie gewählt hat
+function chPollWho(id){ var m = chMsgById(id); if(!m || !m.poll) return; var me = acct.user && acct.user.uid, pv = m.pv || {}, cp = $("catPop");
+  var who = m.poll.o.map(function(){ return []; }); Object.keys(pv).forEach(function(u){ (Array.isArray(pv[u]) ? pv[u] : []).forEach(function(i){ if(who[i]) who[i].push(u); }); });
+  cp.innerHTML = "<div class=\"pop-card ask-card ch-pollwho\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Stimmen\"><div class=\"pop-head\"><h4>Stimmen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
+    "<p class=\"ch-pwq\">"+esc(m.poll.q)+"</p>"+m.poll.o.map(function(o, i){ var L = who[i].sort(function(a, b){ return (b===me) - (a===me) || String(chName(a)).localeCompare(chName(b)); });
+      return "<div class=\"ch-pws\"><div class=\"poll-lb\"><span>"+esc(o.t)+"</span><span>"+L.length+(L.length===1 ? " Stimme" : " Stimmen")+"</span></div>"+
+        (L.length ? "<div class=\"ls-list ch-pwl\">"+L.map(function(u){ return "<div class=\"ls-row\">"+chAv(u, "ch-av sm")+"<span class=\"ls-t\"><b>"+esc(u===me ? "Du" : atn(chName(u)))+"</b></span></div>"; }).join("")+"</div>" : "<p class=\"note ch-pwn\">Noch niemand</p>")+"</div>"; }).join("")+"</div>";
+  cp.hidden = false; }
 function chVote(id, i){ var me = acct.user && acct.user.uid, m = chMsgById(id); if(!me || !m || !m.poll || m.poll.end || !chOpen || !fbDb) return;
   var a = ((m.pv || {})[me] || []).slice(), j = a.indexOf(i);
   if(m.poll.mu){ if(j > -1) a.splice(j, 1); else a.push(i); a.sort(); } else a = j > -1 ? [] : [i];
@@ -16455,6 +16473,7 @@ document.addEventListener("click", function(e){
     case "chpollmu": if(CHPOLL){ chPollKeep(); CHPOLL.mu = !CHPOLL.mu; t.setAttribute("aria-checked", CHPOLL.mu); t.querySelector(".sw-mini").classList.toggle("on", CHPOLL.mu); t.querySelector("small").textContent = CHPOLL.mu ? "An – jeder kann mehrere Antworten wählen" : "Aus – jeder wählt eine Antwort"; } break;
     case "chvote": chVote(t.getAttribute("data-k"), +t.getAttribute("data-i")); break;
     case "chpollend": chPollEnd(t.getAttribute("data-k")); break;
+    case "chpollwho": chPollWho(t.getAttribute("data-k")); break;
     case "chalv": chAlView(t.getAttribute("data-k"), +t.getAttribute("data-i")); break;
     case "chalx": if(chDraft && chDraft.al){ chDraft.al.splice(+t.getAttribute("data-i"), 1); if(!chDraft.al.length) chDraft = null; renderChDraft(); } break;
     case "chplaces": chPlsOpen(); break;

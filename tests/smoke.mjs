@@ -3933,6 +3933,12 @@ await test("Chat: Abstimmung – Plus-Menü, Frage und nummerierte Antworten get
   // Abstände: Karte hat Luft zur Nachricht davor (mind. 10 px)
   ok(await rp(`var a = document.querySelector('#chMsgs .ch-msg[data-mid="m1"]'), b = document.querySelector('#chMsgs .ch-msg[data-mid="m2"]'); b.getBoundingClientRect().top - a.getBoundingClientRect().bottom >= 10`), "Abstand zwischen Nachricht und Abstimmung zu klein");
   await shot("chat-abstimmung");
+  // wer hat was gewählt: kleine Profilbilder und Namen je Antwort (auch im Zweier-Chat)
+  ok(await rp(`var r = document.querySelectorAll('#chMsgs .ch-msg[data-mid="m2"] .ch-pollr')[0]; r.querySelectorAll(".ch-pollav .ch-av").length===2`), "Profilbilder der Wähler fehlen");
+  await page.tap('#chMsgs .ch-msg[data-mid="m2"] [data-act=chpollwho]'); await page.waitForTimeout(200);
+  ok(await rp(`var w = document.querySelectorAll("#catPop .ch-pws"); w.length===2 && w[0].textContent.includes("2 Stimmen") && w[0].querySelectorAll(".ls-row").length===2 && w[0].textContent.includes("Du") && w[0].textContent.includes("@Anna") && w[1].textContent.includes("Noch niemand")`), "Übersicht der Stimmen falsch: "+await rp(`$("catPop").innerText`));
+  await shot("chat-abstimmung-stimmen");
+  await page.tap("#catPop [data-act=catclose]"); await page.waitForTimeout(100);
   // manuell einplanen
   await page.tap('#chMsgs .ch-msg[data-mid="m2"] [data-act=chplan]'); await page.waitForTimeout(200);
   await page.tap('#jpMenu [data-act=chday] >> nth=0'); await page.waitForTimeout(200);
