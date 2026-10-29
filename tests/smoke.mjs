@@ -3914,6 +3914,15 @@ await test("Chat: Abstimmung – Plus-Menü, Frage und nummerierte Antworten get
   const o = await page.$$("#catPop .poll-o"); await o[0].fill("Katz Deli"); await o[1].fill("Pizza irgendwo");
   await page.tap("#catPop [data-act=chpolladd]"); await page.waitForTimeout(100);
   ok(await rp(`document.querySelectorAll("#catPop .poll-o").length===3 && document.activeElement===document.querySelectorAll("#catPop .poll-o")[2] && $("pollQ").value==="Wohin heute Abend?"`), "Antwort hinzufügen verliert Eingaben");
+  // Reihenfolge per Griff ziehen (wie im Tagesplan) und per Pfeiltaste zurück
+  ok(await rp(`document.querySelectorAll("#catPop .poll-ol .grip").length===3`), "Griffe zum Verschieben fehlen");
+  { const g = await page.$$("#catPop .poll-ol .grip"), b1 = await g[1].boundingBox(), b0 = await g[0].boundingBox();
+    await page.mouse.move(b1.x+b1.width/2, b1.y+b1.height/2); await page.mouse.down();
+    for(let k=1; k<=6; k++) await page.mouse.move(b1.x+b1.width/2, b1.y+b1.height/2 - (b1.y-b0.y+10)*k/6);
+    await page.mouse.up(); await page.waitForTimeout(150); }
+  ok(await rp(`[].map.call(document.querySelectorAll("#catPop .poll-o"), function(e){ return e.value; }).join("|")==="Pizza irgendwo|Katz Deli|" && $("pollQ").value==="Wohin heute Abend?" && [].map.call(document.querySelectorAll("#catPop .poll-ol .poll-no"), function(e){ return e.textContent; }).filter(Boolean).join()==="1,2,3"`), "Ziehen verschiebt nicht: "+await rp(`[].map.call(document.querySelectorAll("#catPop .poll-o"), function(e){ return e.value; }).join("|")`));
+  await page.focus("#catPop .poll-ol .grip >> nth=0"); await page.keyboard.press("ArrowDown"); await page.waitForTimeout(100);
+  ok(await rp(`[].map.call(document.querySelectorAll("#catPop .poll-o"), function(e){ return e.value; }).join("|")==="Katz Deli|Pizza irgendwo|" && document.activeElement===document.querySelectorAll("#catPop .poll-ol .grip")[1]`), "Pfeiltaste verschiebt nicht");
   // Mehrfachauswahl als Schalter (An/Aus)
   ok(await rp(`$("pollMu").getAttribute("role")==="switch" && $("pollMu").getAttribute("aria-checked")==="false" && !!$("pollMu").querySelector(".sw-mini")`), "Mehrfachauswahl ist kein Schalter");
   await page.tap("#pollMu"); await page.waitForTimeout(80);

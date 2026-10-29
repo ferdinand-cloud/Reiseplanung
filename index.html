@@ -2161,6 +2161,10 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-pollc .poll-q:focus,.ch-pollc .poll-o:focus{box-shadow:inset 0 0 0 1.5px var(--accent)}
 .ch-pollc .poll-ol{list-style:none;margin:0 0 20px;padding:0;border-radius:14px;background:var(--fill);overflow:hidden}
 .ch-pollc .poll-ol li{display:flex;align-items:center;gap:10px;padding:0 6px 0 12px;position:relative}
+.ch-pollc .poll-ol li .grip{flex:none;height:30px;width:30px}
+.ch-pollc .poll-ol li{transition:transform .18s ease}
+.ch-pollc .poll-ol.sorting li.drag{transition:none;z-index:2;border-radius:12px;background:var(--sheet);box-shadow:0 8px 24px var(--scrim);outline:1.5px solid var(--line)}
+.ch-pollc .poll-ol.sorting{overflow:visible}
 .ch-pollc .poll-ol li+li::before{content:"";position:absolute;top:0;left:46px;right:0;border-top:.5px solid var(--sep,var(--line))}
 .ch-pollc .poll-o{flex:1;min-width:0;margin:0;padding:13px 8px;border:0;border-radius:10px;background:transparent;color:var(--ink);font:16px/1.3 var(--f-body);outline:none}
 .ch-pollc .poll-no{width:24px;height:24px;flex:0 0 24px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font:700 12px/1 var(--f-body)}
@@ -8287,14 +8291,38 @@ function chPollNew(){ if(!chOpen || chGone(chPartner(chOpen))) { if(chNewOn) toa
 function chPollKeep(){ if(!CHPOLL) return; var q = $("pollQ"); if(q) CHPOLL.q = q.value; document.querySelectorAll("#catPop .poll-o").forEach(function(e, i){ CHPOLL.o[i] = e.value; }); }
 function chPollOk(){ return CHPOLL && CHPOLL.q.trim() && CHPOLL.o.filter(function(x){ return x.trim(); }).length >= 2; }
 // first: neu geöffnet (Frage fokussieren), sonst nach „Antwort hinzufügen“ die neue Antwort
-function chPollRender(first){ var focus = first; if(!CHPOLL) return; var cp = $("catPop"), P0 = CHPOLL;
+function chPollRender(first, noFocus){ var focus = first; if(!CHPOLL) return; var cp = $("catPop"), P0 = CHPOLL;
   cp.innerHTML = "<div class=\"pop-card ch-pollc\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Abstimmung\"><div class=\"pop-head\"><h4>Abstimmung</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
     "<label class=\"poll-lb\" for=\"pollQ\">Frage</label><input type=\"text\" id=\"pollQ\" class=\"poll-q\" maxlength=\"200\" placeholder=\"z. B. Wohin heute Abend?\" value=\""+esc(P0.q)+"\">"+
-    "<div class=\"poll-lb\">Antworten</div><ol class=\"poll-ol\">"+P0.o.map(function(o, i){ return "<li><span class=\"poll-no\" aria-hidden=\"true\">"+(i+1)+"</span><input type=\"text\" class=\"poll-o\" maxlength=\"100\" aria-label=\"Antwort "+(i+1)+"\" placeholder=\"Text oder Name eines Orts\" value=\""+esc(o)+"\"></li>"; }).join("")+
+    "<div class=\"poll-lb\">Antworten</div><ol class=\"poll-ol\">"+P0.o.map(function(o, i){ return "<li><span class=\"poll-no\" aria-hidden=\"true\">"+(i+1)+"</span><input type=\"text\" class=\"poll-o\" maxlength=\"100\" aria-label=\"Antwort "+(i+1)+"\" placeholder=\"Text oder Name eines Orts\" value=\""+esc(o)+"\"><button type=\"button\" class=\"grip\" aria-label=\"Antwort "+(i+1)+" ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\">"+GRIPSVG+"</button></li>"; }).join("")+
     (P0.o.length < 6 ? "<li><button type=\"button\" class=\"poll-add\" data-act=\"chpolladd\"><span class=\"poll-no\">"+ic("plus")+"</span>Antwort hinzufügen</button></li>" : "")+"</ol>"+
     "<button type=\"button\" class=\"poll-mu\" id=\"pollMu\" data-act=\"chpollmu\" role=\"switch\" aria-checked=\""+!!P0.mu+"\"><span><b>Mehrere Antworten erlauben</b><small>"+(P0.mu ? "An – jeder kann mehrere Antworten wählen" : "Aus – jeder wählt eine Antwort")+"</small></span><em class=\"sw-mini"+(P0.mu ? " on" : "")+"\" aria-hidden=\"true\"></em></button>"+
     "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"chpollsend\""+(chPollOk() ? "" : " disabled")+">Senden</button></div></div>";
-  cp.hidden = false; var f = focus ? $("pollQ") : cp.querySelectorAll(".poll-o")[P0.o.length-1]; if(f) try { f.focus({preventScroll:true}); } catch(e){} }
+  cp.hidden = false; if(noFocus) return; var f = focus ? $("pollQ") : cp.querySelectorAll(".poll-o")[P0.o.length-1]; if(f) try { f.focus({preventScroll:true}); } catch(e){} }
+// Antworten beim Erstellen verschieben: Griff ziehen (wie im Tagesplan) oder Pfeiltasten
+function chPollMove(from, to){ chPollKeep(); if(!CHPOLL || from===to || to<0 || to>=CHPOLL.o.length) return false; CHPOLL.o.splice(to, 0, CHPOLL.o.splice(from, 1)[0]); chPollRender(false, true);
+  var g = document.querySelectorAll("#catPop .poll-ol .grip")[to]; if(g) try { g.focus({preventScroll:true}); } catch(e){} return true; }
+(function(){ var d = null;
+  function start(g, y, id){ var li = g.closest("li"), items = Array.prototype.slice.call(document.querySelectorAll("#catPop .poll-ol li")).filter(function(x){ return x.querySelector(".poll-o"); });
+    var from = items.indexOf(li); if(from<0) return; chPollKeep(); var ae = document.activeElement; if(ae && ae.classList && ae.classList.contains("poll-o")) ae.blur();
+    d = {id:id, y0:y, li:li, items:items, from:from, to:from, rects:items.map(function(x){ var r = x.getBoundingClientRect(); return {top:r.top, h:r.height}; })};
+    li.parentNode.classList.add("sorting"); li.classList.add("drag"); }
+  function move(y){ if(!d) return; var dy = y - d.y0, r = d.rects[d.from], mid = r.top + r.h/2 + dy, to = d.from;
+    d.li.style.transform = "translateY("+dy+"px)";
+    d.rects.forEach(function(q, j){ var c = q.top + q.h/2; if(j > d.from && mid > c) to = j; if(j < d.from && mid < c && to > j) to = j; });
+    d.items.forEach(function(x, j){ if(j===d.from) return; var sh = (d.from < to && j > d.from && j <= to) ? -r.h : (to < d.from && j >= to && j < d.from) ? r.h : 0; x.style.transform = sh ? "translateY("+sh+"px)" : ""; });
+    d.to = to; }
+  function stop(id){ if(!d || id!==d.id) return; var from = d.from, to = d.to; d.items.forEach(function(x){ x.style.transform = ""; }); d.li.classList.remove("drag"); d.li.parentNode.classList.remove("sorting"); d = null; chPollMove(from, to); }
+  function pg(e){ var g = e.target.closest && e.target.closest(".grip"); return g && g.closest(".ch-pollc .poll-ol") ? g : null; }
+  document.addEventListener("pointerdown", function(e){ if(e.pointerType==="touch" || e.button>0) return; var g = pg(e); if(!g) return; e.preventDefault(); start(g, e.clientY, e.pointerId); try { g.setPointerCapture(e.pointerId); } catch(_){} });
+  document.addEventListener("pointermove", function(e){ if(d && e.pointerId===d.id) move(e.clientY); });
+  document.addEventListener("pointerup", function(e){ stop(e.pointerId); }); document.addEventListener("pointercancel", function(e){ stop(e.pointerId); });
+  document.addEventListener("touchstart", function(e){ var g = pg(e); if(!g || e.touches.length!==1 || d) return; e.preventDefault(); start(g, e.touches[0].clientY, "t"); }, {passive:false});
+  document.addEventListener("touchmove", function(e){ if(!d || d.id!=="t") return; e.preventDefault(); move(e.touches[0].clientY); }, {passive:false});
+  document.addEventListener("touchend", function(){ stop("t"); }); document.addEventListener("touchcancel", function(){ stop("t"); });
+  document.addEventListener("keydown", function(e){ var g = pg(e); if(!g || (e.key!=="ArrowUp" && e.key!=="ArrowDown")) return; e.preventDefault();
+    var i = Array.prototype.indexOf.call(document.querySelectorAll("#catPop .poll-ol .grip"), g); chPollMove(i, e.key==="ArrowUp" ? i-1 : i+1); });
+})();
 document.addEventListener("input", function(e){ if(!CHPOLL || !e.target.closest || !e.target.closest(".ch-pollc")) return; chPollKeep(); var b = document.querySelector("#catPop [data-act=chpollsend]"); if(b) b.disabled = !chPollOk(); });
 function chPollPl(txt){ var h = chNameHit(txt); if(!h || norm(h.n).trim()!==norm(txt).trim()) return null; var p = S.trips[h.tid].places[h.pid]; return {n:p.n, c:p.c, la:+p.la, lo:+p.lo, addr:p.addr||""}; }
 function chPollSend(){ chPollKeep(); if(!chPollOk() || !chOpen || !fbDb || !acct.user) return; var me = acct.user.uid, now = Date.now(), cid = chOpen;
@@ -16138,12 +16166,12 @@ var sorting = false, sheetPending = false;
   }
   document.addEventListener("pointerdown", function(e){
     if(e.pointerType==="touch") return;
-    var g = e.target.closest(".grip"); if(!g || e.button>0) return;
+    var g = e.target.closest(".grip"); if(!g || e.button>0 || g.closest(".ch-pollc")) return;
     e.preventDefault();
     if(begin(g, e.clientY, e.pointerId)){ try{ g.setPointerCapture(e.pointerId); }catch(_){} }
   });
   document.addEventListener("touchstart", function(e){
-    var g = e.target.closest && e.target.closest(".grip"); if(!g || e.touches.length!==1 || d) return;
+    var g = e.target.closest && e.target.closest(".grip"); if(!g || e.touches.length!==1 || d || g.closest(".ch-pollc")) return;
     e.preventDefault();
     begin(g, e.touches[0].clientY, "t");
   }, {passive:false});
@@ -16196,7 +16224,7 @@ var sorting = false, sheetPending = false;
   document.addEventListener("pointercancel", end);
   // Tastatur: Pfeiltasten auf dem Griff
   document.addEventListener("keydown", function(e){
-    var g = e.target.closest && e.target.closest(".grip"); if(!g || (e.key!=="ArrowUp" && e.key!=="ArrowDown")) return;
+    var g = e.target.closest && e.target.closest(".grip"); if(!g || (e.key!=="ArrowUp" && e.key!=="ArrowDown") || g.closest(".ch-pollc")) return;
     e.preventDefault();
     var id = g.closest("li.st,li.hx").getAttribute("data-id"), a = Array.prototype.map.call(document.querySelectorAll("ol.plan li.st,ol.plan li.hx"), function(x){ return x.getAttribute("data-id"); }), i = a.indexOf(id), j = e.key==="ArrowUp" ? i-1 : i+1;
     if(j<0 || j>=a.length) return;
