@@ -2153,10 +2153,20 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .ch-grpc .ch-grpl .ls-row{gap:10px}
 .ch-grprm{margin-left:auto;width:32px;height:32px;border:0;border-radius:50%;background:var(--fill);color:var(--muted);display:grid;place-items:center;cursor:pointer}
 .ch-grprm svg{width:15px;height:15px}
-.ch-pollc .poll-q,.ch-pollc .poll-o{width:100%;box-sizing:border-box;margin:0 0 8px;padding:10px 12px;border:.5px solid var(--sep,var(--line));border-radius:12px;background:var(--fill2,var(--fill));color:var(--ink);font:16px/1.3 var(--f-body)}
-.ch-pollc .poll-q{font-weight:600}
-.ch-pollc .poll-add{display:inline-flex;align-items:center;gap:4px;margin:0 0 10px}
-.ch-pollc .poll-mu{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);margin:2px 0 6px}
+.ch-pollc .poll-lb{display:block;padding:0 4px 6px;font:600 12px/1.2 var(--f-body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.ch-pollc .poll-q{width:100%;box-sizing:border-box;margin:0 0 20px;padding:13px 14px;border:0;border-radius:14px;background:var(--fill);color:var(--ink);font:600 17px/1.3 var(--f-body);outline:none;box-shadow:inset 0 0 0 1.5px transparent;transition:box-shadow .15s}
+.ch-pollc .poll-q:focus,.ch-pollc .poll-o:focus{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.ch-pollc .poll-ol{list-style:none;margin:0 0 20px;padding:0;border-radius:14px;background:var(--fill);overflow:hidden}
+.ch-pollc .poll-ol li{display:flex;align-items:center;gap:10px;padding:0 6px 0 12px;position:relative}
+.ch-pollc .poll-ol li+li::before{content:"";position:absolute;top:0;left:46px;right:0;border-top:.5px solid var(--sep,var(--line))}
+.ch-pollc .poll-o{flex:1;min-width:0;margin:0;padding:13px 8px;border:0;border-radius:10px;background:transparent;color:var(--ink);font:16px/1.3 var(--f-body);outline:none}
+.ch-pollc .poll-no{width:24px;height:24px;flex:0 0 24px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font:700 12px/1 var(--f-body)}
+.ch-pollc .poll-no svg{width:14px;height:14px}
+.ch-pollc .poll-add{all:unset;box-sizing:border-box;flex:1;display:flex;align-items:center;gap:10px;padding:13px 0;color:var(--accent);font:500 16px/1.3 var(--f-body);cursor:pointer}
+.ch-pollc .poll-mu{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;margin:0 0 14px;border-radius:14px;background:var(--fill);cursor:pointer}
+.ch-pollc .poll-mu>span{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ch-pollc .poll-mu b{font:500 16px/1.25 var(--f-body);color:var(--ink)}
+.ch-pollc .poll-mu small{font-size:12.5px;color:var(--muted)}
 .ch-poll{width:270px;max-width:100%;box-sizing:border-box;padding:12px;border-radius:18px;background:var(--sheet);box-shadow:0 0 0 .5px var(--hair),0 2px 10px rgba(0,0,0,.08);display:flex;flex-direction:column;gap:7px}
 .ch-pollh{display:flex;align-items:flex-start;gap:7px;color:var(--ink)}
 .ch-pollh svg{width:16px;height:16px;flex:0 0 16px;margin-top:2px;color:var(--accent)}
@@ -8261,15 +8271,15 @@ function chDocSet(cid, o){ if(chIsGrp(cid)) return o; var me = acct.user.uid, u 
    Fremde Stimmen brauchen die Firestore-Regel „pv nur eigener Eintrag“ (wie Reaktionen). Der Ersteller kann die Abstimmung beenden (end). */
 var CHPOLL = null;
 function chPollNew(){ if(!chOpen || chGone(chPartner(chOpen))) { if(chNewOn) toast("Gib zuerst oben den Namen eines Freundes ein", false); return; } CHPOLL = {q:"", o:["", ""], mu:false}; chPollRender(true); }
-function chPollKeep(){ if(!CHPOLL) return; var q = $("pollQ"); if(q) CHPOLL.q = q.value; document.querySelectorAll("#catPop .poll-o").forEach(function(e, i){ CHPOLL.o[i] = e.value; }); var mu = $("pollMu"); if(mu) CHPOLL.mu = mu.checked; }
+function chPollKeep(){ if(!CHPOLL) return; var q = $("pollQ"); if(q) CHPOLL.q = q.value; document.querySelectorAll("#catPop .poll-o").forEach(function(e, i){ CHPOLL.o[i] = e.value; }); }
 function chPollOk(){ return CHPOLL && CHPOLL.q.trim() && CHPOLL.o.filter(function(x){ return x.trim(); }).length >= 2; }
 // first: neu geöffnet (Frage fokussieren), sonst nach „Antwort hinzufügen“ die neue Antwort
 function chPollRender(first){ var focus = first; if(!CHPOLL) return; var cp = $("catPop"), P0 = CHPOLL;
   cp.innerHTML = "<div class=\"pop-card ch-pollc\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Abstimmung\"><div class=\"pop-head\"><h4>Abstimmung</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+
-    "<input type=\"text\" id=\"pollQ\" class=\"poll-q\" maxlength=\"200\" placeholder=\"Frage, z. B. Wohin heute Abend?\" value=\""+esc(P0.q)+"\">"+
-    P0.o.map(function(o, i){ return "<input type=\"text\" class=\"poll-o\" maxlength=\"100\" placeholder=\"Antwort "+(i+1)+" – Text oder Name eines Orts\" value=\""+esc(o)+"\">"; }).join("")+
-    (P0.o.length < 6 ? "<button type=\"button\" class=\"tf-link poll-add\" data-act=\"chpolladd\">"+ic("plus", "ii")+" Antwort hinzufügen</button>" : "")+
-    "<label class=\"poll-mu\"><input type=\"checkbox\" id=\"pollMu\""+(P0.mu ? " checked" : "")+"> Mehrere Antworten erlauben</label>"+
+    "<label class=\"poll-lb\" for=\"pollQ\">Frage</label><input type=\"text\" id=\"pollQ\" class=\"poll-q\" maxlength=\"200\" placeholder=\"z. B. Wohin heute Abend?\" value=\""+esc(P0.q)+"\">"+
+    "<div class=\"poll-lb\">Antworten</div><ol class=\"poll-ol\">"+P0.o.map(function(o, i){ return "<li><span class=\"poll-no\" aria-hidden=\"true\">"+(i+1)+"</span><input type=\"text\" class=\"poll-o\" maxlength=\"100\" aria-label=\"Antwort "+(i+1)+"\" placeholder=\"Text oder Name eines Orts\" value=\""+esc(o)+"\"></li>"; }).join("")+
+    (P0.o.length < 6 ? "<li><button type=\"button\" class=\"poll-add\" data-act=\"chpolladd\"><span class=\"poll-no\">"+ic("plus")+"</span>Antwort hinzufügen</button></li>" : "")+"</ol>"+
+    "<button type=\"button\" class=\"poll-mu\" id=\"pollMu\" data-act=\"chpollmu\" role=\"switch\" aria-checked=\""+!!P0.mu+"\"><span><b>Mehrere Antworten erlauben</b><small>"+(P0.mu ? "An – jeder kann mehrere Antworten wählen" : "Aus – jeder wählt eine Antwort")+"</small></span><em class=\"sw-mini"+(P0.mu ? " on" : "")+"\" aria-hidden=\"true\"></em></button>"+
     "<div class=\"pf-acts\"><button type=\"button\" class=\"btn\" data-act=\"chpollsend\""+(chPollOk() ? "" : " disabled")+">Senden</button></div></div>";
   cp.hidden = false; var f = focus ? $("pollQ") : cp.querySelectorAll(".poll-o")[P0.o.length-1]; if(f) try { f.focus({preventScroll:true}); } catch(e){} }
 document.addEventListener("input", function(e){ if(!CHPOLL || !e.target.closest || !e.target.closest(".ch-pollc")) return; chPollKeep(); var b = document.querySelector("#catPop [data-act=chpollsend]"); if(b) b.disabled = !chPollOk(); });
@@ -16439,6 +16449,7 @@ document.addEventListener("click", function(e){
     case "chpoll": closeJpMore(); chPollNew(); break;
     case "chpolladd": chPollKeep(); if(CHPOLL && CHPOLL.o.length < 6){ CHPOLL.o.push(""); chPollRender(false); } break;
     case "chpollsend": chPollSend(); break;
+    case "chpollmu": if(CHPOLL){ chPollKeep(); CHPOLL.mu = !CHPOLL.mu; t.setAttribute("aria-checked", CHPOLL.mu); t.querySelector(".sw-mini").classList.toggle("on", CHPOLL.mu); t.querySelector("small").textContent = CHPOLL.mu ? "An – jeder kann mehrere Antworten wählen" : "Aus – jeder wählt eine Antwort"; } break;
     case "chvote": chVote(t.getAttribute("data-k"), +t.getAttribute("data-i")); break;
     case "chpollend": chPollEnd(t.getAttribute("data-k")); break;
     case "chalv": chAlView(t.getAttribute("data-k"), +t.getAttribute("data-i")); break;
