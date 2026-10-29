@@ -1735,12 +1735,13 @@ await test("Events: Ticketmaster-Termine am Ort und am Tag, Einplanen mit Uhrzei
   ok((await page.locator("#catPop .evrow").first().innerText()).includes("19:30"), "Uhrzeit fehlt");
   ok((await page.locator("#catPop .evrow a.tkopen").first().getAttribute("href"))==="https://www.ticketmaster.com/event/E1", "Link zu Ticketmaster fehlt");
   await shot("events-tag");
-  // Einplanen: MoMA ist schon geplant → Uhrzeit setzen + geplantes Ticket, kein doppelter Ort
+  // Einplanen: eigener Event-Eintrag mit MoMA als Location (kein zweites MoMA), Uhrzeit + geplantes Ticket; MoMA selbst bleibt unverändert
   const np = await rp(`Object.keys(T().places).length`);
   await click("#catPop .evrow [data-act=evplan]");
-  ok(await rp(`timeOf("p3")==="19:30"`), "Uhrzeit nicht übernommen");
-  ok(await rp(`Object.keys(T().places).length===${np}`), "Vorhandener Ort wurde doppelt angelegt");
-  const tk = await rp(`JSON.stringify(tkOn("p:p3").map(function(x){ return [x.k, x.n, x.tm, x.st, x.ev, x.prov]; }))`);
+  const eid = await rp(`Object.keys(T().places).filter(function(x){ return P(x).ev==="E1"; })[0] || ""`);
+  ok(eid && await rp(`P("${eid}").c==="event" && P("${eid}").loc==="p3" && dayOf("${eid}")===cur && timeOf("${eid}")==="19:30"`), "Event-Eintrag falsch");
+  ok(await rp(`Object.keys(T().places).length===${np}+1 && !timeOf("p3")`), "Location wurde verändert oder doppelt angelegt");
+  const tk = await rp(`JSON.stringify(tkOn("p:${eid}").map(function(x){ return [x.k, x.n, x.tm, x.st, x.ev, x.prov]; }))`);
   ok(tk===JSON.stringify([["event","Konzert im MoMA","19:30","plan","E1","Ticketmaster"]]), "Ticket falsch: "+tk);
   ok(await page.locator("#catPop .evrow.ok [data-act=evplan][aria-pressed=true]").count()===1, "Eingeplant wird nicht angezeigt");
   ok(await rp(`pubOf(T()).tickets===undefined`), "Event-Ticket im öffentlichen Teil");
@@ -1750,19 +1751,64 @@ await test("Events: Ticketmaster-Termine am Ort und am Tag, Einplanen mit Uhrzei
   await rp(`(function(){ setSheet("mid"); select("p3"); })()`); await page.waitForTimeout(250);
   await click("#card [data-act=cardmore]"); await click("#jpMenu [data-act=evplace]");
   await page.waitForSelector("#catPop .evrow", {timeout:5000});
-  ok(await page.locator("#catPop .evrow").count()===1 && (await page.locator("#catPop .evrow").innerText()).includes("Konzert im MoMA"), "Ort zeigt fremde Events");
-  ok(await page.locator("#catPop .evpop .nt-sec").count()===1, "Datumsüberschrift fehlt");
+  ok(await page.locator("#catPop .tmrow").count()===1 && (await page.locator("#catPop .tmrow").innerText()).includes("Konzert im MoMA"), "Ort zeigt fremde Events");
+  ok(await page.locator("#catPop .evmine .evrow").count()===1, "Eingeplantes Event fehlt unter „Deine Events hier“");
   await shot("events-ort");
   await click("#catPop [data-act=evclose]");
   // neuer Veranstaltungsort: wird als Ort angelegt und am Event-Tag mit Uhrzeit eingeplant
   await rp(`(function(){ select(null); cur = "${N}"; setSheet("full"); renderAll(); })()`); await page.waitForTimeout(200);
   await click(".dh [data-act=evday]"); await page.waitForSelector("#catPop .evrow", {timeout:5000});
   await click("#catPop .evrow [data-act=evplan]");
-  const msg = await rp(`(function(){ var o = ord("${N}"), id = o.filter(function(x){ return P(x).n==="Madison Square Garden"; })[0]; return id ? [P(id).c, timeOf(id), tkOn("p:"+id).length].join("|") : ""; })()`);
-  ok(msg==="erlebnis|20:00|1", "Neuer Ort nicht richtig eingeplant: "+msg);
+  const msg = await rp(`(function(){ var id = ord("${N}").filter(function(x){ return P(x).ev==="E2"; })[0], l = id && P(P(id).loc); return id && l ? [P(id).c, l.n, l.c, !!dayOf(l.id), timeOf(id), tkOn("p:"+id).length].join("|") : ""; })()`);
+  ok(msg==="event|Madison Square Garden|erlebnis|false|20:00|1", "Neuer Veranstaltungsort nicht richtig eingeplant: "+msg);
   ok((await page.locator("#toast").innerText()).includes("20:00"), "Hinweis mit Uhrzeit fehlt");
   await click("#toast [data-act=undo]");
-  ok(await rp(`!ord("${N}").some(function(x){ return P(x) && P(x).n==="Madison Square Garden"; }) && !Object.keys(T().places).some(function(x){ return P(x).n==="Madison Square Garden"; })`), "Rückgängig lässt den neuen Ort stehen");
+  ok(await rp(`!Object.keys(T().places).some(function(x){ return P(x).n==="Madison Square Garden" || P(x).ev==="E2"; })`), "Rückgängig lässt Event oder Location stehen");
+});
+
+await test("Events: eigenes Event mit Location – Bewertung und Notiz bleiben beim Event, Merken gilt der Location", async () => {
+  await seed();
+  const N = await rp(`addD(cur, 1)`);
+  await rp(`(function(){ tmKey = ""; try { localStorage.removeItem("rp-tmkey"); } catch(e){} setSheet("mid"); select("p2"); })()`); await page.waitForTimeout(250);
+  // Ort → Mehr → Events → Eigenes Event (Location fest)
+  await click("#card [data-act=cardmore]"); await click("#jpMenu [data-act=evplace]");
+  ok(await visible("#catPop #evKeyIn"), "Ticketmaster-Hinweis fehlt ohne Schlüssel");
+  await click("#catPop [data-act=evnew]");
+  ok(await page.locator("#catPop .evloc.on").count()===1 && (await page.locator("#catPop .evloc.on").innerText()).includes("Washington Square Park"), "Location nicht vorbelegt");
+  await page.locator("#evfN").fill("Jazz im Park"); await page.locator("#evfD").selectOption(N);
+  await page.locator("#evfT").fill("18:00"); await page.locator("#evfE").fill("20:00");
+  await shot("event-eigenes");
+  await click("#catPop [data-act=evfsave]");
+  const eid = await rp(`Object.keys(T().places).filter(function(x){ return P(x).n==="Jazz im Park"; })[0] || ""`);
+  ok(eid, "Event nicht angelegt");
+  ok(await rp(`isEv(P("${eid}")) && P("${eid}").loc==="p2" && dayOf("${eid}")==="${N}" && timeOf("${eid}")==="18:00" && P("${eid}").te==="20:00" && /^in Washington Square Park/.test(P("${eid}").addr)`), "Event-Daten falsch");
+  ok(await rp(`dayOf("p2")===cur && !timeOf("p2")`), "Location wurde mit verplant");
+  ok(await page.locator("#catPop .evmine .evrow").count()===1, "Eigenes Event fehlt in der Liste der Location");
+  // Bewertung/Notiz am Event fließen nicht in die Location
+  await rp(`(function(){ var t = T(); t.rating = t.rating || {}; t.rating["${eid}"] = 7; t.notes = t.notes || {}; t.notes["${eid}"] = "Toller Abend"; t.done["${eid}"] = true; save(); })()`);
+  ok(await rp(`rateOf("p2")===0 && noteOf("p2")==="" && rateOf("${eid}")===7`), "Bewertung/Notiz des Events landet bei der Location");
+  ok(await rp(`jItem("${eid}", "${N}").indexOf("in Washington Square Park") > -1`), "Tagebuch zeigt die Location nicht");
+  // Event-Karte: Location-Knopf öffnet die Location
+  await click("#catPop [data-act=evgo]"); await page.waitForTimeout(200);
+  ok(await visible("#card .evat"), "Location-Knopf am Event fehlt");
+  await click("#card .evat"); await page.waitForTimeout(200);
+  ok(await rp(`sel==="p2"`), "Location öffnet nicht");
+  // Merken / Übernehmen eines Events meint die Location
+  ok(await rp(`(function(){ var q = evLocQ({n:"Jazz im Park", c:"event", la:1, lo:2, addr:"in Washington Square Park · Teststraße 1"}); return q.n==="Washington Square Park" && q.c!=="event" && q.addr==="Teststraße 1"; })()`), "evLocQ falsch");
+  // Tageskopf: eigenes Event mit Location-Suche
+  await rp(`(function(){ select(null); setSheet("full"); renderSheet(); })()`); await page.waitForTimeout(200);
+  await click(".dh [data-act=evday]"); await click("#catPop [data-act=evnew]");
+  await page.locator("#evLocQ").fill("katz"); await page.waitForTimeout(100);
+  ok(await page.locator("#catPop .evlocs .evloc:visible").count()===1, "Location-Suche filtert nicht");
+  await click("#catPop .evlocs .evloc:visible");
+  await click("#catPop [data-act=evfsave]");
+  ok((await page.locator("#catPop .err").innerText()).includes("Namen"), "Fehlender Name wird nicht gemeldet");
+  await page.locator("#evfN").fill("Pastrami-Tasting"); await page.locator("#evfT").fill("12:00");
+  await click("#catPop [data-act=evfsave]");
+  ok(await rp(`(function(){ var id = Object.keys(T().places).filter(function(x){ return P(x).n==="Pastrami-Tasting"; })[0]; return !!id && P(id).loc==="p1" && dayOf(id)===cur && timeOf(id)==="12:00"; })()`), "Event aus dem Tageskopf falsch");
+  // v388-Daten (Uhrzeit + Ticket an der Location) werden zu Event-Einträgen
+  ok(await rp(`(function(){ var t = JSON.parse(JSON.stringify(T())); t.order[cur] = ["p1","p3"]; t.times = {p3:"19:30"}; t.tickets = {tkA:{on:"p:p3", k:"event", n:"Altes Konzert", d:cur, tm:"19:30", ev:"X1", st:"plan"}};
+    normTrip(t); var o = t.order[cur]; return o[1]==="e_tkA" && t.places.e_tkA.c==="event" && t.places.e_tkA.loc==="p3" && t.times.e_tkA==="19:30" && !t.times.p3 && t.tickets.tkA.on==="p:e_tkA" && !!t.places.p3; })()`), "Umstellung alter Event-Tickets falsch");
 });
 
 await test("Linie wählen: bei mehreren möglichen Linien (z. B. A/C/E) eine bestimmte festlegen", async () => {
