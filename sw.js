@@ -1,5 +1,5 @@
 // Reiseplan – Service Worker: App offline verfügbar, besuchte Kartenbereiche zwischengespeichert
-const VERSION = "reiseplan-v433";
+const VERSION = "reiseplan-v434";
 const SHELL = ["./", "./index.html", "./maplibre-gl.js", "./maplibre-gl.css", "./manifest.webmanifest", "./bus.json", "./firebase.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 const TILES = "reiseplan-tiles";
@@ -38,7 +38,8 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   // Kartenkacheln, Schriften, Stil: Zwischenspeicher zuerst, im Hintergrund aktualisieren
-  if (/openfreemap\.org$|fonts\.(googleapis|gstatic)\.com$/.test(url.hostname)) {
+  // dazu die ÖPNV-Kacheln von Transitland (Linien, Haltestellen)
+  if (/openfreemap\.org$|fonts\.(googleapis|gstatic)\.com$/.test(url.hostname) || (url.hostname === "transit.land" && url.pathname.startsWith("/api/v2/tiles/"))) {
     e.respondWith(caches.open(TILES).then(async (c) => {
       // zuerst die vorab geladene Offline-Karte einer Reise, dann besuchte Kacheln
       const hit = await caches.match(req);

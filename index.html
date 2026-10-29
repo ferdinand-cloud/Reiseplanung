@@ -6044,7 +6044,7 @@ function offStart(){
   if(!tpl){ toast("Die Karte ist noch nicht geladen – bitte kurz warten.", false); return; }
   var P0 = offPlan(b), urls = [];
   P0.rs.forEach(function(r){ for(var x = r.x0; x <= r.x1; x++) for(var y = r.y0; y <= r.y1; y++) urls.push(tpl.replace("{z}", r.z).replace("{x}", x).replace("{y}", y)); });
-  urls = urls.concat(offExtras());
+  urls = urls.concat(offExtras()).concat(offTl(b));
   var tid = S.cur, run = OFF.run = {tid:tid, stop:false}; OFF.done = 0; OFF.all = urls.length; OFF.err = 0; OFF.ph = "Karte"; var bytes = 0, i = 0, tr = null;
   offShow();
   caches.open(offCacheName(tid)).then(function(c){
@@ -10256,7 +10256,8 @@ function initMap(){
   ["touchstart","touchend","touchcancel"].forEach(function(ev){ $("gl").addEventListener(ev, function(e){ v3dFingers = e.touches ? e.touches.length : 0; if(!v3dFingers && ev!=="touchstart") v3dMoveEnd(); }, {passive:true, capture:true}); });
   map.on("click", function(e){ if(Date.now()-lpAt < 900) return; tap(e.point.x, e.point.y); });
   lpInit();
-  map.on("error", function(e){ if(!navigator.onLine) setNet(false); });
+  map.on("error", function(e){ if(!navigator.onLine) setNet(false); tlError(e); });
+  map.on("sourcedata", function(e){ if(e.sourceId==="tl-r" && e.isSourceLoaded) tlSoon(); });
   darkMQ.addEventListener && darkMQ.addEventListener("change", function(){ mapReady = false; map.setStyle(STYLE_URL); });
 }
 
@@ -11927,7 +11928,7 @@ var DRMAX = 10000; // Suchradius höchstens 10 km: in großen Städten sonst zu 
 /* ÖPNV nach Kartenausschnitt: Linien kommen nicht mehr aus einem Umkreis ums Ziel, sondern aus einem festen Kachelraster für das, was die Karte zeigt.
    a = Metro, S-Bahn, Züge, Fähren (ab Zoom 11, Kacheln 0,25°) · b = Tram, Seilbahnen, Stationen, Leihräder (ab Zoom 12, 0,1°) · c = Busse (ab Zoom 14, 0,05°, nur eingeschaltet)
    Darunter nur das graue Grundgerüst aus den Kartenkacheln: 0,5°-Kacheln waren in Berlin zu groß für Overpass (Zeitlimit, „Server ausgelastet“) */
-var VTL = {a:{z:11, s:0.25, tol:0.00006}, b:{z:12, s:0.1, tol:0.00003}, c:{z:14, s:0.05, tol:0.00003}};
+var VTL = {a:{z:11, s:0.25, tol:0.00006}, b:{z:12, s:0.1, tol:0.00003}, c:{z:14, s:0.05, tol:0.00003}, k:{z:12, s:0.1, tol:0}}; // k = nur Leihrad-Stationen (wenn die Linien von Transitland kommen)
 var VTV = 2, VTMAX = 400, VTMEM = 160, VTPAR = 2, VTWAIT = 400, VTBACK = [3000, 10000];
 var VT = {mem:{}, st:{}, q:[], run:0, out:false, keys:[], sig:"", tm:0, fail:{}};
 var VV = {tr:null, bus:null};
@@ -11974,7 +11975,7 @@ function destSet(d, pts){
   if(d){ d.pts = pts || []; d.st = {nb:""}; d.nb = null; }
   DEST = d; dQ = ""; dOpen = {}; dWant = false;
   document.body.classList.toggle("dyn", dynOn());
-  $("attr").textContent = "© OpenFreeMap · © OpenMapTiles · © OpenStreetMap-Mitwirkende" + (d ? "" : " · ÖPNV: MTA");
+  $("attr").textContent = "© OpenFreeMap · © OpenMapTiles · © OpenStreetMap-Mitwirkende" + (d ? (tlKey() ? " · ÖPNV: Transitland" : "") : " · ÖPNV: MTA");
   CB.st = []; CB.byId = {}; CB.infoAt = 0; CB.statAt = 0; CB.err = ""; CB.errAt = 0; CB.sys = d ? [] : CBNYC; CB.dk = d ? null : ""; LMNAME.bike = cbName();
   if(!d){ nbUse(NB_NYC, "nyc-nb-hi"); destApply(); vtView(); if(cbNeeded()) cbLoad(); return; }
   lsList("rp-doff-"+d.k).forEach(function(id){ DOFF[id] = 1; }); // früher je Ziel gemerkt: übernehmen
@@ -12040,6 +12041,7 @@ function vtKeys(lv){
   return ks.length > 40 ? [] : ks;
 }
 function vtQuery(lv, bb){
+  if(lv==="k") return "[out:json][timeout:25];node[amenity=bicycle_rental]("+bb+");out;";
   if(lv==="a") return "[out:json][timeout:25];(rel[type=route][route~\"^(subway|light_rail|monorail|ferry)$\"]("+bb+");rel[type=route][route=train][service!~\"^(long_distance|high_speed|night|car_shuttle)$\"]("+bb+");)->.r;.r out body;way(r.r)("+bb+");out skel geom;";
   if(lv==="b") return "[out:json][timeout:25];rel[type=route][route~\"^(tram|funicular)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;"+
     "(way[railway=funicular]("+bb+");way[aerialway~\"^(cable_car|gondola)$\"]("+bb+"););out geom;node[railway=station][name]("+bb+");out;node[amenity=bicycle_rental]("+bb+");out;"+
@@ -12118,6 +12120,7 @@ function vtPut(k, v){
 /* welche Ebenen gebraucht werden: Verkehrsmittel eingeschaltet oder Ebenen-Menü offen */
 function vtWant(){
   if(!dynOn()) return {};
+  if(tlOn()) return {k:!!layers.bike}; // Linien kommen von Transitland, aus OpenStreetMap nur noch Leihrad-Stationen
   var open = !$("layers").hidden && !isRO(), rail = DMODES.some(function(m){ return m[0]!=="bus" && dOn(m[0]); }) || dWant;
   return {a:rail || open, b:rail || open || layers.bike, c:dOn("bus") || (open && !!dOpen.bus && !isRO())};
 }
@@ -12168,10 +12171,109 @@ function vtApply(){
   var mk = Object.keys(VT.mem);
   if(mk.length > VTMEM) mk.filter(function(k){ return VT.keys.indexOf(k) < 0; }).sort(function(a, b){ return VT.mem[a].at - VT.mem[b].at; }).slice(0, mk.length - VTMEM).forEach(function(k){ delete VT.mem[k]; delete VT.st[k]; });
   var sig = VT.keys.filter(function(k){ return VT.mem[k]; }).map(function(k){ return k+"@"+VT.mem[k].at; }).join("|");
+  if(tlOn()){ if(sig!==VT.sig){ VT.sig = sig; var ag = vtAgg(VT.keys); TL.bike = ag.tr ? ag.tr.bike : []; } tlList(); vtBusy(); dApplyMap(); scheduleOverlay(); return; }
   if(sig!==VT.sig){ VT.sig = sig; VV = vtAgg(VT.keys);
     if(dWant && VV.tr){ var ms = dModes().filter(function(m){ return m!=="bus"; }); if(ms.length){ dWant = false; if(!ms.some(dOn)){ DL[ms[0]] = 1; lsSet("rp-dl", JSON.stringify(DL)); } } }
     dData(); }
   vtBusy(); dApplyMap(); destUi(); scheduleOverlay();
+}
+/* ---------- ÖPNV aus Transitland ----------
+   Fertige Vektorkacheln mit Linien und Haltestellen aus den offiziellen Fahrplänen (GTFS) – wie Apple Karten: nichts wird live
+   zusammengesucht, die Karte zeichnet nur fertige Stücke. Ersetzt die Overpass-Abfragen für Linien; ohne (gültigen) Schlüssel bleibt das Kachelraster oben.
+   Kostenlos nur nicht kommerziell (Tarif „Explorer“, faire Nutzung); Linien ab Zoom 9, Busse ab Zoom 12. */
+var TLKEY = "";
+var TL = {bad:false, err:0, tm:0, bike:[], msg:false};
+var TLZ = 9, TLZB = 12;
+function tlKey(){ return TL.bad ? "" : (lsGet("rp-tlkey") || TLKEY); }
+function tlOn(){ return !!tlKey() && dynOn(); }
+function tlUrl(l){ return "https://transit.land/api/v2/tiles/"+l+"/tiles/{z}/{x}/{y}.pbf?apikey="+encodeURIComponent(tlKey()); }
+/* GTFS-Grundtyp → Verkehrsmittel der App (S-Bahn und Regionalzüge sind in GTFS „Bahn“) */
+var TLMODE = {0:"tram", 1:"metro", 2:"train", 3:"bus", 11:"bus", 4:"ferry", 5:"tram", 6:"funi", 7:"funi", 12:"light"};
+function tlMode(t){ return TLMODE[+t] || "train"; }
+var TLM = ["match", ["to-number", ["get","route_type_basic"]], 0,"tram", 1,"metro", 2,"train", 3,"bus", 11,"bus", 4,"ferry", 5,"tram", 6,"funi", 7,"funi", 12,"light", "train"];
+var TLK = ["to-string", ["coalesce", ["get","route_short_name"], ["get","route_long_name"], ""]];
+var TLID = ["concat", TLM, ":", TLK];
+var TLC = ["case", ["==", ["length", ["to-string", ["get","route_color"]]], 7], ["to-string", ["get","route_color"]],
+  ["match", TLM, "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "bus", "#1f6fd1", DCOL.train]];
+var TLRAIL = ["any", ["in", "0", ["to-string", ["get","route_types_basic"]]], ["in", "1", ["to-string", ["get","route_types_basic"]]], ["in", "2", ["to-string", ["get","route_types_basic"]]]];
+function tlSetup(){
+  if(!mapReady || !tlKey() || map.getSource("tl-r")) return;
+  var gl = !!map.getStyle().glyphs, halo = isDark() ? "#111a22" : "#ffffff", none = {visibility:"none", "line-cap":"round", "line-join":"round"}, bef = map.getLayer("dtr") ? "dtr" : undefined;
+  map.addSource("tl-r", {type:"vector", tiles:[tlUrl("routes")], minzoom:0, maxzoom:14, attribution:"ÖPNV: Transitland"});
+  map.addSource("tl-s", {type:"vector", tiles:[tlUrl("stops")], minzoom:0, maxzoom:14});
+  // unsichtbare Linie: lädt die Kacheln, damit das Menü die Linien im Ausschnitt kennt, auch wenn noch nichts eingeschaltet ist
+  map.addLayer({id:"tl-probe", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-opacity":0, "line-width":1}, layout:{visibility:"none"}}, bef);
+  map.addLayer({id:"tl-bus", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZB, paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],12,1,16,3], "line-opacity":.6}, layout:none}, bef);
+  map.addLayer({id:"tl-rail", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-color":TLC,
+    "line-width":["interpolate",["linear"],["zoom"],10,["match",TLM,"tram",1,"funi",1.4,1.6],16,["match",TLM,"tram",3,"funi",3.5,5]]}, layout:none}, bef);
+  map.addLayer({id:"tl-ferry", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-color":TLC, "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{visibility:"none", "line-cap":"round"}}, bef);
+  map.addLayer({id:"tl-st", type:"circle", source:"tl-s", "source-layer":"stops", minzoom:13,
+    filter:["any", ["all", ["==", ["get","location_type"], 1], ["any", ["==", ["to-string", ["get","route_types_basic"]], "[]"], TLRAIL]], ["all", ["==", ["get","location_type"], 0], ["!", ["has","parent_station"]], TLRAIL]],
+    paint:{"circle-color":"#ffffff", "circle-stroke-color":"#17212c", "circle-stroke-width":1.6, "circle-radius":["interpolate",["linear"],["zoom"],13,2.5,16,5]}, layout:{visibility:"none"}});
+  map.addLayer({id:"tl-bst", type:"circle", source:"tl-s", "source-layer":"stops", minzoom:15, filter:["all", ["==", ["get","location_type"], 0], ["in", "3", ["to-string", ["get","route_types_basic"]]]],
+    paint:{"circle-color":"#ffffff", "circle-stroke-color":token("--bus")||"#1f6fd1", "circle-stroke-width":1.4, "circle-radius":3}, layout:{visibility:"none"}});
+  if(!gl) return;
+  map.addLayer({id:"tl-lbl", type:"symbol", source:"tl-r", "source-layer":"routes", minzoom:13.5, layout:{visibility:"none", "symbol-placement":"line", "symbol-spacing":320, "text-field":TLK, "text-font":["Noto Sans Regular"], "text-size":11, "text-max-angle":30},
+    paint:{"text-color":TLC, "text-halo-color":halo, "text-halo-width":1.6}});
+  map.addLayer({id:"tl-st-lbl", type:"symbol", source:"tl-s", "source-layer":"stops", minzoom:14.5, filter:["==", ["get","location_type"], 1], layout:{visibility:"none", "text-field":["to-string", ["get","stop_name"]], "text-font":["Noto Sans Regular"], "text-size":11, "text-anchor":"top", "text-offset":[0,.7], "text-max-width":9, "text-optional":true},
+    paint:{"text-color":isDark() ? "#d5dde5" : "#17212c", "text-halo-color":halo, "text-halo-width":1.4}});
+}
+/* Sichtbarkeit und Filter: eingeschaltete Verkehrsmittel, ausgeblendete Linien */
+function tlApply(){
+  tlSetup();
+  if(!mapReady || !map.getLayer("tl-rail")) return;
+  var on = tlOn() && !isRO(), ms = on ? DMODES.map(function(m){ return m[0]; }).filter(dOn) : [], rail = ms.filter(function(m){ return m!=="bus"; });
+  var off = ["!", ["in", TLID, ["literal", Object.keys(DOFF)]]], vis = function(l, v){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", v ? "visible" : "none"); };
+  vis("tl-probe", on && (ms.length || !$("layers").hidden || dWant));
+  vis("tl-rail", rail.length); vis("tl-ferry", rail.indexOf("ferry") > -1); vis("tl-lbl", ms.length); vis("tl-st", rail.length); vis("tl-st-lbl", rail.length);
+  vis("tl-bus", ms.indexOf("bus") > -1); vis("tl-bst", ms.indexOf("bus") > -1);
+  map.setFilter("tl-rail", ["all", ["!=", TLM, "ferry"], ["!=", TLM, "bus"], ["in", TLM, ["literal", rail]], off]);
+  map.setFilter("tl-ferry", ["all", ["==", TLM, "ferry"], off]);
+  map.setFilter("tl-bus", ["all", ["==", TLM, "bus"], off]);
+  if(map.getLayer("tl-lbl")) map.setFilter("tl-lbl", ["all", ["in", TLM, ["literal", ms]], off]);
+}
+/* Kachel-Inhalt (eigene Funktion, damit Tests Linien vorgeben können) */
+function tlFeats(){ try { return map.getSource("tl-r") ? map.querySourceFeatures("tl-r", {sourceLayer:"routes"}) : []; } catch(e){ return []; } }
+/* Linien im Kartenausschnitt fürs Menü: Verkehrsmittel → einzelne Linien */
+function tlList(){
+  if(!tlOn() || !mapReady) return;
+  var z = map.getZoom(), b = map.getBounds(), L = {}, ids = [];
+  if(z >= TLZ) tlFeats().forEach(function(f){
+    var p = f.properties || {}; if(p.clustered) return;
+    var bb = null; try { bb = JSON.parse(p.bbox || "null"); } catch(e){}
+    if(bb && (bb[0] > b.getEast() || bb[2] < b.getWest() || bb[1] > b.getNorth() || bb[3] < b.getSouth())) return;
+    var m = tlMode(p.route_type_basic), k = String(p.route_short_name || p.route_long_name || "").trim().slice(0, 40); if(!k) return;
+    var id = m+":"+k, c = okCol(p.route_color);
+    if(!L[id]){ L[id] = {m:m, k:k, n:String(p.route_long_name || "").slice(0, 80), c:c}; ids.push(id); } else if(!L[id].c && c) L[id].c = c;
+  });
+  var mk = function(bus){ return ids.filter(function(id){ return (L[id].m==="bus")===bus; }).sort(function(a, b2){ return natCmp(L[a].k, L[b2].k); })
+    .map(function(id){ var l = L[id]; if(!l.c) l.c = vtCol(l.m, l.k); return l; }); };
+  var E = {type:"FeatureCollection", features:[]}, tr = mk(false), bs = mk(true), sig = ids.join("|")+"#"+TL.bike.length+"#"+(z >= TLZ);
+  if(sig===TL.sig){ destUi(); return; }
+  TL.sig = sig;
+  VV = z < TLZ ? {tr:null, bus:null} : {tr:{lines:tr, geo:E, st:[], bike:TL.bike, nbus:bs.length}, bus:{lines:bs, geo:E}};
+  if(dWant && VV.tr){ var ms = dModes().filter(function(m){ return m!=="bus"; }); if(ms.length){ dWant = false; if(!ms.some(dOn)){ DL[ms[0]] = 1; lsSet("rp-dl", JSON.stringify(DL)); } } }
+  dData(); dApplyMap(); destUi(); trSync();
+}
+function tlSoon(){ clearTimeout(TL.tm); TL.tm = setTimeout(tlList, 250); }
+/* Fehler der Transitland-Kacheln: Schlüssel ungültig → zurück zu OpenStreetMap; Kontingent/Server → Hinweis im Menü */
+function tlError(e){
+  if(!e || (e.sourceId!=="tl-r" && e.sourceId!=="tl-s")) return;
+  var st = e.error && e.error.status;
+  // ohne Status (z. B. vom Browser blockiert) mehrmals hintereinander: wie ungültiger Schlüssel behandeln, damit der ÖPNV nicht ganz fehlt
+  if(!st && navigator.onLine) TL.nst = (TL.nst||0) + 1;
+  if(st===401 || st===403 || TL.nst >= 4){ TL.bad = true; TL.sig = ""; ["tl-probe","tl-bus","tl-rail","tl-ferry","tl-st","tl-bst","tl-lbl","tl-st-lbl"].forEach(function(l){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", "none"); });
+    if(!TL.msg){ TL.msg = true; toast(st ? "Transitland-Schlüssel ungültig – ÖPNV kommt wieder aus OpenStreetMap." : "Transitland nicht erreichbar – ÖPNV kommt wieder aus OpenStreetMap.", false); } applyLayers(); return; }
+  TL.err = st || 1; destUi();
+}
+function tlRetry(){ TL.err = 0; TL.sig = ""; ["tl-r","tl-s"].forEach(function(s){ var src = map.getSource(s); if(src && src.setTiles) src.setTiles([tlUrl(s==="tl-r" ? "routes" : "stops")]); }); tlSoon(); destUi(); }
+/* Offline-Paket: Linien- und Haltestellen-Kacheln des Reisegebiets bis Zoom 14 */
+function offTl(b){
+  if(!tlKey()) return [];
+  var out = [];
+  for(var z = 10; z <= 14; z++){ var r = offRange(b, z); if(r.n > 400) break;
+    for(var x = r.x0; x <= r.x1; x++) for(var y = r.y0; y <= r.y1; y++) ["routes","stops"].forEach(function(l){ out.push(tlUrl(l).replace("{z}", z).replace("{x}", x).replace("{y}", y)); }); }
+  return out;
 }
 /* Bezirke: die kleinste Verwaltungseinheit, die (fast) alle Orte der Reise enthält, und deren nächste Unterteilung */
 function nbFetch(d){
@@ -12321,6 +12423,7 @@ function dApplyMap(){
   map.setFilter("dst", ["in", ["get","m"], ["literal", rail]]); if(map.getLayer("dst-lbl")) map.setFilter("dst-lbl", ["in", ["get","m"], ["literal", rail]]);
   vis("dbike", dy && layers.bike && !(DEST && CB.sys.length)); // OpenStreetMap-Stationen nur, solange kein Leihrad-System mit Live-Daten bekannt ist
   vis("vt-rail", dy && rail.length && !isRO()); // graues Grundgerüst aus den Kartenkacheln: sofort da, bis die Linien geladen sind
+  tlApply();
 }
 /* Menü: ÖPNV → Verkehrsmittel des Ziels → einzelne Linien (wie U-Bahn/Bus in New York) */
 var DCHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 6l4 4 4-4\"/></svg>";
@@ -12330,7 +12433,9 @@ function destUi(){
   if(br) br.style.display = dy && !dBike().length && !(DEST && CB.sys.length) ? "none" : "";
   if(!dy){ el.innerHTML = ""; trSync(); return; }
   var h = "", ms = dModes(), ro = isRO(), vs = vtStat(), z = mapReady ? map.getZoom() : 12, retry = " <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>";
-  if(z < VTL.a.z) h += "<p class=\"note dnote\">Näher heranzoomen, um den ÖPNV in diesem Kartenausschnitt zu sehen.</p>";
+  var tl = tlOn(), zmin = tl ? TLZ : VTL.a.z;
+  if(tl && TL.err) h += "<p class=\"note dnote\">Transitland antwortet gerade nicht ("+(TL.err===429 ? "Kontingent erreicht" : "Server")+")."+retry+"</p>";
+  if(z < zmin) h += "<p class=\"note dnote\">Näher heranzoomen, um den ÖPNV in diesem Kartenausschnitt zu sehen.</p>";
   else if(!VV.tr || !ms.length) h += "<p class=\"note dnote\">"+(vs.load ? "ÖPNV in diesem Kartenausschnitt wird geladen …" : vs.err ? "ÖPNV in diesem Kartenausschnitt kam nicht an (Server ausgelastet oder zu viele Daten)."+retry
     : vs.off ? "Offline: ÖPNV in diesem Kartenausschnitt lädt, sobald du wieder Internet hast." : VV.tr ? "Keine ÖPNV-Linien in diesem Kartenausschnitt (OpenStreetMap)." : "ÖPNV in diesem Kartenausschnitt wird geladen …")+"</p>";
   else if(vs.err) h += "<p class=\"note dnote\">Ein Teil des Kartenausschnitts kam nicht an."+retry+"</p>";
@@ -12341,7 +12446,7 @@ function destUi(){
       "<button type=\"button\" class=\"lfbtn lchev"+(open ? " open" : "")+(on && n < ls.length ? " act" : "")+"\" data-act=\"dfold\" data-m=\""+m+"\" aria-expanded=\""+open+"\" aria-label=\""+DMNAME[m]+": Linien auswählen\""+(on ? "" : " hidden")+">"+DCHEV+"</button></div>";
     if(!open) return;
     h += "<div class=\"lines\" id=\"dLines-"+m+"\">";
-    if(m==="bus" && z < VTL.c.z) h += "<span class=\"cnt\">Busse erscheinen beim Heranzoomen auf Straßenebene.</span>";
+    if(m==="bus" && z < (tl ? TLZB : VTL.c.z)) h += "<span class=\"cnt\">Busse erscheinen beim Heranzoomen auf Straßenebene.</span>";
     else if(m==="bus" && !VV.bus) h += "<span class=\"cnt\">"+(vs.err ? "Buslinien konnten nicht geladen werden. <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"bus\">Erneut versuchen</button>" : "Buslinien werden geladen …")+"</span>";
     else {
       var short = ls.every(function(l){ return l.k.length <= 4; }), q = m==="bus" ? dQ.trim().toLowerCase() : "", sh = ls.filter(function(l){ return !q || (l.k+" "+l.n).toLowerCase().indexOf(q) > -1; });
@@ -17632,7 +17737,7 @@ document.addEventListener("click", function(e){
     case "dln": var dli = t.getAttribute("data-id"); if(DOFF[dli]) delete DOFF[dli]; else DOFF[dli] = 1; dSaveOff(); applyLayers(); break;
     case "dlnall": case "dlnnone": var dlm = t.getAttribute("data-m"), dlq = dlm==="bus" ? dQ.trim().toLowerCase() : "";
       dLines(dlm).forEach(function(l){ if(dlq && (l.k+" "+l.n).toLowerCase().indexOf(dlq) < 0) return; var id = l.m+":"+l.k; if(act==="dlnall") delete DOFF[id]; else DOFF[id] = 1; }); dSaveOff(); applyLayers(); break;
-    case "dretry": destNeed(t.getAttribute("data-p"), true); break;
+    case "dretry": if(tlOn() && t.getAttribute("data-p")!=="nb") tlRetry(); else destNeed(t.getAttribute("data-p"), true); break;
     case "lcattog": var lk = t.getAttribute("data-k"); lcatOpen[lk] = !lcatOpen[lk]; if(lk==="poi") renderPoiCats(); else renderWishCats(); break;
     case "lwcat": var lw = t.getAttribute("data-cat"); if(!lw) catFilter = {}; else { delete catFilter._none; if(catFilter[lw]){ delete catFilter[lw]; if(!catKeys().length) catFilter = {_none:1}; } else catFilter[lw] = 1; } renderWishCats(); dirty(); renderSheet(); scheduleOverlay(); break;
     case "lwnone": catFilter = {_none:1}; renderWishCats(); dirty(); renderSheet(); scheduleOverlay(); break;

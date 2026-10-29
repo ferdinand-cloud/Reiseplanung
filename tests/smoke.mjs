@@ -1485,6 +1485,47 @@ await test("ÖPNV nach Kartenausschnitt: überall, wohin die Karte zeigt, Linien
   ok(await rp(`!VT.out && !document.body.classList.contains("dyn") && map.getLayoutProperty("dtr","visibility")==="none"`), "In New York bleiben die OpenStreetMap-Ebenen");
 });
 
+await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Ausschnitt, Filter, Fehler (Berlin)", async () => {
+  const OVQ = [], TLQ = [];
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => { OVQ.push(ovBody(rt)); return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }); });
+  await page.route(/transit\.land\/api\/v2\/tiles/, rt => { TLQ.push(rt.request().url()); return rt.fulfill({ status:204, headers:{"access-control-allow-origin":"*"}, body:"" }); });
+  await seed();
+  const F = (t, k, c, bb) => ({properties:{route_type_basic:t, route_short_name:k, route_color:c, route_long_name:"Linie "+k, bbox:JSON.stringify(bb || [13.3, 52.4, 13.6, 52.6])}});
+  await rp(`lsSet("rp-tlkey", "testkey"); DL = {}; DOFF = {}; TL.sig = ""; tlFeats = function(){ return ${JSON.stringify([F(2, "S1", "#dd6ca7"), F(1, "U2", "#"), F(0, "M10", ""), F(3, "100", "#a5027d"), F(1, "U9", "#f3791d", [10, 50, 10.1, 50.1])])}; }; true`);
+  await jump(13.4, 52.52, 13);
+  await page.waitForTimeout(200);
+  ok(await rp(`DEST===null && VT.out && tlOn() && !!map.getSource("tl-r") && map.getSource("tl-r").tiles[0].indexOf("apikey=testkey") > -1 && map.getSource("tl-r").maxzoom===14`), "Transitland-Kacheln nicht als Kartenquelle eingerichtet");
+  await click("#layersBtn"); await click("#lTrBtn"); await page.waitForTimeout(400);
+  const grp = await page.locator("#lTrGrp").innerText();
+  ok(grp.includes("Metro") && grp.includes("S-Bahn") && grp.includes("Tram") && grp.includes("Busse"), "Verkehrsmittel aus Transitland fehlen: "+grp);
+  ok(await rp(`VV.tr.lines.length===3 && !VV.tr.lines.some(function(l){ return l.k==="U9"; })`), "Linie außerhalb des Ausschnitts steht in der Liste");
+  ok(await rp(`VV.tr.lines.filter(function(l){ return l.k==="U2"; })[0].c.length===7`), "Linie ohne Farbe bekommt keine Ersatzfarbe");
+  ok(!OVQ.some(q => q.includes("subway") || q.includes("tram")), "Linien werden trotz Transitland bei Overpass abgefragt");
+  ok(await rp(`map.getLayoutProperty("tl-probe","visibility")==="visible"`), "Kacheln werden für das Menü nicht geladen");
+  await page.locator("label:has(#lTr)").click(); await page.waitForTimeout(150);
+  ok(await rp(`DL.metro && map.getLayoutProperty("tl-rail","visibility")==="visible" && JSON.stringify(map.getFilter("tl-rail")).indexOf("metro") > -1 && map.getLayoutProperty("tl-bus","visibility")==="none"`), "Metro aus Transitland nicht eingeschaltet");
+  await click("[data-act=dfold][data-m=metro]");
+  await click("#dLines-metro [data-id='metro:U2']");
+  ok(await rp(`DOFF["metro:U2"] && JSON.stringify(map.getFilter("tl-rail")).indexOf("metro:U2") > -1`), "Linie lässt sich nicht ausblenden");
+  await page.locator("#ld-bus").check(); await page.waitForTimeout(100);
+  ok(await rp(`map.getLayoutProperty("tl-bus","visibility")==="visible"`), "Busse aus Transitland nicht sichtbar");
+  await shot("transitland-menue");
+  // Offline-Paket nimmt Linien- und Haltestellen-Kacheln mit
+  ok(await rp(`var u = offTl([13.35, 52.48, 13.45, 52.55]); u.length > 10 && u.every(function(x){ return /transit\\.land\\/api\\/v2\\/tiles\\/(routes|stops)\\/tiles\\/\\d+\\/\\d+\\/\\d+\\.pbf\\?apikey=testkey/.test(x); })`), "Offline-Paket lädt keine Transitland-Kacheln");
+  // Kontingent erreicht: Hinweis mit „Erneut versuchen“
+  await rp(`tlError({sourceId:"tl-r", error:{status:429}}); true`);
+  ok((await page.locator("#lTrDyn").innerText()).includes("Kontingent"), "Kein Hinweis bei erreichtem Kontingent");
+  await click("#lTrDyn [data-act=dretry]");
+  ok(await rp(`TL.err===0`), "Erneut versuchen setzt den Fehler nicht zurück");
+  // ungültiger Schlüssel → zurück zu OpenStreetMap (Overpass)
+  await rp(`tlError({sourceId:"tl-r", error:{status:401}}); true`); await page.waitForTimeout(300);
+  ok(await rp(`TL.bad && !tlOn() && map.getLayoutProperty("tl-rail","visibility")==="none"`), "Ungültiger Schlüssel schaltet Transitland nicht ab");
+  await jump(13.41, 52.52, 13);
+  await page.waitForFunction(() => window.__rp("vtStat().load===0"), null, {timeout:8000});
+  ok(OVQ.some(q => q.includes("subway|light_rail")), "Ohne gültigen Schlüssel kein Ersatz über OpenStreetMap");
+  await rp(`lsSet("rp-tlkey", ""); TL.bad = false; true`);
+});
+
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
   await seed();
   await click("#layersBtn"); await click("#lTrBtn");
