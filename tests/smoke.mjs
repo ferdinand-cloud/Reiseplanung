@@ -1571,7 +1571,8 @@ await test("ÖPNV-Linien nebeneinander statt übereinander, dünn, Haltestellen 
     JSON.stringify(sl)`);
   const sl = JSON.parse(r);
   ok(new Set(["sbahn:S5","sbahn:S7","sbahn:S75","reg:RE1","long:ICE"].map(k => sl[k])).size===5 && sl["tram:M4"]===0, "Bahnlinien bekommen keine eigenen Plätze: "+r);
-  await page.waitForTimeout(800); await shot("linien-nebeneinander");
+  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["dtr"]}).length >= 6 && map.queryRenderedFeatures({layers:["dst"]}).length===1`), null, {timeout:8000}).catch(() => {});
+  await shot("linien-nebeneinander");
   ok(await rp(`map.queryRenderedFeatures({layers:["dtr"]}).length >= 6 && map.queryRenderedFeatures({layers:["dst"]}).length===1`), "Linien oder Haltestelle nicht gezeichnet: "+await rp(`JSON.stringify([map.getLayoutProperty("dtr","visibility"), map.queryRenderedFeatures({layers:["dtr"]}).length, map.queryRenderedFeatures({layers:["dst"]}).length])`));
   ok(await rp(`map.getLayer("dst").minzoom===11 && JSON.stringify(map.getPaintProperty("dtr","line-offset")).indexOf("\\"o\\"") > -1`), "Versatz oder frühe Haltestellen fehlen");
   await rp(`map.getSource("dtr").setData({type:"FeatureCollection", features:[]}); map.getSource("dst").setData({type:"FeatureCollection", features:[]}); DL = {}; dApplyMap(); true`);
