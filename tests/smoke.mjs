@@ -136,7 +136,7 @@ async function seed(){
     t.photos = {p4:["ph_a","ph_b"], p5:["ph_c"]};
     var c = document.createElement("canvas"); c.width = 320; c.height = 240; var g = c.getContext("2d");
     ["#c33","#3a3","#36c"].forEach(function(col, i){ g.fillStyle = col; g.fillRect(0, 0, 320, 240); g.fillStyle = "#fff"; g.font = "60px sans-serif"; g.fillText(String(i+1), 140, 140); PHC[["ph_a","ph_b","ph_c"][i]] = c.toDataURL("image/jpeg", .7); });
-    TLKEY = ""; // Tests ohne echten Transitland-Schlüssel (kein Kontingent verbrauchen); der Transitland-Test setzt einen eigenen
+    TLKEY = ""; TL.cfg = ""; // Tests ohne echten Transitland-Schlüssel (kein Kontingent verbrauchen); der Transitland-Test setzt einen eigenen
     acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; fbDb = null; acct.state = "ok"; lsSet("rp-dcdemo", "0"); DCSIG = "";
     S = {trips:{t_test:t}, cur:"t_test"}; cur = H; tab = "day"; sel = null; finEd = ""; finM = "";
     FR.friends = [{uid:"u_anna", name:"anna"},{uid:"u_ludwig", name:"Ludwig"},{uid:"u_clara", name:"Clara"}];
@@ -1533,7 +1533,11 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   await page.waitForFunction(() => window.__rp("lsGet('rp-tlkey')==='neuerkey' && !TL.bad"), null, {timeout:5000}).catch(() => {});
   ok(await rp(`lsGet('rp-tlkey')==='neuerkey' && !TL.bad`), "Schlüssel nicht gespeichert: "+await rp(`tlMsg + ' / ' + lsGet('rp-tlkey')`));
   ok(TLQ.some(u => u.includes("apikey=neuerkey")), "Schlüssel wird vor dem Speichern nicht geprüft");
-  await rp(`lsSet("rp-tlkey", ""); TL.bad = false; true`);
+  // gemeinsamer Schlüssel aus Firebase (config/transit) gilt für alle Angemeldeten, ohne Eintrag auf dem Gerät
+  await rp(`lsSet("rp-tlkey", ""); TL.bad = false; var o = fbDb; fbDb = {collection:function(c){ return {doc:function(d){ return {get:function(){ return Promise.resolve({exists:c==="config" && d==="transit", data:function(){ return {tlkey:"gemeinsam"}; }}); }}; }}; }}; tlCfgLoad(); fbDb = o; true`);
+  await page.waitForTimeout(200);
+  ok(await rp(`tlKey()==="gemeinsam" && lsGet("rp-tlcfg")==="gemeinsam" && map.getSource("tl-r").tiles[0].indexOf("apikey=gemeinsam") > -1`), "Gemeinsamer Schlüssel aus Firebase wird nicht genutzt");
+  await rp(`TL.cfg = ""; lsSet("rp-tlcfg", ""); true`);
 });
 
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
