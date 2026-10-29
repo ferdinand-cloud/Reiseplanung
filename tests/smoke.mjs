@@ -1415,6 +1415,13 @@ await test("ÖPNV nach Kartenausschnitt: Linien und Bezirke aus OpenStreetMap (L
   await rp(`S.cur = "t_lis"; renderAll(); true`); await page.waitForTimeout(300); await jump(-9.14, 38.715, 13);
   await page.waitForFunction(() => window.__rp("!!(DEST && VV.tr && DEST.nb && NB.length===3)"), null, {timeout:5000});
   ok(OVQ.length===n0 && await rp(`nbHi.Alfama && DL.metro && DOFF["tram:28E"]`), "Ausschnitt wird nicht aus dem Speicher geladen ("+(OVQ.length-n0)+" neue Abfragen)");
+  // Lissabon-Reise bleibt gewählt, Karte nach New York: eingebaute New-York-Daten (MTA, Fähren, Citi Bike, Bezirke) statt Transitland/OSM
+  await rp(`layers.sub = true; true`); await jump(-73.99, 40.73, 13);
+  await page.waitForFunction(() => window.__rp("DEST===null && VT.nyc"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`S.cur==="t_lis" && DEST===null && !dynOn() && !document.body.classList.contains("dyn") && NB.length > 50 && CB.sys===CBNYC && map.getLayoutProperty("sub","visibility")==="visible"`), "Andere Reise gewählt: New York zeigt nicht die eingebauten Daten: "+await rp(`JSON.stringify([S.cur, !!DEST, VT.nyc, VT.out, NB.length, map.getLayoutProperty("sub","visibility")])`));
+  await jump(-9.14, 38.715, 13);
+  await page.waitForFunction(() => window.__rp("!!DEST && dynOn()"), null, {timeout:5000}).catch(() => {});
+  ok(await rp(`!!DEST && dynOn() && !VT.nyc`), "Zurück in Lissabon: Reiseziel-Daten kommen nicht zurück");
 });
 
 await test("ÖPNV nach Kartenausschnitt: Zeitlimit und Fehler statt endlosem Laden (Tokio)", async () => {
@@ -1496,7 +1503,8 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   await jump(13.4, 52.52, 13);
   await page.waitForTimeout(200);
   ok(await rp(`DEST===null && VT.out && tlOn() && !!map.getSource("tl-r") && map.getSource("tl-r").tiles[0].indexOf("apikey=testkey") > -1 && map.getSource("tl-r").maxzoom===14`), "Transitland-Kacheln nicht als Kartenquelle eingerichtet");
-  await click("#layersBtn"); await click("#lTrBtn"); await page.waitForTimeout(400);
+  await click("#layersBtn"); await click("#lTrBtn");
+  await page.waitForFunction(() => window.__rp("!!VV.tr && VV.tr.lines.length===3"), null, {timeout:5000}).catch(() => {});
   const grp = await page.locator("#lTrGrp").innerText();
   ok(grp.includes("Metro") && grp.includes("S-Bahn") && grp.includes("Tram") && grp.includes("Busse"), "Verkehrsmittel aus Transitland fehlen: "+grp);
   ok(await rp(`VV.tr.lines.length===3 && !VV.tr.lines.some(function(l){ return l.k==="U9"; })`), "Linie außerhalb des Ausschnitts steht in der Liste");

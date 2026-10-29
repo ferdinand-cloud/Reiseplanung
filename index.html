@@ -11962,7 +11962,7 @@ var DRMAX = 10000; // Suchradius höchstens 10 km: in großen Städten sonst zu 
    Darunter nur das graue Grundgerüst aus den Kartenkacheln: 0,5°-Kacheln waren in Berlin zu groß für Overpass (Zeitlimit, „Server ausgelastet“) */
 var VTL = {a:{z:11, s:0.25, tol:0.00006}, b:{z:12, s:0.1, tol:0.00003}, c:{z:14, s:0.05, tol:0.00003}, k:{z:12, s:0.1, tol:0}}; // k = nur Leihrad-Stationen (wenn die Linien von Transitland kommen)
 var VTV = 2, VTMAX = 400, VTMEM = 160, VTPAR = 2, VTWAIT = 400, VTBACK = [3000, 10000];
-var VT = {mem:{}, st:{}, q:[], run:0, out:false, keys:[], sig:"", tm:0, fail:{}};
+var VT = {mem:{}, st:{}, q:[], run:0, out:false, nyc:false, keys:[], sig:"", tm:0, fail:{}};
 var VV = {tr:null, bus:null};
 var OVP = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 var DEST = null, NB_NYC = NB, NBKEY = "nyc-nb-hi", DOFF = {}, dQ = "", dOpen = {}, dWant = false, DMEM = {};
@@ -11990,7 +11990,8 @@ function destIdx(){ try { var a = JSON.parse(lsGet("rp-dest")||"[]"); return Arr
 function destNear(e, C){ return dist(e, C) < Math.max(3000, e.r*0.4); }
 function destSync(){
   var C = destNow();
-  if(!C || inNYC(C)){ if(DEST) destSet(null); return; }
+  // Karte zeigt New York (egal welche Reise): eingebaute MTA-, Fähren-, Citi-Bike- und Bezirksdaten statt der Daten des Reiseziels
+  if(!C || inNYC(C) || VT.nyc){ if(DEST) destSet(null); return; }
   if(DEST && destNear(DEST, C)){ DEST.pts = C.pts; return; }
   destSet(destOf(C), C.pts);
 }
@@ -12163,6 +12164,8 @@ function vtWant(){
 function vtView(){
   if(!mapReady || !map) return;
   var c = map.getCenter(), out = map.getZoom() >= 8 && !inNYC({la:c.lat, lo:c.lng}); // weit herausgezoomt: Menü der Reise behalten
+  var ny = map.getZoom() >= 8 && !out;
+  if(ny!==VT.nyc){ VT.nyc = ny; VT.out = out; destSync(); document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; }
   if(out!==VT.out){ VT.out = out; document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; } // applyLayers ruft vtView erneut
   var z = map.getZoom(), w = vtWant(), keys = [];
   Object.keys(VTL).forEach(function(lv){ if(w[lv] && z >= VTL[lv].z) keys = keys.concat(vtKeys(lv)); });
