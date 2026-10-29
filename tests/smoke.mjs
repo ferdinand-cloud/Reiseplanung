@@ -1793,6 +1793,23 @@ await test("Events: eigenes Event mit Location – Bewertung und Notiz bleiben b
   ok(await visible("#card .evat"), "Location-Knopf am Event fehlt");
   await click("#card .evat"); await page.waitForTimeout(200);
   ok(await rp(`sel==="p2"`), "Location öffnet nicht");
+  ok(await visible("#card [data-act=cardmore]") && await page.locator("#jPop").isHidden(), "Location nicht als normale Ort-Karte geöffnet");
+  await click("#card [data-act=close]"); await page.waitForTimeout(150);
+  ok(await rp(`sel==="${eid}"`), "Schließen der Location führt nicht zum Event zurück");
+  // aus dem Detail-Fenster des Events: Location öffnen, Schließen führt zurück ins Detail-Fenster
+  await rp(`openJPop("${eid}", "${N}")`); await page.waitForTimeout(150);
+  await click("#jPop .evin"); await page.waitForTimeout(200);
+  ok(await rp(`sel==="p2"`) && await page.locator("#jPop").isHidden(), "Location aus dem Detail-Fenster öffnet nicht");
+  await click("#card [data-act=close]"); await page.waitForTimeout(150);
+  ok(await visible("#jPop") && await rp(`jp && jp.pid==="${eid}"`), "Zurück ins Detail-Fenster des Events fehlt");
+  await click("#jPop [data-act=jclose]");
+  // Tagesplan: „in <Location>“ als Knopf am Stopp
+  await rp(`(function(){ select(null); cur = "${N}"; setSheet("full"); renderAll(); })()`); await page.waitForTimeout(200);
+  await click(`.st[data-id="${eid}"] .evin`); await page.waitForTimeout(200);
+  ok(await rp(`sel==="p2"`), "Location aus dem Tagesplan öffnet nicht");
+  await click("#card [data-act=close]"); await page.waitForTimeout(150);
+  ok(await rp(`sel===null && sheetState==="full"`), "Schließen führt nicht zum Tagesplan zurück");
+  await rp(`(function(){ cur = todayKey(); renderAll(); })()`);
   // Merken / Übernehmen eines Events meint die Location
   ok(await rp(`(function(){ var q = evLocQ({n:"Jazz im Park", c:"event", la:1, lo:2, addr:"in Washington Square Park · Teststraße 1"}); return q.n==="Washington Square Park" && q.c!=="event" && q.addr==="Teststraße 1"; })()`), "evLocQ falsch");
   // Tageskopf: eigenes Event mit Location-Suche

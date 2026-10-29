@@ -3049,6 +3049,7 @@ a.ls-row{text-decoration:none}
 .evloc.on{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .evloc .ls-th svg{width:18px;height:18px}
 .evform select{background:var(--fill);border:0;border-radius:10px;min-height:38px;padding:0 10px;font:inherit;color:inherit}
+.evin{border:0;background:none;padding:0;margin:0;font:inherit;color:var(--accent,#0a84ff);cursor:pointer;text-align:left}
 .evat{max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .devt svg{width:20px;height:20px}
 .tkopen svg{width:18px;height:18px}
@@ -11488,6 +11489,24 @@ function evLoad(){
    Datum = Tag im Tagesplan, Beginn = T().times, Ende p.te, Link p.url, Ticketmaster-Kennung p.ev. */
 function isEv(p){ return !!(p && p.c==="event"); }
 function evLoc(p){ var l = isEv(p) && p.loc && P(p.loc); return l && !isEv(l) ? l : null; }
+function evInBtn(p){ var l = evLoc(p); return l ? "<button type=\"button\" class=\"evin\" data-act=\"evloc\" data-pid=\""+esc(l.id)+"\" aria-label=\"Location öffnen: "+esc(l.n)+"\">in "+esc(l.n)+"</button>" : ""; }
+// Location aus einem Event öffnen: normale Ort-Karte wie beim Antippen auf der Karte; Schließen führt zurück zum Event (Karte bzw. Detail-Fenster)
+var EVRET = null;
+function evLocOpen(lid){
+  var l = P(lid); if(!l) return;
+  var r = {lid:lid, sel:sel, sheet:sheetState, jp:jp && !$("jPop").hidden ? {pid:jp.pid, dk:jp.dk} : null};
+  closeJpMore(); if(!$("catPop").hidden) closeCatPop(); if(r.jp) closeJPop();
+  EVRET = r; select(lid);
+  if(hasLoc(l)){ if(!desktop.matches) setSheet("min"); setTimeout(function(){ revealPoint(l, 16, true); }, desktop.matches ? 0 : 60); }
+}
+function evLocBack(){
+  var r = EVRET; EVRET = null; if(!r || sel!==r.lid) return false;
+  if(r.sheet && r.sheet!==sheetState) setSheet(r.sheet);
+  select(r.sel && (r.sel==="poi" || P(r.sel)) ? r.sel : null);
+  if(r.jp && P(r.jp.pid)) openJPop(r.jp.pid, r.jp.dk);
+  else if(r.sel && P(r.sel) && hasLoc(P(r.sel)) && map) revealPoint(P(r.sel), 0, false);
+  return true;
+}
 function evAddr(l){ return ("in "+l.n+(l.addr ? " · "+l.addr : "")).slice(0, 120); }
 function evsAt(lid){ var r = rootOf(lid); return Object.keys(T().places).map(P).filter(function(q){ return isEv(q) && q.loc===r; })
   .sort(function(a, b){ return ((dayOf(a.id)||"~")+timeOf(a.id)).localeCompare((dayOf(b.id)||"~")+timeOf(b.id)); }); }
@@ -13196,7 +13215,7 @@ function tap(x, y){
 }
 
 /* ---------- Auswahl-Karte ---------- */
-function select(id){ if(id!==sel) meRoute = false; if(id!=="poi") poiSel = null; poiRv = ""; sel = id; renderCard(); scheduleOverlay(); }
+function select(id){ if(EVRET && id!==EVRET.lid) EVRET = null; if(id!==sel) meRoute = false; if(id!=="poi") poiSel = null; poiRv = ""; sel = id; renderCard(); scheduleOverlay(); }
 /* ---------- Tatsächliche Wege: Fußwege über OSM-Routing, U-Bahn entlang der Gleise ---------- */
 var WALKC = {}, walkQ = [], walkBusy = 0;
 try { WALKC = JSON.parse(lsGet("nyc-walk-cache")||"{}") || {}; } catch(e){ WALKC = {}; }
@@ -14954,7 +14973,7 @@ function renderDay(){
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
       "<div class=\"lcol\">"+(isH ? "<button type=\"button\" class=\"no hs\" data-act=\"stopopen\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":"H")+"</button>"
             : "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>")+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\">"+GRIPSVG+"</button>"+"</div>"+
-      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? "<span class=\"privmk\" title=\"Privat – nur Mitreisende\">"+ILOCK+"privat</span>" : "")+(canPriv() && isPubP(id) ? "<span class=\"pubmk\" title=\"Für Freunde veröffentlicht\">"+VISPUB+"</span>" : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+ohRowMark(id)+esc(p.k==="hotel" ? (hFree(cur) && i===0 ? "Start im Hotel" : hFree(cur) && i===ids.length-1 ? "Zurück ins Hotel" : "Zwischenstopp im Hotel") : CATNAME[p.c])+(function(){ var gn = grpNames(P(rootOf(id))||p); return gn ? " · <span class=\"sgrp\" title=\"Gruppe\">"+GRPICO+esc(gn)+"</span>" : ""; })()+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
+      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? "<span class=\"privmk\" title=\"Privat – nur Mitreisende\">"+ILOCK+"privat</span>" : "")+(canPriv() && isPubP(id) ? "<span class=\"pubmk\" title=\"Für Freunde veröffentlicht\">"+VISPUB+"</span>" : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+ohRowMark(id)+esc(p.k==="hotel" ? (hFree(cur) && i===0 ? "Start im Hotel" : hFree(cur) && i===ids.length-1 ? "Zurück ins Hotel" : "Zwischenstopp im Hotel") : evLoc(p) ? "" : CATNAME[p.c])+(evLoc(p) ? evInBtn(p) : "")+(function(){ var gn = grpNames(P(rootOf(id))||p); return gn ? " · <span class=\"sgrp\" title=\"Gruppe\">"+GRPICO+esc(gn)+"</span>" : ""; })()+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(!isRO() && (hasLoc(p)||p.addr)?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\">"+ic("cal")+"<select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
       "</div></li>";
@@ -15064,7 +15083,7 @@ function renderJPop(){
   }
   pvHide();
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && ((META[S.cur].members||[]).length > 1 || (META[S.cur].viewers||[]).length)); // auch Reise nur mit Beobachtern: Kommentare
-  h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · "))+"</small></div></div>";
+  h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+(evLoc(p) ? esc(CATNAME[p.c])+" · "+evInBtn(p) : esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · ")))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   // eine Zeile: Tag · Uhrzeit · Abhaken · Bewertung · Route · Infos · Mehr (Gruppe, Privat)
   var rv0 = rateOf(jp.pid), rr = RATES.filter(function(r){ return r[0]===rv0; })[0], pv0 = canPriv() && isPrivP(jp.pid);
@@ -16966,7 +16985,7 @@ document.addEventListener("click", function(e){
     case "tadd": var arr = tdraft[t.getAttribute("data-path")]; arr.push({n:"", loc:"", from:tdraft.start||"", to:tdraft.end||""}); tdraft.ok = t.getAttribute("data-path")+"."+(arr.length-1); renderSheet(); var gi = document.querySelector("#tripPop [data-geo=\""+tdraft.ok+"\"]"); if(gi) gi.focus(); break;
     case "tdel": tdraft[t.getAttribute("data-path")].splice(parseInt(t.getAttribute("data-i"),10),1); tdraft.ok = ""; renderSheet(); break;
     case "tfopen": var tk2 = t.getAttribute("data-k"); tdraft.ok = tdraft.ok===tk2 ? "" : tk2; renderSheet(); break;
-    case "close": select(null); break;
+    case "close": if(!evLocBack()) select(null); break;
     // Handy: Planung ganz einklappen, auf den Punkt zoomen und dessen Pop-up zeigen – Punkt mit Abstand oberhalb des Pop-ups
     case "stopopen": select(id); if(desktop.matches){ openJPop(id, cur); revealPoint(P(id), 15, true); } else if(hasLoc(P(id))){ setSheet("min"); setTimeout(function(){ revealPoint(P(id), 16, true); }, 60); } else openJPop(id, cur); break;
     case "wopen": select(id); if(desktop.matches){ openJPop(id); revealPoint(P(id), 15, true); } else if(hasLoc(P(id))){ setSheet("min"); setTimeout(function(){ revealPoint(P(id), 16, true); }, 60); } else openJPop(id); break;
@@ -17255,7 +17274,7 @@ document.addEventListener("click", function(e){
     case "evfsave": evFormSave(); break;
     case "evfloc": if(EV && EV.f){ evKeep(); EV.f.loc = t.getAttribute("data-pid"); EV.f.err = ""; renderEv(); } break;
     case "evgo": closeCatPop(); setSheet("mid"); select(t.getAttribute("data-pid")); break;
-    case "evloc": closeJpMore(); closeCatPop(); select(t.getAttribute("data-pid")); break;
+    case "evloc": evLocOpen(t.getAttribute("data-pid")); break;
     case "evkeysave": evKeySave(); break;
     case "evkeydel": tmKey = ""; EVC = {}; try { localStorage.removeItem("rp-tmkey"); } catch(e){} refreshSettings(); break;
     case "tkclose": TK = null; closeCatPop(); break;
