@@ -5739,6 +5739,7 @@ function tripsPageHTML(){
       h += "<button type=\"button\" class=\"ag-row\" data-act=\""+(curT?"tripdetails":"trip")+"\" data-trip=\""+x.id+"\"><span><b>"+esc(x.name)+(curT?" <em class=\"curtag\">Aktiv</em>":"")+"</b><small>"+tstatHTML(x)+esc(x.opt ? "" : " · "+rangeLabel(x.start,x.end))+(nm2>1?" · mit "+(nm2-1)+(nm2===2?" Person":" Personen"):"")+(isViewerOf(x.id) ? " · du beobachtest" : "")+(mm && (mm.invites||[]).length ? " · "+mm.invites.length+(mm.invites.length===1?" Einladung offen":" Einladungen offen"):"")+(curT?" · Details ansehen":"")+"</small></span><em class=\"chev\">›</em></button>";
     });
     h += "</div>";
+  }
   } else h += "<p class=\"note\">"+(sh ? "Noch keine gemeinsamen Reisen. Öffne eine Reise und lade unter „Mitreisende“ Freunde ein." : (liveIds().length ? "Keine privaten Reisen." : "Noch keine eigene Reise erstellt."))+"</p>";
   if(!sh) h += "<div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"tripnew\"><span><b>+ Neue Reise</b></span></button></div>";
   return h+"</div>";
@@ -9244,16 +9245,20 @@ function acctHTML(){
 
   if(u && !PROF) h += "<p class=\"note\">Tipp: Über den Stift oben legst du einen Benutzernamen fest, damit dich andere finden.</p>";
 
-  // Google
+  // Google: nur für den Verwalter (oder wenn auf dem Gerät schon ein Schlüssel liegt)
+  if(gKey || keyAdmin()){
   h += "<div class=\"ag-lbl\">Bewertungen &amp; Fotos</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"gtoggle\" aria-expanded=\""+gOpen+"\"><span><b>Google-Schlüssel</b><small>"+(gKey ? "Aktiv – nur auf diesem Gerät" : "Nicht eingerichtet")+"</small></span><em class=\"chev\">"+(gOpen?"⌄":"›")+"</em></button>";
   if(gOpen) h += "<div class=\"ag-in\"><div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\">"+esc(gMsg)+"</p>":"")+"</div>";
   h += "</div>";
   // ÖPNV-Karte (Transitland): Schlüssel nur auf dem Gerät, nicht im öffentlichen Code
   var tk = lsGet("rp-tlkey") || "";
+  // Gemeinsamer Schlüssel aktiv: Zeile nur für den Verwalter (Ferdinand) bzw. wenn auf dem Gerät ein eigener Schlüssel liegt
+  if(tk || !TL.cfg || TL.bad || keyAdmin()){
   h += "<div class=\"ag-lbl\">ÖPNV-Karte</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"tltoggle\" aria-expanded=\""+tlOpen+"\"><span><b>Transitland-Schlüssel</b><small>"+(tk ? (TL.bad ? "Abgelehnt – ÖPNV aus OpenStreetMap" : "Eigener Schlüssel – nur auf diesem Gerät") : TL.cfg ? (TL.bad ? "Abgelehnt – ÖPNV aus OpenStreetMap" : "Aktiv – für alle eingerichtet") : "Nicht eingerichtet – ÖPNV aus OpenStreetMap")+"</small></span><em class=\"chev\">"+(tlOpen?"⌄":"›")+"</em></button>";
   if(tlOpen && (TL.bad || TL.cfgSt)) h += "<div class=\"ag-in\"><p class=\"note\">"+esc([TL.bad ? TL.why : "", TL.cfgSt || ""].filter(Boolean).join(" · "))+"</p></div>";
   if(tlOpen) h += "<div class=\"ag-in\"><div class=\"gkey\"><input type=\"password\" id=\"tlKeyIn\" autocomplete=\"off\" spellcheck=\"false\" autocapitalize=\"off\" placeholder=\""+(tk?"••••••••"+esc(tk.slice(-4)):"iwa_live_…")+"\" aria-label=\"Transitland-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"tlkeysave\">Speichern</button>"+(tk?"<button type=\"button\" class=\"btn g s\" data-act=\"tlkeydel\">Entfernen</button>":"")+"</div>"+(tlMsg?"<p class=\"note\">"+esc(tlMsg)+"</p>":"")+"</div>";
   h += "</div>";
+  }
   // Events (Ticketmaster): Schlüssel wird im Events-Fenster eingetragen, hier nur Status und Entfernen
   if(tmKey) h += "<div class=\"ag-lbl\">Events</div><div class=\"ag-grp\"><div class=\"ag-row\"><span><b>Ticketmaster-Schlüssel</b><small>Aktiv – nur auf diesem Gerät</small></span><button type=\"button\" class=\"btn g s\" data-act=\"evkeydel\">Entfernen</button></div></div>";
   // Empfehlungen
@@ -12215,6 +12220,7 @@ function tlCfgLoad(){
     }, fail);
   }, fail);
 }
+function keyAdmin(){ return !!(PROF && String(PROF.nameLower || PROF.name || "").toLowerCase()==="ferdinand"); }
 function tlOn(){ return !!tlKey() && dynOn(); }
 function tlUrl(l){ return "https://transit.land/api/v2/tiles/"+l+"/tiles/{z}/{x}/{y}.pbf?apikey="+encodeURIComponent(tlKey()); }
 /* GTFS-Grundtyp → Verkehrsmittel der App (S-Bahn und Regionalzüge sind in GTFS „Bahn“) */

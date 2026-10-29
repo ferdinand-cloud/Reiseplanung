@@ -1537,6 +1537,13 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   await rp(`lsSet("rp-tlkey", ""); TL.bad = false; var o = fbDb; fbDb = {collection:function(c){ return {doc:function(d){ return {get:function(){ return Promise.resolve({exists:c==="config" && d==="transit", data:function(){ return {tlkey:"gemeinsam"}; }}); }}; }}; }}; tlCfgLoad(); fbDb = o; true`);
   await page.waitForTimeout(200);
   ok(await rp(`tlKey()==="gemeinsam" && lsGet("rp-tlcfg")==="gemeinsam" && map.getSource("tl-r").tiles[0].indexOf("apikey=gemeinsam") > -1`), "Gemeinsamer Schlüssel aus Firebase wird nicht genutzt");
+  // gemeinsamer Schlüssel aktiv: Einstellungszeile nur für den Verwalter
+  await rp(`var p0 = PROF; PROF = {name:"anna", nameLower:"anna"}; tlOpen = false; openSettings(); window.__p0 = p0; true`); await page.waitForTimeout(150);
+  ok(await page.locator("[data-act=tltoggle]").count()===0, "Andere Nutzer sehen die Transitland-Zeile trotz gemeinsamem Schlüssel");
+  ok(await rp(`!!gKey`) || await page.locator("[data-act=gtoggle]").count()===0, "Andere Nutzer sehen die Google-Schlüssel-Zeile");
+  await rp(`PROF = {name:"Ferdinand", nameLower:"ferdinand"}; refreshSettings(); true`); await page.waitForTimeout(150);
+  ok(await page.locator("[data-act=tltoggle]").count()===1 && await page.locator("[data-act=gtoggle]").count()===1, "Verwalter sieht die Schlüssel-Zeilen nicht");
+  await rp(`PROF = window.__p0; closeMenus(); true`);
   // Dokument mit automatischer ID statt „transit“ (und vertipptes Feld tikey) wird trotzdem gefunden
   await rp(`TL.cfg = ""; lsSet("rp-tlcfg", ""); var o = fbDb; fbDb = {collection:function(c){ return {doc:function(){ return {get:function(){ return Promise.resolve({exists:false}); }}; }, limit:function(){ return {get:function(){ return Promise.resolve({forEach:function(f){ f({id:"Xa9auto", data:function(){ return {tikey:" zweit "}; }}); }}); }}; }}; }}; tlCfgLoad(); fbDb = o; true`);
   await page.waitForTimeout(200);
