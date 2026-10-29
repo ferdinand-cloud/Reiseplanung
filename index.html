@@ -8413,8 +8413,17 @@ function chHide(id){ var me = acct.user && acct.user.uid, c = CH.byId[chOpen]; i
   if(c){ c.hide = Object.assign({}, c.hide || {}); c.hide[me] = Object.assign({}, c.hide[me] || {}); c.hide[me][id] = true; }
   var o = {}; o["hide."+me+"."+id] = true; if(c && c.pin && c.pin.id===id){ o.pin = null; c.pin = null; } if(chRe && chRe.id===id){ chRe = null; renderChRe(); }
   chMetaUpd(); fbDb.collection("chats").doc(chOpen).update(o).catch(function(){ toast("Löschen fehlgeschlagen", false); }); }
+var chActKbT = 0;
 function chActOpen(el){
   var id = el && el.getAttribute("data-mid"), m = id && chMsgById(id), me = acct.user && acct.user.uid; if(!m || !me) return; chActClose(true);
+  // Tastatur offen: erst schließen (wie Nachrichten/Instagram), dann öffnen, wenn der sichtbare Bereich wieder voll ist – sonst fehlt der Platz für Leiste, Nachricht und Menü
+  if(chTyping()){ var ae = document.activeElement, vv0 = window.visualViewport, t0 = Date.now(); try { ae.blur(); } catch(x){} chVV(); clearTimeout(chActKbT);
+    var wait = function(){ chActKbT = 0; var v = window.visualViewport, full = !v || (v.height >= innerHeight - 80 && v.offsetTop < 4);
+      if(!full && Date.now() - t0 < 700){ chActKbT = setTimeout(wait, 40); return; }
+      // Eingabezeile gleitet noch nach unten: erst danach messen
+      if(full && !wait.ok && vv0){ wait.ok = 1; chActKbT = setTimeout(wait, 160); return; }
+      if(!chPage || chOpen==null) return; var e2 = document.querySelector("#chMsgs .ch-msg[data-mid=\""+id+"\"]"); if(e2 && !chTyping()) chActOpen(e2); };
+    chActKbT = setTimeout(wait, vv0 ? 60 : 320); return; }
   var r = el.getBoundingClientRect(), W = innerWidth, H = innerHeight, mine = m.from===me, gone = chGone(chPartner(chOpen)), c = CH.byId[chOpen], pinned = c && c.pin && c.pin.id===id;
   // sichtbarer Bereich (bei offener Tastatur nur der Teil darüber); Statusleiste/Home-Balken freihalten
   var vv = window.visualViewport, vT = vv ? vv.offsetTop : 0, vH = vv ? vv.height : H, top0 = vT + (vT > 0 ? 12 : 60), bot0 = H - (vT + vH) + (vH < H - 100 ? 10 : 28);
@@ -8822,7 +8831,7 @@ window.addEventListener("popstate", function(e){ if(chPopIgn){ chPopIgn = false;
   function onEnd(e){ if(e.__chg) return; e.__chg = 1; tgOff(); lpStop(); if(lpOn){ lpOn = false; if(e.cancelable) e.preventDefault(); } end(false); }
   function onCancel(e){ if(e.__chg) return; e.__chg = 1; tgOff(); lpStop(); lpOn = false; end(true); }
   document.addEventListener("touchend", onEnd, {capture:true, passive:false}); document.addEventListener("touchcancel", onCancel, {capture:true});
-  document.addEventListener("contextmenu", function(e){ var m = chPage && chOpen && e.target.closest && e.target.closest("#chMsgs .ch-msg[data-mid]"); if(!m) return; e.preventDefault(); if(!chActM) chActOpen(m); }, true);
+  document.addEventListener("contextmenu", function(e){ var m = chPage && chOpen && e.target.closest && e.target.closest("#chMsgs .ch-msg[data-mid]"); if(!m) return; e.preventDefault(); if(!chActM && !chActKbT) chActOpen(m); }, true);
 })();
 /* Ort aus dem Ort-Fenster im Chat teilen: erst Freund wählen */
 function chShareMenu(pid, btn){

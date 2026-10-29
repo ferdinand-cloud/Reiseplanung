@@ -593,6 +593,13 @@ await test("Chat: Nachricht gedrückt halten – Reaktionen, Antworten, Fixieren
   await hold("m25"); await cha("reply"); await page.waitForTimeout(250);
   ok(await rp(`chRe && chRe.id==="m25" && !$("chReBox").hidden`), "Antworten aus dem Menü markiert nicht");
   await page.click("#chReBox [data-act=chrex]"); await rp(`document.activeElement.blur(); true`); await page.waitForTimeout(500);
+  // Tastatur offen (Eingabe fokussiert): Gedrückthalten schließt sie erst, Leiste, Nachricht und Menü liegen ganz im Bild
+  await rp(`$("chIn").focus(); true`); await page.waitForTimeout(200);
+  await hold("m28", 650); await page.waitForTimeout(200);
+  const K = await page.evaluate(() => { const a = document.getElementById("chAct"), r = (s) => a.querySelector(s).getBoundingClientRect();
+    return {foc:document.activeElement && document.activeElement.id, rxT:r(".cha-rx").top, rxB:r(".cha-rx").bottom, mT:r(".cha-msg").top, mnB:r(".cha-menu").bottom, H:innerHeight}; });
+  ok(K.foc!=="chIn" && K.rxT >= 0 && K.rxB <= K.mT + 12 && K.mnB <= K.H, "Mit offener Tastatur fehlt Leiste/Nachricht/Menü im Bild: "+JSON.stringify(K));
+  await page.touchscreen.tap(380, 150); await page.waitForTimeout(300);
   // Fixieren: Leiste oben, Antippen springt hin; erneut = lösen
   await hold("m25"); await cha("pin"); await page.waitForTimeout(250);
   ok(await rp(`var u = __upd[__upd.length-1]; u[0]==="u1_u_me" && u[1].pin && u[1].pin.id==="m25" && !$("chPinBox").hidden && $("chPinBox").textContent.includes("Nachricht 25")`), "Fixieren zeigt keine Leiste");
