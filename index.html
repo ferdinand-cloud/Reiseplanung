@@ -10626,6 +10626,17 @@ function stayRef(){ var pts = []; days().forEach(function(D){ routePts(D.key).fo
 function stayRateIdx(id){ var v = rateOf(id), i = -1; RATES.forEach(function(r, j){ if(r[0]===v) i = j; }); return i < 0 ? 99 : i; }
 function stayPrice(id){ var v = parseFloat(String(stayB(id).pr||"").replace(",", ".")); return isFinite(v) && v > 0 ? v : 0; }
 function stayCount(){ return (T().hotels||[]).length + stayCands().length; }
+/* Booking.com: Suche nach Name + Ort mit Reisedaten und Personen (ohne Schnittstelle, Preise sieht man erst dort) */
+function stayPers(){ var m = META[S.cur], vw = (m && m.viewers) || []; return Math.max(1, ((m && m.members) || []).filter(function(u){ return vw.indexOf(u) < 0; }).length); }
+function bkUrl(x, f, to){ var a = String(x.addr||"").split(",").map(function(v){ return v.trim(); }).filter(Boolean), q = [String(x.n||"").trim()].concat(a.length > 1 ? [a[a.length-1]] : []).filter(Boolean).join(", ");
+  var u = "https://www.booking.com/searchresults.html?ss="+encodeURIComponent(q);
+  if(parseD(f) && parseD(to) && to > f) u += "&checkin="+f+"&checkout="+to;
+  return u+"&group_adults="+stayPers()+"&no_rooms=1&group_children=0"; }
+function bkFor(o){ var t = T(), g = stayGaps()[0];
+  if(o.h){ var H = hotelById(o.h); return H ? bkUrl(H, H.from, H.to) : ""; }
+  var p = o.pid && P(o.pid); if(!p) return "";
+  return t.opt ? bkUrl(p, "", "") : bkUrl(p, g ? g.from : t.start, g ? g.to : t.end); }
+function bkBtn(attr){ return "<button type=\"button\" class=\"sc-x\" data-act=\"staybk\" "+attr+" aria-label=\"Bei Booking.com ansehen\" title=\"Bei Booking.com ansehen\">"+ic("ext")+"</button>"; }
 function renderStay(){
   var t = T(), RO = isRO(), ns = stayNights(), hs = stayHotels(), h = "<div class=\"stay\">";
   if(!RO) h += "<div class=\"wtop stay-top\"><div class=\"stay-tt\"><b>Unterkünfte</b><small>"+(t.opt ? "Option ohne Termin" : rangeLabel(t.start, t.end))+"</small></div><button type=\"button\" class=\"wadd\" data-act=\"stayadd\" aria-label=\"Unterkunft suchen\" title=\"Unterkunft suchen\">+</button></div>";
@@ -10645,7 +10656,7 @@ function renderStay(){
     var x = r.h, n2 = nCount(x.from, x.to), ci = stayTime(x, "ci"), co = stayTime(x, "co"), b = RO ? {} : stayB(x.id), pr = !RO && stayPrice(x.id);
     var sub2 = [ci ? "Check-in "+ci : "", co ? "Check-out "+co : "", b.nr ? "Buchung "+b.nr : "", pr ? "ca. "+String(pr).replace(".", ",")+" € / Nacht" : ""].filter(Boolean).join(" · ");
     h += "<div class=\"scard\"><button type=\"button\" class=\"sc-m\" data-act=\"stayedit\" data-h=\""+esc(x.id)+"\"><span class=\"sc-ic\" style=\"--sc:"+stayCol(x)+"\">"+icon("hotel")+"</span><span class=\"sc-t\"><b>"+esc(x.n)+"</b><small>"+esc(dLbl(x.from)+" – "+dLbl(x.to)+" · "+nLbl(n2))+"</small>"+(sub2 ? "<small>"+esc(sub2)+"</small>" : "")+"</span></button>"+
-      (hasLoc(x) ? "<button type=\"button\" class=\"sc-x\" data-act=\"stayshow\" data-h=\""+esc(x.id)+"\" aria-label=\"Auf der Karte zeigen\" title=\"Auf der Karte zeigen\">"+ic("map")+"</button>" : "")+"</div>";
+      (RO ? "" : bkBtn("data-h=\""+esc(x.id)+"\""))+(hasLoc(x) ? "<button type=\"button\" class=\"sc-x\" data-act=\"stayshow\" data-h=\""+esc(x.id)+"\" aria-label=\"Auf der Karte zeigen\" title=\"Auf der Karte zeigen\">"+ic("map")+"</button>" : "")+"</div>";
   });
   if(!RO){
     var cs = stayCands(), ref = stayRef();
@@ -10656,7 +10667,7 @@ function renderStay(){
     if(!cs.length) h += "<p class=\"note\">Noch keine Kandidaten. Mit + suchst du eine Unterkunft; im Ort-Menü kannst du auch „Als Unterkunft vormerken“ wählen.</p>";
     cs.forEach(function(p){
       var r0 = rateDef(rateOf(p.id)), pr2 = stayPrice(p.id), sub = [r0 ? r0[1] : "", pr2 ? "ca. "+String(pr2).replace(".", ",")+" € / Nacht" : "", ref && hasLoc(p) ? fmtDist(dist(p, ref))+" zu den Zielen" : ""].filter(Boolean).join(" · ");
-      h += "<div class=\"scard cand\" data-pid=\""+p.id+"\"><button type=\"button\" class=\"sc-m\" data-act=\"stayplace\" data-pid=\""+p.id+"\"><span class=\"sc-ic\">"+icon("hotel")+"</span><span class=\"sc-t\"><b>"+esc(p.n)+"</b>"+(sub ? "<small>"+esc(sub)+"</small>" : "")+"</span></button>"+
+      h += "<div class=\"scard cand\" data-pid=\""+p.id+"\"><button type=\"button\" class=\"sc-m\" data-act=\"stayplace\" data-pid=\""+p.id+"\"><span class=\"sc-ic\">"+icon("hotel")+"</span><span class=\"sc-t\"><b>"+esc(p.n)+"</b>"+(sub ? "<small>"+esc(sub)+"</small>" : "")+"</span></button>"+bkBtn("data-pid=\""+p.id+"\"")+
         (ns.length ? "<button type=\"button\" class=\"btn s\" data-act=\"staybook\" data-pid=\""+p.id+"\">Einplanen</button>" : "")+"</div>";
     });
   }
@@ -10688,6 +10699,7 @@ function stayPopHTML(){
     "<div class=\"tf-row sy-two\"><span>Check-out</span><select id=\"syTo\" aria-label=\"Check-out-Tag\">"+opt(ds.filter(function(D){ return D.key > s.from; }), s.to)+"</select><input type=\"time\" id=\"syCo\" value=\""+esc(s.co||"")+"\" aria-label=\"Check-out-Uhrzeit\"></div></div>";
   var ov = (T().hotels||[]).filter(function(x){ return x.id!==s.hid && x.from < s.to && s.from < x.to; });
   if(ov.length) h += "<p class=\"note stay-ov\">Überschneidet sich mit „"+esc(ov[0].n)+"“ ("+esc(dLbl(ov[0].from)+" – "+dLbl(ov[0].to))+").</p>";
+  h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"staybkpop\">"+ic("ext", "ii")+" Bei Booking.com ansehen</button></div>";
   h += "<div class=\"nt-sec\">Buchung<small> · nur für Mitreisende</small></div><div class=\"ag-grp zform\">"+STAYF.slice(2).map(function(x){ return "<label class=\"tf-row\"><span>"+x[2]+"</span><input type=\""+x[3]+"\" id=\""+x[1]+"\" value=\""+esc(s[x[0]]||"")+"\" maxlength=\""+x[4]+"\""+(x[0]==="pr" ? " inputmode=\"decimal\" placeholder=\"z. B. 240\"" : x[0]==="url" ? " placeholder=\"https://…\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"" : " autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"")+" autocomplete=\"off\"></label>"; }).join("")+"</div>";
   if(s.err) h += "<p class=\"err\" role=\"alert\">"+esc(s.err)+"</p>";
   h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"catclose\">Abbrechen</button><button type=\"button\" class=\"btn\" data-act=\"staysave\">"+(ed ? "Speichern" : "Einplanen")+"</button></div>";
@@ -17220,6 +17232,8 @@ document.addEventListener("click", function(e){
     case "stayplace": var spp = t.getAttribute("data-pid"); STAY = null; closeCatPop(); if(P(spp)){ select(spp); openJPop(spp, ""); } break;
     case "staysort": staySort = t.getAttribute("data-v"); lsSet("rp-staysort", staySort); renderSheet(); break;
     case "staysave": staySave(); break;
+    case "staybk": var bku = bkFor({h:t.getAttribute("data-h")||"", pid:t.getAttribute("data-pid")||""}); if(bku) window.open(bku, "_blank", "noopener"); break;
+    case "staybkpop": if(STAY){ stayKeep(); var bkp = STAY.pid ? P(STAY.pid) : STAY.hid ? hotelById(STAY.hid) : {n:STAY.n, addr:STAY.pt && STAY.pt.addr}; if(bkp) window.open(bkUrl(bkp, STAY.from, STAY.to), "_blank", "noopener"); } break;
     case "stayunbook": stayUnbook(); break;
     case "staymark": stayMark(t.getAttribute("data-pid")); break;
     case "pmerk": pMerk(t.getAttribute("data-pid")); break;

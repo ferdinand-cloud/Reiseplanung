@@ -2455,10 +2455,21 @@ await test("Unterkünfte: eigener Reiter – vormerken, Nächte-Leiste, einplane
   // Hotel Test nur bis zur 3. Nacht: zwei Nächte offen
   await rp(`T().hotels[0].to = days()[3].key; dirty(); renderSheet();`); await page.waitForTimeout(150);
   ok(await page.locator("#body .sn.gap").count()===2 && await page.locator("#body .sgap").count()===1, "Offene Nächte werden nicht gezeigt");
+  // Booking.com-Link: Name + Ort, offene Nächte als Check-in/-out, Personen der Reise
+  await rp(`window.__bk = []; window.open = function(u){ window.__bk.push(u); return null; }`);
+  await click('#body .scard.cand[data-pid="p7"] [data-act=staybk]');
+  const bk1 = await rp(`window.__bk[0]||""`), d3 = await rp(`days()[3].key`), d5 = await rp(`days()[5].key`);
+  ok(bk1.startsWith("https://www.booking.com/searchresults.html?ss=") && bk1.includes("checkin="+d3) && bk1.includes("checkout="+d5) && bk1.includes("group_adults=1") && bk1.includes(encodeURIComponent(await rp(`T().places.p7.n`))), "Booking-Link Kandidat falsch: "+bk1);
+  const hb = await rp(`T().hotels[0].id`);
+  await click(`#body .scard [data-act=staybk][data-h="${hb}"]`);
+  const bk2 = await rp(`window.__bk[1]||""`);
+  ok(bk2.includes("ss="+encodeURIComponent("Hotel Test")) && bk2.includes("checkin="+await rp(`T().hotels[0].from`)) && bk2.includes("checkout="+d3), "Booking-Link gebucht falsch: "+bk2);
   // Kandidat einplanen: Vorschlag = offene Nächte; Preis und Buchung eintragen
   await click('#body .scard.cand[data-pid="p7"] [data-act=staybook]'); await page.waitForTimeout(200);
   ok(await rp(`STAY && STAY.from===days()[3].key && STAY.to===days()[5].key`), "Nächte-Wähler schlägt nicht die offenen Nächte vor: "+await rp(`JSON.stringify(STAY)`));
   await page.fill("#syCi", "15:00"); await page.fill("#syPr", "240"); await page.fill("#syNr", "AB12");
+  await click("#catPop [data-act=staybkpop]");
+  ok(String(await rp(`window.__bk[2]||""`)).includes("checkout="+d5), "Booking-Link im Pop-up fehlt");
   await shot("unterkunft-einplanen");
   await click("#catPop [data-act=staysave]"); await page.waitForTimeout(250);
   const H2 = await rp(`(function(){ var h = T().hotels.filter(function(x){ return x.src==="p7"; })[0]; return h ? {from:h.from, to:h.to, ci:h.ci, nr:stayB(h.id).nr, pr:stayB(h.id).pr} : null; })()`);
