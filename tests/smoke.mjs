@@ -1585,6 +1585,9 @@ await test("ÖPNV-Linien nebeneinander statt übereinander, dünn, Haltestellen 
   ok(await rp(`map.queryRenderedFeatures({layers:["dtr"]}).length >= 6 && map.queryRenderedFeatures({layers:["dst"]}).length===1`), "Linien oder Haltestelle nicht gezeichnet: "+await rp(`JSON.stringify([map.getLayoutProperty("dtr","visibility"), map.queryRenderedFeatures({layers:["dtr"]}).length, map.queryRenderedFeatures({layers:["dst"]}).length])`));
   ok(await rp(`map.getLayer("dst").minzoom===11 && JSON.stringify(map.getPaintProperty("dtr","line-offset")).indexOf("\\"o\\"") > -1`), "Versatz oder frühe Haltestellen fehlen");
   await rp(`map.getSource("dtr").setData({type:"FeatureCollection", features:[]}); map.getSource("dst").setData({type:"FeatureCollection", features:[]}); DL = {}; dApplyMap(); true`);
+  // New York (eingebaute MTA-Daten): Linien gleicher Stammstrecke nebeneinander
+  await rp(`layers.sub = true; applyLayers(); true`); await jump(-73.9897, 40.7505, 14.5); await page.waitForTimeout(600); await shot("nyc-linien-nebeneinander");
+  ok(await rp(`var o = {}; GEO.sub.features.forEach(function(f){ o[f.properties.k] = f.properties.o; }); new Set([o.A, o.C, o.E]).size===3 && new Set([o.N, o.Q, o.R, o.W]).size===4 && o.L===0 && JSON.stringify(map.getPaintProperty("sub","line-offset")).indexOf("\\"o\\"") > -1`), "New-York-Linien liegen nicht nebeneinander: "+await rp(`JSON.stringify(GEO.sub.features.slice(0, 30).map(function(f){ return f.properties.k+":"+f.properties.o; }))`));
 });
 
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {

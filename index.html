@@ -10120,6 +10120,9 @@ var GEO = (function(){
   TRANSIT.subway.forEach(function(t){ if(/X$/.test(t.r)) return; sub.features.push({type:"Feature", properties:{k:t.r.replace(/X$/,""), c:t.c}, geometry:{type:"MultiLineString", coordinates:t.l.map(function(a){ return toLL(decPts(a)); })}}); });
   TRANSIT.bus.forEach(function(b){ bus.features.push({type:"Feature", properties:{k:b.r}, geometry:{type:"MultiLineString", coordinates:b.l.map(function(a){ return toLL(decPts(a)); })}}); });
   NB.forEach(function(n){ nb.features.push({type:"Feature", properties:{n:n.n}, geometry:{type:"MultiPolygon", coordinates:n.r.map(function(a){ var r = toLL(decPts(a)); r.push(r[0]); return [r]; })}}); });
+  // Linien nebeneinander: Linien gleicher Farbe fahren auf gemeinsamer Stammstrecke (A/C/E, N/Q/R/W …) → je Farbe eigene Plätze; Shuttles (S) allein
+  var byC = {}; sub.features.forEach(function(f){ if(f.properties.k==="S") return; var a = byC[f.properties.c] = byC[f.properties.c] || []; if(a.indexOf(f.properties.k) < 0) a.push(f.properties.k); });
+  sub.features.forEach(function(f){ if(f.properties.k==="S"){ f.properties.o = 0; return; } var a = byC[f.properties.c].slice().sort(natCmp), n = a.length, i = a.indexOf(f.properties.k); f.properties.o = n <= 5 ? i - (n-1)/2 : (i % 5) - 2; });
   return {sub:sub, bus:bus, nb:nb};
 })();
 function token(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
@@ -10181,7 +10184,7 @@ function addLayers(){
   map.addLayer({id:"nb-line", type:"line", source:"nb", paint:{"line-color":token("--nb-line")||"rgba(23,33,44,.28)", "line-width":1.2, "line-dasharray":[4,3]}, layout:{visibility:"none"}}, firstSym);
   map.addLayer({id:"nb-hi", type:"line", source:"nb", paint:{"line-color":token("--hi")||"#6d28d9", "line-width":2.4}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);
   map.addLayer({id:"bus", type:"line", source:"bus", paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,1,16,3], "line-opacity":.6}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
-  map.addLayer({id:"sub", type:"line", source:"sub", paint:{"line-color":["get","c"], "line-width":["interpolate",["linear"],["zoom"],10,1.5,16,5]}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
+  map.addLayer({id:"sub", type:"line", source:"sub", paint:{"line-color":["get","c"], "line-width":lnWidth("metro"), "line-offset":lnOffset(["get","o"])}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
   addPoiLayers(); addFerryLayers(); dAddLayers(); dData();
   mapReady = true;
   apply3d(true); applyPoi(); applyLayers(); applyLines(); applyNb(); onMove();
