@@ -100,7 +100,6 @@ button{cursor:pointer}
 .ctrl>button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--sheet);box-shadow:0 2px 8px var(--scrim);font:600 20px/1 var(--f-body);display:grid;place-items:center;padding:0}
 .ctrl svg{width:20px;height:20px}
 #layersBtn[aria-expanded="true"]{background:var(--ink);color:var(--sheet)}
-#layersBtn{position:relative}#layersBtn.vtl::after{content:"";position:absolute;inset:-2px;border-radius:inherit;border:2px solid transparent;border-top-color:var(--acc,#0A84FF);animation:locspin .9s linear infinite;pointer-events:none}
 #compass svg{transition:transform .15s}
 .layers{position:fixed;z-index:19;right:calc(max(12px,env(safe-area-inset-right,0px)) + 48px);background:var(--sheet);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 20px var(--scrim);padding:10px 12px;display:grid;gap:8px;min-width:200px}
 .layers{max-height:calc(100vh - 220px);overflow-y:auto;width:min(330px, calc(100vw - 80px))}
@@ -11903,10 +11902,11 @@ var DCOL = {metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", train:"#5B6B7A", f
 var DPAL = ["#C8102E","#0072CE","#E5A800","#00965E","#7D55C7","#E87722","#00A3AD","#A6192E","#5B7F95","#C6007E"];
 var DRMAX = 10000; // Suchradius höchstens 10 km: in großen Städten sonst zu viele Daten für Overpass und das iPhone
 /* ÖPNV nach Kartenausschnitt: Linien kommen nicht mehr aus einem Umkreis ums Ziel, sondern aus einem festen Kachelraster für das, was die Karte zeigt.
-   a = Metro, S-Bahn, Züge, Fähren (ab Zoom 10, Kacheln 0,5°) · b = Tram, Seilbahnen, Stationen, Leihräder (ab Zoom 12, 0,1°) · c = Busse (ab Zoom 14, 0,05°, nur eingeschaltet) */
-var VTL = {a:{z:10, s:0.5, tol:0.0001}, b:{z:12, s:0.1, tol:0.00003}, c:{z:14, s:0.05, tol:0.00003}};
-var VTV = 1, VTMAX = 400, VTMEM = 160, VTPAR = 2, VTWAIT = 400;
-var VT = {mem:{}, st:{}, q:[], run:0, out:false, keys:[], sig:"", tm:0};
+   a = Metro, S-Bahn, Züge, Fähren (ab Zoom 11, Kacheln 0,25°) · b = Tram, Seilbahnen, Stationen, Leihräder (ab Zoom 12, 0,1°) · c = Busse (ab Zoom 14, 0,05°, nur eingeschaltet)
+   Darunter nur das graue Grundgerüst aus den Kartenkacheln: 0,5°-Kacheln waren in Berlin zu groß für Overpass (Zeitlimit, „Server ausgelastet“) */
+var VTL = {a:{z:11, s:0.25, tol:0.00006}, b:{z:12, s:0.1, tol:0.00003}, c:{z:14, s:0.05, tol:0.00003}};
+var VTV = 2, VTMAX = 400, VTMEM = 160, VTPAR = 2, VTWAIT = 400, VTBACK = [3000, 10000];
+var VT = {mem:{}, st:{}, q:[], run:0, out:false, keys:[], sig:"", tm:0, fail:{}};
 var VV = {tr:null, bus:null};
 var OVP = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 var DEST = null, NB_NYC = NB, NBKEY = "nyc-nb-hi", DOFF = {}, dQ = "", dOpen = {}, dWant = false, DMEM = {};
@@ -12017,11 +12017,11 @@ function vtKeys(lv){
   return ks.length > 40 ? [] : ks;
 }
 function vtQuery(lv, bb){
-  if(lv==="a") return "[out:json][timeout:40];(rel[type=route][route~\"^(subway|light_rail|monorail|ferry)$\"]("+bb+");rel[type=route][route=train][service!~\"^(long_distance|high_speed|night|car_shuttle)$\"]("+bb+");)->.r;.r out body;way(r.r)("+bb+");out skel geom;";
-  if(lv==="b") return "[out:json][timeout:40];rel[type=route][route~\"^(tram|funicular)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;"+
+  if(lv==="a") return "[out:json][timeout:25];(rel[type=route][route~\"^(subway|light_rail|monorail|ferry)$\"]("+bb+");rel[type=route][route=train][service!~\"^(long_distance|high_speed|night|car_shuttle)$\"]("+bb+");)->.r;.r out body;way(r.r)("+bb+");out skel geom;";
+  if(lv==="b") return "[out:json][timeout:25];rel[type=route][route~\"^(tram|funicular)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;"+
     "(way[railway=funicular]("+bb+");way[aerialway~\"^(cable_car|gondola)$\"]("+bb+"););out geom;node[railway=station][name]("+bb+");out;node[amenity=bicycle_rental]("+bb+");out;"+
     "rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+");out count;";
-  return "[out:json][timeout:40];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;";
+  return "[out:json][timeout:25];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;";
 }
 /* eine Kachel laden; zu viele Daten (große Städte, große Kacheln) → in vier Teile zerlegen */
 function vtFetch(k){
@@ -12120,18 +12120,26 @@ function vtLoad(k){
 }
 /* höchstens VTPAR Abfragen gleichzeitig (Overpass); weggeschobene Kacheln fallen aus der Warteschlange */
 function vtPump(){
+  // zuerst Bahnen, dann die Kacheln nahe der Kartenmitte
+  if(VT.q.length > 1 && mapReady){ var c = map.getCenter(), sc = function(k){ var b = vtBB(k).split(",").map(Number); return (k.charAt(0)==="a" ? 0 : k.charAt(0)==="b" ? 1 : 2)*100 + Math.abs((b[0]+b[2])/2 - c.lat) + Math.abs((b[1]+b[3])/2 - c.lng); };
+    VT.q.sort(function(a, b){ return sc(a) - sc(b); }); }
   while(VT.run < VTPAR && VT.q.length){
     var k = VT.q.shift(); if(VT.keys.indexOf(k) < 0){ if(VT.st[k]==="load") delete VT.st[k]; continue; }
     VT.run++; VT.st[k] = VT.st[k] || "load";
-    (function(k){ vtFetch(k).then(function(v){ VT.mem[k] = v; VT.st[k] = ""; vtPut(k, v); },
-      function(){ if(!VT.mem[k]) VT.st[k] = "err"; else VT.st[k] = ""; })
+    (function(k){ vtFetch(k).then(function(v){ VT.mem[k] = v; VT.st[k] = ""; delete VT.fail[k]; vtPut(k, v); },
+      function(){
+        // Overpass ausgelastet: zweimal mit Pause neu versuchen, erst dann Fehler zeigen
+        var n = VT.fail[k] = (VT.fail[k]||0) + 1;
+        if(VT.mem[k]){ VT.st[k] = ""; return; }
+        if(n <= VTBACK.length && navigator.onLine){ VT.st[k] = "wait"; setTimeout(function(){ if(VT.st[k]!=="wait") return; VT.st[k] = "load"; VT.q.push(k); vtPump(); }, VTBACK[n-1]); }
+        else VT.st[k] = "err"; })
       .then(function(){ VT.run--; vtApply(); vtPump(); }); })(k);
   }
   vtBusy();
 }
-function vtRetry(){ Object.keys(VT.st).forEach(function(k){ if(VT.st[k]==="err" || VT.st[k]==="off") delete VT.st[k]; }); vtView(); }
+function vtRetry(){ Object.keys(VT.st).forEach(function(k){ if(VT.st[k]==="err" || VT.st[k]==="off"){ delete VT.st[k]; delete VT.fail[k]; } }); vtView(); }
 function vtStat(){ var s = {load:0, err:0, off:0, ok:0}; VT.keys.forEach(function(k){ var x = VT.st[k]; if(VT.mem[k]) s.ok++; else if(x==="err") s.err++; else if(x==="off") s.off++; else s.load++; }); return s; }
-function vtBusy(){ var b = $("layersBtn"); if(b) b.classList.toggle("vtl", VT.keys.some(function(k){ return !VT.mem[k] && VT.st[k]==="load"; }) || VT.run > 0); }
+function vtBusy(){} // kein Ladekreis am Ebenen-Knopf (lief als Strich durch die Knopfleiste); der Stand steht im Ebenen-Menü
 function vtApply(){
   // Arbeitsspeicher: nur sichtbare Kacheln und die zuletzt gesehenen behalten
   var mk = Object.keys(VT.mem);

@@ -1370,7 +1370,7 @@ await test("ÖPNV nach Kartenausschnitt: Linien und Bezirke aus OpenStreetMap (L
   await click("#layersBtn"); await click("#lTrBtn");
   await page.waitForFunction(() => window.__rp("!!(VV.tr && VV.tr.lines.length===4 && DEST.nb && vtStat().load===0)"), null, {timeout:5000});
   // festes Kachelraster statt Umkreis: Bahn-Kachel 0,5°, Tram-Kachel 0,1°
-  ok(OVQ.some(q => q.includes("subway|light_rail") && q.includes("(38.5000,-9.5000,39.0000,-9.0000)")), "Bahnen nicht aus der Kachel des Ausschnitts: "+OVQ.filter(q => q.includes("subway")).join(" | ").slice(0, 300));
+  ok(OVQ.some(q => q.includes("subway|light_rail") && q.includes("(38.5000,-9.2500,38.7500,-9.0000)")), "Bahnen nicht aus der 0,25°-Kachel des Ausschnitts: "+OVQ.filter(q => q.includes("subway")).join(" | ").slice(0, 300));
   ok(OVQ.some(q => q.includes("(tram|funicular)") && q.includes("(38.7000,-9.2000,38.8000,-9.1000)")), "Trams nicht aus der kleineren Kachel");
   const grp = await page.locator("#lTrGrp").innerText();
   ok(grp.includes("Metro") && grp.includes("Tram") && grp.includes("Seilbahnen") && grp.includes("Busse") && grp.includes("Bike Share"), "Verkehrsmittel des Ausschnitts fehlen: "+grp);
@@ -1425,17 +1425,17 @@ await test("ÖPNV nach Kartenausschnitt: Zeitlimit und Fehler statt endlosem Lad
     const el = q.includes("subway") ? [{type:"relation", id:1, tags:{type:"route", route:"subway", ref:"G", colour:"#F39700"}, members:[{type:"way", ref:11}]}, {type:"way", id:11, geometry:[{lat:35.67, lon:139.70}, {lat:35.68, lon:139.76}]}] : [];
     return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:el}) }); });
   await seed();
-  await rp(`(function(){ OVTO = 1200; var t = newTripObj({id:"t_tyo", name:"Tokio", start:"2026-11-02", end:"2026-11-06", orte:[{id:"o8", n:"Tokio", la:35.6812, lo:139.7671, from:"2026-11-02", to:"2026-11-06"}]});
+  await rp(`(function(){ OVTO = 600; VTBACK = [50, 50]; var t = newTripObj({id:"t_tyo", name:"Tokio", start:"2026-11-02", end:"2026-11-06", orte:[{id:"o8", n:"Tokio", la:35.6812, lo:139.7671, from:"2026-11-02", to:"2026-11-06"}]});
     S.trips.t_tyo = t; S.cur = "t_tyo"; DL = {}; renderAll(); })()`);
   await page.waitForTimeout(300); await jump(139.7671, 35.6812, 13);
   ok(await rp(`!!DEST && DEST.r <= 10000`), "Suchradius der Bezirke zu groß");
   await click("#layersBtn"); await click("#lTrBtn");
   ok((await page.locator("#lTrDyn").innerText()).includes("wird geladen"), "Ladehinweis fehlt");
-  ok(await rp(`$("layersBtn").classList.contains("vtl")`), "Kein Ladekreis am Ebenen-Knopf");
-  await page.waitForFunction(() => window.__rp("vtStat().load===0 && vtStat().err > 0 && DEST.st.nb==='err'"), null, {timeout:15000});
+  ok(await page.evaluate(() => getComputedStyle(document.getElementById("layersBtn"), "::after").animationName==="none"), "Ladeanzeige kreist am Ebenen-Knopf");
+  await page.waitForFunction(() => window.__rp("vtStat().load===0 && vtStat().err > 0 && DEST.st.nb==='err'"), null, {timeout:30000});
   ok(n >= 4, "Ersatzserver wird nicht versucht ("+n+" Abfragen)");
+  ok(await rp(`Object.keys(VT.fail).some(function(k){ return VT.fail[k] > VTBACK.length; })`), "Ausgelasteter Server wird nicht mit Pause erneut gefragt");
   ok(await page.locator("#lTrDyn [data-act=dretry]").isVisible() && await page.locator("#nbErr [data-act=dretry]").isVisible(), "Fehlermeldung mit „Erneut versuchen“ fehlt");
-  ok(await rp(`!$("layersBtn").classList.contains("vtl")`), "Ladekreis bleibt nach dem Fehler");
   await shot("ziel-fehler");
   // abgebrochene Abfrage mit unvollständigen Daten: Fehler, nichts gespeichert
   mode = "remark"; await click("#lTrDyn [data-act=dretry]");
@@ -1453,8 +1453,8 @@ await test("ÖPNV nach Kartenausschnitt: überall, wohin die Karte zeigt, Linien
   await page.route(/overpass-api\.de|overpass\.kumi/, rt => { const q = ovBody(rt); OVQ.push(q);
     let el = []; const b = bbs(q);
     if(q.includes("subway|light_rail")){
-      if(big==="fail" && b[3] - b[1] > 0.3) return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[], remark:"runtime error: Query timed out"}) });
-      // S3 von Westen (Kachel 13,0–13,5°) nach Osten (13,5–14,0°): je Kachel nur das Stück darin
+      if(big==="fail" && b[3] - b[1] > 0.2) return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[], remark:"runtime error: Query timed out"}) });
+      // S3 von Westen (Kachel 13,25–13,5°) nach Osten (13,5–13,75°): je Kachel nur das Stück darin
       const rel = {type:"relation", id:1, tags:{type:"route", route:"light_rail", ref:"S3", colour:"#006AB3"}, members:[{type:"way", ref:11}, {type:"way", ref:12}]};
       if(b[1] < 13.5 && b[3] > 13.4) el = [rel, {type:"way", id:11, geometry:[{lat:52.51, lon:13.40}, {lat:52.50, lon:13.49}]}];
       if(b[3] > 13.5 && b[1] < 13.6) el = [rel, {type:"way", id:12, geometry:[{lat:52.50, lon:13.51}, {lat:52.45, lon:13.70}]}];
@@ -1463,23 +1463,23 @@ await test("ÖPNV nach Kartenausschnitt: überall, wohin die Karte zeigt, Linien
   // New-York-Reise, Karte zeigt Berlin: Linien trotzdem da, ohne eigene Reise dorthin
   await seed();
   await rp(`DL = {light:1}; DOFF = {}; VT.mem = {}; VT.st = {}; VT.sig = ""; true`);
-  await jump(13.5, 52.75, 9);
+  await jump(13.5, 52.875, 9);
   ok(await rp(`DEST===null && VT.out && document.body.classList.contains("dyn")`), "Karte außerhalb New Yorks schaltet nicht auf OpenStreetMap-Ebenen");
   ok(!OVQ.some(q => q.includes("subway|light_rail")), "Weit herausgezoomt wird schon geladen");
-  await jump(13.5, 52.75, 11.5);
+  await jump(13.5, 52.875, 11.5);
   await page.waitForFunction(() => window.__rp("!!VV.tr && vtStat().load===0"), null, {timeout:5000});
   ok(OVQ.filter(q => q.includes("subway|light_rail")).length===2, "Nicht genau die zwei sichtbaren Bahn-Kacheln geladen ("+OVQ.filter(q => q.includes("subway|light_rail")).length+")");
   ok(await rp(`VV.tr.lines.length===1 && map.getSource("dtr")._data.features[0].geometry.coordinates.length===2 && map.getLayoutProperty("dtr","visibility")==="visible"`), "S3 nicht über die Kachelgrenze zusammengesetzt");
-  ok(await rp(`vtGet("a:26_105").then(function(v){ return !!v && !!v.ln["light:S3"]; })`), "Kachel nicht im Gerätespeicher");
+  ok(await rp(`vtGet("a:53_211").then(function(v){ return !!v && !!v.ln["light:S3"]; })`), "Kachel nicht im Gerätespeicher");
   // Karte weiterschieben: nur neue Kacheln, bekannte aus dem Speicher
   const RQ = () => OVQ.filter(q => q.includes("subway|light_rail")).length; // nur Bahn-Kacheln zählen (Öffnungszeiten fragen Overpass auch)
-  const n0 = RQ(); await jump(14.1, 52.75, 11.5);
+  const n0 = RQ(); await jump(14.1, 52.875, 11.5);
   await page.waitForFunction(() => window.__rp("vtStat().load===0"), null, {timeout:5000});
   ok(RQ() - n0 === 1, "Beim Verschieben nicht nur die neue Kachel geladen ("+(RQ()-n0)+") "+await rp(`JSON.stringify([VT.keys, VT.st, map.getBounds()])`));
   // zu viele Daten in einer großen Kachel → in vier Teile zerlegt
-  big = "fail"; const n1 = RQ(); await jump(12.2, 52.75, 11.5);
+  big = "fail"; const n1 = RQ(); await jump(12.2, 52.875, 11.5);
   await page.waitForFunction(() => window.__rp("vtStat().load===0"), null, {timeout:8000});
-  ok(RQ() - n1 >= 6 && await rp(`vtStat().err===0 && !!VT.mem["a:24_105"]`), "Große Kachel nicht in Teilen geladen ("+(RQ()-n1)+")");
+  ok(RQ() - n1 >= 6 && await rp(`vtStat().err===0 && !!VT.mem["a:48_211"]`), "Große Kachel nicht in Teilen geladen ("+(RQ()-n1)+")");
   // zurück nach New York: eingebaute Daten, keine Kacheln
   await jump(-73.99, 40.73, 13);
   ok(await rp(`!VT.out && !document.body.classList.contains("dyn") && map.getLayoutProperty("dtr","visibility")==="none"`), "In New York bleiben die OpenStreetMap-Ebenen");
@@ -3568,7 +3568,8 @@ await test("Offline-Paket: ÖPNV und Bezirke aller Ziele der Reise mitladen (Lis
   ok(ks.length===2, "nicht beide Ziele erkannt: "+ks);
   for(const k of ks) ok(await rp(`var d = destAll().filter(function(x){ return x.k==="${k}"; })[0]; Promise.all([destGet(d.k+":nb")].concat(offTiles(d).map(vtGet))).then(function(v){ return v.every(Boolean); })`), "ÖPNV-Kacheln/Bezirke von "+k+" nicht gespeichert");
   ok(await rp(`destAll().every(function(d){ var t = offTiles(d); return ["a","b","c"].every(function(l){ return t.some(function(k){ return k.charAt(0)===l; }); }); })`), "Offline-Paket lädt nicht Bahnen, Trams und Busse");
-  ok(OVQ.filter(q => q.includes("subway|light_rail")).length===2, "Bahn-Kacheln nicht je Ziel geladen");
+  const na = await rp(`var o = {}; destAll().forEach(function(d){ offTiles(d).forEach(function(k){ if(k.charAt(0)==="a") o[k] = 1; }); }); Object.keys(o).length`);
+  ok(na >= 2 && OVQ.filter(q => q.includes("subway|light_rail")).length===na, "Bahn-Kacheln nicht je Ziel geladen ("+na+")");
   const tx = await page.locator("#offBox").innerText();
   ok(tx.includes("Lissabon") && tx.includes("Porto") && !tx.includes("New York"), "Ziele im Stand falsch: "+tx);
   // erneut laden: frische Daten werden nicht noch einmal abgefragt
