@@ -2266,6 +2266,40 @@ await test("Ort-Menü: „Mehr“ an der Karte und „⋯“ im Detail zeigen di
   await rp(`closeJpMore(); closeJPop(); isRO = window.__isRO0; true`);
 });
 
+await test("Tipp außerhalb eines Menüs schließt nur das Menü, das Feld darunter reagiert erst beim nächsten Tipp", async () => {
+  await seed();
+  const id = await rp(`Object.keys(T().places).filter(function(k){ return dayOf(k)===cur && P(k).k!=="hotel" && !T().done[k] && hasLoc(P(k)); })[0]`);
+  await rp(`openJPop("${id}", dayOf("${id}")); true`); await page.waitForTimeout(300);
+  // Punkt auf dem Notizfeld, der nicht vom Menü verdeckt ist
+  const spot = async () => page.evaluate(() => { const n = document.querySelector("#jPop #nText"), m = document.querySelector("#jpMenu"); if(!n || !m) return null;
+    const a = n.getBoundingClientRect(), b = m.getBoundingClientRect(); for(let x = a.left + 6; x < a.right - 4; x += 6){ if(x < b.left || x > b.right) return {x, y:a.top + a.height/2}; } return null; });
+  for(const how of ["tap", "mouse"]){
+    await rp(`document.activeElement && document.activeElement.blur && document.activeElement.blur(); true`);
+    await click("#jPop [data-act=jpmore]"); ok(await page.locator("#jpMenu").count()===1, "⋯-Menü öffnet nicht");
+    const p = await spot(); ok(!!p, "Notizfeld neben dem Menü nicht erreichbar");
+    if(how==="tap") await page.touchscreen.tap(p.x, p.y); else await page.mouse.click(p.x, p.y);
+    await page.waitForTimeout(250);
+    ok(await page.locator("#jpMenu").count()===0, how+": Menü bleibt nach Tipp daneben offen");
+    ok(await rp(`document.activeElement!==$("nText")`), how+": Tipp daneben fokussiert gleich das Notizfeld");
+    ok(await visible("#jPop"), how+": Tipp daneben schließt auch das Pop-up");
+    if(how==="tap") await page.touchscreen.tap(p.x, p.y); else await page.mouse.click(p.x, p.y);
+    await page.waitForTimeout(250);
+    ok(await rp(`document.activeElement===$("nText")`), how+": nächster Tipp erreicht das Notizfeld nicht");
+  }
+  await rp(`document.activeElement.blur(); closeJPop(); true`); await page.waitForTimeout(250);
+  // Plus-Menü: Tipp auf die Liste löst darunter nichts aus
+  await rp(`setSheet("mid"); true`); await page.waitForTimeout(200);
+  await click("#camBtn"); ok(await visible("#addMenu"), "Plus-Menü öffnet nicht");
+  const tb = await page.locator("#sheet [data-tab]").first().boundingBox();
+  const tab0 = await rp(`tab`), other = await page.locator("#sheet [data-tab]").evaluateAll((els, t0) => { const e = els.find(x => x.getAttribute("data-tab")!==t0 && x.getBoundingClientRect().width > 0); if(!e) return null; const r = e.getBoundingClientRect(); return {x:r.left + r.width/2, y:r.top + r.height/2}; }, tab0);
+  ok(!!tb && !!other, "Reiter nicht gefunden");
+  await page.touchscreen.tap(other.x, other.y); await page.waitForTimeout(250);
+  ok(!(await visible("#addMenu")), "Plus-Menü bleibt offen");
+  ok(await rp(`tab`)===tab0, "Tipp neben das Plus-Menü wechselt gleich den Reiter");
+  await page.touchscreen.tap(other.x, other.y); await page.waitForTimeout(250);
+  ok(await rp(`tab`)!==tab0, "Nächster Tipp wechselt den Reiter nicht");
+});
+
 await test("Fürs nächste Mal merken: besuchter Ort und Wunschliste-Ort aus der Reise im Ziel, Ziel bietet sie bei neuer Reise an", async () => {
   await seed();
   await rp(`zielNew("New York", {id:"o1", n:"New York", la:40.75, lo:-73.98, r:30000}); save(); true`);

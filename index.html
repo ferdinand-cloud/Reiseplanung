@@ -16590,6 +16590,33 @@ function startViaPick(li){
 }
 function endViaPick(){ viaPick = null; legSel = -1; $("pick").hidden = true; $("pick").querySelector("span").textContent = "Tippe auf die Karte, um den Ort zu setzen."; $("pickCancel").textContent = "Abbrechen"; scheduleOverlay(); }
 
+/* Tipp außerhalb eines offenen Menüs (⋯-Menüs/Auswahllisten #jpMenu, Reise-, Haupt-, Ebenen-, Plus-Menü) schließt nur das Menü:
+   der ganze Tipp wird verschluckt (pointer/touch/mouse/click, auch der Fokus-Abfang der Tastaturlogik), erst der nächste wirkt darunter.
+   Am window in der Capture-Phase – läuft damit vor allen document-Abfängen. Pop-ups mit eigenem Hintergrund fangen den Tipp selbst. */
+(function(){
+  var MENUS = "#jpMenu,#mainMenu,#tripMenu,#layers,#addMenu";
+  var on = false, ended = false, until = 0;
+  function open(){ return [].slice.call(document.querySelectorAll(MENUS)).filter(function(m){ return !m.hidden && m.isConnected; }); }
+  function eat(e){ e.stopImmediatePropagation(); if(e.cancelable && !/^(touchstart|pointerdown|touchmove|pointermove)$/.test(e.type)) e.preventDefault(); }   // Bewegen nicht verhindern: Wischen scrollt weiter
+  function down(e){
+    if(on && !ended){ eat(e); return; }                                       // gleiche Berührung (pointerdown → touchstart)
+    on = false; if(e.type==="touchstart" && e.touches.length > 1) return;
+    var ms = open(), t = e.target; if(!ms.length || !t || !t.closest) return;
+    if(ms.some(function(m){ return m.contains(t); })) return;
+    on = true; ended = false; until = Infinity;
+    if($("jpMenu")) closeJpMore();
+    closeMenus();
+    eat(e);
+  }
+  function up(e){ if(!on) return; eat(e); ended = true; until = Date.now() + 500; }
+  function late(e){ if(!on) return; if(Date.now() > until){ on = false; return; } eat(e); }
+  ["pointerdown", "touchstart"].forEach(function(n){ window.addEventListener(n, down, {capture:true, passive:false}); });
+  ["pointerup", "touchend", "touchcancel"].forEach(function(n){ window.addEventListener(n, up, {capture:true, passive:false}); });
+  ["pointermove", "touchmove", "mousedown", "mouseup", "click", "dblclick", "contextmenu"].forEach(function(n){ window.addEventListener(n, late, {capture:true, passive:false}); });
+  // Sicherheitsnetz (iOS): bekommt ein Feld während des verschluckten Tipps trotzdem den Fokus, wieder lösen
+  document.addEventListener("focusin", function(e){ if(on && Date.now() <= until && e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)){ try { e.target.blur(); } catch(x){} } }, true);
+})();
+
 /* Tipp daneben schließt ein Pop-up nur, wenn der Finger auch auf dem Hintergrund aufgesetzt hat
    (iOS verschiebt das Pop-up beim Antippen von Feldern; der Loslass-Punkt landet dann sonst auf dem Hintergrund) */
 var bgDown = null;
