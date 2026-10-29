@@ -16685,7 +16685,7 @@ function endViaPick(){ viaPick = null; legSel = -1; $("pick").hidden = true; $("
    der ganze Tipp wird verschluckt (pointer/touch/mouse/click, auch der Fokus-Abfang der Tastaturlogik), erst der nächste wirkt darunter.
    Am window in der Capture-Phase – läuft damit vor allen document-Abfängen. Pop-ups mit eigenem Hintergrund fangen den Tipp selbst. */
 (function(){
-  var MENUS = "#jpMenu,#mainMenu,#tripMenu,#layers,#addMenu";
+  var MENUS = "#jpMenu,#mainMenu,#tripMenu,#layers,#addMenu", ABOVE = "#dmSpot";   // ABOVE: Ebenen über dem Menü (Demo-Hinweis „Zurück zur Demo“)
   var on = false, ended = false, until = 0;
   function open(){ return [].slice.call(document.querySelectorAll(MENUS)).filter(function(m){ return !m.hidden && m.isConnected; }); }
   function eat(e){ e.stopImmediatePropagation(); if(e.cancelable && !/^(touchstart|pointerdown|touchmove|pointermove)$/.test(e.type)) e.preventDefault(); }   // Bewegen nicht verhindern: Wischen scrollt weiter
@@ -16693,7 +16693,7 @@ function endViaPick(){ viaPick = null; legSel = -1; $("pick").hidden = true; $("
     if(on && !ended){ eat(e); return; }                                       // gleiche Berührung (pointerdown → touchstart)
     on = false; if(e.type==="touchstart" && e.touches.length > 1) return;
     var ms = open(), t = e.target; if(!ms.length || !t || !t.closest) return;
-    if(ms.some(function(m){ return m.contains(t); })) return;
+    if(ms.some(function(m){ return m.contains(t); }) || t.closest(ABOVE)) return;
     on = true; ended = false; until = Infinity;
     if($("jpMenu")) closeJpMore();
     closeMenus();
