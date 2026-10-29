@@ -1430,6 +1430,32 @@ await test("Kartenebenen je Reiseziel: Zeitlimit und Fehler statt endlosem Laden
   ok((await page.locator("#lTrDyn").innerText()).includes("Metro"), "Nach „Erneut versuchen“ keine Linien");
 });
 
+await test("Kartenebenen je Reiseziel: Bahnlinien laufen über das Suchgebiet hinaus (Berlin S-Bahn)", async () => {
+  const OVQ = []; let big = "ok";
+  const bbs = q => (q.match(/way\(r\.r\)\(([^)]*)\)/) || [])[1];
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => { const q = decodeURIComponent((rt.request().postData()||"").replace(/^data=/, "").replace(/\+/g, " ")); OVQ.push(q);
+    const wide = q.includes("subway") && bbs(q) && +bbs(q).split(",")[2] > 52.75;
+    if(wide && big==="fail") return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[], remark:"runtime error: Query timed out"}) });
+    // S1 bis Oranienburg (52,75° N): im großen Gebiet ganz, im Suchgebiet nur das Stück in der Stadt
+    const el = q.includes("subway") ? [{type:"relation", id:1, tags:{type:"route", route:"light_rail", ref:"S1", colour:"#DE4DA4"}, members:[{type:"way", ref:11}, {type:"way", ref:12}]},
+      {type:"way", id:11, geometry:[{lat:52.52, lon:13.39}, {lat:52.58, lon:13.36}]}].concat(wide ? [{type:"way", id:12, geometry:[{lat:52.58, lon:13.36}, {lat:52.75, lon:13.25}]}] : []) : [];
+    return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:el}) }); });
+  await seed();
+  // alter Stand im Speicher (am Suchrand abgeschnitten) wird neu geladen
+  await rp(`(function(){ var t = newTripObj({id:"t_ber", name:"Berlin", start:"2026-11-13", end:"2026-11-15", orte:[{id:"o7", n:"Berlin", la:52.52, lo:13.405, from:"2026-11-13", to:"2026-11-15"}]});
+    S.trips.t_ber = t; S.cur = "t_ber"; DL = {light:1}; var C = destNow(), d = destOf(C);
+    DMEM[d.k+":tr"] = {at:Date.now(), lines:[{m:"light", k:"S1", n:"", c:"#DE4DA4"}], geo:{type:"FeatureCollection", features:[]}, st:[], bike:[], nbus:0}; renderAll(); })()`);
+  await page.waitForFunction(() => window.__rp("!!(DEST && DEST.tr && DEST.tr.v===DTRV)"), null, {timeout:5000});
+  const q0 = OVQ.filter(q => q.includes("subway"))[0], bw = bbs(q0).split(",").map(Number);
+  ok(bw[2] - bw[0] > 0.6 && q0.includes("rel[type=route][route~\"^(subway"), "Bahn-Wege werden nicht im großen Gebiet geladen: "+bbs(q0));
+  ok(await rp(`JSON.stringify(DEST.tr.geo.features[0].geometry.coordinates).indexOf("52.75") > -1`), "S1 endet am Suchrand statt in Oranienburg");
+  // zu viele Daten im großen Gebiet → Linien wie bisher im Suchgebiet statt Fehler
+  big = "fail"; const n0 = OVQ.length;
+  await rp(`destNeed("tr", true); true`);
+  await page.waitForFunction(() => window.__rp("DEST.st.tr===''"), null, {timeout:5000}); await page.waitForTimeout(100);
+  ok(OVQ.length - n0 >= 3 && await rp(`DEST.tr.lines.length===1 && JSON.stringify(DEST.tr.geo.features[0].geometry.coordinates).indexOf("52.75") < 0`), "Kein Ersatz mit kleinem Gebiet ("+(OVQ.length-n0)+" Abfragen)");
+});
+
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
   await seed();
   await click("#layersBtn"); await click("#lTrBtn");

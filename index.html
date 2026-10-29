@@ -11887,6 +11887,8 @@ var DSTMODE = {subway:"metro", light_rail:"light", monorail:"light", funicular:"
 var DCOL = {metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"};
 var DPAL = ["#C8102E","#0072CE","#E5A800","#00965E","#7D55C7","#E87722","#00A3AD","#A6192E","#5B7F95","#C6007E"];
 var DRMAX = 10000; // Suchradius höchstens 10 km: in großen Städten sonst zu viele Daten für Overpass und das iPhone
+var DRWAY = 35000; // Bahnlinien aus dem Suchgebiet bis 35 km weiterzeichnen (S-Bahn ins Umland), nicht am Rand des Suchgebiets abschneiden
+var DTRV = 2; // Stand der gespeicherten ÖPNV-Daten: ältere (am Suchrand abgeschnittene Linien) neu laden
 var OVP = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 var DEST = null, NB_NYC = NB, NBKEY = "nyc-nb-hi", DOFF = {}, dQ = "", dOpen = {}, dWant = false, DMEM = {};
 var DL = (function(){ try { return JSON.parse(lsGet("rp-dl")||"{}") || {}; } catch(e){ return {}; } })();
@@ -11938,7 +11940,7 @@ function destSet(d, pts){
   d.rdP = Promise.all(PT.map(function(p){ return destGet(d.k+":"+p); })).then(function(vs){
     d.rd = true; if(DEST!==d) return;
     vs.forEach(function(v, i){ var p = PT[i];
-      if(v){ d[p] = v; destApply(p); if(Date.now() - v.at > 60*864e5) destNeed(p, true); }
+      if(v){ d[p] = v; destApply(p); if(Date.now() - v.at > 60*864e5 || (p==="tr" && v.v!==DTRV)) destNeed(p, true); }
       else if(destWanted(p)) destNeed(p); });
   });
 }
@@ -11976,13 +11978,16 @@ function destNeed(part, force){
 function okCol(c){ c = String(c||"").trim(); if(/^#?[0-9a-f]{6}$/i.test(c)) return (c.charAt(0)==="#" ? c : "#"+c).toUpperCase(); if(/^#[0-9a-f]{3}$/i.test(c)) return c.toUpperCase(); return ""; }
 function txtCol(c){ var h = c.replace("#",""); if(h.length===3) h = h.replace(/./g, function(x){ return x+x; }); var n = parseInt(h, 16), l = 0.299*(n>>16) + 0.587*(n>>8&255) + 0.114*(n&255); return l > 165 ? "#111111" : "#FFFFFF"; }
 function natCmp(a, b){ return String(a).localeCompare(String(b), "de", {numeric:true}); }
-function trFetch(d, bus){
-  var bb = destBB(d), q = bus
+/* Bahnen: Linien, die das Suchgebiet berühren, laufen bis DRWAY weiter (sonst endet z. B. die Berliner S-Bahn ringförmig am Stadtrand).
+   Zu viele Daten (Zeitlimit) → wie bisher nur das Suchgebiet */
+function trFetch(d, bus, small){
+  var bb = destBB(d), wb = bus || small ? bb : destBB({la:d.la, lo:d.lo, r:Math.max(d.r, DRWAY)}), q = bus
     ? "[out:json][timeout:40];rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+")->.r;.r out body;way(r.r)("+bb+");out skel geom;"
-    : "[out:json][timeout:40];(rel[type=route][route~\"^(subway|light_rail|monorail|tram|funicular|ferry)$\"]("+bb+");rel[type=route][route=train][service!~\"^(long_distance|high_speed|night|car_shuttle)$\"]("+bb+");)->.r;.r out body;way(r.r)("+bb+");out skel geom;"+
+    : "[out:json][timeout:40];(rel[type=route][route~\"^(subway|light_rail|monorail|tram|funicular|ferry)$\"]("+bb+");rel[type=route][route=train][service!~\"^(long_distance|high_speed|night|car_shuttle)$\"]("+bb+");)->.r;.r out body;way(r.r)("+wb+");out skel geom;"+
       "(way[railway=funicular]("+bb+");way[aerialway~\"^(cable_car|gondola)$\"]("+bb+"););out geom;node[railway=station][name]("+bb+");out;node[amenity=bicycle_rental]("+bb+");out;"+
       "rel[type=route][route~\"^(bus|trolleybus)$\"]("+bb+");out count;";
-  return ovq(q).then(function(j){ return trParse(j); });
+  var p = ovq(q).then(function(j){ var v = trParse(j); if(!bus) v.v = DTRV; return v; });
+  return bus || small ? p : p.catch(function(){ return trFetch(d, false, true); });
 }
 function trParse(j){
   var W = {}, used = {}, rels = [], st = [], bk = [], nbus = 0;
