@@ -11945,6 +11945,14 @@ function railCls(k, rt, sv){
   return "train";
 }
 function railFam(m){ return m==="train" || m==="sbahn" || m==="reg" || m==="long"; }
+/* Linien nebeneinander: Platz je Linie (−2 … 2), Linien auf gemeinsamer Strecke liegen so versetzt statt übereinander */
+function lnSlots(lines){ var by = {}, o = {};
+  lines.forEach(function(l){ if(l.m!=="bus" && l.m!=="ferry") (by[l.m==="tram" ? "tram" : "rail"] = by[l.m==="tram" ? "tram" : "rail"] || []).push(l); }); // Bahnen teilen sich Gleise über ihre Art hinweg (S-Bahn + RE), Trams fahren auf der Straße
+  Object.keys(by).forEach(function(m){ var a = by[m], n = a.length; a.forEach(function(l, i){ o[l.m+":"+l.k] = n <= 5 ? i - (n-1)/2 : (i % 5) - 2; }); });
+  return o; }
+/* dünne Linien, ab Zoom 12 nebeneinander; s = Ausdruck für den Platz */
+function lnWidth(m){ return ["interpolate",["linear"],["zoom"],10,["match",m,"tram",.7,"funi",.9,.9],13,["match",m,"tram",1.2,"funi",1.4,1.6],16,["match",m,"tram",2,"funi",2.4,2.6]]; }
+function lnOffset(s){ return ["interpolate",["linear"],["zoom"],11.5,0,13,["*", s, 2.2],16,["*", s, 3.3]]; }
 var DSTMODE = {subway:"metro", light_rail:"light", monorail:"light", funicular:"funi", train:"train"};
 var DCOL = {metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", sbahn:"#3F8A5A", reg:"#7A6A9B", long:"#9A3B3B", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"};
 var DPAL = ["#C8102E","#0072CE","#E5A800","#00965E","#7D55C7","#E87722","#00A3AD","#A6192E","#5B7F95","#C6007E"];
@@ -12127,6 +12135,7 @@ function vtAgg(keys){
       var l = L[id]; if(!l.g.length) return; if(!l.c) l.c = vtCol(l.m, l.k);
       lines.push({m:l.m, k:l.k, n:l.n, c:l.c});
       feats.push({type:"Feature", properties:{m:l.m, id:id, k:l.k, c:l.c}, geometry:{type:"MultiLineString", coordinates:l.g}}); });
+    var sl = lnSlots(lines); feats.forEach(function(f){ f.properties.o = sl[f.properties.id] || 0; });
     return {lines:lines, geo:{type:"FeatureCollection", features:feats}}; };
   var tr = mk(false), bs = mk(true), has = {}; tr.lines.forEach(function(l){ has[l.m] = 1; });
   tr.st = st.filter(function(s){ return has[s[3]] || (s[3]==="train" && (has.sbahn || has.reg || has.long)); }); tr.bike = bk.slice(0, 3000); tr.nbus = nbus;
@@ -12242,25 +12251,30 @@ var TLMODE = {0:"tram", 1:"metro", 2:"train", 3:"bus", 11:"bus", 4:"ferry", 5:"t
 function tlMode(t){ return TLMODE[+t] || "train"; }
 var TLK = ["to-string", ["coalesce", ["get","route_short_name"], ["get","route_long_name"], ""]];
 /* Bahn-Art je Linienname (TLCLS, aus den geladenen Kacheln per railCls): Kartenausdrücke kennen keine regulären Ausdrücke, daher eine Liste je Art */
-var TLCLS = {}, TLM, TLID, TLC;
+var TLCLS = {}, TLSL = {}, TLM, TLID, TLC, TLO;
 function tlExprs(){
   var g = {}, rail = "train";
   Object.keys(TLCLS).forEach(function(k){ var c = TLCLS[k]; if(c!=="train" && k) (g[c] = g[c] || []).push(k); });
   var cs = Object.keys(g); if(cs.length){ rail = ["match", TLK]; cs.forEach(function(c){ rail.push(g[c], c); }); rail.push("train"); }
   TLM = ["match", ["to-number", ["get","route_type_basic"]], 0,"tram", 1,"metro", 2,rail, 3,"bus", 11,"bus", 4,"ferry", 5,"tram", 6,"funi", 7,"funi", 12,"light", rail];
   TLID = ["concat", TLM, ":", TLK];
+  var sg = {}; Object.keys(TLSL).forEach(function(id){ var v = TLSL[id]; if(v) (sg[v] = sg[v] || []).push(id); });
+  TLO = 0; if(Object.keys(sg).length){ TLO = ["match", TLID]; Object.keys(sg).forEach(function(v){ TLO.push(sg[v], +v); }); TLO.push(0); }
   TLC = ["case", ["==", ["length", ["to-string", ["get","route_color"]]], 7], ["to-string", ["get","route_color"]],
     ["match", TLM, "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "sbahn", DCOL.sbahn, "reg", DCOL.reg, "long", DCOL.long, "bus", "#1f6fd1", DCOL.train]];
 }
 tlExprs();
-function tlWidth(){ return ["interpolate",["linear"],["zoom"],10,["match",TLM,"tram",1,"funi",1.4,1.6],16,["match",TLM,"tram",3,"funi",3.5,5]]; }
+function tlWidth(){ return lnWidth(TLM); }
 /* neue Linien-Arten bekannt: Ausdrücke neu setzen */
 function tlRestyle(){
   tlExprs(); if(!mapReady || !map.getLayer("tl-rail")) return;
-  map.setPaintProperty("tl-rail", "line-color", TLC); map.setPaintProperty("tl-rail", "line-width", tlWidth());
+  map.setPaintProperty("tl-rail", "line-color", TLC); map.setPaintProperty("tl-rail", "line-width", tlWidth()); map.setPaintProperty("tl-rail", "line-offset", lnOffset(TLO));
   map.setPaintProperty("tl-ferry", "line-color", TLC); if(map.getLayer("tl-lbl")) map.setPaintProperty("tl-lbl", "text-color", TLC);
 }
 var TLRAIL = ["any", ["in", "0", ["to-string", ["get","route_types_basic"]]], ["in", "1", ["to-string", ["get","route_types_basic"]]], ["in", "2", ["to-string", ["get","route_types_basic"]]]];
+/* Haltestellen: kleine weiße Punkte mit dunklem Rand, schon ab Zoom 11 erkennbar */
+function STPAINT(){ return {"circle-color":"#ffffff", "circle-stroke-color":isDark() ? "#0f1720" : "#2a3644", "circle-stroke-width":["interpolate",["linear"],["zoom"],11,.8,14,1.3,16,1.6],
+  "circle-radius":["interpolate",["linear"],["zoom"],11,1.4,13,2.4,16,4.2], "circle-opacity":["interpolate",["linear"],["zoom"],11,.85,13,1]}; }
 function tlSetup(){
   if(!mapReady || !tlKey()) return;
   if(map.getSource("tl-r")){ if(TL.k!==tlKey()){ TL.k = tlKey(); ["tl-r","tl-s"].forEach(function(s){ var src = map.getSource(s); if(src && src.setTiles) src.setTiles([tlUrl(s==="tl-r" ? "routes" : "stops")]); }); } return; }
@@ -12270,19 +12284,19 @@ function tlSetup(){
   map.addSource("tl-s", {type:"vector", tiles:[tlUrl("stops")], minzoom:0, maxzoom:14});
   // unsichtbare Linie: lädt die Kacheln, damit das Menü die Linien im Ausschnitt kennt, auch wenn noch nichts eingeschaltet ist
   map.addLayer({id:"tl-probe", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-opacity":0, "line-width":1}, layout:{visibility:"none"}}, bef);
-  map.addLayer({id:"tl-bus", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZB, paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],12,1,16,3], "line-opacity":.6}, layout:none}, bef);
+  map.addLayer({id:"tl-bus", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZB, paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],12,.6,16,2], "line-opacity":.5}, layout:none}, bef);
   map.addLayer({id:"tl-rail", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-color":TLC,
-    "line-width":tlWidth()}, layout:none}, bef);
-  map.addLayer({id:"tl-ferry", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-color":TLC, "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{visibility:"none", "line-cap":"round"}}, bef);
-  map.addLayer({id:"tl-st", type:"circle", source:"tl-s", "source-layer":"stops", minzoom:13,
+    "line-width":tlWidth(), "line-offset":lnOffset(TLO)}, layout:none}, bef);
+  map.addLayer({id:"tl-ferry", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-color":TLC, "line-width":["interpolate",["linear"],["zoom"],10,.9,15,2], "line-dasharray":[3,2], "line-opacity":.8}, layout:{visibility:"none", "line-cap":"round"}}, bef);
+  map.addLayer({id:"tl-st", type:"circle", source:"tl-s", "source-layer":"stops", minzoom:11,
     filter:["any", ["all", ["==", ["get","location_type"], 1], ["any", ["==", ["to-string", ["get","route_types_basic"]], "[]"], TLRAIL]], ["all", ["==", ["get","location_type"], 0], ["!", ["has","parent_station"]], TLRAIL]],
-    paint:{"circle-color":"#ffffff", "circle-stroke-color":"#17212c", "circle-stroke-width":1.6, "circle-radius":["interpolate",["linear"],["zoom"],13,2.5,16,5]}, layout:{visibility:"none"}});
+    paint:STPAINT(), layout:{visibility:"none"}});
   map.addLayer({id:"tl-bst", type:"circle", source:"tl-s", "source-layer":"stops", minzoom:15, filter:["all", ["==", ["get","location_type"], 0], ["in", "3", ["to-string", ["get","route_types_basic"]]]],
     paint:{"circle-color":"#ffffff", "circle-stroke-color":token("--bus")||"#1f6fd1", "circle-stroke-width":1.4, "circle-radius":3}, layout:{visibility:"none"}});
   if(!gl) return;
   map.addLayer({id:"tl-lbl", type:"symbol", source:"tl-r", "source-layer":"routes", minzoom:13.5, layout:{visibility:"none", "symbol-placement":"line", "symbol-spacing":320, "text-field":TLK, "text-font":["Noto Sans Regular"], "text-size":11, "text-max-angle":30},
     paint:{"text-color":TLC, "text-halo-color":halo, "text-halo-width":1.6}});
-  map.addLayer({id:"tl-st-lbl", type:"symbol", source:"tl-s", "source-layer":"stops", minzoom:14.5, filter:["==", ["get","location_type"], 1], layout:{visibility:"none", "text-field":["to-string", ["get","stop_name"]], "text-font":["Noto Sans Regular"], "text-size":11, "text-anchor":"top", "text-offset":[0,.7], "text-max-width":9, "text-optional":true},
+  map.addLayer({id:"tl-st-lbl", type:"symbol", source:"tl-s", "source-layer":"stops", minzoom:14, filter:["==", ["get","location_type"], 1], layout:{visibility:"none", "text-field":["to-string", ["get","stop_name"]], "text-font":["Noto Sans Regular"], "text-size":11, "text-anchor":"top", "text-offset":[0,.7], "text-max-width":9, "text-optional":true},
     paint:{"text-color":isDark() ? "#d5dde5" : "#17212c", "text-halo-color":halo, "text-halo-width":1.4}});
 }
 /* Sichtbarkeit und Filter: eingeschaltete Verkehrsmittel, ausgeblendete Linien */
@@ -12316,8 +12330,9 @@ function tlList(){
   });
   var mk = function(bus){ return ids.filter(function(id){ return (L[id].m==="bus")===bus; }).sort(function(a, b2){ return natCmp(L[a].k, L[b2].k); })
     .map(function(id){ var l = L[id]; if(!l.c) l.c = vtCol(l.m, l.k); return l; }); };
-  if(nc){ tlRestyle(); TL.sig = ""; tlApply(); }
+  if(nc){ tlRestyle(); tlApply(); }
   var E = {type:"FeatureCollection", features:[]}, tr = mk(false), bs = mk(true), sig = ids.join("|")+"#"+TL.bike.length+"#"+(z >= TLZ);
+  var sl = lnSlots(tr); if(JSON.stringify(sl)!==JSON.stringify(TLSL)){ TLSL = sl; tlRestyle(); }
   if(sig===TL.sig){ destUi(); return; }
   TL.sig = sig;
   VV = z < TLZ ? {tr:null, bus:null} : {tr:{lines:tr, geo:E, st:[], bike:TL.bike, nbus:bs.length}, bus:{lines:bs, geo:E}};
@@ -12469,17 +12484,17 @@ function dAddLayers(){
   if(vs) try { map.addLayer({id:"vt-rail", type:"line", source:vs, "source-layer":"transportation", minzoom:8,
     filter:["any", ["==",["get","class"],"rail"], ["==",["get","class"],"transit"]],
     paint:{"line-color":isDark() ? "#7c8894" : "#8a96a3", "line-opacity":.55, "line-width":["interpolate",["linear"],["zoom"],8,.6,12,1.2,16,2.4]}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}); } catch(e){}
-  map.addLayer({id:"dbus", type:"line", source:"dbus", paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,1,16,3], "line-opacity":.6}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
-  map.addLayer({id:"dtr", type:"line", source:"dtr", filter:["!=",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":W(1.6, 5)}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
+  map.addLayer({id:"dbus", type:"line", source:"dbus", paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,.6,16,2], "line-opacity":.5}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
+  map.addLayer({id:"dtr", type:"line", source:"dtr", filter:["!=",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":lnWidth(["get","m"]), "line-offset":lnOffset(["coalesce", ["get","o"], 0])}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
   map.addLayer({id:"dtr-f", type:"line", source:"dtr", filter:["==",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{"line-cap":"round", visibility:"none"}});
-  map.addLayer({id:"dst", type:"circle", source:"dst", minzoom:12, paint:{"circle-color":"#ffffff", "circle-stroke-color":"#17212c", "circle-stroke-width":1.6, "circle-radius":["interpolate",["linear"],["zoom"],12,2.5,16,5]}, layout:{visibility:"none"}});
+  map.addLayer({id:"dst", type:"circle", source:"dst", minzoom:11, paint:STPAINT(), layout:{visibility:"none"}});
   map.addLayer({id:"dbike", type:"circle", source:"dbike", minzoom:12, paint:{"circle-color":CBCOL, "circle-stroke-color":"#ffffff", "circle-stroke-width":["interpolate",["linear"],["zoom"],12,1,16,2], "circle-radius":["interpolate",["linear"],["zoom"],12,2.5,14,4,16,6]}, layout:{visibility:"none"}});
   if(!gl) return;
   map.addLayer({id:"dtr-lbl", type:"symbol", source:"dtr", minzoom:13.5, layout:{visibility:"none", "symbol-placement":"line", "symbol-spacing":320, "text-field":["get","k"], "text-font":["Noto Sans Regular"], "text-size":11, "text-max-angle":30},
     paint:{"text-color":["get","c"], "text-halo-color":halo, "text-halo-width":1.6}});
   map.addLayer({id:"dbus-lbl", type:"symbol", source:"dbus", minzoom:15, layout:{visibility:"none", "symbol-placement":"line", "symbol-spacing":360, "text-field":["get","k"], "text-font":["Noto Sans Regular"], "text-size":10.5},
     paint:{"text-color":token("--bus")||"#1f6fd1", "text-halo-color":halo, "text-halo-width":1.4}});
-  map.addLayer({id:"dst-lbl", type:"symbol", source:"dst", minzoom:14.5, layout:{visibility:"none", "text-field":["get","n"], "text-font":["Noto Sans Regular"], "text-size":11, "text-anchor":"top", "text-offset":[0,.7], "text-max-width":9, "text-optional":true},
+  map.addLayer({id:"dst-lbl", type:"symbol", source:"dst", minzoom:14, layout:{visibility:"none", "text-field":["get","n"], "text-font":["Noto Sans Regular"], "text-size":11, "text-anchor":"top", "text-offset":[0,.7], "text-max-width":9, "text-optional":true},
     paint:{"text-color":isDark() ? "#d5dde5" : "#17212c", "text-halo-color":halo, "text-halo-width":1.4}});
 }
 function dApplyMap(){

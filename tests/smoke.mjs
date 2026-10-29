@@ -1506,6 +1506,8 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   ok(await rp(`[["ICE",0],["FlixTrain FLX10",0],["European Sleeper",0],["RE3",0],["RB63",0],["FEX",0],["S25",0],["RER A",0],["10300",0],["3",0],["X",101],["Y",109],["Z",106]].map(function(a){ return railCls(a[0], a[1]); }).join()`)==="long,long,long,reg,reg,reg,sbahn,sbahn,train,train,long,sbahn,reg", "Zug-Arten falsch: "+await rp(`[["ICE",0],["FlixTrain FLX10",0],["European Sleeper",0],["RE3",0],["RB63",0],["FEX",0],["S25",0],["RER A",0],["10300",0],["3",0],["X",101],["Y",109],["Z",106]].map(function(a){ return railCls(a[0], a[1]); }).join()`));
   ok(await rp(`railCls("Foo", 0, "high_speed")==="long" && JSON.stringify(TLM).indexOf("\\"S1\\"") > -1`), "Bahn-Art fehlt in den Kartenausdrücken");
   ok(grp.includes("S-Bahn") && !grp.includes("Züge"), "Menü zeigt noch „S-Bahn & Züge“: "+grp);
+  // Linien nebeneinander: Versatz je Linie, dünn; Haltestellen ab Zoom 11
+  ok(await rp(`var o = JSON.stringify(map.getPaintProperty("tl-rail","line-offset")); var w = map.getPaintProperty("tl-rail","line-width"); o.indexOf("line-offset")<0 && o.indexOf("metro:U2") > -1 && JSON.stringify(w).indexOf("2.6") > -1 && map.getLayer("tl-st").minzoom===11`), "Linien nicht nebeneinander/dünn oder Haltestellen zu spät: "+await rp(`JSON.stringify([map.getPaintProperty("tl-rail","line-offset"), TLSL])`));
   ok(!OVQ.some(q => q.includes("subway") || q.includes("tram")), "Linien werden trotz Transitland bei Overpass abgefragt");
   ok(await rp(`var a = document.querySelector("#attr a[href*='transit.land/terms']"); !!a && a.textContent==="Transitland"`), "Quellenangabe Transitland mit Link fehlt");
   ok(await rp(`map.getLayoutProperty("tl-probe","visibility")==="visible"`), "Kacheln werden für das Menü nicht geladen");
@@ -1554,6 +1556,25 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   await page.waitForTimeout(200);
   ok(await rp(`tlKey()==="zweit" && !TL.cfgSt`), "Schlüssel in Dokument mit automatischer ID wird nicht gefunden: "+await rp(`TL.cfgSt`));
   await rp(`TL.cfg = ""; lsSet("rp-tlcfg", ""); true`);
+});
+
+await test("ÖPNV-Linien nebeneinander statt übereinander, dünn, Haltestellen früh sichtbar", async () => {
+  await seed();
+  await jump(13.42, 52.5267, 14.5);
+  const r = await rp(`
+    var L = [[13.38,52.50],[13.40,52.52],[13.43,52.53],[13.46,52.53]];
+    var ls = [{m:"sbahn",k:"S5",c:"#e87a1c"},{m:"sbahn",k:"S7",c:"#7d64b0"},{m:"sbahn",k:"S75",c:"#7d64b0"},{m:"reg",k:"RE1",c:"#c01a1a"},{m:"long",k:"ICE",c:"#9A3B3B"},{m:"tram",k:"M4",c:"#D99A00"}];
+    var sl = lnSlots(ls);
+    map.getSource("dtr").setData({type:"FeatureCollection", features:ls.map(function(l){ return {type:"Feature", properties:{m:l.m, id:l.m+":"+l.k, k:l.k, c:l.c, o:sl[l.m+":"+l.k]}, geometry:{type:"LineString", coordinates:L}}; })});
+    DL = {sbahn:1, reg:1, long:1, tram:1, train:1}; DOFF = {}; dApplyMap();
+    map.getSource("dst").setData({type:"FeatureCollection", features:[{type:"Feature", properties:{n:"Alexanderplatz", m:"train"}, geometry:{type:"Point", coordinates:[13.42,52.5267]}}]});
+    JSON.stringify(sl)`);
+  const sl = JSON.parse(r);
+  ok(new Set(["sbahn:S5","sbahn:S7","sbahn:S75","reg:RE1","long:ICE"].map(k => sl[k])).size===5 && sl["tram:M4"]===0, "Bahnlinien bekommen keine eigenen Plätze: "+r);
+  await page.waitForTimeout(800); await shot("linien-nebeneinander");
+  ok(await rp(`map.queryRenderedFeatures({layers:["dtr"]}).length >= 6 && map.queryRenderedFeatures({layers:["dst"]}).length===1`), "Linien oder Haltestelle nicht gezeichnet: "+await rp(`JSON.stringify([map.getLayoutProperty("dtr","visibility"), map.queryRenderedFeatures({layers:["dtr"]}).length, map.queryRenderedFeatures({layers:["dst"]}).length])`));
+  ok(await rp(`map.getLayer("dst").minzoom===11 && JSON.stringify(map.getPaintProperty("dtr","line-offset")).indexOf("\\"o\\"") > -1`), "Versatz oder frühe Haltestellen fehlen");
+  await rp(`map.getSource("dtr").setData({type:"FeatureCollection", features:[]}); map.getSource("dst").setData({type:"FeatureCollection", features:[]}); DL = {}; dApplyMap(); true`);
 });
 
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
