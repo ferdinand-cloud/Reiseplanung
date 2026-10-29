@@ -464,7 +464,7 @@ async function londonCity(id, C) {
       const nm = l[1].toLowerCase().replace(/ line$/, ""), rt = RT[l[0]]; if (!rt) return;
       const norm = (x) => " " + String(x).toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim() + " ";
       const rels = O.R.filter((r) => rt.includes(r.route) && (l[0] === "tram" ? true : nm === "dlr" ? /dlr|docklands/i.test(r.name) : norm(r.name).includes(norm(nm)) || r.ref.toLowerCase() === l[1].toLowerCase()));
-      const g = osmGeo(O, rels, 0.00004); if (g.length) { rail.G[i] = g; log("   OSM-Verlauf", l[1], rels.length, "Relationen"); } });
+      const g = osmGeo(O, rels, 0.00004); if (g.length) { rail.G[i] = g; meta.src = C.src + " · Verläufe © OpenStreetMap"; log("   OSM-Verlauf", l[1], rels.length, "Relationen"); } });
   } catch (e) { log("  OSM-Verläufe Bahn fehlgeschlagen:", e.message); }
   write(id, "rail", meta, rail);
   // Busse: BODS-GTFS für London (Department for Transport); scheitert das, bleiben die Busse bei Transitland/OpenStreetMap
