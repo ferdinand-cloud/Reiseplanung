@@ -1842,8 +1842,19 @@ await test("Events: eigenes Event mit Location – Bewertung und Notiz bleiben b
   await page.locator(`.st[data-id="${nl}"]`).scrollIntoViewIfNeeded(); await shot("event-ort-fehlt");
   await click(`.st[data-id="${nl}"] .evnl`);
   ok(await visible("#catPop .evlocs") && (await page.locator("#catPop h4").innerText()).includes("Location eintragen"), "Nachtragen öffnet nicht");
-  await click("#catPop .evlocs .evloc[data-pid=p3]"); await click("#catPop [data-act=evfsave]");
-  ok(await rp(`(function(){ var p = P("${nl}"); return !p.nl && p.loc==="p3" && dist(p, P("p3")) < 1 && routePts(cur).some(function(q){ return q.id==="${nl}"; }); })()`), "Nachgetragene Location nicht übernommen");
+  // Ort des Events überall suchen (nicht nur Orte der Reise): Treffer wird beim Speichern als Ort angelegt
+  const PQ = [];
+  await page.route(/photon\.komoot\.io\/api/, rt => { PQ.push(rt.request().url()); return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body: JSON.stringify({features:[
+    {geometry:{coordinates:[-74.0004, 40.7308]}, properties:{name:"Blue Note", osm_value:"nightclub", street:"West 3rd Street", housenumber:"131", city:"New York"}}]}) }); });
+  const np0 = await rp(`Object.keys(T().places).length`);
+  await page.locator("#evLocQ").fill("blue note");
+  await page.waitForSelector("#catPop .evwebr", {timeout:5000});
+  ok(PQ.length && PQ[PQ.length-1].includes("q=blue%20note"), "Ortssuche nicht abgefragt");
+  ok(await rp(`Object.keys(T().places).length===${np0}`), "Suchtreffer wird schon vor dem Speichern angelegt");
+  await click("#catPop .evwebr");
+  ok((await page.locator("#catPop .evsel").innerText()).includes("Blue Note"), "Suchtreffer nicht als gewählt angezeigt");
+  await click("#catPop [data-act=evfsave]");
+  ok(await rp(`(function(){ var p = P("${nl}"), l = p && P(p.loc); return !p.nl && l && l.n==="Blue Note" && l.c==="bar" && l.addr==="West 3rd Street 131, New York" && dist(p, l) < 1 && !dayOf(l.id) && routePts(cur).some(function(q){ return q.id==="${nl}"; }); })()`), "Nachgetragene Location aus der Suche nicht übernommen");
   ok(await page.locator(`.st[data-id="${nl}"] .evin`).count()===1, "Tagesplan zeigt die nachgetragene Location nicht");
   // v388-Daten (Uhrzeit + Ticket an der Location) werden zu Event-Einträgen
   ok(await rp(`(function(){ var t = JSON.parse(JSON.stringify(T())); t.order[cur] = ["p1","p3"]; t.times = {p3:"19:30"}; t.tickets = {tkA:{on:"p:p3", k:"event", n:"Altes Konzert", d:cur, tm:"19:30", ev:"X1", st:"plan"}};

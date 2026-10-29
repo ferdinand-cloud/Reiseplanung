@@ -11557,7 +11557,7 @@ function evMigrate(t){
 function evOpen(o){ EV = {pid:o.pid ? rootOf(o.pid) : "", k:o.k || "", st:"", list:[], err:"", msg:"", f:null}; if(tmKey) evLoad(); renderEv(true); }
 function evPlanned(x){ var A = tkAll(); return Object.keys(T().places).some(function(id){ return T().places[id].ev===x.id; }) || Object.keys(A).some(function(id){ return A[id] && A[id].ev===x.id; }); }
 function evFormHTML(){
-  var e = EV, f = e.f, l = f.loc && f.loc!=="?" && P(f.loc);
+  var e = EV, f = e.f, l = f.loc==="web" ? f.wsel : f.loc && f.loc!=="?" && P(f.loc);
   var h = "<div class=\"pop-head\"><h4>"+(f.eid ? "Location eintragen" : "Eigenes Event")+"</h4><button type=\"button\" class=\"x\" data-act=\"evfback\" aria-label=\"Abbrechen\">×</button></div>";
   if(f.eid) h += "<p class=\"lo-leg\">"+esc((P(f.eid)||{}).n||"")+"</p>";
   else h += "<div class=\"ag-grp zform tkform evform\">"+
@@ -11568,36 +11568,67 @@ function evFormHTML(){
     "<label class=\"tf-row\"><span>Link</span><input type=\"url\" id=\"evfU\" maxlength=\"500\" value=\""+esc(f.url||"")+"\" placeholder=\"https://…\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"></label></div>";
   h += "<div class=\"nt-sec\">Location</div>";
   var row = function(q, act, extra){ return "<span class=\"ls-th ico\" style=\"--cc:"+catCol(q.c)+"\">"+icon(q.c)+"</span><span class=\"ls-t\"><b>"+esc(q.n)+"</b><small>"+esc(q.addr||CATNAME[q.c]||"")+"</small></span>"; };
-  // gewählt: deutlich abgesetzt mit Häkchen und „Ändern“; sonst Auswahl aus den Orten der Reise
+  // gewählt: deutlich abgesetzt mit Häkchen und „Ändern“; sonst Suche nach dem Ort des Events (überall, Orte der Reise zuerst als Vorschläge)
   if(f.loc==="?" || l) h += "<div class=\"ag-grp ls-list\"><div class=\"ls-row evsel\">"+(l ? row(l) : "<span class=\"ls-th ico evq\">?</span><span class=\"ls-t\"><b>Noch unklar</b><small>Später eintragen – das Event steht trotzdem im Tagesplan</small></span>")+
       "<span class=\"evck\" aria-label=\"Gewählt\">"+ic("ok")+"</span><button type=\"button\" class=\"btn g s\" data-act=\"evfchg\">Ändern</button></div></div>";
   else {
     var L = Object.keys(T().places).map(P).filter(function(q){ return !q.of && !isEv(q) && q.k!=="photo" && hasLoc(q); }).sort(function(a, b){ return a.n.localeCompare(b.n, "de"); });
-    h += "<p class=\"note evpick\">Noch keine Location gewählt – antippen zum Auswählen.</p>"+
+    h += "<input type=\"search\" id=\"evLocQ\" class=\"evlq\" placeholder=\"Ort des Events suchen (Name, Adresse)\" autocomplete=\"off\" enterkeyhint=\"search\" value=\""+esc(f.q||"")+"\" aria-label=\"Ort des Events suchen\">"+
+      "<p class=\"note evpick\">Noch keine Location gewählt – suchen oder unten antippen.</p>"+
       "<div class=\"ag-grp ls-list\"><button type=\"button\" class=\"ls-row evloc evlater\" data-act=\"evfloc\" data-pid=\"?\"><span class=\"ls-th ico evq\">?</span><span class=\"ls-t\"><b>Noch unklar</b><small>Später eintragen</small></span></button></div>"+
-      (L.length ? "<div class=\"nt-sec evsub\">Orte der Reise</div><input type=\"search\" id=\"evLocQ\" class=\"evlq\" placeholder=\"Suchen\" autocomplete=\"off\" value=\""+esc(f.q||"")+"\" aria-label=\"Location suchen\">"+
-        "<div class=\"ag-grp ls-list evlocs\">"+L.map(function(q){ return "<button type=\"button\" class=\"ls-row evloc\" data-act=\"evfloc\" data-pid=\""+esc(q.id)+"\" data-q=\""+esc(norm(q.n+" "+(q.addr||"")))+"\">"+row(q)+"<span class=\"evrad\" aria-hidden=\"true\"></span></button>"; }).join("")+"</div>"
-        : "<p class=\"note\">Noch keine Orte mit Lage in dieser Reise – lege die Location über die Suche an oder wähle „Noch unklar“.</p>");
+      "<div id=\"evWeb\">"+evWebHTML()+"</div>"+
+      (L.length ? "<div class=\"nt-sec evsub evsugh\">Vorschläge aus deiner Reise</div>"+
+        "<div class=\"ag-grp ls-list evlocs\">"+L.map(function(q){ return "<button type=\"button\" class=\"ls-row evloc\" data-act=\"evfloc\" data-pid=\""+esc(q.id)+"\" data-q=\""+esc(norm(q.n+" "+(q.addr||"")))+"\">"+row(q)+"<span class=\"evrad\" aria-hidden=\"true\"></span></button>"; }).join("")+"</div>" : "");
   }
   if(f.err) h += "<p class=\"err\" role=\"alert\">"+esc(f.err)+"</p>";
   h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"evfback\">Abbrechen</button><button type=\"button\" class=\"btn\" data-act=\"evfsave\">"+(f.eid ? "Speichern" : "Einplanen")+"</button></div>";
   return h;
 }
 function evKeep(){ var f = EV && EV.f; if(!f) return; [["n","evfN"],["d","evfD"],["tm","evfT"],["te","evfE"],["url","evfU"],["q","evLocQ"]].forEach(function(x){ var i = $(x[1]); if(i) f[x[0]] = i.value; }); }
-function evLocFilter(){ var i = $("evLocQ"), q = norm(i ? i.value : ""); document.querySelectorAll("#catPop .evlocs .evloc").forEach(function(b){ b.hidden = !!q && (b.getAttribute("data-q")||"").indexOf(q) < 0; }); }
+function evLocFilter(){ var i = $("evLocQ"), q = norm(i ? i.value : ""), n = 0; document.querySelectorAll("#catPop .evlocs .evloc").forEach(function(b){ b.hidden = !!q && (b.getAttribute("data-q")||"").indexOf(q) < 0; if(!b.hidden) n++; });
+  var hh = document.querySelector("#catPop .evsugh"); if(hh) hh.hidden = !n; }
+// Ort des Events überall suchen (Photon, Umkreis um Hotel/Ort des Tages); Treffer werden erst beim Speichern als Ort angelegt
+var evWebT = null;
+function evWebHTML(){ var f = EV && EV.f; if(!f || !f.q || f.q.trim().length < 2) return "";
+  if(f.wst==="load") return "<p class=\"loc-st\"><i class=\"spin\"></i><span>Suche …</span></p>";
+  if(f.wst==="err") return "<p class=\"note\">Suche nicht erreichbar – Ort aus den Vorschlägen wählen oder „Noch unklar“.</p>";
+  var H = f.hits || []; if(!H.length) return f.wst==="ok" ? "<p class=\"note\">Nichts gefunden.</p>" : "";
+  return "<div class=\"nt-sec evsub\">Gefunden</div><div class=\"ag-grp ls-list evwebl\">"+H.map(function(x, i){ return "<button type=\"button\" class=\"ls-row evloc evwebr\" data-act=\"evfweb\" data-i=\""+i+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(x.c)+"\">"+icon(x.c)+"</span><span class=\"ls-t\"><b>"+esc(x.n)+"</b><small>"+esc(x.addr||"")+"</small></span><span class=\"evrad\" aria-hidden=\"true\"></span></button>"; }).join("")+"</div>"; }
+function evWebPaint(){ var b = $("evWeb"); if(b) b.innerHTML = evWebHTML(); }
+var EVWEBC = {theatre:"kultur", arts_centre:"kultur", museum:"kultur", gallery:"kultur", cinema:"erlebnis", nightclub:"bar", bar:"bar", pub:"bar", restaurant:"essen", cafe:"cafe", park:"park", stadium:"erlebnis"};
+function evWeb(){
+  var f = EV && EV.f; if(!f) return; var i = $("evLocQ"), q = (i ? i.value : f.q || "").trim(); f.q = q; clearTimeout(evWebT);
+  if(q.length < 2){ f.hits = []; f.wst = ""; evWebPaint(); return; }
+  f.wst = "load"; evWebPaint();
+  evWebT = setTimeout(function(){ var a = evAnchor({k:f.d || cur}) || srchMapCenter(), my = f;
+    fetch("https://photon.komoot.io/api/?q="+encodeURIComponent(q)+"&limit=6&lang=de&lat="+(+a.la).toFixed(3)+"&lon="+(+a.lo).toFixed(3)).then(function(r){ return r.json(); }).then(function(j){
+      if(!EV || EV.f!==my || my.q!==q) return;
+      my.hits = (j.features||[]).map(function(ft){ var pr = ft.properties||{}, co = ft.geometry && ft.geometry.coordinates; if(!co) return null;
+        var nm = pr.name || [pr.street, pr.housenumber].filter(Boolean).join(" "); if(!nm) return null;
+        var ad = [[pr.street, pr.housenumber].filter(Boolean).join(" "), pr.city || pr.locality || pr.district].filter(function(x){ return x && x!==nm; }).join(", ");
+        return {n:nm.slice(0, 80), la:+(+co[1]).toFixed(6), lo:+(+co[0]).toFixed(6), addr:ad.slice(0, 120), c:EVWEBC[pr.osm_value] || "erlebnis"}; }).filter(Boolean);
+      my.wst = "ok"; evWebPaint(); })
+    .catch(function(){ if(!EV || EV.f!==my) return; my.wst = "err"; evWebPaint(); });
+  }, 350);
+}
+// gewählter Suchtreffer → Ort der Reise (vorhandenen gleichen Ort nutzen, sonst als Wunsch anlegen)
+function evWebPlace(x){
+  var hit = ""; Object.keys(T().places).forEach(function(id){ var q = P(id); if(!hit && !q.of && !isEv(q) && hasLoc(q) && dist(q, x) < 80 && zKey(q.n)===zKey(x.n)) hit = id; });
+  if(hit) return hit; var pid = uid("w"); T().places[pid] = {id:pid, n:x.n, c:x.c, list:(T().lists[0]||{}).id || null, note:"", addr:x.addr||"", la:x.la, lo:x.lo}; return pid; }
 function evSetLocOpen(eid){ var p = P(eid); if(!isEv(p) || isRO()) return; closeJpMore();
   EV = {pid:"", k:"", st:"", list:[], err:"", msg:"", f:{eid:eid, loc:"", q:""}}; renderEv(true); }
 function evFormOpen(){ if(!EV || isRO()) return; var ds = days(); if(!ds.length) return;
   EV.f = {n:"", d:EV.k || (dayByKey(cur) ? cur : ds[0].key), tm:"", te:"", url:"", loc:EV.pid || "", q:""}; renderEv(); }
 function evFormSave(){
   var f = EV && EV.f; if(!f) return; evKeep(); f.err = "";
-  var n = String(f.n||"").trim(), u = f.url ? tkUrl(f.url) : "";
-  if(f.eid){ if(!f.loc || f.loc==="?" || !P(f.loc)){ f.err = "Bitte eine Location antippen."; renderEv(); return; }
-    var sn = snapshot(); if(!evSetLoc(f.eid, f.loc)){ f.err = "Die Location ließ sich nicht eintragen."; renderEv(); return; }
+  var n = String(f.n||"").trim(), u = f.url ? tkUrl(f.url) : "", snap0 = snapshot();
+  var web = function(){ if(f.loc==="web" && f.wsel){ f.loc = evWebPlace(f.wsel); f.wsel = null; } };
+  if(f.eid){ if(!f.loc || f.loc==="?" || (f.loc==="web" ? !f.wsel : !P(f.loc))){ f.err = "Bitte eine Location antippen."; renderEv(); return; }
+    web(); var sn = snap0; if(!evSetLoc(f.eid, f.loc)){ f.err = "Die Location ließ sich nicht eintragen."; renderEv(); return; }
     save(); undoSnap = sn; var en = P(f.eid).n, ln = P(f.loc).n; closeCatPop(); renderAll(); toast("„"+en+"“ findet in "+ln+" statt", true); return; }
-  if(!n) f.err = "Bitte einen Namen angeben."; else if(!f.loc || (f.loc!=="?" && !P(f.loc))) f.err = "Bitte eine Location antippen oder „Noch unklar“ wählen."; else if(f.url && !u) f.err = "Der Link sieht nicht gültig aus.";
+  if(!n) f.err = "Bitte einen Namen angeben."; else if(!f.loc || (f.loc==="web" ? !f.wsel : f.loc!=="?" && !P(f.loc))) f.err = "Bitte eine Location antippen oder „Noch unklar“ wählen."; else if(f.url && !u) f.err = "Der Link sieht nicht gültig aus.";
   if(f.err){ renderEv(); return; }
-  var snap = snapshot(), eid = evNew({n:n, loc:f.loc, d:f.d, tm:f.tm, te:f.te && f.te!==f.tm ? f.te : "", url:u});
+  web(); var snap = snap0, eid = evNew({n:n, loc:f.loc, d:f.d, tm:f.tm, te:f.te && f.te!==f.tm ? f.te : "", url:u});
   if(!eid){ S = JSON.parse(snap); f.err = "Das Event ließ sich nicht einplanen."; renderEv(); return; }
   save(); undoSnap = snap; renderAll(); var D = dayByKey(f.d);
   toast("„"+n+"“ am "+D.lbl+(f.tm ? " um "+f.tm : "")+" eingeplant", true);
@@ -11645,7 +11676,7 @@ function renderEv(first){
   if(EV.f) evLocFilter();
   if(fid && $(fid)) $(fid).focus({preventScroll:true});
 }
-document.addEventListener("input", function(e){ if(e.target && e.target.id==="evLocQ") evLocFilter(); });
+document.addEventListener("input", function(e){ if(e.target && e.target.id==="evLocQ"){ evLocFilter(); evWeb(); } });
 // Location zum Ticketmaster-Veranstaltungsort: passender Ort der Reise (nah und gleicher Name), sonst neuer Ort aus den Ticketmaster-Angaben (als Wunsch, nicht eingeplant)
 function evPlace(x){
   if(EV && EV.pid && P(EV.pid)) return EV.pid;
@@ -17301,7 +17332,8 @@ document.addEventListener("click", function(e){
     case "evfback": if(EV){ EV.f = null; renderEv(); } break;
     case "evfsave": evFormSave(); break;
     case "evfloc": if(EV && EV.f){ evKeep(); EV.f.loc = t.getAttribute("data-pid"); EV.f.err = ""; renderEv(); } break;
-    case "evfchg": if(EV && EV.f){ evKeep(); EV.f.loc = ""; renderEv(); } break;
+    case "evfchg": if(EV && EV.f){ evKeep(); EV.f.loc = ""; EV.f.wsel = null; renderEv(); } break;
+    case "evfweb": if(EV && EV.f && EV.f.hits && EV.f.hits[+t.getAttribute("data-i")]){ evKeep(); EV.f.wsel = EV.f.hits[+t.getAttribute("data-i")]; EV.f.loc = "web"; EV.f.err = ""; renderEv(); } break;
     case "evsetloc": evSetLocOpen(t.getAttribute("data-pid") || id || sel); break;
     case "evgo": closeCatPop(); setSheet("mid"); select(t.getAttribute("data-pid")); break;
     case "evloc": evLocOpen(t.getAttribute("data-pid")); break;
