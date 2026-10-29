@@ -1774,7 +1774,7 @@ await test("Events: eigenes Event mit Location – Bewertung und Notiz bleiben b
   await click("#card [data-act=cardmore]"); await click("#jpMenu [data-act=evplace]");
   ok(await visible("#catPop #evKeyIn"), "Ticketmaster-Hinweis fehlt ohne Schlüssel");
   await click("#catPop [data-act=evnew]");
-  ok(await page.locator("#catPop .evloc.on").count()===1 && (await page.locator("#catPop .evloc.on").innerText()).includes("Washington Square Park"), "Location nicht vorbelegt");
+  ok(await page.locator("#catPop .evsel").count()===1 && (await page.locator("#catPop .evsel").innerText()).includes("Washington Square Park"), "Location nicht vorbelegt");
   await page.locator("#evfN").fill("Jazz im Park"); await page.locator("#evfD").selectOption(N);
   await page.locator("#evfT").fill("18:00"); await page.locator("#evfE").fill("20:00");
   await shot("event-eigenes");
@@ -1817,12 +1817,34 @@ await test("Events: eigenes Event mit Location – Bewertung und Notiz bleiben b
   await click(".dh [data-act=evday]"); await click("#catPop [data-act=evnew]");
   await page.locator("#evLocQ").fill("katz"); await page.waitForTimeout(100);
   ok(await page.locator("#catPop .evlocs .evloc:visible").count()===1, "Location-Suche filtert nicht");
+  // nur vorgeschlagen ist nicht gewählt: Hinweis + Kreis, erst Antippen wählt (dann Häkchen und „Ändern“)
+  ok(await visible("#catPop .evpick") && await page.locator("#catPop .evsel").count()===0, "Vorschlag sieht wie gewählt aus");
+  await shot("event-loc-auswahl");
   await click("#catPop .evlocs .evloc:visible");
+  ok(await page.locator("#catPop .evsel").count()===1 && (await page.locator("#catPop .evsel").innerText()).includes("Katz Deli"), "Gewählte Location nicht deutlich angezeigt");
   await click("#catPop [data-act=evfsave]");
   ok((await page.locator("#catPop .err").innerText()).includes("Namen"), "Fehlender Name wird nicht gemeldet");
   await page.locator("#evfN").fill("Pastrami-Tasting"); await page.locator("#evfT").fill("12:00");
   await click("#catPop [data-act=evfsave]");
   ok(await rp(`(function(){ var id = Object.keys(T().places).filter(function(x){ return P(x).n==="Pastrami-Tasting"; })[0]; return !!id && P(id).loc==="p1" && dayOf(id)===cur && timeOf(id)==="12:00"; })()`), "Event aus dem Tageskopf falsch");
+  // Location noch unklar: Event steht im Tagesplan und auf der Karte (beim Hotel, gekennzeichnet), nicht in der Route; später eintragen
+  await click("#catPop [data-act=evclose]");
+  await click(".dh [data-act=evday]"); await click("#catPop [data-act=evnew]");
+  await page.locator("#evfN").fill("Geheimkonzert");
+  await click("#catPop [data-act=evfsave]");
+  ok((await page.locator("#catPop .err").innerText()).includes("Noch unklar"), "Ohne Location kein Hinweis auf „Noch unklar“");
+  await click("#catPop .evlater"); ok(await visible("#catPop .evsel .evq"), "„Noch unklar“ nicht als gewählt angezeigt");
+  await click("#catPop [data-act=evfsave]");
+  const nl = await rp(`Object.keys(T().places).filter(function(x){ return P(x).n==="Geheimkonzert"; })[0] || ""`);
+  ok(nl && await rp(`(function(){ var p = P("${nl}"); return p.nl===1 && !p.loc && dayOf("${nl}")===cur && hasLoc(p) && dist(p, {la:40.7561, lo:-73.9930}) < 5 && !routePts(cur).some(function(q){ return q.id==="${nl}"; }) && !dayLegs(cur).some(function(l){ return l[1].id==="${nl}"; }); })()`), "Event ohne Ort falsch angelegt");
+  await click("#catPop [data-act=evclose]");
+  ok(await visible(`.st[data-id="${nl}"] .evnl`), "Tagesplan kennzeichnet fehlenden Ort nicht");
+  await page.locator(`.st[data-id="${nl}"]`).scrollIntoViewIfNeeded(); await shot("event-ort-fehlt");
+  await click(`.st[data-id="${nl}"] .evnl`);
+  ok(await visible("#catPop .evlocs") && (await page.locator("#catPop h4").innerText()).includes("Location eintragen"), "Nachtragen öffnet nicht");
+  await click("#catPop .evlocs .evloc[data-pid=p3]"); await click("#catPop [data-act=evfsave]");
+  ok(await rp(`(function(){ var p = P("${nl}"); return !p.nl && p.loc==="p3" && dist(p, P("p3")) < 1 && routePts(cur).some(function(q){ return q.id==="${nl}"; }); })()`), "Nachgetragene Location nicht übernommen");
+  ok(await page.locator(`.st[data-id="${nl}"] .evin`).count()===1, "Tagesplan zeigt die nachgetragene Location nicht");
   // v388-Daten (Uhrzeit + Ticket an der Location) werden zu Event-Einträgen
   ok(await rp(`(function(){ var t = JSON.parse(JSON.stringify(T())); t.order[cur] = ["p1","p3"]; t.times = {p3:"19:30"}; t.tickets = {tkA:{on:"p:p3", k:"event", n:"Altes Konzert", d:cur, tm:"19:30", ev:"X1", st:"plan"}};
     normTrip(t); var o = t.order[cur]; return o[1]==="e_tkA" && t.places.e_tkA.c==="event" && t.places.e_tkA.loc==="p3" && t.times.e_tkA==="19:30" && !t.times.p3 && t.tickets.tkA.on==="p:e_tkA" && !!t.places.p3; })()`), "Umstellung alter Event-Tickets falsch");

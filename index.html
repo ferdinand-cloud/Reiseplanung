@@ -3046,6 +3046,14 @@ a.ls-row{text-decoration:none}
 .evlq{width:100%;box-sizing:border-box;border:0;border-radius:10px;background:var(--fill);padding:9px 12px;font:inherit;font-size:15px;color:inherit;margin:0 0 8px}
 .evlocs{max-height:min(34vh,280px);overflow-y:auto;-webkit-overflow-scrolling:touch}
 .evloc{width:100%;text-align:left}
+.evsel{gap:10px;background:color-mix(in srgb,var(--accent,#0a84ff) 12%,transparent);box-shadow:inset 0 0 0 2px var(--accent,#0a84ff);border-radius:inherit}
+.evck{color:var(--accent,#0a84ff);display:grid;place-items:center}.evck svg{width:22px;height:22px;stroke-width:2.4}
+.evrad{width:20px;height:20px;flex:0 0 20px;border-radius:50%;border:2px solid var(--line);box-sizing:border-box}
+.evq{font:800 17px/1 var(--f-round,inherit);color:#C9772F;display:grid;place-items:center}
+.evpick{margin:0 2px 8px}
+.evsub{margin-top:12px}
+.evnl{border:0;background:color-mix(in srgb,#C9772F 14%,transparent);color:#A85F22;border-radius:999px;padding:2px 9px;font:600 12.5px/1.5 var(--f-body,inherit);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.evnl .ii{width:13px;height:13px}
 .evloc.on{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .evloc .ls-th svg{width:18px;height:18px}
 .evform select{background:var(--fill);border:0;border-radius:10px;min-height:38px;padding:0 10px;font:inherit;color:inherit}
@@ -4422,6 +4430,7 @@ var IC = {
   eye:"<path d=\"M1.5 10s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6z\"/><circle cx=\"10\" cy=\"10\" r=\"2.5\"/>", // Beobachten, Anzeigen
   cal:"<rect x=\"3\" y=\"4.5\" width=\"14\" height=\"12\" rx=\"2\"/><path d=\"M3 8.5h14M7 3v3M13 3v3\"/>", // Einplanen, Tag
   add:"<path d=\"M10 4.5v11M4.5 10h11\"/>", // Hinzufügen, zur Planung
+  ok:"<path d=\"M4.5 10.5l3.6 3.6 7.4-8\"/>", // Gewählt
   route:"<path d=\"M17 3L3 9.2l6 1.8 1.8 6z\"/>", // Route, Navigieren
   edit:"<path d=\"M13.5 3.5l3 3L7 16H4v-3z\"/>", // Bearbeiten
   note:"<path d=\"M5.5 2.5h6l3 3v12h-9z\"/><path d=\"M11.5 2.5v3h3M8 10h4.5M8 13h4.5\"/>", // Details, Notizen
@@ -6321,7 +6330,7 @@ function recCollect(){
     Object.keys(t.journal||{}).forEach(function(dk){ var J = t.journal[dk]; if(J && J.hl) hl[J.hl] = 1; });
     var isP = function(pid){ var q = t.places[pid]; return !!(t.privP && (t.privP[pid] || (q && q.of && t.privP[q.of]))); };
     Object.keys(t.places).forEach(function(pid){
-      var p = t.places[pid]; if(!p || p.of || p.k==="hotel" || !p.la || isP(pid)) return; // je Ort einmal, Besuche zusammengefasst
+      var p = t.places[pid]; if(!p || p.of || p.k==="hotel" || !p.la || p.nl || isP(pid)) return; // je Ort einmal, Besuche zusammengefasst
       var vs = [pid].concat(Object.keys(t.places).filter(function(k){ return t.places[k] && t.places[k].of===pid; }));
       if(!vs.some(function(k){ return t.done[k]; })) return;
       if(!(t.pubP && t.pubP[pid])) return; // nur bewusst veröffentlichte Orte
@@ -11507,15 +11516,22 @@ function evLocBack(){
   else if(r.sel && P(r.sel) && hasLoc(P(r.sel)) && map) revealPoint(P(r.sel), 0, false);
   return true;
 }
+// Event ohne Ort („noch unklar“): Punkt beim Hotel bzw. Ort des Tages, gekennzeichnet (nl), nicht in Route und Empfehlungen
+function evNoLoc(p, k){ var D = dayByKey(k), a = D && (hasLoc(D.hotel) ? D.hotel : ortFor(k)); p.nl = 1; delete p.loc; p.addr = "";
+  if(hasLoc(a)){ p.la = +a.la; p.lo = +a.lo; } else { delete p.la; delete p.lo; } }
+function evSetLoc(eid, lid){ var p = P(eid), l = P(lid); if(!isEv(p) || !l || !hasLoc(l)) return false;
+  p.loc = rootOf(lid); p.addr = evAddr(l); p.la = +l.la; p.lo = +l.lo; delete p.nl; return true; }
+function evNlBtn(p){ return p && p.nl && !isRO() ? "<button type=\"button\" class=\"evnl\" data-act=\"evsetloc\" data-pid=\""+esc(p.id)+"\">"+ic("pin", "ii")+" Ort fehlt – eintragen</button>" : p && p.nl ? "<span class=\"evnl\">Ort fehlt</span>" : ""; }
 function evAddr(l){ return ("in "+l.n+(l.addr ? " · "+l.addr : "")).slice(0, 120); }
 function evsAt(lid){ var r = rootOf(lid); return Object.keys(T().places).map(P).filter(function(q){ return isEv(q) && q.loc===r; })
   .sort(function(a, b){ return ((dayOf(a.id)||"~")+timeOf(a.id)).localeCompare((dayOf(b.id)||"~")+timeOf(b.id)); }); }
 // Merken/Übernehmen eines Events (auch aus Empfehlungen und Chat): gemeint ist die Location, ein vergangener Termin hilft niemandem
 function evLocQ(q){ if(!q || q.c!=="event") return q; var m = /^in (.+?)(?: · (.*))?$/.exec(q.addr||""); if(!m) return Object.assign({}, q, {c:"erlebnis"});
   return Object.assign({}, q, {n:m[1], c:"erlebnis", addr:m[2]||""}); }
-function evNew(o){ // o: {n, loc, d, tm, te, url, ev}
-  var l = P(o.loc); if(!l || !hasLoc(l) || !dayByKey(o.d)) return "";
-  var eid = uid("e"), lid = (T().lists[0]||{}).id || null, p = {id:eid, n:String(o.n).slice(0, 80), c:"event", loc:rootOf(o.loc), list:lid, note:"", addr:evAddr(l), la:+l.la, lo:+l.lo};
+function evNew(o){ // o: {n, loc ("?" = noch unklar), d, tm, te, url, ev}
+  var l = o.loc!=="?" && P(o.loc); if((o.loc!=="?" && (!l || !hasLoc(l))) || !dayByKey(o.d)) return "";
+  var eid = uid("e"), lid = (T().lists[0]||{}).id || null, p = {id:eid, n:String(o.n).slice(0, 80), c:"event", list:lid, note:""};
+  if(l){ p.loc = rootOf(o.loc); p.addr = evAddr(l); p.la = +l.la; p.lo = +l.lo; } else evNoLoc(p, o.d);
   if(o.te) p.te = o.te; if(o.url) p.url = o.url; if(o.ev) p.ev = o.ev;
   T().places[eid] = p;
   var od = ord(o.d), at = null; if(o.tm) for(var j = 0; j < od.length; j++){ if(timeOf(od[j]) && timeOf(od[j]) > o.tm){ at = j; break; } }
@@ -11541,35 +11557,45 @@ function evMigrate(t){
 function evOpen(o){ EV = {pid:o.pid ? rootOf(o.pid) : "", k:o.k || "", st:"", list:[], err:"", msg:"", f:null}; if(tmKey) evLoad(); renderEv(true); }
 function evPlanned(x){ var A = tkAll(); return Object.keys(T().places).some(function(id){ return T().places[id].ev===x.id; }) || Object.keys(A).some(function(id){ return A[id] && A[id].ev===x.id; }); }
 function evFormHTML(){
-  var e = EV, f = e.f, l = f.loc && P(f.loc), fix = !!e.pid;
-  var h = "<div class=\"pop-head\"><h4>Eigenes Event</h4><button type=\"button\" class=\"x\" data-act=\"evfback\" aria-label=\"Abbrechen\">×</button></div>";
-  h += "<div class=\"ag-grp zform tkform evform\">"+
+  var e = EV, f = e.f, l = f.loc && f.loc!=="?" && P(f.loc);
+  var h = "<div class=\"pop-head\"><h4>"+(f.eid ? "Location eintragen" : "Eigenes Event")+"</h4><button type=\"button\" class=\"x\" data-act=\"evfback\" aria-label=\"Abbrechen\">×</button></div>";
+  if(f.eid) h += "<p class=\"lo-leg\">"+esc((P(f.eid)||{}).n||"")+"</p>";
+  else h += "<div class=\"ag-grp zform tkform evform\">"+
     "<label class=\"tf-row\"><span>Name</span><input type=\"text\" id=\"evfN\" maxlength=\"80\" value=\""+esc(f.n||"")+"\" placeholder=\"z. B. Jazzabend, Lesung\" autocomplete=\"off\"></label>"+
     "<label class=\"tf-row\"><span>Tag</span><select id=\"evfD\">"+days().map(function(d){ return "<option value=\""+d.key+"\""+(d.key===f.d ? " selected" : "")+">Tag "+d.n+" · "+esc(d.lbl)+"</option>"; }).join("")+"</select></label>"+
     "<label class=\"tf-row\"><span>Beginn</span><input type=\"time\" id=\"evfT\" value=\""+esc(f.tm||"")+"\"></label>"+
     "<label class=\"tf-row\"><span>Ende</span><input type=\"time\" id=\"evfE\" value=\""+esc(f.te||"")+"\"></label>"+
     "<label class=\"tf-row\"><span>Link</span><input type=\"url\" id=\"evfU\" maxlength=\"500\" value=\""+esc(f.url||"")+"\" placeholder=\"https://…\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\"></label></div>";
   h += "<div class=\"nt-sec\">Location</div>";
-  if(fix && l) h += "<div class=\"ag-grp ls-list\"><div class=\"ls-row evloc on\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(l.c)+"\">"+icon(l.c)+"</span><span class=\"ls-t\"><b>"+esc(l.n)+"</b><small>"+esc(l.addr||CATNAME[l.c]||"")+"</small></span></div></div>";
+  var row = function(q, act, extra){ return "<span class=\"ls-th ico\" style=\"--cc:"+catCol(q.c)+"\">"+icon(q.c)+"</span><span class=\"ls-t\"><b>"+esc(q.n)+"</b><small>"+esc(q.addr||CATNAME[q.c]||"")+"</small></span>"; };
+  // gewählt: deutlich abgesetzt mit Häkchen und „Ändern“; sonst Auswahl aus den Orten der Reise
+  if(f.loc==="?" || l) h += "<div class=\"ag-grp ls-list\"><div class=\"ls-row evsel\">"+(l ? row(l) : "<span class=\"ls-th ico evq\">?</span><span class=\"ls-t\"><b>Noch unklar</b><small>Später eintragen – das Event steht trotzdem im Tagesplan</small></span>")+
+      "<span class=\"evck\" aria-label=\"Gewählt\">"+ic("ok")+"</span><button type=\"button\" class=\"btn g s\" data-act=\"evfchg\">Ändern</button></div></div>";
   else {
     var L = Object.keys(T().places).map(P).filter(function(q){ return !q.of && !isEv(q) && q.k!=="photo" && hasLoc(q); }).sort(function(a, b){ return a.n.localeCompare(b.n, "de"); });
-    h += "<input type=\"search\" id=\"evLocQ\" class=\"evlq\" placeholder=\"Ort der Reise suchen\" autocomplete=\"off\" value=\""+esc(f.q||"")+"\" aria-label=\"Location suchen\">"+
-      "<div class=\"ag-grp ls-list evlocs\">"+(L.length ? L.map(function(q){ var on = q.id===f.loc;
-        return "<button type=\"button\" class=\"ls-row evloc"+(on ? " on" : "")+"\" data-act=\"evfloc\" data-pid=\""+esc(q.id)+"\" data-q=\""+esc(norm(q.n+" "+(q.addr||"")))+"\" aria-pressed=\""+on+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(q.c)+"\">"+icon(q.c)+"</span><span class=\"ls-t\"><b>"+esc(q.n)+"</b><small>"+esc(q.addr||CATNAME[q.c]||"")+"</small></span></button>"; }).join("")
-        : "<p class=\"note\">Noch keine Orte mit Lage in dieser Reise. Lege die Location zuerst über die Suche an.</p>")+"</div>";
+    h += "<p class=\"note evpick\">Noch keine Location gewählt – antippen zum Auswählen.</p>"+
+      "<div class=\"ag-grp ls-list\"><button type=\"button\" class=\"ls-row evloc evlater\" data-act=\"evfloc\" data-pid=\"?\"><span class=\"ls-th ico evq\">?</span><span class=\"ls-t\"><b>Noch unklar</b><small>Später eintragen</small></span></button></div>"+
+      (L.length ? "<div class=\"nt-sec evsub\">Orte der Reise</div><input type=\"search\" id=\"evLocQ\" class=\"evlq\" placeholder=\"Suchen\" autocomplete=\"off\" value=\""+esc(f.q||"")+"\" aria-label=\"Location suchen\">"+
+        "<div class=\"ag-grp ls-list evlocs\">"+L.map(function(q){ return "<button type=\"button\" class=\"ls-row evloc\" data-act=\"evfloc\" data-pid=\""+esc(q.id)+"\" data-q=\""+esc(norm(q.n+" "+(q.addr||"")))+"\">"+row(q)+"<span class=\"evrad\" aria-hidden=\"true\"></span></button>"; }).join("")+"</div>"
+        : "<p class=\"note\">Noch keine Orte mit Lage in dieser Reise – lege die Location über die Suche an oder wähle „Noch unklar“.</p>");
   }
   if(f.err) h += "<p class=\"err\" role=\"alert\">"+esc(f.err)+"</p>";
-  h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"evfback\">Abbrechen</button><button type=\"button\" class=\"btn\" data-act=\"evfsave\">Einplanen</button></div>";
+  h += "<div class=\"pf-acts\"><button type=\"button\" class=\"btn g\" data-act=\"evfback\">Abbrechen</button><button type=\"button\" class=\"btn\" data-act=\"evfsave\">"+(f.eid ? "Speichern" : "Einplanen")+"</button></div>";
   return h;
 }
 function evKeep(){ var f = EV && EV.f; if(!f) return; [["n","evfN"],["d","evfD"],["tm","evfT"],["te","evfE"],["url","evfU"],["q","evLocQ"]].forEach(function(x){ var i = $(x[1]); if(i) f[x[0]] = i.value; }); }
 function evLocFilter(){ var i = $("evLocQ"), q = norm(i ? i.value : ""); document.querySelectorAll("#catPop .evlocs .evloc").forEach(function(b){ b.hidden = !!q && (b.getAttribute("data-q")||"").indexOf(q) < 0; }); }
+function evSetLocOpen(eid){ var p = P(eid); if(!isEv(p) || isRO()) return; closeJpMore();
+  EV = {pid:"", k:"", st:"", list:[], err:"", msg:"", f:{eid:eid, loc:"", q:""}}; renderEv(true); }
 function evFormOpen(){ if(!EV || isRO()) return; var ds = days(); if(!ds.length) return;
   EV.f = {n:"", d:EV.k || (dayByKey(cur) ? cur : ds[0].key), tm:"", te:"", url:"", loc:EV.pid || "", q:""}; renderEv(); }
 function evFormSave(){
   var f = EV && EV.f; if(!f) return; evKeep(); f.err = "";
   var n = String(f.n||"").trim(), u = f.url ? tkUrl(f.url) : "";
-  if(!n) f.err = "Bitte einen Namen angeben."; else if(!f.loc || !P(f.loc)) f.err = "Bitte eine Location wählen."; else if(f.url && !u) f.err = "Der Link sieht nicht gültig aus.";
+  if(f.eid){ if(!f.loc || f.loc==="?" || !P(f.loc)){ f.err = "Bitte eine Location antippen."; renderEv(); return; }
+    var sn = snapshot(); if(!evSetLoc(f.eid, f.loc)){ f.err = "Die Location ließ sich nicht eintragen."; renderEv(); return; }
+    save(); undoSnap = sn; var en = P(f.eid).n, ln = P(f.loc).n; closeCatPop(); renderAll(); toast("„"+en+"“ findet in "+ln+" statt", true); return; }
+  if(!n) f.err = "Bitte einen Namen angeben."; else if(!f.loc || (f.loc!=="?" && !P(f.loc))) f.err = "Bitte eine Location antippen oder „Noch unklar“ wählen."; else if(f.url && !u) f.err = "Der Link sieht nicht gültig aus.";
   if(f.err){ renderEv(); return; }
   var snap = snapshot(), eid = evNew({n:n, loc:f.loc, d:f.d, tm:f.tm, te:f.te && f.te!==f.tm ? f.te : "", url:u});
   if(!eid){ S = JSON.parse(snap); f.err = "Das Event ließ sich nicht einplanen."; renderEv(); return; }
@@ -11697,7 +11723,7 @@ function dayLegs(k){
   // Route nur über offene Ziele: Start am Standort (heute) bzw. am vorherigen Ziel im Plan, zuletzt zurück zum Hotel
   var HT = hRim(D), HS = hRimS(D), out = [], live = k===todayKey() ? meAnchor() : null, prevOpen = null, lastAny = HS, lead = !HS;
   ord(k).forEach(function(id){
-    var p = P(id); if(!hasLoc(p)) return;
+    var p = P(id); if(!hasLoc(p) || p.nl) return;
     if(T().done[id]){ lastAny = p; lead = false; return; }
     // freier Tag, heute mit Standort: Start-Hotel vor dem ersten Ziel gilt als verlassen
     if(lead && live && p.k==="hotel") return;
@@ -12134,7 +12160,7 @@ function dToggle(m, v){
 function trIds(){ if(!DEST) return TRIDS; var ids = dModes().map(function(m){ return "ld-"+m; }); if(dBike().length) ids.push("lBike"); return ids; }
 var ovPending = false;
 function scheduleOverlay(){ if(ovPending) return; ovPending = true; requestAnimationFrame(function(){ ovPending = false; drawOverlay(); }); }
-function routePts(k){ return ord(k).map(P).filter(hasLoc); }
+function routePts(k){ return ord(k).map(P).filter(function(p){ return hasLoc(p) && !p.nl; }); }
 var hideDone = lsGet("nyc-hide-done")==="1";
 function hid(id){ return hideDone && !!T().done[id]; }
 /* Kartenfilter „Besuchte Orte & Fotospots“: standardmäßig an; Beobachter haben eine eigene Einstellung */
@@ -12347,6 +12373,7 @@ function drawOverlay(){
       var R = isSel ? 15.5 : 13;
       s += "<g opacity=\""+op+"\">"+mkShadow(q[0], q[1], R+1.5)+"<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\""+f1(R+2.6)+"\" fill=\"#fff\"/><circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\""+f1(R)+"\" fill=\""+fill+"\"/>";
       s += "<text x=\""+f1(q[0])+"\" y=\""+f1(q[1]+R*.36)+"\" text-anchor=\"middle\" font-size=\""+f1(R*1.12)+"\" font-weight=\"700\" fill=\""+txt+"\" style=\"font-family:var(--f-round)\">"+(done?"✓":n)+"</text></g>";
+      if(p.nl) s += "<g class=\"evnlmk\"><circle cx=\""+f1(q[0]+R*.78)+"\" cy=\""+f1(q[1]-R*.78)+"\" r=\"7.4\" fill=\"#fff\"/><circle cx=\""+f1(q[0]+R*.78)+"\" cy=\""+f1(q[1]-R*.78)+"\" r=\"5.8\" fill=\"#C9772F\"/><text x=\""+f1(q[0]+R*.78)+"\" y=\""+f1(q[1]-R*.78+3.2)+"\" text-anchor=\"middle\" font-size=\"9\" font-weight=\"800\" fill=\"#fff\">?</text></g>";
       if(p.k==="spot") s += "<circle cx=\""+f1(q[0]+R*.72)+"\" cy=\""+f1(q[1]+R*.72)+"\" r=\"5.2\" fill=\"#fff\"/><circle cx=\""+f1(q[0]+R*.72)+"\" cy=\""+f1(q[1]+R*.72)+"\" r=\"3.3\" fill=\"#007AFF\"/>";
       if(zoomed || isSel) mkLabel(q[0] + R + 9, q[1], p.n, true, isSel ? 10 : 3);
     }
@@ -13847,17 +13874,17 @@ function renderCard(){
   }
   var p = P(sel); if(!p){ sel = null; el.hidden = true; return; }
   var dk = dayOf(sel), D = dayByKey(cur), cc = catCol(p.c);
-  var c = x+"<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+cc+"\">"+icon(p.c)+"</span><div class=\"cht\"><h3>"+esc(p.n)+"</h3><p>"+esc([CATNAME[p.c], evLoc(p) ? "in "+evLoc(p).n : nbOf(p), dk ? (visitsOf(sel).length>1 ? visitsOf(sel).length+" Besuche geplant" : "") : "Wunsch in „"+listName(p.list)+"“"].filter(Boolean).join(" · "))+"</p></div></div>";
+  var c = x+"<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+cc+"\">"+icon(p.c)+"</span><div class=\"cht\"><h3>"+esc(p.n)+"</h3><p>"+esc([CATNAME[p.c], evLoc(p) ? "in "+evLoc(p).n : p.nl ? "Ort fehlt" : nbOf(p), dk ? (visitsOf(sel).length>1 ? visitsOf(sel).length+" Besuche geplant" : "") : "Wunsch in „"+listName(p.list)+"“"].filter(Boolean).join(" · "))+"</p></div></div>";
   var cph = photosAll(sel);
   var cadd = isRO() ? "" : "<label class=\"cphadd"+(cph.length?" sm":"")+"\" for=\"cphIn\" data-act=\"cphpick\" data-pid=\""+sel+"\" title=\"Fotos hinzufügen\" aria-label=\"Fotos hinzufügen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2.5 7h2.6l1.4-2h4\"/><path d=\"M12.5 9.8V15.5H2.5V7\"/><circle cx=\"7.5\" cy=\"10.8\" r=\"2.3\"/><path d=\"M15.5 3v6M12.5 6h6\"/></svg></label>";
   if(cph.length || cadd) c = c.replace(/<\/div><\/div>$/, "</div>"+(cph.length ? "<button type=\"button\" class=\"cph\" data-act=\"cphopen\" data-ph=\""+cph[0]+"\" aria-label=\""+cph.length+(cph.length===1?" Foto":" Fotos")+" ansehen\">"+
          cph.slice(0,3).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(cph.length>1 ? "<b>"+cph.length+"</b>" : "")+"</button>" : "")+cadd+"</div>");
-  c += "<div class=\"cchips\">"+dayChip(sel)+(evLoc(p) ? "<button type=\"button\" class=\"gtag evat\" data-act=\"evloc\" data-pid=\""+esc(evLoc(p).id)+"\" aria-label=\"Location öffnen: "+esc(evLoc(p).n)+"\">"+ic("pin", "ii")+" "+esc(evLoc(p).n)+"</button>" : "")+visBtn(sel, "cvis", true)+(grpNames(p) ? "<button type=\"button\" class=\"gtag on\" data-act=\"grppick\" data-id=\""+sel+"\">"+ic("group", "ii")+" "+esc(grpNames(p))+"</button>" : "")+"</div>";
+  c += "<div class=\"cchips\">"+dayChip(sel)+(p.nl ? evNlBtn(p) : "")+(evLoc(p) ? "<button type=\"button\" class=\"gtag evat\" data-act=\"evloc\" data-pid=\""+esc(evLoc(p).id)+"\" aria-label=\"Location öffnen: "+esc(evLoc(p).n)+"\">"+ic("pin", "ii")+" "+esc(evLoc(p).n)+"</button>" : "")+visBtn(sel, "cvis", true)+(grpNames(p) ? "<button type=\"button\" class=\"gtag on\" data-act=\"grppick\" data-id=\""+sel+"\">"+ic("group", "ii")+" "+esc(grpNames(p))+"</button>" : "")+"</div>";
   var cad = evLoc(p) ? (evLoc(p).addr||"") : p.addr;
   if(cad || p.note || noteOf(sel)) c += "<p class=\"cnote\">"+[cad ? esc(cad) : "", p.note ? esc(p.note) : "", noteOf(sel) ? "<span class=\"cmine\">"+esc(noteOf(sel).length > 140 ? noteOf(sel).slice(0,138)+" …" : noteOf(sel))+"</span>" : ""].filter(Boolean).join("<br>")+"</p>";
-  if(hasLoc(p)) c += ohLine(p, dk);
-  if(hasLoc(p)) c += frLine(p)+rvChips(p);
-  if(hasLoc(p)) c += stationLine(p);
+  if(hasLoc(p) && !p.nl) c += ohLine(p, dk);
+  if(hasLoc(p) && !p.nl) c += frLine(p)+rvChips(p);
+  if(hasLoc(p) && !p.nl) c += stationLine(p);
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   var dn = !!T().done[sel], ph = photosAll(sel).length, nc = (CMTS[sel]||[]).length;
   c += "<div class=\"jp-tiles ctiles\" data-id=\""+sel+"\">";
@@ -13867,7 +13894,7 @@ function renderCard(){
   if(dk){ var crv = rateOf(sel), crr = RATES.filter(function(r){ return r[0]===crv; })[0];
     c += "<button type=\"button\" class=\"jp-tile crate"+(crr?" set":"")+"\""+(crr ? " style=\"--rc:"+crr[2]+"\"" : "")+(isRO() ? " disabled" : " data-act=\"ratepick\"")+" aria-haspopup=\"menu\">"+
          "<svg viewBox=\"0 0 20 20\" fill=\""+(crr ? "currentColor" : "none")+"\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 3.2l2 4.2 4.6.6-3.4 3.2.9 4.5L10 13.5l-4.1 2.2.9-4.5L3.4 8l4.6-.6z\"/></svg><span>"+(crr ? crr[1] : "Bewerten")+"</span></button>"; }
-  if(!isRO() && (hasLoc(p) || p.addr)) c += "<button type=\"button\" class=\"jp-tile\" data-act=\"go\">"+I(IC.route)+"<span>Route</span></button>";
+  if(!isRO() && !p.nl && (hasLoc(p) || p.addr)) c += "<button type=\"button\" class=\"jp-tile\" data-act=\"go\">"+I(IC.route)+"<span>Route</span></button>";
   c += "<button type=\"button\" class=\"jp-tile\" data-act=\"jpedit\" data-pid=\""+sel+"\">"+I(IC.note)+"<span>Details</span>"+(ph+nc ? "<i class=\"tbadge\">"+(ph+nc)+"</i>" : "")+"</button>";
   c += "<button type=\"button\" class=\"jp-tile\" data-act=\"cardmore\" aria-haspopup=\"dialog\">"+I(IC.more)+"<span>Mehr</span></button>";
   c += "</div>";
@@ -13896,7 +13923,7 @@ function openCardMore(btn, id, kind){
     if(p.c==="hotel" && !stayHotel(id) && hasLoc(p)) as += row("stay2h", I(IC.hotel), "Als Hotel übernehmen", "", "Als Hotel der Reise übernehmen, Zeitraum im Reise-Fenster prüfen", " data-pid=\""+id+"\"");
     if(canStay(p)) as += row("staymark", I(IC.hotel), p.c==="hotel" ? "Keine Unterkunft" : "Als Unterkunft vormerken", "", p.c==="hotel" ? "Aus der Unterkunftsliste nehmen" : "In die Unterkunftsliste der Reise", " data-pid=\""+id+"\"");
   }
-  if(!isHs && hasLoc(p)){ var zg = pZiel(evLoc(p) ? evLoc(p).id : p.of || id);
+  if(!isHs && hasLoc(p) && !p.nl){ var zg = pZiel(evLoc(p) ? evLoc(p).id : p.of || id);
     as += zg ? row("pzopen", "<span class=\"ai\">"+ZBM+"</span>", "Gemerkt", esc(Z(zg.zid).name), "Liegt fürs nächste Mal im Ziel bereit", " data-z=\""+esc(zg.zid)+"\"")
       : row("pmerk", "<span class=\"ai\">"+ZBM+"</span>", "Fürs nächste Mal merken", "", "Im Ziel merken, damit der Ort bei der nächsten Reise dorthin bereitliegt", " data-pid=\""+(p.of || id)+"\""); }
   if(!isHs && !isRO()){ var ntk = tkOn(tkPlaceOn(id)).length; as += row("tkplace", I(IC.ticket), "Tickets", ntk ? String(ntk) : "", "Eintritt oder Event hinterlegen, buchen"); }
@@ -13906,6 +13933,7 @@ function openCardMore(btn, id, kind){
   if(isHs && canPriv()){ var pv = isPrivP(id); sh += row("privp", "<span class=\"ai"+(pv?" on":"")+"\">"+ILOCK+"</span>", pv ? "Privat – wieder für alle" : "Als privat markieren", "", "", " aria-checked=\""+pv+"\""); }
   if(!isHs && !isEv(p) && hasLoc(p) && days().length){ var nev = evsAt(id).length; inf += row("evplace", I(IC.event), "Events", nev ? String(nev) : "", "Eigene Events und Ticketmaster-Termine hier im Reisezeitraum"); }
   if(evLoc(p)) inf += row("evloc", I(IC.pin), "Location", esc(evLoc(p).n), "Ort des Events öffnen", " data-pid=\""+esc(evLoc(p).id)+"\"");
+  if(isEv(p) && !isRO()) as += row("evsetloc", I(IC.pin), p.nl ? "Location eintragen" : "Location ändern", p.nl ? "fehlt" : "", "Ort des Events wählen", " data-pid=\""+esc(id)+"\"");
   inf += row("gmopen", I(IC.ext), "In Google Maps öffnen", "", "Öffnungszeiten, Bewertungen, Fotos");
   var sec = function(t, x){ return x ? "<div class=\"vp-h cm-h\">"+t+"</div>"+x : ""; };
   var h = sec("Planen", pl)+sec("Zuordnen", as)+sec("Teilen", sh)+sec("Infos", inf)+
@@ -14973,7 +15001,7 @@ function renderDay(){
     h += "<li class=\"st"+(T().done[id]?" done":"")+"\" data-id=\""+id+"\" style=\"--dc:"+dayColor(D)+"\"><button type=\"button\" class=\"swl\" data-act=\"unplan\" tabindex=\"-1\">"+(p.of ? "Besuch entfernen" : "← Wunschliste")+"</button><button type=\"button\" class=\"swr\" data-act=\"swdel\" tabindex=\"-1\">Löschen</button><div class=\"stc\">"+
       "<div class=\"lcol\">"+(isH ? "<button type=\"button\" class=\"no hs\" data-act=\"stopopen\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":"H")+"</button>"
             : "<button type=\"button\" class=\"no"+yel(D)+"\" data-act=\"stopopen\" style=\"background:"+dayColor(D)+"\" aria-label=\"Details öffnen\">"+(T().done[id]?"✓":n)+"</button>")+"<button type=\"button\" class=\"grip\" aria-label=\"Ziehen zum Verschieben (oder Pfeiltasten)\" title=\"Ziehen zum Verschieben\">"+GRIPSVG+"</button>"+"</div>"+
-      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? "<span class=\"privmk\" title=\"Privat – nur Mitreisende\">"+ILOCK+"privat</span>" : "")+(canPriv() && isPubP(id) ? "<span class=\"pubmk\" title=\"Für Freunde veröffentlicht\">"+VISPUB+"</span>" : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+ohRowMark(id)+esc(p.k==="hotel" ? (hFree(cur) && i===0 ? "Start im Hotel" : hFree(cur) && i===ids.length-1 ? "Zurück ins Hotel" : "Zwischenstopp im Hotel") : evLoc(p) ? "" : CATNAME[p.c])+(evLoc(p) ? evInBtn(p) : "")+(function(){ var gn = grpNames(P(rootOf(id))||p); return gn ? " · <span class=\"sgrp\" title=\"Gruppe\">"+GRPICO+esc(gn)+"</span>" : ""; })()+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
+      "<div class=\"m\" data-act=\"stopopen\"><button type=\"button\" class=\"nm\" data-act=\"stopopen\"><span class=\"cic\">"+icon(p.c)+"</span>"+esc(p.n)+(canPriv() && isPrivP(id) ? "<span class=\"privmk\" title=\"Privat – nur Mitreisende\">"+ILOCK+"privat</span>" : "")+(canPriv() && isPubP(id) ? "<span class=\"pubmk\" title=\"Für Freunde veröffentlicht\">"+VISPUB+"</span>" : "")+"</button><div class=\"sub\">"+(timeOf(id)?"<b class=\"stime\">"+esc(timeOf(id))+"</b> · ":"")+ohRowMark(id)+esc(p.k==="hotel" ? (hFree(cur) && i===0 ? "Start im Hotel" : hFree(cur) && i===ids.length-1 ? "Zurück ins Hotel" : "Zwischenstopp im Hotel") : evLoc(p) || p.nl ? "" : CATNAME[p.c])+(evLoc(p) ? evInBtn(p) : evNlBtn(p))+(function(){ var gn = grpNames(P(rootOf(id))||p); return gn ? " · <span class=\"sgrp\" title=\"Gruppe\">"+GRPICO+esc(gn)+"</span>" : ""; })()+(p.note?" · "+esc(p.note):"")+(noteOf(id)||photosOf(id).length ? " · <span class=\"jmark\">"+(noteOf(id)?JMNOTE:"")+(photosOf(id).length?JMPH+photosOf(id).length:"")+"</span>" : "")+"</div>"+
       "<div class=\"acts\"><button type=\"button\" class=\"ck\" data-act=\"done\" aria-pressed=\""+!!T().done[id]+"\"><i>"+(T().done[id]?"✓":"")+"</i>"+(T().done[id]?"Erledigt":"Abhaken")+"</button>"+(!isRO() && (hasLoc(p)||p.addr)?"<button type=\"button\" class=\"go\" data-act=\"go\">"+GOICO+"Route</button>":"")+
       "<label class=\"mvday\" title=\"Auf anderen Tag verschieben\">"+ic("cal")+"<select data-act=\"move\" aria-label=\"Auf anderen Tag verschieben\">"+opts+"</select></label></div></div>"+
       "</div></li>";
@@ -15041,7 +15069,7 @@ function photosAll(id){ var ids = visitIds(id), seen = {}, out = [];
 function jItem(id, dk){
   var p = P(id), J = (T().journal||{})[dk] || {}, nt = noteOf(id), ph = photosOf(id), isHl = J.hl===p.n;
   return "<li><button type=\"button\" class=\"jcard\" data-act=\"jopen\" data-pid=\""+id+"\" data-day=\""+dk+"\">"+badge(p.c,"width:26px;height:26px")+
-    "<span class=\"jc-m\"><b>"+esc(p.n)+(isHl?" <span class=\"star\">★</span>":"")+((CMTS[id]||[]).length?" <span class=\"cmc\">"+ic("comment", "ii")+" "+CMTS[id].length+"</span>":"")+"</b><small>"+(timeOf(id)?timeOf(id)+" · ":"")+(evLoc(p) ? "in "+esc(evLoc(p).n)+" · " : "")+(rateOf(id)?"":"noch nicht bewertet")+rateBadge(id)+"</small>"+
+    "<span class=\"jc-m\"><b>"+esc(p.n)+(isHl?" <span class=\"star\">★</span>":"")+((CMTS[id]||[]).length?" <span class=\"cmc\">"+ic("comment", "ii")+" "+CMTS[id].length+"</span>":"")+"</b><small>"+(timeOf(id)?timeOf(id)+" · ":"")+(evLoc(p) ? "in "+esc(evLoc(p).n)+" · " : p.nl ? "Ort fehlt · " : "")+(rateOf(id)?"":"noch nicht bewertet")+rateBadge(id)+"</small>"+
     (nt ? "<span class=\"jc-t\">"+esc(nt)+"</span>" : isRO() ? "" : "<span class=\"jc-t empty\">Tippen, um Notizen und Fotos hinzuzufügen</span>")+
     (ph.length ? "<span class=\"jc-ph\">"+ph.slice(0,4).map(function(x){ return "<img data-ph=\""+x+"\" alt=\"\">"; }).join("")+(ph.length>4?"<i>+"+(ph.length-4)+"</i>":"")+"</span>" : "")+
     "</span></button></li>";
@@ -15083,7 +15111,7 @@ function renderJPop(){
   }
   pvHide();
   var planned = !!dayOf(jp.pid), dn = !!T().done[jp.pid], tm = timeOf(jp.pid), shared = !!(META[S.cur] && ((META[S.cur].members||[]).length > 1 || (META[S.cur].viewers||[]).length)); // auch Reise nur mit Beobachtern: Kommentare
-  h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+(evLoc(p) ? esc(CATNAME[p.c])+" · "+evInBtn(p) : esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · ")))+"</small></div></div>";
+  h += "<div class=\"jp-head\"><span class=\"jp-ic\">"+icon(p.c)+"</span><div class=\"jp-ht\">"+(isRO() ? "<b>"+esc(p.n)+"</b>" : "<input type=\"text\" class=\"jp-name\" data-act=\"rename\" value=\""+esc(p.n)+"\" maxlength=\"80\" aria-label=\"Name\" autocomplete=\"off\">")+"<small>"+(p.nl ? esc(CATNAME[p.c])+" · "+evNlBtn(p) : evLoc(p) ? esc(CATNAME[p.c])+" · "+evInBtn(p) : esc([CATNAME[p.c], p.addr || nbOf(p) || ""].filter(Boolean).join(" · ")))+"</small></div></div>";
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   // eine Zeile: Tag · Uhrzeit · Abhaken · Bewertung · Route · Infos · Mehr (Gruppe, Privat)
   var rv0 = rateOf(jp.pid), rr = RATES.filter(function(r){ return r[0]===rv0; })[0], pv0 = canPriv() && isPrivP(jp.pid);
@@ -17273,6 +17301,8 @@ document.addEventListener("click", function(e){
     case "evfback": if(EV){ EV.f = null; renderEv(); } break;
     case "evfsave": evFormSave(); break;
     case "evfloc": if(EV && EV.f){ evKeep(); EV.f.loc = t.getAttribute("data-pid"); EV.f.err = ""; renderEv(); } break;
+    case "evfchg": if(EV && EV.f){ evKeep(); EV.f.loc = ""; renderEv(); } break;
+    case "evsetloc": evSetLocOpen(t.getAttribute("data-pid") || id || sel); break;
     case "evgo": closeCatPop(); setSheet("mid"); select(t.getAttribute("data-pid")); break;
     case "evloc": evLocOpen(t.getAttribute("data-pid")); break;
     case "evkeysave": evKeySave(); break;
