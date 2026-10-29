@@ -5739,7 +5739,6 @@ function tripsPageHTML(){
       h += "<button type=\"button\" class=\"ag-row\" data-act=\""+(curT?"tripdetails":"trip")+"\" data-trip=\""+x.id+"\"><span><b>"+esc(x.name)+(curT?" <em class=\"curtag\">Aktiv</em>":"")+"</b><small>"+tstatHTML(x)+esc(x.opt ? "" : " · "+rangeLabel(x.start,x.end))+(nm2>1?" · mit "+(nm2-1)+(nm2===2?" Person":" Personen"):"")+(isViewerOf(x.id) ? " · du beobachtest" : "")+(mm && (mm.invites||[]).length ? " · "+mm.invites.length+(mm.invites.length===1?" Einladung offen":" Einladungen offen"):"")+(curT?" · Details ansehen":"")+"</small></span><em class=\"chev\">›</em></button>";
     });
     h += "</div>";
-  }
   } else h += "<p class=\"note\">"+(sh ? "Noch keine gemeinsamen Reisen. Öffne eine Reise und lade unter „Mitreisende“ Freunde ein." : (liveIds().length ? "Keine privaten Reisen." : "Noch keine eigene Reise erstellt."))+"</p>";
   if(!sh) h += "<div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"tripnew\"><span><b>+ Neue Reise</b></span></button></div>";
   return h+"</div>";
@@ -9250,6 +9249,7 @@ function acctHTML(){
   h += "<div class=\"ag-lbl\">Bewertungen &amp; Fotos</div><div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"gtoggle\" aria-expanded=\""+gOpen+"\"><span><b>Google-Schlüssel</b><small>"+(gKey ? "Aktiv – nur auf diesem Gerät" : "Nicht eingerichtet")+"</small></span><em class=\"chev\">"+(gOpen?"⌄":"›")+"</em></button>";
   if(gOpen) h += "<div class=\"ag-in\"><div class=\"gkey\"><input type=\"password\" id=\"gKeyIn\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\""+(gKey?"••••••••"+esc(gKey.slice(-4)):"AIza…")+"\" aria-label=\"Google-API-Schlüssel\"><button type=\"button\" class=\"btn s\" data-act=\"gkeysave\">Speichern</button>"+(gKey?"<button type=\"button\" class=\"btn g s\" data-act=\"gkeydel\">Entfernen</button>":"")+"</div>"+(gMsg?"<p class=\"note\">"+esc(gMsg)+"</p>":"")+"</div>";
   h += "</div>";
+  }
   // ÖPNV-Karte (Transitland): Schlüssel nur auf dem Gerät, nicht im öffentlichen Code
   var tk = lsGet("rp-tlkey") || "";
   // Gemeinsamer Schlüssel aktiv: Zeile nur für den Verwalter (Ferdinand) bzw. wenn auf dem Gerät ein eigener Schlüssel liegt
