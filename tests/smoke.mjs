@@ -3894,7 +3894,7 @@ await test("Chat: Fotos vom Gerät als Album – Auswahl, Entwurf, Senden (Fotos
   ok(await rp(`!$("chPhView").hidden && CHGAL.list.length===4 && CHGAL.i===1 && /^data:image\\/jpeg/.test(document.querySelector("#chPvImg").src) && document.querySelector("#chPvImg").naturalWidth===1600`), "Galerie zeigt das große Foto nicht");
   await rp(`$("chPhView").hidden = true; CHGAL = null; closeChPage(); CH.byId = {}; CH.list = []; CHMC = {}; true`);
 });
-await test("Chat: Abstimmung – Plus-Menü, Frage und Antworten (Orte erkannt), abstimmen, Ergebnis, Einplanen nur von Hand, beenden", async () => {
+await test("Chat: Abstimmung – Plus-Menü, Frage und nummerierte Antworten getrennt (Orte erkannt), abstimmen, Ergebnis, Einplanen nur von Hand, beenden", async () => {
   await seed();
   await rp(`window.__M = [{id:"m1", from:"u1", t:"Hallo", at:Date.now()-60000}]; ${CHMOCK} openChPage("u1_u_me"); true`);
   await page.waitForFunction(() => window.__rp(`chOpen==="u1_u_me" && document.querySelectorAll("#chMsgs .ch-msg").length===1`), null, {timeout:4000});
@@ -3902,11 +3902,18 @@ await test("Chat: Abstimmung – Plus-Menü, Frage und Antworten (Orte erkannt),
   ok(await rp(`["chpick", "chphpick", "chpoll"].every(function(a){ return !!document.querySelector("#jpMenu [data-act="+a+"]"); })`), "Plus-Menü unvollständig");
   await page.tap("#jpMenu [data-act=chpoll]"); await page.waitForTimeout(200);
   ok(await rp(`!$("catPop").hidden && document.activeElement===$("pollQ") && document.querySelector("#catPop [data-act=chpollsend]").disabled`), "Abstimmungs-Fenster falsch");
+  ok(await rp(`var l = [].map.call(document.querySelectorAll("#catPop .poll-lb"), function(e){ return e.textContent; }).join("|"), n = [].map.call(document.querySelectorAll("#catPop .poll-ol .poll-no"), function(e){ return e.textContent; }).filter(Boolean).join(); l==="Frage|Antworten" && n==="1,2" && $("pollQ").getBoundingClientRect().bottom + 12 < document.querySelectorAll("#catPop .poll-lb")[1].getBoundingClientRect().top`), "Frage und Antworten nicht klar getrennt");
   await page.fill("#pollQ", "Wohin heute Abend?");
   const o = await page.$$("#catPop .poll-o"); await o[0].fill("Katz Deli"); await o[1].fill("Pizza irgendwo");
   await page.tap("#catPop [data-act=chpolladd]"); await page.waitForTimeout(100);
   ok(await rp(`document.querySelectorAll("#catPop .poll-o").length===3 && document.activeElement===document.querySelectorAll("#catPop .poll-o")[2] && $("pollQ").value==="Wohin heute Abend?"`), "Antwort hinzufügen verliert Eingaben");
+  // Mehrfachauswahl als Schalter (An/Aus)
+  ok(await rp(`$("pollMu").getAttribute("role")==="switch" && $("pollMu").getAttribute("aria-checked")==="false" && !!$("pollMu").querySelector(".sw-mini")`), "Mehrfachauswahl ist kein Schalter");
+  await page.tap("#pollMu"); await page.waitForTimeout(80);
+  ok(await rp(`$("pollMu").getAttribute("aria-checked")==="true" && $("pollMu").querySelector(".sw-mini.on") && $("pollMu").textContent.includes("An")`), "Schalter schaltet nicht ein");
+  await shot("chat-abstimmung-neu");
   await page.tap("#catPop [data-act=chpollsend]"); await page.waitForTimeout(200);
+  ok(await rp(`__sent[__sent.length-1].poll.mu===true`), "Mehrfachauswahl nicht übernommen");
   ok(await rp(`var s = __sent[__sent.length-1]; s && s.poll && s.poll.q==="Wohin heute Abend?" && s.poll.o.length===2 && s.poll.o[0].pl && s.poll.o[0].pl.n==="Katz Deli" && !s.poll.o[1].pl && $("catPop").hidden`), "Abstimmung falsch gesendet: "+JSON.stringify(await rp(`__sent`)));
   // Empfang einer Abstimmung mit Ort, der nicht in der Reise ist; abstimmen speichert pv.u_me
   await rp(`__M.push({id:"m2", from:"u1", t:"", at:Date.now(), poll:{q:"Frühstück?", mu:false, o:[{t:"Russ & Daughters", pl:{n:"Russ & Daughters", c:"essen", la:40.7224, lo:-73.9882}}, {t:"Bagel"}]}, pv:{u1:[0]}}); __snap(); true`); await page.waitForTimeout(200);
