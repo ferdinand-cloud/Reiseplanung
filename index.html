@@ -11980,7 +11980,7 @@ function destSet(d, pts){
   if(d){ d.pts = pts || []; d.st = {nb:""}; d.nb = null; }
   DEST = d; dQ = ""; dOpen = {}; dWant = false;
   document.body.classList.toggle("dyn", dynOn());
-  $("attr").textContent = "© OpenFreeMap · © OpenMapTiles · © OpenStreetMap-Mitwirkende" + (d ? (tlKey() ? " · ÖPNV: Transitland" : "") : " · ÖPNV: MTA");
+  attrSync();
   CB.st = []; CB.byId = {}; CB.infoAt = 0; CB.statAt = 0; CB.err = ""; CB.errAt = 0; CB.sys = d ? [] : CBNYC; CB.dk = d ? null : ""; LMNAME.bike = cbName();
   if(!d){ nbUse(NB_NYC, "nyc-nb-hi"); destApply(); vtView(); if(cbNeeded()) cbLoad(); return; }
   lsList("rp-doff-"+d.k).forEach(function(id){ DOFF[id] = 1; }); // früher je Ziel gemerkt: übernehmen
@@ -12227,7 +12227,7 @@ function tlSetup(){
 }
 /* Sichtbarkeit und Filter: eingeschaltete Verkehrsmittel, ausgeblendete Linien */
 function tlApply(){
-  tlSetup();
+  tlSetup(); attrSync();
   if(!mapReady || !map.getLayer("tl-rail")) return;
   var on = tlOn() && !isRO(), ms = on ? DMODES.map(function(m){ return m[0]; }).filter(dOn) : [], rail = ms.filter(function(m){ return m!=="bus"; });
   var off = ["!", ["in", TLID, ["literal", Object.keys(DOFF)]]], vis = function(l, v){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", v ? "visible" : "none"); };
@@ -12262,6 +12262,10 @@ function tlList(){
   if(dWant && VV.tr){ var ms = dModes().filter(function(m){ return m!=="bus"; }); if(ms.length){ dWant = false; if(!ms.some(dOn)){ DL[ms[0]] = 1; lsSet("rp-dl", JSON.stringify(DL)); } } }
   dData(); dApplyMap(); destUi(); trSync();
 }
+/* Quellenangabe: Transitland verlangt den Namen mit Link zu den Nutzungsbedingungen, sichtbar für alle */
+function attrSync(){ var el = $("attr"); if(!el) return;
+  var h = "© OpenFreeMap · © OpenMapTiles · © OpenStreetMap-Mitwirkende" + (tlOn() ? " · ÖPNV: <a href=\"https://www.transit.land/terms\" target=\"_blank\" rel=\"noopener\">Transitland</a>" : DEST || VT.out ? "" : " · ÖPNV: MTA");
+  if(el.innerHTML!==h) el.innerHTML = h; }
 function tlSoon(){ clearTimeout(TL.tm); TL.tm = setTimeout(tlList, 250); }
 /* Fehler der Transitland-Kacheln: Schlüssel ungültig → zurück zu OpenStreetMap; Kontingent/Server → Hinweis im Menü */
 function tlError(e){

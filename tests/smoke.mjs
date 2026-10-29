@@ -1502,6 +1502,7 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   ok(await rp(`VV.tr.lines.length===3 && !VV.tr.lines.some(function(l){ return l.k==="U9"; })`), "Linie außerhalb des Ausschnitts steht in der Liste");
   ok(await rp(`VV.tr.lines.filter(function(l){ return l.k==="U2"; })[0].c.length===7`), "Linie ohne Farbe bekommt keine Ersatzfarbe");
   ok(!OVQ.some(q => q.includes("subway") || q.includes("tram")), "Linien werden trotz Transitland bei Overpass abgefragt");
+  ok(await rp(`var a = document.querySelector("#attr a[href*='transit.land/terms']"); !!a && a.textContent==="Transitland"`), "Quellenangabe Transitland mit Link fehlt");
   ok(await rp(`map.getLayoutProperty("tl-probe","visibility")==="visible"`), "Kacheln werden für das Menü nicht geladen");
   await page.locator("label:has(#lTr)").click(); await page.waitForTimeout(150);
   ok(await rp(`DL.metro && map.getLayoutProperty("tl-rail","visibility")==="visible" && JSON.stringify(map.getFilter("tl-rail")).indexOf("metro") > -1 && map.getLayoutProperty("tl-bus","visibility")==="none"`), "Metro aus Transitland nicht eingeschaltet");
