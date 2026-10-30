@@ -1816,15 +1816,27 @@ await test("Stadtpakete: Berlin aus den VBB-Daten statt Transitland, ganze Linie
 
 await test("Ziel Paris ohne Reise: Mittelpunkt-Knopf bleibt beim Ziel, keine New-Yorker Bezirke, Stadtpaket", async () => {
   const CPQ = [];
-  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => { CPQ.push(rt.request().url()); return rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }); });
+  // Mini-Paket Paris: Metro 1 und RER A (Étoile → Châtelet)
+  const pk = {v:1, id:"paris", part:"rail", n:"Paris", src:"Île-de-France Mobilités", lic:"ODbL", L:[["metro", "1", "", "#FFBE00", "#000000"], ["sbahn", "A", "", "#EB2132", "#FFFFFF"]], H:["La Défense", "Boissy"],
+    S:[["Étoile", 4887380, 229500], ["Châtelet", 4885850, 234700]], E:[0,1,0,0,600,7, 1,0,0,1,600,7, 0,1,1,0,300,7], W:[[120,150,180],[150,200,300]], G:[["gthiHwf_Mr~A_dI"], ["gthiHwf_Mr~A_dI"]], D:[[0, "metro", "sbahn"], [1, "metro", "sbahn"]]};
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => { const u = rt.request().url(); CPQ.push(u);
+    if(u.endsWith("/paris.json")) return rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(pk) });
+    return rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }); });
   await page.route(/overpass-api\.de|overpass\.kumi/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
   await seed();
+  await rp(`DL = {}; true`);
   await rp(`CP = {}; layers.nb = true; var zid = zielNew("Paris", {id:"zo", n:"Paris", la:48.8566, lo:2.3522}); zsSet(zid); renderAll(); fitDay(); true`);
   await page.waitForTimeout(900);
   const a = await rp(`(function(){ var c = map.getCenter(); return {la:c.lat, lo:c.lng, in:map.getBounds().contains([2.3522, 48.8566]), dest:DEST && DEST.k, nyc:NB.some(function(n){ return n.n==="SoHo"; })}; })()`);
   ok(a.in && Math.abs(a.la - 48.86) < 0.6, "Karte nicht beim Ziel Paris: "+JSON.stringify(a));
   ok(a.dest && !a.nyc, "Ziel Paris nutzt New-Yorker Bezirke: "+JSON.stringify(a));
   ok(CPQ.some(u => u.endsWith("/paris.json")), "Stadtpaket Paris nicht angefragt");
+  // Überblick über das Ziel (weit herausgezoomt, Kartenmitte unter dem Blatt): Linien schon da, ÖPNV schaltet alle Bahnen ein
+  await page.waitForFunction(() => window.__rp("!!cpView() && cpView().id==='paris' && !!VV.tr && VV.tr.lines.length===2"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`map.getZoom() < 8 && !!cpView() && VV.tr.lines.length===2 && !tlOn()`), "Ziel-Überblick ohne Stadtpaket: "+await rp(`JSON.stringify({z:map.getZoom(), cp:VT.cp, n:VV.tr && VV.tr.lines.length})`));
+  await click("#layersBtn"); await page.locator("label:has(#lTr)").click(); await page.waitForTimeout(300);
+  ok(await rp(`DL.metro && DL.sbahn && !DL.bus && map.getLayoutProperty("dtr","visibility")==="visible"`), "ÖPNV an schaltet nicht Metro und RER ein: "+await rp(`JSON.stringify(DL)`));
+  await click("#layersBtn");
   // Mittelpunkt erneut (Knopf): bleibt in Paris
   await rp(`map.jumpTo({center:[2.2, 48.7], zoom:11}); fitDay(); true`); await page.waitForTimeout(700);
   ok(await rp(`map.getBounds().contains([2.3522, 48.8566]) && Math.abs(map.getCenter().lat - 48.86) < 0.6`), "Mittelpunkt springt nicht zum Ziel");

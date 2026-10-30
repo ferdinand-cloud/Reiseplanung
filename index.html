@@ -12176,11 +12176,12 @@ function vtWant(){
 /* Karte bewegt, Ebene geschaltet: sichtbare Kacheln bestimmen, fehlende laden, Linien neu zusammensetzen */
 function vtView(){
   if(!mapReady || !map) return;
-  var c = map.getCenter(), out = map.getZoom() >= 8 && !inNYC({la:c.lat, lo:c.lng}); // weit herausgezoomt: Menü der Reise behalten
+  // Stadtpaket (ganze Stadt auf einmal): schon ab Zoom 6, damit die Stadt beim Überblick nicht leer bleibt; sonst ab Zoom 8
+  var c = map.getCenter(), cpz = map.getZoom() >= 6 && cpIn(), out = (map.getZoom() >= 8 || !!cpz) && !inNYC({la:c.lat, lo:c.lng}); // weit herausgezoomt: Menü der Reise behalten
   var ny = map.getZoom() >= 8 && !out;
   if(ny!==VT.nyc){ VT.nyc = ny; VT.out = out; destSync(); document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; }
   if(out!==VT.out){ VT.out = out; nbOut(); document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; } // applyLayers ruft vtView erneut
-  var cpc = out ? cpAt({la:c.lat, lo:c.lng}) : null, cpi = cpc ? cpc.id : "";
+  var cpc = out ? cpIn() : null, cpi = cpc ? cpc.id : "";
   if(cpi!==(VT.cp||"")){ VT.cp = cpi; CPSIG = ""; VT.sig = ""; if(cpi) cpLoad(cpi, "rail"); applyLayers(); return; } // Stadtpaket statt Transitland/OpenStreetMap
   var z = map.getZoom(), w = vtWant(), keys = [];
   Object.keys(VTL).forEach(function(lv){ if(w[lv] && z >= VTL[lv].z) keys = keys.concat(vtKeys(lv)); });
@@ -12391,6 +12392,15 @@ var CPS = [{id:"berlin", n:"Berlin", bb:[12.88, 52.29, 13.82, 52.71]}, {id:"pari
 var CP = {}, CPSIG = "", CPBIKE = [];
 var CPMODE = {metro:"SUBWAY", light:"SUBWAY", tram:"TRAM", sbahn:"SUBURBAN", reg:"REGIONAL_RAIL", long:"LONG_DISTANCE", train:"RAIL", funi:"FUNICULAR", ferry:"FERRY", bus:"BUS"};
 function cpAt(p){ if(!p || !hasLoc(p)) return null; for(var i = 0; i < CPS.length; i++){ var b = CPS[i].bb; if(p.lo >= b[0] && p.lo <= b[2] && p.la >= b[1] && p.la <= b[3]) return CPS[i]; } return null; }
+/* Stadt, die die Karte zeigt: Kartenmitte in der Stadt, sonst die Stadt, die den sichtbaren Ausschnitt am meisten füllt (das Blatt unten verdeckt einen Teil der Karte) */
+function cpIn(){
+  if(!mapReady || !map) return null;
+  var c = map.getCenter(), hit = cpAt({la:c.lat, lo:c.lng}); if(hit) return hit;
+  var b = map.getBounds(), w = b.getWest(), e = b.getEast(), s = b.getSouth(), n = b.getNorth(), best = null, ba = 0;
+  CPS.forEach(function(x){ var q = x.bb, iw = Math.min(e, q[2]) - Math.max(w, q[0]), ih = Math.min(n, q[3]) - Math.max(s, q[1]);
+    if(iw <= 0 || ih <= 0) return; var a = iw*ih/((e-w)*(n-s)); if(a > ba){ ba = a; best = x; } });
+  return ba >= 0.15 ? best : null;
+}
 function cpGet(id){ return CP[id] || (CP[id] = {id:id, st:{}, rail:null, bus:null}); }
 /* Stadt, deren Paket die Karte gerade zeigt (geladen oder unterwegs); ohne Paket (Fehler, nicht vorhanden): Transitland/OpenStreetMap */
 function cpView(){ if(!VT.cp) return null; var s = cpGet(VT.cp).st.rail; return s==="ok" || s==="load" ? cpGet(VT.cp) : null; }
@@ -12441,7 +12451,8 @@ function cpList(){
   var sig = c.id+"#"+tr.map(function(l){ return l.k; }).join(",")+"#"+(g.bus ? bs.map(function(l){ return l.k; }).join(",") : c.st.bus || "-")+"#"+CPBIKE.length;
   if(sig!==CPSIG){ CPSIG = sig;
     VV = {tr:{lines:tr, geo:g.tr.geo, st:g.tr.st, bike:CPBIKE, nbus:g.bus ? bs.length : 0}, bus:g.bus ? {lines:bs, geo:g.bus.geo} : null};
-    if(dWant && VV.tr){ var ms = dModes().filter(function(m){ return m!=="bus"; }); if(ms.length){ dWant = false; if(!ms.some(dOn)){ DL[ms[0]] = 1; lsSet("rp-dl", JSON.stringify(DL)); } } }
+    // ÖPNV eingeschaltet, bevor die Linien da waren: im Stadtpaket alle Bahnen (Metro, RER, Tram …), nicht nur die erste Art
+    if(dWant && VV.tr){ var ms = dModes().filter(function(m){ return m!=="bus"; }); if(ms.length){ dWant = false; if(!ms.some(dOn)){ ms.forEach(function(m){ DL[m] = 1; }); lsSet("rp-dl", JSON.stringify(DL)); } } }
     dData(); }
   dApplyMap(); destUi(); trSync();
 }
@@ -12717,7 +12728,7 @@ function destUi(){
   if(br) br.style.display = dy && !dBike().length && !(DEST && CB.sys.length) ? "none" : "";
   if(!dy){ el.innerHTML = ""; trSync(); return; }
   var h = "", ms = dModes(), ro = isRO(), vs = vtStat(), z = mapReady ? map.getZoom() : 12, retry = " <button type=\"button\" class=\"btn g s\" data-act=\"dretry\" data-p=\"tr\">Erneut versuchen</button>";
-  var tl = tlOn(), cpv = cpView(), zmin = cpv ? 8 : tl ? TLZ : VTL.a.z;
+  var tl = tlOn(), cpv = cpView(), zmin = cpv ? 6 : tl ? TLZ : VTL.a.z;
   if(cpv) vs = {load:cpv.st.rail==="load" ? 1 : 0, err:0, off:0, ok:1};
   if(tl && TL.err) h += "<p class=\"note dnote\">Transitland antwortet gerade nicht ("+(TL.err===429 ? "Kontingent erreicht" : "Server")+")."+retry+"</p>";
   if(z < zmin) h += "<p class=\"note dnote\">Näher heranzoomen, um den ÖPNV in diesem Kartenausschnitt zu sehen.</p>";
@@ -13130,6 +13141,7 @@ function trSync(){
 }
 $("lTr").addEventListener("change", function(){
   var want = this.checked, ids = trIds().filter(function(id){ return !(isRO() && id!=="lBike"); }), sk = dynOn() ? "rp-dl-trsel" : "nyc-l-trsel", d0 = ids[0] || "";
+  if(cpView()) d0 = ids.filter(function(id){ return id!=="ld-bus" && id!=="lBike"; }).join(",") || d0; // Stadtpaket: alle Bahnen (Metro, S-Bahn/RER, Tram …), Busse extra
   // Ziel außerhalb New Yorks, Linien noch nicht geladen: laden und danach das erste Verkehrsmittel einschalten
   if(dynOn() && want && !ids.length){ dWant = true; vtView(); trSync(); return; }
   var set = want ? (lsGet(sk) || d0).split(",").filter(function(id){ return ids.indexOf(id) > -1; }) : [];
