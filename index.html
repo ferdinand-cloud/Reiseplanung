@@ -10344,10 +10344,12 @@ function colorStyle(){
              ["stadium","pitch","playground","track","zoo","theme_park"], C.sport, ["industrial","garages","railway","military"], C.ind, ["commercial","retail"], C.com, C.com]},
     filter:["match", ["get","class"], ["hospital","school","university","college","kindergarten","library","cemetery","stadium","pitch","playground","track","zoo","theme_park","industrial","garages","railway","military","commercial","retail"], true, false]}, below);
 }
+/* erste Beschriftungsebene der Grundkarte: ÖPNV-Linien liegen darunter, Straßen- und Ortsnamen bleiben lesbar (wie Apple Karten) */
+var LBLB;
 function addLayers(){
   if(isDark()) darkenStyle();
   if(colorOn) colorStyle();
-  var firstSym = (map.getStyle().layers.filter(function(l){ return l.type==="symbol"; })[0] || {}).id;
+  var firstSym = LBLB = (map.getStyle().layers.filter(function(l){ return l.type==="symbol"; })[0] || {}).id;
   cbAddLayer(); if(cbNeeded()) setTimeout(function(){ cbLoad(); }, 800);
   map.addSource("nb", {type:"geojson", data:GEO.nb});
   map.addSource("bus", {type:"geojson", data:GEO.bus});
@@ -10355,8 +10357,8 @@ function addLayers(){
   map.addLayer({id:"nb-fill", type:"fill", source:"nb", paint:{"fill-color":token("--hi-fill")||"rgba(109,40,217,.13)"}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);
   map.addLayer({id:"nb-line", type:"line", source:"nb", paint:{"line-color":token("--nb-line")||"rgba(23,33,44,.28)", "line-width":1.2, "line-dasharray":[4,3]}, layout:{visibility:"none"}}, firstSym);
   map.addLayer({id:"nb-hi", type:"line", source:"nb", paint:{"line-color":token("--hi")||"#6d28d9", "line-width":2.4}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);
-  map.addLayer({id:"bus", type:"line", source:"bus", paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,1,16,3], "line-opacity":.6}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
-  map.addLayer({id:"sub", type:"line", source:"sub", paint:{"line-color":["get","c"], "line-width":lnWidth("metro"), "line-offset":lnOffset(["get","o"])}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
+  map.addLayer({id:"bus", type:"line", source:"bus", minzoom:BUSZ, paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,1,16,3], "line-opacity":.6}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}, firstSym);
+  map.addLayer({id:"sub", type:"line", source:"sub", minzoom:MZ.metro, paint:{"line-color":["get","c"], "line-width":lnWidth("metro"), "line-offset":lnOffset(["get","o"])}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}, firstSym);
   addPoiLayers(); addFerryLayers(); dAddLayers(); dData(); rtAddLayers();
   mapReady = true;
   apply3d(true); applyPoi(); applyLayers(); applyLines(); applyNb(); onMove();
@@ -12502,7 +12504,7 @@ function tlSetup(){
   map.addSource("tl-s", {type:"vector", tiles:[tlUrl("stops")], minzoom:0, maxzoom:14});
   // unsichtbare Linie: lädt die Kacheln, damit das Menü die Linien im Ausschnitt kennt, auch wenn noch nichts eingeschaltet ist
   map.addLayer({id:"tl-probe", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-opacity":0, "line-width":1}, layout:{visibility:"none"}}, bef);
-  map.addLayer({id:"tl-bus", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZB, paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],12,.6,16,2], "line-opacity":.5}, layout:none}, bef);
+  map.addLayer({id:"tl-bus", type:"line", source:"tl-r", "source-layer":"routes", minzoom:Math.max(TLZB, BUSZ), paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],12,.6,16,2], "line-opacity":.5}, layout:none}, bef);
   map.addLayer({id:"tl-rail", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-color":TLC,
     "line-width":tlWidth(), "line-offset":lnOffset(TLO)}, layout:none}, bef);
   map.addLayer({id:"tl-ferry", type:"line", source:"tl-r", "source-layer":"routes", minzoom:TLZ, paint:{"line-color":TLC, "line-width":["interpolate",["linear"],["zoom"],10,.9,15,2], "line-dasharray":[3,2], "line-opacity":.8}, layout:{visibility:"none", "line-cap":"round"}}, bef);
@@ -12526,8 +12528,8 @@ function tlApply(){
   vis("tl-probe", on && (ms.length || !$("layers").hidden || dWant));
   vis("tl-rail", rail.length); vis("tl-ferry", rail.indexOf("ferry") > -1); vis("tl-lbl", ms.length); vis("tl-st", rail.length); vis("tl-st-lbl", rail.length);
   vis("tl-bus", ms.indexOf("bus") > -1); vis("tl-bst", ms.indexOf("bus") > -1);
-  map.setFilter("tl-rail", ["all", ["!=", TLM, "ferry"], ["!=", TLM, "bus"], ["in", TLM, ["literal", rail]], off]);
-  map.setFilter("tl-ferry", ["all", ["==", TLM, "ferry"], off]);
+  map.setFilter("tl-rail", lnZ(["all", ["!=", TLM, "ferry"], ["!=", TLM, "bus"], ["in", TLM, ["literal", rail]], off], TLM));
+  map.setFilter("tl-ferry", lnZ(["all", ["==", TLM, "ferry"], off], TLM));
   map.setFilter("tl-bus", ["all", ["==", TLM, "bus"], off]);
   if(map.getLayer("tl-lbl")) map.setFilter("tl-lbl", ["all", ["in", TLM, ["literal", ms]], off]);
 }
@@ -12891,9 +12893,9 @@ function dData(){
    Stationen nach Bedeutung (Umstiegsknoten zuerst), Namen der wichtigen Stationen zuerst */
 var MZ = {long:7, reg:8, train:8, sbahn:9, metro:9, light:10, ferry:11, tram:12, funi:12}, BUSZ = 13.5;
 function zStep(base, st){ var f = ["step", ["zoom"], false]; st.forEach(function(x){ f.push(x[0], x[1] ? ["all", base, x[1]] : base); }); return f; }
-function lnZ(base){
+function lnZ(base, me){ me = me || ["get","m"];
   var zs = []; Object.keys(MZ).forEach(function(m){ if(zs.indexOf(MZ[m]) < 0) zs.push(MZ[m]); }); zs.sort(function(a, b){ return a - b; });
-  return zStep(base, zs.map(function(z){ var later = Object.keys(MZ).filter(function(m){ return MZ[m] > z; }); return [z, later.length ? ["!", ["in", ["get","m"], ["literal", later]]] : null]; }));
+  return zStep(base, zs.map(function(z){ var later = Object.keys(MZ).filter(function(m){ return MZ[m] > z; }); return [z, later.length ? ["!", ["in", me, ["literal", later]]] : null]; }));
 }
 var SR = ["coalesce", ["get","r"], 1];
 function stZ(base){ return zStep(base, [[11, [">=", SR, 3]], [12, [">=", SR, 2]], [13, [">=", SR, 1]], [14, null]]); }
@@ -12906,10 +12908,10 @@ function dAddLayers(){
   var srcs = map.getStyle().sources, vs = null; Object.keys(srcs).forEach(function(k){ if(!vs && srcs[k].type==="vector") vs = k; });
   if(vs) try { map.addLayer({id:"vt-rail", type:"line", source:vs, "source-layer":"transportation", minzoom:5,
     filter:["any", ["==",["get","class"],"rail"], ["==",["get","class"],"transit"]],
-    paint:{"line-color":isDark() ? "#8794a1" : "#7d8996", "line-opacity":["interpolate",["linear"],["zoom"],5,.85,10,.75,13,.5], "line-width":["interpolate",["linear"],["zoom"],5,.9,8,1.3,12,1.5,16,2.4]}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}); } catch(e){}
-  map.addLayer({id:"dbus", type:"line", source:"dbus", minzoom:BUSZ, paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,.6,16,2], "line-opacity":.5}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
-  map.addLayer({id:"dtr", type:"line", source:"dtr", filter:["!=",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":lnWidth(["get","m"]), "line-offset":lnOffset(["coalesce", ["get","o"], 0])}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
-  map.addLayer({id:"dtr-f", type:"line", source:"dtr", filter:["==",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{"line-cap":"round", visibility:"none"}});
+    paint:{"line-color":isDark() ? "#8794a1" : "#7d8996", "line-opacity":["interpolate",["linear"],["zoom"],5,.85,10,.75,13,.5], "line-width":["interpolate",["linear"],["zoom"],5,.9,8,1.3,12,1.5,16,2.4]}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}, LBLB); } catch(e){}
+  map.addLayer({id:"dbus", type:"line", source:"dbus", minzoom:BUSZ, paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,.6,16,2], "line-opacity":.5}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}, LBLB);
+  map.addLayer({id:"dtr", type:"line", source:"dtr", filter:["!=",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":lnWidth(["get","m"]), "line-offset":lnOffset(["coalesce", ["get","o"], 0])}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}, LBLB);
+  map.addLayer({id:"dtr-f", type:"line", source:"dtr", filter:["==",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{"line-cap":"round", visibility:"none"}}, LBLB);
   map.addLayer({id:"dst", type:"circle", source:"dst", minzoom:11, paint:STPAINT(), layout:{visibility:"none"}});
   map.addLayer({id:"dbike", type:"circle", source:"dbike", minzoom:12, paint:{"circle-color":CBCOL, "circle-stroke-color":"#ffffff", "circle-stroke-width":["interpolate",["linear"],["zoom"],12,1,16,2], "circle-radius":["interpolate",["linear"],["zoom"],12,2.5,14,4,16,6]}, layout:{visibility:"none"}});
   if(!gl) return;
@@ -13065,7 +13067,7 @@ function rtAddLayers(){
   [["rt-line", "", null], ["rt-dot", "1 6", [.34, 2]], ["rt-hdot", "2 7", [.57, 2]], ["rt-dash", "6 6", [1.34, 1.34]]].forEach(function(x){
     var paint = {"line-color":["get","c"], "line-width":["get","w"], "line-opacity":["get","o"]}; if(x[2]) paint["line-dasharray"] = x[2];
     map.addLayer({id:x[0], type:"line", source:"rt", filter:["==", ["get","d"], x[1]], layout:lay, paint:paint}); });
-  map.addLayer({id:"subst", type:"circle", source:"subst", minzoom:13.05, paint:{"circle-color":token("--land") || "#fff", "circle-stroke-color":token("--ink") || "#17212c", "circle-stroke-width":1.6, "circle-radius":["step", ["zoom"], 3, 14.86, 4.5]}}, "rt-case");
+  map.addLayer({id:"subst", type:"circle", source:"subst", minzoom:11, filter:stZ(true), paint:{"circle-color":token("--land") || "#fff", "circle-stroke-color":token("--ink") || "#17212c", "circle-stroke-width":1.6, "circle-radius":["step", ["zoom"], 3, 14.86, 4.5]}}, "rt-case");
   mkAddLayers();
 }
 /* U-Bahn-Stationen New York als Kartenebene (Punkte auf der Grafikkarte); Linien-Kreise und Namen nur ganz nah im Overlay */
@@ -13074,7 +13076,7 @@ function stSet(on){
   var src = mapReady && map.getSource("subst"); if(!src) return;
   var ids = []; if(on) TRANSIT.stations.forEach(function(st, i){ if(stationOn(st)) ids.push(i); });
   var k = ids.join(","); if(k===STKEY) return; STKEY = k;
-  src.setData({type:"FeatureCollection", features:ids.map(function(i){ var st = TRANSIT.stations[i], l = llW(st[1], st[2]); return {type:"Feature", properties:{i:i}, geometry:{type:"Point", coordinates:[l.lo, l.la]}}; })});
+  src.setData({type:"FeatureCollection", features:ids.map(function(i){ var st = TRANSIT.stations[i], l = llW(st[1], st[2]); var n = String(st[3] || "").length; return {type:"Feature", properties:{i:i, r:n >= 4 ? 3 : n >= 2 ? 2 : 1}, geometry:{type:"Point", coordinates:[l.lo, l.la]}}; })});
 }
 /* ---------- Kartenpunkte auf der Grafikkarte: Stopps, Wünsche, Hotels, Fotos und ihre Beschriftungen als MapLibre-Symbole.
    Jedes Aussehen wird einmal auf eine Leinwand gezeichnet (Bildname = Aussehen), danach verschiebt/zoomt/dreht die Grafikkarte nur noch.
@@ -14527,8 +14529,8 @@ function addFerryLayers(){
   if(!src) return;
   var vis = layers.ferry && !trRO() ? "visible" : "none";
   try {
-    map.addLayer({id:"ferry-line", type:"line", source:src, "source-layer":"transportation", filter:["==",["get","class"],"ferry"],
-      paint:{"line-color":FERRYC, "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{visibility:vis, "line-cap":"round"}});
+    map.addLayer({id:"ferry-line", type:"line", source:src, minzoom:MZ.ferry, "source-layer":"transportation", filter:["==",["get","class"],"ferry"],
+      paint:{"line-color":FERRYC, "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{visibility:vis, "line-cap":"round"}}, LBLB);
     map.addLayer({id:"ferry-term", type:"circle", source:src, "source-layer":"poi", minzoom:11, filter:["any",["==",["get","class"],"ferry_terminal"],["==",["get","subclass"],"ferry_terminal"]],
       paint:{"circle-color":FERRYC, "circle-radius":["interpolate",["linear"],["zoom"],11,3,16,6], "circle-stroke-color":"#fff", "circle-stroke-width":1.5}, layout:{visibility:vis}});
     if(map.getStyle().glyphs) map.addLayer({id:"ferry-lbl", type:"symbol", source:src, "source-layer":"poi", minzoom:12.5, filter:["any",["==",["get","class"],"ferry_terminal"],["==",["get","subclass"],"ferry_terminal"]],
