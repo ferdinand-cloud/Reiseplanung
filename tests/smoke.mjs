@@ -1473,7 +1473,7 @@ await test("ÖPNV nach Kartenausschnitt: überall, wohin die Karte zeigt, Linien
   await seed();
   await rp(`DL = {light:1}; DOFF = {}; VT.mem = {}; VT.st = {}; VT.sig = ""; true`);
   await jump(13.5, 52.875, 9);
-  ok(await rp(`DEST===null && VT.out && document.body.classList.contains("dyn")`), "Karte außerhalb New Yorks schaltet nicht auf OpenStreetMap-Ebenen");
+  ok(await rp(`!!DEST && VT.out && document.body.classList.contains("dyn")`), "Karte außerhalb New Yorks schaltet nicht auf OpenStreetMap-Ebenen");
   ok(!OVQ.some(q => q.includes("subway|light_rail")), "Weit herausgezoomt wird schon geladen");
   await jump(13.5, 52.875, 11.5);
   await page.waitForFunction(() => window.__rp("!!VV.tr && vtStat().load===0"), null, {timeout:5000});
@@ -1503,7 +1503,7 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   await rp(`lsSet("rp-tlkey", "testkey"); tlSetup(); DL = {}; DOFF = {}; TL.sig = ""; tlFeats = function(){ return ${JSON.stringify([F(2, "S1", "#dd6ca7"), F(1, "U2", "#"), F(0, "M10", ""), F(3, "100", "#a5027d"), F(1, "U9", "#f3791d", [10, 50, 10.1, 50.1])])}; }; true`);
   await jump(13.4, 52.52, 13);
   await page.waitForTimeout(200);
-  ok(await rp(`DEST===null && VT.out && tlOn() && !!map.getSource("tl-r") && map.getSource("tl-r").tiles[0].indexOf("apikey=testkey") > -1 && map.getSource("tl-r").maxzoom===14`), "Transitland-Kacheln nicht als Kartenquelle eingerichtet");
+  ok(await rp(`!!DEST && VT.out && tlOn() && !!map.getSource("tl-r") && map.getSource("tl-r").tiles[0].indexOf("apikey=testkey") > -1 && map.getSource("tl-r").maxzoom===14`), "Transitland-Kacheln nicht als Kartenquelle eingerichtet");
   await click("#layersBtn"); await click("#lTrBtn");
   await page.waitForFunction(() => window.__rp("!!VV.tr && VV.tr.lines.length===3"), null, {timeout:5000}).catch(() => {});
   const grp = await page.locator("#lTrGrp").innerText();
@@ -1592,6 +1592,7 @@ await test("ÖPNV-Linien nebeneinander statt übereinander, dünn, Haltestellen 
 
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
   await seed();
+  await jump(-73.99, 40.73, 12); // Karte in New York (Leihräder folgen dem Kartenausschnitt)
   await click("#layersBtn"); await click("#lTrBtn");
   await page.locator("#lBike").check(); await page.waitForTimeout(900);
   await click("#layersBtn");
@@ -1842,7 +1843,7 @@ await test("Ziel Paris ohne Reise: Mittelpunkt-Knopf bleibt beim Ziel, keine New
   ok(await rp(`map.getBounds().contains([2.3522, 48.8566]) && Math.abs(map.getCenter().lat - 48.86) < 0.6`), "Mittelpunkt springt nicht zum Ziel");
   // New-York-Reise, Karte zeigt Paris: Bezirke-Menü ohne New-Yorker Bezirke; zurück in New York wieder da
   await rp(`zsSet(""); renderAll(); true`); await jump(2.35, 48.86, 12); await page.waitForTimeout(300);
-  ok(await rp(`!DEST && !NB.some(function(n){ return n.n==="SoHo"; })`), "New-Yorker Bezirke beim Blick auf Paris");
+  ok(await rp(`!!DEST && !NB.some(function(n){ return n.n==="SoHo"; })`), "New-Yorker Bezirke beim Blick auf Paris");
   await jump(-73.99, 40.73, 13); await page.waitForTimeout(300);
   ok(await rp(`NB.some(function(n){ return n.n==="SoHo"; })`), "New-Yorker Bezirke fehlen wieder in New York");
 });
@@ -1916,6 +1917,36 @@ await test("Ziel Paris bei abgeschlossener Reise (Ansicht): ÖPNV-Filter wählba
   ok(await rp(`!!VV.bus && VV.bus.lines.some(function(l){ return l.k==="69"; })`), "Buslinien kommen nicht beim Einschalten");
   await click("#layersBtn");
   await rp(`zsSet(""); delete T().fin; renderAll(); true`);
+});
+
+await test("Kartenort: Bezirke und Leihräder folgen der Karte, Reise gilt in ihrem Gebiet, eine Quelle zur Zeit", async () => {
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }));
+  await seed();
+  // Reise Lissabon
+  await rp(`(function(){ var t = T(); t.orte = [{id:"ol", n:"Lissabon", la:38.7223, lo:-9.1393}]; Object.keys(t.places).forEach(function(k, i){ t.places[k].la = 38.71 + i*0.003; t.places[k].lo = -9.15 + i*0.004; }); (t.hotels||[]).forEach(function(h){ h.la = 38.72; h.lo = -9.14; }); renderAll(); })(); true`);
+  await jump(-9.14, 38.72, 13);
+  const lis = await rp(`DEST && DEST.k`);
+  ok(lis && await rp(`dist(DEST, {la:38.7223, lo:-9.1393}) < 3000`), "Lissabon-Reise ohne Reiseziel-Gebiet: "+await rp(`JSON.stringify(DEST)`));
+  // Karte zeigt Rom: Gebiet um die Kartenmitte (Bezirke/Leihräder von Rom, nicht Lissabon)
+  await jump(12.4964, 41.9028, 13);
+  ok(await rp(`!!DEST && dist(DEST, {la:41.9028, lo:12.4964}) < 3000 && DEST.k!=="${lis}" && CB.dk!=="${lis}"`), "Karte in Rom behält Lissabon-Gebiet: "+await rp(`JSON.stringify({k:DEST && DEST.k, la:DEST && DEST.la, dk:CB.dk})`));
+  ok(await rp(`DEST.pts.length===4`), "Gebiet um die Kartenmitte ohne Punkte rundherum");
+  // etwas verschieben (2 km): Gebiet bleibt (keine neue Abfrage)
+  const rk = await rp(`DEST.k`);
+  await jump(12.52, 41.91, 13);
+  ok(await rp(`DEST.k==="${rk}"`), "Kleine Verschiebung lädt neues Gebiet");
+  // weit herausgezoomt: wieder die Reise
+  await jump(5, 45, 5);
+  ok(await rp(`DEST.k==="${lis}"`), "Überblick nutzt nicht das Reiseziel");
+  // zurück nach Lissabon: Reiseziel mit seinen Orten
+  await jump(-9.14, 38.72, 13);
+  ok(await rp(`DEST.k==="${lis}" && DEST.pts.length > 4`), "Zurück in Lissabon: Reiseziel fehlt");
+  // New York: eingebaute Daten, Quelle nyc
+  await jump(-73.99, 40.73, 13);
+  ok(await rp(`DEST===null && CTX.src==="nyc" && CB.sys===CBNYC && NB.some(function(n){ return n.n==="SoHo"; })`), "New York ohne eingebaute Daten: "+await rp(`JSON.stringify({d:!!DEST, src:CTX.src})`));
+  await jump(-9.14, 38.72, 13);
+  ok(await rp(`CTX.src==="osm" && DEST.k==="${lis}"`), "Quelle in Lissabon nicht OpenStreetMap: "+await rp(`CTX.src`));
 });
 
 await test("ÖPNV über NYC hinaus (Transitous): Etappe zum Flughafen Newark mit NJ Transit und AirTrain", async () => {

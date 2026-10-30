@@ -10262,7 +10262,8 @@ function v3dToggle(){
   map.easeTo(o);
 }
 function initMap(){
-  map = new maplibregl.Map({container:"gl", style:STYLE_URL, center:[NYC.lo, NYC.la], zoom:12, attributionControl:false, pitchWithRotate:false, touchPitch:false, dragRotate:true, maxPitch:0});
+  var c0 = null; try { c0 = destNow(); } catch(e){} // gleich bei der Reise starten: sonst kurz New-York-Daten (Citi Bike, Bezirke)
+  map = new maplibregl.Map({container:"gl", style:STYLE_URL, center:c0 ? [c0.lo, c0.la] : [NYC.lo, NYC.la], zoom:12, attributionControl:false, pitchWithRotate:false, touchPitch:false, dragRotate:true, maxPitch:0});
   map.touchZoomRotate.enableRotation();
   if(b3dOn){ map.setMaxPitch(60); map.touchPitch.enable(); }
   map.on("style.load", addLayers);
@@ -12000,15 +12001,43 @@ function destNow(o0, trip){
   return {la:+C.la.toFixed(4), lo:+C.lo.toFixed(4), r:Math.round(Math.min(DRMAX, Math.max(5000, r + 2500))), n:String((o && o.n) || t.name || "").slice(0, 60), pts:pts.slice(0, 300).map(function(p){ return [p.la, p.lo]; })};
 }
 function destIdx(){ try { var a = JSON.parse(lsGet("rp-dest")||"[]"); return Array.isArray(a) ? a : []; } catch(e){ return []; } }
-/* Karte zeigt eine andere Stadt, die Reise ist in New York: keine New-Yorker Bezirke im Menü */
-function nbOut(){ if(!DEST) nbUse(VT.out ? [] : NB_NYC, "nyc-nb-hi"); }
 function destNear(e, C){ return dist(e, C) < Math.max(3000, e.r*0.4); }
-function destSync(){
-  var C = destNow();
-  // Karte zeigt New York (egal welche Reise): eingebaute MTA-, Fähren-, Citi-Bike- und Bezirksdaten statt der Daten des Reiseziels
-  if(!C || inNYC(C) || VT.nyc){ if(DEST) destSet(null); nbOut(); return; }
-  if(DEST && destNear(DEST, C)){ DEST.pts = C.pts; return; }
-  destSet(destOf(C), C.pts);
+/* ---------- Kartenort: eine Stelle entscheidet, wo die Karte ist und woher ÖPNV, Bezirke und Leihräder kommen ----------
+   nah (ab Zoom 8, Paket-Stadt ab Zoom 6): Kartenmitte. New York = eingebaute Daten (MTA, Fähren, Citi Bike, Viertel);
+   sonst das Gebiet um die Kartenmitte – solange die Karte im Gebiet der Reise (bzw. des offenen Ziels) ist, deren Gebiet.
+   weit herausgezoomt oder Karte noch nicht da: Reise bzw. offenes Ziel.
+   ÖPNV-Quelle (ctxSrc): nyc · cp:<Stadt> (Stadtpaket) · tl (Transitland) · osm (Overpass-Kacheln); beim Wechsel wird alles Alte verworfen (srcSync). */
+var CTX = {src:""};
+/* Gebiet um die Kartenmitte: vier Punkte rundherum, damit die Bezirke der ganzen Stadt kommen, nicht nur eines Viertels */
+function viewDest(c){ var a = 3000/111320, b = 3000/(111320*Math.cos(c.la*Math.PI/180));
+  return {la:+c.la.toFixed(4), lo:+c.lo.toFixed(4), r:6000, n:"", pts:[[c.la+a, c.lo], [c.la-a, c.lo], [c.la, c.lo+b], [c.la, c.lo-b]]}; }
+function destIn(d, c){ return !!d && dist(c, d) < Math.max(d.r, 5000)*1.2; }
+function ctxSync(){
+  var ready = !!(mapReady && map), z = ready ? map.getZoom() : 0, mc = ready ? map.getCenter() : null, c = mc ? {la:mc.lat, lo:mc.lng} : null;
+  var cpc = ready && z >= 6 ? cpIn() : null, near = !!c && (z >= 8 || !!cpc);
+  var nyc = near && inNYC(c), out = near && !nyc, cp = out && cpc ? cpc.id : "";
+  var T0 = destNow(), D = DEST, P = null, trip = function(){ if(DEST && destNear(DEST, T0)) return DEST; P = T0.pts; return destOf(T0); };
+  if(nyc) D = null;
+  else if(!out) D = !T0 || inNYC(T0) ? null : trip();
+  else if(DEST && destIn(DEST, c)) D = DEST;
+  else if(T0 && !inNYC(T0) && destIn(T0, c)) D = trip();
+  else { var V = viewDest(c); P = V.pts; D = destOf(V); }
+  var ch = nyc!==VT.nyc || out!==VT.out || cp!==(VT.cp||"") || D!==DEST;
+  VT.nyc = nyc; VT.out = out;
+  if(cp!==(VT.cp||"")){ VT.cp = cp; if(cp) cpLoad(cp, "rail"); }
+  if(D!==DEST) destSet(D, P);
+  else if(D && T0 && destNear(D, T0)) D.pts = T0.pts;
+  srcSync();
+  return ch;
+}
+function destSync(){ if(ctxSync() && mapReady) applyLayers(); }
+function ctxSrc(){ return !dynOn() ? "nyc" : cpView() ? "cp:"+VT.cp : tlOn() ? "tl" : "osm"; }
+/* Quelle gewechselt: Linien der alten Quelle (andere Stadt) aus Menü und Karte nehmen, alle Signaturen neu */
+function srcSync(){
+  document.body.classList.toggle("dyn", dynOn());
+  var s = ctxSrc(); if(s===CTX.src) return false;
+  CTX.src = s; VV = {tr:null, bus:null}; VT.sig = null; TL.sig = ""; CPSIG = ""; dData(); attrSync();
+  return true;
 }
 function destOf(C){ var hit = destIdx().filter(function(e){ return destNear(e, C); })[0];
   return hit ? {k:hit.k, la:hit.la, lo:hit.lo, r:Math.min(hit.r, DRMAX), n:hit.n} : {k:"d"+C.la.toFixed(3)+"_"+C.lo.toFixed(3), la:C.la, lo:C.lo, r:C.r, n:C.n}; }
@@ -12030,7 +12059,7 @@ function destSet(d, pts){
   if(!d){ nbUse(NB_NYC, "nyc-nb-hi"); destApply(); vtView(); if(cbNeeded()) cbLoad(); return; }
   lsList("rp-doff-"+d.k).forEach(function(id){ DOFF[id] = 1; }); // früher je Ziel gemerkt: übernehmen
   nbUse([], "rp-nb-hi-"+d.k);
-  var ix = destIdx().filter(function(e){ return e.k!==d.k; }); ix.unshift({k:d.k, la:d.la, lo:d.lo, r:d.r, n:d.n}); lsSet("rp-dest", JSON.stringify(ix.slice(0, 12)));
+  var ix = destIdx().filter(function(e){ return e.k!==d.k; }); ix.unshift({k:d.k, la:d.la, lo:d.lo, r:d.r, n:d.n}); lsSet("rp-dest", JSON.stringify(ix.slice(0, 20)));
   destApply(); vtView(); if(cbNeeded()) cbLoad();
   var PT = ["nb"]; d.rd = false;
   d.rdP = Promise.all(PT.map(function(p){ return destGet(d.k+":"+p); })).then(function(vs){
@@ -12179,13 +12208,7 @@ function vtWant(){
 /* Karte bewegt, Ebene geschaltet: sichtbare Kacheln bestimmen, fehlende laden, Linien neu zusammensetzen */
 function vtView(){
   if(!mapReady || !map) return;
-  // Stadtpaket (ganze Stadt auf einmal): schon ab Zoom 6, damit die Stadt beim Überblick nicht leer bleibt; sonst ab Zoom 8
-  var c = map.getCenter(), cpz = map.getZoom() >= 6 && cpIn(), out = (map.getZoom() >= 8 || !!cpz) && !inNYC({la:c.lat, lo:c.lng}); // weit herausgezoomt: Menü der Reise behalten
-  var ny = map.getZoom() >= 8 && !out;
-  if(ny!==VT.nyc){ VT.nyc = ny; VT.out = out; destSync(); document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; }
-  if(out!==VT.out){ VT.out = out; nbOut(); document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; } // applyLayers ruft vtView erneut
-  var cpc = out ? cpIn() : null, cpi = cpc ? cpc.id : "";
-  if(cpi!==(VT.cp||"")){ VT.cp = cpi; CPSIG = ""; VT.sig = null; TL.sig = ""; if(cpi) cpLoad(cpi, "rail"); applyLayers(); return; } // Stadtpaket statt Transitland/OpenStreetMap
+  if(ctxSync()){ applyLayers(); return; } // Kartenort oder Quelle gewechselt; applyLayers ruft vtView erneut
   var z = map.getZoom(), w = vtWant(), keys = [];
   Object.keys(VTL).forEach(function(lv){ if(w[lv] && z >= VTL[lv].z) keys = keys.concat(vtKeys(lv)); });
   VT.keys = keys; VT.q = VT.q.filter(function(k){ return keys.indexOf(k) > -1; });
@@ -12224,6 +12247,7 @@ function vtRetry(){ Object.keys(VT.st).forEach(function(k){ if(VT.st[k]==="err" 
 function vtStat(){ var s = {load:0, err:0, off:0, ok:0}; VT.keys.forEach(function(k){ var x = VT.st[k]; if(VT.mem[k]) s.ok++; else if(x==="err") s.err++; else if(x==="off") s.off++; else s.load++; }); return s; }
 function vtBusy(){} // kein Ladekreis am Ebenen-Knopf (lief als Strich durch die Knopfleiste); der Stand steht im Ebenen-Menü
 function vtApply(){
+  srcSync(); // Paket geladen/fehlgeschlagen, Transitland abgelehnt: Quelle neu bestimmen
   // Arbeitsspeicher: nur sichtbare Kacheln und die zuletzt gesehenen behalten
   var mk = Object.keys(VT.mem);
   if(mk.length > VTMEM) mk.filter(function(k){ return VT.keys.indexOf(k) < 0; }).sort(function(a, b){ return VT.mem[a].at - VT.mem[b].at; }).slice(0, mk.length - VTMEM).forEach(function(k){ delete VT.mem[k]; delete VT.st[k]; });
@@ -13057,6 +13081,7 @@ function fitDay(){
   var ws = wishes().filter(hasLoc).filter(function(w){ return !ctr || dist(w, ctr) < 15000; });
   if(ctr && ws.length) return fitPoints([ctr].concat(ws), 1.6);
   if(ctr) return fitPoints([ctr, {la:ctr.la+0.012, lo:ctr.lo+0.012}, {la:ctr.la-0.012, lo:ctr.lo-0.012}], 1.6);
+  var c1 = destNow(); if(c1) return fitPoints([{la:c1.la+0.03, lo:c1.lo+0.03}, {la:c1.la-0.03, lo:c1.lo-0.03}], 1.6); // Reise ohne Orte mit Koordinaten: Reiseziel, nicht New York
   fitPoints([NYC, {la:40.76,lo:-73.97}, {la:40.71,lo:-74.01}], 2);
 }
 function centerOn(p, z){
