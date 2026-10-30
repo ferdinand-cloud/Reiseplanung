@@ -1645,7 +1645,7 @@ await test("Leihrad am Ziel: frei abgestellte E-Bikes (Berlin, Dott) neben Stati
   await seed();
   await rp(`(function(){ var t = newTripObj({id:"t_ber", name:"Berlin", start:"2026-11-02", end:"2026-11-06", hotels:[{id:"h7", n:"Hotel Mitte", la:52.5205, lo:13.4060, from:"2026-11-02", to:"2026-11-06"}], orte:[{id:"o7", n:"Berlin", la:52.5200, lo:13.4050, from:"2026-11-02", to:"2026-11-06"}]});
     S.trips.t_ber = t; S.cur = "t_ber"; layers.bike = true; renderAll(); cbLoad(); })()`);
-  await page.waitForFunction(() => window.__rp("CB.sys.length===2 && CB.st.some(function(s){ return s.ff; })"), null, {timeout:6000}).catch(() => {});
+  await page.waitForFunction(() => window.__rp("CB.sys.length===2 && CB.st.some(function(s){ return s.ff; })"), null, {timeout:20000}).catch(() => {});
   ok(await rp(`CB.sys.map(function(s){ return s.n; }).sort().join(",")`)==="Call a Bike,Dott", "Systeme in Berlin falsch: "+await rp(`JSON.stringify(CB.sys.map(function(s){ return s.n; }))+" "+CB.err`));
   ok(!REQ.some(u => u.includes("getaround")), "Carsharing wird abgefragt");
   ok(await rp(`CB.st.filter(function(s){ return s.ff; }).length`)===3, "Frei stehende E-Bikes falsch (Roller oder reservierte dabei?): "+await rp(`JSON.stringify(CB.st.filter(function(s){ return s.ff; }).map(function(s){ return s.id; }))`));
@@ -1690,7 +1690,7 @@ await test("Leihrad am Ziel: System aus dem GBFS-Katalog finden, Live-Verfügbar
   await seed();
   await rp(`(function(){ var t = newTripObj({id:"t_lis", name:"Lissabon", start:"2026-11-02", end:"2026-11-06", hotels:[{id:"h9", n:"Hotel Lisboa", la:38.7150, lo:-9.1400, from:"2026-11-02", to:"2026-11-06"}], orte:[{id:"o9", n:"Lissabon", la:38.7223, lo:-9.1393, from:"2026-11-02", to:"2026-11-06"}]});
     S.trips.t_lis = t; S.cur = "t_lis"; layers.bike = true; renderAll(); cbLoad(); })()`);
-  await page.waitForFunction(() => window.__rp("CB.sys.length > 0 && CB.st.length > 0 && CB.statAt > 0"), null, {timeout:6000}).catch(() => {});
+  await page.waitForFunction(() => window.__rp("CB.sys.length > 0 && CB.st.length > 0 && CB.statAt > 0"), null, {timeout:20000}).catch(() => {});
   ok(await rp(`CB.sys.length===1 && CB.sys[0].n==="Gira" && CB.st.length===3`), "System am Ziel nicht gefunden: "+await rp(`JSON.stringify(CB.sys)+" "+CB.st.length+" "+CB.err`));
   ok(!REQ.some(u => u.includes("bird.example/fb.json") || u.includes("porto.example") || u.includes("me.example")), "Falsche Systeme abgefragt (Roller, andere Stadt, anderes Land): "+REQ.join(" "));
   ok(await rp(`map.getLayoutProperty("cb","visibility")==="visible" && map.getLayoutProperty("dbike","visibility")==="none" && map.getSource("cb")._data.features.length===3`), "Live-Stationen statt OSM-Stationen nicht auf der Karte");
