@@ -247,6 +247,7 @@ form.f input[type=text],form.f select{width:100%;border:1px solid var(--line);bo
 .sc-btns .sc-l{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sc-btns small{color:var(--muted);font-weight:600;font-size:13px}
 .sc-btns small::after{content:"›";margin-left:8px;font-size:16px}
+.sc-btns [data-act=brw] small::after{content:none}
 .pop-card.scpop{display:flex;flex-direction:column;overflow:hidden;max-height:min(70vh,calc(var(--vvh,100vh) - 40px))}
 .scpop .sc-q{margin:2px 0 8px}
 .scpop .sc-list{overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
@@ -18022,7 +18023,7 @@ document.addEventListener("click", function(e){
     case "scopeset": scopeSet(t.getAttribute("data-ctx"), t.getAttribute("data-v")); if(lsPage) renderLs(); break;
     case "zsgo": var zsg = zsOn(), zgi = zsg && zsItems(zsg)[+t.getAttribute("data-i")]; if(zgi) zsShow(zsg, zgi); break;
     case "zsclose": zsSet(""); renderAll(); fitDay(); destSync(); break;
-    case "brw": closeCatPop(); closeJpMore(); zsSet(BRW); closeMenus(); renderAll(); destSync(); break; // Karte bleibt, wo sie ist
+    case "brw": closeCatPop(); closeJpMore(); zsSet(BRW); closeMenus(); renderAll(); destSync(); if(!desktop.matches) setSheet("peek"); break; // Karte bleibt, wo sie ist; Blatt klein, damit die Karte frei ist
     case "zsplan": var zpl = t.getAttribute("data-ctx")==="ls"; closeLsPage(); zPlanTrip(t.getAttribute("data-z")); if(tdraft) tdraft.back = zpl ? "ls" : ""; break;
     case "lstrip": closeJpMore(); var lst = t.getAttribute("data-trip"); if(zsOn() && S.trips[lst]){ scopeSet("ls", lst); renderLs(); break; } if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
     case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;
