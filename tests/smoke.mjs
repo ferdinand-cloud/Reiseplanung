@@ -1827,6 +1827,17 @@ await test("Grafikkarte: Wege, U-Bahn-Stationen, Punkte und Beschriftungen als K
   ok(await rp(`window.__sd===1 && map.getSource("rt")._data.features.length===0`), "Wege bleiben nach Ausblenden");
 });
 
+await test("Karte schneller: Umland der nächsten Rauszoom-Stufen vorladen, Fernverkehr-Gleise beim Rauszoomen und in New York", async () => {
+  await seed();
+  await jump(-73.99, 40.73, 13);
+  const w = await rp(`(function(){ WARM = {}; var a = warmList("https://t.test/{z}/{x}/{y}.pbf"), b = warmList("https://t.test/{z}/{x}/{y}.pbf");
+    var zs = {}; a.forEach(function(u){ zs[u.split("/")[3]] = (zs[u.split("/")[3]] || 0) + 1; }); return {n:a.length, again:b.length, zs:zs}; })()`);
+  ok(w.zs["12"] && w.zs["11"] && w.zs["10"] && !w.zs["13"] && !w.zs["9"] && w.n <= 80 && w.again===0, "Vorladen falsch: "+JSON.stringify(w));
+  await rp(`layers.sub = true; applyLayers(); true`);
+  const v = await rp(`(function(){ var l = map.getLayer("vt-rail"); return l ? {vis:map.getLayoutProperty("vt-rail","visibility"), min:l.minzoom, f:JSON.stringify(map.getFilter("vt-rail"))} : null; })()`);
+  ok(!v || (v.vis==="visible" && v.min <= 6 && v.f.indexOf("transit")===-1 && v.f.indexOf("siding") > -1), "Fernverkehr-Gleise fehlen in New York oder erst nah: "+JSON.stringify(v));
+});
+
 await test("Stadtpakete: Berlin aus den VBB-Daten statt Transitland, ganze Linien, Farben, Routen ohne Netz", async () => {
   const OVQ = [], TLQ = [], CPQ = [];
   const enc = (pts) => { let o = "", pla = 0, plo = 0; const e1 = (v) => { v = v < 0 ? ~(v << 1) : v << 1; let s = ""; while(v >= 32){ s += String.fromCharCode((32 | (v & 31)) + 63); v >>= 5; } return s + String.fromCharCode(v + 63); };

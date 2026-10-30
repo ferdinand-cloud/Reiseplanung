@@ -5999,6 +5999,27 @@ function offTpl(){
     for(var i = 0; i < ids.length; i++){ var s = map.getSource(ids[i]); if(s && s.type==="vector" && s.tiles && s.tiles[0]) return s.tiles[0]; } } catch(e){}
   return null;
 }
+/* Umland vorladen (wie Apple Karten): steht die Karte still, holt die App die Kacheln der nächsten 3 Rauszoom-Stufen
+   in den Speicher des Service Workers. Beim Rauszoomen ist die Umgebung dann sofort da statt Kachel für Kachel aus dem Netz.
+   Je Stufe nur so viele Kacheln, wie der Bildschirm zeigt (~10), jede höchstens einmal je Sitzung; nicht im Datensparmodus/offline. */
+var WARM = {}, WARMT = 0;
+function warmSoon(){ clearTimeout(WARMT); WARMT = setTimeout(warmTiles, 1200); }
+function warmTiles(){
+  if(!mapReady || !navigator.onLine || (navigator.connection && navigator.connection.saveData) || !navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+  var tpl = offTpl(); if(!tpl) return;
+  var urls = warmList(tpl), i = 0, next = function(){ if(i >= urls.length) return; var u = urls[i++]; fetch(u).then(function(r){ return r.blob(); }).catch(function(){}).then(next); };
+  next(); next(); // zwei gleichzeitig: die Kacheln, die die Karte gerade selbst braucht, gehen vor
+}
+function warmList(tpl){
+  var c = map.getCenter(), z0 = Math.floor(map.getZoom()), cv = map.getCanvas(), w = cv.clientWidth, h = cv.clientHeight, urls = [];
+  for(var z = z0 - 1; z >= Math.max(4, z0 - 3); z--){
+    // Ausschnitt bei Zoom z (Bildschirm bleibt gleich groß) plus eine halbe Kachel Rand
+    var n = Math.pow(2, z), cx = (c.lng + 180)/360*n, r = c.lat*Math.PI/180, cy = (1 - Math.log(Math.tan(r) + 1/Math.cos(r))/Math.PI)/2*n, hx = w/512 + .5, hy = h/512 + .5;
+    for(var x = Math.floor(cx - hx); x <= Math.floor(cx + hx); x++) for(var y = Math.max(0, Math.floor(cy - hy)); y <= Math.min(n - 1, Math.floor(cy + hy)); y++){
+      var u = tpl.replace("{z}", z).replace("{x}", ((x % n) + n) % n).replace("{y}", y); if(!WARM[u]){ WARM[u] = 1; urls.push(u); } }
+  }
+  return urls;
+}
 /* Schriften und Symbole des Kartenstils mitnehmen (sonst fehlen offline die Beschriftungen) */
 function offExtras(){
   var out = [];
@@ -10418,7 +10439,7 @@ function initMap(){
   if(b3dOn){ map.setMaxPitch(60); map.touchPitch.enable(); }
   map.on("style.load", addLayers);
   map.on("move", onMove);
-  map.on("idle", ferryRetry);
+  map.on("idle", ferryRetry); map.on("idle", warmSoon);
   map.on("moveend", v3dMoveEnd);
   // ÖPNV nach Kartenausschnitt: nach kurzer Ruhe die sichtbaren Kacheln laden
   map.on("moveend", function(){ clearTimeout(VT.tm); VT.tm = setTimeout(vtView, VTWAIT); });
@@ -12883,9 +12904,9 @@ function dAddLayers(){
   var W = function(a, b){ return ["interpolate",["linear"],["zoom"],10,["match",["get","m"],"tram",1,"funi",1.4,a],16,["match",["get","m"],"tram",3,"funi",3.5,b]]; };
   // Grundgerüst: Gleise aus den Kartenkacheln (überall, ohne Abfrage, offline mit dem Kartenpaket), grau unter den farbigen Linien
   var srcs = map.getStyle().sources, vs = null; Object.keys(srcs).forEach(function(k){ if(!vs && srcs[k].type==="vector") vs = k; });
-  if(vs) try { map.addLayer({id:"vt-rail", type:"line", source:vs, "source-layer":"transportation", minzoom:8,
+  if(vs) try { map.addLayer({id:"vt-rail", type:"line", source:vs, "source-layer":"transportation", minzoom:5,
     filter:["any", ["==",["get","class"],"rail"], ["==",["get","class"],"transit"]],
-    paint:{"line-color":isDark() ? "#7c8894" : "#8a96a3", "line-opacity":.55, "line-width":["interpolate",["linear"],["zoom"],8,.6,12,1.2,16,2.4]}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}); } catch(e){}
+    paint:{"line-color":isDark() ? "#8794a1" : "#7d8996", "line-opacity":["interpolate",["linear"],["zoom"],5,.85,10,.75,13,.5], "line-width":["interpolate",["linear"],["zoom"],5,.9,8,1.3,12,1.5,16,2.4]}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}); } catch(e){}
   map.addLayer({id:"dbus", type:"line", source:"dbus", minzoom:BUSZ, paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,.6,16,2], "line-opacity":.5}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
   map.addLayer({id:"dtr", type:"line", source:"dtr", filter:["!=",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":lnWidth(["get","m"]), "line-offset":lnOffset(["coalesce", ["get","o"], 0])}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
   map.addLayer({id:"dtr-f", type:"line", source:"dtr", filter:["==",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":["interpolate",["linear"],["zoom"],10,1.4,15,3], "line-dasharray":[3,2], "line-opacity":.85}, layout:{"line-cap":"round", visibility:"none"}});
@@ -12913,7 +12934,8 @@ function dApplyMap(){
   var srail = rail.some(railFam) ? rail.concat(["train"]) : rail; // Bahnhöfe kennen nur „Zug“, nicht die Art
   map.setFilter("dst", stZ(["in", ["get","m"], ["literal", srail]])); if(map.getLayer("dst-lbl")) map.setFilter("dst-lbl", stLblZ(["in", ["get","m"], ["literal", srail]]));
   vis("dbike", dy && layers.bike && !(DEST && CB.sys.length)); // OpenStreetMap-Stationen nur, solange kein Leihrad-System mit Live-Daten bekannt ist
-  vis("vt-rail", dy && rail.length && !trRO()); // graues Grundgerüst aus den Kartenkacheln: sofort da, bis die Linien geladen sind
+  if(map.getLayer("vt-rail")) map.setFilter("vt-rail", ["all", dy ? ["in", ["get","class"], ["literal", ["rail","transit"]]] : ["==", ["get","class"], "rail"], ["!", ["in", ["coalesce", ["get","service"], ""], ["literal", ["yard","siding","spur","crossover"]]]]]); // U-Bahn in NYC kommt farbig aus den eigenen Daten
+  vis("vt-rail", ((dy && rail.length) || (!dy && !DEST && (layers.sub || layers.bus))) && !trRO()); // auch in New York und beim Rauszoomen: Fernverkehr zwischen den Städten // graues Grundgerüst aus den Kartenkacheln: sofort da, bis die Linien geladen sind
   tlApply();
 }
 /* Menü: ÖPNV → Verkehrsmittel des Ziels → einzelne Linien (wie U-Bahn/Bus in New York) */
