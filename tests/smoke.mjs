@@ -1618,6 +1618,48 @@ await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad",
   ok(await rp(`legMode(dayLegs(cur)[${li}][0], dayLegs(cur)[${li}][1])`)==="bike", "Rad-Modus wird nicht gespeichert");
 });
 
+await test("Leihrad am Ziel: frei abgestellte E-Bikes (Berlin, Dott) neben Stationen", async () => {
+  const REQ = [], J = (rt, b) => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(b) });
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => J(rt, {elements:[]}));
+  await page.route(/raw\.githubusercontent\.com\/MobilityData/, rt => rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:
+    "Country Code,Name,Location,System ID,URL,Auto-Discovery URL,Supported Versions,Authentication Info URL,Authentication Type,Authentication Parameter Name\n"+
+    "DE,Dott Berlin,Berlin,dott-berlin,https://ridedott.com/,https://dott.example/gbfs.json,2.3,,,\n"+
+    "DE,Getaround Berlin,Berlin,getaround_berlin,https://getaround.com,https://getaround.example/gbfs.json,3.0,,,\n"+
+    "DE,Call a Bike,Germany,callabike,https://www.callabike.de/,https://cab.example/gbfs.json,3.0,,,\n" }));
+  await page.route(/photon\.komoot\.io\/reverse/, rt => J(rt, {features:[{properties:{osm_key:"place", type:"city", name:"Berlin", city:"Berlin", country:rt.request().url().includes("lang=en") ? "Germany" : "Deutschland", countrycode:"DE"}}]}));
+  await page.route(/\.example\//, rt => { const u = rt.request().url(); REQ.push(u);
+    if(u.includes("dott.example/gbfs.json")) return J(rt, {data:{en:{feeds:[{name:"free_bike_status", url:"https://dott.example/fb.json"}, {name:"vehicle_types", url:"https://dott.example/vt.json"}]}}});
+    if(u.includes("dott.example/vt.json")) return J(rt, {data:{vehicle_types:[{vehicle_type_id:"sc", form_factor:"scooter", propulsion_type:"electric"}, {vehicle_type_id:"eb", form_factor:"bicycle", propulsion_type:"electric_assist"}]}});
+    if(u.includes("dott.example/fb.json")) return J(rt, {data:{bikes:[
+      {bike_id:"a", lat:52.5200, lon:13.4050, vehicle_type_id:"eb", is_reserved:false, is_disabled:false, current_range_meters:31000},
+      {bike_id:"b", lat:52.5210, lon:13.4100, vehicle_type_id:"eb", is_reserved:false, is_disabled:false},
+      {bike_id:"c", lat:52.5150, lon:13.3900, vehicle_type_id:"eb", is_reserved:false, is_disabled:false},
+      {bike_id:"r", lat:52.5160, lon:13.3950, vehicle_type_id:"eb", is_reserved:true, is_disabled:false},
+      {bike_id:"s1", lat:52.5190, lon:13.4000, vehicle_type_id:"sc", is_reserved:false, is_disabled:false}]}});
+    if(u.includes("cab.example/gbfs")) return J(rt, {data:{feeds:[{name:"station_information", url:"https://cab.example/si"}, {name:"station_status", url:"https://cab.example/ss"}]}});
+    if(u.includes("cab.example/si")) return J(rt, {data:{stations:[
+      {station_id:"1", name:[{text:"Alexanderplatz", language:"de"}], lat:52.5219, lon:13.4132}, {station_id:"2", name:[{text:"Hackescher Markt", language:"de"}], lat:52.5225, lon:13.4020},
+      {station_id:"3", name:[{text:"Museumsinsel", language:"de"}], lat:52.5170, lon:13.4010}, {station_id:"9", name:[{text:"München Hbf", language:"de"}], lat:48.14, lon:11.56}]}});
+    if(u.includes("cab.example/ss")) return J(rt, {data:{stations:[{station_id:"1", num_vehicles_available:2, num_docks_available:5}, {station_id:"2", num_vehicles_available:0, num_docks_available:8}, {station_id:"3", num_vehicles_available:1, num_docks_available:3}]}});
+    return rt.abort(); });
+  await seed();
+  await rp(`(function(){ var t = newTripObj({id:"t_ber", name:"Berlin", start:"2026-11-02", end:"2026-11-06", hotels:[{id:"h7", n:"Hotel Mitte", la:52.5205, lo:13.4060, from:"2026-11-02", to:"2026-11-06"}], orte:[{id:"o7", n:"Berlin", la:52.5200, lo:13.4050, from:"2026-11-02", to:"2026-11-06"}]});
+    S.trips.t_ber = t; S.cur = "t_ber"; layers.bike = true; renderAll(); cbLoad(); })()`);
+  await page.waitForFunction(() => window.__rp("CB.sys.length===2 && CB.st.some(function(s){ return s.ff; })"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`CB.sys.map(function(s){ return s.n; }).sort().join(",")`)==="Call a Bike,Dott", "Systeme in Berlin falsch: "+await rp(`JSON.stringify(CB.sys.map(function(s){ return s.n; }))+" "+CB.err`));
+  ok(!REQ.some(u => u.includes("getaround")), "Carsharing wird abgefragt");
+  ok(await rp(`CB.st.filter(function(s){ return s.ff; }).length`)===3, "Frei stehende E-Bikes falsch (Roller oder reservierte dabei?): "+await rp(`JSON.stringify(CB.st.filter(function(s){ return s.ff; }).map(function(s){ return s.id; }))`));
+  ok(await rp(`CB.st.filter(function(s){ return !s.ff; }).length`)===3, "Call-a-Bike-Stationen rund ums Ziel fehlen (oder München dabei)");
+  ok(await rp(`map.getLayoutProperty("cb","visibility")==="visible" && map.getSource("cb")._data.features.filter(function(f){ return f.properties.f===1; }).length===3`), "E-Bikes nicht auf der Karte");
+  await rp(`select("cb:" + CB.st.filter(function(s){ return s.ff && s.rng; })[0].id)`); await page.waitForTimeout(150);
+  const card = await page.locator("#card").innerText();
+  ok(card.includes("Dott E-Bike") && card.includes("31 km") && card.includes("ohne Station") && !card.includes("freie Plätze"), "Karte des E-Bikes falsch: "+card.slice(0, 200));
+  // Rad-Etappe: frei stehendes E-Bike holen, direkt am Ziel abstellen
+  const br = await rp(`(function(){ var r = bikeRoute({la:52.5199, lo:13.4049}, {la:52.5300, lo:13.4300, n:"Mauerpark"}); return r.s1 ? r.s1.s.ff + "|" + r.s2.s.drop + "|" + r.s2.s.n : JSON.stringify(r); })()`);
+  ok(br==="true|true|Mauerpark", "Rad-Etappe mit E-Bike falsch: "+br);
+  await rp(`select(null)`);
+});
+
 await test("Leihrad am Ziel: System aus dem GBFS-Katalog finden, Live-Verfügbarkeit (Lissabon)", async () => {
   const REQ = [], J = (rt, b) => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(b) });
   await page.route(/overpass-api\.de|overpass\.kumi/, rt => J(rt, {elements:[{type:"node", id:22, lat:38.7120, lon:-9.1400, tags:{amenity:"bicycle_rental", name:"OSM-Station"}}]}));
@@ -1630,6 +1672,9 @@ await test("Leihrad am Ziel: System aus dem GBFS-Katalog finden, Live-Verfügbar
   await page.route(/photon\.komoot\.io\/reverse/, rt => { const u = rt.request().url(), faro = u.includes("lat=37.0");
     return J(rt, {features:[{properties:{osm_key:"place", type:"city", name:faro ? "Faro" : u.includes("lang=en") ? "Lisbon" : "Lisboa", city:faro ? "Faro" : u.includes("lang=en") ? "Lisbon" : "Lisboa", countrycode:"PT"}}]}); });
   await page.route(/\.example\//, rt => { const u = rt.request().url(); REQ.push(u);
+    // Roller-Anbieter: nur E-Scooter → wird geprüft, aber nicht übernommen
+    if(u.includes("bird.example/gbfs.json")) return J(rt, {data:{en:{feeds:[{name:"free_bike_status", url:"https://bird.example/fb.json"}, {name:"vehicle_types", url:"https://bird.example/vt.json"}]}}});
+    if(u.includes("bird.example/vt.json")) return J(rt, {data:{vehicle_types:[{vehicle_type_id:"s", form_factor:"scooter", propulsion_type:"electric"}]}});
     if(u.includes("gira.example/gbfs.json")) return J(rt, {data:{pt:{feeds:[{name:"station_information", url:"https://gira.example/si.json"}, {name:"station_status", url:"https://gira.example/ss.json"}, {name:"vehicle_types", url:"https://gira.example/vt.json"}]}}});
     if(u.includes("gira.example/vt.json")) return J(rt, {data:{vehicle_types:[{vehicle_type_id:"e", form_factor:"bicycle", propulsion_type:"electric_assist"}]}});
     if(u.includes("gira.example/si.json")) return J(rt, {data:{stations:[
@@ -1647,7 +1692,7 @@ await test("Leihrad am Ziel: System aus dem GBFS-Katalog finden, Live-Verfügbar
     S.trips.t_lis = t; S.cur = "t_lis"; layers.bike = true; renderAll(); cbLoad(); })()`);
   await page.waitForFunction(() => window.__rp("CB.sys.length > 0 && CB.st.length > 0 && CB.statAt > 0"), null, {timeout:6000}).catch(() => {});
   ok(await rp(`CB.sys.length===1 && CB.sys[0].n==="Gira" && CB.st.length===3`), "System am Ziel nicht gefunden: "+await rp(`JSON.stringify(CB.sys)+" "+CB.st.length+" "+CB.err`));
-  ok(!REQ.some(u => u.includes("bird.example") || u.includes("porto.example") || u.includes("me.example")), "Falsche Systeme abgefragt (Roller, andere Stadt, anderes Land): "+REQ.join(" "));
+  ok(!REQ.some(u => u.includes("bird.example/fb.json") || u.includes("porto.example") || u.includes("me.example")), "Falsche Systeme abgefragt (Roller, andere Stadt, anderes Land): "+REQ.join(" "));
   ok(await rp(`map.getLayoutProperty("cb","visibility")==="visible" && map.getLayoutProperty("dbike","visibility")==="none" && map.getSource("cb")._data.features.length===3`), "Live-Stationen statt OSM-Stationen nicht auf der Karte");
   const id = await rp(`CB.st.filter(function(s){ return s.n==="Cais do Sodré"; })[0].id`);
   await rp(`select("cb:${id}")`); await page.waitForTimeout(150);
