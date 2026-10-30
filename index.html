@@ -6000,14 +6000,15 @@ function offExtras(){
 }
 function offTiles(d){
   var box = function(r){ var la = r/111320, lo = r/(111320*Math.cos(d.la*Math.PI/180)); return [d.la-la, d.lo-lo, d.la+la, d.lo+lo]; }, out = [];
-  [["a", d.r], ["b", d.r], ["c", Math.min(d.r, 4000)]].forEach(function(x){ var b = box(x[1]); out = out.concat(vtCover(x[0], b[0], b[1], b[2], b[3])); });
+  var lv = tlKey() ? [["k", d.r]] : [["a", d.r], ["b", d.r], ["c", Math.min(d.r, 4000)]]; // mit Transitland (offTl) aus OpenStreetMap nur die Leihrad-Stationen
+  lv.forEach(function(x){ var b = box(x[1]); out = out.concat(vtCover(x[0], b[0], b[1], b[2], b[3])); });
   return out;
 }
 /* ÖPNV fürs Offline-Paket: New York ist eingebaut (Fahrpläne, Busse, Fähren), dazu Citi-Bike-Stationen;
    andere Ziele der Reise: Bahnen, Busse und Bezirke aus OpenStreetMap in den Gerätespeicher */
 function offTransit(run){
   var t = T(), os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); });
-  var cs = os.length > 1 ? os.map(function(o){ return destNow(o); }) : [destNow()], nyc = cs.some(function(C){ return C && inNYC(C); });
+  var cs = os.length > 1 ? os.map(function(o){ return destNow(o, true); }) : [destNow(null, true)], nyc = cs.some(function(C){ return C && inNYC(C); });
   var ds = destAll(), jobs = [], res = {nyc:nyc, n:[], err:0};
   if(nyc){
     jobs.push(function(){ return fetch("bus.json").then(function(r){ if(!r.ok) throw 0; }); });
@@ -10274,7 +10275,7 @@ function initMap(){
   map.on("click", function(e){ if(Date.now()-lpAt < 900) return; tap(e.point.x, e.point.y); });
   lpInit();
   map.on("error", function(e){ if(!navigator.onLine) setNet(false); tlError(e); });
-  map.on("sourcedata", function(e){ if(e.sourceId==="tl-r" && e.isSourceLoaded) tlSoon(); });
+  map.on("sourcedata", function(e){ if((e.sourceId==="tl-r" || e.sourceId==="tl-s") && e.tile) TL.nst = 0; if(e.sourceId==="tl-r" && e.isSourceLoaded) tlSoon(); }); // geladene Kachel: Netzfehler zählen nur hintereinander (Funkloch ≠ blockiert)
   darkMQ.addEventListener && darkMQ.addEventListener("change", function(){ mapReady = false; map.setStyle(STYLE_URL); });
 }
 
@@ -10954,7 +10955,8 @@ function nycNear(p){
   var o = false; for(var i = 0; i < NS0 && !o; i++){ if(dist(p, stLL(i)) < 1300) o = true; }
   return (EXTNEAR[k] = o);
 }
-function extWanted(a, b){ return dist(a, b) >= 1500 && (!!DEST || !nycNear(a) || !nycNear(b)); }
+// nur nach den Punkten der Etappe: DEST hängt von Ziel-Ansicht und Kartenausschnitt ab (Ziel Paris offen → New-Yorker Etappen liefen sonst über Transitous)
+function extWanted(a, b){ return dist(a, b) >= 1500 && (!nycNear(a) || !nycNear(b)); }
 function polyDec(s, pr){
   var f = Math.pow(10, pr || 6), i = 0, la = 0, lo = 0, out = [];
   while(i < s.length){
@@ -11984,8 +11986,8 @@ function isDest(){ return !!DEST; }
 /* Kartenebenen aus OpenStreetMap: Reise außerhalb New Yorks oder Karte zeigt gerade einen Ort außerhalb New Yorks */
 function dynOn(){ return !!DEST || VT.out; }
 /* Mittelpunkt des Ziels: Ort des aktuellen Tags (Reisen mit mehreren Städten), sonst Mitte der Reise */
-function destNow(o0){
-  var zs = zsOn(), t = zs ? Z(zs) : T(); if(!t) return null; // Ziel-Ansicht (z. B. Paris ohne Reise): Gebiet des Ziels, nicht der aktiven Reise
+function destNow(o0, trip){
+  var zs = trip ? "" : zsOn(), t = zs ? Z(zs) : T(); if(!t) return null; // Ziel-Ansicht (z. B. Paris ohne Reise): Gebiet des Ziels, nicht der aktiven Reise
   var os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); }), o = o0 || null, C = null;
   if(!o0 && !zs && os.length > 1 && cur) o = os.filter(function(x){ return (!x.from || x.from <= cur) && (!x.to || x.to >= cur); })[0];
   o = o || (t.ziel || os.length > 1 ? os[0] : null);
@@ -12013,7 +12015,7 @@ function destOf(C){ var hit = destIdx().filter(function(e){ return destNear(e, C
 function destAll(){
   var t = T(); if(!t) return [];
   var os = (t.orte||[]).filter(function(o){ return o && (hasLoc(o) || o.bb); }), out = [], ks = {};
-  (os.length > 1 ? os.map(function(o){ return destNow(o); }) : [destNow()]).forEach(function(C){
+  (os.length > 1 ? os.map(function(o){ return destNow(o, true); }) : [destNow(null, true)]).forEach(function(C){
     if(!C || inNYC(C)) return; var d = destOf(C); if(ks[d.k]) return; ks[d.k] = 1; d.pts = C.pts; out.push(d); });
   return out;
 }
@@ -12182,7 +12184,7 @@ function vtView(){
   if(ny!==VT.nyc){ VT.nyc = ny; VT.out = out; destSync(); document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; }
   if(out!==VT.out){ VT.out = out; nbOut(); document.body.classList.toggle("dyn", dynOn()); applyLayers(); return; } // applyLayers ruft vtView erneut
   var cpc = out ? cpIn() : null, cpi = cpc ? cpc.id : "";
-  if(cpi!==(VT.cp||"")){ VT.cp = cpi; CPSIG = ""; VT.sig = ""; if(cpi) cpLoad(cpi, "rail"); applyLayers(); return; } // Stadtpaket statt Transitland/OpenStreetMap
+  if(cpi!==(VT.cp||"")){ VT.cp = cpi; CPSIG = ""; VT.sig = null; TL.sig = ""; if(cpi) cpLoad(cpi, "rail"); applyLayers(); return; } // Stadtpaket statt Transitland/OpenStreetMap
   var z = map.getZoom(), w = vtWant(), keys = [];
   Object.keys(VTL).forEach(function(lv){ if(w[lv] && z >= VTL[lv].z) keys = keys.concat(vtKeys(lv)); });
   VT.keys = keys; VT.q = VT.q.filter(function(k){ return keys.indexOf(k) > -1; });
@@ -12389,7 +12391,7 @@ function offTl(b){
    Haben Vorrang vor Transitland und OpenStreetMap; Busse sind eine eigene Datei und kommen erst, wenn sie gebraucht werden. */
 var CPURL = "https://raw.githubusercontent.com/ferdinand-cloud/Reiseplanung/stadtpakete/";
 var CPS = [{id:"berlin", n:"Berlin", bb:[12.88, 52.29, 13.82, 52.71]}, {id:"paris", n:"Paris", bb:[1.95, 48.62, 2.82, 49.08]}, {id:"london", n:"London", bb:[-0.62, 51.28, 0.34, 51.72]}];
-var CP = {}, CPSIG = "", CPBIKE = [];
+var CP = {}, CPSIG = "", CPBIKE = [], CPTO = [30000, 90000]; // Zeitlimit Bahn-/Bus-Datei
 var CPMODE = {metro:"SUBWAY", light:"SUBWAY", tram:"TRAM", sbahn:"SUBURBAN", reg:"REGIONAL_RAIL", long:"LONG_DISTANCE", train:"RAIL", funi:"FUNICULAR", ferry:"FERRY", bus:"BUS"};
 function cpAt(p){ if(!p || !hasLoc(p)) return null; for(var i = 0; i < CPS.length; i++){ var b = CPS[i].bb; if(p.lo >= b[0] && p.lo <= b[2] && p.la >= b[1] && p.la <= b[3]) return CPS[i]; } return null; }
 /* Stadt, die die Karte zeigt: Kartenmitte in der Stadt, sonst die Stadt, die den sichtbaren Ausschnitt am meisten füllt (das Blatt unten verdeckt einen Teil der Karte) */
@@ -12408,10 +12410,12 @@ function cpLoad(id, part){
   var c = cpGet(id), s = c.st[part];
   if(s==="load" || s==="ok" || s==="none" || (s==="err" && Date.now() - (c.errAt||0) < 60000)) return;
   c.st[part] = "load";
-  fetch(CPURL + id + (part==="bus" ? "-bus" : "") + ".json").then(function(r){ if(r.status===404) throw 404; if(!r.ok) throw r.status; return r.json(); })
+  // Zeitlimit: solange das Paket „lädt“, zeigt die Karte weder Transitland noch OpenStreetMap
+  var ac = typeof AbortController==="function" ? new AbortController() : null, to = setTimeout(function(){ if(ac) ac.abort(); }, CPTO[part==="bus" ? 1 : 0]);
+  fetch(CPURL + id + (part==="bus" ? "-bus" : "") + ".json", {signal:ac ? ac.signal : undefined}).then(function(r){ if(r.status===404) throw 404; if(!r.ok) throw r.status; return r.json(); })
     .then(function(j){ if(!j || !j.S || !j.E) throw 0; c[part] = cpPrep(j); c.st[part] = "ok"; if(part==="rail") setTimeout(function(){ cpLoad(id, "bus"); }, 800); }, // Busse gleich hinterher (Menü, Routen)
       function(e){ c.st[part] = e===404 ? "none" : "err"; c.errAt = Date.now(); })
-    .then(function(){ c.vv = null; c.net = null; c.rc = {}; CPSIG = ""; ALTCACHE = {}; TRCACHE = {};
+    .then(function(){ clearTimeout(to); c.vv = null; c.net = null; c.rc = {}; CPSIG = ""; ALTCACHE = {}; TRCACHE = {};
       if(VT.cp===id){ document.body.classList.toggle("dyn", dynOn()); applyLayers(); }
       renderSheet(); renderCard(); scheduleOverlay(); });
 }

@@ -1847,6 +1847,45 @@ await test("Ziel Paris ohne Reise: Mittelpunkt-Knopf bleibt beim Ziel, keine New
   ok(await rp(`NB.some(function(n){ return n.n==="SoHo"; })`), "New-Yorker Bezirke fehlen wieder in New York");
 });
 
+await test("Kartenschichten: Quellenwechsel ohne alte Linien, Routing unabhängig von Ziel-Ansicht, Transitland-Funkloch, Paket-Zeitlimit, Offline der Reise", async () => {
+  const pk = {v:1, id:"paris", part:"rail", n:"Paris", src:"IDFM", lic:"ODbL", L:[["metro", "1", "", "#FFBE00", "#000000"]], H:["La Défense"],
+    S:[["Étoile", 4887380, 229500], ["Châtelet", 4885850, 234700]], E:[0,1,0,0,600,7], W:[[120,150,180]], G:[["gthiHwf_Mr~A_dI"]], D:[[0, "metro"], [1, "metro"]]};
+  let hang = false;
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => { const u = rt.request().url();
+    if(u.endsWith("/paris.json") && !hang) return rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(pk) });
+    if(hang) return; // Server antwortet nicht
+    return rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }); });
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => rt.abort());
+  await seed();
+  await rp(`CP = {}; DL = {metro:1}; DOFF = {}; true`);
+  // Paris (Stadtpaket) → Rouen (OpenStreetMap, Overpass nicht erreichbar): keine Pariser Linien mehr in Menü und Karte
+  await jump(2.35, 48.86, 12);
+  await page.waitForFunction(() => window.__rp("!!cpView() && !!VV.tr && VV.tr.lines.length===1"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`!!cpView() && VV.tr.lines[0].k==="1"`), "Stadtpaket Paris nicht geladen");
+  await jump(1.09, 49.44, 12); await page.waitForTimeout(300);
+  ok(await rp(`!cpView() && !(VV.tr && VV.tr.lines.some(function(l){ return l.k==="1" && l.c==="#FFBE00"; })) && !map.getSource("dtr")._data.features.length`), "Linien von Paris bleiben in Rouen: "+await rp(`JSON.stringify({cp:VT.cp, n:VV.tr && VV.tr.lines.length})`));
+  // Ziel Paris offen, aktive Reise New York: New-Yorker Etappe bleibt im eingebauten Netz (kein Transitous)
+  await jump(-73.99, 40.73, 13);
+  await rp(`var zid = zielNew("Paris", {id:"zo", n:"Paris", la:48.8566, lo:2.3522}); zsSet(zid); renderAll(); true`);
+  await jump(2.35, 48.86, 12); await rp(`renderAll(); true`);
+  ok(await rp(`!!DEST && !extWanted({la:40.7506, lo:-73.9935}, {la:40.7061, lo:-74.0087})`), "Ziel-Ansicht schickt New-Yorker Etappen zu Transitous");
+  // Offline-Paket gilt der Reise (New York), nicht dem offenen Ziel
+  ok(await rp(`destAll().length===0`), "Offline-Paket lädt das offene Ziel statt der Reise: "+await rp(`JSON.stringify(destAll().map(function(d){ return d.n; }))`));
+  await rp(`zsSet(""); renderAll(); true`);
+  // mit Transitland-Schlüssel: offline keine Overpass-Linienkacheln, nur Leihrad-Stationen
+  ok(await rp(`lsSet("rp-tlkey", "k"); var ks = offTiles({la:52.52, lo:13.4, r:5000}); localStorage.removeItem("rp-tlkey"); ks.length > 0 && ks.every(function(k){ return k.charAt(0)==="k"; })`), "Offline-Paket fragt trotz Transitland Linien bei Overpass ab");
+  // Transitland: einzelne Netzfehler (Funkloch) zwischen geladenen Kacheln schalten es nicht ab
+  await rp(`TL.bad = false; TL.nst = 0; TL.msg = true; true`);
+  ok(await rp(`(function(){ for(var i = 0; i < 6; i++){ tlError({sourceId:"tl-r", error:{}}); if(i % 2) map.fire(new maplibregl.Event("sourcedata", {sourceId:"tl-r", dataType:"source", tile:{}})); } return !TL.bad; })()`), "Transitland nach verstreuten Netzfehlern abgeschaltet");
+  await rp(`TL.bad = false; TL.nst = 0; TL.msg = false; true`);
+  // Stadtpaket antwortet nicht: nach dem Zeitlimit Fehler statt endlos „lädt“
+  hang = true;
+  await rp(`CP = {}; CPTO = [400, 400]; cpLoad("paris", "rail"); true`);
+  await page.waitForFunction(() => window.__rp(`cpGet("paris").st.rail==="err"`), null, {timeout:4000}).catch(() => {});
+  ok(await rp(`cpGet("paris").st.rail==="err"`), "Stadtpaket hängt ohne Zeitlimit: "+await rp(`cpGet("paris").st.rail`));
+  await rp(`CPTO = [30000, 90000]; true`);
+});
+
 await test("ÖPNV über NYC hinaus (Transitous): Etappe zum Flughafen Newark mit NJ Transit und AirTrain", async () => {
   await seed();
   // Polyline (Google-Kodierung, Genauigkeit 6) wie bei MOTIS
