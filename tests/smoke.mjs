@@ -1522,6 +1522,8 @@ await test("Linienkarte: Linien aus OpenStreetMap (PMTiles) auf echten Gleisen, 
   // gleiche Farbe = ein Strich (Nachtlinie N4 ohne Farbe übernimmt die der 4), Beschriftung mit allen Nummern; Ecken gerundet (Bogenpunkte statt einer Ecke)
   const mg = await rp(`JSON.stringify(map.queryRenderedFeatures({layers:["lk-de-ln"]}).filter(function(x){ return x.properties.m==="tram"; }).map(function(x){ return x.properties.k+"|"+x.properties.ks+"|"+x.properties.o; }))`);
   ok(mg.includes("4|4 · N4|-0.5") && !mg.includes("N4|N4") && await rp(`!map.getLayer("lk-de-lbl") || JSON.stringify(map.getLayoutProperty("lk-de-lbl","text-field")).indexOf("ks") > -1`), "Linien gleicher Farbe nicht zusammengelegt: "+mg);
+  // Paket-Verläufe (Busse) werden in der App gerundet: rechter Winkel → Bogen, gerade Strecke bleibt
+  ok(await rp(`var r = lnRund([[8.80,53.07],[8.81,53.07],[8.81,53.08]]), q = lnRund([[8.80,53.07],[8.81,53.07],[8.82,53.07]]); r.length===7 && r.every(function(x){ return !(x[0]===8.81 && x[1]===53.07); }) && q.length===3`), "Ecken der Paket-Linien nicht gerundet");
   // auch in Städten mit Stadtpaket zeichnet die Linienkarte (Paket-Linien aus), ohne Netz wieder das Paket
   await rp(`window.__cpv0 = cpView; cpView = function(){ return {id:"bremen", st:{rail:"ok"}}; }; dApplyMap(); true`); await page.waitForTimeout(150);
   ok(await rp(`lkOn() && map.getLayoutProperty("dtr","visibility")==="none" && map.getLayoutProperty("lk-de-ln","visibility")==="visible"`), "Im Stadtpaket zeichnet nicht die Linienkarte");
@@ -1938,7 +1940,7 @@ await test("Stadtpakete: Berlin aus den VBB-Daten statt Transitland, ganze Linie
   await page.locator("label:has(#lTr)").click(); await page.waitForTimeout(200);
   ok(await rp(`DL.metro && map.getLayoutProperty("dtr","visibility")==="visible" && (!map.getLayer("tl-rail") || map.getLayoutProperty("tl-rail","visibility")==="none")`), "Linien aus dem Paket nicht sichtbar oder Transitland noch an");
   const geo = await rp(`(function(){ var f = map.getSource("dtr")._data.features.filter(function(x){ return x.properties.k==="U2"; })[0]; return {c:f.properties.c, n:f.geometry.coordinates[0].length, o:f.properties.o}; })()`);
-  ok(geo.c==="#DA421E" && geo.n===6, "U2 ohne genaue Farbe oder ganzen Streckenverlauf: "+JSON.stringify(geo));
+  ok(geo.c==="#DA421E" && geo.n>=6, "U2 ohne genaue Farbe oder ganzen (gerundeten) Streckenverlauf: "+JSON.stringify(geo));
   ok(await rp(`map.getSource("dst")._data.features.some(function(f){ return f.properties.n==="S+U Alexanderplatz" && f.properties.m==="train"; })`), "Bahnhof aus dem Paket fehlt");
   ok(await rp(`document.getElementById("attr").textContent.indexOf("ÖPNV: VBB") > -1`), "Quellenangabe VBB fehlt");
   // Zoomstufen wie Apple Karten: weit weg nur S-/U-Bahn, Tram erst näher; Stationen nach Bedeutung (Umstieg zuerst), Busse erst auf Straßenebene

@@ -12722,11 +12722,27 @@ function cpPrep(j){
 }
 function cpLineCol(l){ return okCol(l[3]) || vtCol(l[0], l[1]); }
 /* Karte und Menü: Linien (mit Rechteck fürs Menü), Streckenverläufe, Stationen */
+/* Ecken einer Linie zu Bögen runden (höchstens 25 m, wie die Linienkarte): Paket-Verläufe (v. a. Busse) sind grob und wirken sonst kantig */
+function lnRund(g){
+  if(g.length < 3) return g;
+  var out = [g[0]];
+  for(var i = 1; i < g.length - 1; i++){
+    var a = g[i-1], p = g[i], b = g[i+1], k = Math.cos(p[1]*Math.PI/180);
+    var ax = (p[0]-a[0])*k, ay = p[1]-a[1], bx = (b[0]-p[0])*k, by = b[1]-p[1], la = Math.hypot(ax, ay)*111320, lb = Math.hypot(bx, by)*111320;
+    if(!la || !lb){ out.push(p); continue; }
+    var cs = (ax*bx + ay*by)/(la*lb)*111320*111320;
+    if(cs > 0.99){ out.push(p); continue; } // unter 8°: nichts zu runden
+    var d = Math.min(25, .45*la, .45*lb), s = [p[0]-(p[0]-a[0])*d/la, p[1]-(p[1]-a[1])*d/la], e = [p[0]+(b[0]-p[0])*d/lb, p[1]+(b[1]-p[1])*d/lb];
+    for(var j = 0; j <= 4; j++){ var t = j/4, u = 1-t; out.push([u*u*s[0]+2*u*t*p[0]+t*t*e[0], u*u*s[1]+2*u*t*p[1]+t*t*e[1]]); }
+  }
+  out.push(g[g.length-1]);
+  return out;
+}
 function cpGeo(c, wantBus){
   if(c.vv){ if(wantBus && c.bus && !c.vv.bus) c.vv.bus = c.vv.mk(c.bus, true); return c.vv; }
   var mk = function(P, bus){ if(!P) return null; var lines = [], feats = [];
     P.L.forEach(function(l, i){
-      var g = (P.G[i]||[]).map(function(s){ return polyDec(s, 5).map(function(q){ return [q[1], q[0]]; }); }).filter(function(x){ return x.length > 1; });
+      var g = (P.G[i]||[]).map(function(s){ return lnRund(polyDec(s, 5).map(function(q){ return [q[1], q[0]]; })); }).filter(function(x){ return x.length > 1; });
       if(!g.length) return;
       var bb = [180, 90, -180, -90]; g.forEach(function(r){ r.forEach(function(q){ if(q[0] < bb[0]) bb[0] = q[0]; if(q[1] < bb[1]) bb[1] = q[1]; if(q[0] > bb[2]) bb[2] = q[0]; if(q[1] > bb[3]) bb[3] = q[1]; }); });
       var o = {m:l[0], k:l[1], n:l[2] || "", c:cpLineCol(l), bb:bb}; lines.push(o);
