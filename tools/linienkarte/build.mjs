@@ -121,7 +121,7 @@ async function land(id, L) {
       arr.sort((x, y) => pos[x] - pos[y]);
       for (let i = 0; i < arr.length; i++) {
         const l = lines[arr[i]];
-        await wr({ type: "Feature", tippecanoe: { minzoom: MINZ[l.m] || 8, layer: "lines" }, properties: { m: l.m, k: l.k, c: l.c, o: +(i - (arr.length - 1) / 2).toFixed(1), n: arr.length }, geometry: { type: "LineString", coordinates: g } });
+        await wr({ type: "Feature", tippecanoe: { layer: "lines" }, properties: { m: l.m, k: l.k, c: l.c, o: +(i - (arr.length - 1) / 2).toFixed(1), n: arr.length }, geometry: { type: "LineString", coordinates: g } });
         nf++;
       }
     }
@@ -135,16 +135,19 @@ async function land(id, L) {
     const tg = oplTags(F.T); if (!tg.name || tg.disused || tg["disused:railway"]) continue;
     const st = tg.station || (tg.railway === "tram_stop" ? "tram" : ""), m = st === "subway" ? "metro" : st === "light_rail" ? "light" : st === "tram" ? "tram" : st === "funicular" ? "funi" : st === "ferry" ? "ferry" : "train";
     const r = m === "train" && tg.railway === "station" ? 3 : m === "tram" ? 0 : 1;
-    await wr({ type: "Feature", tippecanoe: { minzoom: r === 3 ? 9 : m === "tram" ? 13 : 11, layer: "st" }, properties: { n: tg.name.slice(0, 60), m, r }, geometry: { type: "Point", coordinates: [+F.x, +F.y] } });
+    await wr({ type: "Feature", tippecanoe: { layer: "st" }, properties: { n: tg.name.slice(0, 60), m, r }, geometry: { type: "Point", coordinates: [+F.x, +F.y] } });
     ns++;
   }
   await new Promise((res) => out.end(res));
   log(id, "Abschnitte", nf, "Stationen", ns, (fs.statSync(gj).size / 1e6).toFixed(0) + " MB GeoJSON");
   const pm = path.join(OUT, id + ".pmtiles");
-  await run("tippecanoe", ["-o", pm, "--force", "-Z5", "-z14", "-P", "--no-tile-size-limit", "--simplification=4", "--no-simplification-of-shared-nodes",
+  // Zoomstufe je Art als Filter (eine minzoom je Objekt ließ tippecanoe deckungsgleiche Abschnitte zusammenwerfen – Linien fehlten)
+  const zf = ["any"]; Object.keys(MINZ).forEach((m) => zf.push(["all", ["==", "m", m], [">=", "$zoom", MINZ[m]]]));
+  const jf = JSON.stringify({ lines: zf, st: ["any", ["all", ["==", "r", 3], [">=", "$zoom", 9]], ["all", ["==", "m", "tram"], [">=", "$zoom", 13]], ["all", ["!=", "m", "tram"], [">=", "$zoom", 11]]] });
+  await run("tippecanoe", ["-o", pm, "--force", "-Z5", "-z14", "-P", "--no-tile-size-limit", "--simplification=4", "--no-simplification-of-shared-nodes", "-j", jf,
     "-n", "Linienkarte " + L.n, "-A", "© OpenStreetMap-Mitwirkende", gj]);
   log("geschrieben", pm, (fs.statSync(pm).size / 1e6).toFixed(1) + " MB");
-  [rf, rl, op, sf, so, gj].forEach((f) => fs.rmSync(f, { force: true }));
+  if (!process.env.LKKEEP) [rf, rl, op, sf, so, gj].forEach((f) => fs.rmSync(f, { force: true }));
   return { id, n: L.n, b: fs.statSync(pm).size, bb: bb.map((x) => +x.toFixed(3)), at: new Date().toISOString().slice(0, 10) };
 }
 

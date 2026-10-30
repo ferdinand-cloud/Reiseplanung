@@ -1,6 +1,6 @@
 // Reiseplan – Service Worker: App offline verfügbar, besuchte Kartenbereiche zwischengespeichert
-const VERSION = "reiseplan-v467";
-const SHELL = ["./", "./index.html", "./maplibre-gl.js", "./maplibre-gl.css", "./manifest.webmanifest", "./bus.json", "./firebase.js",
+const VERSION = "reiseplan-v468";
+const SHELL = ["./", "./index.html", "./maplibre-gl.js", "./maplibre-gl.css", "./manifest.webmanifest", "./bus.json", "./firebase.js", "./pmtiles.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 const TILES = "reiseplan-tiles";
 const MAX_TILES = 3000;
@@ -32,6 +32,8 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
+  // Linienkarte (PMTiles): Teil-Abrufe per Range, nicht zwischenspeichern (Cache API kennt keine Teilantworten)
+  if (req.headers.has("range") || url.pathname.endsWith(".pmtiles")) return;
 
   // App-Seite: zuerst Netz (für Updates), sonst Zwischenspeicher
   if (req.mode === "navigate" || (url.origin === location.origin && url.pathname.endsWith("/index.html"))) {

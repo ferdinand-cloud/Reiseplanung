@@ -18,6 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
 <script src="maplibre-gl.js"></script>
+<script src="pmtiles.js"></script>
 <style>
 /* Layout: Karte füllt den ganzen Bildschirm; Tagesplan und Wunschliste liegen als ziehbares Blatt darüber (Desktop: Seitenleiste). */
 :root{
@@ -12572,7 +12573,7 @@ function tlSetup(){
 /* Sichtbarkeit und Filter: eingeschaltete Verkehrsmittel, ausgeblendete Linien */
 function tlApply(){
   tlSetup(); attrSync();
-  if(!mapReady || !map.getLayer("tl-rail")) return;
+  if(!mapReady || !map.getLayer("tl-rail")){ lkApply(); return; }
   var on = tlOn() && !trRO(), ms = on ? DMODES.map(function(m){ return m[0]; }).filter(dOn) : [], rail = ms.filter(function(m){ return m!=="bus"; });
   var off = ["!", ["in", TLID, ["literal", Object.keys(DOFF)]]], vis = function(l, v){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", v ? "visible" : "none"); };
   vis("tl-probe", on && (ms.length || !$("layers").hidden || dWant));
@@ -12582,6 +12583,45 @@ function tlApply(){
   map.setFilter("tl-ferry", lnZ(["all", ["==", TLM, "ferry"], off], TLM));
   map.setFilter("tl-bus", ["all", ["==", TLM, "bus"], off]);
   if(map.getLayer("tl-lbl")) map.setFilter("tl-lbl", ["all", ["in", TLM, ["literal", ms]], off]);
+  lkApply();
+}
+/* ---------- Linienkarte: ÖPNV-Linien je Land aus OpenStreetMap (GitHub Action „Linienkarte“, Zweig linienkarte) ----------
+   Ersetzt außerhalb der Stadtpakete die Linien von Transitland/Overpass auf der Karte: echte Gleise, Kurven rund, Linien auf
+   gemeinsamer Strecke sauber nebeneinander (je Gleis-Abschnitt ein fester Platz o je Linie). Eine PMTiles-Datei je Land,
+   gelesen per Range-Anfrage. Menü, Haltestellen und Busse kommen weiter von Transitland bzw. OpenStreetMap. */
+var LKURL = "https://raw.githubusercontent.com/ferdinand-cloud/Reiseplanung/linienkarte/", LK = {l:null, st:"", add:{}};
+function lkIndex(){
+  if(LK.st) return; LK.st = "load";
+  try { var c = JSON.parse(lsGet("rp-lk") || "null"); if(c && Date.now() - c.t < 864e5){ LK.l = c.l; LK.st = "ok"; return; } } catch(e){}
+  fetch(LKURL + "index.json").then(function(r){ if(!r.ok) throw r.status; return r.json(); }).then(function(j){ LK.l = (j && j.l) || []; LK.st = "ok"; lsSet("rp-lk", JSON.stringify({t:Date.now(), l:LK.l})); dApplyMap(); })
+    .catch(function(){ LK.l = []; LK.st = "err"; setTimeout(function(){ LK.st = ""; }, 120000); });
+}
+if(typeof pmtiles!=="undefined" && typeof maplibregl!=="undefined" && maplibregl.addProtocol){ try { maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile); } catch(e){} }
+/* Länder der Linienkarte im Ausschnitt (ab Zoom 5) */
+function lkHere(){
+  if(!mapReady || !LK.l || map.getZoom() < 5) return [];
+  var b = map.getBounds(), w = b.getWest(), e = b.getEast(), s = b.getSouth(), n = b.getNorth();
+  return LK.l.filter(function(x){ var q = x.bb; return q && !(q[0] > e || q[2] < w || q[1] > n || q[3] < s); });
+}
+/* zeigt die Karte gerade Linien aus der Linienkarte? (außerhalb New York und der Stadtpakete) */
+function lkOn(){ return dynOn() && !cpView() && !trRO() && lkHere().length > 0; }
+function lkApply(){
+  if(!mapReady) return;
+  lkIndex();
+  var on = lkOn(), ms = on ? DMODES.map(function(m){ return m[0]; }).filter(dOn) : [], rail = ms.filter(function(m){ return m!=="bus"; }), here = on ? lkHere() : [];
+  var off = ["!", ["in", ["concat", ["get","m"], ":", ["get","k"]], ["literal", Object.keys(DOFF)]]];
+  if(typeof pmtiles!=="undefined") here.forEach(function(x){ if(LK.add[x.id]) return; LK.add[x.id] = 1; var id = "lk-"+x.id; if(map.getSource(id)) return;
+    map.addSource(id, {type:"vector", url:"pmtiles://"+LKURL+x.id+".pmtiles", attribution:"ÖPNV-Linien © OpenStreetMap"});
+    map.addLayer({id:id+"-ln", type:"line", source:id, "source-layer":"lines", paint:{"line-color":["case", ["==", ["length", ["get","c"]], 7], ["get","c"], ["match", ["get","m"], "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "sbahn", DCOL.sbahn, "reg", DCOL.reg, "long", DCOL.long, DCOL.train]],
+      "line-width":lnWidth(["get","m"]), "line-offset":lnOffset(["get","o"])}, layout:{visibility:"none", "line-cap":"round", "line-join":"round"}}, LBLB);
+    if(map.getStyle().glyphs) map.addLayer({id:id+"-lbl", type:"symbol", source:id, "source-layer":"lines", minzoom:13.5, layout:{visibility:"none", "symbol-placement":"line", "symbol-spacing":360, "text-field":["get","k"], "text-font":["Noto Sans Regular"], "text-size":11, "text-max-angle":30},
+      paint:{"text-color":["case", ["==", ["length", ["get","c"]], 7], ["get","c"], "#5B6B7A"], "text-halo-color":isDark() ? "#111a22" : "#ffffff", "text-halo-width":1.6}}); });
+  Object.keys(LK.add).forEach(function(cc){ var vis = on && rail.length && here.some(function(x){ return x.id===cc; }), f = ["all", ["in", ["get","m"], ["literal", rail]], off];
+    ["-ln", "-lbl"].forEach(function(x){ var l = "lk-"+cc+x; if(!map.getLayer(l)) return;
+      map.setLayoutProperty(l, "visibility", vis ? "visible" : "none");
+      if(vis) map.setFilter(l, x==="-ln" ? lnZ(f) : f); }); });
+  // Linien von Transitland und Overpass ausblenden, solange die Linienkarte sie zeichnet
+  if(on){ ["tl-rail","tl-ferry","tl-lbl","dtr","dtr-f","dtr-lbl"].forEach(function(l){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", "none"); }); }
 }
 /* Kachel-Inhalt (eigene Funktion, damit Tests Linien vorgeben können) */
 function tlFeats(){ try { return map.getSource("tl-r") ? map.querySourceFeatures("tl-r", {sourceLayer:"routes"}) : []; } catch(e){ return []; } }

@@ -137,6 +137,7 @@ async function seed(){
     var c = document.createElement("canvas"); c.width = 320; c.height = 240; var g = c.getContext("2d");
     ["#c33","#3a3","#36c"].forEach(function(col, i){ g.fillStyle = col; g.fillRect(0, 0, 320, 240); g.fillStyle = "#fff"; g.font = "60px sans-serif"; g.fillText(String(i+1), 140, 140); PHC[["ph_a","ph_b","ph_c"][i]] = c.toDataURL("image/jpeg", .7); });
     CP = {}; CPS.forEach(function(c){ cpGet(c.id).st = {rail:"none", bus:"none"}; }); // Stadtpakete nur im eigenen Test
+    LK = {l:[], st:"ok", add:{}}; // Linienkarte nur im eigenen Test
     TLKEY = ""; TL.cfg = ""; // Tests ohne echten Transitland-Schlüssel (kein Kontingent verbrauchen); der Transitland-Test setzt einen eigenen
     acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; fbDb = null; acct.state = "ok"; lsSet("rp-dcdemo", "0"); DCSIG = "";
     S = {trips:{t_test:t}, cur:"t_test"}; cur = H; tab = "day"; sel = null; finEd = ""; finM = "";
@@ -1493,6 +1494,38 @@ await test("ÖPNV nach Kartenausschnitt: überall, wohin die Karte zeigt, Linien
   // zurück nach New York: eingebaute Daten, keine Kacheln
   await jump(-73.99, 40.73, 13);
   ok(await rp(`!VT.out && !document.body.classList.contains("dyn") && map.getLayoutProperty("dtr","visibility")==="none"`), "In New York bleiben die OpenStreetMap-Ebenen");
+});
+
+await test("Linienkarte: Linien aus OpenStreetMap (PMTiles) auf echten Gleisen, nebeneinander, statt Transitland/Overpass (Bremen)", async () => {
+  // Mini-Linienkarte (tests/lk-test.pmtiles, gebaut mit tools/linienkarte/build.mjs): Tram 4 und 6 teilen sich zwei Gleise, RE1 auf einem
+  const pm = fs.readFileSync(new URL("./lk-test.pmtiles", import.meta.url)), LKQ = [];
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/linienkarte\//, rt => {
+    const u = rt.request().url(); LKQ.push(u);
+    if(u.endsWith("index.json")) return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({v:1, l:[{id:"de", n:"Deutschland", bb:[8.8, 53.07, 8.83, 53.08]}]}) });
+    const r = /bytes=(\d+)-(\d*)/.exec(rt.request().headers()["range"] || ""), a = r ? +r[1] : 0, b = r && r[2] ? Math.min(+r[2], pm.length - 1) : pm.length - 1;
+    return rt.fulfill({ status:r ? 206 : 200, headers:{"access-control-allow-origin":"*", "content-range":"bytes "+a+"-"+b+"/"+pm.length, "content-type":"application/octet-stream"}, body:pm.subarray(a, b + 1) });
+  });
+  await page.route(/overpass-api\.de|overpass\.kumi|overpass\.private/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
+  await seed();
+  await rp(`lsSet("rp-lk", ""); LK = {l:null, st:"", add:{}}; DL = {tram:1, reg:1}; DOFF = {}; lsSet("rp-dl", JSON.stringify(DL)); true`);
+  await jump(8.812, 53.0755, 15);
+  await page.waitForFunction(() => window.__rp(`!!map.getLayer("lk-de-ln") && map.getLayoutProperty("lk-de-ln","visibility")==="visible"`), null, {timeout:6000}).catch(() => {});
+  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["lk-de-ln"]}).length >= 3`), null, {timeout:8000}).catch(() => {});
+  const r = await rp(`(function(){ var f = map.queryRenderedFeatures({layers:["lk-de-ln"]}).map(function(x){ return x.properties.m+":"+x.properties.k+"@"+x.properties.o; });
+    return {f:f, on:lkOn(), vis:map.getLayoutProperty("lk-de-ln","visibility"), dtr:map.getLayoutProperty("dtr","visibility"), off:JSON.stringify(map.getPaintProperty("lk-de-ln","line-offset")), join:map.getLayoutProperty("lk-de-ln","line-join")}; })()`);
+  ok(r.on && r.vis==="visible" && r.dtr==="none", "Linienkarte nicht aktiv oder Overpass-Linien noch sichtbar: "+JSON.stringify(r));
+  ok(r.f.some(x => x.startsWith("tram:4@")) && r.f.some(x => x.startsWith("tram:6@")) && r.f.some(x => x==="tram:4@-0.5") && r.f.some(x => x==="tram:6@0.5"), "Tram 4 und 6 nicht nebeneinander: "+JSON.stringify(r.f));
+  ok(r.off.indexOf("\"o\"") > -1 && r.join==="round", "Kein Versatz je Linie oder eckige Übergänge: "+JSON.stringify(r));
+  ok(LKQ.some(u => u.endsWith("de.pmtiles")), "PMTiles-Datei nicht gelesen");
+  // Linie ausblenden wirkt auch auf die Linienkarte; Verkehrsmittel aus → keine Linien
+  await rp(`DOFF["tram:6"] = 1; dApplyMap(); true`); await page.waitForTimeout(300);
+  ok(await rp(`!map.queryRenderedFeatures({layers:["lk-de-ln"]}).some(function(x){ return x.properties.k==="6"; })`), "Ausgeblendete Linie bleibt in der Linienkarte");
+  await rp(`DOFF = {}; DL = {}; dApplyMap(); true`); await page.waitForTimeout(200);
+  ok(await rp(`map.getLayoutProperty("lk-de-ln","visibility")==="none"`), "Linienkarte bleibt sichtbar, obwohl ÖPNV aus ist");
+  // außerhalb des Landes: keine Linienkarte
+  await jump(2.35, 48.85, 12); await page.waitForTimeout(300);
+  ok(await rp(`!lkOn()`), "Linienkarte außerhalb des Landes aktiv");
+  await page.unroute(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/linienkarte\//);
 });
 
 await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Ausschnitt, Filter, Fehler (Berlin)", async () => {
