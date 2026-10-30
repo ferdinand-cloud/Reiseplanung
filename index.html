@@ -6008,19 +6008,34 @@ var WARM = {}, WARMT = 0;
 function warmSoon(){ clearTimeout(WARMT); WARMT = setTimeout(warmTiles, 1200); }
 function warmTiles(){
   if(!mapReady || !navigator.onLine || (navigator.connection && navigator.connection.saveData) || !navigator.serviceWorker || !navigator.serviceWorker.controller) return;
-  var tpl = offTpl(); if(!tpl) return;
-  var urls = warmList(tpl), i = 0, next = function(){ if(i >= urls.length) return; var u = urls[i++]; fetch(u).then(function(r){ return r.blob(); }).catch(function(){}).then(next); };
+  var tpl = offTpl(), urls = tpl ? warmList(tpl) : [];
+  if(tlOn() && map.getZoom() >= TLZ) urls = urls.concat(tlWarmList());
+  var i = 0, next = function(){ if(i >= urls.length) return; var u = urls[i++]; fetch(u).then(function(r){ return r.blob(); }).catch(function(){}).then(next); };
   next(); next(); // zwei gleichzeitig: die Kacheln, die die Karte gerade selbst braucht, gehen vor
 }
+/* Kacheln eines Zoom-Levels, als stünde die Karte auf diesem Zoom: doppelter Bildschirm-Ausschnitt plus pad Kacheln Rand (Kachel = 512 Pixel) */
+function warmZ(tpl, z, pad){
+  var c = map.getCenter(), cv = map.getCanvas(), w = cv.clientWidth, h = cv.clientHeight, out = [];
+  var n = Math.pow(2, z), cx = (c.lng + 180)/360*n, r = c.lat*Math.PI/180, cy = (1 - Math.log(Math.tan(r) + 1/Math.cos(r))/Math.PI)/2*n, hx = w/512 + pad, hy = h/512 + pad;
+  for(var x = Math.floor(cx - hx); x <= Math.floor(cx + hx); x++) for(var y = Math.max(0, Math.floor(cy - hy)); y <= Math.min(n - 1, Math.floor(cy + hy)); y++){
+    var u = tpl.replace("{z}", z).replace("{x}", ((x % n) + n) % n).replace("{y}", y); if(!WARM[u]){ WARM[u] = 1; out.push(u); } }
+  return out;
+}
 function warmList(tpl){
-  var c = map.getCenter(), z0 = Math.floor(map.getZoom()), cv = map.getCanvas(), w = cv.clientWidth, h = cv.clientHeight, urls = [];
-  for(var z = z0 - 1; z >= Math.max(4, z0 - 3); z--){
-    // Ausschnitt bei Zoom z (Bildschirm bleibt gleich groß) plus eine halbe Kachel Rand
-    var n = Math.pow(2, z), cx = (c.lng + 180)/360*n, r = c.lat*Math.PI/180, cy = (1 - Math.log(Math.tan(r) + 1/Math.cos(r))/Math.PI)/2*n, hx = w/512 + .5, hy = h/512 + .5;
-    for(var x = Math.floor(cx - hx); x <= Math.floor(cx + hx); x++) for(var y = Math.max(0, Math.floor(cy - hy)); y <= Math.min(n - 1, Math.floor(cy + hy)); y++){
-      var u = tpl.replace("{z}", z).replace("{x}", ((x % n) + n) % n).replace("{y}", y); if(!WARM[u]){ WARM[u] = 1; urls.push(u); } }
-  }
+  var z0 = Math.floor(map.getZoom()), urls = [];
+  for(var z = z0 - 1; z >= Math.max(4, z0 - 3); z--) urls = urls.concat(warmZ(tpl, z, .5));
   return urls;
+}
+/* ÖPNV außerhalb der Stadtpakete (Transitland): beim Stillstand die Linien-Kacheln rund um den Ausschnitt (eine Kachel Rand)
+   (doppelter Ausschnitt) und die nächste Rauszoom-Stufe vorladen – beim Verschieben sind die Linien dann sofort da. Sparsam, weil jede Kachel
+   das Kontingent des Schlüssels belastet: höchstens TLWMAX je Sitzung, Haltestellen erst ab Zoom 11, Busse gar nicht extra. */
+var TLWMAX = 120, TLWN = 0;
+function tlWarmList(){
+  if(TLWN >= TLWMAX) return [];
+  var z = Math.min(14, Math.floor(map.getZoom())), out = warmZ(tlUrl("routes"), z, .5).concat(z > TLZ ? warmZ(tlUrl("routes"), z - 1, .5) : []);
+  if(z >= 11) out = out.concat(warmZ(tlUrl("stops"), z, .5));
+  out = out.slice(0, TLWMAX - TLWN); TLWN += out.length;
+  return out;
 }
 /* Schriften und Symbole des Kartenstils mitnehmen (sonst fehlen offline die Beschriftungen) */
 function offExtras(){
@@ -6059,15 +6074,16 @@ function offTransit(run){
           if(DEST && DEST.k===d.k){ DEST.nb = v2; DEST.st.nb = ""; destApply("nb"); } });
       }).catch(function(e){ ok = false; throw e; });
     });
-    // Stadtpaket (Berlin, Paris, London) statt Kacheln aus OpenStreetMap
-    var cj = cpOffJobs(d); cj.forEach(function(f){ jobs.push(function(){ return f().catch(function(e){ ok = false; throw e; }); }); });
     // ÖPNV-Kacheln rund ums Ziel: Bahnen und Trams im Suchgebiet, Busse im Kern (bis 4 km)
-    if(!cj.length) offTiles(d).forEach(function(k){ jobs.push(function(){
+    var tj = function(){ return offTiles(d).map(function(k){ return function(){
       return vtGet(k).then(function(v){
         if(v && Date.now() - v.at < 30*864e5) return;
         return vtFetch(k).then(function(v2){ vtPut(k, v2); VT.mem[k] = v2; VT.st[k] = ""; vtApply(); });
       }).catch(function(e){ ok = false; throw e; });
-    }); });
+    }; }); };
+    // Stadtpaket statt Kacheln aus OpenStreetMap; gibt es das Paket (noch) nicht, doch die Kacheln
+    var cj = cpOffJobs(d, tj); cj.forEach(function(f){ jobs.push(function(){ return f().catch(function(e){ ok = false; throw e; }); }); });
+    if(!cj.length) tj().forEach(function(f){ jobs.push(f); });
     jobs.push(function(){ if(ok) res.n.push(d.n || "Ziel"); return Promise.resolve(); });
   });
   OFF.all += jobs.length;
@@ -12607,7 +12623,12 @@ function offTl(b){
    Aufbereitet von der GitHub Action „Stadtpakete“ (Zweig stadtpakete), geladen erst, wenn die Karte die Stadt zeigt oder dort eine Route gesucht wird.
    Haben Vorrang vor Transitland und OpenStreetMap; Busse sind eine eigene Datei und kommen erst, wenn sie gebraucht werden. */
 var CPURL = "https://raw.githubusercontent.com/ferdinand-cloud/Reiseplanung/stadtpakete/";
-var CPS = [{id:"berlin", n:"Berlin", bb:[12.88, 52.29, 13.82, 52.71]}, {id:"paris", n:"Paris", bb:[1.95, 48.62, 2.82, 49.08]}, {id:"london", n:"London", bb:[-0.62, 51.28, 0.34, 51.72]}];
+var CPS = [{id:"berlin", n:"Berlin", bb:[12.88, 52.29, 13.82, 52.71]}, {id:"paris", n:"Paris", bb:[1.95, 48.62, 2.82, 49.08]}, {id:"london", n:"London", bb:[-0.62, 51.28, 0.34, 51.72]},
+  // weitere Städte (Ferdinand 30.10.): fehlt ein Paket noch (404), gilt wie bisher Transitland/OpenStreetMap
+  {id:"amsterdam", n:"Amsterdam", bb:[4.72, 52.27, 5.08, 52.43]}, {id:"wien", n:"Wien", bb:[16.18, 48.11, 16.58, 48.33]}, {id:"muenchen", n:"München", bb:[11.36, 48.06, 11.72, 48.25]},
+  {id:"hamburg", n:"Hamburg", bb:[9.73, 53.39, 10.33, 53.74]}, {id:"rom", n:"Rom", bb:[12.35, 41.79, 12.62, 41.99]}, {id:"madrid", n:"Madrid", bb:[-3.83, 40.31, -3.52, 40.56]},
+  {id:"barcelona", n:"Barcelona", bb:[2.05, 41.32, 2.25, 41.47]}, {id:"lissabon", n:"Lissabon", bb:[-9.25, 38.68, -9.08, 38.80]}, {id:"prag", n:"Prag", bb:[14.25, 49.98, 14.65, 50.15]},
+  {id:"kopenhagen", n:"Kopenhagen", bb:[12.45, 55.60, 12.70, 55.75]}];
 var CP = {}, CPSIG = "", CPBIKE = [], CPTO = [30000, 90000]; // Zeitlimit Bahn-/Bus-Datei
 var CPMODE = {metro:"SUBWAY", light:"SUBWAY", tram:"TRAM", sbahn:"SUBURBAN", reg:"REGIONAL_RAIL", long:"LONG_DISTANCE", train:"RAIL", funi:"FUNICULAR", ferry:"FERRY", bus:"BUS"};
 function cpAt(p){ if(!p || !hasLoc(p)) return null; for(var i = 0; i < CPS.length; i++){ var b = CPS[i].bb; if(p.lo >= b[0] && p.lo <= b[2] && p.la >= b[1] && p.la <= b[3]) return CPS[i]; } return null; }
@@ -12791,8 +12812,10 @@ function cpAlts(a, b, k){
   return (c.rc[key] = out);
 }
 /* Offline-Paket: Stadtpakete der Reiseziele mitnehmen (der Service Worker legt sie ab) */
-function cpOffJobs(d){ var C = cpAt(d); if(!C) return [];
-  return ["", "-bus"].map(function(x){ return function(){ return fetch(CPURL + C.id + x + ".json").then(function(r){ if(!r.ok && r.status!==404) throw 0; }); }; }); }
+function cpOffJobs(d, alt){ var C = cpAt(d); if(!C || cpGet(C.id).st.rail==="none") return [];
+  var get = function(x){ return fetch(CPURL + C.id + x + ".json").then(function(r){ if(!r.ok && r.status!==404) throw 0; return r.status; }); };
+  return [function(){ return get("").then(function(st){ if(st!==404) return get("-bus");
+    cpGet(C.id).st.rail = "none"; return alt().reduce(function(p, f){ return p.then(f); }, Promise.resolve()); }); }]; }
 /* Bezirke: die kleinste Verwaltungseinheit, die (fast) alle Orte der Reise enthält, und deren nächste Unterteilung */
 function nbFetch(d){
   var pts = d.pts && d.pts.length ? d.pts : [[d.la, d.lo]];
