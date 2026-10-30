@@ -10186,7 +10186,7 @@ function addLayers(){
   map.addLayer({id:"nb-hi", type:"line", source:"nb", paint:{"line-color":token("--hi")||"#6d28d9", "line-width":2.4}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);
   map.addLayer({id:"bus", type:"line", source:"bus", paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,1,16,3], "line-opacity":.6}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
   map.addLayer({id:"sub", type:"line", source:"sub", paint:{"line-color":["get","c"], "line-width":lnWidth("metro"), "line-offset":lnOffset(["get","o"])}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}});
-  addPoiLayers(); addFerryLayers(); dAddLayers(); dData();
+  addPoiLayers(); addFerryLayers(); dAddLayers(); dData(); rtAddLayers();
   mapReady = true;
   apply3d(true); applyPoi(); applyLayers(); applyLines(); applyNb(); onMove();
 }
@@ -12853,6 +12853,39 @@ function drawLabel(x, y, t, strong){
   var w = Math.round(t.length*(strong?6.7:6.2) + 16);
   return "<g class=\"mlab"+(strong?" st":"")+"\"><rect x=\""+f1(x)+"\" y=\""+f1(y-10)+"\" width=\""+w+"\" height=\"20\" rx=\"10\"/><text x=\""+f1(x+8)+"\" y=\""+f1(y+4)+"\">"+esc(t)+"</text></g>";
 }
+/* Wege des Tages auf der Grafikkarte (MapLibre-Linien statt SVG): Daten nur neu setzen, wenn sich der Weg ändert – Verschieben/Zoomen kostet dann nichts */
+var RTF = [], RTKEY = "", CSSC = {};
+function cssCol(c){ c = String(c||""); var m = /^var\((--[\w-]+)\)$/.exec(c); if(!m) return c; var k = c+(isDark() ? "d" : ""); return CSSC[k] || (CSSC[k] = token(m[1]) || "#5B6B7A"); }
+function rtAdd(ps, color, w, dash, op){
+  if(!ps || ps.length < 2) return;
+  RTF.push({type:"Feature", properties:{c:cssCol(color), w:w, d:dash || "", o:w===5.5 ? op*.72 : op}, geometry:{type:"LineString", coordinates:ps.map(function(q){ return [Math.round(q.lo*1e6)/1e6, Math.round(q.la*1e6)/1e6]; })}});
+}
+function rtSet(){
+  var src = mapReady && map.getSource("rt"); if(!src) return;
+  var k = JSON.stringify(RTF); if(k===RTKEY) return; RTKEY = k;
+  src.setData({type:"FeatureCollection", features:RTF});
+}
+function rtAddLayers(){
+  RTKEY = ""; CSSC = {};
+  if(map.getSource("rt")) return;
+  map.addSource("rt", {type:"geojson", data:{type:"FeatureCollection", features:[]}, tolerance:.2});
+  STKEY = "-"; map.addSource("subst", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
+  var lay = {"line-cap":"round", "line-join":"round"};
+  map.addLayer({id:"rt-case", type:"line", source:"rt", layout:lay, paint:{"line-color":token("--land") || "#fff", "line-width":["+", ["get","w"], 3.5], "line-opacity":["*", .9, ["get","o"]]}});
+  // Strichmuster in Linienbreiten (SVG „1 6“ bei 3 px = Punkte, „2 7“ Hotelweg, „6 6“ Luftlinie mit dem Auto)
+  [["rt-line", "", null], ["rt-dot", "1 6", [.34, 2]], ["rt-hdot", "2 7", [.57, 2]], ["rt-dash", "6 6", [1.34, 1.34]]].forEach(function(x){
+    var paint = {"line-color":["get","c"], "line-width":["get","w"], "line-opacity":["get","o"]}; if(x[2]) paint["line-dasharray"] = x[2];
+    map.addLayer({id:x[0], type:"line", source:"rt", filter:["==", ["get","d"], x[1]], layout:lay, paint:paint}); });
+  map.addLayer({id:"subst", type:"circle", source:"subst", minzoom:13.05, paint:{"circle-color":token("--land") || "#fff", "circle-stroke-color":token("--ink") || "#17212c", "circle-stroke-width":1.6, "circle-radius":["step", ["zoom"], 3, 14.86, 4.5]}}, "rt-case");
+}
+/* U-Bahn-Stationen New York als Kartenebene (Punkte auf der Grafikkarte); Linien-Kreise und Namen nur ganz nah im Overlay */
+var STKEY = "";
+function stSet(on){
+  var src = mapReady && map.getSource("subst"); if(!src) return;
+  var ids = []; if(on) TRANSIT.stations.forEach(function(st, i){ if(stationOn(st)) ids.push(i); });
+  var k = ids.join(","); if(k===STKEY) return; STKEY = k;
+  src.setData({type:"FeatureCollection", features:ids.map(function(i){ var st = TRANSIT.stations[i], l = llW(st[1], st[2]); return {type:"Feature", properties:{i:i}, geometry:{type:"Point", coordinates:[l.lo, l.la]}}; })});
+}
 function drawOverlay(){
   if(!map) return;
   var s = "", zoomed = V.m < 3.6, rdeg = V.r*180/Math.PI, D = dayByKey(cur);
@@ -12865,12 +12898,12 @@ function drawOverlay(){
     BUSLAB.forEach(function(b){ if(offBus[b[0]]) return; var q = toS(b[1], b[2]); if(!onScreen(q,20)) return; var w = b[0].length*6+8;
       s += "<rect x=\""+f1(q[0]-w/2)+"\" y=\""+f1(q[1]-7)+"\" width=\""+w+"\" height=\"14\" rx=\"4\" fill=\"var(--bus)\"/><text class=\"busl\" x=\""+f1(q[0])+"\" y=\""+f1(q[1]+3.5)+"\" text-anchor=\"middle\">"+esc(b[0])+"</text>"; });
   }
-  if(layers.sub && !trRO() && !DEST && V.m < 14){
+  stSet(layers.sub && !trRO() && !DEST);
+  if(layers.sub && !trRO() && !DEST && V.m < 2.6){
     TRANSIT.stations.forEach(function(st){
       if(!stationOn(st)) return;
       var q = toS(st[1], st[2]); if(!onScreen(q,30)) return;
-      s += "<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\""+(V.m<4?4.5:3)+"\" fill=\"var(--land)\" stroke=\"var(--ink)\" stroke-width=\"1.6\"/>";
-      if(V.m < 2.6){
+      {
         var lines = st[3].indexOf("·")>-1 ? st[3].split("·") : st[3].split(""), x = q[0]+9;
         lines.filter(lineOn).slice(0,8).forEach(function(r){ var c = LINECOL[r] || ["#808183","#fff"];
           s += "<circle cx=\""+f1(x+6)+"\" cy=\""+f1(q[1])+"\" r=\"6.5\" fill=\""+c[0]+"\"/><text x=\""+f1(x+6)+"\" y=\""+f1(q[1]+3.4)+"\" text-anchor=\"middle\" font-size=\"9.5\" font-weight=\"700\" fill=\""+c[1]+"\">"+esc(r)+"</text>"; x += 14; });
@@ -12917,7 +12950,7 @@ function drawOverlay(){
     });
   }
   // Route des Tages: Hotel → Stopps → Hotel (Fußweg oder ÖPNV)
-  var ALL = allOn(), viaSvg = ""; VIAMK = []; RTMK = [];
+  var ALL = allOn(), viaSvg = ""; VIAMK = []; RTMK = []; RTF = [];
   if(zs || !layers.route || isRO() || (NAV && NAV.pts)){ /* Route ausgeblendet; Beobachter sehen keine Routen; während der Navigation (auch ausgeblendet) nur deren Weg */ }
   else mapDays().forEach(function(cur){ // Gesamtansicht: Wege aller Tage in ihrer Tagesfarbe
     var DD = dayByKey(cur), HT = DD && hRim(DD), HS = DD && hRimS(DD), pts = routePts(cur), col = dayColor(cur);
@@ -12934,9 +12967,7 @@ function drawOverlay(){
       if(legMode(pair[0], pair[1])==="bike"){
         var br = bikeRoute(pair[0], pair[1]);
         if(br && br.s1 && br.s2 && !br.none){
-          var pth = function(ps, color, w, dash){ var d0 = ps.map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
-            s += "<path d=\""+d0+"\" stroke=\"var(--land)\" stroke-width=\""+(w+3.5)+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\""+(.9*op)+"\"/>";
-            s += "<path d=\""+d0+"\" stroke=\""+color+"\" stroke-width=\""+w+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(dash ? " stroke-dasharray=\""+dash+"\"" : "")+" opacity=\""+op+"\"/>"; };
+          var pth = function(ps, color, w, dash){ rtAdd(ps, color, w, dash, op); };
           pth(walkPath(pair[0], br.s1.s, []), "var(--ink)", 3, "1 6");
           if(br.path) pth(br.path, CBCOL, 5);
           pth(walkPath(br.s2.s, pair[1], []), "var(--ink)", 3, "1 6");
@@ -12946,25 +12977,17 @@ function drawOverlay(){
       }
       if(legMode(pair[0], pair[1])==="car"){
         var cpp = carPath(pair[0], pair[1], vv), cps = cpp ? cpp.p : [pair[0]].concat(vv.map(function(q){ return {la:q[0], lo:q[1]}; }), [pair[1]]);
-        var dc = cps.map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
-        s += "<path d=\""+dc+"\" stroke=\"var(--land)\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\""+(.9*op)+"\"/>";
-        s += "<path d=\""+dc+"\" stroke=\""+col+"\" stroke-width=\"4.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(cpp ? "" : " stroke-dasharray=\"6 6\"")+" opacity=\""+op+"\"/>";
+        rtAdd(cps, col, 4.5, cpp ? "" : "6 6", op);
         return;
       }
       if(legMode(pair[0], pair[1])==="walk" || legMode(pair[0], pair[1])==="bike"){
         var hotelLeg = (HT && (pair[0]===HT || pair[1]===HT)) || (HS && pair[0]===HS) || pair[0].k==="hotel" || pair[1].k==="hotel";
-        var dw = walkPath(pair[0], pair[1], vv).map(function(q, j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
-        s += "<path d=\""+dw+"\" stroke=\"var(--land)\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\""+(.9*op)+"\"/>";
-        s += "<path d=\""+dw+"\" stroke=\""+col+"\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(hotelLeg?" stroke-dasharray=\"2 7\"":"")+" opacity=\""+op+"\"/>";
+        rtAdd(walkPath(pair[0], pair[1], vv), col, 3.5, hotelLeg ? "2 7" : "", op);
         return;
       }
       var r = legRoute(pair[0], pair[1], cur);
       var at = pair[0], pathPts;
-      function seg(ptsLL, color, dash, w){
-        var dd = ptsLL.map(function(q,j){ var z = pt(q); return (j?"L":"M")+f1(z[0])+" "+f1(z[1]); }).join("");
-        s += "<path d=\""+dd+"\" stroke=\"var(--land)\" stroke-width=\""+(w+3.5)+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\" opacity=\""+(.9*op)+"\"/>";
-        s += "<path d=\""+dd+"\" stroke=\""+color+"\" stroke-width=\""+w+"\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\""+(dash?" stroke-dasharray=\""+dash+"\"":"")+" opacity=\""+op+"\"/>";
-      }
+      function seg(ptsLL, color, dash, w){ rtAdd(ptsLL, color, w, dash, op); }
       var wsegs = [], at0 = pair[0];
       r.legs.forEach(function(l){ if(l.t==="walk"){ var to0 = l.pt ? l.pt : l.to==="Ziel" ? pair[1] : stLL(l.st); wsegs.push([at0, to0]); at0 = to0; } else if(l.t==="xfer") at0 = stLL(l.to); else if(l.t==="ride"){ var l0 = l.stops.map(stLL); at0 = l0[l0.length-1]; } });
       var segVia = viaForSegs(wsegs, vv), wi = 0;
@@ -12984,6 +13007,7 @@ function drawOverlay(){
     });
     s += labels;
   });
+  rtSet();
   // Hotels der Reise (das Hotel des Tages kräftig)
   if(!zs) T().hotels.filter(hasLoc).forEach(function(h){
     var q = pt(h); if(!onScreen(q,30)) return; var on = ALL || (D && ((D.hotel && D.hotel.id===h.id) || (D.hotelS && D.hotelS.id===h.id))), op = on ? 1 : .6;

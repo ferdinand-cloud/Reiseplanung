@@ -1801,6 +1801,23 @@ await test("Routenoptionen je Etappe: Zeit (Abfahrt/Ankunft) und bevorzugte Verk
   ok(await rp(`legGet("legOpt", dayLegs(cur)[${li}][1])===undefined`), "Zurücksetzen löscht die Optionen nicht");
 });
 
+await test("Grafikkarte: Wege des Tages und U-Bahn-Stationen als Kartenebenen statt SVG, Verschieben setzt keine Daten neu", async () => {
+  await seed();
+  await rp(`layers.sub = true; applyLayers(); map.jumpTo({center:[-73.99, 40.73], zoom:14}); drawOverlay(); true`);
+  const r = await rp(`({rt:map.getSource("rt")._data.features.length, d:map.getSource("rt")._data.features.map(function(f){ return f.properties.d; }), c:map.getSource("rt")._data.features.every(function(f){ return /^#|^rgb/.test(f.properties.c); }),
+    st:map.getSource("subst")._data.features.length, paths:ov.querySelectorAll("path").length,
+    dots:[].filter.call(ov.querySelectorAll("circle"), function(c){ return c.getAttribute("stroke-width")==="1.6" && c.getAttribute("fill")==="var(--land)"; }).length})`);
+  ok(r.rt > 0 && r.c && r.st > 100 && r.paths===0 && r.dots===0, "Wege/Stationen noch im SVG oder nicht auf der Karte: "+JSON.stringify(r));
+  ok(await rp(`map.getLayoutProperty("subst","visibility")!=="none" && !!map.getLayer("rt-dot") && !!map.getLayer("rt-case")`), "Ebenen fehlen");
+  if(SHOTS){ await rp(`setSheet("peek"); map.jumpTo({center:[-73.992, 40.738], zoom:13.4}); layers.sub = true; applyLayers(); drawOverlay(); true`); await page.waitForTimeout(500); await shot("grafikkarte-wege"); await rp(`map.jumpTo({center:[-73.99, 40.73], zoom:14}); true`); }
+  await rp(`window.__sd = 0; var src = map.getSource("rt"), o = src.setData.bind(src); src.setData = function(d){ window.__sd++; return o(d); }; map.jumpTo({center:[-73.98, 40.735], zoom:14.6, bearing:20}); drawOverlay(); drawOverlay(); true`);
+  ok(await rp(`window.__sd===0`), "Verschieben/Zoomen setzt die Wege neu");
+  await rp(`layers.sub = false; applyLayers(); drawOverlay(); true`);
+  ok(await rp(`map.getSource("subst")._data.features.length===0`), "Stationen bleiben nach Ausschalten");
+  await rp(`layers.route = false; drawOverlay(); true`);
+  ok(await rp(`window.__sd===1 && map.getSource("rt")._data.features.length===0`), "Wege bleiben nach Ausblenden");
+});
+
 await test("Stadtpakete: Berlin aus den VBB-Daten statt Transitland, ganze Linien, Farben, Routen ohne Netz", async () => {
   const OVQ = [], TLQ = [], CPQ = [];
   const enc = (pts) => { let o = "", pla = 0, plo = 0; const e1 = (v) => { v = v < 0 ? ~(v << 1) : v << 1; let s = ""; while(v >= 32){ s += String.fromCharCode((32 | (v & 31)) + 63); v >>= 5; } return s + String.fromCharCode(v + 63); };
