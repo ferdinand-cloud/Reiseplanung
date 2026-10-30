@@ -1864,6 +1864,14 @@ await test("Stadtpakete: Berlin aus den VBB-Daten statt Transitland, ganze Linie
   ok(geo.c==="#DA421E" && geo.n===6, "U2 ohne genaue Farbe oder ganzen Streckenverlauf: "+JSON.stringify(geo));
   ok(await rp(`map.getSource("dst")._data.features.some(function(f){ return f.properties.n==="S+U Alexanderplatz" && f.properties.m==="train"; })`), "Bahnhof aus dem Paket fehlt");
   ok(await rp(`document.getElementById("attr").textContent.indexOf("ÖPNV: VBB") > -1`), "Quellenangabe VBB fehlt");
+  // Zoomstufen wie Apple Karten: weit weg nur S-/U-Bahn, Tram erst näher; Stationen nach Bedeutung (Umstieg zuerst), Busse erst auf Straßenebene
+  const zs = async (z) => { await jump(13.4, 52.522, z); await page.waitForFunction(() => window.__rp(`map.loaded()`), null, {timeout:4000}).catch(() => {}); await page.waitForTimeout(150);
+    return rp(`({l:map.queryRenderedFeatures({layers:["dtr"]}).map(function(f){ return f.properties.k; }).filter(function(k, i, a){ return a.indexOf(k)===i; }).sort().join(","), s:map.queryRenderedFeatures({layers:["dst"]}).map(function(f){ return f.properties.n; }).filter(function(k, i, a){ return a.indexOf(k)===i; }).sort().join(",")})`); };
+  const z10 = await zs(10), z12 = await zs(12), z13 = await zs(13);
+  ok(z10.l==="S1,U2" && !z10.s, "Zoom 10 zeigt Tram oder Stationen: "+JSON.stringify(z10));
+  ok(z12.l.includes("M10") && z12.s.includes("S+U Alexanderplatz") && !z12.s.includes("S Gesundbrunnen"), "Zoom 12: Tram/Umstiegsbahnhof fehlt oder kleine Station schon da: "+JSON.stringify(z12));
+  ok(z13.s.includes("S Gesundbrunnen"), "Zoom 13 ohne einfache Stationen: "+JSON.stringify(z13));
+  ok(await rp(`map.getLayer("dbus").minzoom===BUSZ && BUSZ >= 13`), "Busse schon weit herausgezoomt");
   ok(!OVQ.some(q => q.includes("subway") || q.includes("tram")) && !TLQ.length, "Trotz Stadtpaket bei Overpass/Transitland gefragt: "+OVQ.length+"/"+TLQ.length);
   // Linie ausblenden wie überall (gleiche Kennung metro:U2)
   await click("[data-act=dfold][data-m=metro]"); await click("#dLines-metro [data-id='metro:U2']");
