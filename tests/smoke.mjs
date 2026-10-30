@@ -1131,6 +1131,7 @@ await test("Abgeschlossene Reise: Ansicht wie Beobachter, „Reise bearbeiten“
   ok(await rp(`!isRO() && !document.body.classList.contains("ro") && tripMode()==="edit"`), "Laufende Reise startet nicht im Bearbeitungsmodus");
   await rp(`T().fin = 1; save(); renderAll(); true`); await page.waitForTimeout(200);
   ok(await rp(`isRO() && finRO() && !isViewer() && document.body.classList.contains("ro")`), "Abgeschlossene Reise nicht in der Beobachter-Ansicht");
+  ok(await rp(`!trRO() && (layers.sub = true, applyLayers(), map.getLayoutProperty("sub","visibility")==="visible")`), "Eigene abgeschlossene Reise: U-Bahn in der Ansicht ausgeblendet");
   ok(await page.locator("#body .finbar").count()===0, "Leiste „Reise bearbeiten“ steht noch im Tagesplan");
   ok(await page.locator("#body [data-act=done]:visible").count()===0, "Abhaken in der Ansicht sichtbar");
   ok(await page.locator("#body ol.plan").count()===0 && await page.locator("#body .rhead").count()===0, "Stopps im Ansichtsmodus sichtbar (nur Tagebuch gewünscht)");

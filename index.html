@@ -17467,7 +17467,8 @@ function finRow(){
 }
 function isRO(){ return isViewer() || finRO(); }
 /* ÖPNV-Ebenen gesperrt (Beobachter, abgeschlossene Reise in der Ansicht) – nur für die Reise selbst, nicht in der Ziel-Ansicht (z. B. Paris öffnen, aktive Reise New York ist abgeschlossen) */
-function trRO(){ return isRO() && !zsOn(); }
+// ÖPNV gesperrt nur für Beobachter; die eigene abgeschlossene Reise zeigt in der Ansicht die Linien (Ferdinand 30.10.: nur Kartenebenen)
+function trRO(){ return isViewer() && !zsOn(); }
 var roWas = null;
 function applyRO(){
   if(finEd && finEd!==S.cur){ finEd = ""; finM = ""; } // andere Reise gewählt: Modus wieder Standard
