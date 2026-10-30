@@ -1843,6 +1843,15 @@ await test("Stadtpakete: Berlin aus den VBB-Daten statt Transitland, ganze Linie
   await click("[data-act=dfold][data-m=metro]"); await click("#dLines-metro [data-id='metro:U2']");
   ok(await rp(`DOFF["metro:U2"] && JSON.stringify(map.getFilter("dtr")).indexOf("metro:U2") > -1`), "Linie lässt sich nicht ausblenden");
   await shot("stadtpaket-berlin");
+  // Haltestelle antippen (außerhalb NYC): Stationskarte mit Namen und den Linien, die dort fahren (ausgeblendete U2 nicht)
+  await page.waitForFunction(() => window.__rp(`map.loaded() && map.queryRenderedFeatures({layers:["dst"]}).length > 0`), null, {timeout:6000}).catch(() => {});
+  await rp(`(function(){ var q = map.project([13.41, 52.522]); tap(q.x + 3, q.y - 2); })()`);
+  await page.waitForSelector("#card:not([hidden])", {timeout:3000}).catch(() => {});
+  const stc = await rp(`({sel:sel, t:document.getElementById("card").innerText, n:RTST && RTST.n, ls:RTST && RTST.ls && RTST.ls.map(function(l){ return l.k+"/"+l.c; })})`);
+  ok(stc.sel==="rtst" && stc.n==="S+U Alexanderplatz" && stc.t.includes("S+U Alexanderplatz") && stc.ls && !stc.ls.some(l => l.startsWith("U2/")) && stc.ls.includes("S1/#DA6BA2"), "Haltestelle im Stadtpaket nicht antippbar: "+JSON.stringify(stc));
+  ok(await rp(`!!document.querySelector("#card [data-act=navpick][data-rt]")`), "Stationskarte ohne Navigieren");
+  await shot("stadtpaket-haltestelle");
+  await rp(`select(null)`);
   // Route Zoo → Gesundbrunnen: U2 bis Alexanderplatz, dort in die S1; ohne Netz sofort aus dem Paket
   const r = await rp(`(function(){ var A = {la:52.5205, lo:13.3505}, B = {la:52.5398, lo:13.4111};
     var R = cpAlts(A, B, cur), r = R[0], rd = r.legs.filter(function(l){ return l.t==="ride"; });
