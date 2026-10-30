@@ -1,0 +1,94 @@
+# Linienkarte: ÖPNV-Linien je Land aus OpenStreetMap als PMTiles (Gleise, Linien nebeneinander), monatlich und von Hand.
+# Ergebnis im Zweig „linienkarte“ (nur aktuelle Dateien, ohne Verlauf); die App lädt per Range-Anfrage über raw.githubusercontent.com.
+# Scheitert ein Land, bleibt sein letzter Stand erhalten.
+name: Linienkarte
+on:
+  schedule:
+    - cron: "41 2 3 * *"
+  workflow_dispatch:
+    inputs:
+      laender:
+        description: "Länder (leer = alle), z. B. de at"
+        required: false
+  push:
+    branches: [main]
+    paths: ["tools/linienkarte/**", ".github/workflows/linienkarte.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: linienkarte
+  cancel-in-progress: false
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      laender: ${{ steps.l.outputs.laender }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: l
+        run: |
+          if [ -n "${{ github.event.inputs.laender }}" ]; then
+            echo "laender=$(node -e 'console.log(JSON.stringify(process.argv.slice(1)))' ${{ github.event.inputs.laender }})" >> "$GITHUB_OUTPUT"
+          else
+            echo "laender=$(node tools/linienkarte/build.mjs --list)" >> "$GITHUB_OUTPUT"
+          fi
+  bauen:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        land: ${{ fromJSON(needs.plan.outputs.laender) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: osmium und tippecanoe
+        run: sudo apt-get update -q && sudo apt-get install -y -q osmium-tool tippecanoe
+      - name: Land bauen
+        run: |
+          node --max-old-space-size=12000 tools/linienkarte/build.mjs ${{ matrix.land }} --out out
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: land-${{ matrix.land }}
+          path: out/
+          if-no-files-found: ignore
+          retention-days: 3
+  veroeffentlichen:
+    needs: bauen
+    if: always() && needs.bauen.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Letzten Stand holen
+        run: |
+          mkdir -p out
+          if git fetch --depth 1 origin linienkarte; then git --work-tree=out checkout FETCH_HEAD -- . && git reset -q; fi
+          rm -rf out/.git
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: land-*
+          path: neu
+          merge-multiple: true
+      - name: Veröffentlichen
+        run: |
+          mkdir -p neu; cp -v neu/* out/ 2>/dev/null || echo "keine neuen Länder"
+          cd out
+          # Dateien über 95 MB lehnt GitHub ab: weglassen statt den ganzen Lauf scheitern zu lassen
+          find . -name "*.pmtiles" -size +95M -print -delete
+          node -e 'const fs=require("fs");const L=fs.readdirSync(".").filter(f=>/^[a-z]{2}\.json$/.test(f)).map(f=>JSON.parse(fs.readFileSync(f))).filter(x=>fs.existsSync(x.id+".pmtiles"));fs.writeFileSync("index.json",JSON.stringify({v:1,at:new Date().toISOString(),l:L}))'
+          printf '# Linienkarte\n\nAutomatisch gebaut von .github/workflows/linienkarte.yml – nicht von Hand ändern.\nDaten © OpenStreetMap-Mitwirkende, ODbL 1.0.\n' > README.md
+          ls -la
+          git init -q -b linienkarte
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Linienkarte $(date -u +%Y-%m-%d)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" linienkarte
