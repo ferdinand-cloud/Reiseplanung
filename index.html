@@ -10349,7 +10349,10 @@ var LBLB;
 function addLayers(){
   if(isDark()) darkenStyle();
   if(colorOn) colorStyle();
-  var firstSym = LBLB = (map.getStyle().layers.filter(function(l){ return l.type==="symbol"; })[0] || {}).id;
+  var SL = map.getStyle().layers, firstSym = (SL.filter(function(l){ return l.type==="symbol"; })[0] || {}).id;
+  // nicht einfach die erste Beschriftung: Positron hat Wasser-Namen schon unter Straßen und Gebäuden (Linien wären verdeckt) –
+  // erste Beschriftung nach der letzten Fläche/Linie der Grundkarte
+  var lastG = -1; SL.forEach(function(l, i){ if(l.type!=="symbol") lastG = i; }); LBLB = SL[lastG+1] ? SL[lastG+1].id : undefined;
   cbAddLayer(); if(cbNeeded()) setTimeout(function(){ cbLoad(); }, 800);
   map.addSource("nb", {type:"geojson", data:GEO.nb});
   map.addSource("bus", {type:"geojson", data:GEO.bus});
@@ -10357,8 +10360,8 @@ function addLayers(){
   map.addLayer({id:"nb-fill", type:"fill", source:"nb", paint:{"fill-color":token("--hi-fill")||"rgba(109,40,217,.13)"}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);
   map.addLayer({id:"nb-line", type:"line", source:"nb", paint:{"line-color":token("--nb-line")||"rgba(23,33,44,.28)", "line-width":1.2, "line-dasharray":[4,3]}, layout:{visibility:"none"}}, firstSym);
   map.addLayer({id:"nb-hi", type:"line", source:"nb", paint:{"line-color":token("--hi")||"#6d28d9", "line-width":2.4}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);
-  map.addLayer({id:"bus", type:"line", source:"bus", minzoom:BUSZ, paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,1,16,3], "line-opacity":.6}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}, firstSym);
-  map.addLayer({id:"sub", type:"line", source:"sub", minzoom:MZ.metro, paint:{"line-color":["get","c"], "line-width":lnWidth("metro"), "line-offset":lnOffset(["get","o"])}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}, firstSym);
+  map.addLayer({id:"bus", type:"line", source:"bus", minzoom:BUSZ, paint:{"line-color":token("--bus")||"#1f6fd1", "line-width":["interpolate",["linear"],["zoom"],11,1,16,3], "line-opacity":.6}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}, LBLB);
+  map.addLayer({id:"sub", type:"line", source:"sub", minzoom:MZ.metro, paint:{"line-color":["get","c"], "line-width":lnWidth("metro"), "line-offset":lnOffset(["get","o"])}, layout:{"line-cap":"round","line-join":"round", visibility:"none"}}, LBLB);
   addPoiLayers(); addFerryLayers(); dAddLayers(); dData(); rtAddLayers();
   mapReady = true;
   apply3d(true); applyPoi(); applyLayers(); applyLines(); applyNb(); onMove();

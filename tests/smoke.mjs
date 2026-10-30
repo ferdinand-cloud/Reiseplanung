@@ -101,7 +101,7 @@ async function newPage(vp, safe){
            {geometry:{coordinates:[-73.6000, 40.9000]}, properties:{name:"On Store Rye", osm_value:"shoes", city:"Rye"}},
            {geometry:{coordinates:[101.6900, 3.1400]}, properties:{name:"On Store Malaysia", osm_value:"convenience", city:"Kuala Lumpur"}}];
       return rt.fulfill({ contentType: "application/json", headers: {"access-control-allow-origin":"*"}, body: JSON.stringify({features:feats}) }); }
-    if(u.includes("openfreemap.org/styles")) return rt.fulfill({ contentType: "application/json", body: JSON.stringify({version:8, sources:{tlbl:{type:"geojson", data:{type:"FeatureCollection", features:[]}}}, layers:[{id:"bg", type:"background", paint:{"background-color":"#dde"}}, {id:"base-lbl", type:"symbol", source:"tlbl"}]}) });
+    if(u.includes("openfreemap.org/styles")) return rt.fulfill({ contentType: "application/json", body: JSON.stringify({version:8, sources:{tlbl:{type:"geojson", data:{type:"FeatureCollection", features:[]}}}, layers:[{id:"bg", type:"background", paint:{"background-color":"#dde"}}, {id:"water-lbl", type:"symbol", source:"tlbl"}, {id:"bld", type:"fill", source:"tlbl"}, {id:"base-lbl", type:"symbol", source:"tlbl"}]}) });
     return rt.abort();
   });
   const p = await ctx.newPage();
@@ -1837,11 +1837,13 @@ await test("Karte schneller: Umland der nächsten Rauszoom-Stufen vorladen, Fern
   const v = await rp(`(function(){ var l = map.getLayer("vt-rail"); return l ? {vis:map.getLayoutProperty("vt-rail","visibility"), min:l.minzoom, f:JSON.stringify(map.getFilter("vt-rail"))} : null; })()`);
   ok(!v || (v.vis==="visible" && v.min <= 6 && v.f.indexOf("transit")===-1 && v.f.indexOf("siding") > -1), "Fernverkehr-Gleise fehlen in New York oder erst nah: "+JSON.stringify(v));
   // Beschriftungen der Grundkarte liegen über den ÖPNV-Linien, eigene Punkte darüber
-  const ord = await rp(`(function(){ var L = map.getStyle().layers.map(function(l){ return l.id; }), i = function(x){ return L.indexOf(x); }; return {lbl:i("base-lbl"), sub:i("sub"), bus:i("bus"), dtr:i("dtr"), dbus:i("dbus"), dtrf:i("dtr-f"), mk:i("mk"), first:LBLB}; })()`);
-  ok(ord.first==="base-lbl" && ord.lbl > -1 && [ord.sub, ord.bus, ord.dtr, ord.dbus, ord.dtrf].every(x => x > -1 && x < ord.lbl) && ord.mk > ord.lbl, "Linien liegen über den Beschriftungen: "+JSON.stringify(ord));
+  const ord = await rp(`(function(){ var L = map.getStyle().layers.map(function(l){ return l.id; }), i = function(x){ return L.indexOf(x); }; return {lbl:i("base-lbl"), bld:i("bld"), sub:i("sub"), bus:i("bus"), dtr:i("dtr"), dbus:i("dbus"), dtrf:i("dtr-f"), mk:i("mk"), first:LBLB}; })()`);
+  ok(ord.first==="base-lbl" && ord.lbl > -1 && [ord.sub, ord.bus, ord.dtr, ord.dbus, ord.dtrf].every(x => x > -1 && x < ord.lbl) && ord.mk > ord.lbl && ord.bld < Math.min(ord.sub, ord.dtr), "Linien liegen über den Beschriftungen oder unter Gebäuden: "+JSON.stringify(ord));
   // New York mit derselben Zoom-Logik: U-Bahn ab MZ.metro, Busse erst auf Straßenebene, Stationen nach Bedeutung
   const nz = await rp(`({sub:map.getLayer("sub").minzoom, bus:map.getLayer("bus").minzoom, mz:MZ.metro, bz:BUSZ})`);
   ok(nz.sub===nz.mz && nz.bus===nz.bz, "New York ohne Zoomstufen: "+JSON.stringify(nz));
+  await jump(-73.99, 40.735, 13); await page.waitForFunction(() => window.__rp(`map.loaded()`), null, {timeout:4000}).catch(() => {}); await page.waitForTimeout(500);
+  ok(await rp(`map.getLayoutProperty("sub","visibility")==="visible" && map.queryRenderedFeatures({layers:["sub"]}).length > 0`), "New York: U-Bahn-Linien bei Zoom 13 nicht zu sehen: "+await rp(`JSON.stringify({v:map.getLayoutProperty("sub","visibility"), n:map.queryRenderedFeatures({layers:["sub"]}).length, d:(map.getSource("sub")._data.features||[]).length, ls:layers.sub, dest:!!DEST, ro:trRO(), z:map.getZoom(), f:map.getFilter("sub")})`));
   ok(await rp(`stSet(true); JSON.stringify(map.getFilter("subst")).indexOf("step") > -1 && map.getSource("subst")._data.features.some(function(f){ return f.properties.r===3; })`), "NYC-Stationen ohne Rang");
 });
 
