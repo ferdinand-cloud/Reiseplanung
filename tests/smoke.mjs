@@ -1645,6 +1645,7 @@ await test("Leihrad am Ziel: frei abgestellte E-Bikes (Berlin, Dott) neben Stati
   await seed();
   await rp(`(function(){ var t = newTripObj({id:"t_ber", name:"Berlin", start:"2026-11-02", end:"2026-11-06", hotels:[{id:"h7", n:"Hotel Mitte", la:52.5205, lo:13.4060, from:"2026-11-02", to:"2026-11-06"}], orte:[{id:"o7", n:"Berlin", la:52.5200, lo:13.4050, from:"2026-11-02", to:"2026-11-06"}]});
     S.trips.t_ber = t; S.cur = "t_ber"; layers.bike = true; renderAll(); cbLoad(); })()`);
+  await jump(13.4050, 52.5200, 13); await rp(`cbLoad(); true`);
   await page.waitForFunction(() => window.__rp("CB.sys.length===2 && CB.st.some(function(s){ return s.ff; })"), null, {timeout:20000}).catch(() => {});
   ok(await rp(`CB.sys.map(function(s){ return s.n; }).sort().join(",")`)==="Call a Bike,Dott", "Systeme in Berlin falsch: "+await rp(`JSON.stringify(CB.sys.map(function(s){ return s.n; }))+" "+CB.err`));
   ok(!REQ.some(u => u.includes("getaround")), "Carsharing wird abgefragt");
@@ -1690,6 +1691,7 @@ await test("Leihrad am Ziel: System aus dem GBFS-Katalog finden, Live-Verfügbar
   await seed();
   await rp(`(function(){ var t = newTripObj({id:"t_lis", name:"Lissabon", start:"2026-11-02", end:"2026-11-06", hotels:[{id:"h9", n:"Hotel Lisboa", la:38.7150, lo:-9.1400, from:"2026-11-02", to:"2026-11-06"}], orte:[{id:"o9", n:"Lissabon", la:38.7223, lo:-9.1393, from:"2026-11-02", to:"2026-11-06"}]});
     S.trips.t_lis = t; S.cur = "t_lis"; layers.bike = true; renderAll(); cbLoad(); })()`);
+  await jump(-9.1393, 38.7223, 13); await rp(`cbLoad(); true`);
   await page.waitForFunction(() => window.__rp("CB.sys.length > 0 && CB.st.length > 0 && CB.statAt > 0"), null, {timeout:20000}).catch(() => {});
   ok(await rp(`CB.sys.length===1 && CB.sys[0].n==="Gira" && CB.st.length===3`), "System am Ziel nicht gefunden: "+await rp(`JSON.stringify(CB.sys)+" "+CB.st.length+" "+CB.err`));
   ok(!REQ.some(u => u.includes("bird.example/fb.json") || u.includes("porto.example") || u.includes("me.example")), "Falsche Systeme abgefragt (Roller, andere Stadt, anderes Land): "+REQ.join(" "));
@@ -1701,14 +1703,15 @@ await test("Leihrad am Ziel: System aus dem GBFS-Katalog finden, Live-Verfügbar
   ok(await rp(`LMNAME.bike`)==="Gira", "Verkehrsmittel heißt nicht nach dem System am Ziel");
   // aus dem Speicher: kein neuer Katalog-Abruf beim Wechsel zurück
   const n0 = REQ.filter(u => u.includes("MobilityData")).length;
-  await rp(`select(null); S.cur = "t_test"; renderAll(); true`); await page.waitForTimeout(150);
+  await rp(`select(null); S.cur = "t_test"; renderAll(); true`); await jump(-73.99, 40.73, 13); await page.waitForTimeout(150);
   ok(await rp(`CB.sys[0].n==="Citi Bike" && LMNAME.bike==="Citi Bike"`), "New York bekommt Citi Bike nicht zurück");
-  await rp(`S.cur = "t_lis"; renderAll(); cbLoad(); true`);
+  await rp(`S.cur = "t_lis"; renderAll(); true`); await jump(-9.1393, 38.7223, 13); await rp(`cbLoad(); true`);
   await page.waitForFunction(() => window.__rp("CB.sys.length > 0 && CB.st.length===3"), null, {timeout:5000}).catch(() => {});
   ok(await rp(`CB.sys.length && CB.sys[0].n==="Gira"`) && REQ.filter(u => u.includes("MobilityData")).length===n0, "Ergebnis wird nicht je Ziel gemerkt");
   // Ziel ohne bekanntes System: OSM-Stationen bleiben, Rad-Etappe sagt es klar
   await rp(`(function(){ var t = newTripObj({id:"t_faro", name:"Faro", start:"2026-11-02", end:"2026-11-06", hotels:[{id:"h8", n:"Hotel Faro", la:37.0170, lo:-7.9350, from:"2026-11-02", to:"2026-11-06"}], orte:[{id:"o8", n:"Faro", la:37.0194, lo:-7.9304, from:"2026-11-02", to:"2026-11-06"}]});
     S.trips.t_faro = t; S.cur = "t_faro"; renderAll(); cbLoad(); })()`);
+  await jump(-7.9304, 37.0194, 13); await rp(`cbLoad(); true`);
   await page.waitForFunction(() => window.__rp("cbState()==='nosys'"), null, {timeout:5000}).catch(() => {});
   ok(await rp(`cbState()==="nosys" && map.getLayoutProperty("cb","visibility")==="none" && map.getLayoutProperty("dbike","visibility")==="visible"`), "Ohne System sollen die OSM-Stationen bleiben");
   ok(await rp(`bikeRoute({la:37.017, lo:-7.935}, {la:37.019, lo:-7.930}).nosys===true`), "Rad-Etappe wartet endlos statt „kein System“");
