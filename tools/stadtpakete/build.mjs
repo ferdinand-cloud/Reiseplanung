@@ -311,19 +311,20 @@ async function assemble(id, C, net, bus, zip, shapesOf) {
   });
   // Streckenverläufe lesen
   const SH = await shapesOf(needShapes);
+  const straight = []; // je Linie: Verlauf (teils) nur als Luftlinie zwischen Stationen → später durch OpenStreetMap-Gleise ersetzen
   keep.forEach((l) => {
-    const tol = bus ? 0.00008 : 0.00004, out = [];
+    const tol = bus ? 0.00008 : 0.00004, out = []; let st = false;
     l.shp.forEach((x) => {
       let pts = x.sh && SH.get(x.sh);
-      if (!pts || pts.length < 2) { if (C.noStraight) return; pts = x.st.filter((s) => s >= 0).map((s) => [ST[s].la, ST[s].lo]); } // ohne Streckenverlauf: Stationsfolge (London-Busse: keine Luftlinien, Verlauf kommt aus OpenStreetMap)
+      if (!pts || pts.length < 2) { st = true; if (C.noStraight) return; pts = x.st.filter((s) => s >= 0).map((s) => [ST[s].la, ST[s].lo]); } // ohne Streckenverlauf: Stationsfolge (London-Busse: keine Luftlinien, Verlauf kommt aus OpenStreetMap)
       clipRuns(pts, C.ext).forEach((r) => out.push(polyEnc(simp(r, tol))));
     });
-    G.push([...new Set(out)]);
+    G.push([...new Set(out)]); straight.push(st);
   });
   const Ef = []; for (const e of E.values()) Ef.push(e.a, e.b, e.l, e.h, Math.round(e.s / e.c), e.mask);
   const D = [];
   if (!bus) S.forEach((s, i) => { const ms = Object.keys(s.m).filter((m) => m !== "tram" && m !== "bus" && m !== "ferry"); if (ms.length && inBB(C.bb, s.la, s.lo)) D.push([i].concat(ms)); });
-  return { L: Lout, H, S: S.map((s) => [s.n, Math.round(s.la * 1e5), Math.round(s.lo * 1e5)]), E: Ef, W, G, D };
+  return { L: Lout, H, S: S.map((s) => [s.n, Math.round(s.la * 1e5), Math.round(s.lo * 1e5)]), E: Ef, W, G, D, _st: straight };
 }
 
 async function shapesFromZip(zip, need) {
@@ -336,7 +337,7 @@ async function shapesFromZip(zip, need) {
 }
 
 function write(id, part, meta, d) {
-  const o = Object.assign({ v: V, id, part }, meta, d);
+  const o = Object.assign({ v: V, id, part }, meta, d); delete o._st;
   const f = path.join(OUT, id + (part === "bus" ? "-bus" : "") + ".json");
   fs.writeFileSync(f, JSON.stringify(o));
   log("geschrieben", f, (fs.statSync(f).size / 1e6).toFixed(2) + " MB", "Linien", d.L.length, "Stationen", d.S.length, "Fahrten", d.E.length / 6);
@@ -348,8 +349,14 @@ async function gtfsCity(id, C) {
   const net = await buildGtfs(id, C, zip);
   const meta = { n: C.n, src: C.src, lic: C.lic, tz: C.tz, at: new Date().toISOString().slice(0, 10), valid: [net.start, net.end], days: Object.fromEntries(Object.entries(net.DAYS).map(([b, x]) => [b, x.d])), bb: C.bb, url: from.startsWith("http") ? from : "" };
   const sh = (need) => shapesFromZip(zip, need);
-  write(id, "rail", meta, await assemble(id, C, net, false, zip, sh));
-  write(id, "bus", meta, await assemble(id, C, net, true, zip, sh));
+  // Ohne Streckenverläufe im GTFS (VBB, IDFM) wären Linien Luftlinien zwischen Stationen („falsche Verbindungen“) → Gleise aus OpenStreetMap
+  const rail = await assemble(id, C, net, false, zip, sh);
+  try { const n = osmFill(rail, await osmRoutes(C.ext, "subway|light_rail|train|tram|ferry|funicular"), false); if (n) { meta.src = C.src + " · Verläufe © OpenStreetMap"; meta.lic = C.lic + ", ODbL"; } }
+  catch (e) { log("  OSM-Verläufe Bahn fehlgeschlagen:", e.message); }
+  write(id, "rail", meta, rail);
+  const bus = await assemble(id, C, net, true, zip, sh);
+  try { osmFill(bus, await osmRoutes(C.bus, "bus|trolleybus"), true); } catch (e) { log("  OSM-Verläufe Bus fehlgeschlagen:", e.message); }
+  write(id, "bus", meta, bus);
   if (!ZIP[id]) fs.rmSync(zip, { force: true });
 }
 
@@ -449,9 +456,25 @@ async function osmRoutes(bb, routes) {
   const j = await overpass("[out:json][timeout:240][maxsize:1000000000];rel[type=route][route~\"^(" + routes + ")$\"](" + b + ")->.r;.r out body;way(r.r)(" + b + ");out skel geom;");
   const W = new Map(), R = [];
   (j.elements || []).forEach((e) => { if (e.type === "way" && e.geometry) W.set(e.id, e.geometry.filter(Boolean).map((p) => [p.lat, p.lon])); });
-  (j.elements || []).filter((e) => e.type === "relation").forEach((e) => { const t = e.tags || {}; R.push({ route: t.route, ref: String(t.ref || "").trim(), name: String(t.name || ""), ways: (e.members || []).filter((m) => m.type === "way" && W.has(m.ref)).map((m) => m.ref) }); });
+  (j.elements || []).filter((e) => e.type === "relation").forEach((e) => { const t = e.tags || {}; R.push({ route: t.route, ref: String(t.ref || "").trim(), name: String(t.name || ""), ways: (e.members || []).filter((m) => m.type === "way" && W.has(m.ref) && !/platform|stop/.test(m.role || "")).map((m) => m.ref) }); }); // Bahnsteige/Haltepunkte sind keine Strecke
   log("  OpenStreetMap", routes, "Relationen", R.length, "Wege", W.size);
   return { W, R };
+}
+/* Linien mit Luftlinien-Verlauf: Wege der OSM-Relationen mit gleicher Liniennummer und passendem Verkehrsmittel.
+   Busse ohne Treffer verlieren die Luftlinie (lieber kein Verlauf als ein falscher), Bahnen behalten sie. */
+const OSMRT = { metro: ["subway", "light_rail"], light: ["light_rail", "subway", "tram"], sbahn: ["train", "light_rail"], reg: ["train"], long: ["train"], train: ["train"], tram: ["tram", "light_rail"], funi: ["funicular"], ferry: ["ferry"], bus: ["bus", "trolleybus"] };
+const refNorm = (x) => String(x || "").toLowerCase().replace(/bis\b/, "b").replace(/[^a-z0-9]+/g, "");
+function osmFill(d, O, bus) {
+  const by = new Map(); O.R.forEach((r) => { const k = refNorm(r.ref); if (!k) return; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+  let n = 0, miss = [];
+  d.L.forEach((l, i) => {
+    if (!d._st || !d._st[i]) return;
+    const rt = OSMRT[l[0]] || (bus ? OSMRT.bus : []), rels = (by.get(refNorm(l[1])) || []).filter((r) => rt.includes(r.route));
+    const g = rels.length ? osmGeo(O, rels, bus ? 0.00008 : 0.00004) : [];
+    if (g.length) { d.G[i] = g; n++; } else { miss.push(l[1]); if (bus) d.G[i] = []; }
+  });
+  log("  OSM-Verläufe", bus ? "Bus" : "Bahn", n, "ersetzt, ohne Treffer:", miss.length, miss.slice(0, 30).join(" "));
+  return n;
 }
 function osmGeo(O, rels, tol) { const ids = new Set(); rels.forEach((r) => r.ways.forEach((w) => ids.add(w))); return [...ids].map((w) => polyEnc(simp(O.W.get(w), tol))).filter((x) => x.length > 4); }
 async function londonCity(id, C) {
