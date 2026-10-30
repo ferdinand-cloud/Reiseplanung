@@ -1886,6 +1886,38 @@ await test("Kartenschichten: Quellenwechsel ohne alte Linien, Routing unabhängi
   await rp(`CPTO = [30000, 90000]; true`);
 });
 
+await test("Ziel Paris bei abgeschlossener Reise (Ansicht): ÖPNV-Filter wählbar, Busse erst bei Bedarf", async () => {
+  const CPQ = [];
+  const pk = {v:1, id:"paris", part:"rail", n:"Paris", src:"IDFM", lic:"ODbL", L:[["metro", "1", "", "#FFBE00", "#000000"], ["sbahn", "A", "", "#EB2132", "#FFFFFF"]], H:["La Défense", "Boissy"],
+    S:[["Étoile", 4887380, 229500], ["Châtelet", 4885850, 234700]], E:[0,1,0,0,600,7, 1,0,0,1,600,7, 0,1,1,0,300,7], W:[[120,150,180],[150,200,300]], G:[["gthiHwf_Mr~A_dI"], ["gthiHwf_Mr~A_dI"]], D:[[0, "metro", "sbahn"], [1, "metro", "sbahn"]]};
+  const bus = {v:1, id:"paris", part:"bus", L:[["bus", "69", "", "#5B6B7A", ""]], H:["Gambetta"], S:[["Arrêt", 4886000, 234000]], E:[], W:[[300,300,300]], G:[["gthiHwf_Mr~A_dI"]]};
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => { const u = rt.request().url(); CPQ.push(u);
+    if(u.endsWith("/paris.json")) return rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(pk) });
+    if(u.endsWith("/paris-bus.json")) return rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(bus) });
+    return rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }); });
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
+  await seed();
+  await rp(`DL = {}; CP = {}; T().fin = true; renderAll(); true`);
+  ok(await rp(`isRO()`), "Reise nicht im Ansichtsmodus");
+  await rp(`var zid = zielNew("Paris", {id:"zo", n:"Paris", la:48.8566, lo:2.3522}); zsSet(zid); renderAll(); true`);
+  await jump(2.35, 48.86, 12);
+  await page.waitForFunction(() => window.__rp("!!cpView() && cpView().st.rail==='ok' && !!VV.tr"), null, {timeout:6000}).catch(() => {});
+  await page.waitForTimeout(1200);
+  ok(!CPQ.some(u => u.endsWith("-bus.json")), "Busdatei ohne Bedarf geladen");
+  await click("#layersBtn"); await click("#lTrBtn");
+  await page.locator("#ld-metro").click({timeout:4000});
+  ok(await rp(`DL.metro && map.getLayoutProperty("dtr","visibility")==="visible"`), "Metro in der Ziel-Ansicht nicht einschaltbar");
+  await click("[data-act=dfold][data-m=metro]");
+  ok(await page.locator("#dLines-metro [data-id='metro:1']").count() === 1, "Linienliste klappt nicht auf");
+  // Busse: Datei kommt mit dem offenen Menü, Linien erst beim Einschalten
+  await page.waitForFunction(() => window.__rp("cpView().st.bus==='ok'"), null, {timeout:4000}).catch(() => {});
+  ok(await rp(`dModes().indexOf("bus") > -1 && !cpGeo(cpView()).bus`), "Busse nicht angeboten oder schon dekodiert");
+  await page.locator("#ld-bus").click({timeout:4000}); await page.waitForTimeout(200);
+  ok(await rp(`!!VV.bus && VV.bus.lines.some(function(l){ return l.k==="69"; })`), "Buslinien kommen nicht beim Einschalten");
+  await click("#layersBtn");
+  await rp(`zsSet(""); delete T().fin; renderAll(); true`);
+});
+
 await test("ÖPNV über NYC hinaus (Transitous): Etappe zum Flughafen Newark mit NJ Transit und AirTrain", async () => {
   await seed();
   // Polyline (Google-Kodierung, Genauigkeit 6) wie bei MOTIS
