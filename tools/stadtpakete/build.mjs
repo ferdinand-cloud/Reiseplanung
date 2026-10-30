@@ -316,6 +316,8 @@ async function assemble(id, C, net, bus, zip, shapesOf) {
     const tol = bus ? 0.00008 : 0.00004, out = []; let st = false;
     l.shp.forEach((x) => {
       let pts = x.sh && SH.get(x.sh);
+      // Verlauf vorhanden, aber grob (VBB/IDFM: manche Shapes sind gerade Linien zwischen weit entfernten Halten) → ebenfalls ersetzen
+      if (pts && pts.length >= 2 && maxSeg(pts) > (SEGMAX[l.m] || 3)) st = true;
       if (!pts || pts.length < 2) { st = true; if (C.noStraight) return; pts = x.st.filter((s) => s >= 0).map((s) => [ST[s].la, ST[s].lo]); } // ohne Streckenverlauf: Stationsfolge (London-Busse: keine Luftlinien, Verlauf kommt aus OpenStreetMap)
       clipRuns(pts, C.ext).forEach((r) => out.push(polyEnc(simp(r, tol))));
     });
@@ -460,6 +462,9 @@ async function osmRoutes(bb, routes) {
   log("  OpenStreetMap", routes, "Relationen", R.length, "Wege", W.size);
   return { W, R };
 }
+// längstes gerades Stück eines Verlaufs in km; Grenze je Verkehrsmittel, ab der es keine echte Strecke mehr sein kann
+const SEGMAX = { tram: 0.7, light: 0.9, funi: 0.9, metro: 1.4, ferry: 50, sbahn: 2.5, bus: 1.0 };
+function maxSeg(pts) { let m = 0; for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], dy = (b[0] - a[0]) * 111.2, dx = (b[1] - a[1]) * 111.2 * Math.cos(a[0] * Math.PI / 180); m = Math.max(m, Math.hypot(dx, dy)); } return m; }
 /* Linien mit Luftlinien-Verlauf: Wege der OSM-Relationen mit gleicher Liniennummer und passendem Verkehrsmittel.
    Busse ohne Treffer verlieren die Luftlinie (lieber kein Verlauf als ein falscher), Bahnen behalten sie. */
 const OSMRT = { metro: ["subway", "light_rail"], light: ["light_rail", "subway", "tram"], sbahn: ["train", "light_rail"], reg: ["train"], long: ["train"], train: ["train"], tram: ["tram", "light_rail"], funi: ["funicular"], ferry: ["ferry"], bus: ["bus", "trolleybus"] };
