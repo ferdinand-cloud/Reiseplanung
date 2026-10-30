@@ -1540,6 +1540,8 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   ok(await rp(`coachOf("N850", "FlixBus Berlin – Hamburg") && coachOf("X", "", 202) && coachOf("1", "", 3, "BlaBlaCar Bus") && !coachOf("100", "Linie 100", 3) && DRMODE.coach==="long"`), "Fernbus-Erkennung falsch");
   await rp(`TL.sig = ""; var f0 = tlFeats; tlFeats = function(){ return f0().concat([{properties:{route_type_basic:3, route_type:3, route_short_name:"N850", route_long_name:"FlixBus Berlin – Hamburg", bbox:"[13.3,52.4,13.6,52.6]"}}]); }; tlList(); true`);
   ok(await rp(`VV.tr.lines.some(function(l){ return l.k==="N850" && l.m==="long"; }) && !VV.bus.lines.some(function(l){ return l.k==="N850"; }) && JSON.stringify(TLM).indexOf("N850") > -1 && JSON.stringify(TLM).indexOf("200") > -1`), "FlixBus steht bei den Bussen statt im Fernverkehr: "+await rp(`JSON.stringify(VV.tr.lines.concat(VV.bus.lines).filter(function(l){ return l.k==="N850"; }))`));
+  // erweiterte GTFS-Typen (Bremen/VBN: 700 Bus, 900 Tram) – Busse wurden als Züge gezeichnet
+  ok(await rp(`tlMode(700)==="bus" && tlMode(900)==="tram" && tlMode(3)==="bus" && tlMode(109)==="train" && JSON.stringify(TLM).indexOf("700") > -1 && JSON.stringify(TLRAIL).indexOf("[0]") > -1 && JSON.stringify(TLRAIL).indexOf("\\"0\\"") < 0`), "Erweiterte Verkehrsmittel-Typen falsch");
   // ungültiger Schlüssel → zurück zu OpenStreetMap (Overpass)
   await rp(`tlError({sourceId:"tl-r", error:{status:401}}); true`); await page.waitForTimeout(300);
   ok(await rp(`TL.bad && !tlOn() && map.getLayoutProperty("tl-rail","visibility")==="none"`), "Ungültiger Schlüssel schaltet Transitland nicht ab");
@@ -1847,7 +1849,8 @@ await test("Karte schneller: Umland der nächsten Rauszoom-Stufen vorladen, Fern
   const v = await rp(`(function(){ var l = map.getLayer("vt-rail"); return l ? {vis:map.getLayoutProperty("vt-rail","visibility"), min:l.minzoom, f:JSON.stringify(map.getFilter("vt-rail"))} : null; })()`);
   ok(!v || (v.vis==="visible" && v.min <= 6 && v.f.indexOf("transit")===-1 && v.f.indexOf("siding") > -1), "Fernverkehr-Gleise fehlen in New York oder erst nah: "+JSON.stringify(v));
   // Beschriftungen der Grundkarte liegen über den ÖPNV-Linien, eigene Punkte darüber
-  const ord = await rp(`(function(){ var L = map.getStyle().layers.map(function(l){ return l.id; }), i = function(x){ return L.indexOf(x); }; return {lbl:i("base-lbl"), bld:i("bld"), sub:i("sub"), bus:i("bus"), dtr:i("dtr"), dbus:i("dbus"), dtrf:i("dtr-f"), mk:i("mk"), first:LBLB}; })()`);
+  const ord = await rp(`(function(){ var L = map.getStyle().layers.map(function(l){ return l.id; }), i = function(x){ return L.indexOf(x); }; return {lbl:i("base-lbl"), bld:i("bld"), sub:i("sub"), bus:i("bus"), dtr:i("dtr"), dbus:i("dbus"), dtrf:i("dtr-f"), mk:i("mk"), first:LBLB, bike:i("dbike"), cb:i("cb")}; })()`);
+  ok(ord.bike > -1 && ord.bike < ord.lbl && (ord.cb < 0 || ord.cb < ord.lbl), "Leihrad-Punkte liegen über der Kartenschrift: "+JSON.stringify(ord));
   ok(ord.first==="base-lbl" && ord.lbl > -1 && [ord.sub, ord.bus, ord.dtr, ord.dbus, ord.dtrf].every(x => x > -1 && x < ord.lbl) && ord.mk > ord.lbl && ord.bld < Math.min(ord.sub, ord.dtr), "Linien liegen über den Beschriftungen oder unter Gebäuden: "+JSON.stringify(ord));
   // New York mit derselben Zoom-Logik: U-Bahn ab MZ.metro, Busse erst auf Straßenebene, Stationen nach Bedeutung
   const nz = await rp(`({sub:map.getLayer("sub").minzoom, bus:map.getLayer("bus").minzoom, mz:MZ.metro, bz:BUSZ})`);
