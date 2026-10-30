@@ -10413,7 +10413,7 @@ function v3dToggle(){
 }
 function initMap(){
   var c0 = null; try { c0 = destNow(); } catch(e){} // gleich bei der Reise starten: sonst kurz New-York-Daten (Citi Bike, Bezirke)
-  map = new maplibregl.Map({container:"gl", style:STYLE_URL, center:c0 ? [c0.lo, c0.la] : [NYC.lo, NYC.la], zoom:12, attributionControl:false, pitchWithRotate:false, touchPitch:false, dragRotate:true, maxPitch:0});
+  map = new maplibregl.Map({container:"gl", style:STYLE_URL, center:c0 ? [c0.lo, c0.la] : [NYC.lo, NYC.la], zoom:12, attributionControl:false, pitchWithRotate:false, touchPitch:false, dragRotate:true, maxPitch:0, fadeDuration:0});
   map.touchZoomRotate.enableRotation();
   if(b3dOn){ map.setMaxPitch(60); map.touchPitch.enable(); }
   map.on("style.load", addLayers);
@@ -13027,6 +13027,7 @@ function rtAddLayers(){
     var paint = {"line-color":["get","c"], "line-width":["get","w"], "line-opacity":["get","o"]}; if(x[2]) paint["line-dasharray"] = x[2];
     map.addLayer({id:x[0], type:"line", source:"rt", filter:["==", ["get","d"], x[1]], layout:lay, paint:paint}); });
   map.addLayer({id:"subst", type:"circle", source:"subst", minzoom:13.05, paint:{"circle-color":token("--land") || "#fff", "circle-stroke-color":token("--ink") || "#17212c", "circle-stroke-width":1.6, "circle-radius":["step", ["zoom"], 3, 14.86, 4.5]}}, "rt-case");
+  mkAddLayers();
 }
 /* U-Bahn-Stationen New York als Kartenebene (Punkte auf der Grafikkarte); Linien-Kreise und Namen nur ganz nah im Overlay */
 var STKEY = "";
@@ -13035,6 +13036,102 @@ function stSet(on){
   var ids = []; if(on) TRANSIT.stations.forEach(function(st, i){ if(stationOn(st)) ids.push(i); });
   var k = ids.join(","); if(k===STKEY) return; STKEY = k;
   src.setData({type:"FeatureCollection", features:ids.map(function(i){ var st = TRANSIT.stations[i], l = llW(st[1], st[2]); return {type:"Feature", properties:{i:i}, geometry:{type:"Point", coordinates:[l.lo, l.la]}}; })});
+}
+/* ---------- Kartenpunkte auf der Grafikkarte: Stopps, Wünsche, Hotels, Fotos und ihre Beschriftungen als MapLibre-Symbole.
+   Jedes Aussehen wird einmal auf eine Leinwand gezeichnet (Bildname = Aussehen), danach verschiebt/zoomt/dreht die Grafikkarte nur noch.
+   Daten werden nur neu gesetzt, wenn sich Punkte ändern; Tipp-Positionen (MK, ZSMK, PHMK …) rechnet drawOverlay weiter selbst. ---------- */
+var MKF = [], MKKEY = "", MKIM = {}, MKDPR = Math.min(3, Math.max(1, window.devicePixelRatio || 1)), MKCOL = {}, MKPH = new Map(), MKPHN = 0;
+function mkCol(c){ c = String(c||""); if(/^#[0-9a-f]{3,8}$/i.test(c)) return c; var k = c+(isDark() ? "|d" : ""); if(MKCOL[k]) return MKCOL[k];
+  var e = document.createElement("i"); e.style.cssText = "position:absolute;visibility:hidden"; e.style.color = c; document.body.appendChild(e); var v = getComputedStyle(e).color; e.remove(); return (MKCOL[k] = v || c); }
+function mkFont(w, px, v){ return w+" "+px+"px "+(token(v || "--f-round") || "system-ui, sans-serif"); }
+/* Bild einmal zeichnen und der Karte geben; Größe in Bildschirmpunkten, Mittelpunkt = Kartenpunkt */
+function mkImg(name, w, h, draw){
+  if(MKIM[name]) return name;
+  var c = document.createElement("canvas"); c.width = Math.ceil(w*MKDPR); c.height = Math.ceil(h*MKDPR);
+  var g = c.getContext("2d"); g.scale(MKDPR, MKDPR); draw(g, w/2, h/2);
+  try { if(map.hasImage(name)) map.removeImage(name); map.addImage(name, g.getImageData(0, 0, c.width, c.height), {pixelRatio:MKDPR}); MKIM[name] = 1; } catch(e){}
+  return name;
+}
+function mkC(g, x, y, r, fill){ g.beginPath(); g.arc(x, y, r, 0, 2*Math.PI); g.fillStyle = mkCol(fill); g.fill(); }
+function mkS(g, x, y, r){ g.save(); g.globalAlpha *= .22; g.beginPath(); g.ellipse(x, y + r*.28, r*1.02, r*.98, 0, 0, 2*Math.PI); g.fillStyle = "#0b1219"; g.fill(); g.restore(); }
+function mkT(g, x, y, t, px, col, w){ g.font = mkFont(w || 700, px); g.fillStyle = mkCol(col); g.textAlign = "center"; g.textBaseline = "alphabetic"; g.fillText(t, x, y); }
+/* Kategorie-Symbol aus den <symbol id="i-…">-Vorlagen (nur Striche) */
+function mkIcon(g, cat, x, y, size, col){
+  var sym = document.getElementById("i-"+cat); if(!sym) return;
+  var vb = (sym.getAttribute("viewBox") || "0 0 24 24").split(/[\s,]+/).map(Number), k = size/vb[2];
+  g.save(); g.translate(x - size/2, y - size/2); g.scale(k, k); g.translate(-vb[0], -vb[1]); g.strokeStyle = mkCol(col);
+  [].forEach.call(sym.children, function(el){ var pth;
+    if(el.tagName==="path") pth = new Path2D(el.getAttribute("d"));
+    else if(el.tagName==="circle"){ pth = new Path2D(); pth.arc(+el.getAttribute("cx"), +el.getAttribute("cy"), +el.getAttribute("r"), 0, 2*Math.PI); }
+    else return;
+    g.lineWidth = +(el.getAttribute("stroke-width") || 2); g.lineCap = el.getAttribute("stroke-linecap") || "butt"; g.lineJoin = el.getAttribute("stroke-linejoin") || "miter"; g.stroke(pth); });
+  g.restore();
+}
+function mkiPin(cat, ring, r, sw, cc, op){
+  return mkImg("pin|"+cat+"|"+mkCol(ring)+"|"+r+"|"+sw+"|"+mkCol(cc)+"|"+op, 2*r + 10, 2*r + 14, function(g, x, y){ g.globalAlpha = op;
+    mkS(g, x, y, r); mkC(g, x, y, r + sw/2, ring); mkC(g, x, y, r - sw/2, "#fff"); mkIcon(g, cat, x, y, r*1.1, cc); });
+}
+function mkiSeen(){ return mkImg("seen", 36, 40, function(g, x, y){ g.globalAlpha = .9; mkS(g, x, y, 11); mkC(g, x, y, 12.6, "#fff"); mkC(g, x, y, 10.4, "#7d8a96"); mkT(g, x, y + 4, "✓", 12, "#fff"); }); }
+function mkiDot(cc, op){ return mkImg("dot|"+mkCol(cc)+"|"+op, 16, 18, function(g, x, y){ g.globalAlpha = .18; mkC(g, x, y + 1, 6, "#0b1219"); g.globalAlpha = op; mkC(g, x, y, 5.9, "#fff"); mkC(g, x, y, 4.1, cc); }); }
+function mkiHotel(op){
+  return mkImg("hotel|"+op, 34, 38, function(g, x, y){ g.globalAlpha = op; mkS(g, x, y, 12);
+    g.fillStyle = "#fff"; g.beginPath(); g.roundRect(x - 13, y - 13, 26, 26, 8); g.fill();
+    g.fillStyle = "#17212c"; g.beginPath(); g.roundRect(x - 10.5, y - 10.5, 21, 21, 6); g.fill();
+    g.strokeStyle = "#fff"; g.lineWidth = 1.7; g.lineCap = "round"; g.lineJoin = "round";
+    g.stroke(new Path2D("M"+(x-6)+" "+(y+5)+"v-9.5M"+(x-6)+" "+(y+1.5)+"h12v3.5M"+(x-6)+" "+(y+1.5)+"v-3.2h4.2a2.6 2.6 0 0 1 2.6 2.6")); mkC(g, x + 3.4, y - 2.2, 1.9, "#fff"); });
+}
+function mkiStop(t, fill, txt, R, op, nl, spot){
+  var h = R*1.4 + 9;
+  return mkImg("stop|"+t+"|"+mkCol(fill)+"|"+txt+"|"+R+"|"+op+"|"+(nl?1:0)+(spot?1:0), 2*h, 2*h, function(g, x, y){ g.globalAlpha = op;
+    mkS(g, x, y, R + 1.5); mkC(g, x, y, R + 2.6, "#fff"); mkC(g, x, y, R, fill); mkT(g, x, y + R*.36, t, R*1.12, txt);
+    g.globalAlpha = 1;
+    if(nl){ var bx = x + R*.78, by = y - R*.78; mkC(g, bx, by, 7.4, "#fff"); mkC(g, bx, by, 5.8, "#C9772F"); mkT(g, bx, by + 3.2, "?", 9, "#fff", 800); }
+    if(spot){ mkC(g, x + R*.72, y + R*.72, 5.2, "#fff"); mkC(g, x + R*.72, y + R*.72, 3.3, "#007AFF"); } });
+}
+/* Foto-Marker: Ring, weißer Rand, Bild rund beschnitten; optional Nummer-Plakette. Das Bild lädt nach und wird dann ersetzt. */
+function mkiPhoto(th, r, ring, op, num, txt){
+  var id = MKPH.get(th); if(!id){ id = "f"+(++MKPHN); MKPH.set(th, id); }
+  var name = "ph|"+id+"|"+r+"|"+mkCol(ring)+"|"+op+"|"+(num || "")+"|"+(txt || ""), h = r + 13;
+  var draw = function(img){ return function(g, x, y){ g.globalAlpha = op;
+    mkS(g, x, y, r + 2.5); mkC(g, x, y, r + 2.5, ring); mkC(g, x, y, r + .6, "#fff");
+    g.save(); g.beginPath(); g.arc(x, y, r - .6, 0, 2*Math.PI); g.clip();
+    if(img && img.naturalWidth){ var s = Math.max(2*r/img.naturalWidth, 2*r/img.naturalHeight), w = img.naturalWidth*s, hh = img.naturalHeight*s; g.drawImage(img, x - w/2, y - hh/2, w, hh); }
+    else { g.fillStyle = "#d9dee3"; g.fill(); }
+    g.restore();
+    if(num){ var bx = x + r*.78, by = y - r*.78; mkC(g, bx, by, 9.5, "#fff"); mkC(g, bx, by, 7.8, ring); mkT(g, bx, by + 3.8, num, 11.5, txt || "#fff"); } }; };
+  if(MKIM[name]) return name;
+  mkImg(name, 2*h, 2*h, draw(null));
+  var im = new Image(); im.decoding = "async";
+  im.onload = function(){ if(!MKIM[name]) return; delete MKIM[name]; mkImg(name, 2*h, 2*h, draw(im)); map.triggerRepaint(); };
+  im.src = th;
+  return name;
+}
+function mkPt(p, img, z){ MKF.push({type:"Feature", properties:{t:"m", i:img, z:z}, geometry:{type:"Point", coordinates:[Math.round(p.lo*1e6)/1e6, Math.round(p.la*1e6)/1e6]}}); }
+/* Beschriftung als Glas-Pille rechts neben dem Punkt; pri ≥ 9 (Auswahl) immer sichtbar, sonst wichtigste zuerst ohne Überlappung */
+function mkLbl(p, txt, dx, strong, pri){
+  var t = String(txt || ""); if(!t) return; if(t.length > 26) t = t.slice(0, 25)+"…";
+  var name = "lbl|"+(isDark() ? "d" : "h")+(strong ? 1 : 0)+"|"+t;
+  if(!MKIM[name]){ var cv = document.createElement("canvas").getContext("2d"), f = mkFont(strong ? 600 : 600, strong ? 11.5 : 11, "--f-body"); cv.font = f;
+    var w = Math.ceil(cv.measureText(t).width) + 16;
+    mkImg(name, w + 2, 22, function(g){ g.fillStyle = mkCol(token("--glass-hi") || "rgba(255,255,255,.86)"); g.strokeStyle = mkCol(token("--hair") || "rgba(0,0,0,.09)"); g.lineWidth = .5;
+      g.beginPath(); g.roundRect(1, 1, w, 20, 10); g.fill(); g.stroke();
+      g.font = f; g.fillStyle = mkCol(token("--ink") || "#17212c"); g.globalAlpha = strong ? 1 : .82; g.textAlign = "left"; g.textBaseline = "middle"; g.fillText(t, 9, 11.5); }); }
+  MKF.push({type:"Feature", properties:{t:pri >= 9 ? "ls" : "l", i:name, z:100 - pri, o:[dx - 1, 0]}, geometry:{type:"Point", coordinates:[Math.round(p.lo*1e6)/1e6, Math.round(p.la*1e6)/1e6]}});
+}
+function mkSet(){
+  var src = mapReady && map.getSource("mk"); if(!src) return;
+  var k = JSON.stringify(MKF); if(k===MKKEY) return; MKKEY = k;
+  src.setData({type:"FeatureCollection", features:MKF});
+}
+function mkAddLayers(){
+  MKKEY = ""; MKIM = {}; MKCOL = {};
+  if(map.getSource("mk")) return;
+  map.addSource("mk", {type:"geojson", data:{type:"FeatureCollection", features:[]}});
+  var base = {"icon-image":["get","i"], "symbol-sort-key":["get","z"], "icon-rotation-alignment":"viewport", "icon-pitch-alignment":"viewport"};
+  map.addLayer({id:"mk-lbl", type:"symbol", source:"mk", filter:["==", ["get","t"], "l"], layout:Object.assign({"icon-anchor":"left", "icon-offset":["get","o"], "icon-allow-overlap":false, "icon-padding":1}, base)});
+  map.addLayer({id:"mk-lbl-sel", type:"symbol", source:"mk", filter:["==", ["get","t"], "ls"], layout:Object.assign({"icon-anchor":"left", "icon-offset":["get","o"], "icon-allow-overlap":true}, base)});
+  // Punkte über den Beschriftungen, immer alle sichtbar (Bildränder samt Schatten wären als Sperrfläche zu groß; Beschriftungen weichen nur einander aus)
+  map.addLayer({id:"mk", type:"symbol", source:"mk", filter:["==", ["get","t"], "m"], layout:Object.assign({"icon-allow-overlap":true, "icon-ignore-placement":true}, base)});
 }
 function drawOverlay(){
   if(!map) return;
@@ -13061,42 +13158,33 @@ function drawOverlay(){
       }
     });
   }
-  // Wünsche (dezent)
-  var sugIds = {}, wishMarks = [], wlabels = "", MK = []; cpN = 0; WISHN = 0; LBLQ = [];
+  // Wünsche (dezent) – als Kartenpunkte auf der Grafikkarte; Tipp-Positionen weiter nur für sichtbare
+  var sugIds = {}, wishMarks = [], wlabels = "", MK = []; cpN = 0; WISHN = 0; LBLQ = []; MKF = [];
   // Ziel-Ansicht: nur die Orte des Ziels (gemerkt: weiß mit Symbol, besucht: grau mit Haken), keine Reise-Inhalte
   var zs = zsOn(); ZSMK = [];
   if(zs) zsItems(zs).forEach(function(x, i){
-    if(!hasLoc(x.p)) return; var q = pt(x.p); if(!onScreen(q, 30)) return;
-    var cc = catCol(x.p.c), is = 12.6;
+    if(!hasLoc(x.p)) return; var cc = catCol(x.p.c);
+    mkPt(x.p, x.k==="m" ? mkiPin(CATNAME[x.p.c] ? x.p.c : "sight", cc, 11.5, 2.2, cc, 1) : mkiSeen(), 1);
+    if(zoomed) mkLbl(x.p, x.p.n, 16, false, x.k==="m" ? 2 : 1);
+    var q = pt(x.p); if(!onScreen(q, 30)) return;
     ZSMK.push({x:q[0], y:q[1], i:i}); MK.push({x0:q[0]-14, y0:q[1]-14, x1:q[0]+14, y1:q[1]+14});
-    if(x.k==="m"){ s += mkShadow(q[0], q[1], 11.5)+"<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"11.5\" fill=\"#fff\" stroke=\""+cc+"\" stroke-width=\"2.2\"/>"+
-      "<use href=\"#i-"+(CATNAME[x.p.c] ? x.p.c : "sight")+"\" x=\""+f1(q[0]-is/2)+"\" y=\""+f1(q[1]-is/2)+"\" width=\""+f1(is)+"\" height=\""+f1(is)+"\" style=\"color:"+cc+"\"/>"; }
-    else s += "<g opacity=\".9\">"+mkShadow(q[0], q[1], 11)+"<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"12.6\" fill=\"#fff\"/><circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"10.4\" fill=\"#7d8a96\"/><text x=\""+f1(q[0])+"\" y=\""+f1(q[1]+4)+"\" text-anchor=\"middle\" font-size=\"12\" font-weight=\"700\" fill=\"#fff\" style=\"font-family:var(--f-round)\">✓</text></g>";
-    if(zoomed) mkLabel(q[0]+16, q[1], x.p.n, false, x.k==="m" ? 2 : 1);
   });
   if(tab==="day" && sugOpen && D) suggest(cur,3).forEach(function(x){ sugIds[x.w.id] = 1; });
   if(wishOn() && !isRO() && !zs){
     mapWishes().forEach(function(w){
       if(!hasLoc(w)) return;
       if(((!catOk(w.c) && w.c!=="hotel") || (tab==="wish" && (!nbMatch(w) || !qMatch(w) || !grpOk(w)))) && sel!==w.id) return;
-      var q = pt(w); if(!onScreen(q,30)) return;
       var strong = (tab==="wish" && activeList!=="open" && (w.list||"none")===activeList) || sugIds[w.id];
-      wishMarks.push({w:w, q:q, strong:strong});
+      wishMarks.push({w:w, q:pt(w), strong:strong});
     });
-    WISHN = wishMarks.length;
     wishMarks.forEach(function(m){
       var w = m.w, q = m.q, isSel = sel===w.id, cc = catCol(w.c), big = zoomed || m.strong || isSel;
       var ring = (tab==="day" && sugIds[w.id]) ? dayColor(cur) : cc, op = big ? 1 : .92, th = big && firstThumb(w.id);
-      if(isSel) s += "<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"22\" fill=\""+cc+"\" opacity=\".16\"/>";
-      if(th){ s += mkPhoto(q[0], q[1], isSel ? 15 : 12.5, th, ring, op); }
-      else if(big){
-        var r = isSel ? 14 : 11.5, is = r*1.1;
-        s += mkShadow(q[0], q[1], r)+"<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\""+r+"\" fill=\"#fff\" stroke=\""+ring+"\" stroke-width=\""+(m.strong||isSel?2.4:1.6)+"\"/>";
-        s += "<use href=\"#i-"+(CATNAME[w.c]?w.c:"sight")+"\" x=\""+f1(q[0]-is/2)+"\" y=\""+f1(q[1]-is/2)+"\" width=\""+f1(is)+"\" height=\""+f1(is)+"\" style=\"color:"+cc+"\"/>";
-      } else {
-        s += "<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1]+1)+"\" r=\"6\" fill=\"#0b1219\" opacity=\".18\"/><circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"5\" fill=\""+cc+"\" stroke=\"#fff\" stroke-width=\"1.8\" opacity=\""+op+"\"/>";
-      }
-      if(big) mkLabel(q[0] + (isSel ? 19 : 16), q[1], w.n, isSel, isSel ? 10 : m.strong ? 2 : 1);
+      if(onScreen(q, 30)){ WISHN++; if(isSel) s += "<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"22\" fill=\""+cc+"\" opacity=\".16\"/>"; }
+      if(th) mkPt(w, mkiPhoto(th, isSel ? 15 : 12.5, ring, op), isSel ? 20 : 3);
+      else if(big){ var r = isSel ? 14 : 11.5; mkPt(w, mkiPin(CATNAME[w.c] ? w.c : "sight", ring, r, m.strong || isSel ? 2.4 : 1.6, cc, 1), isSel ? 20 : 3); }
+      else mkPt(w, mkiDot(cc, op), 2);
+      if(big) mkLbl(w, w.n, isSel ? 19 : 16, isSel, isSel ? 10 : m.strong ? 2 : 1);
     });
   }
   // Route des Tages: Hotel → Stopps → Hotel (Fußweg oder ÖPNV)
@@ -13160,10 +13248,9 @@ function drawOverlay(){
   rtSet();
   // Hotels der Reise (das Hotel des Tages kräftig)
   if(!zs) T().hotels.filter(hasLoc).forEach(function(h){
-    var q = pt(h); if(!onScreen(q,30)) return; var on = ALL || (D && ((D.hotel && D.hotel.id===h.id) || (D.hotelS && D.hotelS.id===h.id))), op = on ? 1 : .6;
-    s += "<g opacity=\""+op+"\">"+mkShadow(q[0], q[1], 12)+"<rect x=\""+f1(q[0]-13)+"\" y=\""+f1(q[1]-13)+"\" width=\"26\" height=\"26\" rx=\"8\" fill=\"#fff\"/><rect x=\""+f1(q[0]-10.5)+"\" y=\""+f1(q[1]-10.5)+"\" width=\"21\" height=\"21\" rx=\"6\" fill=\"#17212c\"/>"+
-         "<path d=\"M"+f1(q[0]-6)+" "+f1(q[1]+5)+"v-9.5M"+f1(q[0]-6)+" "+f1(q[1]+1.5)+"h12v3.5M"+f1(q[0]-6)+" "+f1(q[1]+1.5)+"v-3.2h4.2a2.6 2.6 0 0 1 2.6 2.6\" stroke=\"#fff\" stroke-width=\"1.7\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\""+f1(q[0]+3.4)+"\" cy=\""+f1(q[1]-2.2)+"\" r=\"1.9\" fill=\"#fff\"/></g>";
-    if(zoomed || sel===h.id) mkLabel(q[0]+18, q[1], h.n, sel===h.id, sel===h.id ? 10 : 2);
+    var on = ALL || (D && ((D.hotel && D.hotel.id===h.id) || (D.hotelS && D.hotelS.id===h.id)));
+    mkPt(h, mkiHotel(on ? 1 : .6), sel===h.id ? 20 : 4);
+    if(zoomed || sel===h.id) mkLbl(h, h.n, 18, sel===h.id, sel===h.id ? 10 : 2);
   });
   s += viaSvg;
   // Stopps
@@ -13171,23 +13258,12 @@ function drawOverlay(){
   if(!zs) mapDays().forEach(function(dk){ var n = 0, col = dayColor(dk), yl = yel(dk); ord(dk).forEach(function(id){
     var p = P(id); if(p && p.k==="hotel") return; n++;
     if(!hasLoc(p) || mapHid(id)) return;
-    var q0 = pt(p); MK.push({x0:q0[0]-15, y0:q0[1]-15, x1:q0[0]+15, y1:q0[1]+15});
-    var q = q0, done = !!T().done[id], isSel = sel===id, fill = done ? "#7d8a96" : col, txt = yl && !done ? "#17212c" : "#fff", th = firstThumb(id), op = done && !isSel ? .82 : 1;
-    if(isSel) s += "<circle class=\"halo\" cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"26\" fill=\""+col+"\" opacity=\".18\"/>";
-    if(th){
-      var r = isSel ? 18 : 15.5;
-      s += mkPhoto(q[0], q[1], r, th, fill, op);
-      var bx = q[0] + r*.78, by = q[1] - r*.78;
-      s += "<g opacity=\""+op+"\"><circle cx=\""+f1(bx)+"\" cy=\""+f1(by)+"\" r=\"9.5\" fill=\"#fff\"/><circle cx=\""+f1(bx)+"\" cy=\""+f1(by)+"\" r=\"7.8\" fill=\""+fill+"\"/><text x=\""+f1(bx)+"\" y=\""+f1(by+3.8)+"\" text-anchor=\"middle\" font-size=\"11.5\" font-weight=\"700\" fill=\""+txt+"\" style=\"font-family:var(--f-round)\">"+(done?"✓":n)+"</text></g>";
-      if(zoomed || isSel) mkLabel(q[0] + r + 12, q[1], p.n, true, isSel ? 10 : 3);
-    } else {
-      var R = isSel ? 15.5 : 13;
-      s += "<g opacity=\""+op+"\">"+mkShadow(q[0], q[1], R+1.5)+"<circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\""+f1(R+2.6)+"\" fill=\"#fff\"/><circle cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\""+f1(R)+"\" fill=\""+fill+"\"/>";
-      s += "<text x=\""+f1(q[0])+"\" y=\""+f1(q[1]+R*.36)+"\" text-anchor=\"middle\" font-size=\""+f1(R*1.12)+"\" font-weight=\"700\" fill=\""+txt+"\" style=\"font-family:var(--f-round)\">"+(done?"✓":n)+"</text></g>";
-      if(p.nl) s += "<g class=\"evnlmk\"><circle cx=\""+f1(q[0]+R*.78)+"\" cy=\""+f1(q[1]-R*.78)+"\" r=\"7.4\" fill=\"#fff\"/><circle cx=\""+f1(q[0]+R*.78)+"\" cy=\""+f1(q[1]-R*.78)+"\" r=\"5.8\" fill=\"#C9772F\"/><text x=\""+f1(q[0]+R*.78)+"\" y=\""+f1(q[1]-R*.78+3.2)+"\" text-anchor=\"middle\" font-size=\"9\" font-weight=\"800\" fill=\"#fff\">?</text></g>";
-      if(p.k==="spot") s += "<circle cx=\""+f1(q[0]+R*.72)+"\" cy=\""+f1(q[1]+R*.72)+"\" r=\"5.2\" fill=\"#fff\"/><circle cx=\""+f1(q[0]+R*.72)+"\" cy=\""+f1(q[1]+R*.72)+"\" r=\"3.3\" fill=\"#007AFF\"/>";
-      if(zoomed || isSel) mkLabel(q[0] + R + 9, q[1], p.n, true, isSel ? 10 : 3);
-    }
+    var q = pt(p); MK.push({x0:q[0]-15, y0:q[1]-15, x1:q[0]+15, y1:q[1]+15});
+    var done = !!T().done[id], isSel = sel===id, fill = done ? "#7d8a96" : col, txt = yl && !done ? "#17212c" : "#fff", th = firstThumb(id), op = done && !isSel ? .82 : 1;
+    if(isSel && onScreen(q, 40)) s += "<circle class=\"halo\" cx=\""+f1(q[0])+"\" cy=\""+f1(q[1])+"\" r=\"26\" fill=\""+col+"\" opacity=\".18\"/>";
+    var r = th ? (isSel ? 18 : 15.5) : (isSel ? 15.5 : 13);
+    mkPt(p, th ? mkiPhoto(th, r, fill, op, done ? "✓" : String(n), txt) : mkiStop(done ? "✓" : String(n), fill, txt, r, op, !!p.nl, p.k==="spot"), isSel ? 21 : 5);
+    if(zoomed || isSel) mkLbl(p, p.n, th ? r + 12 : r + 9, true, isSel ? 10 : 3);
   }); });
   // Fotos aller anderen Punkte (andere Tage, ausgeblendete erledigte Stopps): kleine Foto-Marker, damit Erinnerungen immer auf der Karte sind
   PHMK = [];
@@ -13198,14 +13274,15 @@ function drawOverlay(){
     if(wishOn() && !isRO()) mapWishes().forEach(function(w){ shown[w.id] = 1; });
     Object.keys(ps).forEach(function(pid){
       var q0p = P(pid); if(shown[pid] || !q0p || !hasLoc(q0p) || (!allP && mds.indexOf(dayOf(pid)) < 0) || !(ps[pid]||[]).length || (isRO() && !dayOf(pid))) return;
-      var qq = pt(q0p); if(!onScreen(qq, 30)) return;
       var th2 = firstThumb(pid); if(!th2) return;
       var dk2 = dayOf(pid), isSel2 = sel===pid, r2 = isSel2 ? 15 : 11;
-      s += mkPhoto(qq[0], qq[1], r2, th2, dk2 ? dayColor(dk2) : "#7d8a96", isSel2 ? 1 : .95);
+      mkPt(q0p, mkiPhoto(th2, r2, dk2 ? dayColor(dk2) : "#7d8a96", isSel2 ? 1 : .95), isSel2 ? 20 : 6);
+      if(isSel2) mkLbl(q0p, q0p.n, r2 + 10, true, 10);
+      var qq = pt(q0p); if(!onScreen(qq, 30)) return;
       PHMK.push(pid); MK.push({x0:qq[0]-r2, y0:qq[1]-r2, x1:qq[0]+r2, y1:qq[1]+r2});
-      if(isSel2) mkLabel(qq[0] + r2 + 10, qq[1], q0p.n, true, 10);
     });
   })();
+  mkSet();
   s += drawLocs(); ghostBtn();
   s += flushLabels(MK);
   var dl = draft.open ? parseLoc(draft.loc) : null;

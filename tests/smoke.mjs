@@ -199,7 +199,7 @@ await test("Tag wählen: „Alle Tage anzeigen“ zeigt die gesamte Reise auf de
   ok(await rp(`$("body").textContent.indexOf("Alle Tage") > -1 && $("body").querySelectorAll(".adj [data-act=day]").length===days().length && !$("body").querySelector(".daylist")`), "Blatt zeigt kein Tagebuch aller Tage");
   ok(await rp(`!!$("body").querySelector(".adj .jcard[data-pid=p4][data-day='${k.Y}']")`), "Tagebuch aller Tage: besuchter Ort von gestern fehlt");
   await page.waitForTimeout(300);
-  ok(await rp(`(function(){ var h = $("ov").innerHTML; return h.indexOf(dayColor("${k.M}")) > -1 && h.indexOf(dayColor("${k.H}")) > -1; })()`), "Karte zeigt nicht die Stopps aller Tage");
+  ok(await rp(`(function(){ var h = map.getSource("mk")._data.features.map(function(f){ return f.properties.i; }).join(" "); return h.indexOf(mkCol(dayColor("${k.M}"))) > -1 && h.indexOf(mkCol(dayColor("${k.H}"))) > -1; })()`), "Karte zeigt nicht die Stopps aller Tage");
   await shot("alle-tage-karte");
   // erneut öffnen: „Alle Tage“ markiert, kein einzelner Tag
   await click("#rail [data-act=daypop]");
@@ -1804,7 +1804,7 @@ await test("Routenoptionen je Etappe: Zeit (Abfahrt/Ankunft) und bevorzugte Verk
   ok(await rp(`legGet("legOpt", dayLegs(cur)[${li}][1])===undefined`), "Zurücksetzen löscht die Optionen nicht");
 });
 
-await test("Grafikkarte: Wege des Tages und U-Bahn-Stationen als Kartenebenen statt SVG, Verschieben setzt keine Daten neu", async () => {
+await test("Grafikkarte: Wege, U-Bahn-Stationen, Punkte und Beschriftungen als Kartenebenen statt SVG, Verschieben setzt keine Daten neu", async () => {
   await seed();
   await rp(`layers.sub = true; applyLayers(); map.jumpTo({center:[-73.99, 40.73], zoom:14}); drawOverlay(); true`);
   const r = await rp(`({rt:map.getSource("rt")._data.features.length, d:map.getSource("rt")._data.features.map(function(f){ return f.properties.d; }), c:map.getSource("rt")._data.features.every(function(f){ return /^#|^rgb/.test(f.properties.c); }),
@@ -1812,7 +1812,13 @@ await test("Grafikkarte: Wege des Tages und U-Bahn-Stationen als Kartenebenen st
     dots:[].filter.call(ov.querySelectorAll("circle"), function(c){ return c.getAttribute("stroke-width")==="1.6" && c.getAttribute("fill")==="var(--land)"; }).length})`);
   ok(r.rt > 0 && r.c && r.st > 100 && r.paths===0 && r.dots===0, "Wege/Stationen noch im SVG oder nicht auf der Karte: "+JSON.stringify(r));
   ok(await rp(`map.getLayoutProperty("subst","visibility")!=="none" && !!map.getLayer("rt-dot") && !!map.getLayer("rt-case")`), "Ebenen fehlen");
-  if(SHOTS){ await rp(`setSheet("peek"); map.jumpTo({center:[-73.992, 40.738], zoom:13.4}); layers.sub = true; applyLayers(); drawOverlay(); true`); await page.waitForTimeout(500); await shot("grafikkarte-wege"); await rp(`map.jumpTo({center:[-73.99, 40.73], zoom:14}); true`); }
+  // Punkte (Stopps, Hotel, Fotos) und Beschriftungen als Symbole mit gezeichneten Bildern, nicht im SVG
+  const mk = await rp(`(function(){ var f = map.getSource("mk")._data.features; return {m:f.filter(function(x){ return x.properties.t==="m"; }).map(function(x){ return x.properties.i.split("|")[0]; }), img:f.every(function(x){ return map.hasImage(x.properties.i); }), svg:ov.querySelectorAll("image, clipPath, .mlab").length}; })()`);
+  ok(mk.m.filter(x => x==="stop").length===3 && mk.m.includes("hotel") && mk.img && mk.svg===0, "Punkte nicht als Kartensymbole: "+JSON.stringify(mk));
+  if(SHOTS){ await rp(`setSheet("peek"); map.jumpTo({center:[-73.992, 40.738], zoom:13.4}); layers.sub = true; applyLayers(); drawOverlay(); true`); await page.waitForTimeout(500); await shot("grafikkarte-wege");
+    await rp(`map.jumpTo({center:[-73.9973, 40.7300], zoom:15.6}); true`); await page.waitForTimeout(600); await shot("grafikkarte-nah");
+    await rp(`select(null); tab = "wish"; renderAll(); map.jumpTo({center:[-73.995, 40.74], zoom:13.2}); true`); await page.waitForTimeout(600); await shot("grafikkarte-wuensche");
+    await rp(`tab = "day"; renderAll(); map.jumpTo({center:[-73.99, 40.73], zoom:14}); true`); }
   await rp(`window.__sd = 0; var src = map.getSource("rt"), o = src.setData.bind(src); src.setData = function(d){ window.__sd++; return o(d); }; map.jumpTo({center:[-73.98, 40.735], zoom:14.6, bearing:20}); drawOverlay(); drawOverlay(); true`);
   ok(await rp(`window.__sd===0`), "Verschieben/Zoomen setzt die Wege neu");
   await rp(`layers.sub = false; applyLayers(); drawOverlay(); true`);
@@ -5591,8 +5597,10 @@ await test("Reise bearbeiten: Fußleiste Abbrechen/Speichern ohne deckenden Hint
 await test("Kartenpunkte bleiben beim Zoomen an ihrer Stelle, auch wenn sich die Kartenfläche ohne resize ändert", async () => {
   await seed(); await page.waitForTimeout(500);
   const off = () => rp(`(function(){ var out = 0; ["p1","p2","p3"].forEach(function(id){ var p = P(id), q = map.project([p.lo, p.la]), mr = mapEl.getBoundingClientRect(), best = 1e9, n = String(ord(cur).indexOf(id)+1);
-    document.querySelectorAll("#ov text").forEach(function(t){ if(t.textContent!==n) return; var r = t.getBoundingClientRect(); best = Math.min(best, Math.hypot(r.left + r.width/2 - mr.left - q.x, r.top + r.height/2 - mr.top - q.y)); });
-    if(q.x > 0 && q.x < mr.width && q.y > 0 && q.y < mr.height) out = Math.max(out, best); }); return Math.round(out); })()`);
+    // Punkte liegen auf der Grafikkarte (Symbol mit der Nummer genau dort); das SVG-Overlay (Wege-Plaketten u. a.) muss die Kartenfläche haben
+    map.queryRenderedFeatures([[q.x - 3, q.y - 3], [q.x + 3, q.y + 3]], {layers:["mk"]}).forEach(function(f){ if(f.properties.i.indexOf("stop|"+n+"|")===0) best = 0; });
+    if(q.x > 0 && q.x < mr.width && q.y > 0 && q.y < mr.height) out = Math.max(out, best); });
+    var vb = (ov.getAttribute("viewBox") || "").split(" ").map(Number); out = Math.max(out, Math.abs(vb[2] - mapEl.clientWidth), Math.abs(vb[3] - mapEl.clientHeight)); return Math.round(out); })()`);
   await rp(`map.jumpTo({center:[-73.99, 40.74], zoom:12.5})`); await page.waitForTimeout(500);
   ok(await off() < 6, "Ausgangslage: Punkte nicht an ihrer Stelle");
   // Kartenfläche ändert ihre Höhe (wie beim Ein-/Ausklappen der Safari-Leiste), ohne window-resize
