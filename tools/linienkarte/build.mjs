@@ -4,7 +4,7 @@
 // aus OSM ein Abschnitt pro Linie mit festem Platz (o) – alle Linien eines Wegs haben dieselbe Geometrie und Richtung.
 // Ablauf: Geofabrik-Auszug → osmium (Linien-Relationen, Wege mit Koordinaten, Bahnhöfe) → GeoJSON-Zeilen → tippecanoe → <land>.pmtiles
 // Aufruf: node build.mjs <land> [--out dir]   (Länder: siehe LAENDER)
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import readline from "node:readline";
 import fs from "node:fs";
 import path from "node:path";
@@ -148,6 +148,9 @@ async function land(id, L) {
     "-n", "Linienkarte " + L.n, "-A", "© OpenStreetMap-Mitwirkende", gj]);
   log("geschrieben", pm, (fs.statSync(pm).size / 1e6).toFixed(1) + " MB");
   if (!process.env.LKKEEP) [rf, rl, op, sf, so, gj].forEach((f) => fs.rmSync(f, { force: true }));
+  // Gebiet höchstens so groß wie der Auszug: lange Fähr-/Fernzug-Wege (Travemünde–Helsinki) zogen den Rahmen bis Finnland → App lud fremde Länder mit
+  try { const hb = /(-?[\d.]+),(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)/.exec(execFileSync("osmium", ["fileinfo", "-g", "header.boxes", src], { encoding: "utf8" }));
+    if (hb) { const h = hb.slice(1, 5).map(Number); bb[0] = Math.max(bb[0], h[0]); bb[1] = Math.max(bb[1], h[1]); bb[2] = Math.min(bb[2], h[2]); bb[3] = Math.min(bb[3], h[3]); log(id, "Rahmen", bb.join()); } } catch (e) { log(id, "kein Rahmen im Auszug", e.message); }
   return { id, n: L.n, b: fs.statSync(pm).size, bb: bb.map((x) => +x.toFixed(3)), at: new Date().toISOString().slice(0, 10) };
 }
 
