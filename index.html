@@ -4481,6 +4481,7 @@ var IC = {
   ext:"<path d=\"M11 4h5v5M16 4l-7 7M14 11v5H4V6h5\"/>", // In Google Maps / extern öffnen
   flag:"<path d=\"M5 17.5V3.5M5 4h9.5l-2 3.5 2 3.5H5\"/>", // Melden
   star:"<path d=\"M10 3.2l2 4.2 4.6.6-3.4 3.2.9 4.5L10 13.5l-4.1 2.2.9-4.5L3.4 8l4.6-.6z\"/>", // Bewerten
+  roam:"<path d=\"M10 2.5v15M2.5 10h15M7.8 4.7 10 2.5l2.2 2.2M7.8 15.3l2.2 2.2 2.2-2.2M4.7 7.8 2.5 10l2.2 2.2M15.3 7.8l2.2 2.2-2.2 2.2\"/>", // Stöbern: Karte frei, ohne Reise
   compass:"<circle cx=\"10\" cy=\"10\" r=\"7.5\"/><path d=\"m13 7-1.8 4.2L7 13l1.8-4.2z\"/>", // Entdecken, Inspiration
   mail:"<rect x=\"2.5\" y=\"4.5\" width=\"15\" height=\"11\" rx=\"2\"/><path d=\"M2.5 6l7.5 5 7.5-5\"/>", // Einladung
   sync:"<path d=\"M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2\"/>", // Abgleichen
@@ -6922,7 +6923,17 @@ function zTake(tid, it){
    Die aktive Reise (S.cur) bleibt dabei unverändert; wechselt sie (anderswo geöffnet), endet die Ziel-Ansicht. */
 var zSel = "", zSelCur = "", ZSMK = [];
 (function(){ var a = String(lsGet("rp-zsel")||"").split("|"); zSel = a[0] || ""; zSelCur = a[1] || ""; })();
-function zsOn(){ if(zSel && (!S || !Z(zSel) || zSelCur!==S.cur)){ zSel = ""; lsSet("rp-zsel", ""); } return zSel; }
+/* Stöbern: keine Reise gewählt, Karte frei verschiebbar (ÖPNV, Bezirke, Leihräder nach Kartenausschnitt). Läuft als Sonderfall der Ziel-Ansicht
+   (zSel = BRW): Reise-Inhalte ausgeblendet, destNow() liefert nichts → ctxSync() nimmt nur die Kartenmitte. */
+var BRW = "~brw";
+function brwOn(){ return zsOn()===BRW; }
+function brwView(){ var a = String(lsGet("rp-brwv")||"").split(",").map(Number); return a.length===3 && a.every(isFinite) ? {la:a[0], lo:a[1], z:a[2]} : null; }
+function brwHTML(){
+  return "<div class=\"zs-list brw\"><div class=\"zs-head\"><span class=\"ls-th ico zic\" style=\"--cc:#5b6b7a\">"+ic("roam")+"</span><span class=\"zs-t\"><b>Stöbern</b><small>Keine Reise gewählt</small></span>"+
+    "<button type=\"button\" class=\"x zx\" data-act=\"zsclose\" aria-label=\"Stöbern beenden\">×</button></div>"+
+    "<p class=\"note\">Verschiebe die Karte frei. ÖPNV, Bezirke und Leihräder schaltest du über die Kartenebenen ein – die Linien erscheinen, sobald du näher heranzoomst.</p></div>";
+}
+function zsOn(){ if(zSel && (!S || (zSel!==BRW && !Z(zSel)) || zSelCur!==S.cur)){ zSel = ""; lsSet("rp-zsel", ""); } return zSel; }
 function zsSet(zid){ zSel = zid || ""; zSelCur = S.cur; lsSet("rp-zsel", zSel ? zSel+"|"+S.cur : ""); sel = null; poiSel = null; }
 // Orte des Ziels: k "m" = gemerkt (pid im Ziel), k "v" = besucht auf einer Reise (tid/pid, zp = gemerkter Ort im Ziel)
 function zsItems(zid){
@@ -6975,10 +6986,12 @@ function ownerName(id){ var m = META[id], u = m && m.owner; if(!u) return "";
   if(!(u in OWNN) && typeof fbDb!=="undefined" && fbDb){ OWNN[u] = ""; fbDb.collection("profiles").doc(u).get().then(function(d){ var pv = d.exists && d.data(); if(pv && pv.name){ OWNN[u] = pv.name; renderTop(); } }, function(){}); }
   return ""; }
 function obsSub(id){ var o = ownerName(id); return "Beobachtet"+(o ? " · von "+o : ""); }
-function scopeCur(ctx){ if(ctx==="dc"){ var tg = dcTgt(); return tg ? tg.id : ""; } return zsOn() || S.cur; }
+function scopeCur(ctx){ if(ctx==="dc"){ var tg = dcTgt(); return tg ? tg.id : ""; } if(ctx==="ls" && brwOn()) return S.cur; return zsOn() || S.cur; }
 function scopeBtns(ctx){
   var nz = zielIds().length, np = scopePast(ctx).length, no = scopeObs(ctx).length, cur = scopeCur(ctx), b = function(k, ico, lbl, n, on){
     return "<button type=\"button\" class=\"sc-b"+(on ? " on" : "")+"\" data-act=\"scopepop\" data-k=\""+k+"\" data-ctx=\""+ctx+"\" aria-haspopup=\"dialog\"><span class=\"sc-i\">"+ico+"</span><span class=\"sc-l\">"+lbl+"</span><small>"+n+"</small></button>"; };
+  if(ctx==="map") return "<div class=\"sc-btns\">"+b("brw", ic("roam"), "Stöbern", "", cur===BRW).replace("data-act=\"scopepop\"", "data-act=\"brw\"").replace(" aria-haspopup=\"dialog\"", "")+
+    (nz ? b("z", ZBM, "Ziele", nz, false) : "")+(np ? b("past", ic("trip"), "Vergangene Reisen", np, false) : "")+(no ? b("obs", ic("eye"), "Beobachtete Reisen", no, false) : "")+"</div>";
   if(!nz && !np && !no) return "";
   return "<div class=\"sc-btns\">"+(nz ? b("z", ZBM, "Ziele", nz, ctx==="dc" && !!Z(cur)) : "")+(np ? b("past", ic("trip"), "Vergangene Reisen", np, ctx==="dc" && !!cur && scopePast(ctx).indexOf(cur) > -1) : "")+
     (no ? b("obs", ic("eye"), "Beobachtete Reisen", no, ctx==="dc" && !!cur && scopeObs(ctx).indexOf(cur) > -1) : "")+"</div>";
@@ -9274,7 +9287,7 @@ function lsTripDD(cur){ var t = cur && S.trips[cur], zz = t && t.ziel, sub = t ?
   return "<div class=\"ls-dds ls-tripdds\"><button type=\"button\" class=\"ls-dd ls-tripdd\" data-act=\"lstrippick\" aria-haspopup=\"menu\" aria-label=\"Reise wählen\">"+
     (t ? (zz ? "<span class=\"dc-tz\" style=\"--cc:"+tripColor(cur)+"\">"+ZBM+"</span>" : "<i class=\"dc-tdot\" style=\"--cc:"+tripColor(cur)+"\"></i>")+"<span class=\"ls-ddn\">"+esc(t.name||"Reise")+"</span>"+(sub ? "<small>"+esc(sub)+"</small>" : "") : "<span class=\"ls-ddn\">Reise wählen</span>")+CHEV+"</button></div>"; }
 function lsTripMenu(btn){ var ids = scopeNow("ls").filter(function(k){ return k!==scopeCur("ls"); }), zs = zsOn();
-  var h = (ids.length > 5 ? frPickHead("Reise", "Reise suchen", "Keine Reise gefunden") : "<div class=\"vp-h\">Reise</div>")+curTopHTML("ls")+finRow()+ids.map(function(id){ var t = S.trips[id], on = id===S.cur && !isViewerOf(S.cur) && !zs;
+  var h = (ids.length > 5 ? frPickHead("Reise", "Reise suchen", "Keine Reise gefunden") : "<div class=\"vp-h\">Reise</div>")+curTopHTML("ls")+finRow()+ids.map(function(id){ var t = S.trips[id], on = id===S.cur && !isViewerOf(S.cur) && (!zs || zs===BRW);
     return "<button type=\"button\" data-act=\"lstrip\" data-trip=\""+esc(id)+"\" data-frn=\""+esc(((t.name||"")+" "+(t.start||"").slice(0, 4)).toLowerCase())+"\" role=\"menuitemradio\" aria-checked=\""+on+"\"><span class=\"ai\"><i class=\"dc-tdot\" style=\"--cc:"+tripColor(id)+"\"></i></span><span>"+esc(t.name||"Reise")+(lsTripSub(t) ? "<small class=\"ls-tsub\">"+esc(lsTripSub(t))+"</small>" : "")+"</span>"+(on ? "<span class=\"ck\">✓</span>" : "")+"</button>"; }).join("")+scopeBtns("ls");
   jpPopover("lst", btn, h, "lstrip"); }
 function renderLs(){
@@ -9282,7 +9295,7 @@ function renderLs(){
   var t = T(), ds = days(), ids = liveIds().filter(function(id){ return !isViewerOf(id); }); // nur eigene Reisen, keine beobachteten
   var h = "<div class=\"pf ls-page\"><div class=\"ls-head\">";
   if(!ids.length){ el.innerHTML = h+"</div><p class=\"note nt-empty\">Die Liste gibt es für deine eigenen Reisen. Du hast noch keine.</p></div>"; return; }
-  if(zsOn()){ h += lsTripDD(zSel); el.innerHTML = h+"</div>"+zsListHTML(zSel, "ls")+"</div>"; return; }
+  if(zsOn() && !brwOn()){ h += lsTripDD(zSel); el.innerHTML = h+"</div>"+zsListHTML(zSel, "ls")+"</div>"; return; }
   if(isViewerOf(S.cur)){
     h += lsTripDD(null);
     el.innerHTML = h+"</div><p class=\"note nt-empty\">Die Liste gibt es nur für deine eigenen Reisen. Wähle oben eine aus.</p></div>"; return;
@@ -10439,13 +10452,15 @@ function v3dToggle(){
 }
 function initMap(){
   var c0 = null; try { c0 = destNow(); } catch(e){} // gleich bei der Reise starten: sonst kurz New-York-Daten (Citi Bike, Bezirke)
-  map = new maplibregl.Map({container:"gl", style:STYLE_URL, center:c0 ? [c0.lo, c0.la] : [NYC.lo, NYC.la], zoom:12, attributionControl:false, pitchWithRotate:false, touchPitch:false, dragRotate:true, maxPitch:0, fadeDuration:0});
+  var bv = brwOn() && brwView(); // Stöbern: dort weiter, wo man zuletzt war
+  map = new maplibregl.Map({container:"gl", style:STYLE_URL, center:bv ? [bv.lo, bv.la] : c0 ? [c0.lo, c0.la] : [NYC.lo, NYC.la], zoom:bv ? bv.z : 12, attributionControl:false, pitchWithRotate:false, touchPitch:false, dragRotate:true, maxPitch:0, fadeDuration:0});
   map.touchZoomRotate.enableRotation();
   if(b3dOn){ map.setMaxPitch(60); map.touchPitch.enable(); }
   map.on("style.load", addLayers);
   map.on("move", onMove);
   map.on("idle", ferryRetry); map.on("idle", warmSoon);
   map.on("moveend", v3dMoveEnd);
+  map.on("moveend", function(){ if(brwOn()){ var c = map.getCenter(); lsSet("rp-brwv", [c.lat.toFixed(5), c.lng.toFixed(5), map.getZoom().toFixed(2)].join(",")); } });
   // ÖPNV nach Kartenausschnitt: nach kurzer Ruhe die sichtbaren Kacheln laden
   map.on("moveend", function(){ clearTimeout(VT.tm); VT.tm = setTimeout(vtView, VTWAIT); });
   ["touchstart","touchend","touchcancel"].forEach(function(ev){ $("gl").addEventListener(ev, function(e){ v3dFingers = e.touches ? e.touches.length : 0; if(!v3dFingers && ev!=="touchstart") v3dMoveEnd(); }, {passive:true, capture:true}); });
@@ -13206,7 +13221,7 @@ function drawOverlay(){
   var sugIds = {}, wishMarks = [], wlabels = "", MK = []; cpN = 0; WISHN = 0; LBLQ = []; MKF = [];
   // Ziel-Ansicht: nur die Orte des Ziels (gemerkt: weiß mit Symbol, besucht: grau mit Haken), keine Reise-Inhalte
   var zs = zsOn(); ZSMK = [];
-  if(zs) zsItems(zs).forEach(function(x, i){
+  if(zs && Z(zs)) zsItems(zs).forEach(function(x, i){
     if(!hasLoc(x.p)) return; var cc = catCol(x.p.c);
     mkPt(x.p, x.k==="m" ? mkiPin(CATNAME[x.p.c] ? x.p.c : "sight", cc, 11.5, 2.2, cc, 1) : mkiSeen(), 1);
     if(zoomed) mkLbl(x.p, x.p.n, 16, false, x.k==="m" ? 2 : 1);
@@ -15864,7 +15879,7 @@ function cbCard(id){
 var CHEV = "<svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 6l4 4 4-4\"/></svg>";
 function renderTop(){
   var t = T(), zs = zsOn(), zt = zs && Z(zs);
-  $("tripBtn").innerHTML = zt ? "<b>"+esc(zt.name)+"</b><span>Ziel</span>"+CHEV : (isViewerOf(S.cur) ? "<i class=\"tb-obs\" title=\"Beobachtete Reise\" aria-label=\"Beobachtet\">"+ic("eye")+"</i>" : "")+"<b>"+esc(t.name)+"</b><span>"+esc(t.opt ? "Option" : rangeLabel(t.start,t.end))+"</span>"+CHEV; tripFit(); requestAnimationFrame(tripFit);
+  $("tripBtn").innerHTML = zs===BRW ? "<b>Stöbern</b><span>Keine Reise</span>"+CHEV : zt ? "<b>"+esc(zt.name)+"</b><span>Ziel</span>"+CHEV : (isViewerOf(S.cur) ? "<i class=\"tb-obs\" title=\"Beobachtete Reise\" aria-label=\"Beobachtet\">"+ic("eye")+"</i>" : "")+"<b>"+esc(t.name)+"</b><span>"+esc(t.opt ? "Option" : rangeLabel(t.start,t.end))+"</span>"+CHEV; tripFit(); requestAnimationFrame(tripFit);
   var h = curTopHTML("map")+finRow()+(scopeNow("map").some(function(k){ return k!==scopeCur("map"); }) ? "<hr>" : "");
   // laufende und kommende Reisen direkt, abgeschlossene und Ziele über die Knöpfe darunter
   scopeNow("map").filter(function(k){ return k!==scopeCur("map"); }).map(function(k){ return S.trips[k]; }).forEach(function(x){
@@ -17426,7 +17441,7 @@ function renderSheet(){
   if(ae && (body.contains(ae) || tp.contains(ae)) && ae.id && /INPUT|TEXTAREA/.test(ae.tagName)){ fk = {id:ae.id, v:ae.value, a:ae.selectionStart, b:ae.selectionEnd}; }
   applyRO();
   var zsv = zsOn(); document.body.classList.toggle("zsel", !!zsv);
-  body.innerHTML = zsv ? zsListHTML(zsv, "map") : noTrip() ? noTripHTML() : sheetTab==="wish" ? renderWish() : sheetTab==="stay" ? renderStay() : renderDay();
+  body.innerHTML = zsv===BRW ? brwHTML() : zsv ? zsListHTML(zsv, "map") : noTrip() ? noTripHTML() : sheetTab==="wish" ? renderWish() : sheetTab==="stay" ? renderStay() : renderDay();
   body.scrollTop = st;
   fillPhotos(body);
   // Reise-Ansicht als eigenes Fenster
@@ -18006,7 +18021,8 @@ document.addEventListener("click", function(e){
     case "scopepop": scopePop(t.getAttribute("data-k"), t.getAttribute("data-ctx")); break;
     case "scopeset": scopeSet(t.getAttribute("data-ctx"), t.getAttribute("data-v")); if(lsPage) renderLs(); break;
     case "zsgo": var zsg = zsOn(), zgi = zsg && zsItems(zsg)[+t.getAttribute("data-i")]; if(zgi) zsShow(zsg, zgi); break;
-    case "zsclose": zsSet(""); renderAll(); fitDay(); break;
+    case "zsclose": zsSet(""); renderAll(); fitDay(); destSync(); break;
+    case "brw": closeCatPop(); closeJpMore(); zsSet(BRW); closeMenus(); renderAll(); destSync(); break; // Karte bleibt, wo sie ist
     case "zsplan": var zpl = t.getAttribute("data-ctx")==="ls"; closeLsPage(); zPlanTrip(t.getAttribute("data-z")); if(tdraft) tdraft.back = zpl ? "ls" : ""; break;
     case "lstrip": closeJpMore(); var lst = t.getAttribute("data-trip"); if(zsOn() && S.trips[lst]){ scopeSet("ls", lst); renderLs(); break; } if(S.trips[lst] && lst!==S.cur){ grpSel = ""; S.cur = lst; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); } renderLs(); break;
     case "lstab": lsTab = t.getAttribute("data-v"); renderLs(); break;

@@ -2028,6 +2028,45 @@ await test("Ziel Paris bei abgeschlossener Reise (Ansicht): ÖPNV-Filter wählba
   await rp(`zsSet(""); delete T().fin; renderAll(); true`);
 });
 
+await test("Stöbern: keine Reise, Karte frei, ÖPNV nach Ausschnitt beim Hineinzoomen, Rückweg zur Reise", async () => {
+  const pk = {v:1, id:"paris", part:"rail", n:"Paris", src:"Île-de-France Mobilités", lic:"ODbL", L:[["metro", "1", "", "#FFBE00", "#000000"], ["sbahn", "A", "", "#EB2132", "#FFFFFF"]], H:["La Défense", "Boissy"],
+    S:[["Étoile", 4887380, 229500], ["Châtelet", 4885850, 234700]], E:[0,1,0,0,600,7, 1,0,0,1,600,7, 0,1,1,0,300,7], W:[[120,150,180],[150,200,300]], G:[["gthiHwf_Mr~A_dI"], ["gthiHwf_Mr~A_dI"]], D:[[0, "metro", "sbahn"], [1, "metro", "sbahn"]]};
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => rt.request().url().endsWith("/paris.json")
+    ? rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(pk) })
+    : rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }));
+  await page.route(/overpass-api\.de|overpass\.kumi/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
+  await seed();
+  await rp(`DL = {}; CP = {}; lsSet("rp-brwv", ""); true`);
+  const tname = await rp(`T().name`);
+  ok(await rp(`drawOverlay(); MKF.length > 0`), "Reise hat keine Kartenpunkte (Testvoraussetzung)");
+  await click("#tripBtn"); await shot("stoebern-auswahl");
+  await page.locator("#tripMenu [data-act=brw]").click({timeout:4000});
+  ok(await rp(`brwOn() && $("tripMenu").hidden`), "Stöbern nicht eingeschaltet");
+  ok((await page.locator("#tripBtn").innerText()).includes("Stöbern"), "Kopf zeigt nicht „Stöbern“");
+  ok(await page.locator("#body .brw").count() === 1, "Blatt zeigt keinen Stöbern-Hinweis");
+  ok(await rp(`!trRO() && destNow()===null && !allOn()`), "Stöbern hängt noch an der Reise");
+  // Reise-Inhalte weg: keine Orte, Hotels, Wünsche auf der Karte
+  await rp(`drawOverlay(); true`);
+  ok(await rp(`MKF.length===0`), "Reise-Punkte beim Stöbern sichtbar: "+await rp(`MKF.length`));
+  // weit draußen: kein Ziel; Paris nah: Stadtpaket, Metro einschaltbar
+  await jump(2.35, 48.86, 4); await page.waitForTimeout(300);
+  ok(await rp(`!DEST`), "Weit herausgezoomt trotzdem ein Ziel: "+await rp(`JSON.stringify(DEST)`));
+  await jump(2.35, 48.86, 12);
+  await page.waitForFunction(() => window.__rp("!!cpView() && cpView().id==='paris' && !!VV.tr"), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`!!DEST && !!cpView() && cpView().id==="paris"`), "Paris beim Hineinzoomen nicht erkannt: "+await rp(`JSON.stringify({d:DEST && DEST.k, cp:VT.cp})`));
+  await click("#layersBtn"); await click("#lTrBtn");
+  await page.locator("#ld-metro").click({timeout:4000});
+  ok(await rp(`DL.metro && map.getLayoutProperty("dtr","visibility")==="visible"`), "Metro beim Stöbern nicht einschaltbar");
+  await click("#layersBtn"); await shot("stoebern-karte");
+  // Ausschnitt gemerkt; Reisewechsel in der Liste hält Stöbern nicht fest
+  await page.waitForFunction(() => window.__rp("!!brwView() && Math.abs(brwView().la - 48.86) < 0.05"), null, {timeout:3000}).catch(() => {});
+  ok(await rp(`!!brwView() && Math.abs(brwView().lo - 2.35) < 0.05`), "Stöbern-Ausschnitt nicht gemerkt: "+await rp(`lsGet("rp-brwv")`));
+  // × beendet Stöbern: zurück zur Reise
+  await page.locator("#body .brw [data-act=zsclose]").click();
+  ok(await rp(`!brwOn() && !zsOn()`), "× beendet Stöbern nicht");
+  ok((await page.locator("#tripBtn").innerText()).includes(tname), "Kopf zeigt nicht wieder die Reise");
+});
+
 await test("Kartenort: Bezirke und Leihräder folgen der Karte, Reise gilt in ihrem Gebiet, eine Quelle zur Zeit", async () => {
   await page.route(/overpass-api\.de|overpass\.kumi/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
   await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }));
