@@ -35,18 +35,18 @@ const CITIES = {
   wien: { n: "Wien", src: "Wiener Linien · ÖBB", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Vienna", need: ["metro", "tram"],
     feeds: [{ u: ["http://www.wienerlinien.at/ogd_realtime/doku/ogd/gtfs/gtfs.zip", MDB("at-wien-wiener-lokalbahnen-wlb-gtfs-648")] }, { u: [MDB("at-unknown-obb-gtfs-2138")], opt: true }],
     bb: [16.18, 48.11, 16.58, 48.33], ext: [15.95, 47.95, 16.85, 48.45], bus: [16.20, 48.12, 16.56, 48.32], pbf: ["G/austria-latest.osm.pbf"] },
-  muenchen: { n: "München", src: "MVV", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Berlin", need: ["metro", "sbahn"],
-    feeds: [{ u: ["https://www.mvv-muenchen.de/fileadmin/mediapool/02-Fahrplanauskunft/03-Downloads/openData/mvv_gtfs.zip", MDB("de-bayern-munchner-verkehrs-und-tarifverbund-mvv-gtfs-779")] }],
+  muenchen: { n: "München", src: "DELFI über gtfs.de", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Berlin", need: ["metro", "sbahn"],
+    feeds: [{ u: ["https://download.gtfs.de/germany/nv_free/latest.zip", MDB("de-unknown-wurzburger-verkehrsverbund-gtfs-1090")] }, { u: ["https://download.gtfs.de/germany/rv_free/latest.zip"], opt: false }],
     bb: [11.36, 48.06, 11.72, 48.25], ext: [11.0, 47.85, 12.05, 48.45], bus: [11.40, 48.07, 11.70, 48.23], pbf: ["G/germany/bayern/oberbayern-latest.osm.pbf"] },
-  hamburg: { n: "Hamburg", src: "HVV", lic: "dl-de/by-2-0", type: "gtfs", tz: "Europe/Berlin", need: ["metro", "sbahn"],
-    feeds: [{ u: [MDB("de-hamburg-hamburger-verkehrsverbund-gmbh-hvv-gtfs-3362")] }],
+  hamburg: { n: "Hamburg", src: "DELFI über gtfs.de", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Berlin", need: ["metro", "sbahn"],
+    feeds: [{ u: ["https://download.gtfs.de/germany/nv_free/latest.zip", MDB("de-unknown-wurzburger-verkehrsverbund-gtfs-1090")] }, { u: ["https://download.gtfs.de/germany/rv_free/latest.zip"], opt: false }],
     bb: [9.73, 53.39, 10.33, 53.74], ext: [9.4, 53.2, 10.6, 53.9], bus: [9.80, 53.45, 10.20, 53.70],
     pbf: ["G/germany/hamburg-latest.osm.pbf", "G/germany/schleswig-holstein-latest.osm.pbf", "G/germany/niedersachsen-latest.osm.pbf"] },
   rom: { n: "Rom", src: "Roma Servizi per la Mobilità", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Rome", need: ["metro"],
     feeds: [{ u: ["https://romamobilita.it/sites/default/files/rome_static_gtfs.zip", MDB("it-lazio-roma-servizi-per-la-mobilita-gtfs-1294")] }],
     bb: [12.35, 41.79, 12.62, 41.99], ext: [12.10, 41.60, 12.90, 42.15], bus: [12.38, 41.80, 12.60, 41.98], pbf: ["G/italy/centro-latest.osm.pbf"] },
   madrid: { n: "Madrid", src: "CRTM · EMT Madrid", lic: "CRTM-Nutzungsbedingungen", type: "gtfs", tz: "Europe/Madrid", need: ["metro"],
-    feeds: [{ u: ["https://crtm.maps.arcgis.com/sharing/rest/content/items/5c7f2951962540d69ffe8f640d94c246/data", MDB("es-madrid-metro-de-madrid-gtfs-794")] }, { u: ["https://www.arcgis.com/sharing/rest/content/items/1a25440bf66f499bae2657ec7fb40144/data", "https://www.arcgis.com/sharing/rest/content/items/868df0e58fca47e79b942902dffd7da0/data", MDB("es-madrid-cercanias-madrid-gtfs-993")], opt: true },
+    feeds: [{ u: ["https://crtm.maps.arcgis.com/sharing/rest/content/items/5c7f2951962540d69ffe8f640d94c246/data", MDB("es-madrid-metro-de-madrid-gtfs-794")], m: "metro" }, { u: ["https://www.arcgis.com/sharing/rest/content/items/1a25440bf66f499bae2657ec7fb40144/data", "https://www.arcgis.com/sharing/rest/content/items/868df0e58fca47e79b942902dffd7da0/data", MDB("es-madrid-cercanias-madrid-gtfs-993")], opt: true },
       { u: ["https://www.arcgis.com/sharing/rest/content/items/aaed26cc0ff64b0c947ac0bc3e033196/data", MDB("es-madrid-crtm-light-rail-gtfs-2802")], opt: true }, { u: ["https://www.arcgis.com/sharing/rest/content/items/357e63c2904f43aeb5d8a267a64346d8/data", MDB("es-madrid-crtm-city-bus-gtfs-2820"), MDB("es-madrid-empresa-municipal-de-transportes-de-madrid-emt-madrid-gtfs-793")], opt: true }],
     bb: [-3.83, 40.31, -3.52, 40.56], ext: [-4.10, 40.10, -3.20, 40.75], bus: [-3.80, 40.33, -3.55, 40.53], pbf: ["G/spain/madrid-latest.osm.pbf"] },
   barcelona: { n: "Barcelona", src: "TMB · FGC · TRAM · Renfe", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Madrid", need: ["metro"],
@@ -232,7 +232,9 @@ async function buildGtfs(id, C, zip, opt) {
   const R = new Map();
   await eachRow(zip, "routes.txt", (f, H) => {
     const k0 = (f[H.route_short_name] || "").trim(), ln = (f[H.route_long_name] || "").trim(), k = (k0 || ln).slice(0, 40);
-    const m = modeOf(f[H.route_type], k, ln, f[H.agency_id] || "", id);
+    let m = modeOf(f[H.route_type], k, ln, f[H.agency_id] || "", id);
+    // Quelle mit festem Verkehrsmittel (Metro Madrid meldet ihre Linien als Zug)
+    if (C.feeds && m && m !== "bus") { const fi = +String(f[H.route_id]).split("~")[0], fm = C.feeds[fi] && C.feeds[fi].m; if (fm) m = fm; }
     if (!m || !k || (onlyBus && m !== "bus")) return;
     R.set(f[H.route_id], { m, k, n: ln && ln !== k ? ln.slice(0, 80) : "", c: okCol(f[H.route_color]), tc: okCol(f[H.route_text_color]) });
   });
