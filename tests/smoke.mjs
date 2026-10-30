@@ -1521,7 +1521,7 @@ await test("Linienkarte: Linien aus OpenStreetMap (PMTiles) auf echten Gleisen, 
   ok(LKQ.some(u => u.endsWith("de.pmtiles")), "PMTiles-Datei nicht gelesen");
   // gleiche Farbe = ein Strich (Nachtlinie N4 ohne Farbe übernimmt die der 4), Beschriftung mit allen Nummern; Ecken gerundet (Bogenpunkte statt einer Ecke)
   const mg = await rp(`JSON.stringify(map.queryRenderedFeatures({layers:["lk-de-ln"]}).filter(function(x){ return x.properties.m==="tram"; }).map(function(x){ return x.properties.k+"|"+x.properties.ks+"|"+x.properties.o; }))`);
-  ok(mg.includes("4|4 · N4|-0.5") && !mg.includes("N4|N4") && await rp(`!map.getLayer("lk-de-lbl") || JSON.stringify(map.getLayoutProperty("lk-de-lbl","text-field")).indexOf("ks") > -1`), "Linien gleicher Farbe nicht zusammengelegt: "+mg);
+  ok(mg.includes("4|4 · N4|-0.5") && !mg.includes("N4|N4") && await rp(`JSON.stringify(map.getLayoutProperty("lk-de-lbl","icon-image")).indexOf("ks") > -1`), "Linien gleicher Farbe nicht zusammengelegt: "+mg);
   // Paket-Verläufe (Busse) werden in der App gerundet: rechter Winkel → Bogen, gerade Strecke bleibt
   ok(await rp(`var r = lnRund([[8.80,53.07],[8.81,53.07],[8.81,53.08]]), q = lnRund([[8.80,53.07],[8.81,53.07],[8.82,53.07]]); r.length===7 && r.every(function(x){ return !(x[0]===8.81 && x[1]===53.07); }) && q.length===3`), "Ecken der Paket-Linien nicht gerundet");
   // auch in Städten mit Stadtpaket zeichnet die Linienkarte (Paket-Linien aus), ohne Netz wieder das Paket
@@ -1633,9 +1633,11 @@ await test("ÖPNV-Linien nebeneinander statt übereinander, dünn, Haltestellen 
     JSON.stringify(sl)`);
   const sl = JSON.parse(r);
   ok(new Set(["sbahn:S5","sbahn:S7","sbahn:S75","reg:RE1","long:ICE"].map(k => sl[k])).size===5 && sl["tram:M4"]===0, "Bahnlinien bekommen keine eigenen Plätze: "+r);
-  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["dtr"]}).length >= 6 && map.queryRenderedFeatures({layers:["dst"]}).length===1`), null, {timeout:8000}).catch(() => {});
+  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["dtr"]}).length >= 6 && map.queryRenderedFeatures({layers:["dst","dst-ic"]}).length===1`), null, {timeout:8000}).catch(() => {});
   await shot("linien-nebeneinander");
-  ok(await rp(`map.queryRenderedFeatures({layers:["dtr"]}).length >= 6 && map.queryRenderedFeatures({layers:["dst"]}).length===1`), "Linien oder Haltestelle nicht gezeichnet: "+await rp(`JSON.stringify([map.getLayoutProperty("dtr","visibility"), map.queryRenderedFeatures({layers:["dtr"]}).length, map.queryRenderedFeatures({layers:["dst"]}).length])`));
+  ok(await rp(`map.queryRenderedFeatures({layers:["dtr"]}).length >= 6 && map.queryRenderedFeatures({layers:["dst","dst-ic"]}).length===1`), "Linien oder Haltestelle nicht gezeichnet: "+await rp(`JSON.stringify([map.getLayoutProperty("dtr","visibility"), map.queryRenderedFeatures({layers:["dtr"]}).length, map.queryRenderedFeatures({layers:["dst","dst-ic"]}).length])`));
+  // Design wie Apple Karten: ab Zoom 14 Stationssymbol statt Punkt, Name fett mit Linien-Plaketten (Bild in Systemschrift), Plaketten an den Linien
+  ok(await rp(`map.queryRenderedFeatures({layers:["dst-ic"]}).length===1 && tpImg("tb|S5,#e87a1c;RE1,#c01a1a") && map.hasImage("tb|S5,#e87a1c;RE1,#c01a1a") && tpImg("tn|Alexanderplatz|S5,#e87a1c|l") && map.hasImage("ts|train") && JSON.stringify(map.getLayoutProperty("dtr-lbl","icon-image")).indexOf("tl|") > -1 && tpInk("#F5D000")!=="#fff" && tpInk("#C8102E")==="#fff"`), "Stationssymbol, Namens-/Linien-Plaketten fehlen");
   ok(await rp(`map.getLayer("dst").minzoom===11 && JSON.stringify(map.getPaintProperty("dtr","line-offset")).indexOf("\\"o\\"") > -1`), "Versatz oder frühe Haltestellen fehlen");
   await rp(`map.getSource("dtr").setData({type:"FeatureCollection", features:[]}); map.getSource("dst").setData({type:"FeatureCollection", features:[]}); DL = {}; dApplyMap(); true`);
   // New York (eingebaute MTA-Daten): Linien gleicher Stammstrecke nebeneinander

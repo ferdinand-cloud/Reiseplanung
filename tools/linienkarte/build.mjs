@@ -124,6 +124,7 @@ async function land(id, L) {
   log(id, "Linien", lines.length, "Wege mit Linien", byWay.size);
   // Nacht-/Verstärkerlinien ohne eigene Farbe (N4, 4S, 6E) bekommen die Farbe ihrer Grundlinie – sie werden dann mit ihr zu einem Strich (wie Apple Karten)
   const byK = new Map(); lines.forEach((l) => { if (l.c) byK.set(l.m + ":" + l.k, l.c); });
+  lines.forEach((l) => { if (l.m === "long") l.c = ""; }); // Fernverkehr einheitlich (OSM-Farben je IC/ICE sind zufällig) → ein Strich je Gleis statt bunter Bündel
   lines.forEach((l) => { if (l.c || l.m === "long" || l.m === "reg") return; const b = l.k.replace(/^N(?=\d)/, "").replace(/(?<=\d)[A-Z]$/, ""); if (b !== l.k && byK.has(l.m + ":" + b)) l.c = byK.get(l.m + ":" + b); });
   // feste Reihenfolge aller Linien (Art, dann Nummer): auf jedem Weg liegen Linien so in derselben Reihenfolge nebeneinander
   const order = lines.map((_, i) => i).sort((a, b) => RANK[lines[a].m] - RANK[lines[b].m] || natCmp(lines[a].k, lines[b].k)), pos = new Int32Array(lines.length);
