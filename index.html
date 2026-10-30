@@ -14024,6 +14024,7 @@ function tap(x, y){
   if(!best && wishOn() && !isRO() && !zsm) mapWishes().forEach(function(w){ test(w.id, w, 16); });
   if(!best) PHMK.forEach(function(pid){ test(pid, P(pid), 14); });
   if(!best && layers.sub && !trRO()){ var sb = -1, sd = 16; TRANSIT.stations.forEach(function(st, si){ if(!stationOn(st)) return; var q = toS(st[1], st[2]), d = Math.hypot(q[0]-x, q[1]-y); if(d < sd){ sd = d; sb = si; } }); if(sb > -1){ select("sub:"+sb); return; } }
+  if(!best && !trRO()){ var dh = dstAt(x, y); if(dh){ RTST = dh; select("rtst"); return; } }
   if(!best && layers.bike && map.getLayer("cb")){ var cbf = map.queryRenderedFeatures([[x-12, y-12], [x+12, y+12]], {layers:["cb"]})[0]; if(cbf){ select("cb:"+cbf.properties.id); cbLoad(); return; } }
   if(!best){ var pq = poiAt(x, y); if(pq){ poiSel = pq; sel = null; select("poi"); poiSel = pq; renderCard(); scheduleOverlay(); return; } }
   if(!best && (layers.nb || nbActive().length)){ var a = toW(x, y), n = nbAt(a[0], a[1]); if(n) best = "nb:"+n; }
@@ -14997,12 +14998,25 @@ function cbLoad(force){
   var sys = CB.sys, fails = 0, last = null;
   pInfo.then(function(info){
     if(info) cbInfoSet(info.s, info.at);
-    return Promise.all(sys.map(function(sy, i){ return cbJSON(sy.stat).then(function(j){ cbStat(j, DEST ? i+"~" : ""); }, function(e){ fails++; last = e; }); }));
-  }).then(function(){
-    if(fails && fails===sys.length) throw last || new Error("");
+    var jobs = [];
+    sys.forEach(function(sy, i){
+      if(sy.stat) jobs.push(cbJSON(sy.stat).then(function(j){ cbStat(j, DEST ? i+"~" : ""); }, function(e){ fails++; last = e; }));
+      if(sy.ff) jobs.push(cbJSON(sy.ff).then(function(j){ cbFree(j, i); }, function(e){ fails++; last = e; }));
+    });
+    return Promise.all(jobs).then(function(){ return jobs.length; });
+  }).then(function(n){
+    if(fails && fails===n) throw last || new Error("");
     CB.statAt = Date.now(); CB.err = ""; CB.errAt = 0;
   }).catch(function(e){ CB.errAt = Date.now(); CB.err = cbName()+"-Daten gerade nicht erreichbar"+(e && e.message ? " ("+e.message+")" : ""); })
   .then(function(){ CB.busy = false; cbApply(); });
+}
+/* frei stehende Räder eines Systems ersetzen: je Rad ein Punkt (b/e = 1), ohne Rückgabeplätze */
+function cbFree(j, i){
+  var sy = CB.sys[i]; if(!sy) return; var et = {}; (sy.et||[]).forEach(function(x){ et[x] = 1; });
+  var add = cbFreeOf(j, sy, DEST).map(function(v){ var e = !!et[String(v.vehicle_type_id)];
+    return {id:i+"~f"+String(v.bike_id || v.vehicle_id), n:sy.n+" "+(e ? "E-Bike" : "Fahrrad"), la:+(+v.lat).toFixed(6), lo:+(+v.lon).toFixed(6), cap:0, sy:i, b:e ? 0 : 1, e:e ? 1 : 0, d:-1, ok:true, known:true, ff:true, rng:v.current_range_meters || 0}; });
+  CB.st = CB.st.filter(function(s){ return !(s.ff && s.sy===i); }).concat(add);
+  CB.byId = {}; CB.st.forEach(function(s){ CB.byId[s.id] = s; });
 }
 /* Verfügbarkeit (GBFS 1.x–3.x): Räder, davon E-Bikes, freie Plätze (d = -1: Station ohne Angabe, z. B. ohne Andockplätze) */
 function cbStat(j, pre){
@@ -15017,7 +15031,8 @@ function cbStat(j, pre){
    geprüft (hat Stationen? fährt Fahrräder? Stationen rund ums Ziel?). Ergebnis je Ziel eine Woche gemerkt; findet sich
    nichts oder lässt der Anbieter keine Abfrage aus dem Browser zu (CORS), bleiben die Stationen aus OpenStreetMap ohne Live-Stand. */
 var GBFS_CAT = "https://raw.githubusercontent.com/MobilityData/gbfs/master/systems.csv";
-var GBFS_NO = /\b(bird|dott|lime|voi|tier|bolt|getaround|cooltra|felyx|yego|zipcar|spin|hopp|check|miles|share ?now|cityscoot|gocar|communauto|cambio|stadtmobil|flinkster|free2move|zity|evo|modo|scooter|moped|car ?shar\w*)\b/i;
+// nur Carsharing und Mopeds vorab aussortieren; ob ein Anbieter (Dott, Lime, Bolt …) Fahrräder hat, entscheiden seine Fahrzeugtypen
+var GBFS_NO = /\b(getaround|cooltra|felyx|yego|zipcar|miles|share ?now|cityscoot|gocar|communauto|cambio|stadtmobil|flinkster|free2move|zity|evo|modo|moped|car ?shar\w*|e-?carsharing)\b/i;
 function csvRows(t){
   var rows = [], row = [], f = "", q = false;
   for(var i = 0; i < t.length; i++){ var c = t.charAt(i);
@@ -15046,11 +15061,12 @@ function gNorm(x){ return String(x||"").normalize("NFD").replace(/[̀-ͯ]/g, "")
 function gbfsPlace(d){
   var get = function(l){ return fetch("https://photon.komoot.io/reverse?lat="+d.la+"&lon="+d.lo+"&limit=1"+(l ? "&lang="+l : "")).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ return (j && j.features && j.features[0] && j.features[0].properties) || null; }).catch(function(){ return null; }); };
   return Promise.all([get("en"), get("default")]).then(function(ps){
-    var n = [d.n], cc = "";
-    ps.forEach(function(p){ if(!p) return; n.push(p.city, p.osm_key==="place" ? p.name : ""); cc = cc || String(p.countrycode||"").toUpperCase(); });
+    var n = [d.n], cc = "", ln = {};
+    ps.forEach(function(p){ if(!p) return; n.push(p.city, p.osm_key==="place" ? p.name : ""); cc = cc || String(p.countrycode||"").toUpperCase(); if(p.country) ln[gNorm(p.country)] = 1; });
     if(DEST===d && d.nb && d.nb.city) n.push(d.nb.city);
     var u = {}; n.map(gNorm).forEach(function(x){ if(x.length > 1) u[x] = 1; });
-    return {n:Object.keys(u), cc:cc};
+    if(cc) ln[gNorm(cc)] = 1;
+    return {n:Object.keys(u), cc:cc, land:ln};
   });
 }
 function gTxt(v){ if(Array.isArray(v)){ var h = v.filter(function(x){ return x && /^de/i.test(x.language||""); })[0] || v.filter(function(x){ return x && /^en/i.test(x.language||""); })[0] || v[0]; return h ? h.text : ""; } return v; }
@@ -15059,26 +15075,41 @@ function gbfsProbe(row, d, i){
   return cbJSON(row[3]).then(function(j){
     var dd = (j && j.data) || {}, lg = dd.feeds ? null : dd.de || dd.en || dd[Object.keys(dd)[0]] || {}, u = {};
     ((lg ? lg.feeds : dd.feeds) || []).forEach(function(f){ if(f && f.name && f.url) u[f.name] = f.url; });
-    if(!u.station_information || !u.station_status) return null;
+    var ff = u.free_bike_status || u.vehicle_status || "", hasSt = !!(u.station_information && u.station_status);
+    if(!hasSt && !(ff && u.vehicle_types)) return null; // frei stehende Fahrzeuge nur mit Fahrzeugtypen (sonst wären es auch Roller)
     var pv = u.vehicle_types ? cbJSON(u.vehicle_types).then(function(v){ return (v && v.data && v.data.vehicle_types) || null; }, function(){ return null; }) : Promise.resolve(null);
-    return Promise.all([cbJSON(u.station_information), pv]).then(function(r){
+    return Promise.all([hasSt ? cbJSON(u.station_information) : null, pv]).then(function(r){
       var vt = r[1]; if(vt && vt.length && !vt.some(function(v){ return /bicycle/.test(v.form_factor||""); })) return null;
+      var bt = (vt||[]).filter(function(v){ return /bicycle/.test(v.form_factor||""); }), et = bt.filter(function(v){ return v.propulsion_type && v.propulsion_type!=="human"; });
       var s = ((r[0] && r[0].data && r[0].data.stations) || []).filter(function(x){ return x && x.lat && x.lon && dist({la:+x.lat, lo:+x.lon}, d) < d.r + 4000; })
         .map(function(x){ return [i+"~"+String(x.station_id), String(gTxt(x.name)||"Station").slice(0, 60), +(+x.lat).toFixed(6), +(+x.lon).toFixed(6), x.capacity||0]; });
-      return s.length >= 3 ? {sys:{n:row[1].replace(/\s+(Bike ?Share|Bikeshare)$/i, "") || "Leihrad", by:row[1], web:row[4], stat:u.station_status}, s:s} : null;
+      var sys = {n:row[1].replace(/\s+(Bike ?Share|Bikeshare)$/i, "").replace(/\s+(Berlin|Germany|Deutschland)$/i, "") || "Leihrad", by:row[1], web:row[4], stat:s.length >= 3 ? u.station_status : "",
+        ff:ff && bt.length ? ff : "", bt:bt.map(function(v){ return String(v.vehicle_type_id); }), et:et.map(function(v){ return String(v.vehicle_type_id); })};
+      if(!sys.ff) return s.length >= 3 ? {sys:sys, s:s} : null;
+      // frei stehende Räder: gibt es rund ums Ziel welche?
+      return cbJSON(sys.ff).then(function(fj){ var n = cbFreeOf(fj, sys, d).length; if(n < 3) sys.ff = ""; return sys.ff || s.length >= 3 ? {sys:sys, s:s.length >= 3 ? s : []} : null; },
+        function(){ sys.ff = ""; return s.length >= 3 ? {sys:sys, s:s} : null; });
     });
   });
+}
+/* frei abgestellte Fahrräder und E-Bikes eines Systems (GBFS 2.x free_bike_status, 3.x vehicle_status), nur rund ums Ziel */
+function cbFreeOf(j, sy, d){
+  var bt = {}, et = {}; (sy.bt||[]).forEach(function(x){ bt[x] = 1; }); (sy.et||[]).forEach(function(x){ et[x] = 1; });
+  return ((j && j.data && (j.data.bikes || j.data.vehicles)) || []).filter(function(v){
+    return v && v.lat && v.lon && !v.is_reserved && !v.is_disabled && !v.station_id && bt[String(v.vehicle_type_id)] && (!d || dist({la:+v.lat, lo:+v.lon}, d) < d.r + 4000); }).slice(0, 3000);
 }
 function gbfsDiscover(d){
   return Promise.all([gbfsCat(), gbfsPlace(d)]).then(function(r){
     var pl = r[1], pad = function(x){ return " "+x+" "; };
     var cands = r[0].s.filter(function(c){ if(pl.cc && c[0]!==pl.cc) return false; if(GBFS_NO.test(c[1]) || /citibikenyc|gbfs\.lyft\.com\/gbfs\/[\d.]+\/bkn\//.test(c[3])) return false;
       var lc = gNorm(c[2].split(",")[0]), nm = pad(gNorm(c[1])); return pl.n.some(function(x){ return x===lc || nm.indexOf(pad(x)) > -1; }); }).slice(0, 12);
+    // landesweite Anbieter (z. B. Call a Bike: „Germany“) zusätzlich, höchstens vier
+    cands = cands.concat(r[0].s.filter(function(c){ return pl.cc && c[0]===pl.cc && pl.land[gNorm(c[2])] && !GBFS_NO.test(c[1]) && cands.indexOf(c) < 0; }).slice(0, 4));
     var soft = false;
     return Promise.all(cands.map(function(c, i){ return gbfsProbe(c, d, i).catch(function(){ soft = true; return null; }); })).then(function(rs){
       var sys = [], st = [], seen = {}, cell = function(s){ return Math.round(s[2]*2000)+","+Math.round(s[3]*1500); };
       rs.filter(Boolean).sort(function(a, b){ return b.s.length - a.s.length; }).forEach(function(x){
-        if(sys.length >= 3 || x.s.filter(function(s){ return seen[cell(s)]; }).length > x.s.length/2) return; // dasselbe Netz doppelt im Katalog
+        if(sys.length >= 4 || x.s.filter(function(s){ return seen[cell(s)]; }).length > x.s.length/2) return; // dasselbe Netz doppelt im Katalog
         var k = sys.length; sys.push(x.sys);
         x.s.slice(0, 4000 - st.length).forEach(function(s){ seen[cell(s)] = 1; st.push([k+s[0].slice(s[0].indexOf("~")), s[1], s[2], s[3], s[4], k]); });
       });
@@ -15089,10 +15120,10 @@ function gbfsDiscover(d){
 function gbfsFind(d){
   if(CB.finding===d.k || (CB.findErr && CB.findErr.k===d.k && Date.now() - CB.findErr.at < 60000)) return;
   CB.finding = d.k;
-  destGet(d.k+":gbfs").then(function(c){
+  destGet(d.k+":gbfs2").then(function(c){
     if(c && Date.now() - c.at < (c.sys.length ? 7 : c.soft ? 1 : 14)*864e5) return c;
     if(!navigator.onLine) return c;
-    return gbfsDiscover(d).then(function(v){ destPut(d.k+":gbfs", v); return v; }, function(){ return c; });
+    return gbfsDiscover(d).then(function(v){ destPut(d.k+":gbfs2", v); return v; }, function(){ return c; });
   }).then(function(v){
     CB.finding = ""; if(DEST!==d) return;
     if(!v){ CB.findErr = {k:d.k, at:Date.now()}; CB.dk = d.k; CB.sys = []; LMNAME.bike = cbName(); applyLayers(); cbApply(); return; }
@@ -15100,7 +15131,7 @@ function gbfsFind(d){
     applyLayers(); cbApply(); if(CB.sys.length) cbLoad(true);
   });
 }
-function cbGeo(){ return {type:"FeatureCollection", features:CB.st.map(function(s){ return {type:"Feature", properties:{id:s.id, b:s.known ? s.b : -1, ok:s.ok ? 1 : 0}, geometry:{type:"Point", coordinates:[s.lo, s.la]}}; })}; }
+function cbGeo(){ return {type:"FeatureCollection", features:CB.st.map(function(s){ return {type:"Feature", properties:{id:s.id, b:s.known ? s.b + s.e : -1, ok:s.ok ? 1 : 0, f:s.ff ? 1 : 0}, geometry:{type:"Point", coordinates:[s.lo, s.la]}}; })}; }
 function cbApply(){
   if(mapReady && map.getSource("cb")) map.getSource("cb").setData(cbGeo());
   if(sel && sel.indexOf("cb:")===0) renderCard();
@@ -15111,16 +15142,22 @@ function cbAddLayer(){
   map.addSource("cb", {type:"geojson", data:cbGeo()});
   map.addLayer({id:"cb", type:"circle", source:"cb", minzoom:12, layout:{visibility:layers.bike ? "visible" : "none"}, paint:{
     // eine Farbe für alle Stationen, die Verfügbarkeit zeigt nur der Ring: grün = genug Räder, orange = 1–2, grau = leer/außer Betrieb, weiß = noch unbekannt
-    "circle-radius":["interpolate",["linear"],["zoom"],12,2.5,14,4.5,16,7],
+    // frei stehende Räder (f = 1) kleiner, ohne Ring
+    "circle-radius":["interpolate",["linear"],["zoom"],12,["case",["==",["get","f"],1],1.6,2.5],14,["case",["==",["get","f"],1],3,4.5],16,["case",["==",["get","f"],1],4.5,7]],
     "circle-color":CBCOL,
-    "circle-stroke-color":["case",["==",["get","ok"],0],"#8E8E93",["<",["get","b"],0],"#ffffff",["==",["get","b"],0],"#8E8E93",["<",["get","b"],3],"#FF9F0A","#34C759"],
+    "circle-stroke-color":["case",["==",["get","f"],1],"#ffffff",["==",["get","ok"],0],"#8E8E93",["<",["get","b"],0],"#ffffff",["==",["get","b"],0],"#8E8E93",["<",["get","b"],3],"#FF9F0A","#34C759"],
     "circle-stroke-width":["interpolate",["linear"],["zoom"],12,1.2,14,2.2,16,3]}});
 }
 function cbNeeded(){ if(layers.bike) return true; if(!cur || isRO()) return false; return dayLegs(cur).some(function(p){ return legMode(p[0], p[1])==="bike"; }); }
 setInterval(function(){ if(document.visibilityState==="visible" && cbNeeded()) cbLoad(); }, 30000);
+/* Rad holen bei a, abgeben bei b; ein frei stehendes Rad wird direkt am Ziel abgestellt (im Geschäftsgebiet des Anbieters) */
+function cbPair(a, b, maxD){
+  var s1 = cbNear(a, "bike", maxD), s2 = s1 && s1.s.ff ? {s:{la:b.la, lo:b.lo, n:b.n || "Ziel", drop:true, known:true, b:0, e:0, d:-1, ok:true}, d:0} : cbNear(b, "dock", maxD);
+  return {s1:s1, s2:s2};
+}
 function cbNear(p, need, maxD){
   var best = null, bd = 1e9;
-  CB.st.forEach(function(s){ if(!s.ok || (s.known && need==="bike" && s.b + s.e < 1) || (s.known && need==="dock" && s.d===0)) return; var d = dist(p, s); if(d < bd){ bd = d; best = s; } });
+  CB.st.forEach(function(s){ if(!s.ok || (s.known && need==="bike" && s.b + s.e < 1) || (need==="dock" && (s.ff || (s.known && s.d===0)))) return; var d = dist(p, s); if(d < bd){ bd = d; best = s; } });
   return best && bd <= maxD ? {s:best, d:bd} : null;
 }
 /* Fahrradweg zwischen zwei Stationen über OSRM (Fahrrad-Profil), über die gesetzten Wegpunkte der Etappe.
@@ -15164,7 +15201,7 @@ function bikePath(a, b, v){
 function bikeRoute(a, b){
   if(cbState()==="nosys") return {none:true, nosys:true};
   if(!CB.st.length){ cbLoad(); return {wait:true}; }
-  var s1 = cbNear(a, "bike", 900), s2 = cbNear(b, "dock", 900);
+  var pr = cbPair(a, b, 900), s1 = pr.s1, s2 = pr.s2;
   if(!s1 || !s2 || s1.s===s2.s) return {none:true, s1:s1, s2:s2};
   var vv = legVia(a, b), bp = bikePath(s1.s, s2.s, vv), est = 0, q0 = s1.s;
   vv.forEach(function(q){ var z = {la:q[0], lo:q[1]}; est += dist(q0, z); q0 = z; }); est = (est + dist(q0, s2.s)) * 1.3;
@@ -15210,7 +15247,7 @@ function navBuild(){
   if(mode==="bike"){
     if(cbState()==="nosys"){ N.busy = false; N.err = "Hier ist kein Leihrad-System mit Live-Daten bekannt – nimm „Zu Fuß“."; navRender(); return; }
     if(!CB.st.length){ cbLoad(true); N.busy = false; N.err = esc(cbName())+"-Stationen werden geladen …"; navRender(); setTimeout(function(){ if(NAV===N) navBuild(); }, 2500); return; }
-    var s1 = cbNear(from, "bike", 1200), s2 = cbNear(p, "dock", 1200);
+    var pr = cbPair(from, p, 1200), s1 = pr.s1, s2 = pr.s2;
     if(!s1 || !s2 || s1.s===s2.s){ N.busy = false; N.err = "Keine passende "+esc(cbName())+"-Station in der Nähe – nimm „Zu Fuß“."; navRender(); return; }
     jobs = [navOsrm(OSRMF, [from, s1.s]).then(function(r){ r.kind = "walk"; r.steps = r.steps.filter(function(x){ return !x.arrive; }); r.steps.push({at:s1.s, text:"Rad an „"+s1.s.n+"“ ausleihen", sub:cbAvail(s1.s), ic:LMBIKE}); return r; }),
             navOsrm(OSRMB, [s1.s].concat(vv, [s2.s])).then(function(r){ r.kind = "bike"; r.steps = r.steps.filter(function(x){ return !x.arrive && x.text.indexOf("Los")!==0; }); r.steps.push({at:s2.s, text:"Rad an „"+s2.s.n+"“ abgeben", sub:cbAvail(s2.s), ic:LMBIKE}); return r; }),
@@ -15626,11 +15663,31 @@ function rtStop(si, r){
   if(typeof si==="number" && !isBus(r) && !isFerry(r)){ var bi = -1, bd = 150; TRANSIT.stations.forEach(function(st, i){ var d = Math.hypot(st[1]-s0[1], st[2]-s0[2]); if(d < bd){ bd = d; bi = i; } }); if(bi > -1){ select("sub:"+bi); return; } }
   var q = stLL(si); RTST = {la:q.la, lo:q.lo, n:s0[0], r:r}; select("rtst");
 }
+/* Haltestellen außerhalb des NYC-Netzes (Stadtpaket, OpenStreetMap, Transitland): Treffer aus den Kartenebenen, Linien = Linien, die an der Stelle gezeichnet sind */
+var DSTL = ["dst","tl-st","tl-bst"], DLNL = ["dtr","dtr-f","dbus","tl-rail","tl-ferry","tl-bus"];
+function dstAt(x, y){
+  if(!map || !mapReady) return null;
+  var vis = function(l){ return map.getLayer(l) && map.getLayoutProperty(l, "visibility")!=="none"; };
+  var ls = DSTL.filter(vis); if(!ls.length) return null;
+  var fs = []; try { fs = map.queryRenderedFeatures([[x-14, y-14], [x+14, y+14]], {layers:ls}); } catch(e){}
+  var best = null, bd = 1e9;
+  fs.forEach(function(f){ if(!f.geometry || f.geometry.type!=="Point") return; var c = f.geometry.coordinates, q = map.project(c), d = Math.hypot(q.x-x, q.y-y); if(d < bd){ bd = d; best = f; } });
+  if(!best) return null;
+  var p = best.properties || {}, c = best.geometry.coordinates, z = map.project(c), seen = {}, lines = [], lf = [];
+  try { lf = map.queryRenderedFeatures([[z.x-8, z.y-8], [z.x+8, z.y+8]], {layers:DLNL.filter(vis)}); } catch(e){}
+  lf.forEach(function(f){ var q = f.properties || {}, k = String(q.k || q.route_short_name || q.route_long_name || "").trim().slice(0, 24); if(!k) return;
+    var m = q.m || (best.layer.id==="tl-bst" || f.layer.id==="tl-bus" ? "bus" : f.layer.id==="tl-ferry" || f.layer.id==="dtr-f" ? "ferry" : ""), col = okCol(q.c) || okCol(q.route_color) || vtCol(m || "metro", k);
+    if(seen[m+":"+k]) return; seen[m+":"+k] = 1; lines.push({k:k, c:col, m:m}); });
+  lines.sort(function(a, b){ return (a.m==="bus") - (b.m==="bus") || natCmp(a.k, b.k); });
+  var bus = best.layer.id==="tl-bst" || p.m==="bus", fer = p.m==="ferry";
+  return {la:c[1], lo:c[0], n:String(p.n || p.stop_name || "Haltestelle"), ls:lines.slice(0, 16), kind:fer ? "Anleger" : bus ? "Haltestelle" : "Station"};
+}
 function rtCard(){
-  var q = RTST, d = me ? dist(me, q) : null, k = isFerry(q.r) ? "Anleger" : isBus(q.r) ? "Haltestelle" : "Station";
+  var q = RTST, d = me ? dist(me, q) : null, k = q.ls ? q.kind : isFerry(q.r) ? "Anleger" : isBus(q.r) ? "Haltestelle" : "Station";
   return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>"+
     "<div class=\"ch\"><span class=\"cic\" style=\"--cc:#17212c\">"+TICSUB+"</span><div class=\"cht\"><h3>"+esc(q.n)+"</h3><p>"+k+(d!=null ? " · "+fmtDist(d)+" entfernt" : "")+"</p></div></div>"+
-    "<p class=\"tline\"><span class=\"tlx\">"+lineBul(q.r)+"</span></p>"+
+    (q.ls ? (q.ls.length ? "<p class=\"tline\"><span class=\"tlx\">"+q.ls.map(function(l){ return "<span class=\"bul"+(l.m==="bus" || l.m==="ferry" || l.k.length > 2 ? " bus" : "")+"\" style=\"background:"+l.c+";color:"+txtCol(l.c)+"\">"+esc(l.k)+"</span>"; }).join("")+"</span></p>" : "")
+      : "<p class=\"tline\"><span class=\"tlx\">"+lineBul(q.r)+"</span></p>")+
     "<div class=\"jp-tiles ctiles\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"navpick\" data-rt=\"1\">"+NAVGOICO+"<span>Navigieren</span></button></div>";
 }
 function subCard(i){
@@ -15646,13 +15703,13 @@ function subCard(i){
 }
 var HSICO = ic("hotel");
 var NAVGOICO = ic("route");
-function cbAvail(s){ return s.known ? (s.b + s.e)+(s.b + s.e===1 ? " Rad" : " Räder")+(s.e ? " ("+s.e+" E-Bike"+(s.e===1?"":"s")+")" : "")+(s.d < 0 ? "" : " · "+s.d+(s.d===1 ? " freier Platz" : " freie Plätze")) : "Verfügbarkeit wird geladen …"; }
+function cbAvail(s){ if(s.drop) return "frei abstellen (im Geschäftsgebiet des Anbieters)"; if(s.ff) return (s.e ? "E-Bike" : "Fahrrad")+" frei verfügbar"+(s.rng ? " · Reichweite ca. "+Math.round(s.rng/1000)+" km" : ""); return s.known ? (s.b + s.e)+(s.b + s.e===1 ? " Rad" : " Räder")+(s.e ? " ("+s.e+" E-Bike"+(s.e===1?"":"s")+")" : "")+(s.d < 0 ? "" : " · "+s.d+(s.d===1 ? " freier Platz" : " freie Plätze")) : "Verfügbarkeit wird geladen …"; }
 function cbCard(id){
   var s = CB.byId[id]; if(!s) return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button><h3>"+esc(cbName())+"</h3><p class=\"note\">Station nicht gefunden.</p>";
   var sy = cbSysOf(s), age = CB.statAt ? Math.max(0, Math.round((Date.now() - CB.statAt)/60000)) : null;
   return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>"+
-    "<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+CBCOL+"\">"+LMBIKE+"</span><div class=\"cht\"><h3>"+esc(s.n)+"</h3><p>"+esc(sy.n)+" Station"+(s.cap ? " · "+s.cap+" Plätze" : "")+"</p></div></div>"+
-    "<div class=\"cb-av\"><span class=\"cb-b"+(s.known && s.b + s.e < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.b + s.e : "–")+"</b>Räder"+(s.known && s.e ? "<small>davon "+s.e+" E-Bike"+(s.e===1?"":"s")+"</small>" : "")+"</span>"+(s.d < 0 ? "" : "<span class=\"cb-d"+(s.known && s.d < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.d : "–")+"</b>freie Plätze</span>")+"</div>"+
+    "<div class=\"ch\"><span class=\"cic\" style=\"--cc:"+CBCOL+"\">"+LMBIKE+"</span><div class=\"cht\"><h3>"+esc(s.n)+"</h3><p>"+(s.ff ? "frei abgestellt · ohne Station" : esc(sy.n)+" Station"+(s.cap ? " · "+s.cap+" Plätze" : ""))+"</p></div></div>"+
+    (s.ff ? "<p class=\"note\">"+esc(cbAvail(s))+". Ausleihen und Abstellen über die App des Anbieters.</p>" : "<div class=\"cb-av\"><span class=\"cb-b"+(s.known && s.b + s.e < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.b + s.e : "–")+"</b>Räder"+(s.known && s.e ? "<small>davon "+s.e+" E-Bike"+(s.e===1?"":"s")+"</small>" : "")+"</span>"+(s.d < 0 ? "" : "<span class=\"cb-d"+(s.known && s.d < 1 ? " zero" : "")+"\"><b>"+(s.known ? s.d : "–")+"</b>freie Plätze</span>")+"</div>")+
     (!s.ok ? "<p class=\"note\">Diese Station ist gerade außer Betrieb.</p>" : "")+
     "<p class=\"note cb-note\">"+(CB.err ? esc(CB.err) : age===null ? "Wird geladen …" : "Stand: "+(age < 1 ? "gerade eben" : "vor "+age+" Min."))+" · Daten: "+esc(sy.by || sy.n)+"</p>"+
     "<div class=\"jp-tiles ctiles\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"navpick\" data-cb=\""+esc(s.id)+"\">"+NAVGOICO+"<span>Navigieren</span></button>"+
