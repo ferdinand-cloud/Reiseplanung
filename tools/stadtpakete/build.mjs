@@ -128,6 +128,7 @@ function railCls(k, rt) {
   if (/^(RE|RB|IRE|RS|FEX|MEX|REX|IR|TER|RX|R)(\s?\d|$)|REGIO/.test(n)) return "reg";
   return "train";
 }
+const COACHRE = /FLIX|BLABLA ?CAR|OUIBUS|REGIOJET|EUROLINES|MEGABUS|NATIONAL ?EXPRESS|ECOLINES|LEO ?EXPRESS|FERNBUS|IC ?BUS|INTERCITY ?BUS/i;
 function modeOf(rt, k, ln, ag, city) {
   rt = +rt;
   if (city === "paris" && rt === 2) return ag === "IDFM:71" ? "sbahn" : "reg"; // RER = S-Bahn, Transilien und TER = Regionalverkehr
@@ -136,7 +137,9 @@ function modeOf(rt, k, ln, ag, city) {
   if (rt === 1 || (rt >= 400 && rt < 500)) return "metro";
   if (rt === 12 || rt === 405) return "light";
   if (rt === 2 || (rt >= 100 && rt < 200)) { const c = railCls(k, rt); return c === "train" && ln ? railCls(ln, rt) : c; }
-  if (rt === 3 || rt === 11 || (rt >= 700 && rt < 900) || (rt >= 200 && rt < 300)) return "bus";
+  // Fernbusse (FlixBus & Co., GTFS 200–299) sind Fernverkehr, keine Busse
+  if ((rt >= 200 && rt < 300) || ((rt === 3 || (rt >= 700 && rt < 800)) && COACHRE.test(k + " " + ln + " " + ag))) return "long";
+  if (rt === 3 || rt === 11 || (rt >= 700 && rt < 900)) return "bus";
   if (rt === 4 || rt === 1000 || rt === 1200) return "ferry";
   if (rt === 5 || rt === 6 || rt === 7 || (rt >= 1300 && rt < 1500)) return "funi";
   return "";

@@ -12154,7 +12154,10 @@ function applyLayers(){
    Stationen, Leihrad-Stationen und Bezirke aus OpenStreetMap (Overpass): je Ziel einmal geladen und auf dem Gerät gespeichert. */
 var DMODES = [["metro","Metro / U-Bahn"],["light","Stadtbahn"],["tram","Tram"],["sbahn","S-Bahn"],["reg","Regionalverkehr"],["long","Fernverkehr"],["train","Sonstige Züge"],["funi","Seilbahnen"],["bus","Busse"],["ferry","Fähren"]];
 var DMNAME = {}; DMODES.forEach(function(m){ DMNAME[m[0]] = m[1]; });
-var DRMODE = {subway:"metro", light_rail:"light", monorail:"light", tram:"tram", train:"train", funicular:"funi", ferry:"ferry", bus:"bus", trolleybus:"bus"};
+var DRMODE = {subway:"metro", light_rail:"light", monorail:"light", tram:"tram", train:"train", funicular:"funi", ferry:"ferry", bus:"bus", trolleybus:"bus", coach:"long"};
+/* Fernbusse (FlixBus & Co.) gehören zum Fernverkehr, nicht zu den Bussen (Ferdinand 30.10.): GTFS-Typ 200–299 (Reisebus) oder bekannter Anbieter im Namen */
+var COACHRE = /FLIX|BLABLA ?CAR|OUIBUS|REGIOJET|EUROLINES|MEGABUS|NATIONAL ?EXPRESS|ECOLINES|LEO ?EXPRESS|FERNBUS|IC ?BUS|INTERCITY ?BUS/i;
+function coachOf(k, n, rt, op){ rt = +rt; return (rt >= 200 && rt < 300) || COACHRE.test([k || "", n || "", op || ""].join(" ")); }
 /* Züge nach Art: GTFS-Erweiterungstyp (101 Hochgeschwindigkeit, 102 Fern, 103/106 Regional, 109 S-Bahn), OSM service, sonst Linienname (ICE, RE, S1 …) */
 var RAILRT = {100:"", 101:"long", 102:"long", 105:"long", 103:"reg", 106:"reg", 107:"reg", 109:"sbahn"};
 var RAILSV = {high_speed:"long", long_distance:"long", night:"long", regional:"reg", commuter:"sbahn"};
@@ -12362,6 +12365,7 @@ function vtParse(j, tol){
     var tg = r.tags || {}; if(r.type!=="relation" || tg.type!=="route") return;
     var m = DRMODE[tg.route], k = String(tg.ref || tg.name || "").trim().slice(0, 40); if(!m || !k) return;
     if(m==="train") m = railCls(k, 0, tg.service);
+    if(m==="bus" && (tg.bus==="coach" || coachOf(k, tg.name, 0, [tg.network, tg.operator, tg.brand].join(" ")))) m = "long";
     add(m, k, String(tg.name || "").slice(0, 80), okCol(tg.colour || tg.color), (r.members||[]).filter(function(mb){ return mb.type==="way"; }).map(function(mb){ return mb.ref; }));
   });
   // Standseil- und Seilbahnen ohne Linien-Relation (z. B. die Elevadores in Lissabon)
@@ -12506,12 +12510,14 @@ var TLMODE = {0:"tram", 1:"metro", 2:"train", 3:"bus", 11:"bus", 4:"ferry", 5:"t
 function tlMode(t){ return TLMODE[+t] || "train"; }
 var TLK = ["to-string", ["coalesce", ["get","route_short_name"], ["get","route_long_name"], ""]];
 /* Bahn-Art je Linienname (TLCLS, aus den geladenen Kacheln per railCls): Kartenausdrücke kennen keine regulären Ausdrücke, daher eine Liste je Art */
-var TLCLS = {}, TLSL = {}, TLM, TLID, TLC, TLO;
+var TLCLS = {}, TLBUS = {}, TLSL = {}, TLM, TLID, TLC, TLO; // TLBUS: Fernbus-Linien (als Fernverkehr gezeichnet)
 function tlExprs(){
   var g = {}, rail = "train";
   Object.keys(TLCLS).forEach(function(k){ var c = TLCLS[k]; if(c!=="train" && k) (g[c] = g[c] || []).push(k); });
   var cs = Object.keys(g); if(cs.length){ rail = ["match", TLK]; cs.forEach(function(c){ rail.push(g[c], c); }); rail.push("train"); }
-  TLM = ["match", ["to-number", ["get","route_type_basic"]], 0,"tram", 1,"metro", 2,rail, 3,"bus", 11,"bus", 4,"ferry", 5,"tram", 6,"funi", 7,"funi", 12,"light", rail];
+  var rt = ["to-number", ["get","route_type"], 0], bk = Object.keys(TLBUS).filter(Boolean);
+  var bus = ["case", ["all", [">=", rt, 200], ["<", rt, 300]], "long"].concat(bk.length ? [["match", TLK, bk, "long", "bus"]] : ["bus"]);
+  TLM = ["match", ["to-number", ["get","route_type_basic"]], 0,"tram", 1,"metro", 2,rail, 3,bus, 11,"bus", 4,"ferry", 5,"tram", 6,"funi", 7,"funi", 12,"light", rail];
   TLID = ["concat", TLM, ":", TLK];
   var sg = {}; Object.keys(TLSL).forEach(function(id){ var v = TLSL[id]; if(v) (sg[v] = sg[v] || []).push(id); });
   TLO = 0; if(Object.keys(sg).length){ TLO = ["match", TLID]; Object.keys(sg).forEach(function(v){ TLO.push(sg[v], +v); }); TLO.push(0); }
@@ -12577,6 +12583,7 @@ function tlList(){
   if(z >= TLZ) tlFeats().forEach(function(f){
     var p = f.properties || {}; if(p.clustered) return;
     var m = tlMode(p.route_type_basic), k = String(p.route_short_name || p.route_long_name || "").trim().slice(0, 40); if(!k) return;
+    if(m==="bus" && (k in TLBUS || coachOf(k, p.route_long_name, p.route_type, p.agency_name))){ if(!(k in TLBUS)){ TLBUS[k] = 1; nc++; } m = "long"; }
     if(m==="train"){ if(!(k in TLCLS)){ if(nc > 3000) TLCLS = {}; TLCLS[k] = railCls(k, p.route_type) === "train" && p.route_long_name ? railCls(p.route_long_name, p.route_type) : railCls(k, p.route_type); nc++; } m = TLCLS[k]; }
     var bb = null; try { bb = JSON.parse(p.bbox || "null"); } catch(e){}
     if(bb && (bb[0] > b.getEast() || bb[2] < b.getWest() || bb[1] > b.getNorth() || bb[3] < b.getSouth())) return;

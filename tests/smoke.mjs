@@ -1536,6 +1536,10 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   ok((await page.locator("#lTrDyn").innerText()).includes("Kontingent"), "Kein Hinweis bei erreichtem Kontingent");
   await click("#lTrDyn [data-act=dretry]");
   ok(await rp(`TL.err===0`), "Erneut versuchen setzt den Fehler nicht zurück");
+  // Fernbusse (FlixBus & Co.) sind Fernverkehr, keine Busse – Name/Anbieter oder GTFS-Reisebus-Typ 200–299
+  ok(await rp(`coachOf("N850", "FlixBus Berlin – Hamburg") && coachOf("X", "", 202) && coachOf("1", "", 3, "BlaBlaCar Bus") && !coachOf("100", "Linie 100", 3) && DRMODE.coach==="long"`), "Fernbus-Erkennung falsch");
+  await rp(`TL.sig = ""; var f0 = tlFeats; tlFeats = function(){ return f0().concat([{properties:{route_type_basic:3, route_type:3, route_short_name:"N850", route_long_name:"FlixBus Berlin – Hamburg", bbox:"[13.3,52.4,13.6,52.6]"}}]); }; tlList(); true`);
+  ok(await rp(`VV.tr.lines.some(function(l){ return l.k==="N850" && l.m==="long"; }) && !VV.bus.lines.some(function(l){ return l.k==="N850"; }) && JSON.stringify(TLM).indexOf("N850") > -1 && JSON.stringify(TLM).indexOf("200") > -1`), "FlixBus steht bei den Bussen statt im Fernverkehr: "+await rp(`JSON.stringify(VV.tr.lines.concat(VV.bus.lines).filter(function(l){ return l.k==="N850"; }))`));
   // ungültiger Schlüssel → zurück zu OpenStreetMap (Overpass)
   await rp(`tlError({sourceId:"tl-r", error:{status:401}}); true`); await page.waitForTimeout(300);
   ok(await rp(`TL.bad && !tlOn() && map.getLayoutProperty("tl-rail","visibility")==="none"`), "Ungültiger Schlüssel schaltet Transitland nicht ab");
