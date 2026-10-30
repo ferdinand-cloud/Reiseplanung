@@ -1844,7 +1844,7 @@ await test("Karte schneller: Umland der nächsten Rauszoom-Stufen vorladen, Fern
   const tw = await rp(`(function(){ WARM = {}; TLWN = 0; var k = TL.cfg; TL.cfg = "k1"; var a = tlWarmList(), b = tlWarmList(); TLWN = TLWMAX - 3; WARM = {}; var c = tlWarmList(); TL.cfg = k; TLWN = 0;
     return {n:a.length, again:b.length, cap:c.length, z:a.map(function(u){ return u.split("/")[8]; }).filter(function(v, i, x){ return x.indexOf(v)===i; }), st:a.some(function(u){ return u.indexOf("/stops/") > -1; }), key:a.every(function(u){ return u.indexOf("apikey=k1") > -1; })}; })()`);
   ok(tw.n > 4 && tw.n <= 60 && tw.again===0 && tw.cap===3 && tw.st && tw.key && tw.z.join()==="13,12", "Transitland vorladen falsch: "+JSON.stringify(tw));
-  ok(await rp(`CPS.length >= 13 && ["amsterdam","wien","muenchen","hamburg","rom","madrid","barcelona","lissabon","prag","kopenhagen"].every(function(id){ return CPS.some(function(c){ return c.id===id; }); }) && cpAt({la:48.2082, lo:16.3738}).id==="wien"`), "Neue Stadtpakete fehlen");
+  ok(await rp(`CPS.length >= 13 && ["amsterdam","wien","muenchen","hamburg","rom","madrid","barcelona","lissabon","prag","kopenhagen","bremen"].every(function(id){ return CPS.some(function(c){ return c.id===id; }); }) && cpAt({la:48.2082, lo:16.3738}).id==="wien"`), "Neue Stadtpakete fehlen");
   await rp(`layers.sub = true; applyLayers(); true`);
   const v = await rp(`(function(){ var l = map.getLayer("vt-rail"); return l ? {vis:map.getLayoutProperty("vt-rail","visibility"), min:l.minzoom, f:JSON.stringify(map.getFilter("vt-rail"))} : null; })()`);
   ok(!v || (v.vis==="visible" && v.min <= 6 && v.f.indexOf("transit")===-1 && v.f.indexOf("siding") > -1), "Fernverkehr-Gleise fehlen in New York oder erst nah: "+JSON.stringify(v));

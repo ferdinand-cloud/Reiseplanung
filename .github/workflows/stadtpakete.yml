@@ -1,4 +1,5 @@
-# Stadtpakete: ÖPNV für Berlin, Paris und London aus den offiziellen Fahrplandaten aufbereiten (wöchentlich und von Hand).
+# Stadtpakete: ÖPNV aus den offiziellen Fahrplandaten aufbereiten (wöchentlich und von Hand).
+# Jede Stadt baut in einem eigenen Lauf (große Fahrpläne wie Niederlande/Dänemark brauchen Zeit), danach werden alle zusammen veröffentlicht.
 # Ergebnis liegt im Zweig „stadtpakete“ (nur die aktuellen Dateien, ohne Verlauf, damit das Repo nicht wächst);
 # die App lädt sie über raw.githubusercontent.com. Scheitert eine Stadt, bleibt ihr letzter Stand erhalten.
 name: Stadtpakete
@@ -8,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       staedte:
-        description: "Städte (leer = alle), z. B. london"
+        description: "Städte (leer = alle), z. B. london wien"
         required: false
   push:
     branches: [main]
@@ -19,9 +20,31 @@ concurrency:
   group: stadtpakete
   cancel-in-progress: false
 jobs:
-  bauen:
+  plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    outputs:
+      staedte: ${{ steps.l.outputs.staedte }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: l
+        run: |
+          if [ -n "${{ github.event.inputs.staedte }}" ]; then
+            echo "staedte=$(node -e 'console.log(JSON.stringify(process.argv.slice(1)))' ${{ github.event.inputs.staedte }})" >> "$GITHUB_OUTPUT"
+          else
+            echo "staedte=$(node tools/stadtpakete/build.mjs --list)" >> "$GITHUB_OUTPUT"
+          fi
+  bauen:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        stadt: ${{ fromJSON(needs.plan.outputs.staedte) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,17 +52,38 @@ jobs:
           node-version: 22
       - name: osmium (OpenStreetMap-Auszüge statt Overpass)
         run: sudo apt-get update -q && sudo apt-get install -y -q osmium-tool
+      - name: Paket bauen
+        run: |
+          node --max-old-space-size=12000 tools/stadtpakete/build.mjs ${{ matrix.stadt }} --out out
+          rm -f out/index.json; ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paket-${{ matrix.stadt }}
+          path: out/
+          if-no-files-found: ignore
+          retention-days: 3
+  veroeffentlichen:
+    needs: bauen
+    if: always() && needs.bauen.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Letzten Stand holen
         run: |
           mkdir -p out
           if git fetch --depth 1 origin stadtpakete; then git --work-tree=out checkout FETCH_HEAD -- . && git reset -q; fi
-          rm -rf out/.git; ls -la out
-      - name: Pakete bauen
-        run: node --max-old-space-size=6000 tools/stadtpakete/build.mjs ${{ github.event.inputs.staedte }} --out out
+          rm -rf out/.git
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: paket-*
+          path: neu
+          merge-multiple: true
       - name: Veröffentlichen
         run: |
+          mkdir -p neu; cp -v neu/*.json out/ 2>/dev/null || echo "keine neuen Pakete"
           cd out
-          printf '# Stadtpakete\n\nAutomatisch gebaut von .github/workflows/stadtpakete.yml – nicht von Hand ändern.\nQuellen: VBB (CC BY 4.0), Île-de-France Mobilités (ODbL), Transport for London (Powered by TfL Open Data), Bus Open Data Service (OGL v3).\n' > README.md
+          node -e 'const fs=require("fs");fs.writeFileSync("index.json",JSON.stringify({v:1,at:new Date().toISOString(),cities:fs.readdirSync(".").filter(f=>/\.json$/.test(f)&&f!=="index.json").sort().map(f=>({f,b:fs.statSync(f).size}))}))'
+          printf '# Stadtpakete\n\nAutomatisch gebaut von .github/workflows/stadtpakete.yml – nicht von Hand ändern.\nQuellen und Lizenzen stehen in jeder Datei (Felder src, lic), u. a. VBB, Île-de-France Mobilités, Transport for London, BODS, OVapi, Wiener Linien, ÖBB, MVV, HVV, Roma Servizi per la Mobilità, CRTM, EMT Madrid, TMB, FGC, Renfe, Carris, CP, PID, Rejseplanen, DELFI/gtfs.de; Streckenverläufe © OpenStreetMap-Mitwirkende (ODbL).\n' > README.md
           ls -la
           git init -q -b stadtpakete
           git config user.name "github-actions[bot]"

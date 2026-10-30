@@ -12641,7 +12641,7 @@ var CPS = [{id:"berlin", n:"Berlin", bb:[12.88, 52.29, 13.82, 52.71]}, {id:"pari
   {id:"amsterdam", n:"Amsterdam", bb:[4.72, 52.27, 5.08, 52.43]}, {id:"wien", n:"Wien", bb:[16.18, 48.11, 16.58, 48.33]}, {id:"muenchen", n:"München", bb:[11.36, 48.06, 11.72, 48.25]},
   {id:"hamburg", n:"Hamburg", bb:[9.73, 53.39, 10.33, 53.74]}, {id:"rom", n:"Rom", bb:[12.35, 41.79, 12.62, 41.99]}, {id:"madrid", n:"Madrid", bb:[-3.83, 40.31, -3.52, 40.56]},
   {id:"barcelona", n:"Barcelona", bb:[2.05, 41.32, 2.25, 41.47]}, {id:"lissabon", n:"Lissabon", bb:[-9.25, 38.68, -9.08, 38.80]}, {id:"prag", n:"Prag", bb:[14.25, 49.98, 14.65, 50.15]},
-  {id:"kopenhagen", n:"Kopenhagen", bb:[12.45, 55.60, 12.70, 55.75]}];
+  {id:"kopenhagen", n:"Kopenhagen", bb:[12.45, 55.60, 12.70, 55.75]}, {id:"bremen", n:"Bremen", bb:[8.65, 53.01, 8.99, 53.23]}];
 var CP = {}, CPSIG = "", CPBIKE = [], CPTO = [30000, 90000]; // Zeitlimit Bahn-/Bus-Datei
 var CPMODE = {metro:"SUBWAY", light:"SUBWAY", tram:"TRAM", sbahn:"SUBURBAN", reg:"REGIONAL_RAIL", long:"LONG_DISTANCE", train:"RAIL", funi:"FUNICULAR", ferry:"FERRY", bus:"BUS"};
 function cpAt(p){ if(!p || !hasLoc(p)) return null; for(var i = 0; i < CPS.length; i++){ var b = CPS[i].bb; if(p.lo >= b[0] && p.lo <= b[2] && p.la >= b[1] && p.la <= b[3]) return CPS[i]; } return null; }

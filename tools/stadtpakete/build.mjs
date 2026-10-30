@@ -27,9 +27,52 @@ const CITIES = {
     bb: [-0.62, 51.28, 0.34, 51.72], ext: [-0.75, 51.22, 0.45, 51.78], bus: [-0.35, 51.40, 0.10, 51.62],
     pbf: ["https://download.geofabrik.de/europe/united-kingdom/england/greater-london-latest.osm.pbf"],
     bodsUrl: ["https://data.bus-data.dft.gov.uk/timetable/download/gtfs-file/london/"] },
+  // weitere Städte (Ferdinand 30.10.2026): Fahrpläne der Verkehrsverbünde, sonst der Spiegel der Mobility Database;
+  // need = Verkehrsmittel, ohne die das Paket schlechter wäre als Transitland (dann bleibt der letzte Stand bzw. Transitland)
+  amsterdam: { n: "Amsterdam", src: "OVapi (NDOV)", lic: "CC0", type: "gtfs", tz: "Europe/Amsterdam", need: ["metro", "tram"],
+    feeds: [{ u: ["https://gtfs.ovapi.nl/nl/gtfs-nl.zip", MDB("nl-unknown-allgo-keolis-gtfs-1077")] }],
+    bb: [4.72, 52.27, 5.08, 52.43], ext: [4.55, 52.15, 5.25, 52.50], bus: [4.75, 52.30, 5.02, 52.42], pbf: ["G/netherlands/noord-holland-latest.osm.pbf", "G/netherlands/utrecht-latest.osm.pbf"] },
+  wien: { n: "Wien", src: "Wiener Linien · ÖBB", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Vienna", need: ["metro", "tram"],
+    feeds: [{ u: ["http://www.wienerlinien.at/ogd_realtime/doku/ogd/gtfs/gtfs.zip", MDB("at-wien-wiener-lokalbahnen-wlb-gtfs-648")] }, { u: [MDB("at-unknown-obb-gtfs-2138")], opt: true }],
+    bb: [16.18, 48.11, 16.58, 48.33], ext: [15.95, 47.95, 16.85, 48.45], bus: [16.20, 48.12, 16.56, 48.32], pbf: ["G/austria-latest.osm.pbf"] },
+  muenchen: { n: "München", src: "MVV", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Berlin", need: ["metro", "sbahn"],
+    feeds: [{ u: ["https://www.mvv-muenchen.de/fileadmin/mediapool/02-Fahrplanauskunft/03-Downloads/openData/mvv_gtfs.zip", MDB("de-bayern-munchner-verkehrs-und-tarifverbund-mvv-gtfs-779")] }],
+    bb: [11.36, 48.06, 11.72, 48.25], ext: [11.0, 47.85, 12.05, 48.45], bus: [11.40, 48.07, 11.70, 48.23], pbf: ["G/germany/bayern/oberbayern-latest.osm.pbf"] },
+  hamburg: { n: "Hamburg", src: "HVV", lic: "dl-de/by-2-0", type: "gtfs", tz: "Europe/Berlin", need: ["metro", "sbahn"],
+    feeds: [{ u: [MDB("de-hamburg-hamburger-verkehrsverbund-gmbh-hvv-gtfs-3362")] }],
+    bb: [9.73, 53.39, 10.33, 53.74], ext: [9.4, 53.2, 10.6, 53.9], bus: [9.80, 53.45, 10.20, 53.70],
+    pbf: ["G/germany/hamburg-latest.osm.pbf", "G/germany/schleswig-holstein-latest.osm.pbf", "G/germany/niedersachsen-latest.osm.pbf"] },
+  rom: { n: "Rom", src: "Roma Servizi per la Mobilità", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Rome", need: ["metro"],
+    feeds: [{ u: ["https://romamobilita.it/sites/default/files/rome_static_gtfs.zip", MDB("it-lazio-roma-servizi-per-la-mobilita-gtfs-1294")] }],
+    bb: [12.35, 41.79, 12.62, 41.99], ext: [12.10, 41.60, 12.90, 42.15], bus: [12.38, 41.80, 12.60, 41.98], pbf: ["G/italy/centro-latest.osm.pbf"] },
+  madrid: { n: "Madrid", src: "CRTM · EMT Madrid", lic: "CRTM-Nutzungsbedingungen", type: "gtfs", tz: "Europe/Madrid", need: ["metro"],
+    feeds: [{ u: ["https://crtm.maps.arcgis.com/sharing/rest/content/items/5c7f2951962540d69ffe8f640d94c246/data", MDB("es-madrid-metro-de-madrid-gtfs-794")] }, { u: ["https://www.arcgis.com/sharing/rest/content/items/1a25440bf66f499bae2657ec7fb40144/data", "https://www.arcgis.com/sharing/rest/content/items/868df0e58fca47e79b942902dffd7da0/data", MDB("es-madrid-cercanias-madrid-gtfs-993")], opt: true },
+      { u: ["https://www.arcgis.com/sharing/rest/content/items/aaed26cc0ff64b0c947ac0bc3e033196/data", MDB("es-madrid-crtm-light-rail-gtfs-2802")], opt: true }, { u: ["https://www.arcgis.com/sharing/rest/content/items/357e63c2904f43aeb5d8a267a64346d8/data", MDB("es-madrid-crtm-city-bus-gtfs-2820"), MDB("es-madrid-empresa-municipal-de-transportes-de-madrid-emt-madrid-gtfs-793")], opt: true }],
+    bb: [-3.83, 40.31, -3.52, 40.56], ext: [-4.10, 40.10, -3.20, 40.75], bus: [-3.80, 40.33, -3.55, 40.53], pbf: ["G/spain/madrid-latest.osm.pbf"] },
+  barcelona: { n: "Barcelona", src: "TMB · FGC · TRAM · Renfe", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Madrid", need: ["metro"],
+    feeds: [{ u: [MDB("es-barcelona-transports-metropolitans-de-barcelona-tmb-gtfs-2359")] }, { u: ["https://www.fgc.cat/google/google_transit.zip", MDB("es-catalunya-ferrocarrils-de-la-generalitat-de-catalunya-gtfs-1856")], opt: true },
+      { u: ["https://opendata.tram.cat/GTFS/zip/TBX.zip", MDB("es-barcelona-tram-gtfs-1003")], opt: true }, { u: ["https://opendata.tram.cat/GTFS/zip/TBS.zip", MDB("es-barcelona-trambesos-gtfs-1004")], opt: true },
+      { u: [MDB("es-unknown-renfe-cercanias-gtfs-2653")], opt: true }],
+    bb: [2.05, 41.32, 2.25, 41.47], ext: [1.80, 41.20, 2.45, 41.65], bus: [2.07, 41.33, 2.23, 41.46], pbf: ["G/spain/cataluna-latest.osm.pbf"] },
+  lissabon: { n: "Lissabon", src: "TML · Carris · CP · Transtejo", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Lisbon", need: ["metro"],
+    feeds: [{ u: ["https://go.tmlmobilidade.pt/hub/api/v1/plans/gtfs"], opt: true }, { u: ["https://gateway.carris.pt/gateway/gtfs/api/v2.11/GTFS", MDB("pt-lisbon-carris-gtfs-2929")], opt: true },
+      { u: ["https://publico.cp.pt/gtfs/gtfs.zip", MDB("pt-unknown-cp---comboios-de-portugal-gtfs-2057")], opt: true }, { u: ["https://api.transtejo.pt/files/GTFS.zip", MDB("pt-lisbon-lisbon-transtejo-soflu-gtfs-2921")], opt: true }],
+    bb: [-9.25, 38.68, -9.08, 38.80], ext: [-9.50, 38.50, -8.85, 38.95], bus: [-9.23, 38.69, -9.09, 38.79], pbf: ["G/portugal-latest.osm.pbf"] },
+  prag: { n: "Prag", src: "PID", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Prague", need: ["metro", "tram"],
+    feeds: [{ u: ["https://data.pid.cz/PID_GTFS.zip", MDB("cz-praha-prazska-integrovana-doprava-pid-gtfs-767")] }],
+    bb: [14.25, 49.98, 14.65, 50.15], ext: [14.0, 49.85, 14.9, 50.30], bus: [14.28, 50.00, 14.62, 50.13], pbf: ["G/czech-republic-latest.osm.pbf"] },
+  kopenhagen: { n: "Kopenhagen", src: "Rejseplanen", lic: "Rejseplanen-Nutzungsbedingungen", type: "gtfs", tz: "Europe/Copenhagen", need: ["metro"],
+    feeds: [{ u: ["https://www.rejseplanen.info/labs/GTFS.zip", MDB("dk-unknown-rejseplanen-gtfs-1292")] }],
+    bb: [12.45, 55.60, 12.70, 55.75], ext: [12.20, 55.45, 12.80, 55.95], bus: [12.47, 55.62, 12.68, 55.73], pbf: ["G/denmark-latest.osm.pbf"] },
+  // Bremen (Ferdinand 30.10.: Transitland-Linien eckig und übereinander): bundesweiter Nahverkehr von gtfs.de, Gleise aus OpenStreetMap
+  bremen: { n: "Bremen", src: "DELFI über gtfs.de", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Berlin", need: ["tram"],
+    feeds: [{ u: ["https://download.gtfs.de/germany/nv_free/latest.zip", MDB("de-unknown-wurzburger-verkehrsverbund-gtfs-1090")] }, { u: ["https://download.gtfs.de/germany/rv_free/latest.zip"], opt: true }],
+    bb: [8.65, 53.01, 8.99, 53.23], ext: [8.40, 52.90, 9.20, 53.40], bus: [8.68, 53.03, 8.96, 53.20], pbf: ["G/germany/bremen-latest.osm.pbf", "G/germany/niedersachsen-latest.osm.pbf"] },
 };
+for (const C of Object.values(CITIES)) if (C.pbf) C.pbf = C.pbf.map((u) => u.replace(/^G\//, "https://download.geofabrik.de/europe/"));
 
 const args = process.argv.slice(2);
+if (args[0] === "--list") { console.log(JSON.stringify(Object.keys(CITIES))); process.exit(0); } // für die GitHub Action: je Stadt ein eigener Lauf
 let OUT = "out", ZIP = {};
 const want = [];
 for (let i = 0; i < args.length; i++) {
@@ -53,7 +96,18 @@ function splitCsv(line) {
   out.push(cur); return out;
 }
 // Datei aus dem ZIP Zeile für Zeile lesen: fn(Felder als Objekt-Zugriff über Spaltenindex)
+// Mehrere ZIPs (Stadt aus mehreren Fahrplänen, z. B. Madrid Metro + Cercanías + Busse): nacheinander, Kennungen je Quelle mit Vorsilbe, damit sie sich nicht überschneiden
+const IDK = ["route_id", "trip_id", "service_id", "stop_id", "parent_station", "shape_id", "agency_id"];
 async function eachRow(zip, file, fn) {
+  if (!Array.isArray(zip)) return eachRow1(zip, file, fn);
+  let n = 0;
+  for (let i = 0; i < zip.length; i++) {
+    if (!(await hasFile(zip[i], file))) continue;
+    n += await eachRow1(zip[i], file, (f, H) => { for (const k of IDK) { const j = H[k]; if (j !== undefined && f[j]) f[j] = i + "~" + f[j]; } fn(f, H); });
+  }
+  return n;
+}
+async function eachRow1(zip, file, fn) {
   const p = spawn("unzip", ["-p", zip, file]);
   const rl = readline.createInterface({ input: p.stdout, crlfDelay: Infinity });
   let H = null, n = 0;
@@ -65,6 +119,7 @@ async function eachRow(zip, file, fn) {
   return n;
 }
 async function hasFile(zip, file) {
+  if (Array.isArray(zip)) { for (const z of zip) if (await hasFile(z, file)) return true; return false; }
   return new Promise((res) => { const p = spawn("unzip", ["-l", zip]); let s = ""; p.stdout.on("data", (d) => { s += d; }); p.on("close", () => res(new RegExp("\\s" + file.replace(".", "\\.") + "\\s*$", "m").test(s))); });
 }
 async function download(urls, file) {
@@ -224,11 +279,19 @@ async function buildGtfs(id, C, zip, opt) {
     }
     stKey.set(sid, idx); return idx;
   }
+  // Takt-Fahrpläne (frequencies.txt, z. B. Metro Madrid): eine Musterfahrt steht für alle Fahrten im Zeitfenster
+  const FQ = new Map();
+  if (await hasFile(zip, "frequencies.txt")) await eachRow(zip, "frequencies.txt", (f, H) => {
+    const a = tSec(f[H.start_time]), b = tSec(f[H.end_time]), h = +f[H.headway_secs]; if (!(h > 0) || !(b > a)) return;
+    const n = Math.max(1, Math.round((b - a) / h)), d = Math.max(0, Math.round((Math.min(b, 20 * 3600) - Math.max(a, 7 * 3600)) / h));
+    const o = FQ.get(f[H.trip_id]) || { n: 0, d: 0 }; o.n += n; o.d += d; FQ.set(f[H.trip_id], o);
+  });
+  if (FQ.size) log(id, "Takt-Fahrten", FQ.size);
   // Fahrzeiten: je Fahrtmuster (Linie, Richtung, Haltfolge) Takt und mittlere Fahrzeit je Abschnitt
   const PAT = new Map(); let curT = null, buf = [], seen = new Set(), rows = 0;
   const flush = () => {
     if (!curT) return;
-    const t = T.get(curT); curT = null; if (!t || buf.length < 2) { buf = []; return; }
+    const fq = FQ.get(curT), t = T.get(curT); curT = null; if (!t || buf.length < 2) { buf = []; return; }
     buf.sort((a, b) => a[0] - b[0]);
     const r = R.get(t.r), bb = r.m === "bus" ? C.bus : C.ext;
     const st = [], dep = [];
@@ -244,7 +307,7 @@ async function buildGtfs(id, C, zip, opt) {
     let P = PAT.get(key);
     if (!P) { P = { r: t.r, d: t.d, st, n: { 1: 0, 2: 0, 4: 0 }, day: { 1: 0, 2: 0, 4: 0 }, sum: new Float64Array(st.length), cnt: new Uint32Array(st.length), h: new Map(), sh: new Map() }; PAT.set(key, P); }
     const t0 = dep.find((x, i) => st[i] >= 0);
-    for (const b of [1, 2, 4]) if (t.m & b) { P.n[b]++; if (t0 >= 7 * 3600 && t0 < 20 * 3600) P.day[b]++; }
+    for (const b of [1, 2, 4]) if (t.m & b) { P.n[b] += fq ? fq.n : 1; if (fq) P.day[b] += fq.d; else if (t0 >= 7 * 3600 && t0 < 20 * 3600) P.day[b]++; }
     for (let i = 0; i + 1 < st.length; i++) { const dt = dep[i + 1] - dep[i]; if (dt >= 0 && dt < 7200) { P.sum[i] += dt; P.cnt[i]++; } }
     if (t.h) P.h.set(t.h, (P.h.get(t.h) || 0) + 1);
     if (t.sh) P.sh.set(t.sh, (P.sh.get(t.sh) || 0) + 1);
@@ -351,8 +414,18 @@ function write(id, part, meta, d) {
 }
 
 async function gtfsCity(id, C) {
-  const zip = ZIP[id] || path.join(TMP, id + ".zip");
-  const from = ZIP[id] ? zip : await download(C.url, zip);
+  // Quellen: eine (url) oder mehrere (feeds: {u: [Adressen …], opt: true = darf fehlen, z. B. Busse}); fehlt eine Pflichtquelle, bleibt der letzte Stand
+  let zip, from = "";
+  if (ZIP[id]) { zip = ZIP[id].split("+"); from = zip[0]; if (zip.length === 1) zip = zip[0]; }
+  else {
+    const feeds = C.feeds || [{ u: C.url }]; zip = [];
+    for (let i = 0; i < feeds.length; i++) {
+      const z = path.join(TMP, id + "-" + i + ".zip");
+      try { const u = await download(feeds[i].u, z); zip.push(z); from = from || u; }
+      catch (e) { if (!feeds[i].opt) throw e; log("  optionale Quelle fehlt:", feeds[i].u[0]); }
+    }
+    if (zip.length === 1) zip = zip[0];
+  }
   const net = await buildGtfs(id, C, zip);
   const meta = { n: C.n, src: C.src, lic: C.lic, tz: C.tz, at: new Date().toISOString().slice(0, 10), valid: [net.start, net.end], days: Object.fromEntries(Object.entries(net.DAYS).map(([b, x]) => [b, x.d])), bb: C.bb, url: from.startsWith("http") ? from : "" };
   const sh = (need) => shapesFromZip(zip, need);
@@ -360,11 +433,13 @@ async function gtfsCity(id, C) {
   const rail = await assemble(id, C, net, false, zip, sh);
   try { const n = osmFill(rail, await osmRoutes(C.ext, "subway|light_rail|train|tram|ferry|funicular", 2, C.pbf), false); if (n) { meta.src = C.src + " · Verläufe © OpenStreetMap"; meta.lic = C.lic + ", ODbL"; } }
   catch (e) { log("  OSM-Verläufe Bahn fehlgeschlagen:", e.message); }
+  const have = new Set(rail.L.map((l) => l[0])), miss = (C.need || []).filter((m) => !have.has(m));
+  if (miss.length) throw new Error("es fehlen Verkehrsmittel: " + miss.join(", ") + " (vorhanden: " + [...have].join(", ") + ")");
   write(id, "rail", meta, rail);
   const bus = await assemble(id, C, net, true, zip, sh);
   try { osmFill(bus, await osmRoutes(C.bus, "bus|trolleybus", 2, C.pbf), true); } catch (e) { log("  OSM-Verläufe Bus fehlgeschlagen:", e.message); }
   write(id, "bus", meta, bus);
-  if (!ZIP[id]) fs.rmSync(zip, { force: true });
+  if (!ZIP[id]) [].concat(zip).forEach((z) => fs.rmSync(z, { force: true }));
 }
 
 /* ---------- London: TfL-API (Bahnen) + BODS (Busse) ---------- */
@@ -500,6 +575,7 @@ async function osmPbf(urls, bb, routes) {
   return { W, RM };
 }
 async function osmRoutes(bb, routes, nt = 2, pbf = null) {
+  if (process.env.NOOSM) throw new Error("NOOSM gesetzt"); // lokaler Probelauf ohne OpenStreetMap
   if (pbf && pbf.length) {
     try {
       const { W, RM } = await osmPbf(pbf, bb, routes), R = [];
