@@ -12603,8 +12603,9 @@ function lkHere(){
   var b = map.getBounds(), w = b.getWest(), e = b.getEast(), s = b.getSouth(), n = b.getNorth();
   return LK.l.filter(function(x){ var q = x.bb; return q && !(q[0] > e || q[2] < w || q[1] > n || q[3] < s); });
 }
-/* zeigt die Karte gerade Linien aus der Linienkarte? (außerhalb New York und der Stadtpakete) */
-function lkOn(){ return dynOn() && !cpView() && !trRO() && lkHere().length > 0; }
+/* zeigt die Karte gerade Linien aus der Linienkarte? (außerhalb New York; auch in Stadtpaket-Städten – das Paket liefert dort Menü, Haltestellen und Routen,
+   die Linienkarte zeichnet die Linien: echte Gleise, gerundet, gleiche Farbe = ein Strich. Ohne Netz zeichnet das Paket selbst) */
+function lkOn(){ return dynOn() && !trRO() && navigator.onLine!==false && lkHere().length > 0; }
 function lkApply(){
   if(!mapReady) return;
   lkIndex();
@@ -12614,7 +12615,7 @@ function lkApply(){
     map.addSource(id, {type:"vector", url:"pmtiles://"+LKURL+x.id+".pmtiles", attribution:"ÖPNV-Linien © OpenStreetMap"});
     map.addLayer({id:id+"-ln", type:"line", source:id, "source-layer":"lines", paint:{"line-color":["case", ["==", ["length", ["get","c"]], 7], ["get","c"], ["match", ["get","m"], "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "sbahn", DCOL.sbahn, "reg", DCOL.reg, "long", DCOL.long, DCOL.train]],
       "line-width":lnWidth(["get","m"]), "line-offset":lnOffset(["get","o"])}, layout:{visibility:"none", "line-cap":"round", "line-join":"round"}}, LBLB);
-    if(map.getStyle().glyphs) map.addLayer({id:id+"-lbl", type:"symbol", source:id, "source-layer":"lines", minzoom:13.5, layout:{visibility:"none", "symbol-placement":"line", "symbol-spacing":360, "text-field":["get","k"], "text-font":["Noto Sans Regular"], "text-size":11, "text-max-angle":30},
+    if(map.getStyle().glyphs) map.addLayer({id:id+"-lbl", type:"symbol", source:id, "source-layer":"lines", minzoom:13.5, layout:{visibility:"none", "symbol-placement":"line", "symbol-spacing":360, "text-field":["coalesce", ["get","ks"], ["get","k"]], "text-font":["Noto Sans Regular"], "text-size":11, "text-max-angle":30},
       paint:{"text-color":["case", ["==", ["length", ["get","c"]], 7], ["get","c"], "#5B6B7A"], "text-halo-color":isDark() ? "#111a22" : "#ffffff", "text-halo-width":1.6}}); });
   Object.keys(LK.add).forEach(function(cc){ var vis = on && rail.length && here.some(function(x){ return x.id===cc; }), f = ["all", ["in", ["get","m"], ["literal", rail]], off];
     ["-ln", "-lbl"].forEach(function(x){ var l = "lk-"+cc+x; if(!map.getLayer(l)) return;
@@ -13025,7 +13026,7 @@ function dApplyMap(){
   var dy = dynOn(), on = dy ? DMODES.map(function(m){ return m[0]; }).filter(dOn) : [], off = ["!", ["in", ["get","id"], ["literal", Object.keys(DOFF)]]];
   var vis = function(l, v){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", v ? "visible" : "none"); };
   var rail = on.filter(function(m){ return m!=="bus"; });
-  ["dtr","dtr-f","dtr-lbl"].forEach(function(l){ vis(l, dy && rail.length); });
+  ["dtr","dtr-f","dtr-lbl"].forEach(function(l){ vis(l, dy && rail.length && !lkOn()); }); // Linienkarte zeichnet die Linien, wenn sie da ist
   if(map.getLayer("dtr-lbl")) map.setFilter("dtr-lbl", ["all", ["in", ["get","m"], ["literal", rail]], off]);
   map.setFilter("dtr", lnZ(["all", ["!=",["get","m"],"ferry"], ["in", ["get","m"], ["literal", rail]], off]));
   map.setFilter("dtr-f", lnZ(["all", ["==",["get","m"],"ferry"], ["in", ["get","m"], ["literal", rail]], off]));

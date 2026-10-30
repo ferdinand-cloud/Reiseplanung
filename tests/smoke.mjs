@@ -1519,6 +1519,15 @@ await test("Linienkarte: Linien aus OpenStreetMap (PMTiles) auf echten Gleisen, 
   ok(r.f.some(x => x.startsWith("tram:4@")) && r.f.some(x => x.startsWith("tram:6@")) && r.f.some(x => x==="tram:4@-0.5") && r.f.some(x => x==="tram:6@0.5"), "Tram 4 und 6 nicht nebeneinander: "+JSON.stringify(r.f));
   ok(r.off.indexOf("\"o\"") > -1 && r.join==="round", "Kein Versatz je Linie oder eckige Übergänge: "+JSON.stringify(r));
   ok(LKQ.some(u => u.endsWith("de.pmtiles")), "PMTiles-Datei nicht gelesen");
+  // gleiche Farbe = ein Strich (Nachtlinie N4 ohne Farbe übernimmt die der 4), Beschriftung mit allen Nummern; Ecken gerundet (Bogenpunkte statt einer Ecke)
+  const mg = await rp(`JSON.stringify(map.queryRenderedFeatures({layers:["lk-de-ln"]}).filter(function(x){ return x.properties.m==="tram"; }).map(function(x){ return x.properties.k+"|"+x.properties.ks+"|"+x.properties.o; }))`);
+  ok(mg.includes("4|4 · N4|-0.5") && !mg.includes("N4|N4") && await rp(`!map.getLayer("lk-de-lbl") || JSON.stringify(map.getLayoutProperty("lk-de-lbl","text-field")).indexOf("ks") > -1`), "Linien gleicher Farbe nicht zusammengelegt: "+mg);
+  // auch in Städten mit Stadtpaket zeichnet die Linienkarte (Paket-Linien aus), ohne Netz wieder das Paket
+  await rp(`window.__cpv0 = cpView; cpView = function(){ return {id:"bremen", st:{rail:"ok"}}; }; dApplyMap(); true`); await page.waitForTimeout(150);
+  ok(await rp(`lkOn() && map.getLayoutProperty("dtr","visibility")==="none" && map.getLayoutProperty("lk-de-ln","visibility")==="visible"`), "Im Stadtpaket zeichnet nicht die Linienkarte");
+  await page.context().setOffline(true); await rp(`dApplyMap(); true`);
+  ok(await rp(`!lkOn() && map.getLayoutProperty("dtr","visibility")==="visible"`), "Ohne Netz zeichnet das Stadtpaket nicht selbst");
+  await page.context().setOffline(false); await rp(`cpView = window.__cpv0; dApplyMap(); true`);
   // Linie ausblenden wirkt auch auf die Linienkarte; Verkehrsmittel aus → keine Linien
   await rp(`DOFF["tram:6"] = 1; dApplyMap(); true`); await page.waitForTimeout(300);
   ok(await rp(`!map.queryRenderedFeatures({layers:["lk-de-ln"]}).some(function(x){ return x.properties.k==="6"; })`), "Ausgeblendete Linie bleibt in der Linienkarte");

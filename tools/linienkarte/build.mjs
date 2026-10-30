@@ -62,6 +62,24 @@ const MINZ = { long: 5, reg: 7, sbahn: 7, train: 7, metro: 8, light: 9, ferry: 9
 const okCol = (c) => { c = String(c || "").trim(); if (/^#?[0-9a-f]{6}$/i.test(c)) return ("#" + c.replace("#", "")).toUpperCase(); if (/^#[0-9a-f]{3}$/i.test(c)) return ("#" + c[1] + c[1] + c[2] + c[2] + c[3] + c[3]).toUpperCase(); return ""; };
 const natCmp = (a, b) => String(a).localeCompare(String(b), "de", { numeric: true });
 
+// Ecken abrunden (Bogen mit höchstens 25 m Halbmesser): grob gezeichnete Gleise wirken sonst kantig, mit Versatz nebeneinander noch mehr
+function rund(g) {
+  if (g.length < 3) return g;
+  const M = (a, b) => { const k = Math.cos(a[1] * Math.PI / 180); return Math.hypot((b[0] - a[0]) * k, b[1] - a[1]) * 111320; };
+  const out = [g[0]];
+  for (let i = 1; i < g.length - 1; i++) {
+    const a = g[i - 1], p = g[i], b = g[i + 1], la = M(a, p), lb = M(p, b);
+    if (!la || !lb) { out.push(p); continue; }
+    const k = Math.cos(p[1] * Math.PI / 180), ux = (p[0] - a[0]) * k / la, uy = (p[1] - a[1]) / la, vx = (b[0] - p[0]) * k / lb, vy = (b[1] - p[1]) / lb;
+    const turn = Math.acos(Math.max(-1, Math.min(1, ux * vx + uy * vy)));
+    if (turn < 0.12) { out.push(p); continue; } // unter 7°: nichts zu runden
+    const d = Math.min(25, 0.45 * la, 0.45 * lb), s = [p[0] - (p[0] - a[0]) * d / la, p[1] - (p[1] - a[1]) * d / la], e = [p[0] + (b[0] - p[0]) * d / lb, p[1] + (b[1] - p[1]) * d / lb];
+    for (let j = 0; j <= 4; j++) { const t = j / 4, u = 1 - t; out.push([+(u * u * s[0] + 2 * u * t * p[0] + t * t * e[0]).toFixed(6), +(u * u * s[1] + 2 * u * t * p[1] + t * t * e[1]).toFixed(6)]); }
+  }
+  out.push(g[g.length - 1]);
+  return out;
+}
+
 async function pbfGet(url) {
   const f = path.join(TMP, path.basename(url));
   if (fs.existsSync(f) && fs.statSync(f).size > 1e6) return f;
@@ -104,6 +122,9 @@ async function land(id, L) {
     ways.forEach((w) => { if (!W.has(w)) return; let s = byWay.get(w); if (!s) byWay.set(w, s = new Set()); s.add(li); });
   });
   log(id, "Linien", lines.length, "Wege mit Linien", byWay.size);
+  // Nacht-/Verstärkerlinien ohne eigene Farbe (N4, 4S, 6E) bekommen die Farbe ihrer Grundlinie – sie werden dann mit ihr zu einem Strich (wie Apple Karten)
+  const byK = new Map(); lines.forEach((l) => { if (l.c) byK.set(l.m + ":" + l.k, l.c); });
+  lines.forEach((l) => { if (l.c || l.m === "long" || l.m === "reg") return; const b = l.k.replace(/^N(?=\d)/, "").replace(/(?<=\d)[A-Z]$/, ""); if (b !== l.k && byK.has(l.m + ":" + b)) l.c = byK.get(l.m + ":" + b); });
   // feste Reihenfolge aller Linien (Art, dann Nummer): auf jedem Weg liegen Linien so in derselben Reihenfolge nebeneinander
   const order = lines.map((_, i) => i).sort((a, b) => RANK[lines[a].m] - RANK[lines[b].m] || natCmp(lines[a].k, lines[b].k)), pos = new Int32Array(lines.length);
   order.forEach((li, i) => { pos[li] = i; });
@@ -117,11 +138,15 @@ async function land(id, L) {
     // Gruppen auf eigenen Gleisen: Straßenbahn getrennt von Bahnen
     const grp = { rail: [], tram: [], ferry: [] };
     [...set].forEach((li) => { const m = lines[li].m; (m === "tram" ? grp.tram : m === "ferry" ? grp.ferry : grp.rail).push(li); });
-    for (const arr of Object.values(grp)) {
-      arr.sort((x, y) => pos[x] - pos[y]);
+    g = rund(g);
+    for (const arr0 of Object.values(grp)) {
+      arr0.sort((x, y) => pos[x] - pos[y]);
+      // gleiche Art und Farbe (auch Linien ohne Farbe) = ein Strich mit allen Nummern; sonst lägen gleichfarbige Striche als breites Band nebeneinander
+      const arr = [], seen = new Map();
+      arr0.forEach((li) => { const l = lines[li], q = l.m + "|" + l.c; if (seen.has(q)) seen.get(q).ks.push(l.k); else { const e = { l, ks: [l.k] }; seen.set(q, e); arr.push(e); } });
       for (let i = 0; i < arr.length; i++) {
-        const l = lines[arr[i]];
-        await wr({ type: "Feature", tippecanoe: { layer: "lines" }, properties: { m: l.m, k: l.k, c: l.c, o: +(i - (arr.length - 1) / 2).toFixed(1), n: arr.length }, geometry: { type: "LineString", coordinates: g } });
+        const { l, ks } = arr[i];
+        await wr({ type: "Feature", tippecanoe: { layer: "lines" }, properties: { m: l.m, k: l.k, ks: ks.length > 1 ? ks.slice(0, 6).join(" · ") + (ks.length > 6 ? " …" : "") : l.k, c: l.c, o: +(i - (arr.length - 1) / 2).toFixed(1), n: arr.length }, geometry: { type: "LineString", coordinates: g } });
         nf++;
       }
     }
