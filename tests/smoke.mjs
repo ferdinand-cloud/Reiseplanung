@@ -1517,7 +1517,7 @@ await test("ÖPNV von Transitland: fertige Kacheln statt Overpass, Linien im Aus
   ok(await rp(`railCls("Foo", 0, "high_speed")==="long" && JSON.stringify(TLM).indexOf("\\"S1\\"") > -1`), "Bahn-Art fehlt in den Kartenausdrücken");
   ok(grp.includes("S-Bahn") && !grp.includes("Züge"), "Menü zeigt noch „S-Bahn & Züge“: "+grp);
   // Linien nebeneinander: Versatz je Linie, dünn; Haltestellen ab Zoom 11
-  ok(await rp(`var o = JSON.stringify(map.getPaintProperty("tl-rail","line-offset")); var w = map.getPaintProperty("tl-rail","line-width"); o.indexOf("line-offset")<0 && o.indexOf("metro:U2") > -1 && JSON.stringify(w).indexOf("2.6") > -1 && map.getLayer("tl-st").minzoom===11`), "Linien nicht nebeneinander/dünn oder Haltestellen zu spät: "+await rp(`JSON.stringify([map.getPaintProperty("tl-rail","line-offset"), TLSL])`));
+  ok(await rp(`var o = JSON.stringify(map.getPaintProperty("tl-rail","line-offset")); var w = map.getPaintProperty("tl-rail","line-width"); o.indexOf("metro:U2")===-1 && JSON.stringify(w).indexOf("2.6") > -1 && map.getLayer("tl-st").minzoom===11`), "Transitland-Linien versetzt (kreuzen sich), nicht dünn oder Haltestellen zu spät: "+await rp(`JSON.stringify([map.getPaintProperty("tl-rail","line-offset"), TLSL])`));
   ok(!OVQ.some(q => q.includes("subway") || q.includes("tram")), "Linien werden trotz Transitland bei Overpass abgefragt");
   ok(await rp(`var a = document.querySelector("#attr a[href*='transit.land/terms']"); !!a && a.textContent==="Transitland"`), "Quellenangabe Transitland mit Link fehlt");
   ok(await rp(`map.getLayoutProperty("tl-probe","visibility")==="visible"`), "Kacheln werden für das Menü nicht geladen");

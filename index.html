@@ -12524,7 +12524,10 @@ function tlExprs(){
   TLM = ["match", ext, 0,"tram", 1,"metro", 2,rail, 3,bus, 11,"bus", 4,"ferry", 5,"tram", 6,"funi", 7,"funi", 12,"light", rail];
   TLID = ["concat", TLM, ":", TLK];
   var sg = {}; Object.keys(TLSL).forEach(function(id){ var v = TLSL[id]; if(v) (sg[v] = sg[v] || []).push(id); });
-  TLO = 0; if(Object.keys(sg).length){ TLO = ["match", TLID]; Object.keys(sg).forEach(function(v){ TLO.push(sg[v], +v); }); TLO.push(0); }
+  // Transitland: kein Versatz. Jede Linie (oft je Richtung) hat ihren eigenen, grob vereinfachten Verlauf; versetzt kreuzten sich die
+  // Linien und spiegelten sich in der Gegenrichtung (Ferdinand 30.10., Bremen/München). Ohne Versatz liegen gemeinsame Strecken deckungsgleich.
+  // Sauber nebeneinander nur mit gemeinsamen Gleisen (Stadtpakete). sg bleibt für das Menü.
+  TLO = 0;
   TLC = ["case", ["==", ["length", ["to-string", ["get","route_color"]]], 7], ["to-string", ["get","route_color"]],
     ["match", TLM, "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "sbahn", DCOL.sbahn, "reg", DCOL.reg, "long", DCOL.long, "bus", "#1f6fd1", DCOL.train]];
 }
