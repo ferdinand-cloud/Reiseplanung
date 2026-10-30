@@ -1846,6 +1846,15 @@ await test("Stadtpakete: Berlin aus den VBB-Daten statt Transitland, ganze Linie
   await click("[data-act=dfold][data-m=metro]"); await click("#dLines-metro [data-id='metro:U2']");
   ok(await rp(`DOFF["metro:U2"] && JSON.stringify(map.getFilter("dtr")).indexOf("metro:U2") > -1`), "Linie lässt sich nicht ausblenden");
   await shot("stadtpaket-berlin");
+  // Haltestelle antippen (außerhalb NYC): Stationskarte mit Namen und den Linien, die dort fahren (ausgeblendete U2 nicht)
+  await page.waitForFunction(() => window.__rp(`map.loaded() && map.queryRenderedFeatures({layers:["dst"]}).length > 0`), null, {timeout:6000}).catch(() => {});
+  await rp(`(function(){ var q = map.project([13.41, 52.522]); tap(q.x + 3, q.y - 2); })()`);
+  await page.waitForSelector("#card:not([hidden])", {timeout:3000}).catch(() => {});
+  const stc = await rp(`({sel:sel, t:document.getElementById("card").innerText, n:RTST && RTST.n, ls:RTST && RTST.ls && RTST.ls.map(function(l){ return l.k+"/"+l.c; })})`);
+  ok(stc.sel==="rtst" && stc.n==="S+U Alexanderplatz" && stc.t.includes("S+U Alexanderplatz") && stc.ls && !stc.ls.some(l => l.startsWith("U2/")) && stc.ls.includes("S1/#DA6BA2"), "Haltestelle im Stadtpaket nicht antippbar: "+JSON.stringify(stc));
+  ok(await rp(`!!document.querySelector("#card [data-act=navpick][data-rt]")`), "Stationskarte ohne Navigieren");
+  await shot("stadtpaket-haltestelle");
+  await rp(`select(null)`);
   // Route Zoo → Gesundbrunnen: U2 bis Alexanderplatz, dort in die S1; ohne Netz sofort aus dem Paket
   const r = await rp(`(function(){ var A = {la:52.5205, lo:13.3505}, B = {la:52.5398, lo:13.4111};
     var R = cpAlts(A, B, cur), r = R[0], rd = r.legs.filter(function(l){ return l.t==="ride"; });
@@ -3675,6 +3684,55 @@ await test("Ziele: Ort über Google-Maps-Link, Instagram-Link oder Namen merken"
   await page.locator("#zPop [data-act=zlkadd]").first().click(); await page.waitForTimeout(200);
   ok(await rp(`var z = S.trips[zielIds()[0]]; Object.keys(z.places).some(function(k){ return /instagram/.test(z.places[k].src||""); })`), "Instagram-Link nicht als Quelle gespeichert");
   ok(await rp(`var a = zLinkParse("https://maps.apple.com/?ll=48.8584,2.2945&q=Eiffelturm"), b = zLinkParse("https://maps.app.goo.gl/xyz"); a.n==="Eiffelturm" && Math.abs(a.la-48.8584) < 1e-6 && !!b.msg`), "Apple-Maps-Link oder Kurzlink falsch erkannt");
+});
+await test("Ziele: Liste importieren (Google-Maps-Takeout CSV/GeoJSON, KML, GPX, Tabelle)", async () => {
+  await noTripUser();
+  await rp(`var z = zielNew("Rom", {id:"o1", n:"Rom", la:41.9, lo:12.5, r:30000}); save(); openZiele(z); true`); await page.waitForTimeout(200);
+  ok(await page.locator('#zPop label.jp-tile[for=ziFile][data-act=zimp]').count()===1, "Knopf „Importieren“ fehlt im Ziel");
+  // Takeout-Liste: CSV ohne Lage; gesetzte Stecknadel hat die Lage im Link, die anderen werden gesucht (Suche liefert hier nur New York → kein Treffer in Rom)
+  await rp(`ZIpend = zielIds()[0]; true`);
+  const csv = "Title,Note,URL,Comment\nTrevi Fountain,,https://www.google.com/maps/place/Trevi+Fountain/data=!4m2!3m1!1s0x0:0x1,\nKolosseum,Abends hin,\"https://www.google.com/maps/search/41.8902,+12.4922\",mit Führung\nOn Store,,https://www.google.com/maps/place/On+Store/data=!4m2,\n";
+  await page.locator("#ziFile").setInputFiles({name:"Möchte ich hin.csv", mimeType:"text/csv", buffer:Buffer.from(csv)});
+  await page.waitForFunction(() => window.__rp(`!!ZI && ZI.items.every(function(x){ return x.st==="ok" || x.st==="miss"; })`), null, {timeout:6000});
+  ok(await visible("#catPop .zipop"), "Vorschau öffnet nicht");
+  ok((await page.locator("#catPop .zi-src").innerText()).includes("Google Maps · Möchte ich hin"), "Quelle der Liste fehlt");
+  ok(await rp(`ZI.items.length===3 && ZI.items[1].st==="ok" && Math.abs(ZI.items[1].la-41.8902) < 1e-6 && ZI.items[0].st==="miss" && ZI.items[2].st==="miss"`), "Lage aus Link / Suche im Ziel falsch: "+await rp(`JSON.stringify(ZI.items)`));
+  ok(await page.locator("#catPop .zi-row[disabled]").count()===2, "Orte ohne Treffer sind wählbar");
+  await shot("ziel-import");
+  await click("#catPop [data-act=zisave]"); await page.waitForTimeout(250);
+  ok(!(await visible("#catPop .zipop")), "Vorschau bleibt offen");
+  ok(await rp(`var z = S.trips[zielIds()[0]], ps = Object.keys(z.places).map(function(k){ return z.places[k]; }); ps.length===1 && ps[0].n==="Kolosseum" && ps[0].imp==="Google Maps · Möchte ich hin" && /google/.test(ps[0].src) && ps[0].note==="Abends hin · mit Führung"`), "Importierter Ort falsch gespeichert: "+await rp(`JSON.stringify(S.trips[zielIds()[0]].places)`));
+  ok((await page.locator("#zPop .zrow").innerText()).includes("aus Google Maps"), "Quelle am Ort fehlt");
+  // Filter „Importiert“
+  await rp(`zielAdd(zielIds()[0], {n:"Pantheon", c:"sight", la:41.8986, lo:12.4769}); save(); zRenderPop(); true`); await page.waitForTimeout(150);
+  await click("#zPop [data-act=zimpf]");
+  ok(await page.locator("#zPop .zrow").count()===1 && (await page.locator("#zPop .zrow").innerText()).includes("Kolosseum"), "Filter „Importiert“ greift nicht");
+  // gleiche Datei nochmal: schon gemerkt, nicht wählbar
+  await rp(`ziLoad("Möchte ich hin.csv", ${JSON.stringify(csv)}, zielIds()[0]); true`);
+  ok(await rp(`ZI.items[1].dup===1 && !ZI.items[1].on`), "Schon gemerkter Ort wird erneut angeboten");
+  await click("#catPop [data-act=zicancel]");
+  ok(!(await visible("#catPop .zipop")) && await rp(`ZI===null`), "Abbrechen schließt die Vorschau nicht");
+  // ohne Ziel (Übersicht): GeoJSON „Markierte Orte“ – Ort in Rom ins Ziel Rom, Ort in Paris in ein neues Ziel
+  const gj = JSON.stringify({type:"FeatureCollection", features:[
+    {type:"Feature", geometry:{type:"Point", coordinates:[12.4534, 41.9029]}, properties:{google_maps_url:"https://maps.google.com/?cid=1", location:{name:"Petersdom", address:"Piazza San Pietro, Rom"}}},
+    {type:"Feature", geometry:{type:"Point", coordinates:[2.3376, 48.8606]}, properties:{google_maps_url:"https://maps.google.com/?cid=2", location:{name:"Louvre", address:"Rue de Rivoli, 75001 Paris"}}},
+    {type:"Feature", geometry:{type:"Point", coordinates:[0, 0]}, properties:{location:{name:"Ohne Lage"}}}]});
+  await rp(`ziLoad("Gespeicherte Orte.json", ${JSON.stringify(gj)}, ""); true`);
+  await page.waitForFunction(() => window.__rp(`!!ZI && ZI.items.every(function(x){ return x.st==="ok" || x.st==="miss"; })`), null, {timeout:6000});
+  ok(await rp(`ZI.src==="Google Maps · Gespeicherte Orte" && ZI.items.length===3 && ZI.items[0].st==="ok" && ZI.items[1].st==="ok" && ZI.items[2].need===1`), "GeoJSON falsch gelesen: "+await rp(`JSON.stringify(ZI)`));
+  // Ort ohne Lage (0,0) wurde gesucht; Treffer ist hier falsch → abwählen
+  await click("#catPop .zi-row[data-i='2']");
+  ok(await rp(`ZI.items[2].on===false`), "Ort lässt sich nicht abwählen");
+  await click("#catPop [data-act=zisave]");
+  await page.waitForFunction(() => window.__rp(`ZI===null`), null, {timeout:6000});
+  ok(await rp(`Object.keys(S.trips[zielIds().filter(function(z){ return S.trips[z].name==="Rom"; })[0]].places).some(function(k){ return S.trips[zielIds().filter(function(z){ return S.trips[z].name==="Rom"; })[0]].places[k].n==="Petersdom"; })`), "Petersdom nicht im Ziel Rom");
+  ok(await rp(`zielIds().length===2 && !!zFind({n:"Louvre", la:48.8606, lo:2.3376}) && Z(zFind({n:"Louvre", la:48.8606, lo:2.3376}).zid).name!=="Rom"`), "Louvre nicht in einem neuen Ziel");
+  // KML (nur Punkte), GPX, Tabelle mit Breite/Länge, KMZ
+  const kml = '<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Lissabon Tipps</name><Placemark><name>Time Out Market</name><description><![CDATA[<b>Essen</b> gut]]></description><Point><coordinates>-9.1458,38.7071,0</coordinates></Point></Placemark><Placemark><name>Weg</name><LineString><coordinates>-9.1,38.7 -9.2,38.8</coordinates></LineString></Placemark></Document></kml>';
+  ok(await rp(`var r = ziParse("karte.kml", ${JSON.stringify(kml)}); r.items.length===1 && r.items[0].n==="Time Out Market" && r.items[0].note==="Essen gut" && Math.abs(r.items[0].la-38.7071) < 1e-6 && r.src==="KML · Lissabon Tipps"`), "KML falsch gelesen");
+  ok(await rp(`var r = ziParse("w.gpx", '<gpx><wpt lat="38.71" lon="-9.13"><name>Miradouro</name><desc>Sonnenuntergang</desc></wpt></gpx>'); r.items.length===1 && r.items[0].n==="Miradouro" && r.src==="GPX · w"`), "GPX falsch gelesen");
+  ok(await rp(`var r = ziParse("orte.csv", "Name;Breite;Länge;Kategorie\\nPastéis de Belém;38,6975;-9,2033;Café\\n"); r.items.length===1 && Math.abs(r.items[0].lo+9.2033) < 1e-6 && r.items[0].c==="cafe" && r.items[0].st==="ok"`), "Tabelle mit Breite/Länge falsch gelesen");
+  ok(await rp(`!!ziParse("a.kmz", "PK...").err && !!ziParse("a.csv", "Foo,Bar\\n1,2\\n").err`), "Fehlerhinweis für KMZ oder Tabelle ohne Namen fehlt");
 });
 await test("Ziele: mit Freunden teilen, Tipps von Freunden erkennbar", async () => {
   await seed();

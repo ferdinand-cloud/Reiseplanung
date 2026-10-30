@@ -2533,6 +2533,15 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .zlk-msg{margin:0;padding:8px 12px;border-top:.5px solid var(--sep,var(--line));font-size:12.5px}
 a.zsrc{display:grid;place-items:center;color:var(--accent)}
 a.zsrc svg{width:17px;height:17px}
+.zipop .zi-src,.zipop .zi-dest,.zipop .zi-prog{margin:0 2px 6px}
+.zi-bar{display:flex;gap:14px;margin:2px 2px 6px}
+.zi-list{max-height:min(52vh,460px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+.zi-row .ls-t{min-width:0;display:grid}.zi-row .ls-t b,.zi-row .ls-t small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zi-row[disabled]{opacity:.5;cursor:default}
+.zi-row span.ico{flex:0 0 32px}.zi-row .ls-t{flex:1}
+.zi-row .ls-t small{font-weight:400}
+label.pf-new,label.jp-tile{cursor:pointer}
+.pf-plus svg{width:22px;height:22px}
 .addmenu.jpmenu:has(.frp-h){max-height:min(58vh,440px);overflow-y:auto;overscroll-behavior:contain;padding-top:0;min-width:250px}
 .frp-h{position:sticky;top:0;z-index:2;margin:0 -6px 2px;padding:6px 6px 6px;background:var(--glass-hi,var(--sheet));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border-bottom:.5px solid var(--glass-bd,var(--line))}
 .frp-q{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:var(--fill);color:var(--ink);font:500 16px/1.2 var(--f-body);-webkit-appearance:none;appearance:none}
@@ -4419,6 +4428,7 @@ body.profopen #sheet,body.profopen #sheetOpen,body.profopen .ctrl,body.profopen 
 <div class="acctpop trippop" id="srchPop" hidden></div>
 <div class="acctpop" id="jPop" hidden></div>
 <input type="file" id="impFileG" accept="application/json,.json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+<input type="file" id="ziFile" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
 <section class="sheet" id="sheet" aria-label="Planung">
   <div class="grab" id="grab">
     <div class="handle"></div>
@@ -4467,6 +4477,7 @@ var IC = {
   group:"<rect x=\"3\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"3\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"3\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"11\" y=\"11\" width=\"6\" height=\"6\" rx=\"1.5\"/>", // Gruppe
   share:"<path d=\"M10 12.5V3M6.5 6.5L10 3l3.5 3.5\"/><path d=\"M5 9.5H4.5v7h11v-7H15\"/>", // Als Link teilen
   download:"<path d=\"M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4 15.5h12\"/>", // In Fotos sichern
+  imp:"<path d=\"M10 3v8.5M6.5 8l3.5 3.5L13.5 8\"/><path d=\"M3.5 11.5v4.5h13v-4.5\"/>", // Liste importieren (Datei → Ziel)
   ext:"<path d=\"M11 4h5v5M16 4l-7 7M14 11v5H4V6h5\"/>", // In Google Maps / extern öffnen
   flag:"<path d=\"M5 17.5V3.5M5 4h9.5l-2 3.5 2 3.5H5\"/>", // Melden
   star:"<path d=\"M10 3.2l2 4.2 4.6.6-3.4 3.2.9 4.5L10 13.5l-4.1 2.2.9-4.5L3.4 8l4.6-.6z\"/>", // Bewerten
@@ -6754,7 +6765,7 @@ function zielAdd(zid, q){
   var ex = Object.keys(z.places).filter(function(k){ return samePl(z.places[k], q); })[0];
   if(ex) return {id:ex, dup:true};
   var id = uid("w"), p = {id:id, n:String(q.n||"Ort").slice(0, 80), c:CATNAME[q.c] ? q.c : "sight", la:+(+q.la).toFixed(6), lo:+(+q.lo).toFixed(6), addr:String(q.addr||"").slice(0, 120), note:String(q.note||"").slice(0, 400), list:(z.lists[0]||{}).id || null, at:Date.now()};
-  if(q.rec) p.rec = q.rec; if(q.gid) p.gid = q.gid; if(q.src && /^https?:\/\//.test(q.src)) p.src = String(q.src).slice(0, 500);
+  if(q.rec) p.rec = q.rec; if(q.gid) p.gid = q.gid; if(q.src && /^https?:\/\//.test(q.src)) p.src = String(q.src).slice(0, 500); if(q.imp) p.imp = String(q.imp).slice(0, 80);
   if(acct.user){ p.by = acct.user.uid; if(PROF && PROF.name) p.byn = PROF.name; }
   z.places[id] = p; return {id:id};
 }
@@ -7159,18 +7170,19 @@ function zielsHTML(){
   ids.forEach(function(zid){ var z = S.trips[zid], n = zOpenPl(zid).length, v = zVisited(zid).length;
     h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-trip zt\" data-act=\"zopen\" data-z=\""+esc(zid)+"\"><span class=\"pf-cov lt\" style=\"--cc:"+tripColor(zid)+"\"><i>"+esc(tripInitials(z.name))+"</i></span>"+
       "<span class=\"pf-tt\"><b>"+esc(z.name)+"</b><small>"+esc([n+" gemerkt", v ? v+" besucht" : "", META[zid] && (META[zid].members||[]).length > 1 ? "geteilt" : ""].filter(Boolean).join(" · "))+"</small></span></button></div>"; });
-  h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-new\" data-act=\"znew\"><span class=\"pf-plus\" aria-hidden=\"true\">＋</span><b>Neues Ziel</b><small>Stadt, Region oder Land</small></button></div></div>";
+  h += "<div class=\"pf-tw\"><button type=\"button\" class=\"pf-new\" data-act=\"znew\"><span class=\"pf-plus\" aria-hidden=\"true\">＋</span><b>Neues Ziel</b><small>Stadt, Region oder Land</small></button></div>"+
+    "<div class=\"pf-tw\"><label class=\"pf-new\" for=\"ziFile\" data-act=\"zimp\" data-z=\"\"><span class=\"pf-plus\" aria-hidden=\"true\">"+ic("imp")+"</span><b>Liste importieren</b><small>Google Maps, KML, GPX, CSV</small></label></div></div>";
   if(!ids.length) h += "<p class=\"note pf-empty\">Merke dir Orte für später, auch ohne geplante Reise: Tippe auf der Karte, in Entdecken oder im Chat auf das Merken-Zeichen. Der Ort landet automatisch im passenden Ziel. Legst du später eine Reise dorthin an, bietet die App die gemerkten Orte an.</p>";
   return h;
 }
 function zRow(zid, p, st){
   return "<div class=\"ls-row zrow\"><button type=\"button\" class=\"zrow-main\" data-act=\"zshow\" data-z=\""+esc(zid)+"\" data-pid=\""+esc(p.id)+"\"><span class=\"ls-th ico\" style=\"--cc:"+catCol(p.c)+"\">"+icon(p.c)+"</span><span class=\"ls-t\"><b>"+esc(p.n)+"</b><small>"+
-    [zStatusText(st) || esc(CATNAME[p.c]||""), p.rec && p.rec.name ? "von "+esc(atn(p.rec.name)) : (p.by && acct.user && p.by!==acct.user.uid && p.byn ? "Tipp von "+esc(atn(p.byn)) : "")].filter(Boolean).join(" · ")+"</small></span></button>"+
+    [zStatusText(st) || esc(CATNAME[p.c]||""), p.rec && p.rec.name ? "von "+esc(atn(p.rec.name)) : (p.by && acct.user && p.by!==acct.user.uid && p.byn ? "Tipp von "+esc(atn(p.byn)) : (p.imp ? "aus "+esc(p.imp.split(" · ")[0]) : ""))].filter(Boolean).join(" · ")+"</small></span></button>"+
     (p.src ? "<a class=\"zrow-x zsrc\" href=\""+esc(p.src)+"\" target=\"_blank\" rel=\"noopener\" aria-label=\"Quelle öffnen\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M8.5 11.5l3-3M7 9.5l-1.5 1.5a2.5 2.5 0 0 0 3.5 3.5L10.5 13M13 10.5l1.5-1.5a2.5 2.5 0 0 0-3.5-3.5L9.5 7\"/></svg></a>" : "")+
     "<button type=\"button\" class=\"zrow-x\" data-act=\"zpldel\" data-z=\""+esc(zid)+"\" data-pid=\""+esc(p.id)+"\" aria-label=\"„"+esc(p.n)+"“ entfernen\">×</button></div>";
 }
 /* Kategorie-Filter der Ziel-Ansicht (wie in der Wunschliste, mehrere möglich): wirkt auf „Gemerkt“ und „Besucht auf Reisen“ */
-var zCat = {}, zCatZ = "";
+var zCat = {}, zCatZ = "", zImpF = false;
 function zCatOk(c){ return !Object.keys(zCat).length || !!zCat[c]; }
 function zCatPop(){
   var zid = zOpen, cc = {}, all = zOpenPl(zid).concat(zVisited(zid).map(function(x){ return x.p; }));
@@ -7183,8 +7195,9 @@ function zCatPop(){
   $("catPop").innerHTML = h; $("catPop").hidden = false;
 }
 function zDetailHTML(zid){
-  if(zCatZ!==zid){ zCat = {}; zCatZ = zid; }
-  var z = S.trips[zid], ps0 = zOpenPl(zid), ps = ps0.filter(function(p){ return zCatOk(p.c); });
+  if(zCatZ!==zid){ zCat = {}; zCatZ = zid; zImpF = false; }
+  var z = S.trips[zid], ps0 = zOpenPl(zid), hasImp = ps0.some(function(p){ return p.imp; }); if(!hasImp) zImpF = false;
+  var ps = ps0.filter(function(p){ return zCatOk(p.c) && (!zImpF || p.imp); });
   ps.sort(function(a, b){ return (b.at||0) - (a.at||0) || String(a.n).localeCompare(b.n); });
   var vis0 = zVisited(zid), vis = vis0.filter(function(x){ return zCatOk(x.p.c); }), area = (z.orte||[]).map(function(o){ return o.n; }).filter(Boolean).join(", ");
   var h = "<div class=\"zhead\"><span class=\"zh-t\"><b>"+esc(z.name)+"</b><small>"+esc(area || "Gebiet noch nicht festgelegt")+"</small></span>"+
@@ -7193,12 +7206,13 @@ function zDetailHTML(zid){
   var I = function(d){ return "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg>"; };
   h += "<div class=\"jp-tiles zacts\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"zplan\" data-z=\""+esc(zid)+"\" aria-label=\"Reise hierhin planen\">"+I(IC.cal)+"<span>Reise planen</span></button>"+
     (acct.user && FR.friends.length ? "<button type=\"button\" class=\"jp-tile\" data-act=\"askopen\" data-z=\""+esc(zid)+"\" aria-label=\"Freunde nach Tipps fragen\">"+I("<path d=\"M4 4.5h12v8.5H9l-3.5 3v-3H4z\"/><path d=\"M8.6 7.6a1.5 1.5 0 1 1 1.9 1.5c-.4.1-.5.4-.5.8\"/><circle cx=\"10\" cy=\"11.3\" r=\".5\" fill=\"currentColor\"/>")+"<span>Tipps holen</span></button>" : "")+
-    (Object.keys(z.places).some(function(k){ return hasLoc(z.places[k]); }) ? "<button type=\"button\" class=\"jp-tile\" data-act=\"lkzshare\" data-z=\""+esc(zid)+"\" aria-label=\"Als Link teilen\">"+I(IC.share)+"<span>Link teilen</span></button>" : "")+"</div>";
+    (Object.keys(z.places).some(function(k){ return hasLoc(z.places[k]); }) ? "<button type=\"button\" class=\"jp-tile\" data-act=\"lkzshare\" data-z=\""+esc(zid)+"\" aria-label=\"Als Link teilen\">"+I(IC.share)+"<span>Link teilen</span></button>" : "")+"<label class=\"jp-tile\" for=\"ziFile\" data-act=\"zimp\" data-z=\""+esc(zid)+"\" aria-label=\"Liste importieren (Google Maps, KML, GPX, CSV)\">"+I(IC.imp)+"<span>Importieren</span></label></div>";
   h += zLinkHTML();
   var zck = Object.keys(zCat), zcl = !zck.length ? "Kategorie" : zck.length===1 ? CATNAME[zck[0]] : zck.length+" Kategorien";
   if(ps0.length + vis0.length > 1) h += "<div class=\"fchips zfchips\" role=\"group\" aria-label=\"Filter\"><button type=\"button\" class=\"fchip"+(zck.length ? " on" : "")+"\" data-act=\"zcatpop\" aria-haspopup=\"dialog\">"+esc(zcl)+CHEV+"</button>"+
-    (zck.length ? "<button type=\"button\" class=\"tf-link\" data-act=\"zcatreset\">Filter zurücksetzen</button>" : "")+"</div>";
-  h += "<div class=\"nt-sec\">Gemerkt · "+ps.length+(zck.length ? " von "+ps0.length : "")+"</div>";
+    (hasImp ? "<button type=\"button\" class=\"fchip"+(zImpF ? " on" : "")+"\" data-act=\"zimpf\" aria-pressed=\""+zImpF+"\">Importiert</button>" : "")+
+    (zck.length || zImpF ? "<button type=\"button\" class=\"tf-link\" data-act=\"zcatreset\">Filter zurücksetzen</button>" : "")+"</div>";
+  h += "<div class=\"nt-sec\">Gemerkt · "+ps.length+(zck.length || zImpF ? " von "+ps0.length : "")+"</div>";
   h += ps.length ? "<div class=\"ag-grp ls-list\">"+ps.map(function(p){ return zRow(zid, p, zStatus(zid, p)); }).join("")+"</div>" : "<p class=\"note\">"+(ps0.length ? "Keine gemerkten Orte in dieser Kategorie." : "Noch nichts gemerkt. Tippe auf der Karte, in Entdecken oder im Chat auf das Merken-Zeichen.")+"</p>";
   h += zShareHTML(zid);
   if(vis0.length) h += "<div class=\"nt-sec\">Besucht auf Reisen · "+vis.length+(zck.length ? " von "+vis0.length : "")+"</div><div class=\"ag-grp ls-list\">"+vis.map(function(x){ var RR = RATES.filter(function(r){ return r[0]===x.rating; })[0];
@@ -7281,6 +7295,142 @@ function zLinkAdd(i){
   if(profOpen) renderProfile();
 }
 document.addEventListener("input", function(e){ if(e.target && e.target.id==="zLink") zLinkInput(e.target.value); });
+/* Liste importieren (Ziele): Google Maps (Takeout: Listen als CSV ohne Lage, „Markierte Orte“ als GeoJSON), KML (z. B. My Maps), GPX, CSV.
+   Orte ohne Lage werden per Name gesucht (im Ziel nahe dessen Gebiet), die Vorschau zeigt jeden Treffer mit Haken.
+   Gemerkte Orte tragen die Quelle in p.imp (Filter „Importiert“ im Ziel); ein Google-Link der Zeile wird wie beim Linkfeld p.src. */
+var ZI = null, ZIpend = "", ZIMAX = 1000;
+function ziCsvRows(txt){
+  var head = txt.split(/\r?\n/)[0] || "", d = (head.match(/;/g)||[]).length > (head.match(/,/g)||[]).length ? ";" : (head.indexOf("\t") > -1 && head.indexOf(",") < 0 ? "\t" : ",");
+  var rows = [], row = [], f = "", q = false;
+  for(var i = 0; i < txt.length; i++){ var ch = txt[i];
+    if(q){ if(ch==='"'){ if(txt[i+1]==='"'){ f += '"'; i++; } else q = false; } else f += ch; }
+    else if(ch==='"') q = true; else if(ch===d){ row.push(f); f = ""; }
+    else if(ch==="\n" || ch==="\r"){ if(ch==="\r" && txt[i+1]==="\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += ch; }
+  if(f || row.length){ row.push(f); rows.push(row); }
+  return rows.filter(function(r){ return r.some(function(x){ return String(x).trim(); }); });
+}
+// Lage aus einem Kartenlink, auch „…/maps/search/40.7,-73.9“ (gesetzte Stecknadel in Takeout-Listen)
+function ziLoc(url){ var s = String(url||""), m = s.match(/\/maps\/search\/\+?(-?\d+\.\d+),\s*\+?(-?\d+\.\d+)/); if(m){ var la = +m[1], lo = +m[2]; if(Math.abs(la)<=90 && Math.abs(lo)<=180) return {la:la, lo:lo}; } return s ? parseLoc(s) || null : null; }
+function ziCat(v){ v = norm(String(v||"")); if(!v) return ""; var c = CATS.filter(function(x){ return norm(x[0])===v || norm(x[1])===v; })[0]; return c ? c[0] : (/hotel|hostel|unterkunft|lodging/.test(v) ? "hotel" : /restaurant|essen|food/.test(v) ? "essen" : /cafe|coffee/.test(v) ? "cafe" : /bar|pub/.test(v) ? "bar" : /museum|galerie|gallery/.test(v) ? "kultur" : /park/.test(v) ? "park" : ""); }
+function ziItem(o){
+  var src = /^https?:\/\//.test(o.url||"") ? String(o.url) : "", ll = hasLoc(o) ? o : ziLoc(src), n = String(o.n||"").replace(/\s+/g, " ").trim();
+  if(!n && src) n = zLinkParse(src).n || "";
+  if(!n && o.addr) n = String(o.addr).split(",")[0].trim();
+  if(!n && !ll) return null;
+  var it = {n:(n || "Ort").slice(0, 80), addr:String(o.addr||"").trim().slice(0, 120), note:String(o.note||"").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 400), c:ziCat(o.c) || "sight", on:true};
+  if(src) it.src = src.slice(0, 500);
+  if(ll && !(Math.abs(ll.la) < 1e-6 && Math.abs(ll.lo) < 1e-6)){ it.la = +(+ll.la).toFixed(6); it.lo = +(+ll.lo).toFixed(6); it.st = "ok"; } else { it.st = "find"; it.need = 1; }
+  return it;
+}
+function ziParse(name, txt){
+  var ext = (String(name).toLowerCase().match(/\.([a-z0-9]+)$/) || [])[1] || "", base = String(name).replace(/\.[^.]+$/, "").trim(), t = String(txt||"").replace(/^﻿/, "").trim(), out = [], src = "";
+  if(ext==="kmz" || t.slice(0, 2)==="PK") return {err:"KMZ-Dateien kann die App nicht lesen. Exportiere die Karte als KML (in Google My Maps: „Als KML exportieren“)."};
+  if(!t) return {err:"Die Datei ist leer."};
+  if(t[0]==="{" || t[0]==="["){
+    var j; try { j = JSON.parse(t); } catch(e){ return {err:"Die Datei ist kein gültiges GeoJSON."}; }
+    var fs = Array.isArray(j) ? j : j.type==="Feature" ? [j] : (j.features || []);
+    if(!fs.length && (j.trips || j.places)) return {err:"Das ist eine Sicherung der App. Lade sie im Konto unter „Sicherung laden“."};
+    fs.forEach(function(f){ var g = f && f.geometry, pr = (f && f.properties) || {}, lo = pr.location || pr.Location || {}, c = g && g.type==="Point" && g.coordinates;
+      var it = ziItem({n:pr.name || pr.Title || pr.title || lo.name || lo["Business Name"] || lo.business_name || "", addr:lo.address || lo.Address || pr.address || "", url:pr.google_maps_url || pr["Google Maps URL"] || pr.url || "",
+        note:pr.Comment || pr.comment || pr.description || pr.note || "", c:pr.category || pr.Kategorie || "", la:c ? +c[1] : null, lo:c ? +c[0] : null});
+      if(it) out.push(it); });
+    src = fs.some(function(f){ var pr = (f && f.properties) || {}; return pr.google_maps_url || pr["Google Maps URL"] || pr.location; }) ? "Google Maps · "+base : "GeoJSON · "+base;
+  } else if(t[0]==="<"){
+    var doc = new DOMParser().parseFromString(t, "application/xml");
+    if(doc.getElementsByTagName("parsererror").length) return {err:"Die Datei ist kein gültiges KML oder GPX."};
+    var kid = function(el, tag){ var x = el.getElementsByTagName(tag)[0]; return x ? x.textContent.trim() : ""; };
+    var pms = doc.getElementsByTagName("Placemark"), wps = doc.getElementsByTagName("wpt");
+    for(var i = 0; i < pms.length; i++){ var pt = pms[i].getElementsByTagName("Point")[0], cs = pt ? kid(pt, "coordinates").split(",") : null;
+      if(!cs || cs.length < 2) continue;
+      var it = ziItem({n:kid(pms[i], "name"), note:kid(pms[i], "description"), addr:kid(pms[i], "address"), la:+cs[1], lo:+cs[0]}); if(it) out.push(it); }
+    for(var k = 0; k < wps.length; k++){ var w = wps[k], it2 = ziItem({n:kid(w, "name"), note:kid(w, "desc") || kid(w, "cmt"), c:kid(w, "type"), la:+w.getAttribute("lat"), lo:+w.getAttribute("lon")}); if(it2) out.push(it2); }
+    var dn = pms.length && doc.getElementsByTagName("Document")[0], dnm = dn ? (Array.prototype.filter.call(dn.children, function(x){ return x.tagName==="name"; })[0] || {}).textContent : "";
+    src = (pms.length ? "KML · " : "GPX · ")+(String(dnm||"").trim() || base);
+    if(!out.length) return {err:"In der Datei sind keine einzelnen Orte (nur Linien oder Strecken)."};
+  } else {
+    var rows = ziCsvRows(t); if(rows.length < 2) return {err:"In der Datei stehen keine Orte."};
+    var hd = rows[0].map(function(x){ return norm(String(x)).replace(/[^a-z]/g, ""); }), col = function(re){ for(var c = 0; c < hd.length; c++) if(re.test(hd[c])) return c; return -1; };
+    var cN = col(/^(title|titel|name|ort|place|bezeichnung)$/), cU = col(/^(url|link|googlemapsurl|maps)$/), cNo = col(/^(note|notiz|notes|notizen|beschreibung|description|desc)$/), cCo = col(/^(comment|kommentar)$/),
+        cLa = col(/^(lat|latitude|breite|breitengrad|y)$/), cLo = col(/^(lon|lng|long|longitude|laenge|lange|langengrad|laengengrad|x)$/), cA = col(/^(address|adresse|anschrift)$/), cC = col(/^(category|kategorie|type|typ)$/);
+    if(cN < 0 && cU < 0 && (cLa < 0 || cLo < 0)) return {err:"Die Tabelle braucht eine Spalte für den Namen (z. B. „Title“ oder „Name“), einen Link oder Breite/Länge."};
+    var v = function(r, c){ return c > -1 ? String(r[c]||"").trim() : ""; }, num = function(s){ s = String(s).replace(",", "."); return s && isFinite(+s) ? +s : null; };
+    rows.slice(1).forEach(function(r){ var la = num(v(r, cLa)), lo = num(v(r, cLo));
+      var it = ziItem({n:v(r, cN), url:v(r, cU), addr:v(r, cA), c:v(r, cC), note:[v(r, cNo), v(r, cCo)].filter(Boolean).join(" · "), la:la!=null && lo!=null ? la : null, lo:la!=null && lo!=null ? lo : null}); if(it) out.push(it); });
+    src = (cU > -1 && out.some(function(x){ return /google\./.test(x.src||""); }) ? "Google Maps · " : "Tabelle · ")+base;
+  }
+  if(!out.length) return {err:"In der Datei wurden keine Orte erkannt."};
+  var cut = out.length > ZIMAX; out = out.slice(0, ZIMAX);
+  out.forEach(function(it){ if(it.st==="ok" && zFind(it)){ it.dup = 1; it.on = false; } });
+  return {src:src.slice(0, 80), items:out, cut:cut};
+}
+function ziLoad(name, txt, zid){
+  var r = ziParse(name, txt); if(r.err){ toast(r.err, false); return; }
+  ZI = {zid:zid && Z(zid) ? zid : "", f:String(name), src:r.src, items:r.items, cut:r.cut, run:0, saving:false};
+  ziPop(); ziFind();
+}
+// Orte ohne Lage nacheinander suchen (Photon, schonend: eine Anfrage nach der anderen)
+function ziFind(){
+  var Zi = ZI; if(!Zi) return; var i = Zi.items.findIndex(function(x){ return x.st==="find"; }); if(i < 0){ ziPop(); return; }
+  var it = Zi.items[i], z = Zi.zid && Z(Zi.zid), c = z && (z.orte||[]).filter(hasLoc)[0], bias = c ? "&lat="+c.la.toFixed(3)+"&lon="+c.lo.toFixed(3) : "";
+  it.st = "busy"; if(!(Zi.run++ % 5)) ziPop();
+  fetch("https://photon.komoot.io/api/?q="+encodeURIComponent([it.n, it.addr].filter(Boolean).join(", "))+"&limit=5&lang=de"+bias).then(function(x){ return x.json(); }).then(function(j){
+    if(ZI!==Zi) return;
+    var fs = (j && j.features || []).filter(function(f){ return f.geometry && f.geometry.coordinates; }).map(function(f){ var g = f.geometry.coordinates; return {f:f, la:+g[1], lo:+g[0]}; });
+    if(z) fs = fs.filter(function(x){ return zielHas(z, x); }).concat(fs.filter(function(x){ return !zielHas(z, x) && c && dist(c, x) < 80000; }));
+    var b = fs[0];
+    if(!b){ it.st = "miss"; it.on = false; }
+    else { var pr = b.f.properties || {}; it.la = +b.la.toFixed(6); it.lo = +b.lo.toFixed(6); it.st = "ok"; it.sub = [pr.city || pr.county, pr.country].filter(Boolean).join(", ");
+      if(!it.addr) it.addr = [[pr.street, pr.housenumber].filter(Boolean).join(" "), pr.city].filter(Boolean).join(", ");
+      if(it.c==="sight" && pr.osm_value) it.c = /restaurant|fast_food|biergarten/.test(pr.osm_value) ? "essen" : /cafe|ice_cream/.test(pr.osm_value) ? "cafe" : /bar|pub/.test(pr.osm_value) ? "bar" : (CATNAME[POICLASS[pr.osm_value]] ? POICLASS[pr.osm_value] : "sight");
+      if(zFind(it)){ it.dup = 1; it.on = false; } }
+    setTimeout(ziFind, 120);
+  }).catch(function(){ if(ZI!==Zi) return; Zi.items.forEach(function(x){ if(x.st==="find" || x.st==="busy"){ x.st = "miss"; x.on = false; } }); Zi.off = 1; ziPop(); });
+}
+function ziPop(){
+  var Zi = ZI, cp = $("catPop"); if(!Zi) return;
+  var oc = cp.querySelector(".zipop .pop-list"), st = oc && !cp.hidden ? oc.scrollTop : 0;
+  var its = Zi.items, nOn = its.filter(function(x){ return x.on && x.st==="ok"; }).length, nF = its.filter(function(x){ return x.st==="find" || x.st==="busy"; }).length, nM = its.filter(function(x){ return x.st==="miss"; }).length, nD = its.filter(function(x){ return x.dup; }).length;
+  var h = "<div class=\"pop-card zpop zipop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Liste importieren\"><div class=\"pop-head\"><h4>Importieren</h4><button type=\"button\" class=\"x\" data-act=\"zicancel\" aria-label=\"Schließen\">×</button></div>"+
+    "<p class=\"note zi-src\"><b>"+esc(Zi.src)+"</b> · "+its.length+(its.length===1 ? " Ort" : " Orte")+(Zi.cut ? " (nur die ersten "+ZIMAX+")" : "")+"</p>"+
+    "<p class=\"note zi-dest\">"+(Zi.zid ? "Ins Ziel „"+esc(Z(Zi.zid).name)+"“" : "Jeder Ort landet im passenden Ziel, sonst in einem neuen Ziel nach Stadt.")+"</p>";
+  if(nF){ var nNd = its.filter(function(x){ return x.need; }).length; h += "<p class=\"note zi-prog\">Lage wird gesucht … "+(nNd - nF)+" von "+nNd+"</p>"; }
+  if(!nF && (nM || nD)) h += "<p class=\"note zi-prog\">"+[nM ? nM+" ohne Treffer"+(Zi.off ? " (offline?)" : "") : "", nD ? nD+" schon gemerkt" : ""].filter(Boolean).join(" · ")+"</p>";
+  h += "<div class=\"zi-bar\"><button type=\"button\" class=\"tf-link\" data-act=\"ziall\" data-v=\"1\">Alle</button><button type=\"button\" class=\"tf-link\" data-act=\"ziall\" data-v=\"0\">Keine</button></div><div class=\"pop-list wfl zi-list\">";
+  its.forEach(function(it, i){ var dis = it.st!=="ok" || it.dup;
+    var sub = it.dup ? "schon gemerkt" : it.st==="miss" ? "nicht gefunden" : (it.st==="find" || it.st==="busy") ? "Lage wird gesucht …" : (it.sub || it.addr || CATNAME[it.c] || "");
+    h += "<button type=\"button\" class=\"nbrow zi-row\" data-act=\"zitog\" data-i=\""+i+"\" aria-pressed=\""+(!!it.on)+"\""+(dis ? " disabled" : "")+"><span class=\"box\"></span>"+badge(it.c)+"<span class=\"ls-t\"><b>"+esc(it.n)+"</b><small>"+esc(sub)+"</small></span></button>"; });
+  h += "</div><div class=\"row\" style=\"margin-top:10px\"><button type=\"button\" class=\"btn\" data-act=\"zisave\""+(nOn && !Zi.saving ? "" : " disabled")+">"+(Zi.saving ? "Wird gemerkt …" : nOn ? nOn+(nOn===1 ? " Ort merken" : " Orte merken") : "Nichts ausgewählt")+"</button></div></div>";
+  cp.innerHTML = h; cp.hidden = false;
+  var nc = cp.querySelector(".zipop .pop-list"); if(nc) nc.scrollTop = st;
+}
+function ziTog(i){ var it = ZI && ZI.items[i]; if(!it || it.st!=="ok" || it.dup) return; it.on = !it.on; ziPop(); }
+function ziAll(v){ if(!ZI) return; ZI.items.forEach(function(it){ if(it.st==="ok" && !it.dup) it.on = !!v; }); ziPop(); }
+function ziClose(){ ZI = null; closeCatPop(); }
+function ziSave(){
+  var Zi = ZI; if(!Zi || Zi.saving) return;
+  var its = Zi.items.filter(function(x){ return x.on && x.st==="ok"; }); if(!its.length) return;
+  Zi.saving = true; ziPop();
+  var add = 0, dup = 0, zs = {}, q = function(it){ var o = {n:it.n, c:it.c, la:it.la, lo:it.lo, addr:it.addr, note:it.note, imp:Zi.src}; if(it.src) o.src = it.src; return o; };
+  var put = function(zid, it){ var r = zielAdd(zid, q(it)); if(!r) return; if(r.dup) dup++; else { add++; zs[zid] = 1; } };
+  var done = function(){
+    save(); ZI = null; closeCatPop();
+    var zn = Object.keys(zs); toast(add+(add===1 ? " Ort" : " Orte")+" gemerkt"+(zn.length===1 ? " in „"+Z(zn[0]).name+"“" : zn.length ? " in "+zn.length+" Zielen" : "")+(dup ? " · "+dup+" schon vorhanden" : ""), false);
+    if(profOpen){ renderProfile(); zRenderPop(); }
+  };
+  if(Zi.zid && Z(Zi.zid)){ its.forEach(function(it){ put(Zi.zid, it); }); done(); return; }
+  // ohne Ziel: wie „Merken“ – passendes Ziel, sonst neues Ziel nach Stadt (nacheinander, damit Orte derselben Stadt ins selbe neue Ziel kommen)
+  var i = 0, next = function(){
+    if(i >= its.length){ done(); return; }
+    var it = its[i++]; if(zFind(it)){ dup++; next(); return; }
+    var zid = zielFor(it); if(zid){ put(zid, it); next(); return; }
+    zGuess(it).then(function(g){ var n = g.n || it.n || "Neues Ziel"; if(!g.o.n) g.o.n = n; put(zielNew(n, g.o), it); next(); });
+  };
+  next();
+}
+document.addEventListener("change", function(e){ var f = e.target && e.target.id==="ziFile" && e.target.files[0]; if(!f) return; var zid = ZIpend; e.target.value = "";
+  if(f.size > 15e6){ toast("Die Datei ist zu groß (höchstens 15 MB).", false); return; }
+  f.text().then(function(txt){ ziLoad(f.name, txt, zid); }, function(){ toast("Die Datei lässt sich nicht lesen.", false); }); });
 /* Ziel mit Freunden teilen: Eingeladene werden Mitglied (wie Mitreisende) und legen Tipps direkt ins Ziel */
 function zMemName(m, u){ var f = FR.friends.filter(function(x){ return x.uid===u; })[0]; return f && f.name ? atn(f.name) : INVN[u] ? atn(INVN[u]) : ((m.memberEmails||{})[u] || "Freund"); }
 function zShareHTML(zid){
@@ -13874,6 +14024,7 @@ function tap(x, y){
   if(!best && wishOn() && !isRO() && !zsm) mapWishes().forEach(function(w){ test(w.id, w, 16); });
   if(!best) PHMK.forEach(function(pid){ test(pid, P(pid), 14); });
   if(!best && layers.sub && !trRO()){ var sb = -1, sd = 16; TRANSIT.stations.forEach(function(st, si){ if(!stationOn(st)) return; var q = toS(st[1], st[2]), d = Math.hypot(q[0]-x, q[1]-y); if(d < sd){ sd = d; sb = si; } }); if(sb > -1){ select("sub:"+sb); return; } }
+  if(!best && !trRO()){ var dh = dstAt(x, y); if(dh){ RTST = dh; select("rtst"); return; } }
   if(!best && layers.bike && map.getLayer("cb")){ var cbf = map.queryRenderedFeatures([[x-12, y-12], [x+12, y+12]], {layers:["cb"]})[0]; if(cbf){ select("cb:"+cbf.properties.id); cbLoad(); return; } }
   if(!best){ var pq = poiAt(x, y); if(pq){ poiSel = pq; sel = null; select("poi"); poiSel = pq; renderCard(); scheduleOverlay(); return; } }
   if(!best && (layers.nb || nbActive().length)){ var a = toW(x, y), n = nbAt(a[0], a[1]); if(n) best = "nb:"+n; }
@@ -15512,11 +15663,31 @@ function rtStop(si, r){
   if(typeof si==="number" && !isBus(r) && !isFerry(r)){ var bi = -1, bd = 150; TRANSIT.stations.forEach(function(st, i){ var d = Math.hypot(st[1]-s0[1], st[2]-s0[2]); if(d < bd){ bd = d; bi = i; } }); if(bi > -1){ select("sub:"+bi); return; } }
   var q = stLL(si); RTST = {la:q.la, lo:q.lo, n:s0[0], r:r}; select("rtst");
 }
+/* Haltestellen außerhalb des NYC-Netzes (Stadtpaket, OpenStreetMap, Transitland): Treffer aus den Kartenebenen, Linien = Linien, die an der Stelle gezeichnet sind */
+var DSTL = ["dst","tl-st","tl-bst"], DLNL = ["dtr","dtr-f","dbus","tl-rail","tl-ferry","tl-bus"];
+function dstAt(x, y){
+  if(!map || !mapReady) return null;
+  var vis = function(l){ return map.getLayer(l) && map.getLayoutProperty(l, "visibility")!=="none"; };
+  var ls = DSTL.filter(vis); if(!ls.length) return null;
+  var fs = []; try { fs = map.queryRenderedFeatures([[x-14, y-14], [x+14, y+14]], {layers:ls}); } catch(e){}
+  var best = null, bd = 1e9;
+  fs.forEach(function(f){ if(!f.geometry || f.geometry.type!=="Point") return; var c = f.geometry.coordinates, q = map.project(c), d = Math.hypot(q.x-x, q.y-y); if(d < bd){ bd = d; best = f; } });
+  if(!best) return null;
+  var p = best.properties || {}, c = best.geometry.coordinates, z = map.project(c), seen = {}, lines = [], lf = [];
+  try { lf = map.queryRenderedFeatures([[z.x-8, z.y-8], [z.x+8, z.y+8]], {layers:DLNL.filter(vis)}); } catch(e){}
+  lf.forEach(function(f){ var q = f.properties || {}, k = String(q.k || q.route_short_name || q.route_long_name || "").trim().slice(0, 24); if(!k) return;
+    var m = q.m || (best.layer.id==="tl-bst" || f.layer.id==="tl-bus" ? "bus" : f.layer.id==="tl-ferry" || f.layer.id==="dtr-f" ? "ferry" : ""), col = okCol(q.c) || okCol(q.route_color) || vtCol(m || "metro", k);
+    if(seen[m+":"+k]) return; seen[m+":"+k] = 1; lines.push({k:k, c:col, m:m}); });
+  lines.sort(function(a, b){ return (a.m==="bus") - (b.m==="bus") || natCmp(a.k, b.k); });
+  var bus = best.layer.id==="tl-bst" || p.m==="bus", fer = p.m==="ferry";
+  return {la:c[1], lo:c[0], n:String(p.n || p.stop_name || "Haltestelle"), ls:lines.slice(0, 16), kind:fer ? "Anleger" : bus ? "Haltestelle" : "Station"};
+}
 function rtCard(){
-  var q = RTST, d = me ? dist(me, q) : null, k = isFerry(q.r) ? "Anleger" : isBus(q.r) ? "Haltestelle" : "Station";
+  var q = RTST, d = me ? dist(me, q) : null, k = q.ls ? q.kind : isFerry(q.r) ? "Anleger" : isBus(q.r) ? "Haltestelle" : "Station";
   return "<button class=\"x\" type=\"button\" data-act=\"close\" aria-label=\"Schließen\">×</button>"+
     "<div class=\"ch\"><span class=\"cic\" style=\"--cc:#17212c\">"+TICSUB+"</span><div class=\"cht\"><h3>"+esc(q.n)+"</h3><p>"+k+(d!=null ? " · "+fmtDist(d)+" entfernt" : "")+"</p></div></div>"+
-    "<p class=\"tline\"><span class=\"tlx\">"+lineBul(q.r)+"</span></p>"+
+    (q.ls ? (q.ls.length ? "<p class=\"tline\"><span class=\"tlx\">"+q.ls.map(function(l){ return "<span class=\"bul"+(l.m==="bus" || l.m==="ferry" || l.k.length > 2 ? " bus" : "")+"\" style=\"background:"+l.c+";color:"+txtCol(l.c)+"\">"+esc(l.k)+"</span>"; }).join("")+"</span></p>" : "")
+      : "<p class=\"tline\"><span class=\"tlx\">"+lineBul(q.r)+"</span></p>")+
     "<div class=\"jp-tiles ctiles\"><button type=\"button\" class=\"jp-tile pri\" data-act=\"navpick\" data-rt=\"1\">"+NAVGOICO+"<span>Navigieren</span></button></div>";
 }
 function subCard(i){
@@ -17449,7 +17620,7 @@ function openDayPop(forId, mv){
   $("catPop").innerHTML = h+"</div></div>"; $("catPop").hidden = false;
   var b = $("catPop").querySelector("[aria-pressed=true]"); if(b) b.focus();
 }
-function closeCatPop(){ chPlsStop(); $("catPop").hidden = true; locSt = null; TK = null; EV = null; STAY = null; }
+function closeCatPop(){ chPlsStop(); ZI = null; $("catPop").hidden = true; locSt = null; TK = null; EV = null; STAY = null; }
 function endPick(){ pick = null; $("pick").hidden = true; if(viaPick) endViaPick(); if(vmPick) endVmPick(); }
 /* Wegpunkt per Karte einer Strecke zuordnen: die beiden Punkte antippen, zwischen denen er liegen soll */
 var vmPick = null;
@@ -18119,7 +18290,13 @@ document.addEventListener("click", function(e){
     case "lwnone": catFilter = {_none:1}; renderWishCats(); dirty(); renderSheet(); scheduleOverlay(); break;
     case "zcatpop": zCatPop(); break;
     case "zcat": var zc = t.getAttribute("data-cat"); if(!zc) zCat = {}; else if(zCat[zc]) delete zCat[zc]; else zCat[zc] = 1; zRenderPop(); zCatPop(); break;
-    case "zcatreset": zCat = {}; zRenderPop(); break;
+    case "zcatreset": zCat = {}; zImpF = false; zRenderPop(); break;
+    case "zimpf": zImpF = !zImpF; zRenderPop(); break;
+    case "zimp": ZIpend = t.getAttribute("data-z") || ""; break;
+    case "zitog": ziTog(+t.getAttribute("data-i")); break;
+    case "ziall": ziAll(t.getAttribute("data-v")==="1"); break;
+    case "zisave": ziSave(); break;
+    case "zicancel": ziClose(); break;
     case "wcat": var wc = t.getAttribute("data-cat"); if(!wc) catFilter = {}; else { delete catFilter._none; if(catFilter[wc]){ delete catFilter[wc]; if(!catKeys().length) catFilter = {_none:1}; } else catFilter[wc] = 1; } renderSheet(); scheduleOverlay(); renderWishCats(); if(wfiltK==="cat" && !$("catPop").hidden) openWFilt("cat"); break;
     case "nbrem": delete nbHi[t.getAttribute("data-nb")]; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
     case "nbclear": nbHi = {}; saveNb(); nbFromMap(); applyNb(); renderCard(); scheduleOverlay(); break;
