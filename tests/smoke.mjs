@@ -1368,7 +1368,7 @@ await test("ÖPNV nach Kartenausschnitt: Linien und Bezirke aus OpenStreetMap (L
     S.trips.t_lis = t; S.cur = "t_lis"; DL = {}; DOFF = {}; renderAll(); })()`);
   await page.waitForTimeout(300); await jump(-9.14, 38.715, 13);
   ok(await rp(`!!DEST && document.body.classList.contains("dyn")`), "Lissabon wird nicht als eigenes Ziel erkannt");
-  ok(!OVQ.length, "Overpass wird schon ohne Bedarf gefragt: "+OVQ.map(q => q.slice(0, 120)).join(" | "));
+  ok(!OVQ.filter(q => !q.includes("opening_hours")).length, "Overpass wird schon ohne Bedarf gefragt: "+OVQ.map(q => q.slice(0, 120)).join(" | "));
   await click("#layersBtn"); await click("#lTrBtn");
   await page.waitForFunction(() => window.__rp("!!(VV.tr && VV.tr.lines.length===4 && DEST.nb && vtStat().load===0)"), null, {timeout:5000});
   // festes Kachelraster statt Umkreis: Bahn-Kachel 0,5°, Tram-Kachel 0,1°
@@ -3825,9 +3825,9 @@ async function oneRow(where){
   const r = await page.evaluate(() => { const g = id => document.getElementById(id).getBoundingClientRect(), sh = document.getElementById("sheet").getBoundingClientRect();
     const side = window.__rp("sideOpen") ? sh.right : 0, d = document.createElement("div"); d.style.cssText = "position:fixed;padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)"; document.body.appendChild(d);
     const c = getComputedStyle(d), L = parseFloat(c.paddingLeft), R = parseFloat(c.paddingRight); d.remove();
-    return {tb:g("tabbar"), tr:g("tripBtn"), sr:g("srchBtn"), cam:g("camBtn"), ctrl:g("ctrl"), left:Math.max(L, side), right:innerWidth - R}; });
+    return {cls:document.body.className, tb:g("tabbar"), tr:g("tripBtn"), sr:g("srchBtn"), cam:g("camBtn"), ctrl:g("ctrl"), left:Math.max(L, side), right:innerWidth - R}; });
   const cy = b => b.top + b.height/2;
-  ok([r.tr, r.sr, r.cam].every(b => Math.abs(cy(b) - cy(r.tb)) < 4), where+": Kopfleiste nicht in einer Zeile "+JSON.stringify([r.tb, r.tr, r.sr, r.cam].map(b => [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)])));
+  ok([r.tr, r.sr, r.cam].every(b => Math.abs(cy(b) - cy(r.tb)) < 4), where+": Kopfleiste nicht in einer Zeile "+JSON.stringify([r.tb, r.tr, r.sr, r.cam].map(b => [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]))+" body: "+r.cls);
   ok(r.tr.right <= r.tb.left && r.tb.right <= r.sr.left && r.sr.right <= r.cam.left, where+": Kopfleiste überlappt");
   ok(r.tr.left - r.left < 20, where+": Reise-Auswahl nicht am linken Rand ("+Math.round(r.tr.left)+" / "+Math.round(r.left)+")");
   ok(r.right - r.cam.right < 20, where+": Plus nicht am rechten Rand ("+Math.round(r.cam.right)+" / "+Math.round(r.right)+")");

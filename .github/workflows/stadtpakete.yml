@@ -27,6 +27,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: osmium (OpenStreetMap-Auszüge statt Overpass)
+        run: sudo apt-get update -q && sudo apt-get install -y -q osmium-tool
       - name: Letzten Stand holen
         run: |
           mkdir -p out

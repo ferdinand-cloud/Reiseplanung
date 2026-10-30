@@ -18,12 +18,14 @@ const CITIES = {
   berlin: { n: "Berlin", src: "VBB", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Berlin",
     url: ["https://www.vbb.de/vbbgtfs", "https://unternehmen.vbb.de/fileadmin/user_upload/VBB/Dokumente/API-Datensaetze/gtfs-mastscharf/GTFS.zip", MDB("de-berlin-verkehrsverbund-berlin-brandenburg-gtfs-782")],
     bb: [12.88, 52.29, 13.82, 52.71], ext: [12.55, 52.12, 14.15, 52.88], bus: [12.95, 52.33, 13.77, 52.68],
+    pbf: ["https://download.geofabrik.de/europe/germany/berlin-latest.osm.pbf", "https://download.geofabrik.de/europe/germany/brandenburg-latest.osm.pbf"],
     strip: /\s*\((Berlin|Potsdam)\)$/, col: { tram: "#BE1414", bus: "#A5027D", ferry: "#0080BA" } },
   paris: { n: "Paris", src: "Île-de-France Mobilités", lic: "ODbL", type: "gtfs", tz: "Europe/Paris",
     url: ["https://eu.ftp.opendatasoft.com/stif/GTFS/IDFM-gtfs.zip", "https://data.iledefrance-mobilites.fr/explore/dataset/offre-horaires-tc-gtfs-idfm/files/a925e164271e4bca93433756d6a340d1/download/", MDB("fr-paris-ile-de-france-mobilite-gtfs-1026")],
-    bb: [1.95, 48.62, 2.82, 49.08], ext: [1.45, 48.12, 3.55, 49.25], bus: [2.20, 48.78, 2.50, 48.95] },
+    bb: [1.95, 48.62, 2.82, 49.08], ext: [1.45, 48.12, 3.55, 49.25], bus: [2.20, 48.78, 2.50, 48.95], pbf: ["https://download.geofabrik.de/europe/france/ile-de-france-latest.osm.pbf"] },
   london: { n: "London", src: "Transport for London", lic: "Powered by TfL Open Data", type: "tfl", tz: "Europe/London",
     bb: [-0.62, 51.28, 0.34, 51.72], ext: [-0.75, 51.22, 0.45, 51.78], bus: [-0.35, 51.40, 0.10, 51.62],
+    pbf: ["https://download.geofabrik.de/europe/united-kingdom/england/greater-london-latest.osm.pbf"],
     bodsUrl: ["https://data.bus-data.dft.gov.uk/timetable/download/gtfs-file/london/"] },
 };
 
@@ -353,11 +355,11 @@ async function gtfsCity(id, C) {
   const sh = (need) => shapesFromZip(zip, need);
   // Ohne Streckenverläufe im GTFS (VBB, IDFM) wären Linien Luftlinien zwischen Stationen („falsche Verbindungen“) → Gleise aus OpenStreetMap
   const rail = await assemble(id, C, net, false, zip, sh);
-  try { const n = osmFill(rail, await osmRoutes(C.ext, "subway|light_rail|train|tram|ferry|funicular"), false); if (n) { meta.src = C.src + " · Verläufe © OpenStreetMap"; meta.lic = C.lic + ", ODbL"; } }
+  try { const n = osmFill(rail, await osmRoutes(C.ext, "subway|light_rail|train|tram|ferry|funicular", 2, C.pbf), false); if (n) { meta.src = C.src + " · Verläufe © OpenStreetMap"; meta.lic = C.lic + ", ODbL"; } }
   catch (e) { log("  OSM-Verläufe Bahn fehlgeschlagen:", e.message); }
   write(id, "rail", meta, rail);
   const bus = await assemble(id, C, net, true, zip, sh);
-  try { osmFill(bus, await osmRoutes(C.bus, "bus|trolleybus"), true); } catch (e) { log("  OSM-Verläufe Bus fehlgeschlagen:", e.message); }
+  try { osmFill(bus, await osmRoutes(C.bus, "bus|trolleybus", 2, C.pbf), true); } catch (e) { log("  OSM-Verläufe Bus fehlgeschlagen:", e.message); }
   write(id, "bus", meta, bus);
   if (!ZIP[id]) fs.rmSync(zip, { force: true });
 }
@@ -455,7 +457,54 @@ async function overpass(q) {
 }
 /* große Gebiete (Berlin/Paris mit Umland) schafft Overpass nicht in einer Abfrage (502/504):
    je Verkehrsmittel und Kachel einzeln abfragen und zusammenführen */
-async function osmRoutes(bb, routes, nt = 2) {
+/* Zuerst aus dem OpenStreetMap-Auszug der Region (Geofabrik, osmium): kein Server, der große Abfragen ablehnt.
+   Nur wenn das nicht geht (kein osmium, Download scheitert): Overpass */
+const PBF = {};
+const run = (cmd, a) => new Promise((res, rej) => { const p = spawn(cmd, a, { stdio: ["ignore", "ignore", "pipe"] }); let e = ""; p.stderr.on("data", (d) => { e += d; }); p.on("error", rej); p.on("close", (c) => c ? rej(new Error(cmd + " " + c + " " + e.slice(0, 300))) : res()); });
+async function pbfGet(url) {
+  if (PBF[url]) return PBF[url];
+  const f = path.join(TMP, path.basename(url));
+  log("lade", url);
+  const r = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(900000), headers: { "user-agent": "Reiseplan-Stadtpakete/1 (github.com/ferdinand-cloud/Reiseplanung)" } });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); log("  ok", (fs.statSync(f).size / 1e6).toFixed(1) + " MB");
+  return (PBF[url] = f);
+}
+const oplDec = (v) => v.replace(/%([0-9a-fA-F]+)%/g, (m, h) => String.fromCodePoint(parseInt(h, 16)));
+async function osmPbf(urls, bb, routes) {
+  const W = new Map(), RM = new Map(), N = new Map();
+  for (const u of urls) {
+    const src = await pbfGet(u), cl = src + ".clip.pbf", fl = src + ".f.pbf", op = src + ".opl";
+    await run("osmium", ["extract", "-b", bb.join(","), src, "-o", cl, "--overwrite"]);
+    await run("osmium", ["tags-filter", cl, "r/route=" + routes.split("|").join(","), "-o", fl, "--overwrite"]);
+    await run("osmium", ["cat", fl, "-f", "opl", "-o", op, "--overwrite"]);
+    const ways = [];
+    const rl = readline.createInterface({ input: fs.createReadStream(op), crlfDelay: Infinity });
+    for await (const line of rl) {
+      const t = line[0], id = +line.slice(1, line.indexOf(" ")), F = {};
+      line.split(" ").slice(1).forEach((x) => { F[x[0]] = x.slice(1); });
+      if (t === "n" && F.x && F.y) N.set(id, [+F.y, +F.x]);
+      else if (t === "w" && F.N) ways.push([id, F.N.split(",").map((x) => +x.slice(1))]);
+      else if (t === "r" && !RM.has(id)) {
+        const tags = {}; (F.T || "").split(",").forEach((kv) => { const i = kv.indexOf("="); if (i > 0) tags[oplDec(kv.slice(0, i))] = oplDec(kv.slice(i + 1)); });
+        const members = (F.M || "").split(",").filter(Boolean).map((m) => { const i = m.indexOf("@"); return { type: m[0] === "w" ? "way" : m[0] === "n" ? "node" : "relation", ref: +m.slice(1, i), role: oplDec(m.slice(i + 1)) }; });
+        RM.set(id, { type: "relation", id, tags, members });
+      }
+    }
+    ways.forEach(([id, ns]) => { if (W.has(id)) return; const g = ns.map((n) => N.get(n)).filter(Boolean); if (g.length > 1) W.set(id, g); });
+    [cl, fl, op].forEach((f) => fs.rmSync(f, { force: true }));
+  }
+  return { W, RM };
+}
+async function osmRoutes(bb, routes, nt = 2, pbf = null) {
+  if (pbf && pbf.length) {
+    try {
+      const { W, RM } = await osmPbf(pbf, bb, routes), R = [];
+      RM.forEach((e) => { const t = e.tags || {}; R.push({ route: t.route, ref: String(t.ref || "").trim(), name: String(t.name || ""), ways: (e.members || []).filter((m) => m.type === "way" && W.has(m.ref) && !/platform|stop/.test(m.role || "")).map((m) => m.ref) }); });
+      log("  OpenStreetMap-Auszug", routes, "Relationen", R.length, "Wege", W.size);
+      if (R.length) return { W, R };
+    } catch (e) { log("  OpenStreetMap-Auszug fehlgeschlagen:", e.message, "– Overpass"); }
+  }
   const W = new Map(), RM = new Map(); let ok = 0, err = null;
   for (const rt of routes.split("|")) for (let ix = 0; ix < nt; ix++) for (let iy = 0; iy < nt; iy++) {
     const w = (bb[2] - bb[0]) / nt, h = (bb[3] - bb[1]) / nt, t = [bb[0] + ix * w, bb[1] + iy * h, bb[0] + (ix + 1) * w, bb[1] + (iy + 1) * h];
@@ -496,7 +545,7 @@ async function londonCity(id, C) {
   const meta = { n: C.n, src: C.src, lic: C.lic, tz: C.tz, at: new Date().toISOString().slice(0, 10), bb: C.bb, url: "https://api.tfl.gov.uk" };
   const rail = await londonRail(C);
   try {
-    const O = await osmRoutes(C.ext, "subway|light_rail|train|tram|ferry", 1);
+    const O = await osmRoutes(C.ext, "subway|light_rail|train|tram|ferry", 1, C.pbf);
     const RT = { metro: ["subway"], light: ["light_rail"], sbahn: ["train"], tram: ["tram"], ferry: ["ferry"] };
     rail.L.forEach((l, i) => {
       const nm = l[1].toLowerCase().replace(/ line$/, ""), rt = RT[l[0]]; if (!rt) return;
@@ -512,7 +561,7 @@ async function londonCity(id, C) {
     const net = await buildGtfs(id, C, zip, { onlyBus: true });
     const bus = await assemble(id, Object.assign({}, C, { noStraight: true }), net, true, zip, (need) => shapesFromZip(zip, need));
     try {
-      const O = await osmRoutes(C.bus, "bus|trolleybus", 1), by = new Map();
+      const O = await osmRoutes(C.bus, "bus|trolleybus", 1, C.pbf), by = new Map();
       O.R.forEach((r) => { if (r.ref) { const k = r.ref.toUpperCase(); if (!by.has(k)) by.set(k, []); by.get(k).push(r); } });
       let n = 0; bus.L.forEach((l, i) => { if (bus.G[i] && bus.G[i].length) return; const rels = by.get(String(l[1]).toUpperCase()) || []; const g = osmGeo(O, rels, 0.00008); if (g.length) { bus.G[i] = g; n++; } });
       log("  Busverläufe aus OpenStreetMap", n, "von", bus.L.length);
