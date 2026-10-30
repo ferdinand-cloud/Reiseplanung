@@ -125,6 +125,8 @@ async function insideViewport(sel){ return page.evaluate(s => { const e = docume
 
 /* Testreise: 2 Tage zurück bis 3 Tage voraus, Stopps gestern (erledigt, mit Fotos) und heute, Wünsche */
 async function seed(){
+  // erst die Anmelde-Rückmeldung (Firebase meldet „nicht angemeldet“) abwarten – kam sie nach seed(), war acct.user wieder leer und die App gesperrt (body.gated, iPad-Tests in der Action)
+  await page.waitForFunction(() => { try { return !!window.__rp && window.__rp("acct.ready || acct.state===\"unconf\""); } catch(e){ return false; } }, null, {timeout:15000}).catch(() => {});
   await rp(`(function(){
     function dk(o){ var d = new Date(); d.setDate(d.getDate()+o); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
     var Y = dk(-1), H = dk(0);

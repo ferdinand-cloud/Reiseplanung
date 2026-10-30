@@ -205,7 +205,9 @@ const RAILY = { metro: 1, light: 1, sbahn: 1, reg: 1, long: 1, train: 1, funi: 1
 function ymd(d) { return d.toISOString().slice(0, 10).replace(/-/g, ""); }
 function pickDays(cal, cdt, tripsBySvc, start, end) {
   const today = process.env.TODAY ? new Date(process.env.TODAY + "T12:00:00Z") : new Date(); today.setUTCHours(12, 0, 0, 0); // TODAY=2026-06-10 für alte Testdaten
-  const first = new Date(Math.max(today.getTime(), Date.UTC(+start.slice(0, 4), +start.slice(4, 6) - 1, +start.slice(6, 8), 12)));
+  const D = (x) => Date.UTC(+x.slice(0, 4), +x.slice(4, 6) - 1, +x.slice(6, 8), 12);
+  // Fahrplan schon abgelaufen (Quelle nicht aktuell, z. B. Metro Madrid): die letzten vier Wochen nehmen – das Netz bleibt richtig, besser als gar keine Linien
+  const first = new Date(Math.max(D(end) < today.getTime() ? D(end) - 27 * 86400000 : today.getTime(), D(start)));
   const active = (d) => { const s = ymd(d), wd = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][d.getUTCDay()], out = new Set();
     for (const [id, c] of cal) if (c[wd] && c.start <= s && c.end >= s) out.add(id);
     for (const [id, e] of cdt.get(s) || []) { if (e === 1) out.add(id); else out.delete(id); }
@@ -234,7 +236,7 @@ async function buildGtfs(id, C, zip, opt) {
     const k0 = (f[H.route_short_name] || "").trim(), ln = (f[H.route_long_name] || "").trim(), k = (k0 || ln).slice(0, 40);
     let m = modeOf(f[H.route_type], k, ln, f[H.agency_id] || "", id);
     // Quelle mit festem Verkehrsmittel (Metro Madrid meldet ihre Linien als Zug)
-    if (C.feeds && m && m !== "bus") { const fi = +String(f[H.route_id]).split("~")[0], fm = C.feeds[fi] && C.feeds[fi].m; if (fm) m = fm; }
+    if (C.feeds && m && m !== "bus") { const r = String(f[H.route_id]), zi = Array.isArray(zip) ? +r.split("~")[0] : 0, fi = C._fis && C._fis.length ? C._fis[zi] : zi, fm = C.feeds[fi] && C.feeds[fi].m; if (fm) m = fm; }
     if (!m || !k || (onlyBus && m !== "bus")) return;
     R.set(f[H.route_id], { m, k, n: ln && ln !== k ? ln.slice(0, 80) : "", c: okCol(f[H.route_color]), tc: okCol(f[H.route_text_color]) });
   });
@@ -256,7 +258,22 @@ async function buildGtfs(id, C, zip, opt) {
     const s = f[H.service_id]; tripsBySvc.set(s, (tripsBySvc.get(s) || 0) + 1);
     T.set(f[H.trip_id], { r, s, d: f[H.direction_id] || "", h: (f[H.trip_headsign] || "").trim(), sh: f[H.shape_id] || "", m: 0 });
   });
-  const DAYS = pickDays(cal, cdt, tripsBySvc, start, end);
+  // mehrere Quellen: Tage je Quelle wählen (Kennungen „i~…“), sonst verschwindet eine Quelle, deren Kalender den Tag der größten nicht abdeckt
+  let DAYS;
+  if (Array.isArray(zip) && zip.length > 1) {
+    DAYS = {};
+    const pre = (x) => String(x).split("~")[0], sub = (fi) => {
+      const c2 = new Map(), d2 = new Map(), t2 = new Map(); let a = "99999999", b = "00000000";
+      for (const [k, o] of cal) if (pre(k) === fi) { c2.set(k, o); if (o.start < a) a = o.start; if (o.end > b) b = o.end; }
+      for (const [d, l] of cdt) { const l2 = l.filter((e) => pre(e[0]) === fi); if (l2.length) { d2.set(d, l2); if (d < a) a = d; if (d > b) b = d; } }
+      for (const [k, n] of tripsBySvc) if (pre(k) === fi) t2.set(k, n);
+      return t2.size ? pickDays(c2, d2, t2, a, b) : {};
+    };
+    zip.forEach((_, i) => { const r = sub(String(i)); for (const bit in r) {
+      if (!DAYS[bit]) DAYS[bit] = { d: r[bit].d, svc: new Set() };
+      else if (r[bit].d !== DAYS[bit].d) DAYS[bit].d += "/" + r[bit].d;
+      r[bit].svc.forEach((x) => DAYS[bit].svc.add(x)); } });
+  } else DAYS = pickDays(cal, cdt, tripsBySvc, start, end);
   log(id, "Tage", Object.keys(DAYS).map((b) => b + ":" + DAYS[b].d).join(" "), "Gültig", start, "–", end);
   for (const [tid, t] of T) { let m = 0; for (const b of [1, 2, 4]) if (DAYS[b] && DAYS[b].svc.has(t.s)) m |= b; if (!m) T.delete(tid); else t.m = m; }
   log(id, "Fahrten an den gewählten Tagen", T.size);
@@ -417,13 +434,13 @@ function write(id, part, meta, d) {
 
 async function gtfsCity(id, C) {
   // Quellen: eine (url) oder mehrere (feeds: {u: [Adressen …], opt: true = darf fehlen, z. B. Busse}); fehlt eine Pflichtquelle, bleibt der letzte Stand
-  let zip, from = "";
+  let zip, from = ""; const fis = [];
   if (ZIP[id]) { zip = ZIP[id].split("+"); from = zip[0]; if (zip.length === 1) zip = zip[0]; }
   else {
-    const feeds = C.feeds || [{ u: C.url }]; zip = [];
+    const feeds = C.feeds || [{ u: C.url }]; zip = []; C._fis = fis; // Nummer der Quelle je geladener Datei (fehlt eine optionale, verschieben sich die Nummern)
     for (let i = 0; i < feeds.length; i++) {
       const z = path.join(TMP, id + "-" + i + ".zip");
-      try { const u = await download(feeds[i].u, z); zip.push(z); from = from || u; }
+      try { const u = await download(feeds[i].u, z); zip.push(z); fis.push(i); from = from || u; }
       catch (e) { if (!feeds[i].opt) throw e; log("  optionale Quelle fehlt:", feeds[i].u[0]); }
     }
     if (zip.length === 1) zip = zip[0];
