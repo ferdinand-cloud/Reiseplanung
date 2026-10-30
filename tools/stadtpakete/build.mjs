@@ -441,10 +441,10 @@ async function londonRail(C) {
 /* Streckenverläufe aus OpenStreetMap (TfL liefert nur grobe Linien von Station zu Station, BODS-Busse gar keine):
    je Linien-Relation die Wege mit Geometrie; Schlüssel = Relation (Name, ref, Verkehrsmittel) */
 async function overpass(q) {
-  for (const u of ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]) {
+  for (const u of ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]) {
     for (let i = 0; i < 2; i++) {
       try {
-        const r = await fetch(u, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": "Reiseplan-Stadtpakete/1" }, signal: AbortSignal.timeout(300000) });
+        const r = await fetch(u, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": "Reiseplan-Stadtpakete/1" }, signal: AbortSignal.timeout(200000) });
         if (!r.ok) throw new Error("HTTP " + r.status);
         const j = await r.json(); if (j.remark && /error|timed out|out of memory/i.test(j.remark)) throw new Error(j.remark);
         return j;
@@ -453,13 +453,23 @@ async function overpass(q) {
   }
   throw new Error("Overpass nicht erreichbar");
 }
-async function osmRoutes(bb, routes) {
-  const b = [bb[1], bb[0], bb[3], bb[2]].join(",");
-  const j = await overpass("[out:json][timeout:240][maxsize:1000000000];rel[type=route][route~\"^(" + routes + ")$\"](" + b + ")->.r;.r out body;way(r.r)(" + b + ");out skel geom;");
-  const W = new Map(), R = [];
-  (j.elements || []).forEach((e) => { if (e.type === "way" && e.geometry) W.set(e.id, e.geometry.filter(Boolean).map((p) => [p.lat, p.lon])); });
-  (j.elements || []).filter((e) => e.type === "relation").forEach((e) => { const t = e.tags || {}; R.push({ route: t.route, ref: String(t.ref || "").trim(), name: String(t.name || ""), ways: (e.members || []).filter((m) => m.type === "way" && W.has(m.ref) && !/platform|stop/.test(m.role || "")).map((m) => m.ref) }); }); // Bahnsteige/Haltepunkte sind keine Strecke
-  log("  OpenStreetMap", routes, "Relationen", R.length, "Wege", W.size);
+/* große Gebiete (Berlin/Paris mit Umland) schafft Overpass nicht in einer Abfrage (502/504):
+   je Verkehrsmittel und Kachel einzeln abfragen und zusammenführen */
+async function osmRoutes(bb, routes, nt = 2) {
+  const W = new Map(), RM = new Map(); let ok = 0, err = null;
+  for (const rt of routes.split("|")) for (let ix = 0; ix < nt; ix++) for (let iy = 0; iy < nt; iy++) {
+    const w = (bb[2] - bb[0]) / nt, h = (bb[3] - bb[1]) / nt, t = [bb[0] + ix * w, bb[1] + iy * h, bb[0] + (ix + 1) * w, bb[1] + (iy + 1) * h];
+    const b = [t[1], t[0], t[3], t[2]].map((x) => x.toFixed(4)).join(",");
+    try {
+      const j = await overpass("[out:json][timeout:180][maxsize:1000000000];rel[type=route][route=" + rt + "](" + b + ")->.r;.r out body;way(r.r)(" + b + ");out skel geom;");
+      (j.elements || []).forEach((e) => { if (e.type === "way" && e.geometry) W.set(e.id, e.geometry.filter(Boolean).map((p) => [p.lat, p.lon])); else if (e.type === "relation") RM.set(e.id, e); });
+      ok++;
+    } catch (e) { err = e; log("  OpenStreetMap", rt, "Kachel", ix, iy, "fehlgeschlagen"); }
+  }
+  if (!ok) throw err || new Error("Overpass nicht erreichbar");
+  const R = [];
+  RM.forEach((e) => { const t = e.tags || {}; R.push({ route: t.route, ref: String(t.ref || "").trim(), name: String(t.name || ""), ways: (e.members || []).filter((m) => m.type === "way" && W.has(m.ref) && !/platform|stop/.test(m.role || "")).map((m) => m.ref) }); }); // Bahnsteige/Haltepunkte sind keine Strecke
+  log("  OpenStreetMap", routes, "Relationen", R.length, "Wege", W.size, "Abfragen ok", ok);
   return { W, R };
 }
 // längstes gerades Stück eines Verlaufs in km; Grenze je Verkehrsmittel, ab der es keine echte Strecke mehr sein kann
@@ -486,7 +496,7 @@ async function londonCity(id, C) {
   const meta = { n: C.n, src: C.src, lic: C.lic, tz: C.tz, at: new Date().toISOString().slice(0, 10), bb: C.bb, url: "https://api.tfl.gov.uk" };
   const rail = await londonRail(C);
   try {
-    const O = await osmRoutes(C.ext, "subway|light_rail|train|tram|ferry");
+    const O = await osmRoutes(C.ext, "subway|light_rail|train|tram|ferry", 1);
     const RT = { metro: ["subway"], light: ["light_rail"], sbahn: ["train"], tram: ["tram"], ferry: ["ferry"] };
     rail.L.forEach((l, i) => {
       const nm = l[1].toLowerCase().replace(/ line$/, ""), rt = RT[l[0]]; if (!rt) return;
@@ -502,7 +512,7 @@ async function londonCity(id, C) {
     const net = await buildGtfs(id, C, zip, { onlyBus: true });
     const bus = await assemble(id, Object.assign({}, C, { noStraight: true }), net, true, zip, (need) => shapesFromZip(zip, need));
     try {
-      const O = await osmRoutes(C.bus, "bus|trolleybus"), by = new Map();
+      const O = await osmRoutes(C.bus, "bus|trolleybus", 1), by = new Map();
       O.R.forEach((r) => { if (r.ref) { const k = r.ref.toUpperCase(); if (!by.has(k)) by.set(k, []); by.get(k).push(r); } });
       let n = 0; bus.L.forEach((l, i) => { if (bus.G[i] && bus.G[i].length) return; const rels = by.get(String(l[1]).toUpperCase()) || []; const g = osmGeo(O, rels, 0.00008); if (g.length) { bus.G[i] = g; n++; } });
       log("  Busverläufe aus OpenStreetMap", n, "von", bus.L.length);
