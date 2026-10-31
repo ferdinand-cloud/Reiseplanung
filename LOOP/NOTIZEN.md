@@ -26,6 +26,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 - Aufgabe 3: `OV.lay` = line-cap/line-join round, Helfer `ovLay(vis, extra)` für alle ÖPNV-Linienebenen; Route nutzt `OV.lay`. Vorher fehlte line-join nur bei Fähren (`dtr-f`, `tl-ferry`, `ferry-line`), alle anderen waren schon rund.
 
+- Aufgabe 4: `OV.smooth` = {cut:12, it:3} – Chaikin mit Höchstschnitt (Ecke höchstens 12/6/3 m abgeschnitten), `ovSmooth(L)` behält Anfang/Ende, `ovSmoothAll(Ls)` setzt Abzweig-Enden danach wieder exakt auf die geglättete Linie. Geglättet: NYC U-Bahn/Bus einmal beim Laden in `GEO` (~25 ms am Rechner), ÖPNV-Fahrten der Route in `rtAdd` (Zwischenspeicher `RTSM`, WeakMap auf das ridePath-Ergebnis). Linienkarte glättet schon im Build (paralleler Thread), Transitland/Overpass-Linien nicht angefasst. Messung: größte Abweichung 8,5 m, spitze Ecken (> 30°) 1047 → 29.
+
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
 - 1 · „Ok Freigabe“ · keine Änderung
@@ -37,3 +39,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 1 · 31.10.2026 · (siehe git log „Loop 1:“) · S1–S5 pixelgleich vorher/nachher (A1, A2 ok) · Freigabe 31.10. (v475) · Szenen-Test neu angelegt; S3-Mitte auf -74.0078/40.7088 gesetzt, sonst kaum Linien im Bild.
 - 2 · 31.10.2026 · (git log „Loop 2:“) · Ursache NYC-Daten (abgeschnitten, ein Fahrweg je Linie), neu aus MTA-GTFS; Test „Durchgehende Linien“ (Anschlüsse < 1 m, alle Stationen auf ihrer Linie, Route lückenlos) · Freigabe 31.10. · Stationen wie 96 St/2 Av liegen ~100 m hinter dem GTFS-Fahrwegende → Linie bis zur Station verlängert. Volle ÖPNV-Tests unter Last wackelig (Lissabon/Offline/Navigation), einzeln grün.
 - 3 · 31.10.2026 · (git log „Loop 3:“) · L1 bestanden; S1–S5 pixelgleich (nur Fähren betroffen, die in der Testumgebung fehlen) → Zusatzbild Fähre mit Knick (Berlin-Testdaten) · Freigabe 31.10.
+- 4 · 31.10.2026 · (git log „Loop 4:“) · L0 (Test „Durchgehende Linien“ weiter grün), L1, L2 (≤ 8,5 m Abweichung) bestanden · Freigabe offen · Mit 2 Durchgängen blieben 322 spitze Ecken, daher 3.

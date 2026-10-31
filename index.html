@@ -10309,6 +10309,46 @@ function toW(sx, sy){ var l = map.unproject([sx, sy]); return [wx(l.lng), wy(l.l
 function pt(p){ var q = map.project([p.lo, p.la]); return [q.x, q.y]; }
 function mppAt(z, lat){ return 78271.517 * Math.cos(lat*Math.PI/180) / Math.pow(2, z); }
 function zoomFor(m, lat){ return Math.log(78271.517 * Math.cos(lat*Math.PI/180) / m) / Math.LN2; }
+/* ÖPNV-Stil: gemeinsame Farben, Stärken und Zoomstufen für die ÖPNV-Ebene (New York, Linienkarte, Stadtpakete, Transitland) und die Route in der Planansicht.
+   Werte nur hier ändern. Stärken als Zoom-Stützstellen [Zoom, Wert, Zoom, Wert …] → ovZ() macht daraus den MapLibre-Ausdruck. */
+var OV = {
+  col:{mode:{metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", sbahn:"#3F8A5A", reg:"#7A6A9B", long:"#9A3B3B", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"},
+    bus:"#1f6fd1", ferry:"#0b84b5", grid:"#7d8996", gridD:"#8794a1", stop:"#ffffff", stopRim:"#2a3644", stopRimD:"#0f1720", bike:"#0A6CDB"},
+  z:{mode:{long:7, reg:8, train:8, sbahn:9, metro:9, light:10, ferry:11, tram:12, funi:12}, bus:13.5, busStop:15.5, grid:5, stop:11, stopIcon:14, stopName:12, lineBadge:13.5, busBadge:15, tl:9, tlBus:12},
+  w:{rail:{10:{tram:.7, funi:.9, x:.9}, 13:{tram:1.2, funi:1.4, x:1.6}, 16:{tram:2, funi:2.4, x:2.6}}, // Bahnlinien je Verkehrsmittel (x = alle übrigen)
+    off:[8,.5, 11.5,1.2, 13,2.2, 16,3.3], // Versatz je Platz (Linien nebeneinander)
+    bus:[11,.6, 16,2], busNyc:[11,1, 16,3], tlBus:[12,.6, 16,2], ferry:[10,1.4, 15,3], tlFerry:[10,.9, 15,2], grid:[5,.9, 8,1.3, 12,1.5, 16,2.4],
+    stop:[11,1.4, 13,2.4, 16,4.2], stopRim:[11,.8, 14,1.3, 16,1.6], stopIcon:[14,.85, 16,1.05]},
+  op:{bus:.5, busNyc:.6, ferry:.85, tlFerry:.8, grid:[5,.85, 10,.75, 13,.5], stop:[11,.85, 13,1]},
+  dash:{ferry:[3,2]},
+  lay:{"line-cap":"round", "line-join":"round"}, // alle ÖPNV-Linien und Routenabschnitte: runde Enden und Ecken
+  smooth:{cut:12, it:3}, // Ecken glätten (Chaikin): je Ecke höchstens cut Meter abschneiden, it Durchgänge → Abweichung von der Strecke < cut
+  rt:{walk:3.5, foot:3, ride:5.5, car:4.5, bike:5, case:3.5, caseOp:.9, rideOp:.72} // eigene Route: Stärke je Verkehrsmittel (Fußwege im ÖPNV = foot), Rand = Stärke + case
+};
+function ovZ(a){ return ["interpolate",["linear"],["zoom"]].concat(a); }
+function ovLay(vis, x){ return Object.assign({visibility:vis}, OV.lay, x || {}); }
+/* Ecken glätten (Chaikin mit Höchstschnitt): L = [[lon, lat], …], Anfang und Ende bleiben exakt (Anschlüsse ohne Lücke) */
+function ovSmooth(L){
+  var K = Math.cos((L[0] ? L[0][1] : 40.7)*Math.PI/180)*111320, M = 110540, cut = OV.smooth.cut;
+  for(var n = 0; n < OV.smooth.it; n++, cut /= 2){
+    if(L.length < 3) return L;
+    var o = [L[0]];
+    for(var i = 1; i < L.length-1; i++){ var B = L[i];
+      [L[i-1], L[i+1]].forEach(function(A){ var d = Math.hypot((A[0]-B[0])*K, (A[1]-B[1])*M), t = d ? Math.min(.25, cut/d) : 0; o.push([B[0]+(A[0]-B[0])*t, B[1]+(A[1]-B[1])*t]); }); } // Ecke B → zwei Punkte Richtung Vorgänger/Nachfolger
+    o.push(L[L.length-1]); L = o;
+  }
+  return L.map(function(q){ return [+q[0].toFixed(6), +q[1].toFixed(6)]; });
+}
+/* mehrere Teilstücke einer Linie glätten: Enden, die vorher auf einem anderen Teilstück lagen (Abzweig), danach wieder exakt daraufsetzen */
+function ovSmoothAll(Ls){
+  var K = Math.cos((Ls[0] && Ls[0][0] ? Ls[0][0][1] : 40.7)*Math.PI/180)*111320, M = 110540;
+  function foot(p, A, B){ var ax = A[0]*K, ay = A[1]*M, dx = B[0]*K-ax, dy = B[1]*M-ay, l = dx*dx+dy*dy, t = l ? Math.max(0, Math.min(1, ((p[0]*K-ax)*dx+(p[1]*M-ay)*dy)/l)) : 0; var q = [A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t]; return {d:Math.hypot((p[0]-q[0])*K, (p[1]-q[1])*M), q:q}; }
+  function near(p, i, set){ var b = {d:1e9}; set.forEach(function(Q, k){ if(k===i) return; for(var m = 1; m < Q.length; m++){ var f = foot(p, Q[m-1], Q[m]); if(f.d < b.d) b = f; } }); return b; }
+  var att = Ls.map(function(L, i){ return Ls.length > 1 ? [near(L[0], i, Ls).d < 1, near(L[L.length-1], i, Ls).d < 1] : [false, false]; });
+  var S = Ls.map(ovSmooth);
+  S.forEach(function(L, i){ if(att[i][0]) L[0] = near(L[0], i, S).q; if(att[i][1]) L[L.length-1] = near(L[L.length-1], i, S).q; });
+  return S;
+}
 var LINECOL = {}; TRANSIT.subway.forEach(function(t){ LINECOL[t.r] = [t.c, t.tc]; });
 function decPts(a){ var x=a[0], y=a[1], pts=[[x,y]]; for(var i=2;i<a.length;i+=2){ x+=a[i]; y+=a[i+1]; pts.push([x,y]); } return pts; }
 function toLL(pts){ return pts.map(function(q){ var l = llW(q[0], q[1]); return [+l.lo.toFixed(6), +l.la.toFixed(6)]; }); }
@@ -10320,8 +10360,8 @@ var BUSLAB = TRANSIT.bus.map(function(b){
 });
 var GEO = (function(){
   var sub = {type:"FeatureCollection", features:[]}, bus = {type:"FeatureCollection", features:[]}, nb = {type:"FeatureCollection", features:[]};
-  TRANSIT.subway.forEach(function(t){ if(/X$/.test(t.r)) return; sub.features.push({type:"Feature", properties:{k:t.r.replace(/X$/,""), c:t.c}, geometry:{type:"MultiLineString", coordinates:t.l.map(function(a){ return toLL(decPts(a)); })}}); });
-  TRANSIT.bus.forEach(function(b){ bus.features.push({type:"Feature", properties:{k:b.r}, geometry:{type:"MultiLineString", coordinates:b.l.map(function(a){ return toLL(decPts(a)); })}}); });
+  TRANSIT.subway.forEach(function(t){ if(/X$/.test(t.r)) return; sub.features.push({type:"Feature", properties:{k:t.r.replace(/X$/,""), c:t.c}, geometry:{type:"MultiLineString", coordinates:ovSmoothAll(t.l.map(function(a){ return toLL(decPts(a)); }))}}); });
+  TRANSIT.bus.forEach(function(b){ bus.features.push({type:"Feature", properties:{k:b.r}, geometry:{type:"MultiLineString", coordinates:ovSmoothAll(b.l.map(function(a){ return toLL(decPts(a)); }))}}); });
   NB.forEach(function(n){ nb.features.push({type:"Feature", properties:{n:n.n}, geometry:{type:"MultiPolygon", coordinates:n.r.map(function(a){ var r = toLL(decPts(a)); r.push(r[0]); return [r]; })}}); });
   // Linien nebeneinander: Linien gleicher Farbe fahren auf gemeinsamer Stammstrecke (A/C/E, N/Q/R/W …) → je Farbe eigene Plätze; Shuttles (S) allein
   var byC = {}; sub.features.forEach(function(f){ if(f.properties.k==="S") return; var a = byC[f.properties.c] = byC[f.properties.c] || []; if(a.indexOf(f.properties.k) < 0) a.push(f.properties.k); });
@@ -12172,23 +12212,6 @@ function railCls(k, rt, sv){
   return "train";
 }
 function railFam(m){ return m==="train" || m==="sbahn" || m==="reg" || m==="long"; }
-/* ÖPNV-Stil: gemeinsame Farben, Stärken und Zoomstufen für die ÖPNV-Ebene (New York, Linienkarte, Stadtpakete, Transitland) und die Route in der Planansicht.
-   Werte nur hier ändern. Stärken als Zoom-Stützstellen [Zoom, Wert, Zoom, Wert …] → ovZ() macht daraus den MapLibre-Ausdruck. */
-var OV = {
-  col:{mode:{metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", sbahn:"#3F8A5A", reg:"#7A6A9B", long:"#9A3B3B", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"},
-    bus:"#1f6fd1", ferry:"#0b84b5", grid:"#7d8996", gridD:"#8794a1", stop:"#ffffff", stopRim:"#2a3644", stopRimD:"#0f1720", bike:"#0A6CDB"},
-  z:{mode:{long:7, reg:8, train:8, sbahn:9, metro:9, light:10, ferry:11, tram:12, funi:12}, bus:13.5, busStop:15.5, grid:5, stop:11, stopIcon:14, stopName:12, lineBadge:13.5, busBadge:15, tl:9, tlBus:12},
-  w:{rail:{10:{tram:.7, funi:.9, x:.9}, 13:{tram:1.2, funi:1.4, x:1.6}, 16:{tram:2, funi:2.4, x:2.6}}, // Bahnlinien je Verkehrsmittel (x = alle übrigen)
-    off:[8,.5, 11.5,1.2, 13,2.2, 16,3.3], // Versatz je Platz (Linien nebeneinander)
-    bus:[11,.6, 16,2], busNyc:[11,1, 16,3], tlBus:[12,.6, 16,2], ferry:[10,1.4, 15,3], tlFerry:[10,.9, 15,2], grid:[5,.9, 8,1.3, 12,1.5, 16,2.4],
-    stop:[11,1.4, 13,2.4, 16,4.2], stopRim:[11,.8, 14,1.3, 16,1.6], stopIcon:[14,.85, 16,1.05]},
-  op:{bus:.5, busNyc:.6, ferry:.85, tlFerry:.8, grid:[5,.85, 10,.75, 13,.5], stop:[11,.85, 13,1]},
-  dash:{ferry:[3,2]},
-  lay:{"line-cap":"round", "line-join":"round"}, // alle ÖPNV-Linien und Routenabschnitte: runde Enden und Ecken
-  rt:{walk:3.5, foot:3, ride:5.5, car:4.5, bike:5, case:3.5, caseOp:.9, rideOp:.72} // eigene Route: Stärke je Verkehrsmittel (Fußwege im ÖPNV = foot), Rand = Stärke + case
-};
-function ovZ(a){ return ["interpolate",["linear"],["zoom"]].concat(a); }
-function ovLay(vis, x){ return Object.assign({visibility:vis}, OV.lay, x || {}); }
 /* Linien nebeneinander: Platz je Linie (−2 … 2), Linien auf gemeinsamer Strecke liegen so versetzt statt übereinander */
 function lnSlots(lines){ var by = {}, o = {};
   lines.forEach(function(l){ if(l.m!=="bus" && l.m!=="ferry") (by[l.m==="tram" ? "tram" : "rail"] = by[l.m==="tram" ? "tram" : "rail"] || []).push(l); }); // Bahnen teilen sich Gleise über ihre Art hinweg (S-Bahn + RE), Trams fahren auf der Straße
@@ -13260,9 +13283,12 @@ function drawLabel(x, y, t, strong){
 /* Wege des Tages auf der Grafikkarte (MapLibre-Linien statt SVG): Daten nur neu setzen, wenn sich der Weg ändert – Verschieben/Zoomen kostet dann nichts */
 var RTF = [], RTKEY = "", CSSC = {};
 function cssCol(c){ c = String(c||""); var m = /^var\((--[\w-]+)\)$/.exec(c); if(!m) return c; var k = c+(isDark() ? "d" : ""); return CSSC[k] || (CSSC[k] = token(m[1]) || "#5B6B7A"); }
+var RTSM = new WeakMap();
 function rtAdd(ps, color, w, dash, op){
   if(!ps || ps.length < 2) return;
-  RTF.push({type:"Feature", properties:{c:cssCol(color), w:w, d:dash || "", o:w===OV.rt.ride ? op*OV.rt.rideOp : op}, geometry:{type:"LineString", coordinates:ps.map(function(q){ return [Math.round(q.lo*1e6)/1e6, Math.round(q.la*1e6)/1e6]; })}});
+  var co = w===OV.rt.ride && RTSM.get(ps);
+  if(!co){ co = ps.map(function(q){ return [Math.round(q.lo*1e6)/1e6, Math.round(q.la*1e6)/1e6]; }); if(w===OV.rt.ride){ co = ovSmooth(co); RTSM.set(ps, co); } } // Fahrten geglättet (Anfang/Ende bleiben → Fußwege schließen an)
+  RTF.push({type:"Feature", properties:{c:cssCol(color), w:w, d:dash || "", o:w===OV.rt.ride ? op*OV.rt.rideOp : op}, geometry:{type:"LineString", coordinates:co}});
 }
 function rtSet(){
   var src = mapReady && map.getSource("rt"); if(!src) return;

@@ -1926,6 +1926,33 @@ await test("Abgerundeter Verlauf: alle ÖPNV-Linien und Routenabschnitte mit run
   await page.waitForTimeout(600); await shot("x-faehre-knick");
 });
 
+await test("Geglättete Linien: Ecken abgerundet, nah an der Strecke, Enden unverändert, einmal berechnet", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  const r = JSON.parse(await rp(`(function(){
+    var K = Math.cos(40.7*Math.PI/180)*111320, M = 110540;
+    function sd(p,a,b){ var ax=a[0]*K, ay=a[1]*M, dx=b[0]*K-ax, dy=b[1]*M-ay, l=dx*dx+dy*dy, t=l?Math.max(0,Math.min(1,((p[0]*K-ax)*dx+(p[1]*M-ay)*dy)/l)):0; return Math.hypot(p[0]*K-ax-t*dx, p[1]*M-ay-t*dy); }
+    function dev(P, L){ var m = 0; P.forEach(function(p){ var b = 1e9; for(var i=1;i<L.length;i++) b = Math.min(b, sd(p, L[i-1], L[i])); m = Math.max(m, b); }); return m; }
+    function sharp(L){ var n = 0; for(var i=1;i<L.length-1;i++){ var a = Math.atan2((L[i][1]-L[i-1][1])*M, (L[i][0]-L[i-1][0])*K), b = Math.atan2((L[i+1][1]-L[i][1])*M, (L[i+1][0]-L[i][0])*K), d = Math.abs(((b-a)*180/Math.PI+540)%360-180); if(d > 30) n++; } return n; }
+    var maxDev = 0, s0 = 0, s1 = 0, ends = true;
+    TRANSIT.subway.concat(TRANSIT.bus).forEach(function(t){ var O = t.l.map(function(a){ return toLL(decPts(a)); }), S = ovSmoothAll(O);
+      S.forEach(function(L, i){ maxDev = Math.max(maxDev, dev(L, O[i])); s0 += sharp(O[i]); s1 += sharp(L); }); });
+    // Anfang/Ende eines einzelnen Stücks bleiben exakt
+    var T0 = [[-74,40.7],[-73.99,40.7],[-73.99,40.71]], T1 = ovSmooth(T0); ends = J(T1[0])===J(T0[0]) && J(T1[T1.length-1])===J(T0[2]);
+    function J(x){ return JSON.stringify(x); }
+    // Route: ÖPNV-Fahrt geglättet und zwischengespeichert (gleiches Ergebnis beim nächsten Zeichnen)
+    var t = T(); t.places.p8 = {id:"p8", n:"Domino Park", c:"park", la:40.7144, lo:-73.9680, list:"l_main", note:"", addr:"River St"}; t.order[cur] = ["p8","p3"];
+    setLegMode(P("p8"), P("p3"), "oepnv"); layers.route = true; renderAll();
+    var a = RTF.filter(function(f){ return f.properties.w===OV.rt.ride; }).map(function(f){ return f.geometry.coordinates; }); renderAll();
+    var b = RTF.filter(function(f){ return f.properties.w===OV.rt.ride; }).map(function(f){ return f.geometry.coordinates; });
+    return J({maxDev:Math.round(maxDev*10)/10, s0:s0, s1:s1, ends:ends, rides:a.length, cached:a.length > 0 && a.every(function(c, i){ return c===b[i]; })});
+  })()`));
+  ok(r.maxDev <= 12, "Glättung weicht zu weit von der Strecke ab: "+JSON.stringify(r));
+  console.log("  Glättung: "+JSON.stringify(r)); ok(r.s1 < r.s0 / 4, "Zu viele spitze Ecken nach dem Glätten: "+JSON.stringify(r));
+  ok(r.ends, "Anfang/Ende verändert");
+  ok(r.rides >= 1 && r.cached, "ÖPNV-Fahrt der Route nicht geglättet/zwischengespeichert: "+JSON.stringify(r));
+});
+
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
