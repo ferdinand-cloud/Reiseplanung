@@ -1969,6 +1969,28 @@ await test("Linienstärke je Zoom: fein in der Stadtansicht, kräftiger nah, Bus
   ok(!r.bad.length, "Linienstärken: "+r.bad.join(", ")+" · "+r.rows.join(" "));
 });
 
+await test("Linienfarben: U-Bahn offiziell, Bus gedämpft, Fähre eigene Farbe, heller Rand unter Bahn- und Fährlinien", async () => {
+  await seed();
+  const r = JSON.parse(await rp(`(function(){
+    function hsl(h){ var r = parseInt(h.slice(1,3),16)/255, g = parseInt(h.slice(3,5),16)/255, b = parseInt(h.slice(5,7),16)/255, mx = Math.max(r,g,b), mn = Math.min(r,g,b), l = (mx+mn)/2; return {s:mx===mn ? 0 : (mx-mn)/(1-Math.abs(2*l-1)), l:l}; }
+    function dist(a, b){ return Math.hypot.apply(null, [1,3,5].map(function(i){ return parseInt(a.slice(i,i+2),16)-parseInt(b.slice(i,i+2),16); })); }
+    var ids = map.getStyle().layers.map(function(l){ return l.id; }), cs = ["sub","dtr","dtr-f"], bad = [];
+    cs.forEach(function(id){ var i = ids.indexOf(id), j = ids.indexOf(id+"-cs"); if(j < 0 || j !== i-1) bad.push(id+": Rand fehlt/falsch einsortiert");
+      else if(map.getPaintProperty(id+"-cs","line-color")!==OV.col["case"]) bad.push(id+": Randfarbe"); });
+    // Rand folgt der Linie: Sichtbarkeit und Filter
+    layers.sub = true; applyLayers(); var v1 = map.getLayoutProperty("sub-cs","visibility"); layers.sub = false; applyLayers(); var v0 = map.getLayoutProperty("sub-cs","visibility");
+    map.setFilter("dtr", ["==", ["get","m"], "tram"]); var fl = JSON.stringify(map.getFilter("dtr-cs"));
+    var mta = {"1":"#D82233","A":"#0062CF","N":"#F6BC26","7":"#9A38A1","G":"#799534","L":"#7C858C"}, off = Object.keys(mta).filter(function(k){ return LINECOL[k][0].toUpperCase()!==mta[k]; });
+    var bus = OV.col.bus, sb = hsl(bus).s, minSub = Math.min.apply(null, TRANSIT.subway.map(function(t){ return dist(t.c, OV.col.ferry); }));
+    return JSON.stringify({bad:bad, v:[v1, v0], fl:fl, off:off, sb:+sb.toFixed(2), busTok:token("--bus")===bus, fbus:Math.round(dist(bus, OV.col.ferry)), fsub:Math.round(minSub)});
+  })()`));
+  ok(!r.bad.length, r.bad.join(", "));
+  ok(r.v[0]==="visible" && r.v[1]==="none" && r.fl.indexOf("tram") > -1, "Rand folgt der Linie nicht: "+JSON.stringify(r));
+  ok(!r.off.length, "U-Bahn nicht in MTA-Farben: "+r.off.join(" "));
+  ok(r.sb < .35 && r.busTok, "Bus nicht gedämpft: "+JSON.stringify(r));
+  ok(r.fbus > 60 && r.fsub > 60, "Fähre nicht klar unterscheidbar: "+JSON.stringify(r));
+});
+
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
