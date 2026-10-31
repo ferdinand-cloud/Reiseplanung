@@ -12181,7 +12181,7 @@ function lnSlots(lines){ var by = {}, o = {};
 function TPLINE(k, c){ return {visibility:"none", "symbol-placement":"line", "symbol-spacing":600, "icon-image":["concat", "tl|", k, "|", c], "icon-rotation-alignment":"viewport", "icon-keep-upright":true, "icon-padding":22}; }
 /* dünne Linien, ab Zoom 12 nebeneinander; s = Ausdruck für den Platz */
 function lnWidth(m){ return ["interpolate",["linear"],["zoom"],10,["match",m,"tram",.7,"funi",.9,.9],13,["match",m,"tram",1.2,"funi",1.4,1.6],16,["match",m,"tram",2,"funi",2.4,2.6]]; }
-function lnOffset(s){ return ["interpolate",["linear"],["zoom"],11.5,0,13,["*", s, 2.2],16,["*", s, 3.3]]; }
+function lnOffset(s){ return ["interpolate",["linear"],["zoom"],8,["*", s, .5],11.5,["*", s, 1.2],13,["*", s, 2.2],16,["*", s, 3.3]]; } // auch weit draußen leicht nebeneinander: sonst liegen Bündel übereinander und die Farben mischen sich zufällig
 var DSTMODE = {subway:"metro", light_rail:"light", monorail:"light", funicular:"funi", train:"train"};
 var DCOL = {metro:"#C8102E", light:"#2A9D8F", tram:"#D99A00", sbahn:"#3F8A5A", reg:"#7A6A9B", long:"#9A3B3B", train:"#5B6B7A", funi:"#8A5A2B", ferry:"#0b84b5"};
 var DPAL = ["#C8102E","#0072CE","#E5A800","#00965E","#7D55C7","#E87722","#00A3AD","#A6192E","#5B7F95","#C6007E"];
@@ -12617,7 +12617,7 @@ function lkApply(){
   if(typeof pmtiles!=="undefined") here.forEach(function(x){ if(LK.add[x.id]) return; LK.add[x.id] = 1; var id = "lk-"+x.id; if(map.getSource(id)) return;
     map.addSource(id, {type:"vector", url:"pmtiles://"+LKURL+x.id+".pmtiles", attribution:"ÖPNV-Linien © OpenStreetMap"});
     map.addLayer({id:id+"-ln", type:"line", source:id, "source-layer":"lines", paint:{"line-color":["case", ["==", ["length", ["get","c"]], 7], ["get","c"], ["match", ["get","m"], "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "sbahn", DCOL.sbahn, "reg", DCOL.reg, "long", DCOL.long, DCOL.train]],
-      "line-width":lnWidth(["get","m"]), "line-offset":lnOffset(["get","o"])}, layout:{visibility:"none", "line-cap":"round", "line-join":"round"}}, LBLB);
+      "line-width":lnWidth(["get","m"]), "line-offset":lnOffset(["get","o"])}, layout:{visibility:"none", "line-cap":"round", "line-join":"round", "line-sort-key":["get","o"]}}, LBLB);
     map.addLayer({id:id+"-lbl", type:"symbol", source:id, "source-layer":"lines", minzoom:13.5, layout:TPLINE(["coalesce", ["get","ks"], ["get","k"]], ["case", ["==", ["length", ["get","c"]], 7], ["get","c"], ["match", ["get","m"], "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "sbahn", DCOL.sbahn, "reg", DCOL.reg, "long", DCOL.long, DCOL.train]])}, map.getLayer("dst-ic") ? "dst-ic" : undefined); }); // unter den Stationen: Stationsnamen haben Vorrang vor Linien-Plaketten
   Object.keys(LK.add).forEach(function(cc){ var vis = on && rail.length && here.some(function(x){ return x.id===cc; }), f = ["all", ["in", ["get","m"], ["literal", rail]], off];
     ["-ln", "-lbl"].forEach(function(x){ var l = "lk-"+cc+x; if(!map.getLayer(l)) return;

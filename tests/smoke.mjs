@@ -1528,7 +1528,17 @@ await test("Linienkarte: Linien aus OpenStreetMap (PMTiles) auf echten Gleisen, 
   ok(l8.length >= 1 && l8.every(y => Math.abs(y - l8[0]) <= 2), "Linie 8 auf beiden Gleisen bzw. mit Lücken: "+JSON.stringify(l8));
   // Strecke Nordwest→Südost aus zwei Wegen (alte Regel drehte einen davon um → Linien 1/2 tauschten die Seiten): gleiche Richtung, gleicher Platz
   const l1 = JSON.parse(await rp(`JSON.stringify(map.querySourceFeatures("lk-de", {sourceLayer:"lines"}).filter(function(f){ return f.properties.k==="1"; }).map(function(f){ var c = f.geometry.type==="LineString" ? f.geometry.coordinates : f.geometry.coordinates[0]; return [c[0][1] > c[c.length-1][1], f.properties.o]; }))`));
-  ok(l1.length >= 2 && l1.every(x => x[0]===l1[0][0] && x[1]===l1[0][1]), "Farbreihenfolge kippt zwischen Wegen: "+JSON.stringify(l1));
+  ok(l1.length >= 1 && l1.every(x => x[0]===l1[0][0] && x[1]===l1[0][1]), "Farbreihenfolge kippt zwischen Wegen: "+JSON.stringify(l1));
+  // Liniengraph: vier parallele Gleise (S3 und RE7 je Richtung ein Gleis, wie Berliner Stadtbahn) = ein Bündel, jede Linie genau einmal;
+  // Schleife mit getrennten Richtungsgleisen (10 nur hin, 12 nur zurück, 11 beides, wie Bremen Domsheide) = ein Bündel 10/11/12; Kurven ohne Knick
+  const lg = JSON.parse(await rp(`JSON.stringify(map.querySourceFeatures("lk-de", {sourceLayer:"lines"}).filter(function(f){ return ["S3","RE7","10","11","12","4"].indexOf(f.properties.k) > -1; }).map(function(f){ var c = f.geometry.type==="LineString" ? f.geometry.coordinates : f.geometry.coordinates[0]; return {k:f.properties.k, o:f.properties.o, n:f.properties.n, c:c}; }))`));
+  const per = k => [...new Set(lg.filter(x => x.k===k).map(x => x.o+"/"+x.n))];
+  ok(per("S3").length===1 && per("RE7").length===1 && per("S3")[0].endsWith("/2") && per("S3")[0]!==per("RE7")[0], "Parallele Gleise doppelt oder getrennt: "+JSON.stringify([per("S3"), per("RE7")]));
+  ok(["10","11","12"].every(k => per(k).length===1 && per(k)[0].endsWith("/3")) && new Set(["10","11","12"].map(k => per(k)[0])).size===3, "Bündel an Schleife getrennt: "+JSON.stringify(["10","11","12"].map(per)));
+  const knick = c => { let m = 0; for (let i = 1; i < c.length - 1; i++) { const a = Math.atan2(c[i][1]-c[i-1][1], (c[i][0]-c[i-1][0])*0.6), b = Math.atan2(c[i+1][1]-c[i][1], (c[i+1][0]-c[i][0])*0.6); m = Math.max(m, Math.abs(((b - a + 3*Math.PI) % (2*Math.PI)) - Math.PI)); } return m*180/Math.PI; };
+  const k4 = Math.max(...lg.filter(x => x.k==="4").map(x => knick(x.c)));
+  ok(k4 < 25, "Rechtwinklige Kurve der 4 kantig (Knick "+k4.toFixed(0)+"°)");
+  ok(await rp(`var o = map.getPaintProperty("lk-de-ln","line-offset"); JSON.stringify(o).indexOf("[\\"zoom\\"],8,") > -1 && map.getLayoutProperty("lk-de-ln","line-sort-key")`), "Linien weit draußen ohne Versatz oder ohne feste Zeichenreihenfolge");
   ok(mg.includes("4|4 · N4|-0.5") && !mg.includes("N4|N4") && await rp(`JSON.stringify(map.getLayoutProperty("lk-de-lbl","icon-image")).indexOf("ks") > -1`), "Linien gleicher Farbe nicht zusammengelegt: "+mg);
   // Paket-Verläufe (Busse) werden in der App gerundet: rechter Winkel → Bogen, gerade Strecke bleibt
   ok(await rp(`var r = lnRund([[8.80,53.07],[8.81,53.07],[8.81,53.08]]), q = lnRund([[8.80,53.07],[8.81,53.07],[8.82,53.07]]); r.length===7 && r.every(function(x){ return !(x[0]===8.81 && x[1]===53.07); }) && q.length===3`), "Ecken der Paket-Linien nicht gerundet");
