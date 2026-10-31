@@ -1650,6 +1650,10 @@ await test("ÖPNV-Linien nebeneinander statt übereinander, dünn, Haltestellen 
     var g = cpGeo(c, true), tr = g.tr.st.filter(function(x){ return x[3]==="train" && x[0] > 8.811; }), tm = g.tr.st.filter(function(x){ return x[3]==="tram" && x[2]==="Hauptbahnhof"; });
     JSON.stringify({tr:tr.map(function(x){ return x[2]+"|"+x[5]; }), tm:tm.length, bus:g.bus.st.map(function(x){ return x[2]+"|"+x[5]; }), img:tpImg("tn|Bremen Hbf|@long,-;@reg,-;@sbahn,-|d") && tpImg("tn||670,#1f6fd1|d") && map.hasImage("tn||670,#1f6fd1|d"), row:tpRow([["@long","-"],["4","#E2001A"]]).rows[0][0][2], br:tpRow([["4","#E2001A"],["/","-"],["670","#1f6fd1"]]).rows.length, im:JSON.stringify(dstImg("lbb")).indexOf("lbb") > -1})`));
   ok(cls.br===2 && cls.im, "Buslinien nicht als zweite Reihe: "+JSON.stringify(cls));
+  // Haltestelle auf ihre Linie gesetzt (Fahrplan-Punkt ~100 m daneben); gemischte Haltestelle: Reihen je Verkehrsmittel mit Symbol vorn
+  const sn = JSON.parse(await rp(`JSON.stringify({s:stSnap([[8.811, 53.0779, "X", "tram", 1, "4,#E2001A"], [8.811, 53.09, "Fern", "tram", 1, ""]], {features:[{properties:{m:"tram"}, geometry:{coordinates:[[[8.80, 53.077], [8.82, 53.077]]]}}]}, 150).map(function(x){ return [+x[0].toFixed(4), +x[1].toFixed(4)]; }),
+    img:tpImg("tn|Domsheide|#tram,-;4,#E2001A;/,-;#bus,-;24,#1f6fd1|d"), w:tpRow([["#bus","-"],["24","#1f6fd1"]]).rows[0][0][2], ts:tpImg("ts|bus") && map.hasImage("ts|bus")})`));
+  ok(sn.s[0][1]===53.077 && sn.s[1][1]===53.09 && sn.img && sn.w===15 && sn.ts, "Haltestelle nicht auf der Linie oder Reihen ohne Symbol: "+JSON.stringify(sn));
   ok(cls.tr.length===1 && cls.tr[0]==="Bremen Hbf|@long,-;@reg,-;@sbahn,-", "Bahnhof nicht nach Klassen bzw. Bahnhofsteile doppelt: "+JSON.stringify(cls));
   ok(cls.tm===1 && cls.bus.length===2 && cls.bus.every(function(x){ return /^\|670,/.test(x); }) && cls.img && cls.row===15, "Tram-/Bushaltestellen falsch: "+JSON.stringify(cls));
   await rp(`DL = {tram:1, bus:1}; DOFF = {}; VV = {tr:null, bus:null}; dApplyMap(); true`);
