@@ -126,6 +126,31 @@ async function land(id, L) {
   const byK = new Map(); lines.forEach((l) => { if (l.c) byK.set(l.m + ":" + l.k, l.c); });
   lines.forEach((l) => { if (l.m === "long") l.c = ""; }); // Fernverkehr einheitlich (OSM-Farben je IC/ICE sind zufällig) → ein Strich je Gleis statt bunter Bündel
   lines.forEach((l) => { if (l.c || l.m === "long" || l.m === "reg") return; const b = l.k.replace(/^N(?=\d)/, "").replace(/(?<=\d)[A-Z]$/, ""); if (b !== l.k && byK.has(l.m + ":" + b)) l.c = byK.get(l.m + ":" + b); });
+  // Eine Linie auf zwei Gleisen (je Richtung ein Gleis, zweigleisige Straßenbahn) = ein Strich: liegt ein Weg einer Linie fast ganz neben einem anderen Weg
+  // derselben Linie (Straßenbahn bis 25 m, Bahn bis 40 m), fällt die Linie dort weg. Vorrang hat der Weg mit mehr Linien (Stammstrecke), dann die kleinere Kennung.
+  {
+    const byLine = new Map(); for (const [w, set] of byWay) for (const li of set) { let a = byLine.get(li); if (!a) byLine.set(li, a = []); a.push(w); }
+    const BB = new Map(), bbOf = (w) => { let b = BB.get(w); if (b) return b; b = [180, 90, -180, -90]; for (const q of W.get(w)) { if (q[0] < b[0]) b[0] = q[0]; if (q[1] < b[1]) b[1] = q[1]; if (q[0] > b[2]) b[2] = q[0]; if (q[1] > b[3]) b[3] = q[1]; } BB.set(w, b); return b; };
+    const prio = (a, b) => (byWay.get(b).size - byWay.get(a).size) || (a - b); // < 0: a hat Vorrang
+    const segD = (p, a, b, k) => { const ax = (b[0] - a[0]) * k, ay = b[1] - a[1], px = (p[0] - a[0]) * k, py = p[1] - a[1], L = ax * ax + ay * ay; const t = L ? Math.max(0, Math.min(1, (px * ax + py * ay) / L)) : 0; return Math.hypot(px - t * ax, py - t * ay) * 111320; };
+    const near = (p, g, lim) => { const k = Math.cos(p[1] * Math.PI / 180); for (let i = 1; i < g.length; i++) if (segD(p, g[i - 1], g[i], k) <= lim) return true; return false; };
+    const samples = (g) => { const out = []; let len = 0; const d = []; for (let i = 1; i < g.length; i++) { const k = Math.cos(g[i][1] * Math.PI / 180); const x = Math.hypot((g[i][0] - g[i - 1][0]) * k, g[i][1] - g[i - 1][1]) * 111320; d.push(x); len += x; }
+      const n = Math.max(3, Math.min(12, Math.round(len / 25))); for (let j = 0; j < n; j++) { let t = (j + .5) / n * len, i = 0; while (i < d.length - 1 && t > d[i]) { t -= d[i]; i++; } const f = d[i] ? t / d[i] : 0; out.push([g[i][0] + (g[i + 1][0] - g[i][0]) * f, g[i][1] + (g[i + 1][1] - g[i][1]) * f]); } return out; };
+    const drop = []; let nd = 0;
+    for (const [li, ws] of byLine) {
+      if (ws.length < 2) continue;
+      const lim = lines[li].m === "tram" || lines[li].m === "funi" ? 25 : 40, dg = lim / 111320 * 1.8;
+      for (const w of ws) {
+        const b = bbOf(w), better = ws.filter((v) => v !== w && prio(v, w) < 0 && (() => { const c = bbOf(v); return !(c[0] > b[2] + dg || c[2] < b[0] - dg || c[1] > b[3] + dg || c[3] < b[1] - dg); })());
+        if (!better.length) continue;
+        const sm = samples(W.get(w)); let hit = 0;
+        for (const p of sm) if (better.some((v) => near(p, W.get(v), lim))) hit++;
+        if (hit >= sm.length * .8) { drop.push([w, li]); nd++; }
+      }
+    }
+    for (const [w, li] of drop) { const set = byWay.get(w); set.delete(li); if (!set.size) byWay.delete(w); }
+    log(id, "Doppelgleise zusammengefasst", nd, "Wege mit Linien", byWay.size);
+  }
   // feste Reihenfolge aller Linien (Art, dann Nummer): auf jedem Weg liegen Linien so in derselben Reihenfolge nebeneinander
   const order = lines.map((_, i) => i).sort((a, b) => RANK[lines[a].m] - RANK[lines[b].m] || natCmp(lines[a].k, lines[b].k)), pos = new Int32Array(lines.length);
   order.forEach((li, i) => { pos[li] = i; });

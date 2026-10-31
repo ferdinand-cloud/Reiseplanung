@@ -1521,6 +1521,8 @@ await test("Linienkarte: Linien aus OpenStreetMap (PMTiles) auf echten Gleisen, 
   ok(LKQ.some(u => u.endsWith("de.pmtiles")), "PMTiles-Datei nicht gelesen");
   // gleiche Farbe = ein Strich (Nachtlinie N4 ohne Farbe übernimmt die der 4), Beschriftung mit allen Nummern; Ecken gerundet (Bogenpunkte statt einer Ecke)
   const mg = await rp(`JSON.stringify(map.queryRenderedFeatures({layers:["lk-de-ln"]}).filter(function(x){ return x.properties.m==="tram"; }).map(function(x){ return x.properties.k+"|"+x.properties.ks+"|"+x.properties.o; }))`);
+  // Gegenrichtung der 4 auf eigenem Gleis (6 m daneben) = kein zweiter Strich
+  ok(!mg.includes("4|4|0"), "Linie auf zwei Gleisen doppelt gezeichnet: "+mg);
   ok(mg.includes("4|4 · N4|-0.5") && !mg.includes("N4|N4") && await rp(`JSON.stringify(map.getLayoutProperty("lk-de-lbl","icon-image")).indexOf("ks") > -1`), "Linien gleicher Farbe nicht zusammengelegt: "+mg);
   // Paket-Verläufe (Busse) werden in der App gerundet: rechter Winkel → Bogen, gerade Strecke bleibt
   ok(await rp(`var r = lnRund([[8.80,53.07],[8.81,53.07],[8.81,53.08]]), q = lnRund([[8.80,53.07],[8.81,53.07],[8.82,53.07]]); r.length===7 && r.every(function(x){ return !(x[0]===8.81 && x[1]===53.07); }) && q.length===3`), "Ecken der Paket-Linien nicht gerundet");
