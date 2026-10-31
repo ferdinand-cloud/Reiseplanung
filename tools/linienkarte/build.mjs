@@ -140,12 +140,14 @@ async function land(id, L) {
     for (const [li, ws] of byLine) {
       if (ws.length < 2) continue;
       const lim = lines[li].m === "tram" || lines[li].m === "funi" ? 25 : 40, dg = lim / 111320 * 1.8;
-      for (const w of ws) {
-        const b = bbOf(w), better = ws.filter((v) => v !== w && prio(v, w) < 0 && (() => { const c = bbOf(v); return !(c[0] > b[2] + dg || c[2] < b[0] - dg || c[1] > b[3] + dg || c[3] < b[1] - dg); })());
-        if (!better.length) continue;
+      // nach Vorrang: nur gegen Wege prüfen, die die Linie behalten (sonst Lücken, wenn A wegen B und B wegen C fällt)
+      const kept = new Set();
+      for (const w of ws.slice().sort(prio)) {
+        const b = bbOf(w), better = ws.filter((v) => kept.has(v) && (() => { const c = bbOf(v); return !(c[0] > b[2] + dg || c[2] < b[0] - dg || c[1] > b[3] + dg || c[3] < b[1] - dg); })());
+        if (!better.length) { kept.add(w); continue; }
         const sm = samples(W.get(w)); let hit = 0;
         for (const p of sm) if (better.some((v) => near(p, W.get(v), lim))) hit++;
-        if (hit >= sm.length * .8) { drop.push([w, li]); nd++; }
+        if (hit === sm.length) { drop.push([w, li]); nd++; } else kept.add(w); // ganz parallel, sonst bliebe ein Stück ohne Linie
       }
     }
     for (const [w, li] of drop) { const set = byWay.get(w); set.delete(li); if (!set.size) byWay.delete(w); }
