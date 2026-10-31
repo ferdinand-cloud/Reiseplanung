@@ -166,11 +166,31 @@ async function land(id, L) {
   order.forEach((li, i) => { pos[li] = i; });
   const gj = path.join(TMP, id + ".lines.geojsonl"), out = fs.createWriteStream(gj), bb = [180, 90, -180, -90]; let nf = 0;
   const wr = (o) => new Promise((res) => { if (out.write(JSON.stringify(o) + "\n")) res(); else out.once("drain", res); });
+  // Richtung je Weg: zusammenhängende Wege einer Strecke laufen in dieselbe Richtung (Ende des einen = Anfang des nächsten), Startweg grob West→Ost bzw. Süd→Nord.
+  // Früher entschied jeder Weg für sich – bei Strecken etwa Nordwest→Südost lag das auf der Kippe und die Linien wechselten die Seiten.
+  const REV = new Map();
+  {
+    const ek = (q) => q[0] + "," + q[1], at = new Map(), put = (k, w) => { let a = at.get(k); if (!a) at.set(k, a = []); a.push(w); };
+    for (const w of byWay.keys()) { const g = W.get(w); put(ek(g[0]), w); put(ek(g[g.length - 1]), w); }
+    const head = (w) => { const g = W.get(w); return REV.get(w) ? g[g.length - 1] : g[0]; }, tail = (w) => { const g = W.get(w); return REV.get(w) ? g[0] : g[g.length - 1]; };
+    const ws = [...byWay.keys()].sort((a, b) => byWay.get(b).size - byWay.get(a).size || a - b);
+    for (const w0 of ws) {
+      if (REV.has(w0)) continue;
+      const g = W.get(w0), a = g[0], b = g[g.length - 1]; REV.set(w0, (b[0] - a[0]) + 0.6 * (b[1] - a[1]) < 0);
+      const q = [w0];
+      while (q.length) { const w = q.pop();
+        // am Ende weiter: Nachbar beginnt dort; am Anfang zurück: Nachbar endet dort
+        for (const [k, fwd] of [[ek(tail(w)), true], [ek(head(w)), false]]) for (const v of at.get(k) || []) {
+          if (REV.has(v)) continue; const gv = W.get(v), startsHere = ek(gv[0]) === k;
+          REV.set(v, fwd ? !startsHere : startsHere); q.push(v); }
+      }
+    }
+  }
   for (const [w, set] of byWay) {
     let g = W.get(w);
     g.forEach((q) => { if (q[0] < bb[0]) bb[0] = q[0]; if (q[1] < bb[1]) bb[1] = q[1]; if (q[0] > bb[2]) bb[2] = q[0]; if (q[1] > bb[3]) bb[3] = q[1]; });
-    // einheitliche Richtung (grob West→Ost bzw. Süd→Nord): Nachbarwege, die gegenläufig gezeichnet sind, vertauschen sonst die Seiten
-    const a = g[0], b = g[g.length - 1]; if ((b[0] - a[0]) + 0.6 * (b[1] - a[1]) < 0) g = g.slice().reverse();
+    // einheitliche Richtung entlang der Strecke (REV): Nachbarwege, die gegenläufig gezeichnet sind, vertauschen sonst die Seiten (Farbreihenfolge kippt)
+    if (REV.get(w)) g = g.slice().reverse();
     // Gruppen auf eigenen Gleisen: Straßenbahn getrennt von Bahnen
     const grp = { rail: [], tram: [], ferry: [] };
     [...set].forEach((li) => { const m = lines[li].m; (m === "tram" ? grp.tram : m === "ferry" ? grp.ferry : grp.rail).push(li); });
