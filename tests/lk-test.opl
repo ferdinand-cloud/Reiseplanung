@@ -31,6 +31,14 @@ n50 v1 x8.800 y53.0775
 n51 v1 x8.808 y53.0775
 n52 v1 x8.800 y53.07756
 n53 v1 x8.808 y53.07756
+n60 v1 x8.825 y53.0705
+n61 v1 x8.827 y53.0705
+n62 v1 x8.8275 y53.07065
+n63 v1 x8.8285 y53.07065
+n64 v1 x8.829 y53.0705
+n65 v1 x8.8275 y53.07035
+n66 v1 x8.8285 y53.07035
+n67 v1 x8.831 y53.0705
 n100 v1 Trailway=tram_stop,name=Testhalt x8.812 y53.0756
 w10 v1 Trailway=tram Nn1,n2,n3,n4
 w11 v1 Trailway=tram Nn4,n5,n6
@@ -48,6 +56,10 @@ w42 v1 Trailway=rail Nn44,n45
 w43 v1 Trailway=rail Nn47,n46
 w50 v1 Trailway=tram Nn50,n51
 w51 v1 Trailway=tram Nn53,n52
+w60 v1 Trailway=tram Nn60,n61
+w61 v1 Trailway=tram Nn61,n62,n63,n64
+w62 v1 Trailway=tram Nn64,n66,n65,n61
+w63 v1 Trailway=tram Nn64,n67
 r1 v1 Ttype=route,route=tram,ref=4,colour=#E2001A,network=VBN Mw10@,w11@
 r2 v1 Ttype=route,route=tram,ref=4,colour=#E2001A,network=VBN Mw11@,w13@
 r3 v1 Ttype=route,route=tram,ref=6,colour=#0066B3,network=VBN Mw10@
@@ -65,3 +77,5 @@ r50 v1 Ttype=route,route=tram,ref=10,colour=#AA0000,network=VBN Mw50@
 r51 v1 Ttype=route,route=tram,ref=11,colour=#00AA00,network=VBN Mw50@
 r52 v1 Ttype=route,route=tram,ref=11,colour=#00AA00,network=VBN Mw51@
 r53 v1 Ttype=route,route=tram,ref=12,colour=#0000AA,network=VBN Mw51@
+r60 v1 Ttype=route,route=tram,ref=20,colour=#884400,network=VBN Mw60@,w61@,w63@
+r61 v1 Ttype=route,route=tram,ref=20,colour=#884400,network=VBN Mw63@,w62@,w60@

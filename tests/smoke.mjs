@@ -1538,6 +1538,9 @@ await test("Linienkarte: Linien aus OpenStreetMap (PMTiles) auf echten Gleisen, 
   const knick = c => { let m = 0; for (let i = 1; i < c.length - 1; i++) { const a = Math.atan2(c[i][1]-c[i-1][1], (c[i][0]-c[i-1][0])*0.6), b = Math.atan2(c[i+1][1]-c[i][1], (c[i+1][0]-c[i][0])*0.6); m = Math.max(m, Math.abs(((b - a + 3*Math.PI) % (2*Math.PI)) - Math.PI)); } return m*180/Math.PI; };
   const k4 = Math.max(...lg.filter(x => x.k==="4").map(x => knick(x.c)));
   ok(k4 < 25, "Rechtwinklige Kurve der 4 kantig (Knick "+k4.toFixed(0)+"°)");
+  // Gleise um einen Bahnsteig (33 m auseinander, je Richtung eins) und Weggrenzen = ein durchgehender Strich
+  const l20 = JSON.parse(await rp(`JSON.stringify(map.querySourceFeatures("lk-de", {sourceLayer:"lines"}).filter(function(f){ return f.properties.k==="20"; }).map(function(f){ var c = f.geometry.type==="LineString" ? f.geometry.coordinates : f.geometry.coordinates[0]; return f.properties.o+"/"+f.properties.n; }))`));
+  ok(l20.length >= 1 && new Set(l20).size===1 && l20[0]==="0/1", "Linie an Bahnsteig doppelt oder versetzt: "+JSON.stringify(l20));
   ok(await rp(`var o = map.getPaintProperty("lk-de-ln","line-offset"); JSON.stringify(o).indexOf("[\\"zoom\\"],8,") > -1 && map.getLayoutProperty("lk-de-ln","line-sort-key")`), "Linien weit draußen ohne Versatz oder ohne feste Zeichenreihenfolge");
   ok(mg.includes("4|4 · N4|-0.5") && !mg.includes("N4|N4") && await rp(`JSON.stringify(map.getLayoutProperty("lk-de-lbl","icon-image")).indexOf("ks") > -1`), "Linien gleicher Farbe nicht zusammengelegt: "+mg);
   // Paket-Verläufe (Busse) werden in der App gerundet: rechter Winkel → Bogen, gerade Strecke bleibt
