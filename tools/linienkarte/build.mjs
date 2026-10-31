@@ -105,54 +105,62 @@ async function land(id, L) {
       if (g.length > 1) W.set(id, g);
     } else if (t === "r") {
       const tg = oplTags(F.T); if (tg.type && tg.type !== "route" || !ROUTE[tg.route]) continue;
-      const ways = (F.M || "").split(",").filter((m) => m[0] === "w").map((m) => { const i = m.indexOf("@"); return [+m.slice(1, i), oplDec(m.slice(i + 1))]; })
-        .filter((x) => !/platform|stop|station|entrance/.test(x[1])).map((x) => x[0]);
+      let ms = (F.M || "").split(",").filter((m) => m[0] === "w").map((m) => { const i = m.indexOf("@"); return [+m.slice(1, i), oplDec(m.slice(i + 1))]; })
+        .filter((x) => !/platform|stop|station|entrance/.test(x[1]));
+      // alte Relationen mit beiden Richtungen (Rollen forward/backward): nur eine Richtung, sonst zwei Gleise
+      if (ms.some((x) => x[1] === "forward") && ms.some((x) => x[1] === "backward")) ms = ms.filter((x) => x[1] !== "backward");
+      const ways = ms.map((x) => x[0]);
       R.push({ tg, ways });
     }
   }
   log(id, "Relationen", R.length, "Wege", W.size);
   // Linien: beide Richtungen und Varianten einer Linie (gleiche Art + Nummer + Verbund) zusammenfassen
-  const LI = new Map(), lines = [], byWay = new Map();
+  const LI = new Map(), lines = [], RL = [];
   R.forEach(({ tg, ways }) => {
     let m = ROUTE[tg.route]; const k = String(tg.ref || tg.name || "").trim().slice(0, 40); if (!k) return;
     if (m === "train") m = railCls(tg.ref ? k : "", tg.service) === "train" && tg.name ? railCls(tg.name, tg.service) : railCls(k, tg.service);
     const key = m + ":" + k + "|" + (tg.network || tg.operator || "");
-    if (!LI.has(key)) { LI.set(key, lines.length); lines.push({ m, k, c: okCol(tg.colour || tg.color), n: String(tg.name || "").slice(0, 80) }); }
+    if (!LI.has(key)) { LI.set(key, lines.length); lines.push({ m, k, c: okCol(tg.colour || tg.color), n: String(tg.name || "").slice(0, 80) }); RL.push([]); }
     const li = LI.get(key), l = lines[li]; if (!l.c) l.c = okCol(tg.colour || tg.color);
-    ways.forEach((w) => { if (!W.has(w)) return; let s = byWay.get(w); if (!s) byWay.set(w, s = new Set()); s.add(li); });
+    const ws = ways.filter((w) => W.has(w)); if (ws.length) RL[li].push(ws);
   });
-  log(id, "Linien", lines.length, "Wege mit Linien", byWay.size);
   // Nacht-/Verstärkerlinien ohne eigene Farbe (N4, 4S, 6E) bekommen die Farbe ihrer Grundlinie – sie werden dann mit ihr zu einem Strich (wie Apple Karten)
   const byK = new Map(); lines.forEach((l) => { if (l.c) byK.set(l.m + ":" + l.k, l.c); });
   lines.forEach((l) => { if (l.m === "long") l.c = ""; }); // Fernverkehr einheitlich (OSM-Farben je IC/ICE sind zufällig) → ein Strich je Gleis statt bunter Bündel
   lines.forEach((l) => { if (l.c || l.m === "long" || l.m === "reg") return; const b = l.k.replace(/^N(?=\d)/, "").replace(/(?<=\d)[A-Z]$/, ""); if (b !== l.k && byK.has(l.m + ":" + b)) l.c = byK.get(l.m + ":" + b); });
-  // Eine Linie auf zwei Gleisen (je Richtung ein Gleis, zweigleisige Straßenbahn) = ein Strich: liegt ein Weg einer Linie fast ganz neben einem anderen Weg
-  // derselben Linie (Straßenbahn bis 25 m, Bahn bis 40 m), fällt die Linie dort weg. Vorrang hat der Weg mit mehr Linien (Stammstrecke), dann die kleinere Kennung.
+  // Eine Linie auf zwei Gleisen (je Richtung eine Relation, zweigleisige Strecke) = ein Strich, ohne Lücken:
+  // je Linie zuerst eine ganze Richtung (durchgehender Weg) – die, die am meisten Gleise mit schon gewählten Linien teilt (Bündel bleiben auf demselben Gleis), sonst die längste;
+  // weitere Richtungen/Varianten nur dort, wo sie nicht neben schon gewählten Wegen der Linie liegen (Schleifen, Äste). Straßenbahn 25 m, Bahn 40 m.
+  const byWay = new Map(); let nd = 0;
   {
-    const byLine = new Map(); for (const [w, set] of byWay) for (const li of set) { let a = byLine.get(li); if (!a) byLine.set(li, a = []); a.push(w); }
     const BB = new Map(), bbOf = (w) => { let b = BB.get(w); if (b) return b; b = [180, 90, -180, -90]; for (const q of W.get(w)) { if (q[0] < b[0]) b[0] = q[0]; if (q[1] < b[1]) b[1] = q[1]; if (q[0] > b[2]) b[2] = q[0]; if (q[1] > b[3]) b[3] = q[1]; } BB.set(w, b); return b; };
-    const prio = (a, b) => (byWay.get(b).size - byWay.get(a).size) || (a - b); // < 0: a hat Vorrang
     const segD = (p, a, b, k) => { const ax = (b[0] - a[0]) * k, ay = b[1] - a[1], px = (p[0] - a[0]) * k, py = p[1] - a[1], L = ax * ax + ay * ay; const t = L ? Math.max(0, Math.min(1, (px * ax + py * ay) / L)) : 0; return Math.hypot(px - t * ax, py - t * ay) * 111320; };
     const near = (p, g, lim) => { const k = Math.cos(p[1] * Math.PI / 180); for (let i = 1; i < g.length; i++) if (segD(p, g[i - 1], g[i], k) <= lim) return true; return false; };
+    const lenOf = (g) => { let s = 0; for (let i = 1; i < g.length; i++) { const k = Math.cos(g[i][1] * Math.PI / 180); s += Math.hypot((g[i][0] - g[i - 1][0]) * k, g[i][1] - g[i - 1][1]) * 111320; } return s; };
     const samples = (g) => { const out = []; let len = 0; const d = []; for (let i = 1; i < g.length; i++) { const k = Math.cos(g[i][1] * Math.PI / 180); const x = Math.hypot((g[i][0] - g[i - 1][0]) * k, g[i][1] - g[i - 1][1]) * 111320; d.push(x); len += x; }
       const n = Math.max(3, Math.min(12, Math.round(len / 25))); for (let j = 0; j < n; j++) { let t = (j + .5) / n * len, i = 0; while (i < d.length - 1 && t > d[i]) { t -= d[i]; i++; } const f = d[i] ? t / d[i] : 0; out.push([g[i][0] + (g[i + 1][0] - g[i][0]) * f, g[i][1] + (g[i + 1][1] - g[i][1]) * f]); } return out; };
-    const drop = []; let nd = 0;
-    for (const [li, ws] of byLine) {
-      if (ws.length < 2) continue;
+    const WL = new Map(); W.forEach((g, w) => { if (!WL.has(w)) WL.set(w, 0); });
+    const len = (w) => { let x = WL.get(w); if (!x) WL.set(w, x = lenOf(W.get(w))); return x; };
+    const POP = new Map(); RL.forEach((rs) => { const u = new Set(); rs.forEach((ws) => ws.forEach((w) => u.add(w))); u.forEach((w) => POP.set(w, (POP.get(w) || 0) + 1)); }); // wie viele Linien einen Weg nutzen (Stammstrecke)
+    const add = (w, li) => { let s2 = byWay.get(w); if (!s2) byWay.set(w, s2 = new Set()); s2.add(li); };
+    // wichtige (lange) Linien zuerst wählen, die übrigen richten sich nach ihnen
+    const order = lines.map((_, i) => i).filter((i) => RL[i].length).sort((a, b) => RL[b].reduce((s2, r) => Math.max(s2, r.reduce((t, w) => t + len(w), 0)), 0) - RL[a].reduce((s2, r) => Math.max(s2, r.reduce((t, w) => t + len(w), 0)), 0));
+    for (const li of order) {
       const lim = lines[li].m === "tram" || lines[li].m === "funi" ? 25 : 40, dg = lim / 111320 * 1.8;
-      // nach Vorrang: nur gegen Wege prüfen, die die Linie behalten (sonst Lücken, wenn A wegen B und B wegen C fällt)
-      const kept = new Set();
-      for (const w of ws.slice().sort(prio)) {
-        const b = bbOf(w), better = ws.filter((v) => kept.has(v) && (() => { const c = bbOf(v); return !(c[0] > b[2] + dg || c[2] < b[0] - dg || c[1] > b[3] + dg || c[3] < b[1] - dg); })());
-        if (!better.length) { kept.add(w); continue; }
-        const sm = samples(W.get(w)); let hit = 0;
-        for (const p of sm) if (better.some((v) => near(p, W.get(v), lim))) hit++;
-        if (hit === sm.length) { drop.push([w, li]); nd++; } else kept.add(w); // ganz parallel, sonst bliebe ein Stück ohne Linie
-      }
+      const rels = RL[li].map((ws) => ({ ws, L: ws.reduce((t, w) => t + len(w), 0), sh: ws.reduce((t, w) => t + len(w) * ((byWay.has(w) ? 100 : 0) + (POP.get(w) || 0)), 0) / Math.max(1, ws.reduce((t, w) => t + len(w), 0)) }));
+      rels.sort((a, b) => (b.sh - a.sh) || (b.L - a.L));
+      const mine = new Set(), G = new Map(), C = 0.01, cells = (b) => { const o = []; for (let x = Math.floor((b[0] - dg) / C); x <= Math.floor((b[2] + dg) / C); x++) for (let y = Math.floor((b[1] - dg) / C); y <= Math.floor((b[3] + dg) / C); y++) o.push(x + "|" + y); return o; };
+      rels.forEach((r, ri) => r.ws.forEach((w) => {
+        if (mine.has(w)) return;
+        const b = bbOf(w);
+        if (ri > 0) { // weitere Richtung/Variante: nur, wo sie nicht ganz neben der schon gewählten Linie liegt
+          const cand = new Set(); cells(b).forEach((k) => (G.get(k) || []).forEach((v) => { const c = bbOf(v); if (!(c[0] > b[2] + dg || c[2] < b[0] - dg || c[1] > b[3] + dg || c[3] < b[1] - dg)) cand.add(v); }));
+          if (cand.size && samples(W.get(w)).every((p) => [...cand].some((v) => near(p, W.get(v), lim)))) { nd++; return; }
+        }
+        mine.add(w); add(w, li); cells(b).forEach((k) => { let a = G.get(k); if (!a) G.set(k, a = []); a.push(w); }); }));
     }
-    for (const [w, li] of drop) { const set = byWay.get(w); set.delete(li); if (!set.size) byWay.delete(w); }
-    log(id, "Doppelgleise zusammengefasst", nd, "Wege mit Linien", byWay.size);
   }
+  log(id, "Linien", lines.length, "Wege mit Linien", byWay.size, "Doppelgleise zusammengefasst", nd);
   // feste Reihenfolge aller Linien (Art, dann Nummer): auf jedem Weg liegen Linien so in derselben Reihenfolge nebeneinander
   const order = lines.map((_, i) => i).sort((a, b) => RANK[lines[a].m] - RANK[lines[b].m] || natCmp(lines[a].k, lines[b].k)), pos = new Int32Array(lines.length);
   order.forEach((li, i) => { pos[li] = i; });

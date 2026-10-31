@@ -1523,6 +1523,9 @@ await test("Linienkarte: Linien aus OpenStreetMap (PMTiles) auf echten Gleisen, 
   const mg = await rp(`JSON.stringify(map.queryRenderedFeatures({layers:["lk-de-ln"]}).filter(function(x){ return x.properties.m==="tram"; }).map(function(x){ return x.properties.k+"|"+x.properties.ks+"|"+x.properties.o; }))`);
   // Gegenrichtung der 4 auf eigenem Gleis (6 m daneben) = kein zweiter Strich
   ok(!mg.includes("4|4|0"), "Linie auf zwei Gleisen doppelt gezeichnet: "+mg);
+  // Linie 8: je Richtung eine Relation auf eigenem Gleis, Wege unterschiedlich geteilt (früher Lücken): nur ein Gleis, durchgehend
+  const l8 = JSON.parse(await rp(`JSON.stringify(map.querySourceFeatures("lk-de", {sourceLayer:"lines"}).filter(function(f){ return f.properties.k==="8"; }).map(function(f){ var c = f.geometry.type==="LineString" ? f.geometry.coordinates : f.geometry.coordinates[0]; return Math.round(c[0][1]*1e5); }))`));
+  ok(l8.length >= 1 && l8.every(y => Math.abs(y - l8[0]) <= 2), "Linie 8 auf beiden Gleisen bzw. mit Lücken: "+JSON.stringify(l8));
   ok(mg.includes("4|4 · N4|-0.5") && !mg.includes("N4|N4") && await rp(`JSON.stringify(map.getLayoutProperty("lk-de-lbl","icon-image")).indexOf("ks") > -1`), "Linien gleicher Farbe nicht zusammengelegt: "+mg);
   // Paket-Verläufe (Busse) werden in der App gerundet: rechter Winkel → Bogen, gerade Strecke bleibt
   ok(await rp(`var r = lnRund([[8.80,53.07],[8.81,53.07],[8.81,53.08]]), q = lnRund([[8.80,53.07],[8.81,53.07],[8.82,53.07]]); r.length===7 && r.every(function(x){ return !(x[0]===8.81 && x[1]===53.07); }) && q.length===3`), "Ecken der Paket-Linien nicht gerundet");
