@@ -11,4 +11,4 @@ try: F=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
 except: F=G=ImageFont.load_default()
 d.text((8,6),f"{scene}: {title}",fill='black',font=F)
 d.text((8,40),"Vorher",fill='#555',font=G); d.text((w+gap+8,40),"Nachher",fill='#555',font=G)
-im.save(base+'vergleich/'+f)
+__import__('os').makedirs(base+'vergleich', exist_ok=True); im.save(base+'vergleich/'+f)

@@ -1885,6 +1885,31 @@ await test("ÖPNV-Stil: Ebene und Planansicht nutzen die gemeinsame Stil-Definit
   ok(ws.includes(5.5) && ws.includes(3) && ws.every(w => OVRT.includes(w)), "Routenstärken nicht aus OV: "+JSON.stringify(ws));
 });
 
+await test("Durchgehende Linien: New-York-U-Bahn von Endstation zu Endstation, Abzweige und Route ohne Lücke", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  const r = JSON.parse(await rp(`(function(){
+    function segd(p,a,b){ var k=Math.cos(p[1]*Math.PI/180), ax=a[0]*k, bx=b[0]*k, px=p[0]*k, dx=bx-ax, dy=b[1]-a[1], L=dx*dx+dy*dy, t=L?((px-ax)*dx+(p[1]-a[1])*dy)/L:0; t=Math.max(0,Math.min(1,t)); return Math.hypot((px-ax-t*dx)*111320,(p[1]-a[1]-t*dy)*110540); }
+    function lineD(p, Ls){ var b=1e9; Ls.forEach(function(q){ for(var m=1;m<q.length;m++) b=Math.min(b, segd(p,q[m-1],q[m])); }); return b; }
+    var loose=[], far=[], by={};
+    // jedes weitere Teilstück einer Linie (Zweig, Variante) hängt mit mindestens einem Ende lückenlos (< 1 m) an der übrigen Linie
+    GEO.sub.features.forEach(function(f){ var L=f.geometry.coordinates; by[f.properties.k]=(by[f.properties.k]||[]).concat(L);
+      L.forEach(function(p,i){ if(!i) return; var o=L.filter(function(_,k){ return k!==i; }); if(Math.min(lineD(p[0],o), lineD(p[p.length-1],o)) > 1) loose.push(f.properties.k+"#"+i); }); });
+    // jede Station liegt auf den Linien, die dort halten (Linie reicht bis zur Endstation)
+    TRANSIT.stations.forEach(function(st){ var l=llW(st[1],st[2]); String(st[3]||"").split("").forEach(function(k){ var dd = by[k] ? lineD([l.lo,l.la], by[k]) : 0; if(dd > 60) far.push(k+":"+st[0]+"|"+Math.round(dd)); }); });
+    // Route der Planansicht: Ende eines Abschnitts = Anfang des nächsten
+    var t = T(); t.places.p8 = {id:"p8", n:"Domino Park", c:"park", la:40.7144, lo:-73.9680, list:"l_main", note:"", addr:"River St"}; t.order[cur] = ["p8","p3"];
+    setLegMode(P("p8"), P("p3"), "oepnv"); layers.route = true; renderAll();
+    var gaps = []; RTF.forEach(function(f,i){ var n = RTF[i+1]; if(!n) return; var a = f.geometry.coordinates, b = n.geometry.coordinates[0]; var d = segd(a[a.length-1], b, b); if(d > 1) gaps.push(i+":"+Math.round(d)); });
+    return JSON.stringify({loose:loose, far:far.slice(0,20), nfar:far.length, gaps:gaps, rt:RTF.length});
+  })()`));
+  ok(!r.loose.length, "Teilstücke ohne Anschluss: "+r.loose.join(" "));
+  ok(!r.nfar, "Linie reicht nicht bis zur Station: "+r.far.join(" "));
+  ok(r.rt >= 3 && !r.gaps.length, "Lücken in der Route: "+JSON.stringify(r));
+  // L (Canarsie) und 2/5 (Flatbush) waren abgeschnitten: Endstationen liegen auf der Linie
+  ok(await rp(`(function(){ var f = GEO.sub.features.filter(function(x){ return x.properties.k==="L"; })[0].geometry.coordinates; return f.length===1 && f[0].some(function(c){ return Math.abs(c[1]-40.6467) < .002 && Math.abs(c[0]+73.9019) < .002; }); })()`), "L reicht nicht durchgehend bis Canarsie");
+});
+
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
@@ -1895,6 +1920,7 @@ await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () =
   await scene("s2-times-sq-z15", -73.9873, 40.7553, 15);
   ok(await rp(`map.queryRenderedFeatures({layers:["sub","bus"]}).length > 5`), "S2: Linien fehlen");
   await scene("s3-fulton-pier11-z16", -74.0078, 40.7088, 16);
+  await scene("x-brooklyn-z12", -73.935, 40.662, 12);   // Zusatz: Ost-/Süd-Brooklyn (L Canarsie, 2/5 Flatbush, Ränder der Daten)
   // S4/S5: Planansicht – Kips Bay → (Fähre) Domino Park → (U-Bahn) MoMA
   await rp(`(function(){ var t = T(); t.places.p8 = {id:"p8", n:"Domino Park", c:"park", la:40.7144, lo:-73.9680, list:"l_main", note:"", addr:"River St"}; t.places.p9 = {id:"p9", n:"Kips Bay", c:"sight", la:40.7470, lo:-73.9760, list:"l_main", note:"", addr:"2nd Ave"}; t.order[cur] = ["p9","p8","p3"];
     setLegMode(P("p9"), P("p8"), "ferry"); setLegMode(P("p8"), P("p3"), "oepnv"); layers.sub = layers.bus = layers.ferry = false; layers.route = true; applyLayers(); renderAll(); setSheet("min"); })(); true`);

@@ -22,3 +22,7 @@ Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 
 ## Abschluss
 - [ ] 13. Gesamtprüfung: alle Szenen aus KRITERIEN.md neu fotografieren und gegen alle Kriterien bewerten; Abweichungen als neue Aufgaben anlegen.
+
+## Neu gefunden
+- [ ] 14. Linien verschiedener Farbgruppen auf gemeinsamer Strecke liegen deckungsgleich (z. B. 2 und 5 auf der Nostrand Av: nur Grün sichtbar), weil die Plätze nebeneinander nur je Farbe vergeben werden (`GEO`-Aufbau, `o`).
+- [ ] 15. New York: Stationen außerhalb des bisherigen Datenkastens (z. B. Rockaway, Coney Island, Flushing-Ende) fehlen, obwohl die Linien jetzt bis zur Endstation reichen.
