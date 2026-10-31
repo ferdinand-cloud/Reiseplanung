@@ -7,7 +7,7 @@ Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 
 ## Linien
 - [x] 2. Durchgehende Linien: Unterbrechungen beseitigen. Erst die Ursache finden und in NOTIZEN.md festhalten (z. B. Lücken zwischen Shape-Segmenten, fehlende/abgeschnittene Koordinaten, mehrere Teilstücke statt einer zusammenhängenden Linie, Kachelgrenzen, Linien unter Stationsmarkern oder Gebäuden verdeckt). Dann an der Ursache beheben: Teilstücke lückenlos verbinden, sodass jede Linie von Endstation zu Endstation ohne Lücke gezeichnet wird. Gilt für U-Bahn, Bus, Fähre und alle ÖPNV-Abschnitte der Route in der Planansicht.
-- [ ] 3. Abgerundeter Verlauf: line-join und line-cap "round" für alle ÖPNV-Linien und Routenabschnitte.
+- [x] 3. Abgerundeter Verlauf: line-join und line-cap "round" für alle ÖPNV-Linien und Routenabschnitte.
 - [ ] 4. Kantige Geometrien glätten (z. B. Chaikin auf die Linien-Koordinaten), ohne sichtbar von der Strecke abzuweichen und ohne neue Lücken zu erzeugen; Ergebnis cachen statt bei jedem Rendern neu rechnen.
 - [ ] 5. Zoomabhängige Linienstärke: dünn bei Stadtansicht, kräftiger beim Hineinzoomen; eigene Route in der Planansicht immer klar stärker als die Linien der ÖPNV-Ebene.
 - [ ] 6. Farben: offizielle Linienfarben für U-Bahn, ruhigere Farbe für Bus, eigene Farbe für Fähre; heller Rand (Casing) für Kontrast auf jedem Untergrund.
