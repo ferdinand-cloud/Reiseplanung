@@ -1910,6 +1910,22 @@ await test("Durchgehende Linien: New-York-U-Bahn von Endstation zu Endstation, A
   ok(await rp(`(function(){ var f = GEO.sub.features.filter(function(x){ return x.properties.k==="L"; })[0].geometry.coordinates; return f.length===1 && f[0].some(function(c){ return Math.abs(c[1]-40.6467) < .002 && Math.abs(c[0]+73.9019) < .002; }); })()`), "L reicht nicht durchgehend bis Canarsie");
 });
 
+await test("Abgerundeter Verlauf: alle ÖPNV-Linien und Routenabschnitte mit runden Enden und Ecken", async () => {
+  await seed();
+  const r = JSON.parse(await rp(`(function(){
+    var ids = ["sub","bus","ferry-line","vt-rail","dbus","dtr","dtr-f","tl-bus","tl-rail","tl-ferry","rt-case","rt-line","rt-dot","rt-hdot","rt-dash"], bad = [], n = 0;
+    map.getStyle().layers.forEach(function(l){ if(l.type!=="line" || !(ids.indexOf(l.id) > -1 || /^lk-.*-ln$/.test(l.id))) return; n++;
+      if(map.getLayoutProperty(l.id, "line-join")!=="round" || map.getLayoutProperty(l.id, "line-cap")!=="round") bad.push(l.id); });
+    return JSON.stringify({n:n, bad:bad, ov:OV.lay["line-join"]==="round" && OV.lay["line-cap"]==="round"});
+  })()`));
+  ok(r.n >= 10 && !r.bad.length && r.ov, "Linien ohne runde Ecken/Enden: "+JSON.stringify(r));
+  // Sichtprobe: Fähre mit Knick (Zusatzbild für den Loop, SHOTS=…)
+  await jump(13.42, 52.52, 15.5);
+  await rp(`map.getSource("dtr").setData({type:"FeatureCollection", features:[{type:"Feature", properties:{m:"ferry", k:"F1", c:"#0b84b5", o:0}, geometry:{type:"LineString", coordinates:[[13.414,52.517],[13.42,52.523],[13.426,52.517],[13.428,52.522]]}},
+    {type:"Feature", properties:{m:"metro", k:"U2", c:"#C8102E", o:0}, geometry:{type:"LineString", coordinates:[[13.414,52.521],[13.42,52.518],[13.426,52.524]]}}]}); DL = {ferry:1, metro:1}; DOFF = {}; dApplyMap(); true`);
+  await page.waitForTimeout(600); await shot("x-faehre-knick");
+});
+
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
