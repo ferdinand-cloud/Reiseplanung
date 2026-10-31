@@ -1866,15 +1866,15 @@ await test("ÖPNV-Stil: Ebene und Planansicht nutzen die gemeinsame Stil-Definit
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
   const r = JSON.parse(await rp(`(function(){ var J = JSON.stringify, P2 = function(l, k){ return J(map.getPaintProperty(l, k)); };
     return J({
-      // Optik unverändert: Ausdrücke wie vor der Stil-Definition
-      w:J(lnWidth("metro"))===J(["interpolate",["linear"],["zoom"],10,["match","metro","tram",.7,"funi",.9,.9],13,["match","metro","tram",1.2,"funi",1.4,1.6],16,["match","metro","tram",2,"funi",2.4,2.6]]),
-      o:J(lnOffset(1))===J(["interpolate",["linear"],["zoom"],8,["*",1,.5],11.5,["*",1,1.2],13,["*",1,2.2],16,["*",1,3.3]]),
+      // Werte aus OV (lnWidth/lnOffset bauen ihre Stützstellen aus OV.w.rail / OV.w.off)
+      w:J(lnWidth("metro").slice(0, 5))===J(["interpolate",["linear"],["zoom"],10,["match","metro","tram",OV.w.rail[10].tram,"funi",OV.w.rail[10].funi,OV.w.rail[10].x]]),
+      o:J(lnOffset(1).slice(3, 7))===J([OV.w.off[0],["*",1,OV.w.off[1]],OV.w.off[2],["*",1,OV.w.off[3]]]),
       // Ebenen beziehen ihre Werte aus OV
       sub:P2("sub","line-width")===J(lnWidth("metro")), bus:P2("bus","line-width")===J(ovZ(OV.w.busNyc)) && map.getPaintProperty("bus","line-opacity")===OV.op.busNyc,
       dbus:P2("dbus","line-width")===J(ovZ(OV.w.bus)), dtrf:P2("dtr-f","line-width")===J(ovZ(OV.w.ferry)) && P2("dtr-f","line-dasharray")===J(OV.dash.ferry),
       dst:P2("dst","circle-radius")===J(ovZ(OV.w.stop)) && map.getLayer("dst").minzoom===OV.z.stop && map.getLayer("dst-ic").minzoom===OV.z.stopIcon,
       z:map.getLayer("bus").minzoom===OV.z.bus && map.getLayer("dbus").minzoom===OV.z.bus && MZ===OV.z.mode && DCOL===OV.col.mode && FERRYC===OV.col.ferry,
-      rc:P2("rt-case","line-width")===J(["+",["get","w"],OV.rt.case])
+      rc:P2("rt-case","line-width")===J(ovRtW(OV.rt.case))
     }); })()`));
   ok(Object.values(r).every(Boolean), "Stil-Definition nicht überall genutzt: "+JSON.stringify(r));
   // Planansicht: ÖPNV-Fahrt und Fußwege mit den Stärken aus OV
@@ -1951,6 +1951,22 @@ await test("Geglättete Linien: Ecken abgerundet, nah an der Strecke, Enden unve
   console.log("  Glättung: "+JSON.stringify(r)); ok(r.s1 < r.s0 / 4, "Zu viele spitze Ecken nach dem Glätten: "+JSON.stringify(r));
   ok(r.ends, "Anfang/Ende verändert");
   ok(r.rides >= 1 && r.cached, "ÖPNV-Fahrt der Route nicht geglättet/zwischengespeichert: "+JSON.stringify(r));
+});
+
+await test("Linienstärke je Zoom: fein in der Stadtansicht, kräftiger nah, Bus dünner als Bahn, eigene Route immer am stärksten", async () => {
+  await seed();
+  const r = JSON.parse(await rp(`(function(){
+    // interpolate-Ausdruck an Zoom z auswerten (Stützstellen-Werte: Zahl oder ["*", x, Zahl]/["+",…] mit w)
+    function ev(e, z, w){ if(typeof e==="number") return e; if(e[0]==="get") return w; if(e[0]==="*") return ev(e[1], z, w)*ev(e[2], z, w); if(e[0]==="+") return ev(e[1], z, w)+ev(e[2], z, w);
+      if(e[0]==="match") return e[e.length-1]; // „alle übrigen“ (Metro)
+      if(e[0]==="interpolate"){ var s = e.slice(3); if(z <= s[0]) return ev(s[1], z, w); for(var i = 2; i < s.length; i += 2) if(z <= s[i]){ var t = (z-s[i-2])/(s[i]-s[i-2]); return ev(s[i-1], z, w)*(1-t)+ev(s[i+1], z, w)*t; } return ev(s[s.length-1], z, w); } return NaN; }
+    var P = function(l){ return map.getPaintProperty(l, "line-width"); }, out = {rows:[], bad:[]};
+    [11, 12, 13, 14, 15, 16, 17, 18, 19].forEach(function(z){ var rail = ev(P("sub"), z), bus = ev(P("bus"), z), dbus = ev(P("dbus"), z), fe = ev(P("dtr-f"), z), ride = ev(P("rt-line"), z, OV.rt.ride), foot = ev(P("rt-line"), z, OV.rt.foot);
+      out.rows.push([z, +rail.toFixed(2), +bus.toFixed(2), +ride.toFixed(2)].join("/"));
+      if(!(bus < rail && dbus < rail)) out.bad.push("Bus≥Bahn@"+z); if(!(ride > rail*1.5 && ride > fe*1.5)) out.bad.push("Route nicht stärker@"+z); if(!(foot > bus)) out.bad.push("Fußweg@"+z); });
+    var r12 = ev(P("sub"), 12), r16 = ev(P("sub"), 16), r18 = ev(P("sub"), 18); if(!(r12 <= 1.3 && r16 >= 2.5 && r18 > r16)) out.bad.push("Bahn nicht zoomabhängig "+[r12, r16, r18]);
+    return JSON.stringify(out); })()`));
+  ok(!r.bad.length, "Linienstärken: "+r.bad.join(", ")+" · "+r.rows.join(" "));
 });
 
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {

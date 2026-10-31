@@ -28,6 +28,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 - Aufgabe 4: `OV.smooth` = {cut:12, it:3} – Chaikin mit Höchstschnitt (Ecke höchstens 12/6/3 m abgeschnitten), `ovSmooth(L)` behält Anfang/Ende, `ovSmoothAll(Ls)` setzt Abzweig-Enden danach wieder exakt auf die geglättete Linie. Geglättet: NYC U-Bahn/Bus einmal beim Laden in `GEO` (~25 ms am Rechner), ÖPNV-Fahrten der Route in `rtAdd` (Zwischenspeicher `RTSM`, WeakMap auf das ridePath-Ergebnis). Linienkarte glättet schon im Build (paralleler Thread), Transitland/Overpass-Linien nicht angefasst. Messung: größte Abweichung 8,5 m, spitze Ecken (> 30°) 1047 → 29.
 
+- Aufgabe 5: Bahn 0,8/1,2/2/3/4,5 px bei Z10/12/14/16/18 (Tram/Seilbahn etwas dünner), Versatz bis Z18 4,8; Bus 0,5–0,6 → 2,4–2,6 px bis Z18 (immer dünner als Bahn, vorher bei Z16 dicker); Fähre 1 → 3,2 px. Route: Stärke × Zoomfaktor `OV.rt.zf` (0,7 bei Z11 … 1,4 bei Z18), Helfer `ovRtW()`; Fahrt immer > 1,5 × Bahn.
+
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
 - 1 · „Ok Freigabe“ · keine Änderung
@@ -41,3 +43,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 2 · 31.10.2026 · (git log „Loop 2:“) · Ursache NYC-Daten (abgeschnitten, ein Fahrweg je Linie), neu aus MTA-GTFS; Test „Durchgehende Linien“ (Anschlüsse < 1 m, alle Stationen auf ihrer Linie, Route lückenlos) · Freigabe 31.10. · Stationen wie 96 St/2 Av liegen ~100 m hinter dem GTFS-Fahrwegende → Linie bis zur Station verlängert. Volle ÖPNV-Tests unter Last wackelig (Lissabon/Offline/Navigation), einzeln grün.
 - 3 · 31.10.2026 · (git log „Loop 3:“) · L1 bestanden; S1–S5 pixelgleich (nur Fähren betroffen, die in der Testumgebung fehlen) → Zusatzbild Fähre mit Knick (Berlin-Testdaten) · Freigabe 31.10.
 - 4 · 31.10.2026 · (git log „Loop 4:“) · L0 (Test „Durchgehende Linien“ weiter grün), L1, L2 (≤ 8,5 m Abweichung) bestanden · Freigabe 31.10. · Mit 2 Durchgängen blieben 322 spitze Ecken, daher 3.
+- 5 · 31.10.2026 · (git log „Loop 5:“) · L3, L4 bestanden (Test wertet die Ausdrücke je Zoom 11–19 aus) · Freigabe offen
