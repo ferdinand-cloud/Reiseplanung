@@ -149,15 +149,29 @@ async function land(id, L) {
       const lim = lines[li].m === "tram" || lines[li].m === "funi" ? 25 : 40, dg = lim / 111320 * 1.8;
       const rels = RL[li].map((ws) => ({ ws, L: ws.reduce((t, w) => t + len(w), 0), sh: ws.reduce((t, w) => t + len(w) * ((byWay.has(w) ? 100 : 0) + (POP.get(w) || 0)), 0) / Math.max(1, ws.reduce((t, w) => t + len(w), 0)) }));
       rels.sort((a, b) => (b.sh - a.sh) || (b.L - a.L));
-      const mine = new Set(), G = new Map(), C = 0.01, cells = (b) => { const o = []; for (let x = Math.floor((b[0] - dg) / C); x <= Math.floor((b[2] + dg) / C); x++) for (let y = Math.floor((b[1] - dg) / C); y <= Math.floor((b[3] + dg) / C); y++) o.push(x + "|" + y); return o; };
+      let skip = []; const mine = new Set(), G = new Map(), C = 0.01, cells = (b) => { const o = []; for (let x = Math.floor((b[0] - dg) / C); x <= Math.floor((b[2] + dg) / C); x++) for (let y = Math.floor((b[1] - dg) / C); y <= Math.floor((b[3] + dg) / C); y++) o.push(x + "|" + y); return o; };
       rels.forEach((r, ri) => r.ws.forEach((w) => {
         if (mine.has(w)) return;
         const b = bbOf(w);
         if (ri > 0) { // weitere Richtung/Variante: nur, wo sie nicht ganz neben der schon gewählten Linie liegt
           const cand = new Set(); cells(b).forEach((k) => (G.get(k) || []).forEach((v) => { const c = bbOf(v); if (!(c[0] > b[2] + dg || c[2] < b[0] - dg || c[1] > b[3] + dg || c[3] < b[1] - dg)) cand.add(v); }));
-          if (cand.size && samples(W.get(w)).every((p) => [...cand].some((v) => near(p, W.get(v), lim)))) { nd++; return; }
+          if (cand.size && samples(W.get(w)).every((p) => [...cand].some((v) => near(p, W.get(v), lim)))) { nd++; skip.push(w); return; }
         }
         mine.add(w); add(w, li); cells(b).forEach((k) => { let a = G.get(k); if (!a) G.set(k, a = []); a.push(w); }); }));
+      // Lücken schließen: liegt zwischen zwei lose endenden Stücken der Linie eine Kette ausgelassener Wege (Abzweig der Gegenrichtung), kommt die Kette wieder dazu.
+      // Nur Ketten, die zwei lose Enden verbinden – an Endhaltestellen (ein loses Ende) bleibt das zweite Gleis weg.
+      if (skip.length) {
+        const ek = (q) => q[0] + "," + q[1], ends = (w) => { const g = W.get(w); return [ek(g[0]), ek(g[g.length - 1])]; }, deg = new Map();
+        mine.forEach((v) => ends(v).forEach((k) => deg.set(k, (deg.get(k) || 0) + 1)));
+        const at = new Map(); skip.forEach((w) => ends(w).forEach((k) => { let a = at.get(k); if (!a) at.set(k, a = []); a.push(w); }));
+        const seen = new Set();
+        for (const w0 of skip) {
+          if (seen.has(w0)) continue; const comp = [], q = [w0]; seen.add(w0);
+          while (q.length) { const w = q.pop(); comp.push(w); ends(w).forEach((k) => { if (deg.has(k)) return; (at.get(k) || []).forEach((v) => { if (!seen.has(v)) { seen.add(v); q.push(v); } }); }); }
+          const loose = new Set(); comp.forEach((w) => ends(w).forEach((k) => { if (deg.get(k) === 1) loose.add(k); }));
+          if (loose.size >= 2) comp.forEach((w) => { mine.add(w); add(w, li); nd--; });
+        }
+      }
     }
   }
   log(id, "Linien", lines.length, "Wege mit Linien", byWay.size, "Doppelgleise zusammengefasst", nd);
