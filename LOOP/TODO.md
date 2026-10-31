@@ -3,7 +3,7 @@ Gilt für: ÖPNV-Ebene + eigene Route in der Planansicht. Vorbild: Apple Maps.
 Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 
 ## Grundlage
-- [ ] 1. Gemeinsame Stil-Definition anlegen (Farben, Stärken, Zoomstufen je Verkehrsmittel), die ÖPNV-Ebene und Planansicht beide verwenden. Optik dabei noch nicht ändern.
+- [x] 1. Gemeinsame Stil-Definition anlegen (Farben, Stärken, Zoomstufen je Verkehrsmittel), die ÖPNV-Ebene und Planansicht beide verwenden. Optik dabei noch nicht ändern.
 
 ## Linien
 - [ ] 2. Durchgehende Linien: Unterbrechungen beseitigen. Erst die Ursache finden und in NOTIZEN.md festhalten (z. B. Lücken zwischen Shape-Segmenten, fehlende/abgeschnittene Koordinaten, mehrere Teilstücke statt einer zusammenhängenden Linie, Kachelgrenzen, Linien unter Stationsmarkern oder Gebäuden verdeckt). Dann an der Ursache beheben: Teilstücke lückenlos verbinden, sodass jede Linie von Endstation zu Endstation ohne Lücke gezeichnet wird. Gilt für U-Bahn, Bus, Fähre und alle ÖPNV-Abschnitte der Route in der Planansicht.

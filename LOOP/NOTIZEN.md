@@ -18,7 +18,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
+- 1 · „Ok Freigabe“ · keine Änderung
 
 ## Protokoll
 <!-- Format: Aufgabe Nr · Datum · Commit · Vorprüfung · Freigabe · Stolperfallen -->
-- 1 · 31.10.2026 · (siehe git log „Loop 1:“) · S1–S5 pixelgleich vorher/nachher (A1, A2 ok) · Freigabe offen · Szenen-Test neu angelegt; S3-Mitte auf -74.0078/40.7088 gesetzt, sonst kaum Linien im Bild.
+- 1 · 31.10.2026 · (siehe git log „Loop 1:“) · S1–S5 pixelgleich vorher/nachher (A1, A2 ok) · Freigabe 31.10. (v475) · Szenen-Test neu angelegt; S3-Mitte auf -74.0078/40.7088 gesetzt, sonst kaum Linien im Bild.
