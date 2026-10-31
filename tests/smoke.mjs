@@ -1856,6 +1856,53 @@ await test("Fähre fährt übers Wasser (Fährlinien der Karte statt Luftlinie)"
   ok(r.saved, "Fährweg wird nicht gemerkt");
 });
 
+/* Loop ÖPNV-Darstellung (LOOP/KRITERIEN.md): Szenen S1–S5 als Screenshots (SHOTS=../LOOP/screens/<nr>/vorher node smoke.mjs "ÖPNV-Szenen") */
+const settle = async () => { await page.waitForFunction(() => window.__rp(`map.loaded() && !map.isMoving()`), null, {timeout:8000}).catch(() => {}); await page.waitForTimeout(700); };
+await test("ÖPNV-Stil: Ebene und Planansicht nutzen die gemeinsame Stil-Definition OV", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  const r = JSON.parse(await rp(`(function(){ var J = JSON.stringify, P2 = function(l, k){ return J(map.getPaintProperty(l, k)); };
+    return J({
+      // Optik unverändert: Ausdrücke wie vor der Stil-Definition
+      w:J(lnWidth("metro"))===J(["interpolate",["linear"],["zoom"],10,["match","metro","tram",.7,"funi",.9,.9],13,["match","metro","tram",1.2,"funi",1.4,1.6],16,["match","metro","tram",2,"funi",2.4,2.6]]),
+      o:J(lnOffset(1))===J(["interpolate",["linear"],["zoom"],8,["*",1,.5],11.5,["*",1,1.2],13,["*",1,2.2],16,["*",1,3.3]]),
+      // Ebenen beziehen ihre Werte aus OV
+      sub:P2("sub","line-width")===J(lnWidth("metro")), bus:P2("bus","line-width")===J(ovZ(OV.w.busNyc)) && map.getPaintProperty("bus","line-opacity")===OV.op.busNyc,
+      dbus:P2("dbus","line-width")===J(ovZ(OV.w.bus)), dtrf:P2("dtr-f","line-width")===J(ovZ(OV.w.ferry)) && P2("dtr-f","line-dasharray")===J(OV.dash.ferry),
+      dst:P2("dst","circle-radius")===J(ovZ(OV.w.stop)) && map.getLayer("dst").minzoom===OV.z.stop && map.getLayer("dst-ic").minzoom===OV.z.stopIcon,
+      z:map.getLayer("bus").minzoom===OV.z.bus && map.getLayer("dbus").minzoom===OV.z.bus && MZ===OV.z.mode && DCOL===OV.col.mode && FERRYC===OV.col.ferry,
+      rc:P2("rt-case","line-width")===J(["+",["get","w"],OV.rt.case])
+    }); })()`));
+  ok(Object.values(r).every(Boolean), "Stil-Definition nicht überall genutzt: "+JSON.stringify(r));
+  // Planansicht: ÖPNV-Fahrt und Fußwege mit den Stärken aus OV
+  await rp(`(function(){ var t = T(); t.places.p8 = {id:"p8", n:"Domino Park", c:"park", la:40.7144, lo:-73.9680, list:"l_main", note:"", addr:"River St"}; t.order[cur] = ["p8","p3"]; setLegMode(P("p8"), P("p3"), "oepnv"); layers.route = true; renderAll(); })(); true`);
+  await page.waitForTimeout(300);
+  const OVRT = JSON.parse(await rp(`JSON.stringify(Object.values(OV.rt))`));
+  const ws = JSON.parse(await rp(`JSON.stringify(RTF.map(function(f){ return f.properties.w; }))`));
+  ok(ws.includes(5.5) && ws.includes(3) && ws.every(w => OVRT.includes(w)), "Routenstärken nicht aus OV: "+JSON.stringify(ws));
+});
+
+await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
+  await seed();
+  await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
+  await rp(`layers.sub = layers.bus = layers.ferry = true; layers.route = false; select(null); setSheet("min"); applyLayers(); renderAll(); true`);
+  const scene = async (n, lo, la, z) => { await rp(`map.jumpTo({center:[${lo}, ${la}], zoom:${z}}); vtView(); true`); await settle(); await shot(n); };
+  await scene("s1-manhattan-z12", -73.975, 40.758, 12);
+  ok(await rp(`map.queryRenderedFeatures({layers:["sub"]}).length > 20`), "S1: U-Bahn-Linien fehlen");
+  await scene("s2-times-sq-z15", -73.9873, 40.7553, 15);
+  ok(await rp(`map.queryRenderedFeatures({layers:["sub","bus"]}).length > 5`), "S2: Linien fehlen");
+  await scene("s3-fulton-pier11-z16", -74.0078, 40.7088, 16);
+  // S4/S5: Planansicht – Kips Bay → (Fähre) Domino Park → (U-Bahn) MoMA
+  await rp(`(function(){ var t = T(); t.places.p8 = {id:"p8", n:"Domino Park", c:"park", la:40.7144, lo:-73.9680, list:"l_main", note:"", addr:"River St"}; t.places.p9 = {id:"p9", n:"Kips Bay", c:"sight", la:40.7470, lo:-73.9760, list:"l_main", note:"", addr:"2nd Ave"}; t.order[cur] = ["p9","p8","p3"];
+    setLegMode(P("p9"), P("p8"), "ferry"); setLegMode(P("p8"), P("p3"), "oepnv"); layers.sub = layers.bus = layers.ferry = false; layers.route = true; applyLayers(); renderAll(); setSheet("min"); })(); true`);
+  await page.waitForTimeout(300);
+  await rp(`var b = new maplibregl.LngLatBounds(); RTF.forEach(function(f){ f.geometry.coordinates.forEach(function(c){ b.extend(c); }); }); map.fitBounds(b, {padding:{top:90, bottom:120, left:30, right:30}, duration:0}); vtView(); true`);
+  await settle(); await shot("s4-route-gesamt");
+  ok(await rp(`RTF.length >= 3 && map.queryRenderedFeatures({layers:["rt-line","rt-dot","rt-hdot"]}).length > 0`), "S4: Route fehlt: "+await rp(`RTF.length`));
+  const xf = JSON.parse(await rp(`(function(){ var r = legRoute(P("p8"), P("p3"), cur), rides = r.legs.filter(function(l){ return l.t==="ride"; }); var s = rides.length > 1 ? rides[0].stops[rides[0].stops.length-1] : rides[0] ? rides[0].stops[0] : null, q = s!=null ? stLL(s) : P("p8"); return JSON.stringify([q.lo, q.la, rides.length]); })()`));
+  await rp(`map.jumpTo({center:[${xf[0]}, ${xf[1]}], zoom:16}); vtView(); true`); await settle(); await shot("s5-umstieg-z16");
+});
+
 await test("Routenoptionen je Etappe: Zeit (Abfahrt/Ankunft) und bevorzugte Verkehrsmittel", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
