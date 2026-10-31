@@ -95,6 +95,10 @@ async function land(id, L) {
   // Linien-Relationen mit ihren Wegen (Knoten nur für die Koordinaten der Wege)
   await run("osmium", ["tags-filter", src, "r/route=train,subway,light_rail,monorail,tram,funicular,ferry", "-o", rf, "--overwrite"]);
   await run("osmium", ["add-locations-to-ways", rf, "-n", "-o", rl, "--overwrite"]);
+  // Prüfausschnitte (nur Deutschland): kleine OSM-Auszüge Berlin-Mitte und Bremen-Mitte, damit die Linienlogik lokal mit echten Daten getestet werden kann
+  if (id === "de" && !process.env.LKPBF) for (const [nm, b] of [["berlin", "13.30,52.48,13.48,52.56"], ["bremen", "8.74,53.05,8.92,53.11"]]) {
+    try { await run("osmium", ["extract", "-b", b, "-s", "complete_ways", rf, "-o", path.join(OUT, "dbg-" + nm + ".osm.pbf"), "--overwrite"]); } catch (e) { log("Prüfausschnitt", nm, "fehlgeschlagen"); }
+  }
   await run("osmium", ["cat", rl, "-t", "way", "-t", "relation", "-f", "opl,locations_on_ways=true,add_metadata=false", "-o", op, "--overwrite"]);
   const W = new Map(), R = [];
   for await (const line of readline.createInterface({ input: fs.createReadStream(op), crlfDelay: Infinity })) {
