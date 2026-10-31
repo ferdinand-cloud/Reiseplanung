@@ -1641,6 +1641,20 @@ await test("ÖPNV-Linien nebeneinander statt übereinander, dünn, Haltestellen 
   // Design wie Apple Karten: ab Zoom 14 Stationssymbol statt Punkt, Name fett mit Linien-Plaketten (Bild in Systemschrift), Plaketten an den Linien
   ok(await rp(`map.queryRenderedFeatures({layers:["dst-ic"]}).length===1 && tpImg("tb|S5,#e87a1c;RE1,#c01a1a") && map.hasImage("tb|S5,#e87a1c;RE1,#c01a1a") && tpImg("tn|Alexanderplatz|S5,#e87a1c|l") && map.hasImage("ts|train") && JSON.stringify(map.getLayoutProperty("dtr-lbl","icon-image")).indexOf("tl|") > -1 && tpInk("#F5D000")!=="#fff" && tpInk("#C8102E")==="#fff"`), "Stationssymbol, Namens-/Linien-Plaketten fehlen");
   ok(await rp(`map.getLayer("dst").minzoom===11 && JSON.stringify(map.getPaintProperty("dtr","line-offset")).indexOf("\\"o\\"") > -1`), "Versatz oder frühe Haltestellen fehlen");
+  // Bahnhof nach Klassen (Fernverkehr/Regional/S-Bahn als Symbol statt jeder Zug), Bahnhofsteile mit anderem Namen zusammengefasst; Tram-/Bushaltestellen aus den Kanten, Name nur einmal
+  const cls = JSON.parse(await rp(`
+    var P = {L:[["long","ICE 1","", "#9A3B3B"],["reg","RE1","","#c01a1a"],["reg","RB37","","#c01a1a"],["sbahn","RS1","","#1D5FBF"],["tram","4","","#E2001A"],["tram","6","","#0066B3"],["bus","670","","#1f6fd1"]],
+      S:[{n:"Bremen Hbf", la:53.0831, lo:8.8133},{n:"Bremen Hauptbahnhof", la:53.0828, lo:8.8160},{n:"Hauptbahnhof", la:53.0822, lo:8.8140},{n:"Hauptbahnhof", la:53.0823, lo:8.8142},{n:"Domsheide", la:53.075, lo:8.81},{n:"Hauptbahnhof", la:53.0825, lo:8.8145}],
+      E:[0,4,0,0,60,7, 0,4,1,0,60,7, 1,4,2,0,60,7, 1,4,3,0,60,7, 2,4,4,0,60,7, 3,4,4,0,60,7, 2,4,5,0,60,7, 5,4,6,0,60,7], D:[[0,"long","reg","sbahn"],[1,"reg"]], H:[], W:[], G:[]};
+    var c = {rail:P, bus:{L:P.L, S:P.S, E:[5,4,6,0,60,7], D:[], H:[], W:[], G:[]}};
+    var g = cpGeo(c, true), tr = g.tr.st.filter(function(x){ return x[3]==="train" && x[0] > 8.811; }), tm = g.tr.st.filter(function(x){ return x[3]==="tram" && x[2]==="Hauptbahnhof"; });
+    JSON.stringify({tr:tr.map(function(x){ return x[2]+"|"+x[5]; }), tm:tm.length, bus:g.bus.st.map(function(x){ return x[2]+"|"+x[5]; }), img:tpImg("tn|Bremen Hbf|@long,-;@reg,-;@sbahn,-|d") && tpImg("tn||670,#1f6fd1|d") && map.hasImage("tn||670,#1f6fd1|d"), row:tpRow([["@long","-"],["4","#E2001A"]]).rows[0][0][2], br:tpRow([["4","#E2001A"],["/","-"],["670","#1f6fd1"]]).rows.length, im:JSON.stringify(dstImg("lbb")).indexOf("lbb") > -1})`));
+  ok(cls.br===2 && cls.im, "Buslinien nicht als zweite Reihe: "+JSON.stringify(cls));
+  ok(cls.tr.length===1 && cls.tr[0]==="Bremen Hbf|@long,-;@reg,-;@sbahn,-", "Bahnhof nicht nach Klassen bzw. Bahnhofsteile doppelt: "+JSON.stringify(cls));
+  ok(cls.tm===1 && cls.bus.length===2 && cls.bus.every(function(x){ return /^\|670,/.test(x); }) && cls.img && cls.row===15, "Tram-/Bushaltestellen falsch: "+JSON.stringify(cls));
+  await rp(`DL = {tram:1, bus:1}; DOFF = {}; VV = {tr:null, bus:null}; dApplyMap(); true`);
+  ok(await rp(`JSON.stringify(map.getFilter("dst-ic")).indexOf("15.5") > -1 && JSON.stringify(map.getFilter("dst-lbl")).indexOf("bus") > -1`), "Bushaltestellen nicht erst ab Zoom 15,5");
+  await rp(`DL = {}; dApplyMap(); true`);
   await rp(`map.getSource("dtr").setData({type:"FeatureCollection", features:[]}); map.getSource("dst").setData({type:"FeatureCollection", features:[]}); DL = {}; dApplyMap(); true`);
   // New York (eingebaute MTA-Daten): Linien gleicher Stammstrecke nebeneinander
   await rp(`layers.sub = true; applyLayers(); true`); await jump(-73.9897, 40.7505, 14.5); await page.waitForTimeout(600); await shot("nyc-linien-nebeneinander");

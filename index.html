@@ -12740,8 +12740,29 @@ function lnRund(g){
   out.push(g[g.length-1]);
   return out;
 }
+/* Haltestellen aus den Kanten eines Pakets: je Station und Verkehrsmittel ein Eintrag [lo, la, Name, Art, Bedeutung, Linienreihe] */
+function cpStops(P, nl, want){
+  if(!nl){ nl = {}; for(var k = 0; k < P.E.length; k += 6){ [P.E[k], P.E[k+1]].forEach(function(x){ (nl[x] = nl[x] || {})[P.E[k+2]] = 1; }); } }
+  var out = [];
+  Object.keys(nl).forEach(function(si){ var s = P.S[si], by = {}; if(!s) return;
+    Object.keys(nl[si]).forEach(function(i){ var l = P.L[i]; if(l && want(l[0])) (by[l[0]] = by[l[0]] || {})[l[1]] = l[0]==="bus" ? okCol(l[3]) || "#1f6fd1" : cpLineCol(l); }); // Busse ohne eigene Farbe blau wie bei Apple Karten
+    Object.keys(by).forEach(function(m){ var ks = Object.keys(by[m]).sort(natCmp);
+      out.push([s.lo, s.la, s.n, m, m==="bus" ? -1 : ks.length >= 2 ? 1 : 0, ks.slice(0, m==="bus" ? 6 : 14).map(function(k){ return k.replace(/[,;|@]/g, " ")+","+by[m][k]; }).join(";")]); }); });
+  return out;
+}
+/* Wie Apple Karten: jeder Bahnsteig/Mast mit seinem Symbol und seinen Linien, der Name aber nur einmal je Haltestelle (gleicher Name, gleiche Art, bis 200 m);
+   Bahnsteige ohne eigene Linien (gegenüberliegende Seite, gleiche Linien) fallen weg; Bushaltestellen ohne Namen (der steht an der Haltestelle der Bahn) */
+function stDedup(st){
+  var seen = {}, out = [];
+  st.slice().sort(function(a, b){ return b[5].split(";").length - a[5].split(";").length; }).forEach(function(x){
+    var key = x[3]+"|"+x[2], arr = seen[key] = seen[key] || [], o = arr.find(function(y){ return dist({la:y[1], lo:y[0]}, {la:x[1], lo:x[0]}) < 200; });
+    if(o){ var own = x[5].split(";").filter(function(q){ return o[5].split(";").indexOf(q) < 0; }); if(!own.length) return; x = x.slice(); x[2] = ""; }
+    else { arr.push(x); if(x[3]==="bus"){ x = x.slice(); x[6] = x[2]; x[2] = ""; } }
+    out.push(x); });
+  return out;
+}
 function cpGeo(c, wantBus){
-  if(c.vv){ if(wantBus && c.bus && !c.vv.bus) c.vv.bus = c.vv.mk(c.bus, true); return c.vv; }
+  if(c.vv){ if(wantBus && c.bus && !c.vv.bus){ c.vv.bus = c.vv.mk(c.bus, true); c.vv.bus.st = stDedup(cpStops(c.bus, null, function(m){ return m==="bus"; })); } return c.vv; }
   var mk = function(P, bus){ if(!P) return null; var lines = [], feats = [];
     P.L.forEach(function(l, i){
       var g = (P.G[i]||[]).map(function(s){ return lnRund(polyDec(s, 5).map(function(q){ return [q[1], q[0]]; })); }).filter(function(x){ return x.length > 1; });
@@ -12761,10 +12782,22 @@ function cpGeo(c, wantBus){
     var r = raw.some(function(m){ return m==="long" || m==="reg"; }) || n >= 4 ? 3 : n >= 2 || Object.keys(ms).length > 1 ? 2 : raw.every(function(m){ return m==="tram"; }) ? 0 : 1;
     // Linien der Station als Plakettenreihe unter dem Namen (Bahnhof: Züge, Haltestelle: ihre Tram/Metro)
     var ls = {}; Object.keys(nl[d[0]] || {}).forEach(function(i){ var l = c.rail.L[i]; if(l) (ls[railFam(l[0]) ? "train" : l[0]] = ls[railFam(l[0]) ? "train" : l[0]] || {})[l[1]] = cpLineCol(l); });
-    var lb = function(m){ var o = ls[m] || {}; return Object.keys(o).sort(natCmp).slice(0, 14).map(function(k){ return k.replace(/[,;|]/g, " ")+","+o[k]; }).join(";"); };
+    // Bahnhof: nicht jeden Zug aufzählen, sondern nach Klasse (Fernverkehr, Regionalverkehr, S-Bahn) als Symbol wie Apple Karten; Tram/Metro mit Liniennummern
+    var cls = {}; Object.keys(nl[d[0]] || {}).forEach(function(i){ var l = c.rail.L[i]; if(l && railFam(l[0])) cls[l[0]==="train" ? "reg" : l[0]] = 1; });
+    var lb = function(m){ if(m==="train") return ["long", "reg", "sbahn"].filter(function(x){ return cls[x]; }).map(function(x){ return "@"+x+",-"; }).join(";");
+      var o = ls[m] || {}; return Object.keys(o).sort(natCmp).slice(0, 14).map(function(k){ return k.replace(/[,;|@]/g, " ")+","+o[k]; }).join(";"); };
     Object.keys(ms).forEach(function(m){ st.push([s.lo, s.la, s.n, m, m==="tram" ? Math.min(r, 1) : r, lb(m)]); }); });
-  tr.st = st;
-  return (c.vv = {tr:tr, bus:wantBus ? mk(c.bus, true) : null, mk:mk}); // Busse (Hunderte Linien) nur dekodieren, wenn sie gebraucht werden
+  // Haltestellen ohne Bahnhofseintrag (Tram, Fähre …: das Paket führt sie nicht in D) aus den Kanten, mit ihren Linien
+  var had = {}; st.forEach(function(x){ had[x[2]+"|"+x[3]+"|"+x[0].toFixed(4)+"|"+x[1].toFixed(4)] = 1; });
+  st = st.concat(cpStops(c.rail, nl, function(m){ return !railFam(m) && m!=="bus"; }).filter(function(x){ return !had[x[2]+"|"+x[3]+"|"+x[0].toFixed(4)+"|"+x[1].toFixed(4)]; }));
+  // Ein Bahnhof = ein Name: Bahnhofsteile unter verschiedenen Namen (z. B. „Bremen Hbf“ / „Bremen Hauptbahnhof“) bis 350 m zusammenfassen, der mit mehr Klassen bleibt
+  var trs = st.filter(function(x){ return x[3]==="train"; }).sort(function(a, b){ return b[5].split(";").length - a[5].split(";").length || b[4] - a[4]; }), keep = [];
+  trs.forEach(function(x){ var o = keep.find(function(y){ return dist({la:y[1], lo:y[0]}, {la:x[1], lo:x[0]}) < 350; });
+    if(!o){ keep.push(x); return; } x.drop = 1; var have = o[5] ? o[5].split(";") : []; (x[5] ? x[5].split(";") : []).forEach(function(q){ if(have.indexOf(q) < 0) have.push(q); });
+    o[5] = ["long", "reg", "sbahn"].map(function(k){ return "@"+k+",-"; }).filter(function(q){ return have.indexOf(q) >= 0; }).join(";"); o[4] = Math.max(o[4], x[4]); });
+  tr.st = stDedup(st.filter(function(x){ return !x.drop; }));
+  var bus = wantBus ? mk(c.bus, true) : null; if(bus) bus.st = stDedup(cpStops(c.bus, null, function(m){ return m==="bus"; }));
+  return (c.vv = {tr:tr, bus:bus, mk:mk}); // Busse (Hunderte Linien) nur dekodieren, wenn sie gebraucht werden
 }
 /* Linien im Kartenausschnitt fürs Menü; Karte zeichnet immer die ganze Stadt */
 function cpList(){
@@ -12776,7 +12809,7 @@ function cpList(){
   var tr = g.tr.lines.filter(inV), bs = g.bus ? g.bus.lines.filter(inV) : [];
   var sig = c.id+"#"+tr.map(function(l){ return l.k; }).join(",")+"#"+(g.bus ? bs.map(function(l){ return l.k; }).join(",") : c.st.bus || "-")+"#"+CPBIKE.length;
   if(sig!==CPSIG){ CPSIG = sig;
-    VV = {tr:{lines:tr, geo:g.tr.geo, st:g.tr.st, bike:CPBIKE, nbus:g.bus ? bs.length : c.bus && c.bus.L.length ? 1 : 0}, bus:g.bus ? {lines:bs, geo:g.bus.geo} : null};
+    VV = {tr:{lines:tr, geo:g.tr.geo, st:g.tr.st, bike:CPBIKE, nbus:g.bus ? bs.length : c.bus && c.bus.L.length ? 1 : 0}, bus:g.bus ? {lines:bs, geo:g.bus.geo, st:g.bus.st || []} : null};
     // ÖPNV eingeschaltet, bevor die Linien da waren: im Stadtpaket alle Bahnen (Metro, RER, Tram …), nicht nur die erste Art
     if(dWant && VV.tr){ var ms = dModes().filter(function(m){ return m!=="bus"; }); if(ms.length){ dWant = false; if(!ms.some(dOn)){ ms.forEach(function(m){ DL[m] = 1; }); lsSet("rp-dl", JSON.stringify(DL)); } } }
     dData(); }
@@ -13004,14 +13037,17 @@ function dData(){
     var e = {type:"FeatureCollection", features:[]}, d = VV;
     var put = function(id, g){ var src = map.getSource(id); if(!src || (g && DSET[id]===g)) return; DSET[id] = g; src.setData(g || e); };
     put("dtr", d.tr ? d.tr.geo : null); put("dbus", d.bus ? d.bus.geo : null);
-    if(d.tr && DSET.dstA===d.tr.st) return dBikeData(); DSET.dstA = d.tr ? d.tr.st : null;
-    if(map.getSource("dst")) map.getSource("dst").setData({type:"FeatureCollection", features:(d.tr ? d.tr.st : []).map(function(s){ return {type:"Feature", properties:{n:s[2], m:s[3], r:s[4]===undefined ? 1 : s[4], lb:s[5] || ""}, geometry:{type:"Point", coordinates:[s[0], s[1]]}}; })});
+    var bst = d.bus && d.bus.st || null; if(d.tr && DSET.dstA===d.tr.st && DSET.dstB===bst) return dBikeData(); DSET.dstA = d.tr ? d.tr.st : null; DSET.dstB = bst;
+    // Bushaltestelle am selben Punkt wie eine Tram-/Metro-Haltestelle (Pakete führen oft eine Haltestelle für alle): Buslinien als zweite Reihe unter deren Linien
+    var ts = d.tr ? d.tr.st : [], add = {}, bs = (bst || []).filter(function(b){ var o = ts.find(function(x){ return x[2] && x[3]!=="train" && Math.abs(x[1]-b[1]) < .0004 && Math.abs(x[0]-b[0]) < .0006 && dist({la:x[1], lo:x[0]}, {la:b[1], lo:b[0]}) < 40; });
+      if(!o) return true; add[ts.indexOf(o)] = (add[ts.indexOf(o)] ? add[ts.indexOf(o)]+";" : "")+b[5]; return false; });
+    if(map.getSource("dst")) map.getSource("dst").setData({type:"FeatureCollection", features:ts.concat(bs).map(function(s, i){ var lb = s[5] || ""; return {type:"Feature", properties:{n:s[2], m:s[3], r:s[4]===undefined ? 1 : s[4], lb:lb, lbb:add[i] ? lb+";/,-;"+add[i] : lb}, geometry:{type:"Point", coordinates:[s[0], s[1]]}}; })});
     if(map.getSource("dbike")) map.getSource("dbike").setData({type:"FeatureCollection", features:dBike().map(function(s){ return {type:"Feature", properties:{n:s[2]}, geometry:{type:"Point", coordinates:[s[0], s[1]]}}; })});
   }
 }
 /* Zoomstufen wie Apple Karten: je weiter weg, desto weniger – erst Fern-/Regionalbahn, dann S-Bahn/Metro, dann Tram, Busse erst auf Straßenebene;
    Stationen nach Bedeutung (Umstiegsknoten zuerst), Namen der wichtigen Stationen zuerst */
-var MZ = {long:7, reg:8, train:8, sbahn:9, metro:9, light:10, ferry:11, tram:12, funi:12}, BUSZ = 13.5;
+var BSTZ = 15.5, DBUSLB = "lb", MZ = {long:7, reg:8, train:8, sbahn:9, metro:9, light:10, ferry:11, tram:12, funi:12}, BUSZ = 13.5;
 function zStep(base, st){ var f = ["step", ["zoom"], false]; st.forEach(function(x){ f.push(x[0], x[1] ? ["all", base, x[1]] : base); }); return f; }
 function lnZ(base, me){ me = me || ["get","m"];
   var zs = []; Object.keys(MZ).forEach(function(m){ if(zs.indexOf(MZ[m]) < 0) zs.push(MZ[m]); }); zs.sort(function(a, b){ return a - b; });
@@ -13020,6 +13056,8 @@ function lnZ(base, me){ me = me || ["get","m"];
 var SR = ["coalesce", ["get","r"], 1];
 function stZ(base){ return zStep(base, [[11, [">=", SR, 3]], [12, [">=", SR, 2]], [13, [">=", SR, 1]], [14, null]]); }
 function stLblZ(base){ return zStep(base, [[12, [">=", SR, 3]], [13, [">=", SR, 2]], [14, [">=", SR, 1]], [15, null]]); }
+/* Name + Linien; ab BSTZ mit eingeschalteten Bussen (p = "lbb") die Buslinien derselben Haltestelle als zweite Reihe */
+function dstImg(p){ var dl = isDark() ? "d" : "l"; return ["step", ["zoom"], ["concat", "tn|", ["get","n"], "||", dl], 14.5, ["concat", "tn|", ["get","n"], "|", ["get","lb"], "|", dl], BSTZ, ["concat", "tn|", ["get","n"], "|", ["coalesce", ["get", p], ["get","lb"]], "|", dl]]; }
 function dAddLayers(){
   var e = {type:"FeatureCollection", features:[]}, gl = !!map.getStyle().glyphs, halo = isDark() ? "#111a22" : "#ffffff";
   DSET = {}; ["dtr","dbus","dst","dbike"].forEach(function(s){ if(!map.getSource(s)) map.addSource(s, {type:"geojson", data:e}); });
@@ -13037,7 +13075,7 @@ function dAddLayers(){
   map.addLayer({id:"dst-ic", type:"symbol", source:"dst", minzoom:14, layout:{visibility:"none", "icon-image":["concat", "ts|", ["get","m"]], "icon-size":["interpolate",["linear"],["zoom"],14,.85,16,1.05], "icon-allow-overlap":true, "icon-ignore-placement":true, "symbol-sort-key":["-", 0, SR]}});
   // Stationsname fett rechts neben dem Symbol, ab Zoom 14,5 darunter die Linien als farbige Plaketten (wie Apple Karten) – als Bild in der Systemschrift
   map.addLayer({id:"dst-lbl", type:"symbol", source:"dst", minzoom:12, layout:{visibility:"none", "symbol-sort-key":["-", 0, SR],
-    "icon-image":["step", ["zoom"], ["concat", "tn|", ["get","n"], "||", isDark() ? "d" : "l"], 14.5, ["concat", "tn|", ["get","n"], "|", ["get","lb"], "|", isDark() ? "d" : "l"]],
+    "icon-image":dstImg(DBUSLB = "lb"),
     "icon-anchor":"top-left", "icon-offset":["step", ["zoom"], ["literal", [6, -10]], 14, ["literal", [10, -10]]], "icon-padding":2}});
   map.addLayer({id:"dbike", type:"circle", source:"dbike", minzoom:12, paint:{"circle-color":CBCOL, "circle-stroke-color":"#ffffff", "circle-stroke-width":["interpolate",["linear"],["zoom"],12,.7,16,1.4], "circle-opacity":.85, "circle-radius":["interpolate",["linear"],["zoom"],12,1.8,14,2.8,16,4.5]}, layout:{visibility:"none"}}, LBLB); // Leihräder dezent und unter der Kartenschrift
   map.addLayer({id:"dtr-lbl", type:"symbol", source:"dtr", minzoom:13.5, layout:TPLINE(["get","k"], ["get","c"])}, "dst-ic");
@@ -13054,9 +13092,13 @@ function dApplyMap(){
   map.setFilter("dtr", lnZ(["all", ["!=",["get","m"],"ferry"], ["in", ["get","m"], ["literal", rail]], off]));
   map.setFilter("dtr-f", lnZ(["all", ["==",["get","m"],"ferry"], ["in", ["get","m"], ["literal", rail]], off]));
   vis("dbus", dy && dOn("bus")); vis("dbus-lbl", dy && dOn("bus")); map.setFilter("dbus", off); if(map.getLayer("dbus-lbl")) map.setFilter("dbus-lbl", off);
-  vis("dst", dy && rail.length); vis("dst-ic", dy && rail.length); vis("dst-lbl", dy && rail.length);
+  var bOn = dy && dOn("bus"), sOn = dy && (rail.length || bOn);
+  if((bOn ? "lbb" : "lb")!==DBUSLB && map.getLayer("dst-lbl")){ DBUSLB = bOn ? "lbb" : "lb"; map.setLayoutProperty("dst-lbl", "icon-image", dstImg(DBUSLB)); } // Buslinien nur bei eingeschalteten Bussen
+  vis("dst", dy && rail.length); vis("dst-ic", sOn); vis("dst-lbl", sOn);
   var srail = rail.some(railFam) ? rail.concat(["train"]) : rail; // Bahnhöfe kennen nur „Zug“, nicht die Art
-  map.setFilter("dst", stZ(["in", ["get","m"], ["literal", srail]])); if(map.getLayer("dst-ic")) map.setFilter("dst-ic", ["in", ["get","m"], ["literal", srail]]); if(map.getLayer("dst-lbl")) map.setFilter("dst-lbl", stLblZ(["in", ["get","m"], ["literal", srail]]));
+  // Bushaltestellen (Symbol + Linien) erst ab Zoom 15,5, wie bei Apple Karten erst beim näheren Hinsehen
+  var inS = ["in", ["get","m"], ["literal", srail]], wB = bOn ? ["step", ["zoom"], inS, BSTZ, ["in", ["get","m"], ["literal", srail.concat(["bus"])]]] : inS;
+  map.setFilter("dst", stZ(inS)); if(map.getLayer("dst-ic")) map.setFilter("dst-ic", wB); if(map.getLayer("dst-lbl")) map.setFilter("dst-lbl", bOn ? stLblZ(inS).concat([BSTZ, ["in", ["get","m"], ["literal", srail.concat(["bus"])]]]) : stLblZ(inS));
   vis("dbike", dy && layers.bike && !(DEST && CB.sys.length)); // OpenStreetMap-Stationen nur, solange kein Leihrad-System mit Live-Daten bekannt ist
   if(map.getLayer("vt-rail")) map.setFilter("vt-rail", ["all", dy ? ["in", ["get","class"], ["literal", ["rail","transit"]]] : ["==", ["get","class"], "rail"], ["!", ["in", ["coalesce", ["get","service"], ""], ["literal", ["yard","siding","spur","crossover"]]]]]); // U-Bahn in NYC kommt farbig aus den eigenen Daten
   vis("vt-rail", ((dy && rail.length) || (!dy && !DEST && (layers.sub || layers.bus))) && !trRO()); // auch in New York und beim Rauszoomen: Fernverkehr zwischen den Städten // graues Grundgerüst aus den Kartenkacheln: sofort da, bis die Linien geladen sind
@@ -13222,25 +13264,38 @@ function tpInk(c){ var m = /^#?([0-9a-f]{6})$/i.exec(c||""); if(!m) return "#fff
 function tpRow(list){ // [[Nummer, Farbe], …] → Zeilen mit Plaketten
   var cv = document.createElement("canvas").getContext("2d"); cv.font = TPF;
   var H = 15, gap = 2.5, rows = [[]], rw = [0], max = 7;
-  list.forEach(function(x){ var w = Math.max(H, Math.ceil(cv.measureText(x[0]).width) + 8); if(rows[rows.length-1].length >= max){ rows.push([]); rw.push(0); } var r = rows.length - 1; rows[r].push([x[0], x[1], w]); rw[r] += w + (rows[r].length > 1 ? gap : 0); });
+  list.forEach(function(x){ if(x[0]==="/"){ if(rows[rows.length-1].length){ rows.push([]); rw.push(0); } return; } var w = x[0].charAt(0)==="@" ? H : Math.max(H, Math.ceil(cv.measureText(x[0]).width) + 8); if(rows[rows.length-1].length >= max){ rows.push([]); rw.push(0); } var r = rows.length - 1; rows[r].push([x[0], x[1], w]); rw[r] += w + (rows[r].length > 1 ? gap : 0); });
   return {rows:rows, W:Math.max.apply(null, rw) + 2, H:rows.length*(H + gap) - gap + 2, h:H, gap:gap};
 }
+/* Klassen-Symbol (h × h): @long Fernverkehr rot, @reg Regionalverkehr blau (Zug von vorn), @sbahn grüner Kreis mit S */
+var TPCLS = {long:"#C8102E", reg:"#2F5C9E", sbahn:"#2E8B3D"};
+function tpCls(g, x, y, k, h){ var col = TPCLS[k] || "#3B4A5A", s = h/16;
+  g.save(); g.translate(x, y); g.scale(s, s);
+  if(k==="sbahn"){ g.beginPath(); g.arc(8, 8, 7.6, 0, 7); g.fillStyle = col; g.fill(); g.fillStyle = "#fff"; g.font = "800 11px -apple-system, BlinkMacSystemFont, system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("S", 8, 8.6); g.restore(); return; }
+  tpRR(g, .4, .4, 15.2, 15.2, 3.6); g.fillStyle = col; g.fill();
+  g.fillStyle = "#fff"; if(k==="long"){ g.beginPath(); g.moveTo(4.4, 10.8); g.lineTo(4.4, 6); g.quadraticCurveTo(4.6, 3, 8, 3); g.quadraticCurveTo(11.4, 3, 11.6, 6); g.lineTo(11.6, 10.8); g.closePath(); g.fill(); g.fillStyle = col; g.fillRect(5.6, 5, 4.8, 2.2); }
+  else { tpRR(g, 4.6, 3.4, 6.8, 7.4, 1.6); g.fill(); g.fillStyle = col; g.fillRect(5.7, 4.6, 4.6, 2.6); }
+  g.fillStyle = col; g.beginPath(); g.arc(6.3, 9.1, .75, 0, 7); g.arc(9.7, 9.1, .75, 0, 7); g.fill();
+  g.strokeStyle = "#fff"; g.lineWidth = 1.1; g.lineCap = "round"; g.beginPath(); g.moveTo(6, 11.4); g.lineTo(5, 12.8); g.moveTo(10, 11.4); g.lineTo(11, 12.8); g.stroke();
+  g.restore(); }
 function tpRR(g, x, y, w, h, r){ g.beginPath(); g.moveTo(x+r, y); g.arcTo(x+w, y, x+w, y+h, r); g.arcTo(x+w, y+h, x, y+h, r); g.arcTo(x, y+h, x, y, r); g.arcTo(x, y, x+w, y, r); g.closePath(); }
 /* Stationsname in der Systemschrift (auf dem iPhone SF, wie Apple Karten) fett mit Rand, darunter die Linien-Plaketten; Bezugspunkt links Mitte der Namenszeile */
 function tpName(id, n, lb, dark){
   var F = "700 13px -apple-system, BlinkMacSystemFont, system-ui, sans-serif", cv = document.createElement("canvas").getContext("2d"); cv.font = F;
   var words = String(n||"").split(" "), lines = [""], maxW = 150;
   words.forEach(function(w){ var t = lines[lines.length-1] ? lines[lines.length-1]+" "+w : w; if(cv.measureText(t).width > maxW && lines[lines.length-1]) lines.push(w); else lines[lines.length-1] = t; });
-  lines = lines.slice(0, 2);
+  lines = lines.slice(0, 2).filter(Boolean);
   var list = String(lb||"").split(";").map(function(x){ var i = x.lastIndexOf(","); return i > 0 ? [x.slice(0, i), x.slice(i+1)] : null; }).filter(Boolean);
-  var R = list.length ? tpRow(list) : null, LH = 16, tw = Math.max.apply(null, lines.map(function(l){ return cv.measureText(l).width; }));
-  var W = Math.ceil(Math.max(tw + 6, R ? R.W + 2 : 0)), H = Math.ceil(lines.length*LH + 4 + (R ? R.H + 3 : 0));
+  var R = list.length ? tpRow(list) : null, LH = 16, tw = Math.max.apply(null, [0].concat(lines.map(function(l){ return cv.measureText(l).width; })));
+  if(!lines.length && !R) return false;
+  var W = Math.ceil(Math.max(tw + 6, R ? R.W + 2 : 0)), H = lines.length ? Math.ceil(lines.length*LH + 4 + (R ? R.H + 3 : 0)) : Math.ceil(R.H + 5);
   mkImg(id, W, H, function(g){
     g.font = F; g.textBaseline = "middle"; g.lineJoin = "round";
     lines.forEach(function(l, i){ var y = 2 + LH/2 + i*LH; g.lineWidth = 3.2; g.strokeStyle = dark ? "rgba(17,26,34,.92)" : "rgba(255,255,255,.95)"; g.strokeText(l, 2, y); g.fillStyle = dark ? "#f1f4f7" : "#121a23"; g.fillText(l, 2, y); });
-    if(R){ g.font = TPF; g.textAlign = "center"; var y0 = 2 + lines.length*LH + 3;
+    if(R){ g.font = TPF; g.textAlign = "center"; var y0 = lines.length ? 2 + lines.length*LH + 3 : 2.5; // ohne Namen: Plakettenreihe mittig neben dem Symbol
       R.rows.forEach(function(row, ri){ var x = 2, y = y0 + ri*(R.h + R.gap);
-        row.forEach(function(b){ tpRR(g, x, y, b[2], R.h, 3.2); g.fillStyle = b[1]; g.fill(); g.fillStyle = tpInk(b[1]); g.fillText(b[0], x + b[2]/2, y + R.h/2 + .5); x += b[2] + R.gap; }); }); }
+        row.forEach(function(b){ if(b[0].charAt(0)==="@"){ tpCls(g, x, y, b[0].slice(1), R.h); g.font = TPF; g.textAlign = "center"; g.textBaseline = "middle"; x += b[2] + R.gap; return; }
+          tpRR(g, x, y, b[2], R.h, 3.2); g.fillStyle = b[1]; g.fill(); g.fillStyle = tpInk(b[1]); g.fillText(b[0], x + b[2]/2, y + R.h/2 + .5); x += b[2] + R.gap; }); }); }
   });
   return true;
 }
@@ -13248,7 +13303,7 @@ function tpImg(id){
   if(!/^t[lbsn]\|/.test(id)) return false;
   var p = id.split("|"), list = [];
   if(p[0]==="tn") return tpName(id, p[1], p[2], p[3]==="d");
-  if(p[0]==="ts"){ var col = p[1]==="tram" ? "#C8102E" : p[1]==="metro" ? "#1D5FBF" : p[1]==="light" ? "#2A9D8F" : p[1]==="funi" ? "#8A5A2B" : p[1]==="ferry" ? "#0b84b5" : "#3B4A5A";
+  if(p[0]==="ts"){ var col = p[1]==="tram" ? "#C8102E" : p[1]==="metro" ? "#1D5FBF" : p[1]==="light" ? "#2A9D8F" : p[1]==="funi" ? "#8A5A2B" : p[1]==="ferry" ? "#0b84b5" : p[1]==="bus" ? "#1f6fd1" : "#3B4A5A";
     mkImg(id, 16, 16, function(g){ tpRR(g, 1, 1, 14, 14, 3.6); g.fillStyle = col; g.fill(); g.lineWidth = 1; g.strokeStyle = "rgba(255,255,255,.9)"; g.stroke();
       // Wagen von vorn: Kasten, Fenster, zwei Räder
       g.fillStyle = "#fff"; tpRR(g, 4.6, 3.4, 6.8, 7.4, 1.6); g.fill(); g.fillStyle = col; g.fillRect(5.7, 4.6, 4.6, 2.6);
