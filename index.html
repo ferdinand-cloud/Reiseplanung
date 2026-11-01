@@ -12691,7 +12691,7 @@ function lkApply(){
     map.addSource(id, {type:"vector", url:"pmtiles://"+LKURL+x.id+".pmtiles", attribution:"ÖPNV-Linien © OpenStreetMap"});
     map.addLayer({id:id+"-ln", type:"line", source:id, "source-layer":"lines", paint:{"line-color":["case", ["==", ["length", ["get","c"]], 7], ["get","c"], ["match", ["get","m"], "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "sbahn", DCOL.sbahn, "reg", DCOL.reg, "long", DCOL.long, DCOL.train]],
       "line-width":lnWidth(["get","m"]), "line-offset":lnOffset(["get","o"])}, layout:ovLay("none", {"line-sort-key":["get","o"]})}, ovBelow()); ovCase(id+"-ln");
-    map.addLayer({id:id+"-lbl", type:"symbol", source:id, "source-layer":"lines", minzoom:OV.z.lineBadge, layout:TPLINE(["coalesce", ["get","ks"], ["get","k"]], ["case", ["==", ["length", ["get","c"]], 7], ["get","c"], ["match", ["get","m"], "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "sbahn", DCOL.sbahn, "reg", DCOL.reg, "long", DCOL.long, DCOL.train]])}, map.getLayer("dst-ic") ? "dst-ic" : undefined); }); // unter den Stationen: Stationsnamen haben Vorrang vor Linien-Plaketten
+    map.addLayer({id:id+"-lbl", type:"symbol", source:id, "source-layer":"lines", minzoom:OV.z.lineBadge, layout:TPLINE(["coalesce", ["get","ks"], ["get","k"]], ["case", ["==", ["length", ["get","c"]], 7], ["get","c"], ["match", ["get","m"], "metro", DCOL.metro, "light", DCOL.light, "tram", DCOL.tram, "funi", DCOL.funi, "ferry", DCOL.ferry, "sbahn", DCOL.sbahn, "reg", DCOL.reg, "long", DCOL.long, DCOL.train]])}, map.getLayer("dst-lbl") ? "dst-lbl" : map.getLayer("dst-ic") ? "dst-ic" : undefined); }); // unter den Stationen: Stationsnamen haben Vorrang vor Linien-Plaketten
   Object.keys(LK.add).forEach(function(cc){ var vis = on && rail.length && here.some(function(x){ return x.id===cc; }), f = ["all", ["in", ["get","m"], ["literal", rail]], off];
     ["-ln", "-lbl"].forEach(function(x){ var l = "lk-"+cc+x; if(!map.getLayer(l)) return;
       map.setLayoutProperty(l, "visibility", vis ? "visible" : "none");
@@ -13183,10 +13183,10 @@ function dAddLayers(){
   // Stationsname fett rechts neben dem Symbol, ab Zoom 14,5 darunter die Linien als farbige Plaketten (wie Apple Karten) – als Bild in der Systemschrift
   map.addLayer({id:"dst-lbl", type:"symbol", source:"dst", minzoom:OV.z.stopName, layout:{visibility:"none", "symbol-sort-key":["-", 0, SR],
     "icon-image":dstImg(DBUSLB = "lb"),
-    "icon-anchor":"top-left", "icon-offset":["step", ["zoom"], ["literal", [6, -10]], 14, ["literal", [10, -10]]], "icon-padding":2}});
+    "icon-anchor":"top-left", "icon-offset":["step", ["zoom"], ["literal", [6, -10]], 14, ["literal", [13, -10]]], "icon-padding":2}}, "dst-ic"); // unter dem Symbol (Symbol bleibt sichtbar); Namen weichen einander aus, Symbole sperren nichts – sonst fiele z. B. Times Sq-42 St weg
   map.addLayer({id:"dbike", type:"circle", source:"dbike", minzoom:12, paint:{"circle-color":CBCOL, "circle-stroke-color":"#ffffff", "circle-stroke-width":["interpolate",["linear"],["zoom"],12,.7,16,1.4], "circle-opacity":.85, "circle-radius":["interpolate",["linear"],["zoom"],12,1.8,14,2.8,16,4.5]}, layout:{visibility:"none"}}, LBLB); // Leihräder dezent und unter der Kartenschrift
-  map.addLayer({id:"dtr-lbl", type:"symbol", source:"dtr", minzoom:OV.z.lineBadge, layout:TPLINE(["get","k"], ["get","c"])}, "dst-ic");
-  map.addLayer({id:"dbus-lbl", type:"symbol", source:"dbus", minzoom:OV.z.busBadge, layout:TPLINE(["get","k"], mkCol(token("--bus")||OV.col.bus))}, "dst-ic");
+  map.addLayer({id:"dtr-lbl", type:"symbol", source:"dtr", minzoom:OV.z.lineBadge, layout:TPLINE(["get","k"], ["get","c"])}, "dst-lbl"); // unter den Namen: Stationsnamen haben Vorrang vor Linien-Plaketten
+  map.addLayer({id:"dbus-lbl", type:"symbol", source:"dbus", minzoom:OV.z.busBadge, layout:TPLINE(["get","k"], mkCol(token("--bus")||OV.col.bus))}, "dst-lbl");
 
 }
 function dApplyMap(){
@@ -13346,7 +13346,7 @@ function rtAddLayers(){
   map.addLayer({id:"subst-ic", type:"symbol", source:"subst", minzoom:OV.z.stopIcon, layout:{"icon-image":"ts|metro", "icon-size":ovZx(OV.w.stopIcon, OV.w.stopIconX), "icon-allow-overlap":true, "icon-ignore-placement":true, "symbol-sort-key":["-", 0, SR]}});
   // Name + Linien-Plaketten wie in den anderen Städten (gleiches Bild „tn|…“, Plaketten ab Zoom 14,5), mit Kollisionsprüfung statt SVG; Namen wegen des dichten Netzes je Rang eine Zoomstufe später
   map.addLayer({id:"subst-lbl", type:"symbol", source:"subst", minzoom:OV.z.stopName, filter:zStep(["==", ["get","h"], 0], [[13, [">=", SR, 3]], [14, [">=", SR, 2]], [15, null]]), layout:{"symbol-sort-key":["-", 0, SR], "icon-image":dstImg("lb"),
-    "icon-anchor":"top-left", "icon-offset":["step", ["zoom"], ["literal", [6, -10]], 14, ["literal", [10, -10]]], "icon-padding":2}});
+    "icon-anchor":"top-left", "icon-offset":["step", ["zoom"], ["literal", [6, -10]], 14, ["literal", [13, -10]]], "icon-padding":2}}, "subst-ic"); // Namen weichen einander aus (Symbole sperren nichts, wie dst)
   mkAddLayers();
 }
 /* Umstiegsknoten New York: Station → Knotennummer (Union-Find über die MTA-Umstiege NET.t zwischen Stationen gleichen Namens); einmal berechnet */

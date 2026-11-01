@@ -2083,6 +2083,29 @@ await test("Umstiegsstationen hervorgehoben: größerer Punkt mit dunklem Rand b
   ok(JSON.stringify(r.fx)==="[1,0,1,0]", "Umstieg aus Plaketten falsch: "+JSON.stringify(r.fx));
 });
 
+await test("Stationsnamen ohne Überlappung: Namen weichen einander aus, liegen unter den Stationssymbolen und haben Vorrang vor Linien-Plaketten", async () => {
+  await seed();
+  await rp(`layers.sub = true; offSub = {}; select(null); layers.route = false; applyLayers(); STKEY = ""; stSet(true); true`);
+  const ord = JSON.parse(await rp(`(function(){ var ids = map.getStyle().layers.map(function(l){ return l.id; }), at = function(i){ return ids.indexOf(i); };
+    return JSON.stringify({nyc:at("subst-lbl") > -1 && at("subst-lbl") < at("subst-ic"), osm:at("dst-lbl") < at("dst-ic") && at("dtr-lbl") < at("dst-lbl") && at("dbus-lbl") < at("dst-lbl"),
+      ign:[map.getLayoutProperty("subst-ic","icon-ignore-placement"), map.getLayoutProperty("dst-ic","icon-ignore-placement")], ovl:map.getLayoutProperty("subst-lbl","icon-allow-overlap")}); })()`));
+  ok(ord.nyc && ord.osm, "Reihenfolge falsch (Symbol vor Name vor Linien-Plakette): "+JSON.stringify(ord));
+  ok(ord.ign.every(x => x===true) && !ord.ovl, "Namen nehmen nicht an der Kollisionsprüfung teil bzw. Symbole sperren Namen: "+JSON.stringify(ord));
+  for(const [lo, la, z] of [[-73.9873, 40.7553, 15], [-74.0078, 40.7088, 16], [-73.99, 40.735, 14]]){
+    await rp(`map.jumpTo({center:[${lo}, ${la}], zoom:${z}}); true`);
+    await page.waitForFunction(() => window.__rp(`map.loaded() && map.queryRenderedFeatures({layers:["subst-lbl"]}).length > 0`), null, {timeout:8000}).catch(() => {});
+    const r = JSON.parse(await rp(`(function(){ var z = map.getZoom(), off = z >= 14 ? [13, -10] : [6, -10], seen = {}, B = [], I = [];
+      map.queryRenderedFeatures({layers:["subst-lbl"]}).forEach(function(f){ var k = f.properties.i; if(seen[k]) return; seen[k] = 1; var g = f.geometry.coordinates, p = map.project(g), im = map.getImage("tn|"+f.properties.n+"|"+(z >= 14.5 ? f.properties.lb : "")+"|"+(isDark() ? "d" : "l"));
+        if(!im) return; var w = im.data.width/im.pixelRatio, h = im.data.height/im.pixelRatio; B.push({n:f.properties.n, x0:p.x+off[0], y0:p.y+off[1], x1:p.x+off[0]+w, y1:p.y+off[1]+h}); });
+      map.queryRenderedFeatures({layers:["subst-ic"]}).forEach(function(f){ var p = map.project(f.geometry.coordinates); I.push([p.x, p.y]); });
+      var hit = [], ov = function(a, b){ return a.x0 < b.x1 - 2 && b.x0 < a.x1 - 2 && a.y0 < b.y1 - 2 && b.y0 < a.y1 - 2; };
+      B.forEach(function(a, i){ B.slice(i+1).forEach(function(b){ if(ov(a, b)) hit.push(a.n+" / "+b.n); }); });
+      return JSON.stringify({n:B.length, hit:hit, ts:B.some(function(b){ return b.n==="Times Sq-42 St"; })}); })()`));
+    ok(r.n > 0 && !r.hit.length, `Überlappung bei Zoom ${z}: `+JSON.stringify(r));
+    if(z===15) ok(r.ts, "Times Sq-42 St ohne Namen: "+JSON.stringify(r));
+  }
+});
+
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});

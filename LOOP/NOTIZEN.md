@@ -42,6 +42,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 - Aufgabe 11: Umstiegsstation = Eigenschaft `x` (NYC: Knoten aus `stCx()` mit mehreren Linienfarben; andere Städte: `stXOf(lb)` ≥ 2 Farben bzw. Bahnhofsklassen). `STX`-Ausdruck, `ovZx(reihe, f)`: Punkt × `OV.w.stopX` (1,4) mit dunklem Rand `OV.col.sm.x` wie Apple Karten, Symbol ab Z14 × `OV.w.stopIconX` (1,25). Gilt über `STPAINT` für subst/dst/tl.
 
+- Aufgabe 12: Kollision über MapLibre (`icon-allow-overlap:false` an `subst-lbl`/`dst-lbl`, `symbol-sort-key` nach Rang). Reihenfolge: Linien-Plaketten (`dtr-lbl`, `dbus-lbl`, `lk-*-lbl`) unter `dst-lbl` → Namen werden zuerst gesetzt; Namen unter den Symbolen (`…-ic`), Symbole sperren nichts (`icon-ignore-placement:true`). Versuch „Symbole sperren Namen“ verworfen: Times Sq-42 St und Penn verschwanden ganz. Abstand Name ↔ Symbol ab Z14 13 px (vorher 10, überlappte das eigene Symbol).
+
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
 - 1 · „Ok Freigabe“ · keine Änderung
@@ -64,3 +66,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 9 · 01.11.2026 · (git log „Loop 9:“) · T2 bestanden (S1 ohne Symbole, ab Z14 Symbol) · Freigabe automatisch
 - 10 · 01.11.2026 · (git log „Loop 10:“) · T3/T5/T6 bestanden (S2 Times Sq ein Name mit 1 2 3 7 S N Q R W, S1 ohne Namen) · Freigabe automatisch
 - 11 · 01.11.2026 · (git log „Loop 11:“) · T4 bestanden (S1 Umstiege als größere Punkte mit dunklem Rand, 50 St 1/2 kein Umstieg) · Freigabe automatisch
+- 12 · 01.11.2026 · (git log „Loop 12:“) · T5 bestanden (Namen überlappen sich nicht, Times Sq bleibt) · Freigabe automatisch
