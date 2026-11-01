@@ -2141,6 +2141,7 @@ await test("Stationsname weicht den Kartenknöpfen aus: am rechten Rand links vo
       out.push({n:p.n, f:p.f, hit:rs.some(function(r){ return box[0] < r[2] && box[2] > r[0] && box[1] < r[3] && box[3] > r[1]; })}); });
     return JSON.stringify({out:out, anchor:JSON.stringify(map.getLayoutProperty("subst-lbl","icon-anchor"))}); })()`));
   const fu = r.out.find(x => x.n==="Fulton St");
+  ok(await rp(`tpRow("1 2 3 7 S N Q R W".split(" ").map(function(k){ return [k, "#D82233"]; })).rows.length===1 && tpRow("1 2 3 4 5 6 7 A C E L".split(" ").map(function(k){ return [k, "#D82233"]; })).rows.length===2`), "Plakettenreihe großer Knoten bricht zu früh um (bis 10 je Zeile)");
   ok(/top-right/.test(r.anchor), "Name kann nicht nach links: "+r.anchor);
   ok(fu && fu.f===1 && !fu.hit, "Fulton St liegt unter den Kartenknöpfen: "+JSON.stringify(r.out));
   ok(r.out.every(x => !x.hit), "Name unter den Kartenknöpfen: "+JSON.stringify(r.out));

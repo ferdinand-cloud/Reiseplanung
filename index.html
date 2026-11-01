@@ -13466,9 +13466,9 @@ function mkImg(name, w, h, draw){
    tl|4 · N4|#E2001A = Linien-Plakette(n) an der Linie · tb|4,#E2001A;6,#F5A100 = Linienreihe unter dem Stationsnamen · ts|tram = Stationssymbol */
 var TPF = "600 10.5px -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
 function tpInk(c){ var m = /^#?([0-9a-f]{6})$/i.exec(c||""); if(!m) return "#fff"; var n = parseInt(m[1], 16), r = n >> 16, g = n >> 8 & 255, b = n & 255; return .299*r + .587*g + .114*b > 170 ? "#16202a" : "#fff"; }
-function tpRow(list){ // [[Nummer, Farbe], …] → Zeilen mit Plaketten
+function tpRow(list){ // [[Nummer, Farbe], …] → Zeilen mit Plaketten; bis 10 je Zeile, damit große Umstiegsknoten (Times Sq-42 St: 9 Linien) einzeilig bleiben
   var cv = document.createElement("canvas").getContext("2d"); cv.font = TPF;
-  var H = 15, gap = 2.5, rows = [[]], rw = [0], max = 7;
+  var H = 15, gap = 2.5, rows = [[]], rw = [0], max = 10;
   list.forEach(function(x){ if(x[0]==="/"){ if(rows[rows.length-1].length){ rows.push([]); rw.push(0); } return; } var w = /^[@#]/.test(x[0]) ? H : Math.max(H, Math.ceil(cv.measureText(x[0]).width) + 8); if(rows[rows.length-1].length >= max){ rows.push([]); rw.push(0); } var r = rows.length - 1; rows[r].push([x[0], x[1], w]); rw[r] += w + (rows[r].length > 1 ? gap : 0); });
   return {rows:rows, W:Math.max.apply(null, rw) + 2, H:rows.length*(H + gap) - gap + 2, h:H, gap:gap};
 }

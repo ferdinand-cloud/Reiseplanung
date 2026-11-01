@@ -52,6 +52,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 - Aufgabe 16: `stFlip()` nach jedem Verschieben (moveend) und nach `stSet`: Namensbild würde rechts unter `#ctrl .cg`/`#rail`/`#edgeBtn` oder über den Rand laufen → Eigenschaft `f:1`, `icon-anchor` „top-right“ und Versatz −13 (datengesteuert). Daten nur bei geänderter Menge neu. Nur New York (`subst`); andere Städte (dst, tausende Haltestellen) unverändert.
 
+- Aufgabe 17: `tpRow` bis 10 Plaketten je Zeile (vorher 7) – Times Sq-42 St (9 Linien) und Fulton St (8) einzeilig; zusammen mit `stFlip` liegt die Reihe nicht mehr über Nachbarsymbolen. Gilt für alle Städte (gemeinsame Funktion).
+
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
 - 1 · „Ok Freigabe“ · keine Änderung
@@ -79,3 +81,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 14 · 01.11.2026 · (git log „Loop 14:“) · L2/L5 bestanden (2/5 Nostrand Av nebeneinander, Manhattan unverändert) · Freigabe automatisch
 - 15 · 01.11.2026 · (git log „Loop 15:“) · L0/T3 bestanden (Coney Island, Far Rockaway, Flushing, Jamaica, Van Cortlandt mit Symbol und Plaketten) · Freigabe automatisch
 - 16 · 01.11.2026 · (git log „Loop 16:“) · T5 bestanden (Fulton St und Times Sq links vom Symbol, nichts unter den Knöpfen) · Freigabe automatisch
+- 17 · 01.11.2026 · (git log „Loop 17:“) · T3/T5 bestanden (Times Sq einzeilig) · Freigabe automatisch
