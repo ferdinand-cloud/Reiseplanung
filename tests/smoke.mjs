@@ -1588,7 +1588,9 @@ await test("Linienkarte: Linien aus OpenStreetMap (PMTiles) auf echten Gleisen, 
   ok(await rp(`!lkOn() && map.getLayoutProperty("dtr","visibility")==="visible"`), "Ohne Netz zeichnet das Stadtpaket nicht selbst");
   await page.context().setOffline(false); await rp(`cpView = window.__cpv0; dApplyMap(); true`);
   // Linie ausblenden wirkt auch auf die Linienkarte; Verkehrsmittel aus → keine Linien
-  await rp(`DOFF["tram:6"] = 1; dApplyMap(); true`); await page.waitForTimeout(300);
+  await rp(`DOFF["tram:6"] = 1; dApplyMap(); true`);
+  // gezielt auf das neu gezeichnete Bild warten (unter Last dauert es länger als 300 ms)
+  await page.waitForFunction(() => window.__rp(`!map.queryRenderedFeatures({layers:["lk-de-ln"]}).some(function(x){ return x.properties.k==="6"; })`), null, {timeout:4000}).catch(() => {});
   ok(await rp(`!map.queryRenderedFeatures({layers:["lk-de-ln"]}).some(function(x){ return x.properties.k==="6"; })`), "Ausgeblendete Linie bleibt in der Linienkarte");
   await rp(`DOFF = {}; DL = {}; dApplyMap(); true`); await page.waitForTimeout(200);
   ok(await rp(`map.getLayoutProperty("lk-de-ln","visibility")==="none"`), "Linienkarte bleibt sichtbar, obwohl ÖPNV aus ist");
@@ -5319,14 +5321,16 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
   // Gleiten statt Springen: Bild für Bild mitschreiben, wo die Eingabe steht
   const glide = (act) => page.evaluate(async (act) => { const c = document.querySelector("#chView .ch-comp"), ys = [Math.round(c.getBoundingClientRect().bottom)];
     if(act==="focus") document.getElementById("chIn").focus(); else document.activeElement.blur();
-    const t0 = performance.now(); let slow = 0;
-    for(let i = 0; i < 40 && performance.now() - t0 < 500; i++){ const t = performance.now(); await new Promise(r => requestAnimationFrame(r)); if(i < 12 && performance.now() - t > 60) slow++; ys.push(Math.round(c.getBoundingClientRect().bottom)); }
-    return {ys, slow:slow > 2 || ys.length < 10}; }, act).then(r => { r.ys.slow = r.slow; return r.ys; });
+    const t0 = performance.now(); let slow = 0; const dt = [0];
+    for(let i = 0; i < 40 && performance.now() - t0 < 500; i++){ const t = performance.now(); await new Promise(r => requestAnimationFrame(r)); const d = performance.now() - t; dt.push(d); if(i < 12 && d > 60) slow++; ys.push(Math.round(c.getBoundingClientRect().bottom)); }
+    return {ys, dt, slow:slow > 2 || ys.length < 10}; }, act).then(r => { r.ys.slow = r.slow; r.ys.dt = r.dt; return r.ys; });
   // Gleiten = erstes Bild noch (fast) an der alten Stelle, dann gleichmäßig in eine Richtung über mehrere Bilder bis zum Ziel
   // (die Bildrate schwankt unter Last, daher keine feste Schrittgrenze)
   // nur bis zum ersten Erreichen des Ziels auswerten (danach greift ggf. die Rückfallebene „keine Tastatur gekommen“ nach 1,2 s)
   // Rechner unter Last (Bilder > 60 ms): Bildfolge sagt nichts über Gleiten aus – dann nur Endlage prüfen (geschieht danach ohnehin)
-  const smooth = (ys0, w, z) => { if(ys0.slow){ console.log("    (Gleiten nicht beurteilt: Rechner unter Last)"); return; } const a = ys0[0]; let k = ys0.findIndex(y => Math.abs(y - z) <= 2); const ys = k > 0 ? ys0.slice(0, k + 1) : ys0, dir = Math.sign(z - a); let mono = true, mid = 0;
+  const smooth = (ys0, w, z) => { if(ys0.slow){ console.log("    (Gleiten nicht beurteilt: Rechner unter Last)"); return; } const a = ys0[0]; let k = ys0.findIndex(y => Math.abs(y - z) <= 2);
+    // ein einzelnes langes Bild WÄHREND der Bewegung (Rechner hängt kurz) überspringt die Zwischenlagen der zeitgesteuerten Bewegung → nicht beurteilbar
+    const s0 = ys0.findIndex(y => Math.abs(y - a) > 2); if(s0 > 0 && k > s0 && ys0.dt && ys0.dt.slice(s0, k + 1).some(d => d > 60)){ console.log("    (Gleiten nicht beurteilt: Bild während der Bewegung > 60 ms)"); return; } const ys = k > 0 ? ys0.slice(0, k + 1) : ys0, dir = Math.sign(z - a); let mono = true, mid = 0;
     for(let i = 1; i < ys.length; i++){ if(Math.sign(ys[i] - ys[i-1]) === -dir && Math.abs(ys[i] - ys[i-1]) > 1) mono = false; if(Math.abs(ys[i] - a) > 8 && Math.abs(ys[i] - z) > 8) mid++; }
     ok(Math.abs(ys[1] - a) <= 40 && mono && mid >= 2, w+": Eingabe springt statt zu gleiten: "+ys0.join(",")); };
   const g1 = await glide("focus"); smooth(g1, "Antippen", H - 400);   // erste Schätzung: gut 400 pt Tastatur

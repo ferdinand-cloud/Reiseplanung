@@ -5,6 +5,20 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-01 · Volltests v500/v501: „Tastatur im Chat … Zweites Antippen“ und „Linienkarte Bremen … Ausgeblendete Linie“ (wackelig)
+
+**Meldung:** Klicktests 41362688170 (v501): „Zweites Antippen: Eingabe springt statt zu gleiten: 844,844,844,731,466,…“. Klicktests 41360681163: „Ausgeblendete Linie bleibt in der Linienkarte“ (Bremen); im selben Lauf der Chat-Test erst im 2. Versuch. Beide lokal und in anderen Läufen grün; die App-Änderungen dieser Runde (Karte/Busse) berühren beide Stellen nicht.
+
+**Ursache:** Testaufbau, nicht die App.
+- Chat: Die Eingabe gleitet zeitgesteuert (`chSetH`, Ease-out). Zwischen den Bildern 731 (30 %) und 466 (Ziel) lag ein einzelnes langes Bild des CI-Rechners – die Zwischenlagen fallen dann zwangsläufig weg. Der Last-Schutz des Tests zählte nur, ob **mehr als 2** der ersten 12 Bilder > 60 ms dauerten; ein einzelnes langes Bild mitten in der Bewegung blieb unerkannt.
+- Bremen: Nach dem Ausblenden wartete der Test fest 300 ms und fragte dann die gezeichneten Linien ab. Unter Last ist das neue Bild dann noch nicht gezeichnet.
+
+**Lösung:** Chat-Test misst die Dauer jedes Bilds; liegt während der Bewegung (vom ersten bewegten Bild bis zum Ziel) ein Bild über 60 ms, wird das Gleiten nicht beurteilt (Endlage wird weiter geprüft). Bremen-Test wartet gezielt, bis die Linie aus dem gezeichneten Bild verschwunden ist (höchstens 4 s), statt fester Wartezeit.
+
+**Commit/Version:** siehe nächster Commit (nur Tests). **Test:** beide Tests lokal grün.
+
+---
+
 ## 2026-11-01 · Bushaltestellen beim Rauszoomen unsichtbar (Chicago, Vergleich Apple)
 
 **Meldung:** Ferdinand 00:34 (4 Screenshots): Bushaltestellen erscheinen erst mit dem Symbol; etwas weiter draußen sieht man nicht, wo Busse halten. Apple zeigt davor kleine Punkte.
