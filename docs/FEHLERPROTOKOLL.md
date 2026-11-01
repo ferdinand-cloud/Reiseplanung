@@ -19,7 +19,7 @@ Warum Hannahs Gerät den Eintrag überhaupt geschrieben hat: Bis v395 gab **jede
 2. Fotos der Bewertungen sind Knöpfe → Vollansicht `dcFull` (Wischen, ×), Schließen führt zurück zum Ort.
 3. Sichtbarkeits-Menü des Orts nennt, wer veröffentlicht hat („Von dir veröffentlicht“ / „Veröffentlicht von @…“).
 
-**Commit/Version:** siehe unten · SW v494 · **Test:** „Bewertungen Freunde: Empfehlung aus der eigenen gemeinsamen Reise erscheint nicht als Freundes-Bewertung, Fotos antippbar, Veröffentlicher sichtbar“.
+**Commit/Version:** e987fa0 · SW v494 · **Test:** „Bewertungen Freunde: Empfehlung aus der eigenen gemeinsamen Reise erscheint nicht als Freundes-Bewertung, Fotos antippbar, Veröffentlicher sichtbar“.
 
 ---
 
