@@ -48,6 +48,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 - Aufgabe 14: `subShare(F)` teilt jede NYC-Linie in Abschnitte nach der Menge der Linien, die dort dieselben Gleise fahren (parallel, < 14 m; Verlauf auf 40 m verdichtet; Union-Find über nächste Punkte, damit alle Linien einer Stelle dieselbe Gruppe sehen). Platz o = Rang (Farbgruppe, dann Name) mittig; Abschnitte < 250 m übernehmen die Gruppe davor. Läuft nach dem ersten Kartenbild (`GEO.share`, ~0,2 s Desktop), vorher gilt die alte Aufteilung je Farbe. 22 m Abstand war zu viel (Broadway/7th Av an Times Sq wurden zusammengelegt, Sprünge). Hilfsfunktion `subOAt(k, lo, la)` für Tests. Collator statt `localeCompare` (sonst > 1 s).
 
+- Aufgabe 15: `tools/nyc-subway/stations.mjs` ergänzt fehlende Stationen aus dem MTA-GTFS (stops/trips/stop_times; Linien je Station aus den Fahrten, 6X/7X/FX → Grundlinie, GS/FS → S, H/SI weggelassen). 183 neu (292 → 475), hinten angehängt – alte Nummern („sub:Nummer“) bleiben. Vorhanden = gleicher Name < 120 m.
+
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
 - 1 · „Ok Freigabe“ · keine Änderung
@@ -73,3 +75,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 12 · 01.11.2026 · (git log „Loop 12:“) · T5 bestanden (Namen überlappen sich nicht, Times Sq bleibt) · Freigabe automatisch
 - 13 · 01.11.2026 · nur Doku (keine App-Änderung) · alle prüfbaren Kriterien erfüllt, Restpunkte als 14–17 · Freigabe automatisch
 - 14 · 01.11.2026 · (git log „Loop 14:“) · L2/L5 bestanden (2/5 Nostrand Av nebeneinander, Manhattan unverändert) · Freigabe automatisch
+- 15 · 01.11.2026 · (git log „Loop 15:“) · L0/T3 bestanden (Coney Island, Far Rockaway, Flushing, Jamaica, Van Cortlandt mit Symbol und Plaketten) · Freigabe automatisch

@@ -2118,6 +2118,18 @@ await test("Linien verschiedener Farben auf gemeinsamer Strecke nebeneinander (2
   ok(r.ms < 800, "Aufteilung zu langsam: "+r.ms+" ms");
 });
 
+await test("NYC-Stationen bis zu den Endstationen (Coney Island, Far Rockaway, Flushing, Jamaica), alte Stationsnummern unverändert", async () => {
+  await seed();
+  const r = JSON.parse(await rp(`(function(){ var S = TRANSIT.stations, f = function(n){ var s = S.find(function(x){ return x[0]===n; }); return s ? s[3] : ""; };
+    return JSON.stringify({n:S.length, first:S[0][0], ci:f("Coney Island-Stillwell Av"), far:f("Far Rockaway-Mott Av"), fl:f("Flushing-Main St"), ja:f("Jamaica Center-York College"), vc:f("Van Cortlandt Park-242 St")}); })()`));
+  ok(r.n > 450 && r.first==="157 St", "Stationsliste falsch oder umsortiert: "+JSON.stringify(r));
+  ok(/D/.test(r.ci) && /F/.test(r.ci) && /N/.test(r.ci) && /Q/.test(r.ci) && /A/.test(r.far) && r.fl==="7" && /E/.test(r.ja) && r.vc==="1", "Endstationen fehlen oder falsche Linien: "+JSON.stringify(r));
+  await rp(`layers.sub = true; select(null); setSheet("min"); layers.route = false; applyLayers(); STKEY = ""; stSet(true); map.jumpTo({center:[-73.9813, 40.5800], zoom:15}); true`);
+  await page.waitForFunction(() => window.__rp(`map.loaded() && map.queryRenderedFeatures({layers:["subst-ic"]}).length > 0`), null, {timeout:8000}).catch(() => {}); await page.waitForTimeout(500);
+  await shot("x-coney-island-z15");
+  ok(await rp(`map.queryRenderedFeatures({layers:["subst-ic"]}).length > 0 && map.queryRenderedFeatures({layers:["subst-lbl"]}).some(function(f){ return f.properties.n==="Coney Island-Stillwell Av"; })`), "Coney Island-Stillwell Av nicht auf der Karte");
+});
+
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});

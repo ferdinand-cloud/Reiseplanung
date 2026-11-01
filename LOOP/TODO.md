@@ -25,6 +25,6 @@ Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 
 ## Neu gefunden
 - [x] 14. Linien verschiedener Farbgruppen auf gemeinsamer Strecke liegen deckungsgleich (z. B. 2 und 5 auf der Nostrand Av: nur Grün sichtbar), weil die Plätze nebeneinander nur je Farbe vergeben werden (`GEO`-Aufbau, `o`).
-- [ ] 15. New York: Stationen außerhalb des bisherigen Datenkastens (z. B. Rockaway, Coney Island, Flushing-Ende) fehlen, obwohl die Linien jetzt bis zur Endstation reichen.
+- [x] 15. New York: Stationen außerhalb des bisherigen Datenkastens (z. B. Rockaway, Coney Island, Flushing-Ende) fehlen, obwohl die Linien jetzt bis zur Endstation reichen.
 - [ ] 16. Stationsname + Plaketten am rechten Bildrand laufen unter die Kartenknöpfe (Bild hängt immer rechts am Punkt; MapLibre kann Bild-Anker nicht ausweichen lassen), z. B. Fulton St in S3.
 - [ ] 17. Große Umstiegsknoten (Times Sq-42 St): Plakettenreihe bricht um und liegt über Nachbar-Stationssymbolen; Namen weichen Symbolen bewusst nicht aus (sonst fällt der Name ganz weg). Besser: Plaketten einzeilig bis ca. 10 Linien oder Name an freie Seite (links/rechts) setzen.
