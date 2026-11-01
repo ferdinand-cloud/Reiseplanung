@@ -37,7 +37,7 @@ Warum Hannahs Gerät den Eintrag überhaupt geschrieben hat: Bis v395 gab **jede
 - Einschalten bei noch leerem Menü: stellt die gemerkte Auswahl wieder her; nur ohne gemerkte Auswahl wird wie bisher nach dem Laden die erste Verkehrsart eingeschaltet.
 Gilt für Stöbern und Reiseziele außerhalb New Yorks, für Linienkarte, Overpass- und Stadtpaket-Linien (alle hängen an `DL`). New York war nicht betroffen (dort steuern die Schalter die Ebenen direkt).
 
-**Commit/Version:** _(folgt)_ · SW v495 · **Test:** „ÖPNV-Schalter zeigt und steuert, was die Karte zeigt – auch wenn das Menü die Verkehrsarten noch nicht listet (Stöbern, Linienkarte Bremen)“ – schlägt mit dem alten Stand fehl.
+**Commit/Version:** be87845 · SW v495 · **Test:** „ÖPNV-Schalter zeigt und steuert, was die Karte zeigt – auch wenn das Menü die Verkehrsarten noch nicht listet (Stöbern, Linienkarte Bremen)“ – schlägt mit dem alten Stand fehl.
 
 ---
 
