@@ -22,7 +22,7 @@ Zu Ursache 2: S1-Abzweig begann mit Platz +1,7 (oberer Rand), obwohl S1·S15 im 
 2. Neue Hilfsfunktion `thru(i, head)`: Nachbarn am Knoten, Durchfahrt zuerst (Stück endet dort, wo das eigene beginnt, bzw. umgekehrt), Geschwister erst danach. `endO()`, `ext()` und die Nachbarwahl beim Glätten (`bestNb`) nutzen sie. S1 beginnt jetzt bei −1,25 und gleitet auf seinen Platz, unten am Bündel.
 Geprüft im Berlin-Auszug: Bündel an der Stelle durchgehend, Knick-Zähler 0, Friedrichstraße/Hackescher Markt unverändert sauber.
 
-**Commit/Version:** _(folgt)_ · Linienkarte neu gebaut (GitHub Action „Linienkarte“) · **Test:** „Linienkarte-Bau: Striche reichen nur 10 m über den Knoten, Abzweig setzt auf seiner Seite des Bündels an (Gesundbrunnen S1/S15)“ – schlägt mit dem alten Stand fehl (Strich reichte 1,1 km über den Knoten). Ursache 2 hängt von der Reihenfolge der Nachbarn ab und ließ sich im kleinen Testnetz nicht erzwingen; der Test prüft aber, dass S1 am Abzweig höchstens einen Platz neben seiner Lage im Stamm ansetzt.
+**Commit/Version:** 941a295 (nur Linienkarten-Bau, App unverändert) · Linienkarte neu gebaut (GitHub Action „Linienkarte“) · **Test:** „Linienkarte-Bau: Striche reichen nur 10 m über den Knoten, Abzweig setzt auf seiner Seite des Bündels an (Gesundbrunnen S1/S15)“ – schlägt mit dem alten Stand fehl (Strich reichte 1,1 km über den Knoten). Ursache 2 hängt von der Reihenfolge der Nachbarn ab und ließ sich im kleinen Testnetz nicht erzwingen; der Test prüft aber, dass S1 am Abzweig höchstens einen Platz neben seiner Lage im Stamm ansetzt.
 
 ---
 
