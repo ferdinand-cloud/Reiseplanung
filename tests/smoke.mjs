@@ -2013,8 +2013,8 @@ await test("Stationsmarker: je Verkehrsmittel weißer Punkt mit farbigem Rand, G
   const r = JSON.parse(await rp(`(function(){ var J = JSON.stringify, P = function(l, k){ return map.getPaintProperty(l, k); };
     // Randfarbe je Verkehrsmittel auswerten (match-Ausdruck)
     function col(e, m){ if(typeof e==="string") return e; for(var i = 2; i < e.length-1; i += 2) if(e[i]===m) return e[i+1]; return e[e.length-1]; }
-    function at(e, z){ var s = e.slice(3); if(z <= s[0]) return s[1]; for(var i = 2; i < s.length; i += 2) if(z <= s[i]) return s[i-1]+(s[i+1]-s[i-1])*(z-s[i-2])/(s[i]-s[i-2]); return s[s.length-1]; }
-    var dst = P("dst","circle-stroke-color"), sub = P("subst","circle-stroke-color");
+    function at(e, z){ var s = e.slice(3).map(function(x){ return Array.isArray(x) && x[0]==="case" ? x[3] : x; }); if(z <= s[0]) return s[1]; for(var i = 2; i < s.length; i += 2) if(z <= s[i]) return s[i-1]+(s[i+1]-s[i-1])*(z-s[i-2])/(s[i]-s[i-2]); return s[s.length-1]; }
+    var nx = function(e){ return e[0]==="case" ? e[3] : e; }, dst = nx(P("dst","circle-stroke-color")), sub = nx(P("subst","circle-stroke-color")); // Umstieg (case) ausgenommen
     return J({fill:P("dst","circle-color")===OV.col.stop && P("subst","circle-color")===OV.col.stop,
       modes:["metro","tram","bus","ferry","train"].map(function(m){ return col(dst, ["get","m"]===0 ? 0 : m); }), want:["metro","tram","bus","ferry","x"].map(function(m){ return OV.col.sm[m]; }),
       nyc:sub[1]==="metro" && col(sub, "metro")===OV.col.sm.metro, same:J(P("subst","circle-radius"))===J(P("dst","circle-radius")),
@@ -2063,6 +2063,24 @@ await test("Linien-Plaketten an Stationen: NYC wie andere Städte (Kürzel + Ori
   await rp(`select(null); layers.route = false; applyLayers(); map.jumpTo({center:[-73.9873, 40.7553], zoom:15}); true`);
   await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["subst-lbl"]}).length > 2`), null, {timeout:8000}).catch(() => {});
   ok(await rp(`map.queryRenderedFeatures({layers:["subst-lbl"]}).length > 2 && !document.querySelector("#ov circle[r='6.5']")`), "NYC-Namen/Plaketten nicht auf der Karte (oder noch als SVG)");
+});
+
+await test("Umstiegsstationen hervorgehoben: größerer Punkt mit dunklem Rand bzw. größeres Symbol (NYC und andere Städte)", async () => {
+  await seed();
+  await rp(`layers.sub = true; offSub = {}; applyLayers(); STKEY = ""; stSet(true); true`);
+  const r = JSON.parse(await rp(`(function(){
+    var f = map.getSource("subst")._data.features, X = function(n){ return f.filter(function(x){ return x.properties.n===n; }).map(function(x){ return x.properties.x; }); };
+    var ev = function(e, x, z){ // Zoomreihe mit case auswerten
+      var s = e.slice(3), v = function(y){ return Array.isArray(y) && y[0]==="case" ? (x ? y[2] : y[3]) : y; }; for(var i = 0; i < s.length; i += 2) if(s[i]===z) return v(s[i+1]); return null; };
+    var rad = map.getPaintProperty("subst","circle-radius"), ic = map.getLayoutProperty("subst-ic","icon-size"), col = map.getPaintProperty("dst","circle-stroke-color");
+    return JSON.stringify({ts:X("Times Sq-42 St"), d50:X("50 St"), r:[ev(rad, 0, 13), ev(rad, 1, 13)], i:[ev(ic, 0, 16), ev(ic, 1, 16)], col:col[0]==="case" && col[2]===OV.col.sm.x,
+      same:JSON.stringify(rad)===JSON.stringify(map.getPaintProperty("dst","circle-radius")) && JSON.stringify(ic)===JSON.stringify(map.getLayoutProperty("dst-ic","icon-size")),
+      fx:[stXOf("4,#E2001A;6,#F5A100"), stXOf("1,#D82233;2,#D82233"), stXOf("@long,-;@reg,-"), stXOf("@reg,-")]});
+  })()`));
+  ok(r.ts.every(x => x===1) && r.d50.every(x => x===0), "Umstieg falsch erkannt (Times Sq ja, 50 St nein): "+JSON.stringify(r));
+  ok(r.r[1] > r.r[0] * 1.3 && r.i[1] > r.i[0] * 1.2 && r.col, "Umstiegsstation nicht größer/dunkler Rand: "+JSON.stringify(r));
+  ok(r.same, "NYC und andere Städte nicht gleich: "+JSON.stringify(r));
+  ok(JSON.stringify(r.fx)==="[1,0,1,0]", "Umstieg aus Plaketten falsch: "+JSON.stringify(r.fx));
 });
 
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {

@@ -10324,7 +10324,7 @@ var OV = {
     off:[8,.5, 11.5,1.2, 13,2.2, 16,3.3, 18,4.8], // Versatz je Platz (Linien nebeneinander), wächst mit der Stärke
     bus:[11,.5, 14,1, 16,1.6, 18,2.4], busNyc:[11,.6, 14,1.2, 16,1.8, 18,2.6], tlBus:[12,.5, 14,1, 16,1.6, 18,2.4], ferry:[10,1, 13,1.6, 16,2.4, 18,3.2], tlFerry:[10,.9, 13,1.4, 16,2.2, 18,3], grid:[5,.9, 8,1.3, 12,1.5, 16,2.4],
     "case":[10,.5, 12,.7, 14,.9, 16,1.2, 18,1.6], // Randbreite je Seite
-    stop:[11,1.8, 13,3, 15,4.2, 17,5.5], stopRim:[11,1, 14,1.6, 17,2.2], stopIcon:[14,.85, 16,1.05]}, // Stationspunkt: weiß mit Rand in der Farbe des Verkehrsmittels, wächst mit dem Zoom
+    stop:[11,1.8, 13,3, 15,4.2, 17,5.5], stopRim:[11,1, 14,1.6, 17,2.2], stopIcon:[14,.85, 16,1.05], stopX:1.4, stopIconX:1.25}, // Stationspunkt: weiß mit Rand in der Farbe des Verkehrsmittels, wächst mit dem Zoom
   op:{"case":.9, bus:.5, busNyc:.6, ferry:.85, tlFerry:.8, grid:[5,.85, 10,.75, 13,.5], stop:[11,.85, 13,1]},
   dash:{ferry:[3,2]},
   lay:{"line-cap":"round", "line-join":"round"}, // alle ÖPNV-Linien und Routenabschnitte: runde Enden und Ecken
@@ -10333,6 +10333,8 @@ var OV = {
     zf:[11,.7, 14,1, 16,1.15, 18,1.4]} // Faktor je Zoom: Route bleibt immer klar stärker als die ÖPNV-Ebene
 };
 function ovZ(a){ return ["interpolate",["linear"],["zoom"]].concat(a); }
+var STX = ["==", ["coalesce", ["get","x"], 0], 1]; // Umstiegsstation (mehrere Linienfarben bzw. Verkehrsmittel)
+function ovZx(a, f){ var b = a.slice(); for(var i = 1; i < b.length; i += 2) b[i] = ["case", STX, +(a[i]*f).toFixed(3), a[i]]; return ovZ(b); } // Zoomreihe, für Umstiegsstationen × f
 function ovRtW(add){ var a = OV.rt.zf.slice(); for(var i = 1; i < a.length; i += 2) a[i] = ["*", add ? ["+", ["get","w"], add] : ["get","w"], a[i]]; return ovZ(a); } // Routenstärke × Zoomfaktor
 function ovAt(a, z){ if(z <= a[0]) return a[1]; for(var i = 2; i < a.length; i += 2) if(z <= a[i]) return a[i-1] + (a[i+1]-a[i-1])*(z-a[i-2])/(a[i]-a[i-2]); return a[a.length-1]; }
 function ovCaseW(w){ var o = w.slice(0, 3); for(var i = 3; i < w.length; i += 2) o.push(w[i], ["+", w[i+1], 2*ovAt(OV.w["case"], w[i])]); return o; } // Breite der Linie + Rand beidseitig
@@ -12617,8 +12619,9 @@ var TLRAIL = ["any"].concat([0, 1, 2, 12, 100, 101, 102, 103, 105, 106, 109, 400
   return a.concat(["[", ","].reduce(function(b, p){ return b.concat(["]", ","].map(function(q){ return ["in", p+n+q, ["to-string", ["get","route_types_basic"]]]; })); }, [])); }, []));
 /* Haltestellen: kleine weiße Punkte mit dunklem Rand, schon ab Zoom 11 erkennbar */
 function ovSm(me){ var c = OV.col.sm, e = ["match", me]; Object.keys(c).forEach(function(k){ if(k!=="x") e.push(k, c[k]); }); e.push(c.x); return e; } // Farbe je Verkehrsmittel als Ausdruck
-function STPAINT(me){ return {"circle-color":OV.col.stop, "circle-stroke-color":ovSm(me || ["get","m"]), "circle-stroke-width":ovZ(OV.w.stopRim),
-  "circle-radius":ovZ(OV.w.stop), "circle-opacity":ovZ(OV.op.stop)}; }
+// Umstiegsstation wie bei Apple Karten: größerer weißer Punkt mit dunklem Rand (statt der Farbe eines Verkehrsmittels)
+function STPAINT(me){ return {"circle-color":OV.col.stop, "circle-stroke-color":["case", STX, OV.col.sm.x, ovSm(me || ["get","m"])], "circle-stroke-width":ovZ(OV.w.stopRim),
+  "circle-radius":ovZx(OV.w.stop, OV.w.stopX), "circle-opacity":ovZ(OV.op.stop)}; }
 function tlSetup(){
   if(!mapReady || !tlKey()) return;
   if(map.getSource("tl-r")){ if(TL.k!==tlKey()){ TL.k = tlKey(); ["tl-r","tl-s"].forEach(function(s){ var src = map.getSource(s); if(src && src.setTiles) src.setTiles([tlUrl(s==="tl-r" ? "routes" : "stops")]); }); } return; }
@@ -13139,12 +13142,14 @@ function lkGeo(){
       F.push({properties:{m:f.properties.m}, geometry:{coordinates:g.type==="LineString" ? [g.coordinates] : g.type==="MultiLineString" ? g.coordinates : []}}); }); } catch(e){} });
   return F.length ? {features:F} : null;
 }
+/* Umstiegsstation: Linien in mindestens zwei Farben (Plaketten „Nummer,Farbe;…“; Bahnhofsklassen „@reg,-“ zählen je Klasse) */
+function stXOf(lb){ var k = {}; String(lb||"").split(";").forEach(function(x){ var i = x.lastIndexOf(","); if(i > 0) k[x.slice(i+1)==="-" ? x.slice(0, i) : x.slice(i+1).toLowerCase()] = 1; }); return Object.keys(k).length > 1 ? 1 : 0; }
 function dstPush(){
   var A = DSET.dstAll; if(!A || !map.getSource("dst")) return;
   var lg = map.getZoom() >= 13 ? lkGeo() : null, sig = lg ? lg.features.length+"|"+Math.round(map.getZoom()) : "-"; if(sig===DSET.lkSig) return; DSET.lkSig = sig;
   var ts = lg ? stSnap(A[0], lg, 150) : A[0], bs = A[1], add = A[2];
   {
-    if(map.getSource("dst")) map.getSource("dst").setData({type:"FeatureCollection", features:ts.concat(bs).map(function(s, i){ var lb = s[5] || ""; return {type:"Feature", properties:{n:s[2], m:s[3], r:s[4]===undefined ? 1 : s[4], lb:lb, lbb:add[i] ? "#"+s[3]+",-;"+lb+";/,-;#bus,-;"+add[i] : lb}, geometry:{type:"Point", coordinates:[s[0], s[1]]}}; })});
+    if(map.getSource("dst")) map.getSource("dst").setData({type:"FeatureCollection", features:ts.concat(bs).map(function(s, i){ var lb = s[5] || ""; return {type:"Feature", properties:{n:s[2], m:s[3], r:s[4]===undefined ? 1 : s[4], lb:lb, x:stXOf(lb), lbb:add[i] ? "#"+s[3]+",-;"+lb+";/,-;#bus,-;"+add[i] : lb}, geometry:{type:"Point", coordinates:[s[0], s[1]]}}; })});
   }
 }
 /* Zoomstufen wie Apple Karten: je weiter weg, desto weniger – erst Fern-/Regionalbahn, dann S-Bahn/Metro, dann Tram, Busse erst auf Straßenebene;
@@ -13174,7 +13179,7 @@ function dAddLayers(){
   map.addLayer({id:"dtr-f", type:"line", source:"dtr", filter:["==",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":ovZ(OV.w.ferry), "line-dasharray":OV.dash.ferry, "line-opacity":OV.op.ferry}, layout:ovLay("none")}, ovBelow()); ovCase("dtr"); ovCase("dtr-f");
   map.addLayer({id:"dst", type:"circle", source:"dst", minzoom:OV.z.stop, maxzoom:OV.z.stopIcon, paint:STPAINT(), layout:{visibility:"none"}});
   // ab Zoom 14 Stationssymbol (Wagen in der Farbe des Verkehrsmittels) statt Punkt
-  map.addLayer({id:"dst-ic", type:"symbol", source:"dst", minzoom:OV.z.stopIcon, layout:{visibility:"none", "icon-image":["concat", "ts|", ["get","m"]], "icon-size":ovZ(OV.w.stopIcon), "icon-allow-overlap":true, "icon-ignore-placement":true, "symbol-sort-key":["-", 0, SR]}});
+  map.addLayer({id:"dst-ic", type:"symbol", source:"dst", minzoom:OV.z.stopIcon, layout:{visibility:"none", "icon-image":["concat", "ts|", ["get","m"]], "icon-size":ovZx(OV.w.stopIcon, OV.w.stopIconX), "icon-allow-overlap":true, "icon-ignore-placement":true, "symbol-sort-key":["-", 0, SR]}});
   // Stationsname fett rechts neben dem Symbol, ab Zoom 14,5 darunter die Linien als farbige Plaketten (wie Apple Karten) – als Bild in der Systemschrift
   map.addLayer({id:"dst-lbl", type:"symbol", source:"dst", minzoom:OV.z.stopName, layout:{visibility:"none", "symbol-sort-key":["-", 0, SR],
     "icon-image":dstImg(DBUSLB = "lb"),
@@ -13338,7 +13343,7 @@ function rtAddLayers(){
     map.addLayer({id:x[0], type:"line", source:"rt", filter:["==", ["get","d"], x[1]], layout:lay, paint:paint}, LBLB); });
   map.addLayer({id:"subst", type:"circle", source:"subst", minzoom:OV.z.stop, maxzoom:OV.z.stopIcon, filter:stZ(true), paint:STPAINT("metro")}, "rt-case"); // New York: U-Bahn-Stationen wie alle Stationen
   // ab Zoom 14 Symbol des Verkehrsmittels statt Punkt (wie in den anderen Städten)
-  map.addLayer({id:"subst-ic", type:"symbol", source:"subst", minzoom:OV.z.stopIcon, layout:{"icon-image":"ts|metro", "icon-size":ovZ(OV.w.stopIcon), "icon-allow-overlap":true, "icon-ignore-placement":true, "symbol-sort-key":["-", 0, SR]}});
+  map.addLayer({id:"subst-ic", type:"symbol", source:"subst", minzoom:OV.z.stopIcon, layout:{"icon-image":"ts|metro", "icon-size":ovZx(OV.w.stopIcon, OV.w.stopIconX), "icon-allow-overlap":true, "icon-ignore-placement":true, "symbol-sort-key":["-", 0, SR]}});
   // Name + Linien-Plaketten wie in den anderen Städten (gleiches Bild „tn|…“, Plaketten ab Zoom 14,5), mit Kollisionsprüfung statt SVG; Namen wegen des dichten Netzes je Rang eine Zoomstufe später
   map.addLayer({id:"subst-lbl", type:"symbol", source:"subst", minzoom:OV.z.stopName, filter:zStep(["==", ["get","h"], 0], [[13, [">=", SR, 3]], [14, [">=", SR, 2]], [15, null]]), layout:{"symbol-sort-key":["-", 0, SR], "icon-image":dstImg("lb"),
     "icon-anchor":"top-left", "icon-offset":["step", ["zoom"], ["literal", [6, -10]], 14, ["literal", [10, -10]]], "icon-padding":2}});
@@ -13362,14 +13367,15 @@ function stSet(on){
   var ids = []; if(on) TRANSIT.stations.forEach(function(st, i){ if(stationOn(st)) ids.push(i); });
   var k = ids.join(",")+"|"+Object.keys(offSub).filter(function(c){ return offSub[c]; }).join(","); if(k===STKEY) return; STKEY = k;
   // Umstiegsknoten (gleicher Name + Umstieg laut MTA, z. B. Times Sq-42 St: 1/2/3, 7, S, N/Q/R/W) = ein Name mit allen Linien-Plaketten, an der mittleren Station
-  var cx = stCx(), grp = {}, mem = {}; ids.forEach(function(i){ (mem[cx[i]] = mem[cx[i]] || []).push(i); });
+  var cx = stCx(), grp = {}, mem = {}, xk = {}; ids.forEach(function(i){ (mem[cx[i]] = mem[cx[i]] || []).push(i); });
   Object.keys(mem).forEach(function(k){ var m = mem[k], x = 0, y = 0, ls = [];
     m.forEach(function(i){ var st = TRANSIT.stations[i]; x += st[1]/m.length; y += st[2]/m.length; stLines(st).forEach(function(r){ if(ls.indexOf(r) < 0) ls.push(r); }); });
     var h = m.reduce(function(a, i){ var A = TRANSIT.stations[a], B = TRANSIT.stations[i]; return Math.hypot(B[1]-x, B[2]-y) < Math.hypot(A[1]-x, A[2]-y) ? i : a; }, m[0]);
-    m.forEach(function(i){ grp[i] = i===h ? ls : null; }); });
+    var x = ls.map(function(r){ return (LINECOL[r] || ["#808183"])[0]; }).filter(function(c, j, a){ return a.indexOf(c)===j; }).length > 1 ? 1 : 0; // Umstieg: mehrere Linienfarben
+    m.forEach(function(i){ grp[i] = i===h ? ls : null; xk[i] = x; }); });
   src.setData({type:"FeatureCollection", features:ids.map(function(i){ var st = TRANSIT.stations[i], l = llW(st[1], st[2]), ls = grp[i] || [], n = ls.length;
     var lb = ls.filter(lineOn).map(function(r){ return r+","+(LINECOL[r] || ["#808183"])[0]; }).join(";"); // Linien-Plaketten: Kürzel + Originalfarbe der haltenden Linien
-    return {type:"Feature", properties:{i:i, r:grp[i] ? (n >= 4 ? 3 : n >= 2 ? 2 : 1) : 1, n:st[0], lb:lb, h:grp[i] ? 0 : 1}, geometry:{type:"Point", coordinates:[l.lo, l.la]}}; })});
+    return {type:"Feature", properties:{i:i, r:grp[i] ? (n >= 4 ? 3 : n >= 2 ? 2 : 1) : 1, n:st[0], lb:lb, h:grp[i] ? 0 : 1, x:xk[i]}, geometry:{type:"Point", coordinates:[l.lo, l.la]}}; })});
 }
 /* ---------- Kartenpunkte auf der Grafikkarte: Stopps, Wünsche, Hotels, Fotos und ihre Beschriftungen als MapLibre-Symbole.
    Jedes Aussehen wird einmal auf eine Leinwand gezeichnet (Bildname = Aussehen), danach verschiebt/zoomt/dreht die Grafikkarte nur noch.

@@ -40,6 +40,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 - Aufgabe 10: New York zeigt Name + Linien-Plaketten jetzt wie die anderen Städte als Kartenebene `subst-lbl` (Bild „tn|Name|Linien|l“, `dstImg`, Plaketten ab Z14,5) statt im SVG-Overlay (`drawOverlay`, Kreise r 6,5 entfernt). Kollisionsprüfung durch MapLibre. Umstiegsknoten: `stCx()` (Union-Find über MTA-Umstiege `NET.t` bei gleichem Namen) → ein Name mit allen Linien an der mittleren Station, übrige `h:1` ohne Namen. Wall St 2/3 und 4/5, Penn 1/2/3 und A/C/E bleiben getrennt (kein Umstieg). NYC-Namen je Rang eine Stufe später als andere Städte (Z13/14/15), damit S1 ruhig bleibt. Busse: Plaketten an Haltestellen erst ab `OV.z.busStop` (15,5), unverändert.
 
+- Aufgabe 11: Umstiegsstation = Eigenschaft `x` (NYC: Knoten aus `stCx()` mit mehreren Linienfarben; andere Städte: `stXOf(lb)` ≥ 2 Farben bzw. Bahnhofsklassen). `STX`-Ausdruck, `ovZx(reihe, f)`: Punkt × `OV.w.stopX` (1,4) mit dunklem Rand `OV.col.sm.x` wie Apple Karten, Symbol ab Z14 × `OV.w.stopIconX` (1,25). Gilt über `STPAINT` für subst/dst/tl.
+
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
 - 1 · „Ok Freigabe“ · keine Änderung
@@ -61,3 +63,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 8 · 01.11.2026 · (git log „Loop 8:“) · T1 bestanden (erst zu klein/dünn → Radius und Rand vergrößert) · Freigabe automatisch
 - 9 · 01.11.2026 · (git log „Loop 9:“) · T2 bestanden (S1 ohne Symbole, ab Z14 Symbol) · Freigabe automatisch
 - 10 · 01.11.2026 · (git log „Loop 10:“) · T3/T5/T6 bestanden (S2 Times Sq ein Name mit 1 2 3 7 S N Q R W, S1 ohne Namen) · Freigabe automatisch
+- 11 · 01.11.2026 · (git log „Loop 11:“) · T4 bestanden (S1 Umstiege als größere Punkte mit dunklem Rand, 50 St 1/2 kein Umstieg) · Freigabe automatisch

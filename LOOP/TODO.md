@@ -17,7 +17,7 @@ Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 - [x] 8. Einheitliche Stationsmarker je Verkehrsmittel (z. B. weißer Punkt mit farbigem Rand), Größe zoomabhängig.
 - [x] 9. Verkehrsmittel-Icon am Stationsmarker (U-Bahn, Bus, Fähre), erst ab einer sinnvollen Zoomstufe.
 - [x] 10. Linien-Badges an Stationen (farbige Kreise mit Kürzel wie A, C, E); bei Bus erst bei starkem Zoom, damit es nicht überladen wirkt.
-- [ ] 11. Umstiegsstationen hervorheben (größerer bzw. länglicher Marker, wenn mehrere Linien halten).
+- [x] 11. Umstiegsstationen hervorheben (größerer bzw. länglicher Marker, wenn mehrere Linien halten).
 - [ ] 12. Stationsnamen zoomabhängig einblenden, ohne Überlappung mit anderen Namen und Badges (Kollisionserkennung).
 
 ## Abschluss
