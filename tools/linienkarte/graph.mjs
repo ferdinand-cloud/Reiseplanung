@@ -10,19 +10,24 @@
 //  4. Richtung der Stücke: Stücke mit gemeinsamen Linien laufen am Knoten ineinander über (Ende → Anfang)
 //  5. glätten (gleitendes Mittel, Enden fest), vereinfachen
 //  6. je Stück und Strich (gleiche Art + Farbe) ein Objekt mit Platz o im Bündel nach fester Reihenfolge
+//  7. Übergänge (Ferdinand 01.11.): über Knoten hinweg geglättet; an Knoten gleitet der Platz über 60 m auf den des Nachbarstücks; jeder Strich
+//     reicht 10 m über den Knoten; Ausgabe in Stücken ≤ 400 m bzw. ≤ 0,2 Plätze; lose kurze Stummel fallen weg; U-Bahn als eigene Gruppe.
+//     Kacheln ohne Abschneiden (build.mjs --no-clipping): abgeschnittene Enden mit Versatz knickten quer übers Bündel
 
 const R = 111320;
 
 const GP = {
   // step: Punktabstand beim Verdichten · snap: Einrastabstand · glatt: halbe Fensterbreite des gleitenden Mittels (m)
   rail: { step: 10, snap: 28, glatt: 70 },
+  metro: { step: 10, snap: 28, glatt: 70 },
   tram: { step: 5, snap: 13, glatt: 30 },
   funi: { step: 5, snap: 8, glatt: 15 },
   ferry: { step: 40, snap: 60, glatt: 150 },
 };
 const COSMIN = 0.85; // Richtungen bis ~32° gelten als parallel
 
-export const grpOf = (m) => m === "tram" ? "tram" : m === "ferry" ? "ferry" : m === "funi" ? "funi" : "rail";
+// U-Bahn eigene Gruppe: fährt nie auf Eisenbahngleisen, rastete aber an parallelen Strecken ein (U8 am Alexanderplatz hing schräg im S-Bahn-Bündel)
+export const grpOf = (m) => m === "tram" ? "tram" : m === "ferry" ? "ferry" : m === "funi" ? "funi" : m === "metro" ? "metro" : "rail";
 
 export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
   const byG = new Map();
@@ -193,6 +198,14 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
           CH.forEach((c) => { c.ns[0] = rf(c.ns[0]); c.ns[c.ns.length - 1] = rf(c.ns[c.ns.length - 1]); });
           CH = CH.filter((c) => c.ns.length > 2 || c.ns[0] !== c.ns[1]);
         }
+        // lose Stummel: kurzes Stück mit einem freien Ende, dessen Linien am anderen Knoten ohnehin durchfahren (Abstellgleis, Gleiswechsel in einer Relation)
+        { const at3 = new Map(); CH.forEach((c, i) => { [c.ns[0], c.ns[c.ns.length - 1]].forEach((n) => { let x = at3.get(n); if (!x) at3.set(n, x = []); x.push(i); }); });
+          const stub = new Set();
+          CH.forEach((c, i) => { if (c.L >= 150) return; const a = c.ns[0], b = c.ns[c.ns.length - 1]; if (a === b) return;
+            const da = at3.get(a).length, db = at3.get(b).length; if ((da === 1) === (db === 1)) return; const n = da === 1 ? b : a;
+            const oth = at3.get(n).filter((j) => j !== i && !stub.has(j));
+            if (LS[c.ls].every((li) => oth.filter((j) => LS[CH[j].ls].includes(li)).length >= 2)) stub.add(i); });
+          if (stub.size) { CH = CH.filter((_, i) => !stub.has(i)); ch = true; } }
         // wieder verbinden
         const at = new Map(); CH.forEach((c, i) => { [0, 1].forEach((e) => { const n = e ? c.ns[c.ns.length - 1] : c.ns[0]; let x = at.get(n); if (!x) at.set(n, x = []); x.push([i, e]); }); });
         const dead = new Set();
@@ -264,15 +277,60 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
         }
       }
     }
-    // glätten und ausgeben
-    const res = [];
+    // Platz jedes Strichs an den Enden: Mitte zwischen dem eigenen und dem des anschließenden Stücks (gleiche Linie). Stücke in Gegenrichtung zählen gespiegelt.
+    const oOf = (i) => { const arr = SA[i], n = arr.length, cen = isNaN(CEN[i]) ? (n - 1) / 2 : CEN[i], m = new Map(); arr.forEach((e, k) => m.set(e.q, k - cen)); return m; };
+    const OO = chains.map((_, i) => oOf(i));
+    const endO = (i, q, head) => { const n = head ? hd(i) : tl(i), own = OO[i].get(q);
+      for (const [j, ej] of at2.get(n) || []) { if (j === i || !OO[j].has(q)) continue; const same = head ? ej === 1 : ej === 0; return (own + (same ? OO[j].get(q) : -OO[j].get(q))) / 2; }
+      return own; };
+    // glätten und ausgeben: je Strich durchgehend; an den Enden gleitet der Platz über RAMP Meter vom gemeinsamen Wert am Knoten auf den eigenen.
+    // Ausgabe in Stücken (höchstens STK Meter, auf den Rampen je ≤ 0,2 Plätze), jedes Stück reicht einen Abschnitt in das nächste hinein (keine Kerben an den Nahtstellen)
+    const RAMP = 60, STK = 400, EXT = 10, res = [];
+    // Glätten über die Knoten hinweg: jedes Stück wird zusammen mit dem Anfang/Ende des Nachbarstücks geglättet, mit dem es die meisten Linien teilt.
+    // So bleibt die Mittellinie am Knoten ohne Knick (sonst Schlaufen und Sprünge der versetzten Linien)
+    const RAW = chains.map((c, i) => { const g = c.ns.map((n) => [NX[n], NY[n]]); if (rev[i]) g.reverse(); return g; });
+    const HG = Math.max(1, Math.round(P.glatt / P.step));
+    const bestNb = (i, head) => { const n = head ? hd(i) : tl(i); let b = null, bs = 0;
+      for (const [j, ej] of at2.get(n) || []) { if (j === i) continue; let sh = 0; for (const q of OO[i].keys()) if (OO[j].has(q)) sh++; if (sh > bs) { bs = sh; b = [j, ej]; } }
+      return b; };
+    const GG = chains.map((c, i) => {
+      const g = RAW[i], h = bestNb(i, true), t = bestNb(i, false), K = HG + 2;
+      const pre = !h ? [] : h[1] === 1 ? RAW[h[0]].slice(-K - 1, -1) : RAW[h[0]].slice(1, K + 1).reverse();
+      const post = !t ? [] : t[1] === 0 ? RAW[t[0]].slice(1, K + 1) : RAW[t[0]].slice(-K - 1, -1).reverse();
+      const sm = glatt(pre.concat(g, post), HG).slice(pre.length, pre.length + g.length);
+      return vereinfache(sm, 0.3); });
+    // Fortsetzung am Knoten: Punkte des anschließenden Stücks mit derselben Linie (bis EXT Meter), vom Knoten weg geordnet.
+    // Der Strich reicht so über den Knoten hinaus – die Ecke am Knoten liegt innerhalb eines Strichs (runde Ecke statt gespreizter Enden)
+    const ext = (i, q, head) => { const n = head ? hd(i) : tl(i);
+      for (const [j, ej] of at2.get(n) || []) { if (j === i || !OO[j].has(q) || GG[j].length < 2) continue;
+        const g = ej === 1 ? GG[j].slice().reverse() : GG[j], out = []; let L = 0; // ej 1: j endet am Knoten → rückwärts lesen
+        for (let t = 1; t < g.length && L < EXT; t++) { L += dist(g[t - 1], g[t]); out.push([g[t], L]); }
+        return out; }
+      return []; };
     chains.forEach((c, i) => {
-      let g = c.ns.map((n) => [NX[n], NY[n]]); if (rev[i]) g.reverse();
-      g = vereinfache(glatt(g, Math.max(1, Math.round(P.glatt / P.step))), 0.3);
-      if (g.length < 2) return;
-      const arr = SA[i], n = arr.length, cen = isNaN(CEN[i]) ? (n - 1) / 2 : CEN[i];
-      arr.forEach((e, k) => { const ks = [...new Set(e.ks)].sort(natCmp);
-        res.push({ m: e.l.m, k: e.l.k, ks: ks.length > 1 ? ks.slice(0, 6).join(" · ") + (ks.length > 6 ? " …" : "") : e.l.k, c: e.l.c, o: +(k - cen).toFixed(1), n, g: g.map((q) => [+q[0].toFixed(6), +q[1].toFixed(6)]) }); });
+      const g = GG[i]; if (g.length < 2) return;
+      const D = [0]; for (let t = 1; t < g.length; t++) D.push(D[t - 1] + dist(g[t - 1], g[t])); const T = D[D.length - 1], TZ = Math.min(RAMP, T / 2);
+      const arr = SA[i], n = arr.length;
+      arr.forEach((e) => { const ks = [...new Set(e.ks)].sort(natCmp), own = OO[i].get(e.q), oh = endO(i, e.q, true), ot = endO(i, e.q, false);
+        const oAt = (d) => { d = Math.max(0, Math.min(T, d)); return own + (TZ > 0 ? (oh - own) * Math.max(0, 1 - d / TZ) + (ot - own) * Math.max(0, 1 - (T - d) / TZ) : 0); };
+        // Punkte: Fortsetzung davor, Stützpunkte + Teilungen auf den Rampen (alle 8 m), Fortsetzung danach
+        const pts = ext(i, e.q, true).reverse().map(([p, L]) => [p, -L]).concat([[g[0], 0]]);
+        for (let t = 1; t < g.length; t++) { const a = g[t - 1], b = g[t], l = D[t] - D[t - 1];
+          const inR = (oh !== own && D[t - 1] < TZ) || (ot !== own && D[t] > T - TZ), m = inR ? Math.max(1, Math.ceil(l / 8)) : 1;
+          for (let j = 1; j < m; j++) { const f = j / m; pts.push([[a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], D[t - 1] + l * f]); }
+          pts.push([b, D[t]]); }
+        ext(i, e.q, false).forEach(([p, L]) => pts.push([p, T + L]));
+        // in Stücke teilen
+        const prop = { m: e.l.m, k: e.l.k, ks: ks.length > 1 ? ks.slice(0, 6).join(" · ") + (ks.length > 6 ? " …" : "") : e.l.k, c: e.l.c, n };
+        let s0 = 0;
+        while (s0 < pts.length - 1) {
+          const o0 = oAt(pts[s0][1]); let s1 = s0 + 1;
+          while (s1 < pts.length - 1 && pts[s1 + 1][1] - pts[s0][1] <= STK && Math.abs(oAt(pts[s1 + 1][1]) - o0) <= 0.2) s1++;
+          const o = oAt((pts[s0][1] + pts[s1][1]) / 2), seg = pts.slice(s0, Math.min(pts.length, s1 + 2)).map((x) => [+x[0][0].toFixed(6), +x[0][1].toFixed(6)]);
+          res.push({ ...prop, o: Math.round(o * 20) / 20, g: seg });
+          s0 = s1;
+        }
+      });
     });
     return res;
   }

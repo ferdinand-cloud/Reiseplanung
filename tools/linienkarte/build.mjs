@@ -144,7 +144,7 @@ async function land(id, L) {
   // Zoomstufe je Art als Filter (eine minzoom je Objekt ließ tippecanoe deckungsgleiche Abschnitte zusammenwerfen – Linien fehlten)
   const zf = ["any"]; Object.keys(MINZ).forEach((m) => zf.push(["all", ["==", "m", m], [">=", "$zoom", MINZ[m]]]));
   const jf = JSON.stringify({ lines: zf, st: ["any", ["all", ["==", "r", 3], [">=", "$zoom", 9]], ["all", ["==", "m", "tram"], [">=", "$zoom", 13]], ["all", ["!=", "m", "tram"], [">=", "$zoom", 11]]] });
-  await run("tippecanoe", ["-o", pm, "--force", "-Z5", "-z14", "-P", "--no-tile-size-limit", "--simplification=2", "--simplify-only-low-zooms", "--buffer=16", "--no-simplification-of-shared-nodes", "-j", jf,
+  await run("tippecanoe", ["-o", pm, "--force", "-Z5", "-z14", "-P", "--no-tile-size-limit", "--simplification=2", "--simplify-only-low-zooms", "--buffer=16", "--no-clipping", "--no-simplification-of-shared-nodes", "-j", jf,
     "-n", "Linienkarte " + L.n, "-A", "© OpenStreetMap-Mitwirkende", gj]);
   log("geschrieben", pm, (fs.statSync(pm).size / 1e6).toFixed(1) + " MB");
   if (!process.env.LKKEEP) [rf, rl, op, sf, so, gj].forEach((f) => fs.rmSync(f, { force: true }));
