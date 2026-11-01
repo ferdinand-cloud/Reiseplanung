@@ -13,7 +13,7 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 **Lösung:** Neue Ebene `dbst` (Kreis in Busblau, weißer Rand) für Bushaltestellen von Zoom 14 bis 15,5, danach übernimmt das Symbol. Antippbar (in `DSTL`). Stärken in `OV.w.busDot`/`busDotRim`.
 
-**Commit/Version:** COMMIT · SW v502 · **Test:** „Busse auf der Straße …“ (Teil Haltestellen: Punkt bei 14,6, Symbol bei 16,2) – schlägt mit dem alten Stand fehl.
+**Commit/Version:** 89c0618 · SW v502 · **Test:** „Busse auf der Straße …“ (Teil Haltestellen: Punkt bei 14,6, Symbol bei 16,2) – schlägt mit dem alten Stand fehl.
 
 ---
 
@@ -28,7 +28,7 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 - App: gerichtete Stücke als eigenes Objekt (`sd = 1`), `line-offset` = 3,5 m rechts der Achse (Rechtsverkehr), in Pixel je Zoom und Breitengrad umgerechnet (exponentiell). Gilt für alle Stadtpakete außer London (dort eigener Bau, Linksverkehr).
 - Geprüft mit Testdaten (Wells Dr); echte Pakete baut die Action „Stadtpakete“ neu, Ergebnis im Log „Busse auf der Straße (OpenStreetMap)“.
 
-**Commit/Version:** COMMIT · SW v502 · **Test:** „Busse auf der Straße wie Apple Karten …“.
+**Commit/Version:** 89c0618 · SW v502 · **Test:** „Busse auf der Straße wie Apple Karten …“.
 
 ---
 
