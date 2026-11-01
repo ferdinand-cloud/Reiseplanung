@@ -21,7 +21,7 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 - Transitland-Beschriftung als Plakette in der Farbe der eigenen Linie (Busse in Busblau, `TLLBL`), wie bei den Paketen; als Bild statt Kartenschrift, dadurch auch ohne Schriftdatei.
 - Bündel für Transitland bleibt aus (Begründung oben); dafür Städte als Paket aufnehmen.
 
-**Commit/Version:** _(siehe unten)_ · SW v498 · **Test:** „Busse wie Apple Karten …“ erweitert (Übersicht nur Hauptbus, nah alle; Bus dünner als Bahn; Paket hat Vorrang vor Transitland; Transitland-Plakette).
+**Commit/Version:** c0e5d80 · SW v498 · **Test:** „Busse wie Apple Karten …“ erweitert (Übersicht nur Hauptbus, nah alle; Bus dünner als Bahn; Paket hat Vorrang vor Transitland; Transitland-Plakette).
 
 ## 2026-11-01 · Buslinien roh gezeichnet: lose Enden, schräge Abkürzungen, neben der Straße, Richtungen übereinander (Chicago, Vergleich Apple Karten)
 
