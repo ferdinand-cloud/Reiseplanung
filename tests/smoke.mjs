@@ -1991,6 +1991,23 @@ await test("Linienfarben: U-Bahn offiziell, Bus gedämpft, Fähre eigene Farbe, 
   ok(r.fbus > 60 && r.fsub > 60, "Fähre nicht klar unterscheidbar: "+JSON.stringify(r));
 });
 
+await test("Ebenen-Reihenfolge: ÖPNV-Linien über Flächen/Straßen und 3D-Gebäuden, Route darüber, Namen ganz oben", async () => {
+  await seed();
+  const r = JSON.parse(await rp(`(function(){
+    // nachgeladene Linienkarte (wie lkApply) muss unter der Route landen
+    map.addSource("lk-t", {type:"geojson", data:{type:"FeatureCollection", features:[]}}); map.addLayer({id:"lk-t-ln", type:"line", source:"lk-t", paint:{"line-width":lnWidth("metro")}, layout:ovLay("none")}, ovBelow()); ovCase("lk-t-ln");
+    var ids = map.getStyle().layers.map(function(l){ return l.id; }), at = function(x){ return ids.indexOf(x); };
+    var oe = ["vt-rail","bus","sub-cs","sub","dbus","dtr-cs","dtr","dtr-f-cs","dtr-f","lk-t-ln-cs","lk-t-ln"].filter(function(x){ return at(x) > -1; });
+    var rt = ["rt-case","rt-line","rt-dot","rt-hdot","rt-dash"], lbl = at(LBLB), base = ids.filter(function(x, i){ return i < lbl && /^(bg|bld|b3d)$/.test(x); });
+    return JSON.stringify({oe:oe.length, lbl:lbl, okBase:base.every(function(b){ return oe.every(function(x){ return at(b) < at(x); }); }),
+      okRt:oe.every(function(x){ return rt.every(function(y){ return at(x) < at(y); }); }), okLbl:rt.concat(oe).every(function(x){ return at(x) < lbl; }), ids:ids.slice(0, 40)});
+  })()`));
+  ok(r.oe >= 9 && r.lbl > -1, "ÖPNV-Ebenen fehlen: "+JSON.stringify(r));
+  ok(r.okBase, "ÖPNV-Linien nicht über Flächen/Gebäuden: "+JSON.stringify(r.ids));
+  ok(r.okRt, "Route nicht über den ÖPNV-Linien: "+JSON.stringify(r.ids));
+  ok(r.okLbl, "Linien/Route nicht unter den Namen: "+JSON.stringify(r.ids));
+});
+
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
