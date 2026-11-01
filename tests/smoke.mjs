@@ -6125,7 +6125,7 @@ await test("Linienkarte-Bau: Platzwechsel gleiten, keine losen Stummel, U-Bahn n
   const ln = (a, b, n) => Array.from({length:n+1}, (_, i) => [+(a[0]+(b[0]-a[0])*i/n).toFixed(6), +(a[1]+(b[1]-a[1])*i/n).toFixed(6)]);
   const W = new Map([[1, ln([13.38, 52.50], [13.38, 52.51], 20)], [2, ln([13.38, 52.51], [13.38, 52.52], 20)], [3, ln([13.38, 52.51], [13.39, 52.52], 20)],
     [4, [[13.38, 52.505], [13.3803, 52.5052]]], [5, ln([13.38022, 52.50], [13.38022, 52.51], 20)]]);
-  // fünf Linien auf der Stammstrecke; nur S1 fährt geradeaus weiter (Platz −2 → höchstens 1,5 neben der Mitte), die anderen biegen ab
+  // fünf Linien auf der Stammstrecke; nur S1 fährt geradeaus weiter (Platz −2 → mittig auf dem eigenen Gleis), die anderen biegen ab
   const lines = [{m:"sbahn", k:"S1", c:"#DE4DA4"}, {m:"sbahn", k:"S2", c:"#007734"}, {m:"sbahn", k:"S25", c:"#00A13A"}, {m:"sbahn", k:"S26", c:"#0098D4"}, {m:"sbahn", k:"S3", c:"#00598C"}, {m:"metro", k:"U8", c:"#224F86"}];
   const RL = [[[1, 2, 4]], [[1, 3, 4]], [[1, 3]], [[1, 3]], [[1, 3]], [[5]]], pos = new Int32Array([0, 1, 2, 3, 4, 5]);
   const F = linienGraph({lines, RL, W, pos, natCmp:(a, b) => String(a).localeCompare(String(b), "de", {numeric:true})});
@@ -6137,10 +6137,30 @@ await test("Linienkarte-Bau: Platzwechsel gleiten, keine losen Stummel, U-Bahn n
   // S1 und S2 je Strich: aneinanderstoßende Stücke unterscheiden sich höchstens um 0,25 Plätze (gleiten statt springen)
   const jump = [];
   ["S1", "S2"].forEach(k => { const P = F.filter(f => f.k===k);
-    P.forEach((a, i) => P.forEach((b, j) => { if(i < j && (d(a.g[a.g.length-1], b.g[0]) < 12 || d(b.g[b.g.length-1], a.g[0]) < 12) && Math.abs(a.o - b.o) > 0.25) jump.push(k+":"+a.o+"→"+b.o); })); });
+    // aufeinanderfolgende Stücke überlappen um einen Abschnitt: das nächste beginnt am vorletzten Punkt des vorigen
+    P.forEach((a, i) => P.forEach((b, j) => { if(i !== j && a.g.length > 1 && d(a.g[a.g.length-2], b.g[0]) < 0.05 && d(a.g[a.g.length-1], b.g[1]) < 0.05 && Math.abs(a.o - b.o) > 0.25) jump.push(k+":"+a.o+"→"+b.o); })); });
   ok(jump.length===0, "Platz springt zwischen Stücken: "+jump.join(", "));
   const s1 = F.filter(f => f.k==="S1"), os = s1.map(f => f.o);
-  ok(os.some(o => Math.abs(Math.abs(o) - 2) < 0.01) && os.some(o => Math.abs(Math.abs(o) - 1.5) < 0.01) && os.some(o => Math.abs(o) > 1.55 && Math.abs(o) < 1.95), "S1 gleitet nicht vom Platz 2 auf 1,5: "+JSON.stringify(os));
+  // allein auf dem eigenen Gleis liegt S1 mittig (Seitenzweig) und gleitet dorthin
+  ok(os.some(o => Math.abs(Math.abs(o) - 2) < 0.01) && os.some(o => Math.abs(o) < 0.01) && os.filter(o => Math.abs(o) > 0.2 && Math.abs(o) < 1.8).length >= 4, "S1 gleitet nicht vom Platz 2 in die Mitte: "+JSON.stringify(os));
+});
+
+await test("Linienkarte-Bau: Reihenfolge im Bündel folgt den Abzweigen – wer rechts abbiegt, liegt rechts, keine unnötigen Kreuzungen", async () => {
+  const { linienGraph } = await import("../tools/linienkarte/graph.mjs");
+  const ln = (a, b, n) => Array.from({length:n+1}, (_, i) => [+(a[0]+(b[0]-a[0])*i/n).toFixed(6), +(a[1]+(b[1]-a[1])*i/n).toFixed(6)]);
+  // Stamm Süd→Nord; am Nordende biegt S1 nach Westen (links), S2 nach Osten (rechts) ab.
+  // Die feste Reihenfolge (pos) wäre S2, S3, S1 – also falsch herum; nur die Geometrie ergibt die richtige Lage.
+  const W = new Map([[1, ln([13.38, 52.50], [13.38, 52.51], 20)], [2, ln([13.38, 52.51], [13.37, 52.52], 20)], [3, ln([13.38, 52.51], [13.39, 52.52], 20)],
+    [4, ln([13.38, 52.51], [13.38, 52.52], 20)]]);
+  const lines = [{m:"sbahn", k:"S1", c:"#DE4DA4"}, {m:"sbahn", k:"S2", c:"#007734"}, {m:"sbahn", k:"S3", c:"#0098D4"}];
+  const RL = [[[1, 2]], [[1, 3]], [[1, 4]]], pos = new Int32Array([2, 0, 1]);
+  const F = linienGraph({lines, RL, W, pos, natCmp:(a, b) => String(a).localeCompare(String(b), "de", {numeric:true})});
+  const on = (k) => F.filter(f => f.k===k && f.g[0][1] < 52.505);
+  const o1 = on("S1"), o2 = on("S2"), o3 = on("S3");
+  ok(o1.length && o2.length && o3.length, "Stamm fehlt: "+F.map(f => f.k).join());
+  // Richtung der Stücke: Süd→Nord oder umgekehrt – rechts heißt dann o größer bzw. kleiner
+  const up = o1[0].g[o1[0].g.length-1][1] > o1[0].g[0][1], sgn = up ? 1 : -1, mid = (a) => a[Math.floor(a.length/2)].o * sgn;
+  ok(mid(o1) < mid(o3) && mid(o3) < mid(o2), "Reihenfolge auf dem Stamm (in Fahrtrichtung links→rechts) soll S1, S3, S2 sein: S1 "+mid(o1)+", S3 "+mid(o3)+", S2 "+mid(o2));
 });
 
 /* ------------------------------------------------------------------ Ergebnis */

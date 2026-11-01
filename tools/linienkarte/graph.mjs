@@ -1,6 +1,6 @@
 // Liniengraph (Ansatz wie Liniennetzpläne): parallele Gleise einer Strecke (beide Richtungen, S-Bahn neben Fernbahn) werden zu einer
 // gemeinsamen Mittellinie zusammengelegt. Daraus entstehen durchgehende Streckenstücke mit fester Linienmenge, die vor dem Versatz
-// geglättet werden. Jede Linie liegt je Streckenstück genau einmal im Bündel, die Reihenfolge ist überall dieselbe.
+// geglättet werden. Jede Linie liegt je Streckenstück genau einmal im Bündel; die Reihenfolge folgt den Abzweigen (rechts abbiegend = rechts).
 //
 //  1. je Gruppe (Bahn, Straßenbahn, Seilbahn, Fähre) alle Wege aller Relationen, ohne Richtungswahl
 //  2. Wege verdichten (Punkt alle paar Meter); jeder Punkt rastet auf einen Knoten eines anderen Wegs ein, wenn der nah genug und gleich
@@ -11,7 +11,8 @@
 //  5. glätten (gleitendes Mittel, Enden fest), vereinfachen
 //  6. je Stück und Strich (gleiche Art + Farbe) ein Objekt mit Platz o im Bündel nach fester Reihenfolge
 //  7. Übergänge (Ferdinand 01.11.): über Knoten hinweg geglättet; an Knoten gleitet der Platz über 60 m auf den des Nachbarstücks; jeder Strich
-//     reicht 10 m über den Knoten; Ausgabe in Stücken ≤ 400 m bzw. ≤ 0,2 Plätze; lose kurze Stummel fallen weg; U-Bahn als eigene Gruppe.
+//     reicht 10 m über den Knoten; Ausgabe in Stücken ≤ 400 m bzw. ≤ 0,2 Plätze; lose kurze Stummel und Inseln neben der eigenen Linie fallen weg; Reihenfolge im Bündel aus den Abzweigen,
+//     Seitenzweige mittig auf ihrem Gleis; U-Bahn als eigene Gruppe.
 //     Kacheln ohne Abschneiden (build.mjs --no-clipping): abgeschnittene Enden mit Versatz knickten quer übers Bündel
 
 const R = 111320;
@@ -205,6 +206,20 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
             const da = at3.get(a).length, db = at3.get(b).length; if ((da === 1) === (db === 1)) return; const n = da === 1 ? b : a;
             const oth = at3.get(n).filter((j) => j !== i && !stub.has(j));
             if (LS[c.ls].every((li) => oth.filter((j) => LS[CH[j].ls].includes(li)).length >= 2)) stub.add(i); });
+          // Inseln: kurzes Stück ohne Anschluss an beiden Enden, dessen Linien gleich daneben (≤ 250 m) auf anderen Stücken fahren
+          // (zweite Ebene eines Bahnhofs, nicht eingerastetes Parallelgleis) – sonst lose Enden quer übers Bündel
+          const byL = new Map(); CH.forEach((c, i) => { for (const li of LS[c.ls]) { let x = byL.get(li); if (!x) byL.set(li, x = []); x.push(i); } });
+          CH.forEach((c, i) => { if (c.L >= 800 || stub.has(i)) return; const a = c.ns[0], b = c.ns[c.ns.length - 1]; if (a === b || at3.get(a).length !== 1 || at3.get(b).length !== 1) return;
+            const pts = [c.ns[0], c.ns[c.ns.length >> 1], c.ns[c.ns.length - 1]].map((n) => [NX[n], NY[n]]);
+            if (LS[c.ls].every((li) => byL.get(li).some((j) => j !== i && !stub.has(j) && pts.every((q) => nearPoly(q, CH[j]) < 250)))) stub.add(i); });
+          // kurze Schleifen (Anfang = Ende, Gleisdreieck/Wendeschleife im Bahnhof), deren Linien auch anderswo fahren: geglättet würden sie zu Querstrichen
+          CH.forEach((c, i) => { if (c.L >= 800 || stub.has(i) || c.ns[0] !== c.ns[c.ns.length - 1]) return;
+            if (LS[c.ls].every((li) => byL.get(li).some((j) => j !== i && !stub.has(j)))) stub.add(i); });
+          // lose Doppel: Stück mit einem freien Ende, das bis zum Ende dicht neben einem anderen Stück derselben Linie(n) läuft (ein Gleis eingerastet, das andere nicht)
+          CH.forEach((c, i) => { if (c.L >= 800 || stub.has(i)) return; const a = c.ns[0], b = c.ns[c.ns.length - 1]; if (a === b) return;
+            const da = at3.get(a).length, db = at3.get(b).length; if ((da === 1) === (db === 1)) return;
+            const pts = [da === 1 ? a : b, c.ns[c.ns.length >> 1]].map((n) => [NX[n], NY[n]]);
+            if (LS[c.ls].every((li) => byL.get(li).some((j) => j !== i && !stub.has(j) && pts.every((q) => nearPoly(q, CH[j]) < 2.5 * P.snap)))) stub.add(i); });
           if (stub.size) { CH = CH.filter((_, i) => !stub.has(i)); ch = true; } }
         // wieder verbinden
         const at = new Map(); CH.forEach((c, i) => { [0, 1].forEach((e) => { const n = e ? c.ns[c.ns.length - 1] : c.ns[0]; let x = at.get(n); if (!x) at.set(n, x = []); x.push([i, e]); }); });
@@ -263,7 +278,41 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
     const CEN = new Float64Array(chains.length).fill(NaN), hd = (i) => chains[i].ns[rev[i] ? chains[i].ns.length - 1 : 0], tl = (i) => chains[i].ns[rev[i] ? 0 : chains[i].ns.length - 1];
     const at2 = new Map(), put2 = (n, x) => { let a = at2.get(n); if (!a) at2.set(n, a = []); a.push(x); };
     chains.forEach((_, i) => { put2(hd(i), [i, 0]); put2(tl(i), [i, 1]); });
+    // Reihenfolge je Stück aus der Geometrie (Ferdinand 01.11.: systematisch statt fester Reihenfolge): für je zwei Striche den gemeinsamen Weg
+    // in Fahrtrichtung verfolgen, bis sie sich trennen – wer dort nach rechts abbiegt, liegt rechts. Ohne Trennung vorn entscheidet die Trennung hinten
+    // (gespiegelt); ohne beides die feste Reihenfolge. Benachbarte Stücke sehen dieselben Trennungen und ordnen gleich – Kreuzungen nur, wo sie
+    // unvermeidbar sind (dann am Zusammenfluss).
+    const QS = SA.map((a) => new Set(a.map((e) => e.q)));
+    const onn = (c, d) => { const a = rev[c] ? chains[c].ns.slice().reverse() : chains[c].ns; return d ? a.slice().reverse() : a; };
+    const vecAt = (ns, fromEnd) => { const k = Math.cos(NY[ns[0]] * Math.PI / 180), m = ns.length;
+      const p0 = fromEnd ? ns[m - 1] : ns[0]; let p1 = p0;
+      for (let t = 1; t < m; t++) { p1 = fromEnd ? ns[m - 1 - t] : ns[t]; if (Math.hypot((NX[p1] - NX[p0]) * k, NY[p1] - NY[p0]) * R > 80) break; }
+      const vx = (NX[p1] - NX[p0]) * k, vy = NY[p1] - NY[p0]; return fromEnd ? [-vx, -vy] : [vx, vy]; };
+    const cLen = (c) => chains[c].ns.length * P.step;
+    const nexts = (c, d) => { const n = d ? hd(c) : tl(c); return (at2.get(n) || []).filter(([j]) => j !== c).map(([j, e]) => [j, e]); };
+    const best = (arr, c) => { let b = arr[0], bs = -1; for (const x of arr) { let s = 0; for (const q of QS[x[0]]) if (QS[c].has(q)) s++; if (s > bs) { bs = s; b = x; } } return b; };
+    const side = (i, d, a, b) => { let c = i, dd = d, L = 0;
+      for (let st = 0; st < 60 && L < 15000; st++) {
+        const nx = nexts(c, dd), ca = nx.filter(([j]) => QS[j].has(a)), cb = nx.filter(([j]) => QS[j].has(b)), both = ca.filter(([j]) => QS[j].has(b));
+        // eigener Abzweig einer Linie (Linie teilt sich oder liegt auf einem Nachbargleis) entscheidet vor dem gemeinsamen Weiterweg
+        if (!ca.length || !cb.length) return 0;
+        const ea = ca.filter(([j]) => !QS[j].has(b)), eb = cb.filter(([j]) => !QS[j].has(a));
+        if (!ea.length && !eb.length) { if (!both.length) return 0; const [j, e] = best(both, c); c = j; dd = e; L += cLen(j); continue; }
+        const vi = vecAt(onn(c, dd), true), ang = ([j, e]) => { const v = vecAt(onn(j, e), false); return Math.atan2(vi[0] * v[1] - vi[1] * v[0], vi[0] * v[0] + vi[1] * v[1]); };
+        const da = ang(best(ea.length ? ea : ca, c)), db = ang(best(eb.length ? eb : cb, c));
+        return Math.abs(da - db) < 0.02 ? 0 : da < db ? 1 : -1; // kleinerer Winkel = weiter rechts
+      }
+      return 0; };
+    SA.forEach((arr, i) => { if (arr.length < 2) return;
+      const memo = new Map(), r = (a, b) => { const k = a.q + "\n" + b.q; if (!memo.has(k)) { const f = side(i, 0, a.q, b.q); memo.set(k, f || -side(i, 1, a.q, b.q)); } return memo.get(k); };
+      const out = []; // Einfügen: Abstand zur festen Reihenfolge so klein wie möglich, Geometrie hat Vorrang
+      for (const e of arr) { let at = out.length; while (at > 0) { const v = r(out[at - 1], e); if (v > 0 || (v === 0 && out[at - 1].p > e.p)) at--; else break; } out.splice(at, 0, e); }
+      SA[i] = out; });
     const ordr = chains.map((_, i) => i).sort((x, y) => SA[y].length - SA[x].length || chains[y].ns.length - chains[x].ns.length);
+    const mainOf = (i, n, ei) => { let b = -1, bs = 0, bl = 0;
+      for (const [j, ej] of at2.get(n) || []) { if (j === i || ej === ei) continue; let s = 0; for (const q of QS[j]) if (QS[i].has(q)) s++;
+        if (s > bs || (s === bs && s > 0 && SA[j].length > bl)) { b = j; bs = s; bl = SA[j].length; } }
+      return b; };
     for (const s0 of ordr) {
       if (!isNaN(CEN[s0])) continue;
       CEN[s0] = (SA[s0].length - 1) / 2; const q = [s0];
@@ -271,6 +320,7 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
         const i = q.shift(), oi = new Map(); SA[i].forEach((e, k) => oi.set(e.q, k - CEN[i]));
         for (const [n, ei] of [[hd(i), 0], [tl(i), 1]]) for (const [j, ej] of at2.get(n) || []) {
           if (j === i || !isNaN(CEN[j]) || ei === ej) continue; // nur Übergänge in Fahrtrichtung (Ende → Anfang)
+          if (mainOf(i, n, ei) !== j) continue; // nur die Hauptfortsetzung behält die Plätze; Seitenzweige liegen mittig auf ihrem eigenen Gleis
           let so = 0, sk = 0, c = 0; SA[j].forEach((e, k) => { if (oi.has(e.q)) { so += oi.get(e.q); sk += k; c++; } });
           if (!c) continue;
           const mid = (SA[j].length - 1) / 2; CEN[j] = Math.max(mid - 1.5, Math.min(mid + 1.5, sk / c - so / c)); q.push(j);
@@ -297,19 +347,31 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
       const g = RAW[i], h = bestNb(i, true), t = bestNb(i, false), K = HG + 2;
       const pre = !h ? [] : h[1] === 1 ? RAW[h[0]].slice(-K - 1, -1) : RAW[h[0]].slice(1, K + 1).reverse();
       const post = !t ? [] : t[1] === 0 ? RAW[t[0]].slice(1, K + 1) : RAW[t[0]].slice(-K - 1, -1).reverse();
-      const sm = glatt(pre.concat(g, post), HG).slice(pre.length, pre.length + g.length);
-      return vereinfache(sm, 0.3); });
+      return glatt(pre.concat(g, post), HG).slice(pre.length, pre.length + g.length); });
+    // Knoten nach dem Glätten an einer gemeinsamen Stelle: die des Stücks mit den meisten Linien; die anderen Stücke laufen über HG Punkte dorthin
+    // (sonst endet jedes Stück an einer etwas anderen Stelle – Versatzsprung zwischen Hauptstrecke und Abzweig)
+    const KN = new Map();
+    chains.forEach((c, i) => { const g = GG[i]; [[hd(i), g[0]], [tl(i), g[g.length - 1]]].forEach(([n, p]) => { const x = KN.get(n); if (!x || SA[i].length > x[1]) KN.set(n, [p, SA[i].length]); }); });
+    GG.forEach((g, i) => { const m = g.length; if (m < 2) return;
+      for (const [n, head] of [[hd(i), true], [tl(i), false]]) { const p = KN.get(n)[0], e = head ? g[0] : g[m - 1], dx = p[0] - e[0], dy = p[1] - e[1]; if (!dx && !dy) continue;
+        const K = Math.min(HG, m - 1); for (let t = 0; t <= K; t++) { const w = 1 - t / (K + 1), j = head ? t : m - 1 - t; g[j] = [g[j][0] + dx * w, g[j][1] + dy * w]; } } });
+    GG.forEach((g, i) => { GG[i] = vereinfache(g, 0.3); });
     // Fortsetzung am Knoten: Punkte des anschließenden Stücks mit derselben Linie (bis EXT Meter), vom Knoten weg geordnet.
     // Der Strich reicht so über den Knoten hinaus – die Ecke am Knoten liegt innerhalb eines Strichs (runde Ecke statt gespreizter Enden)
     const ext = (i, q, head) => { const n = head ? hd(i) : tl(i);
       for (const [j, ej] of at2.get(n) || []) { if (j === i || !OO[j].has(q) || GG[j].length < 2) continue;
         const g = ej === 1 ? GG[j].slice().reverse() : GG[j], out = []; let L = 0; // ej 1: j endet am Knoten → rückwärts lesen
         for (let t = 1; t < g.length && L < EXT; t++) { L += dist(g[t - 1], g[t]); out.push([g[t], L]); }
+        // nur in Fortsetzung der eigenen Richtung (sonst kehrt der Strich am Knoten um: Querstrich übers Bündel)
+        const o = GG[i], e0 = head ? o[0] : o[o.length - 1], e1 = head ? o[Math.min(1, o.length - 1)] : o[Math.max(0, o.length - 2)];
+        if (out.length) { const k = Math.cos(e0[1] * Math.PI / 180), ux = (e0[0] - e1[0]) * k, uy = e0[1] - e1[1], vx = (out[0][0][0] - e0[0]) * k, vy = out[0][0][1] - e0[1];
+          if (ux * vx + uy * vy <= 0.5 * Math.hypot(ux, uy) * Math.hypot(vx, vy)) return []; } // mehr als 60° Knick: nicht verlängern
         return out; }
       return []; };
     chains.forEach((c, i) => {
       const g = GG[i]; if (g.length < 2) return;
       const D = [0]; for (let t = 1; t < g.length; t++) D.push(D[t - 1] + dist(g[t - 1], g[t])); const T = D[D.length - 1], TZ = Math.min(RAMP, T / 2);
+      if (T < 2 * EXT) return; // winzige Stücke (Weichen, Knotenpaare): die Nachbarn reichen mit ihrer Fortsetzung darüber; eigene Striche wären nur Querstriche
       const arr = SA[i], n = arr.length;
       arr.forEach((e) => { const ks = [...new Set(e.ks)].sort(natCmp), own = OO[i].get(e.q), oh = endO(i, e.q, true), ot = endO(i, e.q, false);
         const oAt = (d) => { d = Math.max(0, Math.min(T, d)); return own + (TZ > 0 ? (oh - own) * Math.max(0, 1 - d / TZ) + (ot - own) * Math.max(0, 1 - (T - d) / TZ) : 0); };
@@ -325,7 +387,8 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
         let s0 = 0;
         while (s0 < pts.length - 1) {
           const o0 = oAt(pts[s0][1]); let s1 = s0 + 1;
-          while (s1 < pts.length - 1 && pts[s1 + 1][1] - pts[s0][1] <= STK && Math.abs(oAt(pts[s1 + 1][1]) - o0) <= 0.2) s1++;
+          const cut = (a, b) => (oh !== own && a < TZ - 0.5 && b > TZ + 0.5) || (ot !== own && a < T - TZ - 0.5 && b > T - TZ + 0.5); // Rampe und Gerade getrennt
+          while (s1 < pts.length - 1 && pts[s1 + 1][1] - pts[s0][1] <= STK && Math.abs(oAt(pts[s1 + 1][1]) - o0) <= 0.2 && !cut(pts[s0][1], pts[s1 + 1][1])) s1++;
           const o = oAt((pts[s0][1] + pts[s1][1]) / 2), seg = pts.slice(s0, Math.min(pts.length, s1 + 2)).map((x) => [+x[0][0].toFixed(6), +x[0][1].toFixed(6)]);
           res.push({ ...prop, o: Math.round(o * 20) / 20, g: seg });
           s0 = s1;
