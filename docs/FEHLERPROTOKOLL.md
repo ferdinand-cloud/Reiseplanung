@@ -5,6 +5,18 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-01 · Bündel ohne Lücken: Linien liegen direkt aneinander (Chicago Loop, Vergleich Apple)
+
+**Meldung:** Ferdinand 00:25 (Screenshots Apple vs. App): Bei Apple sind zwischen nebeneinanderliegenden Linien kleine weiße Lücken, bei uns nicht.
+
+**Ursache:** Abstand je Platz im Bündel (`OV.w.off`) war kaum größer als die Linienbreite: Zoom 16 Bahn 3 px breit, Abstand 3,3 px → 0,3 px Lücke; Zoom 14: 2 px breit bei ~2,6 px Abstand. Der weiße Rand (`ovCase`, eigene Ebene unter den Linien) lag dadurch vollständig unter der Nachbarlinie.
+
+**Lösung:** `OV.w.off` = Linienbreite + Lücke je Zoom (12: +0,7 · 14: +1,1 · 16: +1,5 · 18: +1,9 px). Die Lücke ist schmaler als der doppelte weiße Rand, also durchgehend weiß. Alles, was mit `OV.w.off` rechnet, wandert mit: New Yorker Versatz in der Form (v491), Linienkarte, Stadtpakete, Transitland, Stationspunkte (v500; Bezug Zoom 16 jetzt `ovAt(OV.w.off, 16)` statt fest 3,3). Bündel werden etwas breiter (5 Linien bei Zoom 16 ≈ 18 statt 13 px).
+
+**Commit/Version:** COMMIT · SW v501 · **Test:** „Lücken im Bündel wie Apple Karten …“ – schlägt mit dem alten Stand fehl (Lücke 0,3 px).
+
+---
+
 ## 2026-11-01 · Volltest v500: „Grafikkarte … Stationen bleiben nach Ausschalten“ (wackelig)
 
 **Meldung:** Klicktests-Lauf 41356154270 (main 7514d3c, v500): ein Test rot, beide Versuche, Lauf mit 704 s deutlich langsamer als sonst.

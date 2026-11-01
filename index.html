@@ -10332,7 +10332,7 @@ var OV = {
   z:{mode:{long:7, reg:8, train:8, sbahn:9, metro:9, light:10, ferry:11, tram:12, funi:12}, bus:13.5, busStop:15.5, grid:5, stop:11, stopIcon:14, stopName:12, lineBadge:13.5, busBadge:15, tl:9, tlBus:12},
   // Stärken wie Apple Karten: in der Stadtansicht fein, beim Hineinzoomen kräftiger (bis Zoom 18); Bus immer dünner als Bahn
   w:{rail:{10:{tram:.6, funi:.7, x:.8}, 12:{tram:.9, funi:1, x:1.2}, 14:{tram:1.5, funi:1.6, x:2}, 16:{tram:2.3, funi:2.4, x:3}, 18:{tram:3.4, funi:3.4, x:4.5}}, // Bahnlinien je Verkehrsmittel (x = alle übrigen)
-    off:[8,.5, 11.5,1.2, 13,2.2, 16,3.3, 18,4.8], // Versatz je Platz (Linien nebeneinander), wächst mit der Stärke
+    off:[8,.6, 10,1.2, 12,1.9, 14,3.1, 16,4.5, 18,6.4], // Versatz je Platz = Linienbreite (x) + Lücke (Zoom 12: .7, 14: 1.1, 16: 1.5, 18: 1.9 px): der weiße Rand scheint zwischen den Linien des Bündels durch wie bei Apple Karten (Ferdinand 01.11.)
     bus:[11,.4, 14,.8, 16,1.5, 18,2.4], busNyc:[11,.4, 14,.8, 16,1.5, 18,2.4], tlBus:[12,.4, 14,.8, 16,1.5, 18,2.4], ferry:[10,1, 13,1.6, 16,2.4, 18,3.2], tlFerry:[10,.9, 13,1.4, 16,2.2, 18,3], grid:[5,.9, 8,1.3, 12,1.5, 16,2.4],
     "case":[10,.5, 12,.7, 14,.9, 16,1.2, 18,1.6], // Randbreite je Seite
     stop:[11,1.8, 13,3, 15,4.2, 17,5.5], stopRim:[11,1, 14,1.6, 17,2.2], stopIcon:[14,.85, 16,1.05], stopX:1.4, stopIconX:1.25}, // Stationspunkt: weiß mit Rand in der Farbe des Verkehrsmittels, wächst mit dem Zoom
@@ -13400,7 +13400,7 @@ function dAddLayers(){
   map.addLayer({id:"dtr", type:"line", source:"dtr", filter:["!=",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":lnWidth(["get","m"]), "line-offset":lnOffset(["coalesce", ["get","o"], 0])}, layout:ovLay("none")}, ovBelow());
   map.addLayer({id:"dtr-f", type:"line", source:"dtr", filter:["==",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":ovZ(OV.w.ferry), "line-dasharray":OV.dash.ferry, "line-opacity":OV.op.ferry}, layout:ovLay("none")}, ovBelow()); ovCase("dtr"); ovCase("dtr-f");
   // Punkt je Linie an der Station (wie Apple Karten), Größe und Versatz wachsen wie line-offset (Bezug Zoom 16 = 1)
-  var dz = OV.w.off.slice(); for(var di = 1; di < dz.length; di += 2) dz[di] = +(dz[di]/3.3).toFixed(3);
+  var dz = OV.w.off.slice(); for(var di = 1; di < dz.length; di += 2) dz[di] = +(dz[di]/ovAt(OV.w.off, 16)).toFixed(3);
   map.addLayer({id:"ddot", type:"symbol", source:"ddot", minzoom:OV.z.stop, layout:{visibility:"none", "icon-image":["get","img"], "icon-rotate":["get","rot"], "icon-rotation-alignment":"map", "icon-pitch-alignment":"map", "icon-size":ovZ(dz), "icon-allow-overlap":true, "icon-ignore-placement":true}});
   map.addLayer({id:"dst", type:"circle", source:"dst", minzoom:OV.z.stop, maxzoom:OV.z.stopIcon, paint:STPAINT(), layout:{visibility:"none"}});
   // ab Zoom 14 Stationssymbol (Wagen in der Farbe des Verkehrsmittels) statt Punkt
@@ -13713,7 +13713,7 @@ function tpImg(id){
   if(!/^(t[lbsn]|pd)\|/.test(id)) return false;
   var p = id.split("|"), list = [];
   if(p[0]==="tb") return tpBus(id, p[1], p[2], p[3], p[4]==="d");
-  if(p[0]==="pd"){ var dd = (+p[2] || 0)*3.3, R = dd + 5.5; mkImg(id, 2*R, 2*R, function(g, x, y){ g.beginPath(); g.arc(x, y - dd, 3.6, 0, 7); g.fillStyle = "#fff"; g.fill(); g.beginPath(); g.arc(x, y - dd, 2.5, 0, 7); g.fillStyle = p[1]; g.fill(); }); return true; } // Stationspunkt auf der Linie: Versatz nach oben, gedreht auf die Seite der Linie
+  if(p[0]==="pd"){ var dd = (+p[2] || 0)*ovAt(OV.w.off, 16), R = dd + 5.5; mkImg(id, 2*R, 2*R, function(g, x, y){ g.beginPath(); g.arc(x, y - dd, 3.6, 0, 7); g.fillStyle = "#fff"; g.fill(); g.beginPath(); g.arc(x, y - dd, 2.5, 0, 7); g.fillStyle = p[1]; g.fill(); }); return true; } // Stationspunkt auf der Linie: Versatz nach oben, gedreht auf die Seite der Linie
   if(p[0]==="tn") return tpName(id, p[1], p[2], p[3]==="d");
   if(p[0]==="ts"){ mkImg(id, 16, 16, function(g){ tpMode(g, 0, 0, p[1], 16); g.lineWidth = 1; g.strokeStyle = "rgba(255,255,255,.9)"; tpRR(g, .9, .9, 14.2, 14.2, 3.3); g.stroke(); }); return true; } // gleiches Symbol wie vor den Linienreihen
   if(p[0]==="tl"){ var c = p[2] || "#5B6B7A"; String(p[1]||"").split(" · ").filter(Boolean).forEach(function(k){ list.push([k, c]); }); }

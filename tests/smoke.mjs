@@ -6387,6 +6387,17 @@ await test("Stationen wie Apple Karten: auf jeder Linie des Bündels ein Punkt i
   await page.unroute(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//);
 });
 
+await test("Lücken im Bündel wie Apple Karten: Abstand je Platz = Linienbreite + Lücke, weißer Rand scheint durch, Stationspunkte wandern mit", async () => {
+  await seed();
+  const r = await rp(`(function(){ var w = function(z){ var k = Object.keys(OV.w.rail).map(Number).sort(function(a, b){ return a - b; }), a = []; k.forEach(function(x){ a.push(x, OV.w.rail[x].x); }); return ovAt(a, z); };
+    return [12, 14, 16, 18].map(function(z){ return {z:z, gap:+(ovAt(OV.w.off, z) - w(z)).toFixed(2), cs:+(2*ovAt(OV.w["case"], z)).toFixed(2)}; }); })()`);
+  ok(r.every(x => x.gap >= 0.6 && x.gap <= x.cs), "Lücke zwischen den Linien fehlt oder ist breiter als der weiße Rand: "+JSON.stringify(r));
+  ok(r.find(x => x.z===16).gap >= 1.3, "Lücke bei Zoom 16 zu klein: "+JSON.stringify(r));
+  // Stationspunkt-Bild (pd) und icon-size rechnen mit demselben Abstand: bei Zoom 16 Maßstab 1, Versatz im Bild = Platz × Abstand
+  const d = await rp(`(function(){ tpImg("pd|#009B3A|1"); var im = map.getImage("pd|#009B3A|1"), R = ovAt(OV.w.off, 16) + 5.5; return {ok:!!im, w:im ? im.data.width/im.pixelRatio : 0, R:R}; })()`);
+  ok(d.ok && Math.abs(d.w - 2*d.R) < 1, "Stationspunkt-Versatz folgt dem Abstand nicht: "+JSON.stringify(d));
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }
