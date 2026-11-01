@@ -2130,6 +2130,23 @@ await test("NYC-Stationen bis zu den Endstationen (Coney Island, Far Rockaway, F
   ok(await rp(`map.queryRenderedFeatures({layers:["subst-ic"]}).length > 0 && map.queryRenderedFeatures({layers:["subst-lbl"]}).some(function(f){ return f.properties.n==="Coney Island-Stillwell Av"; })`), "Coney Island-Stillwell Av nicht auf der Karte");
 });
 
+await test("Stationsname weicht den Kartenknöpfen aus: am rechten Rand links vom Symbol (Fulton St)", async () => {
+  await seed();
+  await rp(`layers.sub = true; select(null); setSheet("min"); layers.route = false; applyLayers(); STKEY = ""; stSet(true); map.jumpTo({center:[-74.0078, 40.7088], zoom:16}); true`);
+  await page.waitForFunction(() => window.__rp(`!map.isMoving() && map.loaded() && map.queryRenderedFeatures({layers:["subst-lbl"]}).length > 0`), null, {timeout:8000}).catch(() => {}); await page.waitForTimeout(400);
+  await rp(`stFlip(); true`); await page.waitForTimeout(600);
+  const r = JSON.parse(await rp(`(function(){ var mr = map.getContainer().getBoundingClientRect(), rs = [].map.call(document.querySelectorAll("#ctrl .cg"), function(el){ var r = el.getBoundingClientRect(); return [r.left - mr.left, r.top - mr.top, r.right - mr.left, r.bottom - mr.top]; }).filter(function(r){ return r[2] > r[0]; });
+    var out = []; map.queryRenderedFeatures({layers:["subst-lbl"]}).forEach(function(f){ var p = f.properties, q = map.project(f.geometry.coordinates), im = map.getImage("tn|"+p.n+"|"+p.lb+"|"+(isDark() ? "d" : "l")); if(!im) return;
+      var w = im.data.width/im.pixelRatio, h = im.data.height/im.pixelRatio, x0 = p.f ? q.x - 13 - w : q.x + 13, box = [x0, q.y - 10, x0 + w, q.y - 10 + h];
+      out.push({n:p.n, f:p.f, hit:rs.some(function(r){ return box[0] < r[2] && box[2] > r[0] && box[1] < r[3] && box[3] > r[1]; })}); });
+    return JSON.stringify({out:out, anchor:JSON.stringify(map.getLayoutProperty("subst-lbl","icon-anchor"))}); })()`));
+  const fu = r.out.find(x => x.n==="Fulton St");
+  ok(/top-right/.test(r.anchor), "Name kann nicht nach links: "+r.anchor);
+  ok(fu && fu.f===1 && !fu.hit, "Fulton St liegt unter den Kartenknöpfen: "+JSON.stringify(r.out));
+  ok(r.out.every(x => !x.hit), "Name unter den Kartenknöpfen: "+JSON.stringify(r.out));
+  await shot("x-fulton-flip-z16");
+});
+
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});

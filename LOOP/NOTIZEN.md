@@ -50,6 +50,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 - Aufgabe 15: `tools/nyc-subway/stations.mjs` ergänzt fehlende Stationen aus dem MTA-GTFS (stops/trips/stop_times; Linien je Station aus den Fahrten, 6X/7X/FX → Grundlinie, GS/FS → S, H/SI weggelassen). 183 neu (292 → 475), hinten angehängt – alte Nummern („sub:Nummer“) bleiben. Vorhanden = gleicher Name < 120 m.
 
+- Aufgabe 16: `stFlip()` nach jedem Verschieben (moveend) und nach `stSet`: Namensbild würde rechts unter `#ctrl .cg`/`#rail`/`#edgeBtn` oder über den Rand laufen → Eigenschaft `f:1`, `icon-anchor` „top-right“ und Versatz −13 (datengesteuert). Daten nur bei geänderter Menge neu. Nur New York (`subst`); andere Städte (dst, tausende Haltestellen) unverändert.
+
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
 - 1 · „Ok Freigabe“ · keine Änderung
@@ -76,3 +78,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 13 · 01.11.2026 · nur Doku (keine App-Änderung) · alle prüfbaren Kriterien erfüllt, Restpunkte als 14–17 · Freigabe automatisch
 - 14 · 01.11.2026 · (git log „Loop 14:“) · L2/L5 bestanden (2/5 Nostrand Av nebeneinander, Manhattan unverändert) · Freigabe automatisch
 - 15 · 01.11.2026 · (git log „Loop 15:“) · L0/T3 bestanden (Coney Island, Far Rockaway, Flushing, Jamaica, Van Cortlandt mit Symbol und Plaketten) · Freigabe automatisch
+- 16 · 01.11.2026 · (git log „Loop 16:“) · T5 bestanden (Fulton St und Times Sq links vom Symbol, nichts unter den Knöpfen) · Freigabe automatisch
