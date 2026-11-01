@@ -10421,8 +10421,7 @@ function subShare(F){
   var cellOf = function(fi, li, i){ return fnd(VI[fi][li][i]); };
   var out = [], GM = {}; // Plätze je Gruppe (einmal sortiert)
   F.forEach(function(f, fi){ var k = f.properties.k, c = f.properties.c;
-    if(k==="S"){ out.push({type:"Feature", properties:{k:k, c:c, o:0}, geometry:f.geometry}); return; }
-    var parts = [];
+    if(k==="S"){ f.geometry.coordinates.forEach(function(L){ out.push({k:k, c:c, L:L, o:L.map(function(){ return 0; })}); }); return; }
     P[fi].forEach(function(L, li){ var LL = DL[fi][li], sets = L.map(function(p, i){ var r = cellOf(fi, li, i), m = GM[r]; if(!m){ var g = Object.keys(CS[r] || {}).map(function(j){ return key(F[j].properties.k, F[j].properties.c); });
           g.sort(cmp); g = g.filter(function(x, j){ return !j || cmp(x, g[j-1]); }); m = GM[r] = {}; g.forEach(function(x, i0){ m[x[1]] = g.length <= 5 ? i0 - (g.length-1)/2 : (i0 % 5) - 2; }); }
         return m[k] === undefined ? 0 : m[k]; });
@@ -10430,15 +10429,58 @@ function subShare(F){
       var run = [], d = [0]; for(var i = 1; i < L.length; i++) d.push(d[i-1] + Math.hypot(L[i][0]-L[i-1][0], L[i][1]-L[i-1][1]));
       for(var i = 0; i < L.length; ){ var j = i; while(j+1 < L.length && sets[j+1]===sets[i]) j++; run.push([i, j, sets[i]]); i = j+1; }
       for(var r = 0; r < run.length; r++){ var R = run[r], len = d[Math.min(R[1]+1, L.length-1)] - d[R[0]]; if(len < 250 && run.length > 1){ var v = r ? run[r-1][2] : run[r+1][2]; for(var i = R[0]; i <= R[1]; i++) sets[i] = v; R[2] = v; } }
-      var st = 0; for(var i = 1; i <= L.length; i++){ if(i===L.length || sets[i]!==sets[st]){ var seg = LL.slice(st, Math.min(i+1, L.length)); if(seg.length > 1) parts.push([sets[st], seg]); st = i; } } });
-    // gleiche Plätze einer Linie zu einem Merkmal (MultiLineString) zusammenfassen
-    var by = {}; parts.forEach(function(x){ (by[x[0]] = by[x[0]] || []).push(x[1]); });
-    Object.keys(by).forEach(function(o){ out.push({type:"Feature", properties:{k:k, c:c, o:+o}, geometry:{type:"MultiLineString", coordinates:by[o]}}); }); });
-  return out;
+      out.push({k:k, c:c, L:LL, o:sets}); }); });
+  return subRamp(out);
+}
+/* Übergänge zwischen Plätzen: statt eines Sprungs gleitet die Linie über SUBH·2 Meter auf ihren neuen Platz (gleitendes Mittel der Plätze längs der Strecke);
+   Zweige setzen an der Stammstrecke auf deren Platz an. Ergebnis: je Teilstück Punkte [lo, la] und Platz o je Punkt */
+var SUBH = 40;
+function subRamp(parts){
+  var KX = Math.cos(40.73*Math.PI/180)*111320, KY = 111320, H = SUBH;
+  var res = parts.map(function(q){ var L = q.L, n = L.length, d = [0]; for(var i = 1; i < n; i++) d.push(d[i-1] + Math.hypot((L[i][0]-L[i-1][0])*KX, (L[i][1]-L[i-1][1])*KY));
+    var T = d[n-1], val = function(i){ return q.o[Math.min(i, n-2)]; }; // Platz je Abschnitt i → i+1
+    // Mittel des Platzes über [x−H, x+H] (an den Enden kürzer)
+    var avg = function(x){ var a = Math.max(0, x-H), b = Math.min(T, x+H); if(b <= a) return q.o[0]; var sum = 0, lo = 0, hi = n-2; while(lo < hi){ var md = (lo+hi+1) >> 1; if(d[md] <= a) lo = md; else hi = md-1; } var i = lo;
+      for(; i < n-1 && d[i] < b; i++){ var s0 = Math.max(a, d[i]), s1 = Math.min(b, d[i+1]); if(s1 > s0) sum += (s1-s0)*val(i); } return sum/(b-a); };
+    var oc = q.o.every(function(v){ return v===q.o[0]; });
+    if(oc || n < 2) return {k:q.k, c:q.c, L:L.slice(), o:L.map(function(){ return q.o[0]; })};
+    var oL = [L[0]], oo = [avg(0)];
+    for(var i = 1; i < n; i++){ var a = oo[oo.length-1], b = avg(d[i]), m = Math.max(1, Math.ceil((d[i]-d[i-1])/10));
+      if(Math.abs(b-a) > 1e-6 || Math.abs(avg((d[i-1]+d[i])/2) - b) > 1e-6) for(var j = 1; j < m; j++){ var t = j/m; oL.push([+(L[i-1][0]+(L[i][0]-L[i-1][0])*t).toFixed(6), +(L[i-1][1]+(L[i][1]-L[i-1][1])*t).toFixed(6)]); oo.push(avg(d[i-1]+(d[i]-d[i-1])*t)); }
+      oL.push(L[i]); oo.push(b); }
+    return {k:q.k, c:q.c, L:oL, o:oo}; });
+  // Zweige: ein Ende, das auf einem anderen Teilstück derselben Linie liegt (< 2 m), übernimmt dort dessen Platz und gleitet über 2·H auf den eigenen
+  var by = {}; res.forEach(function(q, i){ (by[q.k] = by[q.k] || []).push(i); });
+  var at = function(p, j){ var Q = res[j], b = null, bd = 2; for(var m = 1; m < Q.L.length; m++){ var A = Q.L[m-1], B = Q.L[m], ex = (B[0]-A[0])*KX, ey = (B[1]-A[1])*KY, px = (p[0]-A[0])*KX, py = (p[1]-A[1])*KY, L2 = ex*ex+ey*ey, t = L2 ? Math.max(0, Math.min(1, (px*ex+py*ey)/L2)) : 0, dd = Math.hypot(px-t*ex, py-t*ey); if(dd < bd){ bd = dd; b = Q.o[m-1] + (Q.o[m]-Q.o[m-1])*t; } } return b; };
+  res.forEach(function(q, i){ if(q.k==="S") return; [0, 1].forEach(function(e){ var n = q.L.length, p = q.L[e ? n-1 : 0], ot = null;
+    by[q.k].forEach(function(j){ if(j!==i && ot===null) ot = at(p, j); }); if(ot===null) return;
+    var o0 = q.o[e ? n-1 : 0]; if(Math.abs(o0 - ot) < 1e-6) return;
+    // vom Ende her (Ende 1: umgedreht) über 2·H Meter angleichen, lange Abschnitte dabei in 10-m-Stücke teilen
+    var L = q.L.slice(), O = q.o.slice(); if(e){ L.reverse(); O.reverse(); }
+    var nL = [L[0]], nO = [ot], dd = 0;
+    for(var s = 1; s < L.length; s++){ var A = L[s-1], B = L[s], sl = Math.hypot((B[0]-A[0])*KX, (B[1]-A[1])*KY), m = dd < 2*H ? Math.max(1, Math.ceil(sl/10)) : 1;
+      for(var j = 1; j <= m; j++){ var t = j/m, x = dd + sl*t, ow = O[s-1] + (O[s]-O[s-1])*t; nL.push(j===m ? B : [+(A[0]+(B[0]-A[0])*t).toFixed(6), +(A[1]+(B[1]-A[1])*t).toFixed(6)]); nO.push(x < 2*H ? ot + (ow-ot)*(x/(2*H)) : ow); }
+      dd += sl; }
+    if(e){ nL.reverse(); nO.reverse(); } q.L = nL; q.o = nO; }); });
+  return res;
+}
+/* Linien nebeneinander als Form: der Versatz (Platz o × Abstand je Zoom) wird in die Linienform gerechnet statt per line-offset der Karte.
+   line-offset verschiebt jedes Teilstück für sich – an Platzwechseln entstanden Stufen und an Kachelrändern Knicke (abgeschnittene Enden) */
+function subForm(parts, z){
+  var lat0 = 40.73, KX = Math.cos(lat0*Math.PI/180)*111320, KY = 111320, mpp = 40075016.686*Math.cos(lat0*Math.PI/180)/(512*Math.pow(2, z)), u = ovAt(OV.w.off, z)*mpp; // Meter je Platz
+  return parts.map(function(q){ var L = q.L, n = L.length, out = [];
+    for(var i = 0; i < n; i++){ var o = q.o[i]; if(!o){ out.push(L[i]); continue; }
+      var A = L[Math.max(0, i-1)], B = L[i], C = L[Math.min(n-1, i+1)], n1 = null, n2 = null;
+      if(i > 0){ var dx = (B[0]-A[0])*KX, dy = (B[1]-A[1])*KY, l = Math.hypot(dx, dy); if(l) n1 = [dy/l, -dx/l]; }
+      if(i < n-1){ var dx2 = (C[0]-B[0])*KX, dy2 = (C[1]-B[1])*KY, l2 = Math.hypot(dx2, dy2); if(l2) n2 = [dy2/l2, -dx2/l2]; }
+      var nn = n1 && n2 ? [n1[0]+n2[0], n1[1]+n2[1]] : (n1 || n2 || [0, 0]), nl = Math.hypot(nn[0], nn[1]) || 1; nn = [nn[0]/nl, nn[1]/nl];
+      var sc = n1 && n2 ? 1/Math.max(.5, nn[0]*n1[0] + nn[1]*n1[1]) : 1, m = o*u*sc; // Gehrung: Abstand zur Mitte bleibt auch in Kurven gleich
+      out.push([+(B[0] + nn[0]*m/KX).toFixed(6), +(B[1] + nn[1]*m/KY).toFixed(6)]); }
+    return {type:"Feature", properties:{k:q.k, c:q.c}, geometry:{type:"LineString", coordinates:out}}; });
 }
 /* Platz o einer Linie an einem Punkt (nächstes Teilstück, < 40 m), für Tests und Fehlersuche */
 function subOAt(k, lo, la){ var KX = Math.cos(40.73*Math.PI/180)*111320, b = null, bd = 40;
-  GEO.sub.features.forEach(function(f){ if(f.properties.k!==k) return; f.geometry.coordinates.forEach(function(L){ for(var i = 1; i < L.length; i++){ var a = L[i-1], c = L[i], ex = (c[0]-a[0])*KX, ey = (c[1]-a[1])*111320, px = (lo-a[0])*KX, py = (la-a[1])*111320, L2 = ex*ex + ey*ey, t = L2 ? Math.max(0, Math.min(1, (px*ex + py*ey)/L2)) : 0, d = Math.hypot(px - t*ex, py - t*ey); if(d < bd){ bd = d; b = f.properties.o; } } }); });
+  GEO.parts.forEach(function(q){ if(q.k!==k) return; var L = q.L; for(var i = 1; i < L.length; i++){ var a = L[i-1], c = L[i], ex = (c[0]-a[0])*KX, ey = (c[1]-a[1])*111320, px = (lo-a[0])*KX, py = (la-a[1])*111320, L2 = ex*ex + ey*ey, t = L2 ? Math.max(0, Math.min(1, (px*ex + py*ey)/L2)) : 0, d = Math.hypot(px - t*ex, py - t*ey); if(d < bd){ bd = d; b = Math.round((q.o[i-1] + (q.o[i]-q.o[i-1])*t)*100)/100; } } });
   return b; }
 var GEO = (function(){
   var sub = {type:"FeatureCollection", features:[]}, bus = {type:"FeatureCollection", features:[]}, nb = {type:"FeatureCollection", features:[]};
@@ -10449,8 +10491,16 @@ var GEO = (function(){
   // Linien gleicher Farbe fahren auf gemeinsamer Stammstrecke (A/C/E, N/Q/R/W …) → je Farbe eigene Plätze; Shuttles (S) allein
   var byC = {}; sub.features.forEach(function(f){ if(f.properties.k==="S") return; var a = byC[f.properties.c] = byC[f.properties.c] || []; if(a.indexOf(f.properties.k) < 0) a.push(f.properties.k); });
   sub.features.forEach(function(f){ if(f.properties.k==="S"){ f.properties.o = 0; return; } var a = byC[f.properties.c].slice().sort(natCmp), n = a.length, i = a.indexOf(f.properties.k); f.properties.o = n <= 5 ? i - (n-1)/2 : (i % 5) - 2; });
-  var shared = false;
-  return {sub:sub, bus:bus, nb:nb, share:function(){ if(shared) return; shared = true; sub.features = subShare(sub.features); var src = map && map.getSource("sub"); if(src) src.setData(sub); }};
+  // Grundlage (Mittellinie + Platz je Punkt), daraus die Form je Zoomstufe (subForm)
+  var G = {sub:sub, bus:bus, nb:nb, z:-1, parts:[], shared:false};
+  G.parts = sub.features.reduce(function(a, f){ return a.concat(f.geometry.coordinates.map(function(L){ return {k:f.properties.k, c:f.properties.c, L:L, o:L.map(function(){ return f.properties.o; })}; })); }, []);
+  G.base = sub.features; G.form = function(z){ z = Math.round(z*4)/4; if(z===G.z) return false; G.z = z; sub.features = subForm(G.parts, z); return true; };
+  G.form(13);
+  G.share = function(){ if(G.shared) return; G.shared = true; G.parts = subShare(G.base); G.z = -1; G.form(map ? map.getZoom() : 13); var src = map && map.getSource("sub"); if(src) src.setData(sub); };
+  // beim Zoomen die Form nachführen (Viertel-Zoomstufen, höchstens alle 120 ms)
+  var zt = 0, zp = null; G.zoom = function(){ if(!map) return; var go = function(){ zt = Date.now(); zp = null; if(G.form(map.getZoom())){ var src = map.getSource("sub"); if(src) src.setData(sub); } };
+    if(Date.now() - zt > 120) go(); else if(!zp) zp = setTimeout(go, 120); };
+  return G;
 })();
 function token(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 var darkMQ = window.matchMedia("(prefers-color-scheme: dark)");
@@ -10511,12 +10561,13 @@ function addLayers(){
   cbAddLayer(); if(cbNeeded()) setTimeout(function(){ cbLoad(); }, 800);
   map.addSource("nb", {type:"geojson", data:GEO.nb});
   map.addSource("bus", {type:"geojson", data:GEO.bus});
-  map.addSource("sub", {type:"geojson", data:GEO.sub}); map.once("idle", function(){ setTimeout(GEO.share, 30); }); // genaue Plätze nebeneinander nach dem ersten Bild
+  GEO.form(map.getZoom()); map.addSource("sub", {type:"geojson", data:GEO.sub}); map.once("idle", function(){ setTimeout(GEO.share, 30); }); // genaue Plätze nebeneinander nach dem ersten Bild
+  map.on("zoom", GEO.zoom); map.on("zoomend", GEO.zoom); // Versatz steckt in der Form → je Zoomstufe neu
   map.addLayer({id:"nb-fill", type:"fill", source:"nb", paint:{"fill-color":token("--hi-fill")||"rgba(109,40,217,.13)"}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);
   map.addLayer({id:"nb-line", type:"line", source:"nb", paint:{"line-color":token("--nb-line")||"rgba(23,33,44,.28)", "line-width":1.2, "line-dasharray":[4,3]}, layout:{visibility:"none"}}, firstSym);
   map.addLayer({id:"nb-hi", type:"line", source:"nb", paint:{"line-color":token("--hi")||"#6d28d9", "line-width":2.4}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);
   map.addLayer({id:"bus", type:"line", source:"bus", minzoom:BUSZ, paint:{"line-color":token("--bus")||OV.col.bus, "line-width":ovZ(OV.w.busNyc), "line-opacity":OV.op.busNyc}, layout:ovLay("none")}, ovBelow());
-  map.addLayer({id:"sub", type:"line", source:"sub", minzoom:MZ.metro, paint:{"line-color":["get","c"], "line-width":lnWidth("metro"), "line-offset":lnOffset(["get","o"])}, layout:ovLay("none")}, ovBelow()); ovCase("sub");
+  map.addLayer({id:"sub", type:"line", source:"sub", minzoom:MZ.metro, paint:{"line-color":["get","c"], "line-width":lnWidth("metro")}, layout:ovLay("none")}, ovBelow()); ovCase("sub"); // Versatz in der Form (subForm)
   addPoiLayers(); addFerryLayers(); dAddLayers(); dData(); rtAddLayers();
   mapReady = true;
   apply3d(true); applyPoi(); applyLayers(); applyLines(); applyNb(); onMove();

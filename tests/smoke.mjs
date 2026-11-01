@@ -1681,7 +1681,7 @@ await test("ÖPNV-Linien nebeneinander statt übereinander, dünn, Haltestellen 
   await rp(`map.getSource("dtr").setData({type:"FeatureCollection", features:[]}); map.getSource("dst").setData({type:"FeatureCollection", features:[]}); DL = {}; dApplyMap(); true`);
   // New York (eingebaute MTA-Daten): Linien gleicher Stammstrecke nebeneinander
   await rp(`layers.sub = true; applyLayers(); true`); await jump(-73.9897, 40.7505, 14.5); await page.waitForTimeout(600); await shot("nyc-linien-nebeneinander");
-  ok(await rp(`GEO.share(); var o = {}; [["A","42 St-Port Authority Bus Terminal"],["C","42 St-Port Authority Bus Terminal"],["E","42 St-Port Authority Bus Terminal"],["N","Times Sq-42 St"],["Q","Times Sq-42 St"],["R","Times Sq-42 St"],["W","Times Sq-42 St"],["L","Lorimer St"]].forEach(function(x){ var st = TRANSIT.stations.find(function(y){ return y[0]===x[1] && stLines(y).indexOf(x[0]) > -1; }), l = llW(st[1], st[2]); o[x[0]] = subOAt(x[0], l.lo, l.la); }); new Set([o.A, o.C, o.E]).size===3 && new Set([o.N, o.Q, o.R, o.W]).size===4 && o.L===0 && JSON.stringify(map.getPaintProperty("sub","line-offset")).indexOf("\\"o\\"") > -1`), "New-York-Linien liegen nicht nebeneinander: "+await rp(`JSON.stringify(GEO.sub.features.slice(0, 30).map(function(f){ return f.properties.k+":"+f.properties.o; }))`));
+  ok(await rp(`GEO.share(); var o = {}; [["A","42 St-Port Authority Bus Terminal"],["C","42 St-Port Authority Bus Terminal"],["E","42 St-Port Authority Bus Terminal"],["N","Times Sq-42 St"],["Q","Times Sq-42 St"],["R","Times Sq-42 St"],["W","Times Sq-42 St"],["L","Lorimer St"]].forEach(function(x){ var st = TRANSIT.stations.find(function(y){ return y[0]===x[1] && stLines(y).indexOf(x[0]) > -1; }), l = llW(st[1], st[2]); o[x[0]] = subOAt(x[0], l.lo, l.la); }); new Set([o.A, o.C, o.E]).size===3 && new Set([o.N, o.Q, o.R, o.W]).size===4 && o.L===0 && map.getPaintProperty("sub","line-offset")===undefined`), "New-York-Linien liegen nicht nebeneinander: "+await rp(`JSON.stringify(GEO.parts.slice(0, 30).map(function(f){ return f.k+":"+f.o[0]; }))`));
 });
 
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
@@ -1893,7 +1893,7 @@ await test("Durchgehende Linien: New-York-U-Bahn von Endstation zu Endstation, A
     function lineD(p, Ls){ var b=1e9; Ls.forEach(function(q){ for(var m=1;m<q.length;m++) b=Math.min(b, segd(p,q[m-1],q[m])); }); return b; }
     var loose=[], far=[], by={};
     // jedes weitere Teilstück einer Linie (Zweig, Variante) hängt mit mindestens einem Ende lückenlos (< 1 m) an der übrigen Linie
-    GEO.sub.features.forEach(function(f, fi){ var k = f.properties.k==="S" ? "S"+fi : f.properties.k; by[k]=(by[k]||[]).concat(f.geometry.coordinates); }); // Teilstücke je Linie (auch über Plätze nebeneinander hinweg); Shuttles S sind getrennte Linien
+    GEO.parts.forEach(function(f, fi){ var k = f.k==="S" ? "S"+fi : f.k; by[k]=(by[k]||[]).concat([f.L]); }); // Teilstücke je Linie (auch über Plätze nebeneinander hinweg); Shuttles S sind getrennte Linien
     Object.keys(by).forEach(function(k){ var L=by[k]; L.forEach(function(p,i){ if(!i) return; var o=L.filter(function(_,j){ return j!==i; }); if(Math.min(lineD(p[0],o), lineD(p[p.length-1],o)) > 1) loose.push(k+"#"+i); }); });
     // jede Station liegt auf den Linien, die dort halten (Linie reicht bis zur Endstation)
     var allS = Object.keys(by).filter(function(k){ return /^S\d/.test(k); }).reduce(function(a, k){ return a.concat(by[k]); }, []); if(allS.length) by.S = allS;
@@ -1908,7 +1908,7 @@ await test("Durchgehende Linien: New-York-U-Bahn von Endstation zu Endstation, A
   ok(!r.nfar, "Linie reicht nicht bis zur Station: "+r.far.join(" "));
   ok(r.rt >= 3 && !r.gaps.length, "Lücken in der Route: "+JSON.stringify(r));
   // L (Canarsie) und 2/5 (Flatbush) waren abgeschnitten: Endstationen liegen auf der Linie
-  ok(await rp(`(function(){ var f = GEO.sub.features.filter(function(x){ return x.properties.k==="L"; })[0].geometry.coordinates; return f.length===1 && f[0].some(function(c){ return Math.abs(c[1]-40.6467) < .002 && Math.abs(c[0]+73.9019) < .002; }); })()`), "L reicht nicht durchgehend bis Canarsie");
+  ok(await rp(`(function(){ var f = GEO.parts.filter(function(x){ return x.k==="L"; }).map(function(x){ return x.L; }); return f.length===1 && f[0].some(function(c){ return Math.abs(c[1]-40.6467) < .002 && Math.abs(c[0]+73.9019) < .002; }); })()`), "L reicht nicht durchgehend bis Canarsie");
 });
 
 await test("Abgerundeter Verlauf: alle ÖPNV-Linien und Routenabschnitte mit runden Enden und Ecken", async () => {
@@ -6092,6 +6092,32 @@ await test("Kartenpunkte bleiben beim Zoomen an ihrer Stelle, auch wenn sich die
   await page.evaluate(() => { document.getElementById("map").style.height = "600px"; }); await page.waitForTimeout(500);
   ok(await off() < 6, "Kleinere Fläche: Punkte verrutscht");
   ok(await rp(`W===mapEl.clientWidth && H===mapEl.clientHeight`), "Kartenmaße W/H nicht nachgeführt");
+});
+
+await test("Linien wechseln den Platz ohne Stufen: Versatz in der Linienform, gleitende Übergänge, Zweige setzen bündig an (NYC)", async () => {
+  await seed();
+  await rp(`layers.sub = true; applyLayers(); GEO.share(); true`);
+  const r = JSON.parse(await rp(`(function(){ var KX = Math.cos(40.73*Math.PI/180)*111320, steep = [], n = 0, ch = 0;
+    GEO.parts.forEach(function(q){ for(var i = 1; i < q.L.length; i++){ var d = Math.hypot((q.L[i][0]-q.L[i-1][0])*KX, (q.L[i][1]-q.L[i-1][1])*111320), dd = Math.abs(q.o[i]-q.o[i-1]); if(dd > 1e-6) ch++; if(dd > 0.5 || (dd > 1e-6 && d > 12)) steep.push(q.k+"@"+q.L[i]+":"+dd.toFixed(2)+"/"+d.toFixed(0)+"m"); n++; } });
+    // Form: Abstand eines versetzten Punkts zur Mitte wächst mit dem Zoom wie der Platzabstand
+    var q = GEO.parts.find(function(x){ return x.o.some(function(v){ return Math.abs(v) >= 1; }); }), i = q.o.findIndex(function(v){ return Math.abs(v) >= 1; });
+    var dist = function(z){ var f = subForm([q], z)[0].geometry.coordinates[i]; return Math.hypot((f[0]-q.L[i][0])*KX, (f[1]-q.L[i][1])*111320); };
+    var t0 = performance.now(); GEO.z = -1; GEO.form(15.5); var ms = performance.now() - t0;
+    return JSON.stringify({steep:steep.slice(0, 5), ns:steep.length, ch:ch, n:n, d15:dist(15), d16:dist(16), m15:ovAt(OV.w.off, 15)*40075016.686*Math.cos(40.73*Math.PI/180)/(512*32768)*Math.abs(q.o[i]), ms:Math.round(ms), off:map.getPaintProperty("sub","line-offset")===undefined && map.getPaintProperty("sub-cs","line-offset")===undefined}); })()`));
+  ok(r.off, "Versatz noch per line-offset (Stufen an Platzwechseln, Knicke an Kachelrändern)");
+  ok(r.ns===0 && r.ch > 50, "Platzwechsel springt statt zu gleiten: "+JSON.stringify(r));
+  ok(Math.abs(r.d15 - r.m15) < 0.05*r.m15 + 0.3 && r.d16 < r.d15, "Versatz in der Form passt nicht zum Zoom: "+JSON.stringify(r));
+  ok(r.ms < 150, "Form je Zoom zu langsam: "+r.ms+" ms");
+  // Zweig (z. B. A nach Rockaway Park/Lefferts) setzt am Abzweig auf dem Platz der Stammstrecke an
+  const br = JSON.parse(await rp(`(function(){ var KX = Math.cos(40.73*Math.PI/180)*111320, bad = [];
+    GEO.parts.forEach(function(q, i){ if(q.k==="S") return; [0, q.L.length-1].forEach(function(e){ var p = q.L[e];
+      GEO.parts.forEach(function(Q, j){ if(j===i || Q.k!==q.k) return; for(var m = 0; m < Q.L.length; m++){ if(Math.hypot((Q.L[m][0]-p[0])*KX, (Q.L[m][1]-p[1])*111320) < 1 && Math.abs(Q.o[m]-q.o[e]) > 0.05) bad.push(q.k+":"+q.o[e]+"≠"+Q.o[m]); } }); }); });
+    return JSON.stringify(bad.slice(0, 6)); })()`));
+  ok(br.length===0, "Zweig setzt versetzt an: "+JSON.stringify(br));
+  // beim Zoomen folgt die Form (Viertelstufen)
+  await rp(`map.jumpTo({center:[-73.9725, 40.7655], zoom:16}); true`); await page.waitForTimeout(400);
+  ok(await rp(`GEO.z===16`), "Form folgt dem Zoom nicht: "+await rp(`GEO.z`));
+  await settle(); await shot("nyc-uebergang-5av-z16");
 });
 
 /* ------------------------------------------------------------------ Ergebnis */
