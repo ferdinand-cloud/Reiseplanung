@@ -89,4 +89,4 @@ Geprüft im Berlin-Auszug: Bündel an der Stelle durchgehend, Knick-Zähler 0, F
 
 **Lösung:** Allgemeine Regel umgesetzt: Wer Foto, Ort-Pop-up oder ein Fenster aus einer Seite heraus öffnet, legt es darüber und lässt die Seite offen. `ntOpen()` schließt die Mitteilungen nicht mehr (nur noch bei echtem Wechsel zur Karte: Mitreisende, Reise), und ein direkt geöffnetes Foto bekommt `jp.ret = "nt"`, damit Wischen nach unten und × ganz zurückführen. Gilt auch für die eingeblendete Meldung über anderen Seiten (Liste, Profil, Chats). Alle übrigen Aufrufe von `openJPop` geprüft: Liste, Ortskarte und Rückblick setzten den Rücksprung schon; die anderen Seiten-Wege („Auf Karte zeigen“ aus Chat, Suche, Liste, Ziele) sind bewusste Wechsel zur Karte.
 
-**Commit/Version:** _Commit folgt_ · SW v493 · **Test:** „Mitteilungen: Foto/Ort aus einer Mitteilung schließen (Wischen, ×) führt zurück zu den Mitteilungen“ (schlägt mit altem Stand fehl).
+**Commit/Version:** 56247be · SW v493 · **Test:** „Mitteilungen: Foto/Ort aus einer Mitteilung schließen (Wischen, ×) führt zurück zu den Mitteilungen“ (schlägt mit altem Stand fehl).
