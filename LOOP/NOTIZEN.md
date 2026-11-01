@@ -46,6 +46,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 - Aufgabe 13 (Gesamtprüfung, Bilder LOOP/screens/12/nachher): L0 ✓ (durchgehend, S1/S3), L1 ✓ (geglättet), L2 ✓, L3 ✓ (S1 fein, S3 kräftig), L4 ✓ (S4/S5 Route am stärksten), L5 ✓ (MTA-Farben, Bus gedämpft, Fähre eigene Farbe – in der Testumgebung keine NYC-Fähren sichtbar), L6 ✓ (weißer Rand), L7 ✓ (Namen über Linien), L8 nicht prüfbar (Testumgebung ohne Kartenkacheln/3D-Gebäude), T1 ✓, T2 ✓ (S1 Punkte, ab Z14 Symbol), T3 ✓ (Knoten mit allen Linien), T4 ✓ (S1 dunkler Rand), T5 ✓ (Namen überlappen sich nicht; Plakettenreihe kann Nachbarsymbol berühren → Aufgabe 17), T6 ✓ (S1 ohne Namen), A1/A2 ✓. Offen als Aufgaben: 14–17.
 
+- Aufgabe 14: `subShare(F)` teilt jede NYC-Linie in Abschnitte nach der Menge der Linien, die dort dieselben Gleise fahren (parallel, < 14 m; Verlauf auf 40 m verdichtet; Union-Find über nächste Punkte, damit alle Linien einer Stelle dieselbe Gruppe sehen). Platz o = Rang (Farbgruppe, dann Name) mittig; Abschnitte < 250 m übernehmen die Gruppe davor. Läuft nach dem ersten Kartenbild (`GEO.share`, ~0,2 s Desktop), vorher gilt die alte Aufteilung je Farbe. 22 m Abstand war zu viel (Broadway/7th Av an Times Sq wurden zusammengelegt, Sprünge). Hilfsfunktion `subOAt(k, lo, la)` für Tests. Collator statt `localeCompare` (sonst > 1 s).
+
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
 - 1 · „Ok Freigabe“ · keine Änderung
@@ -70,3 +72,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 11 · 01.11.2026 · (git log „Loop 11:“) · T4 bestanden (S1 Umstiege als größere Punkte mit dunklem Rand, 50 St 1/2 kein Umstieg) · Freigabe automatisch
 - 12 · 01.11.2026 · (git log „Loop 12:“) · T5 bestanden (Namen überlappen sich nicht, Times Sq bleibt) · Freigabe automatisch
 - 13 · 01.11.2026 · nur Doku (keine App-Änderung) · alle prüfbaren Kriterien erfüllt, Restpunkte als 14–17 · Freigabe automatisch
+- 14 · 01.11.2026 · (git log „Loop 14:“) · L2/L5 bestanden (2/5 Nostrand Av nebeneinander, Manhattan unverändert) · Freigabe automatisch

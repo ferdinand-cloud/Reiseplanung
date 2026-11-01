@@ -10388,15 +10388,69 @@ var BUSLAB = TRANSIT.bus.map(function(b){
   var p = best[Math.floor(best.length/2)];
   return [b.r, p[0], p[1]];
 });
+/* Linien nebeneinander (New York): je Abschnitt die Linien, die dort dieselbe Strecke fahren (parallel, < 14 m) – auch über Farbgruppen hinweg (2/5 Nostrand Av,
+   E/F/M/R Queens Blvd, D/N/R 4th Av). Jede Linie wird an den Stellen geteilt, wo sich die Gruppe ändert; Platz o = Rang in der Gruppe (Farbe, dann Name), mittig.
+   Shuttles (S) bleiben allein in der Mitte. Abschnitte unter 250 m übernehmen die Gruppe davor (keine Sprünge an Weichen). */
+function subShare(F){
+  var KX = Math.cos(40.73*Math.PI/180)*111320, KY = 111320, C = 30;
+  var colOrd = {}; F.forEach(function(f){ var c = f.properties.c; if(!(c in colOrd) || natCmp(f.properties.k, colOrd[c]) < 0) colOrd[c] = f.properties.k; });
+  var COL = new Intl.Collator("de", {numeric:true}), key = function(k, c){ return [colOrd[c], k]; }, cmp = function(a, b){ return COL.compare(a[0], b[0]) || COL.compare(a[1], b[1]); };
+  // Verlauf auf höchstens 40 m Punktabstand verdichten (lange Geraden haben sonst zu wenige Punkte für die Prüfung)
+  var DL = F.map(function(f){ return f.geometry.coordinates.map(function(L){ var o = [L[0]]; for(var i = 1; i < L.length; i++){ var a = L[i-1], b = L[i], n = Math.ceil(Math.hypot((b[0]-a[0])*KX, (b[1]-a[1])*KY)/40);
+    for(var j = 1; j < n; j++) o.push([+(a[0]+(b[0]-a[0])*j/n).toFixed(6), +(a[1]+(b[1]-a[1])*j/n).toFixed(6)]); o.push(b); } return o; }); });
+  var P = DL.map(function(Ls){ return Ls.map(function(L){ return L.map(function(q){ return [q[0]*KX, q[1]*KY]; }); }); });
+  // Rasterindex der Abschnitte (30-m-Felder, Zahlschlüssel; je Abschnitt: Linie, Start, Richtung, Länge², Teil, Index)
+  var GK = function(x, y){ return x*1e6 + y; }, GM0 = new Map();
+  P.forEach(function(Ls, fi){ if(F[fi].properties.k==="S") return; Ls.forEach(function(L, li){ for(var i = 1; i < L.length; i++){ var a = L[i-1], b = L[i], sg = [fi, a[0], a[1], b[0]-a[0], b[1]-a[1], 0, li, i]; sg[5] = sg[3]*sg[3] + sg[4]*sg[4]; if(!sg[5]) continue;
+    var x0 = Math.floor(Math.min(a[0], b[0])/C), x1 = Math.floor(Math.max(a[0], b[0])/C), y0 = Math.floor(Math.min(a[1], b[1])/C), y1 = Math.floor(Math.max(a[1], b[1])/C);
+    for(var x = x0; x <= x1; x++) for(var y = y0; y <= y1; y++){ var gk = GK(x, y), arr = GM0.get(gk); if(!arr) GM0.set(gk, arr = []); arr.push(sg); } } }); });
+  var near = function(fi, p, dx, dy){ var hit = {}, gx = Math.floor(p[0]/C), gy = Math.floor(p[1]/C), dl = Math.hypot(dx, dy) || 1;
+    for(var x = gx-1; x <= gx+1; x++) for(var y = gy-1; y <= gy+1; y++){ var arr = GM0.get(GK(x, y)); if(!arr) continue;
+      for(var q = 0; q < arr.length; q++){ var sg = arr[q]; if(sg[0]===fi || hit[sg[0]]) continue; var ex = sg[3], ey = sg[4], L2 = sg[5];
+        if(Math.abs(ex*dx + ey*dy) < .93*Math.sqrt(L2)*dl) continue; // nur gleich laufende Strecken, keine Kreuzungen
+        var px = p[0]-sg[1], py = p[1]-sg[2], t = (px*ex + py*ey)/L2; t = t < 0 ? 0 : t > 1 ? 1 : t; var ux = px - t*ex, uy = py - t*ey;
+        if(ux*ux + uy*uy < 196) hit[sg[0]] = [sg[6], t < .5 ? sg[7]-1 : sg[7]]; } } // < 14 m (gemeinsame Gleise; Nachbarstraßen wie Broadway/7th Av bleiben getrennt)
+    return hit; }; // Linie → nächster Punkt [Teil, Index]
+  // Gruppen über Punkt-Verknüpfung: jeder Punkt wird mit dem nächsten Punkt jeder gleich laufenden Nachbarlinie verbunden (Union-Find);
+  // alle Punkte einer Verbindung tragen dieselbe Linienmenge – so bekommen Linien an derselben Stelle dieselbe Gruppe und verschiedene Plätze
+  var VI = [], par = [], fnd = function(x){ while(par[x]!==x) x = par[x] = par[par[x]]; return x; };
+  P.forEach(function(Ls, fi){ VI[fi] = Ls.map(function(L){ return L.map(function(){ par.push(par.length); return par.length - 1; }); }); });
+  P.forEach(function(Ls, fi){ if(F[fi].properties.k==="S") return; Ls.forEach(function(L, li){ L.forEach(function(p, i){ var a = L[Math.max(0, i-1)], b = L[Math.min(L.length-1, i+1)], h = near(fi, p, b[0]-a[0], b[1]-a[1]);
+    Object.keys(h).forEach(function(j){ par[fnd(VI[j][h[j][0]][h[j][1]])] = fnd(VI[fi][li][i]); }); }); }); });
+  var CS = {}; P.forEach(function(Ls, fi){ Ls.forEach(function(L, li){ L.forEach(function(p, i){ var r = fnd(VI[fi][li][i]); (CS[r] = CS[r] || {})[fi] = 1; }); }); });
+  var cellOf = function(fi, li, i){ return fnd(VI[fi][li][i]); };
+  var out = [], GM = {}; // Plätze je Gruppe (einmal sortiert)
+  F.forEach(function(f, fi){ var k = f.properties.k, c = f.properties.c;
+    if(k==="S"){ out.push({type:"Feature", properties:{k:k, c:c, o:0}, geometry:f.geometry}); return; }
+    var parts = [];
+    P[fi].forEach(function(L, li){ var LL = DL[fi][li], sets = L.map(function(p, i){ var r = cellOf(fi, li, i), m = GM[r]; if(!m){ var g = Object.keys(CS[r] || {}).map(function(j){ return key(F[j].properties.k, F[j].properties.c); });
+          g.sort(cmp); g = g.filter(function(x, j){ return !j || cmp(x, g[j-1]); }); m = GM[r] = {}; g.forEach(function(x, i0){ m[x[1]] = g.length <= 5 ? i0 - (g.length-1)/2 : (i0 % 5) - 2; }); }
+        return m[k] === undefined ? 0 : m[k]; });
+      // kurze Abschnitte glätten
+      var run = [], d = [0]; for(var i = 1; i < L.length; i++) d.push(d[i-1] + Math.hypot(L[i][0]-L[i-1][0], L[i][1]-L[i-1][1]));
+      for(var i = 0; i < L.length; ){ var j = i; while(j+1 < L.length && sets[j+1]===sets[i]) j++; run.push([i, j, sets[i]]); i = j+1; }
+      for(var r = 0; r < run.length; r++){ var R = run[r], len = d[Math.min(R[1]+1, L.length-1)] - d[R[0]]; if(len < 250 && run.length > 1){ var v = r ? run[r-1][2] : run[r+1][2]; for(var i = R[0]; i <= R[1]; i++) sets[i] = v; R[2] = v; } }
+      var st = 0; for(var i = 1; i <= L.length; i++){ if(i===L.length || sets[i]!==sets[st]){ var seg = LL.slice(st, Math.min(i+1, L.length)); if(seg.length > 1) parts.push([sets[st], seg]); st = i; } } });
+    // gleiche Plätze einer Linie zu einem Merkmal (MultiLineString) zusammenfassen
+    var by = {}; parts.forEach(function(x){ (by[x[0]] = by[x[0]] || []).push(x[1]); });
+    Object.keys(by).forEach(function(o){ out.push({type:"Feature", properties:{k:k, c:c, o:+o}, geometry:{type:"MultiLineString", coordinates:by[o]}}); }); });
+  return out;
+}
+/* Platz o einer Linie an einem Punkt (nächstes Teilstück, < 40 m), für Tests und Fehlersuche */
+function subOAt(k, lo, la){ var KX = Math.cos(40.73*Math.PI/180)*111320, b = null, bd = 40;
+  GEO.sub.features.forEach(function(f){ if(f.properties.k!==k) return; f.geometry.coordinates.forEach(function(L){ for(var i = 1; i < L.length; i++){ var a = L[i-1], c = L[i], ex = (c[0]-a[0])*KX, ey = (c[1]-a[1])*111320, px = (lo-a[0])*KX, py = (la-a[1])*111320, L2 = ex*ex + ey*ey, t = L2 ? Math.max(0, Math.min(1, (px*ex + py*ey)/L2)) : 0, d = Math.hypot(px - t*ex, py - t*ey); if(d < bd){ bd = d; b = f.properties.o; } } }); });
+  return b; }
 var GEO = (function(){
   var sub = {type:"FeatureCollection", features:[]}, bus = {type:"FeatureCollection", features:[]}, nb = {type:"FeatureCollection", features:[]};
   TRANSIT.subway.forEach(function(t){ if(/X$/.test(t.r)) return; sub.features.push({type:"Feature", properties:{k:t.r.replace(/X$/,""), c:t.c}, geometry:{type:"MultiLineString", coordinates:ovSmoothAll(t.l.map(function(a){ return toLL(decPts(a)); }))}}); });
   TRANSIT.bus.forEach(function(b){ bus.features.push({type:"Feature", properties:{k:b.r}, geometry:{type:"MultiLineString", coordinates:ovSmoothAll(b.l.map(function(a){ return toLL(decPts(a)); }))}}); });
   NB.forEach(function(n){ nb.features.push({type:"Feature", properties:{n:n.n}, geometry:{type:"MultiPolygon", coordinates:n.r.map(function(a){ var r = toLL(decPts(a)); r.push(r[0]); return [r]; })}}); });
-  // Linien nebeneinander: Linien gleicher Farbe fahren auf gemeinsamer Stammstrecke (A/C/E, N/Q/R/W …) → je Farbe eigene Plätze; Shuttles (S) allein
+  // Linien nebeneinander, zuerst nur je Farbe (schnell beim Start); die genaue Aufteilung über Farben hinweg (subShare) folgt nach dem ersten Kartenbild
+  // Linien gleicher Farbe fahren auf gemeinsamer Stammstrecke (A/C/E, N/Q/R/W …) → je Farbe eigene Plätze; Shuttles (S) allein
   var byC = {}; sub.features.forEach(function(f){ if(f.properties.k==="S") return; var a = byC[f.properties.c] = byC[f.properties.c] || []; if(a.indexOf(f.properties.k) < 0) a.push(f.properties.k); });
   sub.features.forEach(function(f){ if(f.properties.k==="S"){ f.properties.o = 0; return; } var a = byC[f.properties.c].slice().sort(natCmp), n = a.length, i = a.indexOf(f.properties.k); f.properties.o = n <= 5 ? i - (n-1)/2 : (i % 5) - 2; });
-  return {sub:sub, bus:bus, nb:nb};
+  var shared = false;
+  return {sub:sub, bus:bus, nb:nb, share:function(){ if(shared) return; shared = true; sub.features = subShare(sub.features); var src = map && map.getSource("sub"); if(src) src.setData(sub); }};
 })();
 function token(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 var darkMQ = window.matchMedia("(prefers-color-scheme: dark)");
@@ -10457,7 +10511,7 @@ function addLayers(){
   cbAddLayer(); if(cbNeeded()) setTimeout(function(){ cbLoad(); }, 800);
   map.addSource("nb", {type:"geojson", data:GEO.nb});
   map.addSource("bus", {type:"geojson", data:GEO.bus});
-  map.addSource("sub", {type:"geojson", data:GEO.sub});
+  map.addSource("sub", {type:"geojson", data:GEO.sub}); map.once("idle", function(){ setTimeout(GEO.share, 30); }); // genaue Plätze nebeneinander nach dem ersten Bild
   map.addLayer({id:"nb-fill", type:"fill", source:"nb", paint:{"fill-color":token("--hi-fill")||"rgba(109,40,217,.13)"}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);
   map.addLayer({id:"nb-line", type:"line", source:"nb", paint:{"line-color":token("--nb-line")||"rgba(23,33,44,.28)", "line-width":1.2, "line-dasharray":[4,3]}, layout:{visibility:"none"}}, firstSym);
   map.addLayer({id:"nb-hi", type:"line", source:"nb", paint:{"line-color":token("--hi")||"#6d28d9", "line-width":2.4}, filter:["in", ["get","n"], ["literal", []]]}, firstSym);

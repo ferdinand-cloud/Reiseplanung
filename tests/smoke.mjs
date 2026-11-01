@@ -1681,7 +1681,7 @@ await test("ÖPNV-Linien nebeneinander statt übereinander, dünn, Haltestellen 
   await rp(`map.getSource("dtr").setData({type:"FeatureCollection", features:[]}); map.getSource("dst").setData({type:"FeatureCollection", features:[]}); DL = {}; dApplyMap(); true`);
   // New York (eingebaute MTA-Daten): Linien gleicher Stammstrecke nebeneinander
   await rp(`layers.sub = true; applyLayers(); true`); await jump(-73.9897, 40.7505, 14.5); await page.waitForTimeout(600); await shot("nyc-linien-nebeneinander");
-  ok(await rp(`var o = {}; GEO.sub.features.forEach(function(f){ o[f.properties.k] = f.properties.o; }); new Set([o.A, o.C, o.E]).size===3 && new Set([o.N, o.Q, o.R, o.W]).size===4 && o.L===0 && JSON.stringify(map.getPaintProperty("sub","line-offset")).indexOf("\\"o\\"") > -1`), "New-York-Linien liegen nicht nebeneinander: "+await rp(`JSON.stringify(GEO.sub.features.slice(0, 30).map(function(f){ return f.properties.k+":"+f.properties.o; }))`));
+  ok(await rp(`GEO.share(); var o = {}; [["A","42 St-Port Authority Bus Terminal"],["C","42 St-Port Authority Bus Terminal"],["E","42 St-Port Authority Bus Terminal"],["N","Times Sq-42 St"],["Q","Times Sq-42 St"],["R","Times Sq-42 St"],["W","Times Sq-42 St"],["L","Lorimer St"]].forEach(function(x){ var st = TRANSIT.stations.find(function(y){ return y[0]===x[1] && stLines(y).indexOf(x[0]) > -1; }), l = llW(st[1], st[2]); o[x[0]] = subOAt(x[0], l.lo, l.la); }); new Set([o.A, o.C, o.E]).size===3 && new Set([o.N, o.Q, o.R, o.W]).size===4 && o.L===0 && JSON.stringify(map.getPaintProperty("sub","line-offset")).indexOf("\\"o\\"") > -1`), "New-York-Linien liegen nicht nebeneinander: "+await rp(`JSON.stringify(GEO.sub.features.slice(0, 30).map(function(f){ return f.properties.k+":"+f.properties.o; }))`));
 });
 
 await test("Citi Bike: Stationen als Ebene, Stations-Infos, Etappe mit dem Rad", async () => {
@@ -1893,9 +1893,10 @@ await test("Durchgehende Linien: New-York-U-Bahn von Endstation zu Endstation, A
     function lineD(p, Ls){ var b=1e9; Ls.forEach(function(q){ for(var m=1;m<q.length;m++) b=Math.min(b, segd(p,q[m-1],q[m])); }); return b; }
     var loose=[], far=[], by={};
     // jedes weitere Teilstück einer Linie (Zweig, Variante) hängt mit mindestens einem Ende lückenlos (< 1 m) an der übrigen Linie
-    GEO.sub.features.forEach(function(f){ var L=f.geometry.coordinates; by[f.properties.k]=(by[f.properties.k]||[]).concat(L);
-      L.forEach(function(p,i){ if(!i) return; var o=L.filter(function(_,k){ return k!==i; }); if(Math.min(lineD(p[0],o), lineD(p[p.length-1],o)) > 1) loose.push(f.properties.k+"#"+i); }); });
+    GEO.sub.features.forEach(function(f, fi){ var k = f.properties.k==="S" ? "S"+fi : f.properties.k; by[k]=(by[k]||[]).concat(f.geometry.coordinates); }); // Teilstücke je Linie (auch über Plätze nebeneinander hinweg); Shuttles S sind getrennte Linien
+    Object.keys(by).forEach(function(k){ var L=by[k]; L.forEach(function(p,i){ if(!i) return; var o=L.filter(function(_,j){ return j!==i; }); if(Math.min(lineD(p[0],o), lineD(p[p.length-1],o)) > 1) loose.push(k+"#"+i); }); });
     // jede Station liegt auf den Linien, die dort halten (Linie reicht bis zur Endstation)
+    var allS = Object.keys(by).filter(function(k){ return /^S\d/.test(k); }).reduce(function(a, k){ return a.concat(by[k]); }, []); if(allS.length) by.S = allS;
     TRANSIT.stations.forEach(function(st){ var l=llW(st[1],st[2]); String(st[3]||"").split("").forEach(function(k){ var dd = by[k] ? lineD([l.lo,l.la], by[k]) : 0; if(dd > 60) far.push(k+":"+st[0]+"|"+Math.round(dd)); }); });
     // Route der Planansicht: Ende eines Abschnitts = Anfang des nächsten
     var t = T(); t.places.p8 = {id:"p8", n:"Domino Park", c:"park", la:40.7144, lo:-73.9680, list:"l_main", note:"", addr:"River St"}; t.order[cur] = ["p8","p3"];
@@ -2104,6 +2105,17 @@ await test("Stationsnamen ohne Überlappung: Namen weichen einander aus, liegen 
     ok(r.n > 0 && !r.hit.length, `Überlappung bei Zoom ${z}: `+JSON.stringify(r));
     if(z===15) ok(r.ts, "Times Sq-42 St ohne Namen: "+JSON.stringify(r));
   }
+});
+
+await test("Linien verschiedener Farben auf gemeinsamer Strecke nebeneinander (2/5 Nostrand Av, E/F/M/R Steinway St), allein wieder mittig", async () => {
+  await seed();
+  const r = JSON.parse(await rp(`(function(){ GEO.share(); var inp = TRANSIT.subway.filter(function(t){ return !/X$/.test(t.r); }).map(function(t){ return {properties:{k:t.r, c:t.c}, geometry:{coordinates:ovSmoothAll(t.l.map(function(a){ return toLL(decPts(a)); }))}}; }); var t0 = performance.now(); subShare(inp); var ms = performance.now() - t0;
+    var at = function(ks, n){ var st = TRANSIT.stations.find(function(x){ return x[0]===n && ks.every(function(k){ return stLines(x).indexOf(k) > -1; }); }); if(!st) return [n+"?"]; var l = llW(st[1], st[2]); return ks.map(function(k){ return subOAt(k, l.lo, l.la); }); };
+    return JSON.stringify({ms:Math.round(ms), nos:at(["2","5"], "Sterling St"), qb:at(["E","F","M","R"], "Steinway St"), one:at(["7"], "33 St-Rawson St").concat(at(["L"], "Lorimer St"))}); })()`));
+  ok(new Set(r.nos).size===2 && r.nos.every(x => x!==null), "2 und 5 auf der Nostrand Av deckungsgleich: "+JSON.stringify(r));
+  ok(new Set(r.qb).size===4 && r.qb.every(x => x!==null), "E/F/M/R auf dem Queens Blvd nicht nebeneinander: "+JSON.stringify(r));
+  ok(r.one.every(x => x===0), "Linie allein nicht mittig: "+JSON.stringify(r));
+  ok(r.ms < 800, "Aufteilung zu langsam: "+r.ms+" ms");
 });
 
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
