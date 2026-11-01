@@ -36,6 +36,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 - Aufgabe 8: Stationspunkt einheitlich `STPAINT(me)`: weiß, Rand in der Farbe des Verkehrsmittels `OV.col.sm` (metro #1D5FBF, tram #C8102E, light #2A9D8F, funi #8A5A2B, ferry, bus, x = Zug/übrige #3B4A5A); dieselben Farben für die Stationssymbole (`TPMCOL = OV.col.sm`). Radius 1,8/3/4,2/5,5 bei Z11/13/15/17, Rand 1/1,6/2,2. Gilt für dst, subst (NYC = metro), tl-st (x), tl-bst (bus).
 
+- Aufgabe 9: Symbol ab `OV.z.stopIcon` (Z14) statt Punkt: andere Städte schon vorher (`dst-ic`), New York neu (`subst-ic`, „ts|metro“, `subst` endet bei Z14). Fähre hat ein eigenes Bild (Boot mit Welle) in `tpMode`, vorher Zug-Bild. Transitland-Haltestellen bleiben Punkte (Kacheln ohne Verkehrsmittel je Haltestelle).
+
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
 - 1 · „Ok Freigabe“ · keine Änderung
@@ -55,3 +57,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 6 · 31.10.2026 · (git log „Loop 6:“) · L5, L6 bestanden (Rand auf leerem Testhintergrund kaum sichtbar, auf dem iPhone über Straßen/Parks prüfen) · Freigabe 01.11. (automatisch) · Transitland-Test prüfte noch die alte Stärke 2.6 (Folge von Aufgabe 5) → eigener Commit auf main.
 - 7 · 01.11.2026 · (git log „Loop 7:“) · L7, L8 bestanden (Test prüft die Reihenfolge; S1–S5 pixelgleich, da Testkarte ohne Straßen/Gebäude) · Freigabe automatisch · Klicktests main rot seit v479: Berlin-Takt abends/Wochenende 10 Min. → Test korrigiert (eigener Commit).
 - 8 · 01.11.2026 · (git log „Loop 8:“) · T1 bestanden (erst zu klein/dünn → Radius und Rand vergrößert) · Freigabe automatisch
+- 9 · 01.11.2026 · (git log „Loop 9:“) · T2 bestanden (S1 ohne Symbole, ab Z14 Symbol) · Freigabe automatisch

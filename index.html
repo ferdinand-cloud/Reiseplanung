@@ -13335,7 +13335,9 @@ function rtAddLayers(){
   [["rt-line", "", null], ["rt-dot", "1 6", [.34, 2]], ["rt-hdot", "2 7", [.57, 2]], ["rt-dash", "6 6", [1.34, 1.34]]].forEach(function(x){
     var paint = {"line-color":["get","c"], "line-width":ovRtW(), "line-opacity":["get","o"]}; if(x[2]) paint["line-dasharray"] = x[2];
     map.addLayer({id:x[0], type:"line", source:"rt", filter:["==", ["get","d"], x[1]], layout:lay, paint:paint}, LBLB); });
-  map.addLayer({id:"subst", type:"circle", source:"subst", minzoom:OV.z.stop, filter:stZ(true), paint:STPAINT("metro")}, "rt-case"); // New York: U-Bahn-Stationen wie alle Stationen
+  map.addLayer({id:"subst", type:"circle", source:"subst", minzoom:OV.z.stop, maxzoom:OV.z.stopIcon, filter:stZ(true), paint:STPAINT("metro")}, "rt-case"); // New York: U-Bahn-Stationen wie alle Stationen
+  // ab Zoom 14 Symbol des Verkehrsmittels statt Punkt (wie in den anderen Städten)
+  map.addLayer({id:"subst-ic", type:"symbol", source:"subst", minzoom:OV.z.stopIcon, layout:{"icon-image":"ts|metro", "icon-size":ovZ(OV.w.stopIcon), "icon-allow-overlap":true, "icon-ignore-placement":true, "symbol-sort-key":["-", 0, SR]}});
   mkAddLayers();
 }
 /* U-Bahn-Stationen New York als Kartenebene (Punkte auf der Grafikkarte); Linien-Kreise und Namen nur ganz nah im Overlay */
@@ -13386,7 +13388,9 @@ function tpCls(g, x, y, k, h){ var col = TPCLS[k] || "#3B4A5A", s = h/16;
 var TPMCOL = OV.col.sm;
 function tpMode(g, x, y, m, h){ var col = TPMCOL[m] || "#3B4A5A", s = h/16;
   g.save(); g.translate(x, y); g.scale(s, s); tpRR(g, .4, .4, 15.2, 15.2, 3.6); g.fillStyle = col; g.fill(); g.fillStyle = "#fff"; g.strokeStyle = "#fff"; g.lineCap = "round";
-  if(m==="bus"){ tpRR(g, 3.2, 3.4, 9.6, 8.2, 1.8); g.fill(); g.fillStyle = col; g.fillRect(4.3, 4.6, 7.4, 3); g.beginPath(); g.arc(5.6, 9.6, .7, 0, 7); g.arc(10.4, 9.6, .7, 0, 7); g.fill(); g.fillStyle = "#fff"; g.fillRect(4.2, 11.6, 1.8, 1.6); g.fillRect(10, 11.6, 1.8, 1.6); }
+  if(m==="ferry"){ g.beginPath(); g.moveTo(2.6, 8.4); g.lineTo(13.4, 8.4); g.lineTo(11.6, 11.4); g.lineTo(4.4, 11.4); g.closePath(); g.fill(); tpRR(g, 5.4, 4.6, 5.2, 3.2, .9); g.fill(); g.fillRect(7.4, 2.8, 1.2, 2); // Fähre: Rumpf, Aufbau, Schornstein, Welle
+    g.lineWidth = .9; g.beginPath(); g.moveTo(2.8, 13.4); g.quadraticCurveTo(4.4, 12.4, 6, 13.4); g.quadraticCurveTo(7.6, 14.4, 9.2, 13.4); g.quadraticCurveTo(10.8, 12.4, 12.6, 13.4); g.stroke(); }
+  else if(m==="bus"){ tpRR(g, 3.2, 3.4, 9.6, 8.2, 1.8); g.fill(); g.fillStyle = col; g.fillRect(4.3, 4.6, 7.4, 3); g.beginPath(); g.arc(5.6, 9.6, .7, 0, 7); g.arc(10.4, 9.6, .7, 0, 7); g.fill(); g.fillStyle = "#fff"; g.fillRect(4.2, 11.6, 1.8, 1.6); g.fillRect(10, 11.6, 1.8, 1.6); }
   else { g.lineWidth = .9; g.beginPath(); g.moveTo(6, 2); g.lineTo(10, 2); g.moveTo(8, 2); g.lineTo(8, 4); g.stroke(); tpRR(g, 4.6, 4, 6.8, 7.4, 1.6); g.fill(); g.fillStyle = col; g.fillRect(5.7, 5.2, 4.6, 2.4);
     g.beginPath(); g.arc(6.3, 9.5, .7, 0, 7); g.arc(9.7, 9.5, .7, 0, 7); g.fill(); g.lineWidth = 1.1; g.beginPath(); g.moveTo(6, 11.6); g.lineTo(5, 13); g.moveTo(10, 11.6); g.lineTo(11, 13); g.stroke(); }
   g.restore(); }

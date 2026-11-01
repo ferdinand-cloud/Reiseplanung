@@ -2026,6 +2026,22 @@ await test("Stationsmarker: je Verkehrsmittel weißer Punkt mit farbigem Rand, G
   ok(r.grow.every((v, i) => !i || v > r.grow[i-1]), "Größe wächst nicht mit dem Zoom: "+JSON.stringify(r.grow));
 });
 
+await test("Verkehrsmittel-Symbol an Stationen: erst ab Zoom 14 (statt Punkt), U-Bahn, Bus und Fähre mit eigenem Bild", async () => {
+  await seed();
+  await rp(`layers.sub = true; applyLayers(); stSet(true); true`);
+  const r = JSON.parse(await rp(`(function(){
+    ["metro","bus","ferry"].forEach(function(m){ tpImg("ts|"+m); });
+    function px(m){ var im = map.getImage("ts|"+m); return im ? Array.prototype.slice.call(im.data.data).join(",") : ""; }
+    return JSON.stringify({nyc:map.getLayer("subst-ic").minzoom===OV.z.stopIcon && map.getLayer("subst").maxzoom===OV.z.stopIcon && map.getLayoutProperty("subst-ic","icon-image")==="ts|metro",
+      osm:map.getLayer("dst-ic").minzoom===OV.z.stopIcon && map.getLayer("dst").maxzoom===OV.z.stopIcon,
+      imgs:["metro","bus","ferry"].every(function(m){ return map.hasImage("ts|"+m); }), diff:px("ferry")!==px("metro") && px("ferry")!==px("bus") && px("bus")!==px("metro")});
+  })()`));
+  ok(r.nyc && r.osm, "Symbol nicht erst ab Zoom 14: "+JSON.stringify(r));
+  ok(r.imgs && r.diff, "U-Bahn/Bus/Fähre ohne eigenes Symbol: "+JSON.stringify(r));
+  await rp(`map.jumpTo({center:[-73.9873, 40.7553], zoom:15}); true`); await page.waitForTimeout(800);
+  ok(await rp(`map.queryRenderedFeatures({layers:["subst-ic"]}).length > 3 && map.queryRenderedFeatures({layers:["subst"]}).length===0`), "NYC-Stationen zeigen bei Zoom 15 kein Symbol");
+});
+
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
