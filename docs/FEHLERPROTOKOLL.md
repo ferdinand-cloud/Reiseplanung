@@ -23,6 +23,8 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 **Commit/Version:** c0e5d80 · SW v498 · **Test:** „Busse wie Apple Karten …“ erweitert (Übersicht nur Hauptbus, nah alle; Bus dünner als Bahn; Paket hat Vorrang vor Transitland; Transitland-Plakette).
 
+---
+
 ## 2026-11-01 · Buslinien roh gezeichnet: lose Enden, schräge Abkürzungen, neben der Straße, Richtungen übereinander (Chicago, Vergleich Apple Karten)
 
 **Meldung:** Screenshots Chicago N Columbus Dr / E Randolph: Buslinien laufen neben der Straße und über Gehwege, kürzen an Kreuzungen schräg ab, haben lose Enden und Haken; beide Richtungen liegen übereinander; Liniennummern als gedrehter Text auf der Linie. Apple: je Linie ein Strich, jede Richtung auf ihrer Seite, Plakette mit Nummer + Name in Linienfarbe („20 Madison“).
