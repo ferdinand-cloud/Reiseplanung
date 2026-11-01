@@ -1872,7 +1872,7 @@ await test("ÖPNV-Stil: Ebene und Planansicht nutzen die gemeinsame Stil-Definit
       // Ebenen beziehen ihre Werte aus OV
       sub:P2("sub","line-width")===J(lnWidth("metro")), bus:P2("bus","line-width")===J(ovZ(OV.w.busNyc)) && map.getPaintProperty("bus","line-opacity")===OV.op.busNyc,
       dbus:P2("dbus","line-width")===J(ovZ(OV.w.bus)), dtrf:P2("dtr-f","line-width")===J(ovZ(OV.w.ferry)) && P2("dtr-f","line-dasharray")===J(OV.dash.ferry),
-      dst:P2("dst","circle-radius")===J(ovZ(OV.w.stop)) && map.getLayer("dst").minzoom===OV.z.stop && map.getLayer("dst-ic").minzoom===OV.z.stopIcon,
+      dst:P2("dst","circle-radius")===J(ovZx(OV.w.stop, OV.w.stopX)) && map.getLayer("dst").minzoom===OV.z.stop && map.getLayer("dst-ic").minzoom===OV.z.stopIcon,
       z:map.getLayer("bus").minzoom===OV.z.bus && map.getLayer("dbus").minzoom===OV.z.bus && MZ===OV.z.mode && DCOL===OV.col.mode && FERRYC===OV.col.ferry,
       rc:P2("rt-case","line-width")===J(ovRtW(OV.rt.case))
     }); })()`));
