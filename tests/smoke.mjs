@@ -6173,6 +6173,30 @@ await test("Linienkarte-Bau: Reihenfolge im Bündel folgt den Abzweigen – wer 
   ok(mid(o1) < mid(o3) && mid(o3) < mid(o2), "Reihenfolge auf dem Stamm (in Fahrtrichtung links→rechts) soll S1, S3, S2 sein: S1 "+mid(o1)+", S3 "+mid(o3)+", S2 "+mid(o2));
 });
 
+await test("Linienkarte-Bau: Striche reichen nur 10 m über den Knoten, Abzweig setzt auf seiner Seite des Bündels an (Gesundbrunnen S1/S15)", async () => {
+  const { linienGraph } = await import("../tools/linienkarte/graph.mjs");
+  const ln = (a, b, n) => Array.from({length:n+1}, (_, i) => [+(a[0]+(b[0]-a[0])*i/n).toFixed(6), +(a[1]+(b[1]-a[1])*i/n).toFixed(6)]);
+  // Stamm Süd→Nord (S1, S15, S2, S41), am Knoten 52.51 geht es nach Norden weiter (S15, S41), S1 und S2 zweigen nach Westen ab.
+  // S1 und S15 haben dieselbe Farbe (ein Strich). Gerade Wege → nach dem Vereinfachen Abschnitte von > 1 km.
+  const W = new Map([[1, ln([13.38, 52.50], [13.38, 52.51], 20)], [3, ln([13.38, 52.51], [13.38, 52.52], 20)], [2, ln([13.38, 52.51], [13.365, 52.51], 20)]]);
+  const lines = [{m:"sbahn", k:"S1", c:"#DC6BA6"}, {m:"sbahn", k:"S15", c:"#DC6BA6"}, {m:"sbahn", k:"S2", c:"#007734"}, {m:"sbahn", k:"S41", c:"#A9573A"}, {m:"sbahn", k:"S42", c:"#C36939"}];
+  const RL = [[[1, 2]], [[1, 3]], [[1, 2]], [[1, 3]], [[1, 3]]], pos = new Int32Array([0, 1, 2, 3, 4]);
+  const F = linienGraph({lines, RL, W, pos, natCmp:(a, b) => String(a).localeCompare(String(b), "de", {numeric:true})});
+  const k = Math.cos(52.51 * Math.PI / 180), M = (p) => [(p[0] - 13.38) * k * 111320, (p[1] - 52.51) * 111320];
+  // 1. kein Stück reicht mehr als 16 m (10 m + Knotenlage) über den Knoten hinaus in den anderen Abschnitt (vorher: ganzer vereinfachter Abschnitt, bis 1 km)
+  for(const f of F){ const ys = f.g.map(p => M(p)[1]), lo = Math.min(...ys), hi = Math.max(...ys);
+    ok(!(lo < -30 && hi > 16) && !(hi > 30 && lo < -16), "Strich "+f.k+" (o "+f.o+") reicht über den Knoten: "+lo.toFixed(0)+" … "+hi.toFixed(0)+" m"); }
+  // 2. S1 am Knoten: Lage (Mitte + o × Richtung rechts) auf Stamm und Abzweig höchstens einen Platz auseinander
+  const at = (f) => { let bi = -1, bd = 3; f.g.forEach((p, i) => { const m = M(p), d = Math.hypot(m[0], m[1]); if(d < bd){ bd = d; bi = i; } }); if(bi < 0) return null;
+    const a = M(f.g[bi]), b = M(f.g[bi === f.g.length-1 ? bi-1 : bi+1]), s = bi === f.g.length-1 ? -1 : 1, dx = (b[0]-a[0])*s, dy = (b[1]-a[1])*s, l = Math.hypot(dx, dy) || 1;
+    return [a[0] + f.o * dy / l, a[1] - f.o * dx / l, b[1] * s]; };
+  const s1 = F.filter(f => f.k === "S1" || /S1\b/.test(f.ks)).map(f => [f, at(f)]).filter(x => x[1]);
+  const tr = s1.find(x => /S15/.test(x[0].ks) && x[0].g.some(p => M(p)[1] < -30)), br = s1.find(x => x[0].ks === "S1");
+  ok(tr && br, "S1 am Knoten fehlt: "+s1.map(x => x[0].k+" "+x[0].o).join(" | "));
+  const d = Math.hypot(tr[1][0] - br[1][0], tr[1][1] - br[1][1]);
+  ok(d <= 1, "S1 setzt am Abzweig nicht an seinem Platz im Stamm an (Abstand "+d.toFixed(2)+" Plätze, Stamm o "+tr[0].o+", Abzweig o "+br[0].o+")");
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }

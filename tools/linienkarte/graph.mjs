@@ -330,8 +330,13 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
     // Platz jedes Strichs an den Enden: Mitte zwischen dem eigenen und dem des anschließenden Stücks (gleiche Linie). Stücke in Gegenrichtung zählen gespiegelt.
     const oOf = (i) => { const arr = SA[i], n = arr.length, cen = isNaN(CEN[i]) ? (n - 1) / 2 : CEN[i], m = new Map(); arr.forEach((e, k) => m.set(e.q, k - cen)); return m; };
     const OO = chains.map((_, i) => oOf(i));
-    const endO = (i, q, head) => { const n = head ? hd(i) : tl(i), own = OO[i].get(q);
-      for (const [j, ej] of at2.get(n) || []) { if (j === i || !OO[j].has(q)) continue; const same = head ? ej === 1 : ej === 0; return (own + (same ? OO[j].get(q) : -OO[j].get(q))) / 2; }
+    // Nachbarn am Knoten, Durchfahrt zuerst (Anfang ← Ende bzw. Ende → Anfang). Geschwister, die am selben Knoten in dieselbe Richtung abgehen
+    // (Abzweig neben der Hauptstrecke), erst danach – sonst übernahm ein Abzweig den gespiegelten Platz des Geschwisters und lief quer übers Bündel
+    // (S1 Gesundbrunnen, 01.11.)
+    const thru = (i, head) => { const all = (at2.get(head ? hd(i) : tl(i)) || []).filter(([j]) => j !== i), sm = (ej) => head ? ej === 1 : ej === 0;
+      return all.filter(([, ej]) => sm(ej)).concat(all.filter(([, ej]) => !sm(ej))); };
+    const endO = (i, q, head) => { const own = OO[i].get(q);
+      for (const [j, ej] of thru(i, head)) { if (!OO[j].has(q)) continue; const same = head ? ej === 1 : ej === 0; return (own + (same ? OO[j].get(q) : -OO[j].get(q))) / 2; }
       return own; };
     // glätten und ausgeben: je Strich durchgehend; an den Enden gleitet der Platz über RAMP Meter vom gemeinsamen Wert am Knoten auf den eigenen.
     // Ausgabe in Stücken (höchstens STK Meter, auf den Rampen je ≤ 0,2 Plätze), jedes Stück reicht einen Abschnitt in das nächste hinein (keine Kerben an den Nahtstellen)
@@ -340,8 +345,8 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
     // So bleibt die Mittellinie am Knoten ohne Knick (sonst Schlaufen und Sprünge der versetzten Linien)
     const RAW = chains.map((c, i) => { const g = c.ns.map((n) => [NX[n], NY[n]]); if (rev[i]) g.reverse(); return g; });
     const HG = Math.max(1, Math.round(P.glatt / P.step));
-    const bestNb = (i, head) => { const n = head ? hd(i) : tl(i); let b = null, bs = 0;
-      for (const [j, ej] of at2.get(n) || []) { if (j === i) continue; let sh = 0; for (const q of OO[i].keys()) if (OO[j].has(q)) sh++; if (sh > bs) { bs = sh; b = [j, ej]; } }
+    const bestNb = (i, head) => { let b = null, bs = 0;
+      for (const [j, ej] of thru(i, head)) { const sm = head ? ej === 1 : ej === 0; let sh = 0; for (const q of OO[i].keys()) if (OO[j].has(q)) sh++; if (sm) sh += 1000; if (sh > bs && sh !== 1000) { bs = sh; b = [j, ej]; } }
       return b; };
     const GG = chains.map((c, i) => {
       const g = RAW[i], h = bestNb(i, true), t = bestNb(i, false), K = HG + 2;
@@ -358,10 +363,14 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
     GG.forEach((g, i) => { GG[i] = vereinfache(g, 0.3); });
     // Fortsetzung am Knoten: Punkte des anschließenden Stücks mit derselben Linie (bis EXT Meter), vom Knoten weg geordnet.
     // Der Strich reicht so über den Knoten hinaus – die Ecke am Knoten liegt innerhalb eines Strichs (runde Ecke statt gespreizter Enden)
-    const ext = (i, q, head) => { const n = head ? hd(i) : tl(i);
-      for (const [j, ej] of at2.get(n) || []) { if (j === i || !OO[j].has(q) || GG[j].length < 2) continue;
+    const ext = (i, q, head) => {
+      for (const [j, ej] of thru(i, head)) { if (!OO[j].has(q) || GG[j].length < 2) continue;
         const g = ej === 1 ? GG[j].slice().reverse() : GG[j], out = []; let L = 0; // ej 1: j endet am Knoten → rückwärts lesen
-        for (let t = 1; t < g.length && L < EXT; t++) { L += dist(g[t - 1], g[t]); out.push([g[t], L]); }
+        // genau bis EXT: nach dem Vereinfachen sind Abschnitte oft 50–200 m lang – ganze Abschnitte ließen Striche weit ins Nachbarstück
+        // hineinragen (Bündel doppelt übereinander, Gesundbrunnen 01.11.)
+        for (let t = 1; t < g.length && L < EXT; t++) { const l = dist(g[t - 1], g[t]);
+          if (L + l > EXT) { const f = (EXT - L) / l; out.push([[g[t - 1][0] + (g[t][0] - g[t - 1][0]) * f, g[t - 1][1] + (g[t][1] - g[t - 1][1]) * f], EXT]); break; }
+          L += l; out.push([g[t], L]); }
         // nur in Fortsetzung der eigenen Richtung (sonst kehrt der Strich am Knoten um: Querstrich übers Bündel)
         const o = GG[i], e0 = head ? o[0] : o[o.length - 1], e1 = head ? o[Math.min(1, o.length - 1)] : o[Math.max(0, o.length - 2)];
         if (out.length) { const k = Math.cos(e0[1] * Math.PI / 180), ux = (e0[0] - e1[0]) * k, uy = e0[1] - e1[1], vx = (out[0][0][0] - e0[0]) * k, vy = out[0][0][1] - e0[1];

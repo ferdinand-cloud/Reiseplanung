@@ -1,0 +1,80 @@
+# Fehlerprotokoll
+
+Regel (Ferdinand, 01.11.2026): Erst herausfinden, **warum** ein Fehler aufgetreten ist, und die Ursache hier festhalten. Danach beheben und die Lösung dazuschreiben.
+Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Beleg) · Lösung · Commit/Version · Test.
+
+---
+
+## 2026-11-01 · Berlin Gesundbrunnen/Humboldthain: Ring-Bündel S41/S42 zerfasert, Linien liegen doppelt übereinander
+
+**Meldung:** Screenshot Humboldthain, westlich Gesundbrunnen. Wo S1/S2 nach Südwesten abzweigen, liegt das Ring-Bündel (S41/S42, Fernbahn) auf rund 80 m doppelt und leicht versetzt übereinander.
+
+**Ursache 1 (Überlappung):** Jeder Strich wird am Knoten mit einer kurzen Fortsetzung über das Nachbarstück verlängert (`ext()` in `tools/linienkarte/graph.mjs`, gedacht: 10 m, damit die Ecke am Knoten rund ist). Die Schleife nahm aber immer den **ganzen nächsten Abschnitt** des Nachbarstücks, solange die bisherige Länge unter 10 m lag. Weil die Stücke vorher vereinfacht werden (Douglas-Peucker), sind die Abschnitte auf geraden Strecken oft 50–200 m lang. Die „10 m“ wurden so zu bis zu 200 m. Am Knoten Gesundbrunnen-West treffen das Stück mit 8 Strichen (Ring ohne S1/S2) und das mit 9 Strichen (mit S1/S2) zusammen; beide haben eine andere Bündelmitte. Jedes reichte 37 bzw. 50 m in das andere hinein → S41/S42 zweimal mit leicht unterschiedlichem Versatz übereinander.
+
+**Ursache 2 (S1 quer übers Bündel):** Beim Prüfen der Stelle zeigte sich ein zweiter Fehler: S1 und S15 haben dieselbe Farbe und bilden im Stamm einen Strich. Am Knoten teilt sich der Strich – S15 fährt auf dem Ring weiter, S1 biegt ab. Den Platz am Anfang des Abzweigs nahm `endO()` vom **ersten** Nachbarstück mit derselben Farbe. Das war hier nicht der Stamm (Durchfahrt), sondern das Geschwisterstück (Ring weiter westlich), das am selben Knoten in dieselbe Richtung abgeht. Dessen Platz wurde wie bei einer Gegenrichtung gespiegelt (−3 → +3) → S1 setzte oben am Bündel an und lief schräg über alle Linien. Gleiches galt für die Wahl des Nachbarn beim Glätten und bei der Verlängerung.
+
+**Beleg:** Berlin-Auszug, Bau mit Stand e10e506: Stück n=8 beginnt bei 13.38474,52.54841, Stück n=9 endet bei 13.38348,52.54832, gemeinsamer Knoten bei 13.38402,52.54816 – Überlappung ~85 m. Zählung aller Fortsetzungen im Berliner Bahnnetz: 792 länger als 10 m, davon 457 länger als 30 m, längste 199 m. Systematisch, nicht nur an dieser Stelle.
+
+Zu Ursache 2: S1-Abzweig begann mit Platz +1,7 (oberer Rand), obwohl S1·S15 im Stamm bei −3 liegt.
+
+**Lösung:**
+1. `ext()` verlängert genau 10 m: der letzte Abschnitt wird bei 10 m geteilt statt ganz übernommen. Berlin danach: 0 Verlängerungen über 10 m (vorher 792).
+2. Neue Hilfsfunktion `thru(i, head)`: Nachbarn am Knoten, Durchfahrt zuerst (Stück endet dort, wo das eigene beginnt, bzw. umgekehrt), Geschwister erst danach. `endO()`, `ext()` und die Nachbarwahl beim Glätten (`bestNb`) nutzen sie. S1 beginnt jetzt bei −1,25 und gleitet auf seinen Platz, unten am Bündel.
+Geprüft im Berlin-Auszug: Bündel an der Stelle durchgehend, Knick-Zähler 0, Friedrichstraße/Hackescher Markt unverändert sauber.
+
+**Commit/Version:** _(folgt)_ · Linienkarte neu gebaut (GitHub Action „Linienkarte“) · **Test:** „Linienkarte-Bau: Striche reichen nur 10 m über den Knoten, Abzweig setzt auf seiner Seite des Bündels an (Gesundbrunnen S1/S15)“ – schlägt mit dem alten Stand fehl (Strich reichte 1,1 km über den Knoten). Ursache 2 hängt von der Reihenfolge der Nachbarn ab und ließ sich im kleinen Testnetz nicht erzwingen; der Test prüft aber, dass S1 am Abzweig höchstens einen Platz neben seiner Lage im Stamm ansetzt.
+
+---
+
+## 2026-11-01 · Dunkler Stil: Gebäude verdecken ÖPNV-Linien abschnittsweise
+
+**Meldung:** „Die Strecken liegen teilweise unterhalb von Gebäuden oder Straßen und damit sind die Farben nicht durchgängig.“
+
+**Ursache:** Die 3D-Gebäude-Ebene `b3d` wurde vor die erste Beschriftungsebene des Kartenstils gelegt. Der dunkle Stil hat keine frühe Beschriftung, die erste liegt erst nach den eigenen ÖPNV-Ebenen → `b3d` landete über den Linien.
+
+**Lösung:** `apply3d` legt `b3d` vor die erste Beschriftung **oder** die erste eigene Ebene (andere Quelle als die Grundkarte), je nachdem, was zuerst kommt.
+
+**Commit/Version:** 51a9520 · SW v492 · **Test:** „Ebenen-Reihenfolge“ erweitert (b3d unter sub/dtr/lk/rt-case, auch ohne frühe Beschriftung).
+
+---
+
+## 2026-11-01 · Linienkarte (Berlin u. a.): Stufen, Querstreifen, lose Enden, falsche Reihenfolge im Bündel
+
+**Meldung:** Markierte Screenshots: S1 grüne Gabel, Hackescher Markt Querstreifen, U8 schräg im S-Bahn-Bündel. Hinweis Ferdinand: kein Einzelfall, systematisches Problem.
+
+**Ursache:**
+- Platzwechsel im Bündel sprangen an Knoten hart (Versatz je Stück fest) → Stufen.
+- Stücke wurden einzeln geglättet, Enden trafen sich nicht an derselben Stelle → Versatzsprung zwischen Hauptstrecke und Abzweig.
+- Winzige Stücke an Weichen und Fortsetzungen, die am Knoten umkehrten, wurden mit Versatz gezeichnet → Querstriche übers Bündel.
+- Nicht eingerastete Parallelgleise, Bahnhofsebenen und Wendeschleifen blieben als lose Stummel/Inseln stehen.
+- Reihenfolge im Bündel war fest (Linienliste), nicht nach Abzweigrichtung → unnötige Kreuzungen.
+- U-Bahn lag in derselben Gruppe wie die Eisenbahn und rastete an parallelen S-Bahn-Gleisen ein (U8 Alexanderplatz).
+- tippecanoe schnitt Linien an Kachelrändern ab; abgeschnittene Enden mit Versatz knickten quer.
+
+**Lösung:** Platzwechsel als Rampe über 60 m, Ausgabe in Stücken ≤ 400 m / ≤ 0,2 Plätze; Glätten über Knoten, danach Knoten auf gemeinsame Stelle; keine eigenen Striche für Stücke < 20 m, keine Fortsetzung bei > 60° Knick; Stummel, Inseln, lose Doppel, kurze Schleifen entfernt; Reihenfolge aus der Geometrie (wer rechts abbiegt, liegt rechts); Seitenzweige mittig; U-Bahn eigene Gruppe; `--no-clipping`. Prüfung mit Knick-Zähler im Berlin-Auszug: 306 → 0.
+
+**Commit/Version:** 001f338, e10e506 (Linienkarte neu gebaut 01.11. 15:45) · **Test:** „Linienkarte-Bau …“ und „Linienkarte-Bau: Reihenfolge im Bündel folgt den Abzweigen …“.
+
+---
+
+## 2026-11-01 · New York U-Bahn: Knicke und Stufen bei nebeneinanderliegenden Linien
+
+**Meldung:** Screenshots NYC: Linien knicken an manchen Stellen, Zweige setzen versetzt an.
+
+**Ursache:** Der Versatz nebeneinanderliegender Linien kam aus MapLibre `line-offset`. Das wird je Kachel berechnet: an Kachelrändern knickt die Linie, und bei jedem Platzwechsel springt der Versatz.
+
+**Lösung:** Versatz in die Linienform selbst gerechnet (`subShare`, `subRamp` gleitet über ±40 m, `subForm` je Viertel-Zoom), kein `line-offset` mehr für die U-Bahn.
+
+**Commit/Version:** 24adb8c · SW v491 · **Test:** NYC-Versatz-Test in `tests/smoke.mjs`.
+
+---
+
+## 2026-11-01 · Klicktests „Ziele“/„Neue Reise“ schlagen im Volllauf gelegentlich fehl
+
+**Meldung:** GitHub Action „Klicktests“ rot bei Ziele-Tests, lokal einzeln grün.
+
+**Ursache:** Unter paralleler Last kam die Anmelde-Rückmeldung erst nach Testbeginn; die Anmeldesperre legte sich dann nachträglich über die Seite. `noTripUser()` wartete – anders als `seed()` – nicht auf `acct.ready`.
+
+**Lösung:** `noTripUser()` wartet wie `seed()` auf `acct.ready || acct.state==="unconf"`.
+
+**Commit/Version:** 0cd3165 · **Test:** Volllauf danach grün (nur der bekannte wackelige Test „Tastatur im Chat“ offen).
