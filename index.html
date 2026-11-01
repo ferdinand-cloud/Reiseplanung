@@ -10594,7 +10594,9 @@ function apply3d(silent){
   st.layers.forEach(function(l){ if(l.type==="fill" && l["source-layer"]==="building") try { map.setLayoutProperty(l.id, "visibility", b3dOn ? "none" : "visible"); } catch(e){} });
   if(map.getLayer("b3d")) map.removeLayer("b3d");
   if(b3dOn && src){
-    var firstSym = (st.layers.filter(function(l){ return l.type==="symbol"; })[0] || {}).id;
+    // unter die erste Beschriftung, aber immer unter alle eigenen Ebenen (ÖPNV, Route, Bezirke …: eigene Quelle). Im dunklen Stil gibt es
+    // keine frühe Beschriftung – dann lag b3d über den Linien und verdeckte Bündel abschnittsweise (Ferdinand 01.11.)
+    var firstSym = (st.layers.filter(function(l){ return l.type==="symbol" || (l.source && l.source!==src && l.type!=="raster" && l.id!=="b3d"); })[0] || {}).id;
     var h = ["coalesce", ["get","render_height"], ["get","height"], 6], mh = ["coalesce", ["get","render_min_height"], ["get","min_height"], 0];
     map.addLayer({id:"b3d", type:"fill-extrusion", source:src, "source-layer":"building", minzoom:13.5,
       paint:{"fill-extrusion-color": isDark() ? "#2a3540" : "#dedcd6",

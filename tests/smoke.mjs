@@ -2007,6 +2007,14 @@ await test("Ebenen-Reihenfolge: ÖPNV-Linien über Flächen/Straßen und 3D-Geb�
   ok(r.okBase, "ÖPNV-Linien nicht über Flächen/Gebäuden: "+JSON.stringify(r.ids));
   ok(r.okRt, "Route nicht über den ÖPNV-Linien: "+JSON.stringify(r.ids));
   ok(r.okLbl, "Linien/Route nicht unter den Namen: "+JSON.stringify(r.ids));
+  // dunkler Stil: keine frühe Beschriftung (erste Beschriftung liegt erst über den eigenen Ebenen) – 3D-Gebäude trotzdem unter allen ÖPNV-Linien
+  const d = JSON.parse(await rp(`(function(){ var SL = map.getStyle().layers, sym = SL.filter(function(l){ return l.type==="symbol"; })[0].id;
+    if(!Object.keys(map.getStyle().sources).some(function(k){ return map.getStyle().sources[k].type==="vector"; })) map.addSource("tvec", {type:"vector", tiles:[location.origin+"/__none/{z}/{x}/{y}.pbf"]}); // Grundkarte des Tests hat keine Vektorquelle
+    map.moveLayer(sym, LBLB); apply3d(true);
+    var ids = map.getStyle().layers.map(function(l){ return l.id; }), at = function(x){ return ids.indexOf(x); };
+    var oe = ["sub-cs","sub","dtr-cs","dtr","lk-t-ln-cs","lk-t-ln","rt-case"].filter(function(x){ return at(x) > -1; });
+    return JSON.stringify({b3d:at("b3d"), ok:at("b3d") > -1 && oe.every(function(x){ return at("b3d") < at(x); }), ids:ids.slice(0, 40)}); })()`));
+  ok(d.ok, "3D-Gebäude über den ÖPNV-Linien (dunkler Stil): "+JSON.stringify(d));
 });
 
 await test("Stationsmarker: je Verkehrsmittel weißer Punkt mit farbigem Rand, Größe wächst mit dem Zoom", async () => {
