@@ -24,7 +24,7 @@ Der bisherige Knick-Zähler (nur Knicke > 60°) meldete 0, weil diese Spitzen be
 
 **Offen:** Ostkreuz und Friedrichstraße zeigen weiter Knoten, wo sich Bündel kreuzen bzw. teilen; nach Ferdinands Prüfung auf dem iPhone gezielt weiter.
 
-**Commit/Version:** COMMIT (nur Linienkarten-Bau, App unverändert) · Linienkarte neu gebaut (GitHub Action „Linienkarte“) · **Test:** „Linienkarte-Bau: keine Spitzen an flach kreuzenden Gleisen …“ – schlägt mit dem alten Stand fehl (2 Spitzen).
+**Commit/Version:** 9c5877b (nur Linienkarten-Bau, App unverändert) · Linienkarte neu gebaut (GitHub Action „Linienkarte“) · **Test:** „Linienkarte-Bau: keine Spitzen an flach kreuzenden Gleisen …“ – schlägt mit dem alten Stand fehl (2 Spitzen).
 
 ---
 
