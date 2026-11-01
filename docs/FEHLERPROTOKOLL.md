@@ -5,6 +5,29 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-01 · Buslinien roh gezeichnet: lose Enden, schräge Abkürzungen, neben der Straße, Richtungen übereinander (Chicago, Vergleich Apple Karten)
+
+**Meldung:** Screenshots Chicago N Columbus Dr / E Randolph: Buslinien laufen neben der Straße und über Gehwege, kürzen an Kreuzungen schräg ab, haben lose Enden und Haken; beide Richtungen liegen übereinander; Liniennummern als gedrehter Text auf der Linie. Apple: je Linie ein Strich, jede Richtung auf ihrer Seite, Plakette mit Nummer + Name in Linienfarbe („20 Madison“).
+
+**Ursache:** Busse werden ohne jede Aufbereitung direkt aus den Quellen gezeichnet:
+- Transitland (`tl-bus`): die Linie kommt so, wie sie in den Vektorkacheln steht. Die Kacheln enden bei Zoom 14 und sind dafür vereinfacht (Douglas-Peucker); bei Zoom 16–17 werden sie nur vergrößert. Vereinfachte Ecken = schräge Abkürzungen über Kreuzungen und Abweichungen von bis zu einigen Metern neben die Straße. Je Linie liegen Hin- und Rückweg als ein Objekt übereinander; Abweichungen einzelner Fahrten (Umleitungen, Depotfahrten) bleiben als Haken und lose Enden stehen.
+- Stadtpakete/OpenStreetMap (`dbus`): je Linie ein Objekt mit allen Verläufen (beide Richtungen) ohne Versatz → übereinander; ebenfalls keine Bereinigung von Stummeln.
+- Alle Busebenen (`bus`, `dbus`, `tl-bus`) zeichnen in einer einheitlichen, halb durchsichtigen Busfarbe (`OV.op.bus` 0,5), nicht in der Linienfarbe; Beschriftung über `TPLINE`/`tl-lbl` als gedrehter Text.
+- Für Chicago gibt es kein Stadtpaket, nur Transitland – die genauen Verläufe des Fahrplans (CTA-GTFS-Shapes, je Richtung) werden nicht genutzt.
+
+**Beleg:** `index.html`: `tl-bus` = `type:"line"` direkt auf `source:"tl-r"` (maxzoom 14) mit fester Farbe `token("--bus")`; `cpGeo()` baut je Linie ein `MultiLineString` aller Verläufe ohne `o`; `OV.op.bus = .5`. CTA-GTFS (Mobility Database) hat getrennte Verläufe je Richtung (`trips.txt` direction_id, `shapes.txt`, 1,33 Mio. Punkte).
+
+**Lösung (Teil 1, v497):**
+- Chicago bekommt ein Stadtpaket aus dem CTA-Fahrplan (8 L-Linien, 125 Buslinien; Bauwerkzeug `tools/stadtpakete/build.mjs`, Eintrag `chicago`). Damit kommen die Busse nicht mehr aus den vereinfachten Transitland-Kacheln, sondern wie in Berlin/Paris/Bremen aus OpenStreetMap-Linienverläufen (Straßenachse, je Einbahnstraße die eigene Fahrbahn) bzw. aus den genauen Fahrplanverläufen.
+- Busverläufe in allen Stadtpaketen doppelt so genau (Toleranz 4 m statt 9 m): die gröbere Vereinfachung war die Ursache der schrägen Abkürzungen an Kreuzungen.
+- Neue Aufbereitung je Linie in der App (`lnClean`): Spitzen im Verlauf (hin und sofort zurück, z. B. Abstecher in Haltebuchten oder Wenden) werden geglättet, kurze Stücke mit losem Ende (Haken, Stummel bis 60 m) entfallen, aneinanderstoßende Stücke werden zu einem durchgehenden Strich verbunden (runde Ecken statt Kappen an jeder Kreuzung). Gilt für Bus (60 m) und Bahn (25 m).
+- Beschriftung wie Apple Karten: Plakette mit der Nummer, daneben der Name in der Linienfarbe („20 Madison“, `tpBus`, Bild `tb|…`), wiederholt entlang der Linie, weicht anderen Beschriftungen aus.
+- Farbe: alle Busse in einem kräftigen Busblau (#2F6BC8, dunkel #6FA0EA) mit 90 % Deckkraft statt gedämpft und halb durchsichtig; Linien etwas breiter. Die Datenfarben taugen nicht (CTA: Grau, Schwarz, Expressbusse rot wie die Red Line).
+
+**Commit/Version:** _(siehe unten)_ · SW v497 · **Test:** „Busse wie Apple Karten: je Linie ein Strich in Busblau, Plakette mit Name („20 Madison“), ohne Haken und Stückelung (Stadtpaket Chicago)“; „Linienfarben: … Bus kräftiges Busblau …“ angepasst.
+
+---
+
 ## 2026-11-01 · Haltestellen nur als Kreis statt Symbol mit Linien (Chicago, Vergleich Apple Karten)
 
 **Meldung:** Screenshots Chicago (Stöbern): Bushaltestellen am N Columbus Dr sind nur Kreise. Gewünscht wie Apple Karten: Symbol des Verkehrsmittels und daneben die Linien als Plaketten, für sämtliche Verkehrsmittel.

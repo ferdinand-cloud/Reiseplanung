@@ -68,6 +68,10 @@ const CITIES = {
   bremen: { n: "Bremen", src: "DELFI über gtfs.de", lic: "CC BY 4.0", type: "gtfs", tz: "Europe/Berlin", need: ["tram"],
     feeds: [{ u: ["https://download.gtfs.de/germany/nv_free/latest.zip", MDB("de-unknown-wurzburger-verkehrsverbund-gtfs-1090")] }, { u: ["https://download.gtfs.de/germany/rv_free/latest.zip"], opt: true }],
     bb: [8.65, 53.01, 8.99, 53.23], ext: [8.40, 52.90, 9.20, 53.40], bus: [8.68, 53.03, 8.96, 53.20], pbf: ["G/germany/bremen-latest.osm.pbf", "G/germany/niedersachsen-latest.osm.pbf"] },
+  // Chicago (Ferdinand 01.11.: Busse wie Apple Karten): CTA-Fahrplan mit genauen Verläufen je Richtung statt der vereinfachten Transitland-Kacheln
+  chicago: { n: "Chicago", src: "Chicago Transit Authority", lic: "CTA Developer License Agreement", type: "gtfs", tz: "America/Chicago", need: ["metro"],
+    feeds: [{ u: ["https://www.transitchicago.com/downloads/sch_data/google_transit.zip", MDB("us-illinois-chicago-transit-authority-cta-gtfs-389")] }],
+    bb: [-87.94, 41.64, -87.52, 42.07], ext: [-88.10, 41.55, -87.45, 42.15], bus: [-87.86, 41.66, -87.52, 42.05], pbf: ["https://download.geofabrik.de/north-america/us/illinois-latest.osm.pbf"] },
 };
 for (const C of Object.values(CITIES)) if (C.pbf) C.pbf = C.pbf.map((u) => u.replace(/^G\//, "https://download.geofabrik.de/europe/"));
 
@@ -400,7 +404,7 @@ async function assemble(id, C, net, bus, zip, shapesOf) {
   const SH = await shapesOf(needShapes);
   const straight = []; // je Linie: Verlauf (teils) nur als Luftlinie zwischen Stationen → später durch OpenStreetMap-Gleise ersetzen
   keep.forEach((l) => {
-    const tol = bus ? 0.00008 : 0.00004, out = []; let st = false;
+    const tol = 0.00004, out = []; let st = false; // Busse ebenso genau (≈ 4 m): gröber kürzten sie Ecken über Kreuzungen ab (Ferdinand 01.11.)
     l.shp.forEach((x) => {
       let pts = x.sh && SH.get(x.sh);
       // Verlauf vorhanden, aber grob (VBB/IDFM: manche Shapes sind gerade Linien zwischen weit entfernten Halten) → ebenfalls ersetzen
@@ -632,7 +636,7 @@ function osmFill(d, O, bus) {
   d.L.forEach((l, i) => {
     if (!d._st || !d._st[i]) return;
     const rt = OSMRT[l[0]] || (bus ? OSMRT.bus : []), rels = (by.get(refNorm(l[1])) || []).filter((r) => rt.includes(r.route));
-    const g = rels.length ? osmGeo(O, rels, bus ? 0.00008 : 0.00004) : [];
+    const g = rels.length ? osmGeo(O, rels, 0.00004) : []; // Busse so genau wie Bahnen (≈ 4 m): gröber kürzten sie Ecken an Kreuzungen schräg ab
     if (g.length) { d.G[i] = g; n++; } else { miss.push(l[1]); if (bus) d.G[i] = []; }
   });
   log("  OSM-Verläufe", bus ? "Bus" : "Bahn", n, "ersetzt, ohne Treffer:", miss.length, miss.slice(0, 30).join(" "));

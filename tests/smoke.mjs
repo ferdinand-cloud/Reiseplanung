@@ -2006,7 +2006,7 @@ await test("Linienstärke je Zoom: fein in der Stadtansicht, kräftiger nah, Bus
   ok(!r.bad.length, "Linienstärken: "+r.bad.join(", ")+" · "+r.rows.join(" "));
 });
 
-await test("Linienfarben: U-Bahn offiziell, Bus gedämpft, Fähre eigene Farbe, heller Rand unter Bahn- und Fährlinien", async () => {
+await test("Linienfarben: U-Bahn offiziell, Bus kräftiges Busblau wie Apple Karten, Fähre eigene Farbe, heller Rand unter Bahn- und Fährlinien", async () => {
   await seed();
   const r = JSON.parse(await rp(`(function(){
     function hsl(h){ var r = parseInt(h.slice(1,3),16)/255, g = parseInt(h.slice(3,5),16)/255, b = parseInt(h.slice(5,7),16)/255, mx = Math.max(r,g,b), mn = Math.min(r,g,b), l = (mx+mn)/2; return {s:mx===mn ? 0 : (mx-mn)/(1-Math.abs(2*l-1)), l:l}; }
@@ -2024,7 +2024,7 @@ await test("Linienfarben: U-Bahn offiziell, Bus gedämpft, Fähre eigene Farbe, 
   ok(!r.bad.length, r.bad.join(", "));
   ok(r.v[0]==="visible" && r.v[1]==="none" && r.fl.indexOf("tram") > -1, "Rand folgt der Linie nicht: "+JSON.stringify(r));
   ok(!r.off.length, "U-Bahn nicht in MTA-Farben: "+r.off.join(" "));
-  ok(r.sb < .35 && r.busTok, "Bus nicht gedämpft: "+JSON.stringify(r));
+  ok(r.sb > .5 && r.busTok, "Bus nicht kräftig blau (Ferdinand 01.11.: Farben kräftiger, wie Apple Karten): "+JSON.stringify(r));
   ok(r.fbus > 60 && r.fsub > 60, "Fähre nicht klar unterscheidbar: "+JSON.stringify(r));
 });
 
@@ -6308,6 +6308,43 @@ await test("Haltestellen wie Apple Karten: Symbol je Verkehrsmittel und Linien-P
   const sv = JSON.parse(sig), forms = ["metro","tram","train","funi","bus","ferry"].map(m => sv[m]);
   ok(new Set(forms).size===6 && sv.sbahn===sv.train, "Symbole nicht je Verkehrsmittel verschieden: "+sig);
   await page.unroute(/transit\.land\/api\/v2\/tiles/);
+});
+
+await test("Busse wie Apple Karten: je Linie ein Strich in Busblau, Plakette mit Name („20 Madison“), ohne Haken und Stückelung (Stadtpaket Chicago)", async () => {
+  // Polyline-Kodierung (Genauigkeit 1e-5) für das Mini-Paket
+  const enc = (pts) => { let o = "", pa = 0, po = 0; const e = (v) => { v = v < 0 ? ~(v << 1) : v << 1; let r = ""; while(v >= 0x20){ r += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; } return r + String.fromCharCode(v + 63); };
+    pts.forEach(([lo, la]) => { const a = Math.round(la*1e5), b = Math.round(lo*1e5); o += e(a - pa) + e(b - po); pa = a; po = b; }); return o; };
+  const x0 = -87.6205, y0 = 41.8818, CPD = process.env.CPDIR; // CPDIR = Ordner mit echtem Paket (Vorher/Nachher-Bilder)
+  const rail = {v:1, id:"chicago", part:"rail", n:"Chicago", src:"CTA", lic:"CTA", L:[["metro", "Green Line", "", "#009B3A", "#FFFFFF"]], H:["Harlem"],
+    S:[["State/Lake", 4188580, -8762780], ["Clark/Lake", 4188570, -8763090]], E:[0,1,0,0,300,7], W:[[300]], G:[[enc([[-87.6278, 41.8858], [-87.6309, 41.8857]])]], D:[[0, "metro"], [1, "metro"]]};
+  // 20 Madison: zwei Stücke mit gemeinsamem Ende + 33-m-Stummel (Haken); 4 Cottage Grove (Grau in den Daten) und J14 (Rot) → Busblau wie Apple Karten
+  const bus = {v:1, id:"chicago", part:"bus", n:"Chicago", src:"CTA", lic:"CTA", L:[["bus", "20", "Madison", "#99999C", "#FFFFFF"], ["bus", "4", "Cottage Grove", "#414145", "#FFFFFF"], ["bus", "J14", "Jeffery Jump", "#E2001A", "#FFFFFF"]], H:["Austin"],
+    S:[["Madison & Columbus", 4188180, -8762050], ["Madison & Michigan", 4188180, -8762450]], E:[0,1,0,0,120,7, 1,0,1,0,120,7, 0,1,2,0,120,7], W:[[120]],
+    G:[[enc([[x0-.006, y0], [x0, y0]]), enc([[x0, y0], [x0+.004, y0]]), enc([[x0+.004, y0], [x0+.004, y0+.0003]])], [enc([[x0+.0002, y0-.01], [x0+.0002, y0+.01]])], [enc([[x0-.0002, y0-.01], [x0-.0002, y0+.01]])]], D:[]};
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => { const u = rt.request().url(), f = u.split("/").pop();
+    if(CPD && fs.existsSync(path.join(CPD, f))) return rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:fs.readFileSync(path.join(CPD, f), "utf8") });
+    if(f==="chicago.json" || f==="chicago-bus.json") return rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(f==="chicago.json" ? rail : bus) });
+    return rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }); });
+  await page.route(/overpass-api\.de|overpass\.kumi|overpass\.private/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
+  await page.route(/transit\.land\/api\/v2\/tiles/, rt => rt.fulfill({ status:204, headers:{"access-control-allow-origin":"*"}, body:"" }));
+  await seed();
+  await rp(`CP = {}; DL = {bus:1, metro:1}; DOFF = {}; lsSet("rp-dl", JSON.stringify(DL)); true`);
+  await jump(x0, y0, 16);
+  await page.waitForFunction(() => window.__rp(`!!cpView() && cpView().id==="chicago" && !!VV.bus && VV.bus.geo.features.length >= 3`), null, {timeout:9000}).catch(() => {});
+  const g = JSON.parse(await rp(`JSON.stringify(VV.bus ? VV.bus.geo.features.map(function(f){ return {k:f.properties.k, n:f.properties.n, bc:f.properties.bc, parts:f.geometry.coordinates.length, end:f.geometry.coordinates[0][f.geometry.coordinates[0].length-1]}; }) : null)`));
+  ok(g, "Stadtpaket Chicago (Busse) nicht geladen: "+await rp(`JSON.stringify({cp:cpView() && cpView().id, z:map.getZoom()})`));
+  if(!CPD){
+    const m = g.find(f => f.k==="20"), c4 = g.find(f => f.k==="4"), j = g.find(f => f.k==="J14");
+    ok(m && m.parts===1 && m.n==="Madison", "20 Madison nicht ein durchgehender Strich mit Name: "+JSON.stringify(m));
+    ok(m && Math.abs(m.end[1] - y0) < 1e-5, "Haken am Ende von 20 Madison nicht entfernt: "+JSON.stringify(m));
+    ok(c4 && !c4.bc && j && !j.bc, "Busfarbe: Datenfarbe (Grau/Rot) statt Busblau: "+JSON.stringify(g));
+  }
+  ok(await rp(`map.getLayoutProperty("dbus","visibility")==="visible" && map.getPaintProperty("dbus","line-opacity") >= .8`), "Buslinien nicht sichtbar/kräftig");
+  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["dbus-lbl"]}).length >= 1`), null, {timeout:6000}).catch(() => {});
+  const lb = JSON.parse(await rp(`JSON.stringify(map.queryRenderedFeatures({layers:["dbus-lbl"]}).map(function(f){ return f.layer.layout["icon-image"].name || String(f.layer.layout["icon-image"]); }))`));
+  ok(await rp(`map.hasImage("tb|20|${"#2F6BC8"}|Madison|" + (isDark() ? "d" : "l")) || map.hasImage("tb|20|#2f6bc8|Madison|" + (isDark() ? "d" : "l")) || map.listImages().some(function(i){ return /^tb\|20\|.*\|Madison\|/.test(i); })`), "Plakette „20 Madison“ nicht gezeichnet: "+JSON.stringify(lb)+" "+await rp(`JSON.stringify(map.listImages().filter(function(i){ return i.indexOf("tb|")===0; }).slice(0, 6))`));
+  await rp(`setSheet("min"); true`); await jump(x0 + .002, y0, 15.6); await page.waitForTimeout(700); await shot("busse-apple-chicago");
+  await page.unroute(/transit\.land\/api\/v2\/tiles/); await page.unroute(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//);
 });
 
 /* ------------------------------------------------------------------ Ergebnis */
