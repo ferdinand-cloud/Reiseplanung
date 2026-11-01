@@ -6325,6 +6325,50 @@ await test("Linienkarte-Bau: keine Spitzen an flach kreuzenden Gleisen – zusam
   ok(stellen([{properties:{m:"sbahn", k:"X", c:"#000"}, geometry:{type:"LineString", coordinates:g}}]).length===1, "Prüfung erkennt Spitze nicht");
 });
 
+await test("Busse auf der Straße wie Apple Karten: Verlauf aus den OSM-Straßenachsen, je Fahrtrichtung in der Mitte der Fahrbahnseite, Einbahnstraße mittig", async () => {
+  // Bau: Richtung je Weg aus der Relation, Hin- und Rückweg auf derselben Straße = zwei gerichtete Striche (Seite 1), Einbahn-Paar mittig (Seite 0)
+  const { busRichtung } = await import("../tools/stadtpakete/bus.mjs");
+  const W = new Map([[1, [[41, 0], [41, 0.001]]], [2, [[41, 0.002], [41, 0.001]]], [3, [[41, 0.002], [41, 0.003]]], [4, [[41.0001, 0.003], [41.0001, 0.002]]]]);
+  const pc = busRichtung({W, OW:new Set([3, 4])}, [{ways:[1, 2, 3]}, {ways:[4, 2, 1]}]);
+  const J = (x) => JSON.stringify(x);
+  ok(pc.length===4 && pc.some(x => x[1]===1 && J(x[0])===J([[41, 0], [41, 0.001], [41, 0.002]])) && pc.some(x => x[1]===1 && J(x[0])===J([[41, 0.002], [41, 0.001], [41, 0]]))
+    && pc.filter(x => x[1]===0).length===2, "Richtungen/Seiten falsch: "+J(pc));
+  // App: Paket mit GD – gerichtete Stücke als eigenes Objekt (sd = 1), Versatz rechts der Achse in Metern (3,5 m) je Zoom, Einbahn ohne Versatz
+  const enc = (pts) => { let o = "", pa = 0, po = 0; const e = (v) => { v = v < 0 ? ~(v << 1) : v << 1; let r = ""; while(v >= 0x20){ r += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; } return r + String.fromCharCode(v + 63); };
+    pts.forEach(([lo, la]) => { const a = Math.round(la*1e5), b = Math.round(lo*1e5); o += e(a - pa) + e(b - po); pa = a; po = b; }); return o; };
+  const x0 = -87.6339, y0 = 41.8840;
+  const rail = {v:1, id:"chicago", part:"rail", n:"Chicago", src:"CTA", lic:"CTA", L:[["metro", "Blue Line", "", "#00A1DE", "#FFFFFF"]], H:["O'Hare"],
+    S:[["Clark/Lake", 4188570, -8763090], ["Washington", 4188330, -8762950]], E:[0,1,0,0,300,7], W:[[300]], G:[[enc([[-87.6309, 41.8857], [-87.6295, 41.8833]])]], D:[[0, "metro"], [1, "metro"]]};
+  const bus = {v:1, id:"chicago", part:"bus", n:"Chicago", src:"CTA", lic:"CTA", L:[["bus", "36", "Broadway", "#99999C", "#FFFFFF"]], H:["Broadway"],
+    S:[["Wells & Lake", 4188570, -8763390], ["Wells & Washington", 4188330, -8763390]], E:[0,1,0,0,120,7], W:[[300]],
+    G:[[enc([[x0, y0-.004], [x0, y0+.004]]), enc([[x0, y0+.004], [x0, y0-.004]]), enc([[x0+.001, y0+.004], [x0+.001, y0+.006]])]], GD:[[1, 1, 0]], D:[]};
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => { const f = rt.request().url().split("/").pop();
+    if(f==="chicago.json" || f==="chicago-bus.json") return rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(f==="chicago.json" ? rail : bus) });
+    return rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }); });
+  await page.route(/overpass-api\.de|overpass\.kumi|overpass\.private/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
+  await seed();
+  await rp(`CP = {}; DL = {bus:1, metro:1}; DOFF = {}; lsSet("rp-dl", JSON.stringify(DL)); true`);
+  await jump(x0, y0, 16.5);
+  await page.waitForFunction(() => window.__rp(`!!cpView() && cpView().id==="chicago" && !!VV.bus && VV.bus.geo.features.length >= 2`), null, {timeout:9000}).catch(() => {});
+  const f = JSON.parse(await rp(`JSON.stringify(VV.bus ? VV.bus.geo.features.map(function(f){ return {sd:f.properties.sd || 0, n:f.geometry.coordinates.length}; }) : null)`));
+  ok(f && f.some(x => x.sd===1 && x.n===2) && f.some(x => x.sd===0 && x.n===1), "Gerichtete Busstücke nicht getrennt: "+JSON.stringify(f));
+  // Ausdruck: exponentiell (Basis 2) über den Zoom, Pixel × sd → bei jedem Zoom 3,5 m; ohne sd 0
+  const e = JSON.parse(await rp(`JSON.stringify(map.getPaintProperty("dbus","line-offset"))`));
+  const at = (z) => { const z0 = e[3], z1 = e[5], v0 = e[4][2], v1 = e[6][2]; return v0*Math.pow(v1/v0, (z - z0)/(z1 - z0)); };
+  const mpp = (z) => 78271.517*Math.cos(y0*Math.PI/180)/Math.pow(2, z);
+  ok(e && e[0]==="interpolate" && e[1][0]==="exponential" && e[1][1]===2 && JSON.stringify(e[4][1]).includes('"sd"') && Math.abs(at(16)*mpp(16) - 3.5) < 0.3 && Math.abs(at(18)*mpp(18) - 3.5) < 0.3,
+    "Versatz nicht 3,5 m rechts der Achse (nur gerichtete Stücke): "+JSON.stringify(e));
+  // Haltestellen vor dem Symbol-Zoom als kleiner Punkt (Apple), ab Zoom 15,5 das Symbol
+  await rp(`setSheet("min"); true`);
+  const hz = async (z) => { await jump(x0, y0, z); await page.waitForTimeout(300); await page.waitForFunction(() => window.__rp(`map.areTilesLoaded() && !map.isMoving()`), null, {timeout:6000}).catch(() => {}); await page.waitForTimeout(300);
+    return JSON.parse(await rp(`JSON.stringify({z:map.getZoom(), dot:map.queryRenderedFeatures({layers:["dbst"]}).length, ic:map.queryRenderedFeatures({layers:["dst-ic"]}).filter(function(f){ return f.properties.m==="bus"; }).length})`)); };
+  const h14 = await hz(14.6), h16 = await hz(16.2);
+  ok(h14.dot >= 1 && h14.ic===0 && h16.dot===0 && h16.ic >= 1, "Bushaltestelle: Punkt vor dem Symbol-Zoom, danach Symbol: "+JSON.stringify({h14, h16}));
+  await jump(x0, y0, 14.8); await page.waitForTimeout(500); await shot("bushaltestellen-punkte");
+  await jump(x0, y0, 16.5); await page.waitForTimeout(600); await shot("busse-fahrbahnseite");
+  await page.unroute(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//);
+});
+
 await test("Busse wie Apple Karten: je Linie ein Strich in Busblau, Plakette mit Name („20 Madison“), ohne Haken und Stückelung (Stadtpaket Chicago)", async () => {
   // Polyline-Kodierung (Genauigkeit 1e-5) für das Mini-Paket
   const enc = (pts) => { let o = "", pa = 0, po = 0; const e = (v) => { v = v < 0 ? ~(v << 1) : v << 1; let r = ""; while(v >= 0x20){ r += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; } return r + String.fromCharCode(v + 63); };

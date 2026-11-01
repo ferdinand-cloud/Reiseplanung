@@ -11,6 +11,7 @@ import readline from "node:readline";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { busRichtung } from "./bus.mjs";
 
 const V = 1;
 const MDB = (id) => "https://storage.googleapis.com/storage/v1/b/mdb-latest/o/" + id + ".zip?alt=media"; // Spiegel der Mobility Database, falls der Anbieter nicht antwortet
@@ -460,7 +461,7 @@ async function gtfsCity(id, C) {
   if (miss.length) throw new Error("es fehlen Verkehrsmittel: " + miss.join(", ") + " (vorhanden: " + [...have].join(", ") + ")");
   write(id, "rail", meta, rail);
   const bus = await assemble(id, C, net, true, zip, sh);
-  try { osmFill(bus, await osmRoutes(C.bus, "bus|trolleybus", 2, C.pbf), true); } catch (e) { log("  OSM-Verläufe Bus fehlgeschlagen:", e.message); }
+  try { const O = await osmRoutes(C.bus, "bus|trolleybus", 2, C.pbf); osmFill(bus, O, true); osmBus(bus, O); } catch (e) { log("  OSM-Verläufe Bus fehlgeschlagen:", e.message); }
   write(id, "bus", meta, bus);
   if (!ZIP[id]) [].concat(zip).forEach((z) => fs.rmSync(z, { force: true }));
 }
@@ -573,7 +574,7 @@ async function pbfGet(url) {
 }
 const oplDec = (v) => v.replace(/%([0-9a-fA-F]+)%/g, (m, h) => String.fromCodePoint(parseInt(h, 16)));
 async function osmPbf(urls, bb, routes) {
-  const W = new Map(), RM = new Map(), N = new Map();
+  const W = new Map(), RM = new Map(), N = new Map(), OW = new Set();
   for (const u of urls) {
     const src = await pbfGet(u), cl = src + ".clip.pbf", fl = src + ".f.pbf", op = src + ".opl";
     await run("osmium", ["extract", "-b", bb.join(","), src, "-o", cl, "--overwrite"]);
@@ -585,7 +586,7 @@ async function osmPbf(urls, bb, routes) {
       const t = line[0], id = +line.slice(1, line.indexOf(" ")), F = {};
       line.split(" ").slice(1).forEach((x) => { F[x[0]] = x.slice(1); });
       if (t === "n" && F.x && F.y) N.set(id, [+F.y, +F.x]);
-      else if (t === "w" && F.N) ways.push([id, F.N.split(",").map((x) => +x.slice(1))]);
+      else if (t === "w" && F.N) { ways.push([id, F.N.split(",").map((x) => +x.slice(1))]); if (/(^|,)(oneway=(yes|1|-1)|junction=(roundabout|circular))(,|$)/.test(F.T || "")) OW.add(id); } // Einbahnstraßen: Bus fährt in der Mitte dieser Fahrbahn
       else if (t === "r" && !RM.has(id)) {
         const tags = {}; (F.T || "").split(",").forEach((kv) => { const i = kv.indexOf("="); if (i > 0) tags[oplDec(kv.slice(0, i))] = oplDec(kv.slice(i + 1)); });
         const members = (F.M || "").split(",").filter(Boolean).map((m) => { const i = m.indexOf("@"); return { type: m[0] === "w" ? "way" : m[0] === "n" ? "node" : "relation", ref: +m.slice(1, i), role: oplDec(m.slice(i + 1)) }; });
@@ -595,16 +596,16 @@ async function osmPbf(urls, bb, routes) {
     ways.forEach(([id, ns]) => { if (W.has(id)) return; const g = ns.map((n) => N.get(n)).filter(Boolean); if (g.length > 1) W.set(id, g); });
     [cl, fl, op].forEach((f) => fs.rmSync(f, { force: true }));
   }
-  return { W, RM };
+  return { W, RM, OW };
 }
 async function osmRoutes(bb, routes, nt = 2, pbf = null) {
   if (process.env.NOOSM) throw new Error("NOOSM gesetzt"); // lokaler Probelauf ohne OpenStreetMap
   if (pbf && pbf.length) {
     try {
-      const { W, RM } = await osmPbf(pbf, bb, routes), R = [];
+      const { W, RM, OW } = await osmPbf(pbf, bb, routes), R = [];
       RM.forEach((e) => { const t = e.tags || {}; R.push({ route: t.route, ref: String(t.ref || "").trim(), name: String(t.name || ""), ways: (e.members || []).filter((m) => m.type === "way" && W.has(m.ref) && !/platform|stop/.test(m.role || "")).map((m) => m.ref) }); });
-      log("  OpenStreetMap-Auszug", routes, "Relationen", R.length, "Wege", W.size);
-      if (R.length) return { W, R };
+      log("  OpenStreetMap-Auszug", routes, "Relationen", R.length, "Wege", W.size, "Einbahn", OW.size);
+      if (R.length) return { W, R, OW };
     } catch (e) { log("  OpenStreetMap-Auszug fehlgeschlagen:", e.message, "– Overpass"); }
   }
   const W = new Map(), RM = new Map(); let ok = 0, err = null;
@@ -641,6 +642,29 @@ function osmFill(d, O, bus) {
   });
   log("  OSM-Verläufe", bus ? "Bus" : "Bahn", n, "ersetzt, ohne Treffer:", miss.length, miss.slice(0, 30).join(" "));
   return n;
+}
+/* Busse auf der Straße (Ferdinand 01.11.): GTFS-Verläufe (z. B. CTA) liegen oft 10–30 m neben der Fahrbahn, am Fluss oder durch Häuser.
+   Die OSM-Relation der Linie besteht aus den Straßenachsen. Je Weg die Fahrtrichtung aus der Reihenfolge der Relation (Anschluss an den Vorgänger);
+   Ausgabe gerichtet: Wege in beiden Richtungen zweimal (hin und zurück), die App zeichnet sie rechts der Achse = Mitte der Fahrbahnseite (GD = 1).
+   Einbahnstraßen/getrennte Fahrbahnen (eigener OSM-Weg je Richtung) bleiben mittig (GD = 0). Übernommen nur, wenn die OSM-Relation den
+   GTFS-Verlauf abdeckt (≥ 85 % der Punkte ≤ 40 m), sonst bleibt GTFS. */
+function polyDecB(s) { const o = []; let i = 0, la = 0, lo = 0; const d1 = () => { let r = 0, sh = 0, b; do { b = s.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32); return r & 1 ? ~(r >> 1) : r >> 1; }; while (i < s.length) { la += d1(); lo += d1(); o.push([la / 1e5, lo / 1e5]); } return o; }
+function osmBus(d, O) {
+  const by = new Map(); O.R.forEach((r) => { if (!OSMRT.bus.includes(r.route)) return; const k = refNorm(r.ref); if (!k) return; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+  let n = 0, ns = 0, low = 0; d.GD = d.L.map(() => 0);
+  d.L.forEach((l, i) => {
+    const rels = by.get(refNorm(l[1])) || []; if (!rels.length) return;
+    const pcs = busRichtung(O, rels); if (!pcs.length) return;
+    // Abdeckung: GTFS-Punkte (alle ~5.) nahe an einem OSM-Weg der Linie
+    const old = (d.G[i] || []).flatMap(polyDecB), grid = new Map(), c = 0.0004, cell = (la, lo) => Math.floor(la / c) + ":" + Math.floor(lo / c);
+    pcs.forEach(([g]) => g.forEach((p, j) => { if (j && distM(g[j - 1][0], g[j - 1][1], p[0], p[1]) > 30) { const q = g[j - 1], m = Math.ceil(distM(q[0], q[1], p[0], p[1]) / 30); for (let t = 1; t < m; t++) { const r = [q[0] + (p[0] - q[0]) * t / m, q[1] + (p[1] - q[1]) * t / m]; const k = cell(r[0], r[1]); (grid.get(k) || grid.set(k, []).get(k)).push(r); } } const k = cell(p[0], p[1]); (grid.get(k) || grid.set(k, []).get(k)).push(p); }));
+    const near = (p) => { const a = Math.floor(p[0] / c), b = Math.floor(p[1] / c); for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (const q of grid.get((a + x) + ":" + (b + y)) || []) if (distM(p[0], p[1], q[0], q[1]) <= 40) return true; return false; };
+    const smp = old.filter((_, j) => j % 5 === 0);
+    if (smp.length) { const f = smp.filter(near).length / smp.length; if (f < 0.85) { low++; return; } }
+    d.G[i] = pcs.map(([g]) => polyEnc(simp(g, 0.00002))); d.GD[i] = pcs.map(([, s]) => s); n++; if (d.GD[i].some(Boolean)) ns++;
+  });
+  if (!d.GD.some((x) => x && x.length)) delete d.GD;
+  log("  Busse auf der Straße (OpenStreetMap):", n, "von", d.L.length, "Linien, davon mit Fahrbahnseite", ns, "– GTFS behalten (OSM deckt nicht ab):", low);
 }
 function osmGeo(O, rels, tol) { const ids = new Set(); rels.forEach((r) => r.ways.forEach((w) => ids.add(w))); return [...ids].map((w) => polyEnc(simp(O.W.get(w), tol))).filter((x) => x.length > 4); }
 async function londonCity(id, C) {

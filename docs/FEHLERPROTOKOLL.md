@@ -5,6 +5,33 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-01 · Bushaltestellen beim Rauszoomen unsichtbar (Chicago, Vergleich Apple)
+
+**Meldung:** Ferdinand 00:34 (4 Screenshots): Bushaltestellen erscheinen erst mit dem Symbol; etwas weiter draußen sieht man nicht, wo Busse halten. Apple zeigt davor kleine Punkte.
+
+**Ursache:** Bushaltestellen hängen an `dst-ic` (Symbol) und sind dort erst ab `OV.z.busStop` (15,5) im Filter. Der Kreis `dst` zeigt nur Bahnstationen (`inS` ohne Bus) und endet bei Zoom 14. Zwischen Busliniensichtbarkeit (13,5) und 15,5 gab es also keine Darstellung der Haltestelle.
+
+**Lösung:** Neue Ebene `dbst` (Kreis in Busblau, weißer Rand) für Bushaltestellen von Zoom 14 bis 15,5, danach übernimmt das Symbol. Antippbar (in `DSTL`). Stärken in `OV.w.busDot`/`busDotRim`.
+
+**Commit/Version:** COMMIT · SW v502 · **Test:** „Busse auf der Straße …“ (Teil Haltestellen: Punkt bei 14,6, Symbol bei 16,2) – schlägt mit dem alten Stand fehl.
+
+---
+
+## 2026-11-01 · Buslinien neben der Straße, durch Häuser, am Fluss, mehrere Striche (Chicago)
+
+**Meldung:** Ferdinand 00:29–00:31 (4 Screenshots): 36 Broadway neben der Wells Dr, Busse an der LaSalle-Brücke über dem Fluss, mehrere Striche nebeneinander. Gewünscht (Antwort „B“): je Fahrtrichtung eine Linie in der Mitte ihrer Fahrbahnseite wie bei Apple am Columbus Dr.
+
+**Ursache:** Die Busverläufe im Stadtpaket kommen aus den GTFS-`shapes` des Betreibers (CTA). Diese sind ungenau (oft 10–30 m neben der Straßenachse, Ecken abgekürzt) und je Richtung ein eigener, leicht versetzter Verlauf → mehrere Striche. OpenStreetMap-Verläufe wurden bisher nur für Linien ohne Verlauf (Luftlinien, `_st`) eingesetzt (`osmFill`). Eine Fahrtrichtung kannte das Paket gar nicht, deshalb konnte die App nicht je Richtung zeichnen.
+
+**Lösung:**
+- Paketbau (`tools/stadtpakete/bus.mjs`, `osmBus` in build.mjs): Für jede Buslinie mit OSM-Relation (gleiche Nummer) kommen die Straßenachsen aus OSM. Die Fahrtrichtung je Weg ergibt sich aus der Reihenfolge der Relation (Anschluss an den Vorgänger). Wege, die in beide Richtungen befahren werden, gehen hin und zurück als zwei gerichtete Striche hinaus (`GD = 1`), Einbahnstraßen/getrennte Fahrbahnen (eigener OSM-Weg) mittig (`GD = 0`). Aufeinanderfolgende Stücke werden verkettet. Übernommen wird nur, wenn OSM den GTFS-Verlauf abdeckt (≥ 85 % der Punkte ≤ 40 m), sonst bleibt GTFS.
+- App: gerichtete Stücke als eigenes Objekt (`sd = 1`), `line-offset` = 3,5 m rechts der Achse (Rechtsverkehr), in Pixel je Zoom und Breitengrad umgerechnet (exponentiell). Gilt für alle Stadtpakete außer London (dort eigener Bau, Linksverkehr).
+- Geprüft mit Testdaten (Wells Dr); echte Pakete baut die Action „Stadtpakete“ neu, Ergebnis im Log „Busse auf der Straße (OpenStreetMap)“.
+
+**Commit/Version:** COMMIT · SW v502 · **Test:** „Busse auf der Straße wie Apple Karten …“.
+
+---
+
 ## 2026-11-01 · Linienkarte Berlin: Spitzen, Zacken, Zickzack und Knick am Abzweig (A100, Freiheit, Westhafen, Bornholmer Straße, Gesundbrunnen)
 
 **Meldung:** Ferdinand 00:17 (6 Screenshots): S41 mit Spitze an der A100, S9 mit Zacke an der Freiheit, S41/S42 laufen bei Westhafen als zwei Striche mit Zickzack, Abzweige an Bornholmer Straße und Gesundbrunnen mit spitzem Knick.
