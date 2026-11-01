@@ -32,14 +32,14 @@ Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 ## Runde 2 – Linienführung und Haltestellen wie Apple (Ferdinand 01.11.2026, Freigabe automatisch, keine Freigabe je Schritt)
 - [x] 18. Ursache im Fehlerprotokoll: warum Linien roh aus den Fahrplandaten gezeichnet werden (lose Enden, schräge Abkürzungen, neben der Straße, beide Richtungen übereinander).
 - [x] 19. Busse wie Apple: je Linie ein eigener Strich, Beschriftung wie Apple (Plakette mit Nummer auf der Linie + Name in Linienfarbe, z. B. „20 Madison“) statt gedrehtem Text.
-- [ ] 20. Jede Fahrtrichtung auf ihrer Seite (rechts der Fahrtrichtung, bei getrennten Fahrbahnen auf der eigenen).
-- [ ] 21. Linien auf die Straßenachse einrasten (nichts neben der Straße oder über Gehwege).
-- [ ] 22. An Kreuzungen entlang der Straße abbiegen, keine schrägen Abkürzungen.
+- [x] 20. Jede Fahrtrichtung auf ihrer Seite (rechts der Fahrtrichtung, bei getrennten Fahrbahnen auf der eigenen).
+- [x] 21. Linien auf die Straßenachse einrasten (nichts neben der Straße oder über Gehwege).
+- [x] 22. An Kreuzungen entlang der Straße abbiegen, keine schrägen Abkürzungen.
 - [x] 23. Lose Enden, Haken und kleine Versätze entfernen.
 - [x] 24. Kräftigere Linienfarbe mit mehr Kontrast (hell/dunkel).
-- [ ] 25. Bahnen (U-, S-Bahn, Tram): Bündel mit Linienfarben behalten, gleiche Regeln für saubere Führung.
+- [x] 25. Bahnen (U-, S-Bahn, Tram): Bündel mit Linienfarben behalten, gleiche Regeln für saubere Führung.
 - [x] 26. Haltestelle als Symbol je Verkehrsmittel (erledigt mit v496, 1b65e00 – prüfen).
-- [ ] 27. Linien-Plaketten neben dem Symbol, je Richtung an der richtigen Straßenseite.
-- [ ] 28. Haltestellen direkt auf ihre Linie setzen.
-- [ ] 29. Bei vielen Haltestellen/Linien je nach Zoom ausdünnen, nichts überlappt.
-- [ ] 30. Prüfen mit Vorher/Nachher-Bildern: Chicago Columbus Dr, NYC, Berlin Gesundbrunnen, Bremen; Lösung ins Fehlerprotokoll.
+- [x] 27. Linien-Plaketten neben dem Symbol, je Richtung an der richtigen Straßenseite.
+- [x] 28. Haltestellen direkt auf ihre Linie setzen.
+- [x] 29. Bei vielen Haltestellen/Linien je nach Zoom ausdünnen, nichts überlappt.
+- [x] 30. Prüfen mit Vorher/Nachher-Bildern: Chicago Columbus Dr, NYC, Berlin Gesundbrunnen, Bremen; Lösung ins Fehlerprotokoll.

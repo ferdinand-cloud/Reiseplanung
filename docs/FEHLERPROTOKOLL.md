@@ -24,6 +24,14 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 - Beschriftung wie Apple Karten: Plakette mit der Nummer, daneben der Name in der Linienfarbe („20 Madison“, `tpBus`, Bild `tb|…`), wiederholt entlang der Linie, weicht anderen Beschriftungen aus.
 - Farbe: alle Busse in einem kräftigen Busblau (#2F6BC8, dunkel #6FA0EA) mit 90 % Deckkraft statt gedämpft und halb durchsichtig; Linien etwas breiter. Die Datenfarben taugen nicht (CTA: Grau, Schwarz, Expressbusse rot wie die Red Line).
 
+**Lösung (Teil 2, Prüfung mit echten Paketen nach dem Bau am 01.11., 19:31):**
+- Chicago-Paket gebaut und veröffentlicht (124 Buslinien). Die CTA-Verläufe sind bereits auf die Straßenachse gelegt und je Richtung getrennt; bei Einbahnstraßen-Paaren (z. B. Madison/Washington) liegt jede Richtung auf ihrer Straße, auf Straßen mit beiden Richtungen ein Strich wie bei Apple (Aufgaben 20–22). OpenStreetMap-Verläufe braucht es dafür nicht (Bau-Log: „OSM-Verläufe Bus 0 ersetzt“ – alle Linien haben eigene Verläufe).
+- Bahnbündel (25): dieselbe Aufräum-Funktion `lnClean` (Spitzen, Stummel bis 25 m, durchgehende Striche) gilt auch für Bahnlinien; Farben und Nebeneinander (`lnSlots`) bleiben.
+- Haltestellen (27–29): jede Haltestelle trägt ihre eigenen Linien (gegenüberliegende Haltestellen getrennt, also je Straßenseite), sie wird auf ihre Linie gesetzt (`stSnap`, bis 80 m); Busplaketten an der Linie weichen einander und den Stationsnamen aus (MapLibre-Kollision, Abstand 420 px), Bushaltestellen erst ab Zoom 15,5.
+- Bilder „nachher“: `/mnt/project-files/fehlerprotokoll/bilder/` (Chicago Loop, Bremen Hbf, Berlin Gesundbrunnen). „Vorher“ = Ferdinands Screenshots; hier nicht nachstellbar, weil Grundkarte und Transitland aus der Testumgebung nicht erreichbar sind (Bilder ohne Straßen).
+- Offen: Städte ohne Stadtpaket zeigen Busse weiter aus den vereinfachten Transitland-Kacheln (Zoom 14). Abhilfe dort: Stadt als Paket aufnehmen.
+- Nebenbei: Bau-Log der Stadtpakete meldete „Fahrt nicht zusammenhängend“ 600 000-mal (2,5 MB Log) → je Fahrt einmal, höchstens 20.
+
 **Commit/Version:** 1cfbca6 · SW v497 · **Test:** „Busse wie Apple Karten: je Linie ein Strich in Busblau, Plakette mit Name („20 Madison“), ohne Haken und Stückelung (Stadtpaket Chicago)“; „Linienfarben: … Bus kräftiges Busblau …“ angepasst.
 
 ---

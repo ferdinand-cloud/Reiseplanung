@@ -311,7 +311,7 @@ async function buildGtfs(id, C, zip, opt) {
   });
   if (FQ.size) log(id, "Takt-Fahrten", FQ.size);
   // Fahrzeiten: je Fahrtmuster (Linie, Richtung, Haltfolge) Takt und mittlere Fahrzeit je Abschnitt
-  const PAT = new Map(); let curT = null, buf = [], seen = new Set(), rows = 0;
+  const PAT = new Map(); let curT = null, buf = [], seen = new Set(), warned = new Set(), rows = 0;
   const flush = () => {
     if (!curT) return;
     const fq = FQ.get(curT), t = T.get(curT); curT = null; if (!t || buf.length < 2) { buf = []; return; }
@@ -337,7 +337,7 @@ async function buildGtfs(id, C, zip, opt) {
   };
   await eachRow(zip, "stop_times.txt", (f, H) => {
     const tid = f[H.trip_id];
-    if (tid !== curT) { flush(); if (!T.has(tid)) { curT = null; return; } if (seen.has(tid)) log("  Warnung: Fahrt nicht zusammenhängend", tid); seen.add(tid); curT = tid; }
+    if (tid !== curT) { flush(); if (!T.has(tid)) { curT = null; return; } if (seen.has(tid) && !warned.has(tid)) { warned.add(tid); if (warned.size <= 20) log("  Warnung: Fahrt nicht zusammenhängend", tid); } /* je Fahrt einmal, höchstens 20 (CTA: sonst 600 000 Zeilen Log) */ seen.add(tid); curT = tid; }
     if (!curT) return;
     buf.push([+f[H.stop_sequence], f[H.stop_id], tSec(f[H.arrival_time]), tSec(f[H.departure_time])]); rows++;
   });
