@@ -23,7 +23,7 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 **Nachtrag Stationen (17, Ferdinand 21:47 „Ja, jetzt umsetzen“, v499):** Ursache, warum es bisher keinen Punkt je Linie gab: die Station war ein einzelner Kreis bzw. ein Symbol am Stationsort; die Linien liegen aber per `line-offset` (Platz × `OV.w.off`, wächst mit dem Zoom) neben der Mittellinie, also neben diesem Punkt. Lösung: `lnDots()` sucht je Station und Linie den nächsten Punkt der Linie (≤ 80 m) und die Richtung des Abschnitts; Ebene `ddot` zeichnet dort einen Punkt in Linienfarbe mit weißem Rand. Der Versatz steckt im Bild (`pd|Farbe|Platz`, Bezug Zoom 16), gedreht auf die Seite der Linie (`icon-rotate`, an der Karte ausgerichtet) und mit `icon-size` im selben Verhältnis wie `line-offset` skaliert – der Punkt sitzt so bei jedem Zoom auf seinem Strich. Stationen mit Punkten zeichnen keinen Kreis und kein Symbol mehr darüber (Merkmal `dd`), der Name bleibt. Gilt für Stadtpakete und OpenStreetMap-Linien; die Linienkarte (eigene Versätze im Bau) bleibt wie bisher.
 Nebenbei behoben (beim Prüfen gefunden): ein Zeilenkommentar `//` mitten in der Filterzeile hätte die Filter für Symbol und Name abgeschaltet – vor dem Push korrigiert.
-Test: „Stationen wie Apple Karten: auf jeder Linie des Bündels ein Punkt in Linienfarbe …“.
+Commit 77a2e68 · SW v499 · Test: „Stationen wie Apple Karten: auf jeder Linie des Bündels ein Punkt in Linienfarbe …“.
 
 **Commit/Version:** c0e5d80 · SW v498 · **Test:** „Busse wie Apple Karten …“ erweitert (Übersicht nur Hauptbus, nah alle; Bus dünner als Bahn; Paket hat Vorrang vor Transitland; Transitland-Plakette).
 
