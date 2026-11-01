@@ -5,6 +5,18 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-01 · Volltest v500: „Grafikkarte … Stationen bleiben nach Ausschalten“ (wackelig)
+
+**Meldung:** Klicktests-Lauf 41356154270 (main 7514d3c, v500): ein Test rot, beide Versuche, Lauf mit 704 s deutlich langsamer als sonst.
+
+**Ursache:** Nicht durch v500 verursacht: Der Commit ändert nur Stadtpaket-Stationspunkte (ddot, dst), nicht die New-Yorker Stationsquelle `subst`, die der Test prüft. Einzeln lokal 4× grün (auch mit dem Vortest „Routenoptionen“), Wiederholung desselben Commits in der Action grün. Genaue Zeitursache unter Last nicht reproduzierbar; Verdacht: Kartenstil wird unter Last nachgeladen, während `stSet(false)` läuft (`mapReady`/alte Quelle).
+
+**Lösung:** Keine Code-Änderung. Wiederholung des Laufs bestanden. Bei erneutem Auftreten: Test auf `mapReady` und frische Quelle warten lassen.
+
+**Commit/Version:** v500 (7514d3c), Lauf 41356154270 Versuch 2 grün.
+
+---
+
 ## 2026-11-01 · Chicago Loop anders als Apple: Bündel fehlt, Busnetz zu dicht und dunkel, Nummern scheinbar auf falscher Linie, keine Stationen
 
 **Meldung:** Screenshots 20:10 (App vs. Apple Karten, Loop): Apple zeigt den Hochbahn-Ring als Bündel aus fünf Farben, Bahn kräftig, Busse dünn/hell und in der Übersicht nur wenige, Beschriftung „8 Halsted“; die App einen einzelnen orangen Ring, ein dichtes dunkles Busnetz, lose Nummern in verschiedenen Farben („146/148“ an der roten, „851“ an der blauen Linie), keine Stationen.
