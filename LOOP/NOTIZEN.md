@@ -38,6 +38,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 - Aufgabe 9: Symbol ab `OV.z.stopIcon` (Z14) statt Punkt: andere Städte schon vorher (`dst-ic`), New York neu (`subst-ic`, „ts|metro“, `subst` endet bei Z14). Fähre hat ein eigenes Bild (Boot mit Welle) in `tpMode`, vorher Zug-Bild. Transitland-Haltestellen bleiben Punkte (Kacheln ohne Verkehrsmittel je Haltestelle).
 
+- Aufgabe 10: New York zeigt Name + Linien-Plaketten jetzt wie die anderen Städte als Kartenebene `subst-lbl` (Bild „tn|Name|Linien|l“, `dstImg`, Plaketten ab Z14,5) statt im SVG-Overlay (`drawOverlay`, Kreise r 6,5 entfernt). Kollisionsprüfung durch MapLibre. Umstiegsknoten: `stCx()` (Union-Find über MTA-Umstiege `NET.t` bei gleichem Namen) → ein Name mit allen Linien an der mittleren Station, übrige `h:1` ohne Namen. Wall St 2/3 und 4/5, Penn 1/2/3 und A/C/E bleiben getrennt (kein Umstieg). NYC-Namen je Rang eine Stufe später als andere Städte (Z13/14/15), damit S1 ruhig bleibt. Busse: Plaketten an Haltestellen erst ab `OV.z.busStop` (15,5), unverändert.
+
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
 - 1 · „Ok Freigabe“ · keine Änderung
@@ -58,3 +60,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 7 · 01.11.2026 · (git log „Loop 7:“) · L7, L8 bestanden (Test prüft die Reihenfolge; S1–S5 pixelgleich, da Testkarte ohne Straßen/Gebäude) · Freigabe automatisch · Klicktests main rot seit v479: Berlin-Takt abends/Wochenende 10 Min. → Test korrigiert (eigener Commit).
 - 8 · 01.11.2026 · (git log „Loop 8:“) · T1 bestanden (erst zu klein/dünn → Radius und Rand vergrößert) · Freigabe automatisch
 - 9 · 01.11.2026 · (git log „Loop 9:“) · T2 bestanden (S1 ohne Symbole, ab Z14 Symbol) · Freigabe automatisch
+- 10 · 01.11.2026 · (git log „Loop 10:“) · T3/T5/T6 bestanden (S2 Times Sq ein Name mit 1 2 3 7 S N Q R W, S1 ohne Namen) · Freigabe automatisch

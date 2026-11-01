@@ -2038,8 +2038,31 @@ await test("Verkehrsmittel-Symbol an Stationen: erst ab Zoom 14 (statt Punkt), U
   })()`));
   ok(r.nyc && r.osm, "Symbol nicht erst ab Zoom 14: "+JSON.stringify(r));
   ok(r.imgs && r.diff, "U-Bahn/Bus/Fähre ohne eigenes Symbol: "+JSON.stringify(r));
-  await rp(`map.jumpTo({center:[-73.9873, 40.7553], zoom:15}); true`); await page.waitForTimeout(800);
+  await rp(`map.jumpTo({center:[-73.9873, 40.7553], zoom:15}); true`);
+  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["subst-ic"]}).length > 3`), null, {timeout:8000}).catch(() => {});
   ok(await rp(`map.queryRenderedFeatures({layers:["subst-ic"]}).length > 3 && map.queryRenderedFeatures({layers:["subst"]}).length===0`), "NYC-Stationen zeigen bei Zoom 15 kein Symbol");
+});
+
+await test("Linien-Plaketten an Stationen: NYC wie andere Städte (Kürzel + Originalfarbe, ab Zoom 14,5, ein Name je Umstiegsknoten), Busse erst ab Zoom 15,5", async () => {
+  await seed();
+  await rp(`layers.sub = true; offSub = {}; applyLayers(); STKEY = ""; stSet(true); true`);
+  const r = JSON.parse(await rp(`(function(){
+    var f = map.getSource("subst")._data.features, ts = f.filter(function(x){ return x.properties.n==="Times Sq-42 St"; }), hd = ts.filter(function(x){ return !x.properties.h; });
+    var img = JSON.stringify(map.getLayoutProperty("subst-lbl","icon-image")), osm = JSON.stringify(map.getLayoutProperty("dst-lbl","icon-image"));
+    return JSON.stringify({lay:!!map.getLayer("subst-lbl"), same:img===JSON.stringify(dstImg("lb")) && osm.indexOf("14.5") > -1 && img.indexOf("14.5") > -1, bus:osm.indexOf(String(BSTZ)) > -1 && BSTZ===OV.z.busStop,
+      n:ts.length, heads:hd.length, lb:hd.length ? hd[0].properties.lb : "", r:hd.length ? hd[0].properties.r : 0,
+      col:hd.length && hd[0].properties.lb.split(";").every(function(x){ var p = x.split(","); return LINECOL[p[0]] && LINECOL[p[0]][0]===p[1]; })});
+  })()`));
+  ok(r.lay && r.same, "NYC-Plaketten nicht wie in den anderen Städten: "+JSON.stringify(r));
+  ok(r.bus, "Bus-Plaketten nicht erst ab Zoom 15,5: "+JSON.stringify(r));
+  ok(r.n > 1 && r.heads===1 && r.r===3 && r.col && ["1","7","S","N","W"].every(k => r.lb.split(";").some(x => x.split(",")[0]===k)), "Times Sq nicht ein Knoten mit allen Linien: "+JSON.stringify(r));
+  const g = JSON.parse(await rp(`(function(){ var f = map.getSource("subst")._data.features, H = function(n){ return f.filter(function(x){ return x.properties.n===n && !x.properties.h; }).map(function(x){ return x.properties.lb.split(";").length; }); };
+    return JSON.stringify({fulton:H("Fulton St"), wall:H("Wall St")}); })()`));
+  ok(g.fulton.some(n => n >= 8) && g.wall.length===2, "Umstiegsknoten falsch (Fulton St = ein Knoten, Wall St 2/3 und 4/5 getrennt): "+JSON.stringify(g));
+  ok(await rp(`offSub.W = 1; stSet(true); var f = map.getSource("subst")._data.features.find(function(x){ return x.properties.n==="Times Sq-42 St" && !x.properties.h; }); offSub = {}; stSet(true); f && f.properties.lb.indexOf("W,")===-1 && f.properties.lb.indexOf("N,") > -1`), "Ausgeschaltete Linie bleibt als Plakette");
+  await rp(`select(null); layers.route = false; applyLayers(); map.jumpTo({center:[-73.9873, 40.7553], zoom:15}); true`);
+  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["subst-lbl"]}).length > 2`), null, {timeout:8000}).catch(() => {});
+  ok(await rp(`map.queryRenderedFeatures({layers:["subst-lbl"]}).length > 2 && !document.querySelector("#ov circle[r='6.5']")`), "NYC-Namen/Plaketten nicht auf der Karte (oder noch als SVG)");
 });
 
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {

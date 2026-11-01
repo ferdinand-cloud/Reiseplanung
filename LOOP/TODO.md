@@ -16,7 +16,7 @@ Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 ## Stationen
 - [x] 8. Einheitliche Stationsmarker je Verkehrsmittel (z. B. weißer Punkt mit farbigem Rand), Größe zoomabhängig.
 - [x] 9. Verkehrsmittel-Icon am Stationsmarker (U-Bahn, Bus, Fähre), erst ab einer sinnvollen Zoomstufe.
-- [ ] 10. Linien-Badges an Stationen (farbige Kreise mit Kürzel wie A, C, E); bei Bus erst bei starkem Zoom, damit es nicht überladen wirkt.
+- [x] 10. Linien-Badges an Stationen (farbige Kreise mit Kürzel wie A, C, E); bei Bus erst bei starkem Zoom, damit es nicht überladen wirkt.
 - [ ] 11. Umstiegsstationen hervorheben (größerer bzw. länglicher Marker, wenn mehrere Linien halten).
 - [ ] 12. Stationsnamen zoomabhängig einblenden, ohne Überlappung mit anderen Namen und Badges (Kollisionserkennung).
 
@@ -26,3 +26,4 @@ Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 ## Neu gefunden
 - [ ] 14. Linien verschiedener Farbgruppen auf gemeinsamer Strecke liegen deckungsgleich (z. B. 2 und 5 auf der Nostrand Av: nur Grün sichtbar), weil die Plätze nebeneinander nur je Farbe vergeben werden (`GEO`-Aufbau, `o`).
 - [ ] 15. New York: Stationen außerhalb des bisherigen Datenkastens (z. B. Rockaway, Coney Island, Flushing-Ende) fehlen, obwohl die Linien jetzt bis zur Endstation reichen.
+- [ ] 16. Stationsname + Plaketten am rechten Bildrand laufen unter die Kartenknöpfe (Bild hängt immer rechts am Punkt; MapLibre kann Bild-Anker nicht ausweichen lassen), z. B. Fulton St in S3.

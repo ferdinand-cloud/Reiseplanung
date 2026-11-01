@@ -12173,7 +12173,8 @@ function subKey(r){ return r.replace(/X$/,""); }
 var SUBNAMES = []; TRANSIT.subway.forEach(function(t){ var k = subKey(t.r); if(SUBNAMES.indexOf(k)<0) SUBNAMES.push(k); });
 var BUSNAMES = TRANSIT.bus.map(function(b){ return b.r; }).sort(function(a,b){ return a.localeCompare(b, "de", {numeric:true}); });
 function lineOn(code){ return !offSub[code]; }
-function stationOn(st){ var ls = st[3].indexOf("·")>-1 ? st[3].split("·") : st[3].split(""); return ls.some(lineOn); }
+function stLines(st){ var x = String(st[3] || ""); return x.indexOf("·")>-1 ? x.split("·") : x.split(""); }
+function stationOn(st){ return stLines(st).some(lineOn); }
 function applyLines(){
   if(mapReady){
     map.setFilter("sub", ["!", ["in", ["get","k"], ["literal", Object.keys(offSub)]]]);
@@ -13338,15 +13339,37 @@ function rtAddLayers(){
   map.addLayer({id:"subst", type:"circle", source:"subst", minzoom:OV.z.stop, maxzoom:OV.z.stopIcon, filter:stZ(true), paint:STPAINT("metro")}, "rt-case"); // New York: U-Bahn-Stationen wie alle Stationen
   // ab Zoom 14 Symbol des Verkehrsmittels statt Punkt (wie in den anderen Städten)
   map.addLayer({id:"subst-ic", type:"symbol", source:"subst", minzoom:OV.z.stopIcon, layout:{"icon-image":"ts|metro", "icon-size":ovZ(OV.w.stopIcon), "icon-allow-overlap":true, "icon-ignore-placement":true, "symbol-sort-key":["-", 0, SR]}});
+  // Name + Linien-Plaketten wie in den anderen Städten (gleiches Bild „tn|…“, Plaketten ab Zoom 14,5), mit Kollisionsprüfung statt SVG; Namen wegen des dichten Netzes je Rang eine Zoomstufe später
+  map.addLayer({id:"subst-lbl", type:"symbol", source:"subst", minzoom:OV.z.stopName, filter:zStep(["==", ["get","h"], 0], [[13, [">=", SR, 3]], [14, [">=", SR, 2]], [15, null]]), layout:{"symbol-sort-key":["-", 0, SR], "icon-image":dstImg("lb"),
+    "icon-anchor":"top-left", "icon-offset":["step", ["zoom"], ["literal", [6, -10]], 14, ["literal", [10, -10]]], "icon-padding":2}});
   mkAddLayers();
+}
+/* Umstiegsknoten New York: Station → Knotennummer (Union-Find über die MTA-Umstiege NET.t zwischen Stationen gleichen Namens); einmal berechnet */
+var STCX = null;
+function stCx(){
+  if(STCX) return STCX;
+  var S = TRANSIT.stations, par = S.map(function(_, i){ return i; }), byN = {};
+  var f = function(i){ while(par[i]!==i) i = par[i] = par[par[i]]; return i; };
+  S.forEach(function(st, i){ (byN[st[0]] = byN[st[0]] || []).push(i); });
+  var nk = function(si){ var n = NET.s[si], c = byN[n[0]] || [], b = -1, bd = 60; c.forEach(function(i){ var d = Math.hypot(S[i][1]-n[1], S[i][2]-n[2]); if(d < bd){ bd = d; b = i; } }); return b; };
+  (NET.t || []).forEach(function(t){ if(NET.s[t[0]][0]!==NET.s[t[1]][0]) return; var a = nk(t[0]), b = nk(t[1]); if(a > -1 && b > -1) par[f(a)] = f(b); });
+  return (STCX = S.map(function(_, i){ return f(i); }));
 }
 /* U-Bahn-Stationen New York als Kartenebene (Punkte auf der Grafikkarte); Linien-Kreise und Namen nur ganz nah im Overlay */
 var STKEY = "";
 function stSet(on){
   var src = mapReady && map.getSource("subst"); if(!src) return;
   var ids = []; if(on) TRANSIT.stations.forEach(function(st, i){ if(stationOn(st)) ids.push(i); });
-  var k = ids.join(","); if(k===STKEY) return; STKEY = k;
-  src.setData({type:"FeatureCollection", features:ids.map(function(i){ var st = TRANSIT.stations[i], l = llW(st[1], st[2]); var n = String(st[3] || "").length; return {type:"Feature", properties:{i:i, r:n >= 4 ? 3 : n >= 2 ? 2 : 1}, geometry:{type:"Point", coordinates:[l.lo, l.la]}}; })});
+  var k = ids.join(",")+"|"+Object.keys(offSub).filter(function(c){ return offSub[c]; }).join(","); if(k===STKEY) return; STKEY = k;
+  // Umstiegsknoten (gleicher Name + Umstieg laut MTA, z. B. Times Sq-42 St: 1/2/3, 7, S, N/Q/R/W) = ein Name mit allen Linien-Plaketten, an der mittleren Station
+  var cx = stCx(), grp = {}, mem = {}; ids.forEach(function(i){ (mem[cx[i]] = mem[cx[i]] || []).push(i); });
+  Object.keys(mem).forEach(function(k){ var m = mem[k], x = 0, y = 0, ls = [];
+    m.forEach(function(i){ var st = TRANSIT.stations[i]; x += st[1]/m.length; y += st[2]/m.length; stLines(st).forEach(function(r){ if(ls.indexOf(r) < 0) ls.push(r); }); });
+    var h = m.reduce(function(a, i){ var A = TRANSIT.stations[a], B = TRANSIT.stations[i]; return Math.hypot(B[1]-x, B[2]-y) < Math.hypot(A[1]-x, A[2]-y) ? i : a; }, m[0]);
+    m.forEach(function(i){ grp[i] = i===h ? ls : null; }); });
+  src.setData({type:"FeatureCollection", features:ids.map(function(i){ var st = TRANSIT.stations[i], l = llW(st[1], st[2]), ls = grp[i] || [], n = ls.length;
+    var lb = ls.filter(lineOn).map(function(r){ return r+","+(LINECOL[r] || ["#808183"])[0]; }).join(";"); // Linien-Plaketten: Kürzel + Originalfarbe der haltenden Linien
+    return {type:"Feature", properties:{i:i, r:grp[i] ? (n >= 4 ? 3 : n >= 2 ? 2 : 1) : 1, n:st[0], lb:lb, h:grp[i] ? 0 : 1}, geometry:{type:"Point", coordinates:[l.lo, l.la]}}; })});
 }
 /* ---------- Kartenpunkte auf der Grafikkarte: Stopps, Wünsche, Hotels, Fotos und ihre Beschriftungen als MapLibre-Symbole.
    Jedes Aussehen wird einmal auf eine Leinwand gezeichnet (Bildname = Aussehen), danach verschiebt/zoomt/dreht die Grafikkarte nur noch.
@@ -13523,18 +13546,6 @@ function drawOverlay(){
       s += "<rect x=\""+f1(q[0]-w/2)+"\" y=\""+f1(q[1]-7)+"\" width=\""+w+"\" height=\"14\" rx=\"4\" fill=\"var(--bus)\"/><text class=\"busl\" x=\""+f1(q[0])+"\" y=\""+f1(q[1]+3.5)+"\" text-anchor=\"middle\">"+esc(b[0])+"</text>"; });
   }
   stSet(layers.sub && !trRO() && !DEST);
-  if(layers.sub && !trRO() && !DEST && V.m < 2.6){
-    TRANSIT.stations.forEach(function(st){
-      if(!stationOn(st)) return;
-      var q = toS(st[1], st[2]); if(!onScreen(q,30)) return;
-      {
-        var lines = st[3].indexOf("·")>-1 ? st[3].split("·") : st[3].split(""), x = q[0]+9;
-        lines.filter(lineOn).slice(0,8).forEach(function(r){ var c = LINECOL[r] || ["#808183","#fff"];
-          s += "<circle cx=\""+f1(x+6)+"\" cy=\""+f1(q[1])+"\" r=\"6.5\" fill=\""+c[0]+"\"/><text x=\""+f1(x+6)+"\" y=\""+f1(q[1]+3.4)+"\" text-anchor=\"middle\" font-size=\"9.5\" font-weight=\"700\" fill=\""+c[1]+"\">"+esc(r)+"</text>"; x += 14; });
-        s += "<text class=\"stn\" x=\""+f1(q[0]+9)+"\" y=\""+f1(q[1]+18)+"\">"+esc(st[0])+"</text>";
-      }
-    });
-  }
   // Wünsche (dezent) – als Kartenpunkte auf der Grafikkarte; Tipp-Positionen weiter nur für sichtbare
   var sugIds = {}, wishMarks = [], wlabels = "", MK = []; cpN = 0; WISHN = 0; LBLQ = []; MKF = [];
   // Ziel-Ansicht: nur die Orte des Ziels (gemerkt: weiß mit Symbol, besucht: grau mit Haken), keine Reise-Inhalte
