@@ -2572,7 +2572,8 @@ label.pf-new,label.jp-tile{cursor:pointer}
 .rvt p{margin:4px 0 0;font-size:14px;line-height:1.4;white-space:pre-line}
 .rvhl{font-size:11.5px;font-weight:700;color:#C9A227}
 .rvph{display:flex;gap:6px;margin-top:6px;overflow-x:auto;scrollbar-width:none}
-.rvph img{width:84px;height:84px;flex:0 0 84px;border-radius:10px;object-fit:cover}
+.rvph-b{flex:0 0 84px;width:84px;height:84px;padding:0;border:0;background:none;border-radius:10px;overflow:hidden;cursor:pointer}
+.rvph img{width:84px;height:84px;flex:0 0 84px;border-radius:10px;object-fit:cover;display:block}
 .rvsoon{border:1px dashed var(--line);border-radius:12px;padding:12px;color:var(--muted)}
 .rvsoon b{color:var(--ink);font:600 14px/1.3 var(--f-body)}
 .rvsoon p{margin:4px 0 0;font-size:13px;line-height:1.4}
@@ -2981,6 +2982,7 @@ body.sheetmin .sheet{visibility:hidden;transition:transform .28s cubic-bezier(.2
 .jp-pv.vlv-pub{background:color-mix(in srgb,#0A84FF 18%,transparent);color:#0A84FF}
 .addmenu.jpmenu[data-kind^="vis-"]{z-index:120}
 .addmenu.jpmenu .vp-h{padding:6px 10px 4px;font:700 11px/1.2 var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.addmenu.jpmenu .vp-who{padding:0 10px 6px;font:500 12px/1.3 var(--f-body);color:var(--muted)}
 .addmenu.jpmenu > button.dis{opacity:.45}
 .addmenu.jpmenu .ai svg{width:16px;height:16px;margin:0}
 #pvLayer .pvi.pv-vis svg{width:21px;height:21px;margin:0;vertical-align:0;color:currentColor}
@@ -5101,7 +5103,9 @@ function visBtn(pid, cls, label){ if(!privSee() || !P(pid) || P(pid).k==="hotel"
   return "<"+(ro ? "span role=\"img\"" : cls==="ls-vis" ? "span role=\"button\" tabindex=\"0\"" : "button type=\"button\"")+" class=\""+cls+" vlv-"+v+(ro ? " vis-ro" : "")+"\""+(ro ? "" : " data-act=\"placevispick\" data-pid=\""+pid+"\" aria-haspopup=\"menu\"")+" aria-label=\"Sichtbarkeit: "+VISLBL[v]+"\" title=\"Sichtbarkeit: "+VISLBL[v]+"\">"+visIco(v)+(label ? "<span>"+VISLBL[v]+(v==="priv" && privToOf("p", pid).length ? " · "+privToOf("p", pid).length+" Beob." : "")+"</span>" : "")+"</"+(ro || cls==="ls-vis" ? "span" : "button")+">"; }
 function openPlaceVis(pid, btn){
   var cur0 = visOf4(pid), vis1 = wasVisited(pid);
-  var h = "<div class=\"vp-h\">Ort sichtbar für</div>"+["priv","trip","pub","all"].map(function(v){
+  var pb = (T().pubP||{})[rootOf(pid)], me = acct.user && acct.user.uid;
+  var who = (cur0==="pub" || cur0==="all") && typeof pb==="string" ? (pb===me ? "Von dir veröffentlicht" : "Veröffentlicht von "+atn(chName(pb)||"Mitreisende/r")) : "";
+  var h = "<div class=\"vp-h\">Ort sichtbar für</div>"+(who ? "<div class=\"vp-who\">"+esc(who)+"</div>" : "")+["priv","trip","pub","all"].map(function(v){
     var dis = (v==="pub" || v==="all") && !vis1, sub = v==="priv" ? "nur Mitreisende" : v==="trip" ? "Mitreisende + Beobachter" : dis ? "erst nach dem Besuch" : v==="all" ? "+ alle Nutzer, öffentlich" : "+ Freunde, als Vorschlag";
     return "<button type=\"button\" role=\"menuitemradio\" data-act=\"placevis\" data-pid=\""+pid+"\" data-v=\""+v+"\" aria-checked=\""+(cur0===v)+"\""+(dis ? " class=\"dis\"" : "")+"><span class=\"ai vlc-"+v+"\">"+visIco(v)+"</span><span class=\"cm-t\"><b>"+VISLBL[v]+"</b><small>"+sub+"</small></span>"+(cur0===v ? "<b class=\"ck\">✓</b>" : "")+"</button>"; }).join("")+(cur0==="priv" ? privToHTML("p", pid) : "");
   jpPopover(pid, btn, h, "vis-place");
@@ -6411,6 +6415,10 @@ function recCol(uid0){ return fbDb.collection("recs").doc(uid0).collection("item
 function recThumb(ph){ return phGet(ph).then(function(d){ if(!d) return null; return new Promise(function(res){ var im = new Image(); im.onload = function(){ var m = 560, k = Math.min(1, m/Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement("canvas");
   c.width = Math.round(im.naturalWidth*k); c.height = Math.round(im.naturalHeight*k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL("image/jpeg", .72)); }; im.onerror = function(){ res(null); }; im.src = d; }); }).catch(function(){ return null; }); }
 // Wer hat den Ort veröffentlicht? uid (neu) oder 1 (alt: dann gilt der Besitzer der Reise)
+// Empfehlung stammt aus einer eigenen (gemeinsamen) Reise? Schlüssel = uid/{Reise}_{Ort}. Dann ist es dieselbe Reise-Bewertung
+// mit denselben Fotos, keine eigene Meinung der Mitreisenden → nicht als „Freund empfiehlt“ zeigen.
+function recFromMyTrip(r){ var k = String((r && r.key) || "").split("/")[1] || ""; if(!k) return false;
+  return Object.keys(S.trips).some(function(tid){ var c = tid.replace(/[^A-Za-z0-9_-]/g, ""); return !!c && k.indexOf(c+"_")===0; }); }
 function pubMine(tid, pb, me){ if(typeof pb==="string") return pb===me; var m = META[tid]; return !m || !m.owner || m.owner===me; }
 function recCollect(){
   var out = {}, me = acct.user && acct.user.uid;
@@ -6483,7 +6491,7 @@ function closeDcPage(){ if(!dcPage) return; dcPage = false; $("dcView").hidden =
 function dcLoad(){
   if(!fbDb || !acct.user){ renderDc(); return; }
   var fr = FR.friends.filter(function(f){ return f.uid; }); DC.busy = true; DC.err = ""; renderDc();
-  Promise.all(fr.map(function(f){ return recCol(f.uid).orderBy("at", "desc").limit(150).get().then(function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.key = f.uid+"/"+d.id; v.fname = f.name || v.name || ""; return v; }); }, function(){ return []; }); }))
+  Promise.all(fr.map(function(f){ return recCol(f.uid).orderBy("at", "desc").limit(150).get().then(function(qs){ return qs.docs.map(function(d){ var v = d.data(); v.key = f.uid+"/"+d.id; v.fname = f.name || v.name || ""; return v; }).filter(function(v){ return !recFromMyTrip(v); }); }, function(){ return []; }); }))
     .then(function(all){ DC.items = [].concat.apply([], all); DC.byKey = {}; DC.items.concat(PUB.items).forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); DC.busy = false; if(dcPage) renderDc(); if(SUG.tab==="fr" && $("catPop") && !$("catPop").hidden && $("catPop").querySelector(".sug-card")) renderSug();
       if(sel) renderCard(); if(jp && !jp.view && !$("jPop").hidden && !(document.activeElement && /^(cmIn|nText)$/.test(document.activeElement.id))) renderJPop(); });
 }
@@ -6499,7 +6507,7 @@ function pubLoad(force){
   Promise.all(qs).then(function(res){
     if(PUB.key!==key) return; var seen = {}, out = [];
     res.forEach(function(q){ q.docs.forEach(function(d){ var v = d.data(); if(!v || !v.by || v.by===me || seen[d.id]) return; seen[d.id] = 1;
-      v.pid = d.id; v.key = v.by+"/"+d.id.slice(v.by.length + 1); v.fname = v.name || ""; v.pub = 1; v.cm = v.cm || []; out.push(v); }); });
+      v.pid = d.id; v.key = v.by+"/"+d.id.slice(v.by.length + 1); v.fname = v.name || ""; v.pub = 1; v.cm = v.cm || []; if(!recFromMyTrip(v)) out.push(v); }); });
     PUB.items = out; PUB.at = Date.now(); PUB.busy = false; out.forEach(function(r){ if(!DC.byKey[r.key]) DC.byKey[r.key] = r; }); if(dcPage) renderDc();
   }, function(e){ if(PUB.key!==key) return; PUB.busy = false; PUB.err = "Öffentliche Empfehlungen konnten nicht geladen werden"+(e && e.code==="permission-denied" ? " (Regeln noch nicht aktiv?)" : "")+"."; if(dcPage) renderDc(); });
 }
@@ -9253,7 +9261,7 @@ function friendRecs(p){
   if(!p || !hasLoc(p)) return [];
   if(acct.user && FR.friends.length && !DC.busy && Date.now() - DC.at > 300000) dcLoad();
   var nm = (p.n||"").toLowerCase().slice(0, 6);
-  return DC.items.filter(function(r){ if(!r.la) return false; var d = dist(p, r); return d < 40 || (d < 150 && (r.n||"").toLowerCase().slice(0, 6)===nm); });
+  return DC.items.filter(function(r){ if(!r.la || recFromMyTrip(r)) return false; var d = dist(p, r); return d < 40 || (d < 150 && (r.n||"").toLowerCase().slice(0, 6)===nm); });
 }
 function rvChips(p){
   var fr = friendRecs(p), best = fr.reduce(function(m, r){ return r.rating && (!m || rateRank(r.rating) < rateRank(m)) ? r.rating : m; }, 0), RR = RATES.filter(function(x){ return x[0]===best; })[0];
@@ -9281,7 +9289,7 @@ function rvSection(p){
     fr.forEach(function(r){ var RR = RATES.filter(function(x){ return x[0]===r.rating; })[0];
       h += "<div class=\"rvrow\"><span class=\"dc-av\">"+esc(((r.fname||"?")[0]||"?").toUpperCase())+"</span><div class=\"rvt\"><b>"+esc(atn(r.fname||"Freund"))+"</b>"+(RR ? " <i style=\"color:"+RR[2]+"\">"+RR[1]+"</i>" : "")+(r.hl ? " <span class=\"rvhl\">★ Highlight</span>" : "")+
         "<small>"+esc([r.trip, r.at ? new Date(r.at).toLocaleDateString("de-DE", {month:"short", year:"numeric"}) : ""].filter(Boolean).join(" · "))+"</small>"+(r.note ? "<p>„"+esc(r.note)+"“</p>" : "")+recCmHTML(r, "")+
-        (r.photos && r.photos.length ? "<div class=\"rvph\">"+r.photos.map(function(u){ return "<img src=\""+u+"\" alt=\"\" loading=\"lazy\">"; }).join("")+"</div>" : "")+"</div></div>"; });
+        (r.photos && r.photos.length ? "<div class=\"rvph\">"+r.photos.map(function(u, i){ return "<button type=\"button\" class=\"rvph-b\" data-act=\"dcfull\" data-k=\""+esc(r.key)+"\" data-i=\""+i+"\" aria-label=\"Foto "+(i+1)+" ansehen\"><img src=\""+u+"\" alt=\"\" loading=\"lazy\"></button>"; }).join("")+"</div>" : "")+"</div></div>"; });
   } else {
     var gb = gBlock(p);
     h += gb || "<div class=\"rvsoon\"><b>Öffentliche Bewertungen</b><p>Hier erscheinen künftig Bewertungen aller Nutzer zu diesem Ort – getrennt von denen deiner Freunde.</p></div>";

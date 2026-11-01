@@ -5,6 +5,24 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-01 · Ort-Detail: „@Hannah_zim Outstanding“ unter Bewertungen · Freunde, mit Ferdinands Fotos, Fotos nicht antippbar
+
+**Meldung:** Ferdinand (Screenshot): Bei einem Ort der gemeinsamen New-York-Reise steht unter „Bewertungen · Freunde · 1“ eine Bewertung von @Hannah_zim. Die Fotos sind seine eigenen, und sie lassen sich nicht antippen.
+
+**Ursache 1 (Bewertung kommt aus der eigenen Reise):** „Freunde“-Bewertungen sind Einträge in `recs/{uid}/items` der Freunde, gefunden nur über die Lage (`friendRecs()`: < 40 m bzw. < 150 m mit gleichem Namensanfang). Hannah ist Freundin **und** Mitreisende. Ihr Eintrag wurde von ihrem Gerät aus der **gemeinsamen** Reise gebaut (`recCollect()` – Schlüssel `{Reise}_{Ort}`). Bewertung (`t.rating`) und Fotos einer Reise gibt es nur einmal für alle Mitreisenden; ihr Eintrag enthält also die Reise-Bewertung und die für Freunde freigegebenen Reise-Fotos (Ferdinands), keine eigene Meinung von Hannah. `friendRecs()` und `dcLoad()` filterten Einträge aus Reisen, die man selbst hat, nicht heraus → die eigene Reise erschien als Empfehlung von Hannah (auch in Entdecken und „… empfiehlt das“).
+Warum Hannahs Gerät den Eintrag überhaupt geschrieben hat: Bis v395 gab **jedes** Mitreisenden-Gerät alle veröffentlichten Orte der gemeinsamen Reise weiter (Fehler vom 28.10., Katz's). Seit v396 nur noch das Gerät dessen, der veröffentlicht hat (`pubP[Ort] = uid`); alte Einträge löscht Hannahs Gerät erst beim nächsten Start mit neuer Version. Der Eintrag zeigt „Okt. 2026“, wurde also im Oktober geschrieben – passt zu einem alten, noch nicht aufgeräumten Eintrag. Alternativ hat Hannah die Sichtbarkeit selbst auf „Freunde“ gestellt. Welche der beiden Möglichkeiten zutrifft, ist ohne Zugriff auf die Daten nicht belegbar; die App zeigt es jetzt an (Lösung 3). Daten wurden nicht verändert.
+
+**Ursache 2 (Fotos nicht antippbar):** `rvSection()` gab die Fotos als reine `<img>` ohne Aktion aus; die vorhandene Vollansicht für Empfehlungen (`dcFull`) wurde dort nicht verwendet.
+
+**Lösung:**
+1. Neue Funktion `recFromMyTrip(r)`: Empfehlung, deren Schlüssel mit einer eigenen Reise beginnt (`{uid}/{Reise}_…`), ist keine Freundes-Bewertung. Gefiltert in `dcLoad()`, `pubLoad()` und `friendRecs()` – damit überall gleich (Ort-Detail, „empfiehlt das“, Entdecken, Öffentlich).
+2. Fotos der Bewertungen sind Knöpfe → Vollansicht `dcFull` (Wischen, ×), Schließen führt zurück zum Ort.
+3. Sichtbarkeits-Menü des Orts nennt, wer veröffentlicht hat („Von dir veröffentlicht“ / „Veröffentlicht von @…“).
+
+**Commit/Version:** siehe unten · SW v494 · **Test:** „Bewertungen Freunde: Empfehlung aus der eigenen gemeinsamen Reise erscheint nicht als Freundes-Bewertung, Fotos antippbar, Veröffentlicher sichtbar“.
+
+---
+
 ## 2026-11-01 · Berlin Gesundbrunnen/Humboldthain: Ring-Bündel S41/S42 zerfasert, Linien liegen doppelt übereinander
 
 **Meldung:** Screenshot Humboldthain, westlich Gesundbrunnen. Wo S1/S2 nach Südwesten abzweigen, liegt das Ring-Bündel (S41/S42, Fernbahn) auf rund 80 m doppelt und leicht versetzt übereinander.

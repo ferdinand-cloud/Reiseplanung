@@ -6014,6 +6014,26 @@ await test("Empfehlungen: gemeinsame Reise – nur wer veröffentlicht hat, gibt
   ok(await rp(`T().pubP.p4==="u_me"`), "Veröffentlicher nicht gespeichert");
 });
 
+await test("Bewertungen Freunde: Empfehlung aus der eigenen gemeinsamen Reise erscheint nicht als Freundes-Bewertung, Fotos antippbar, Veröffentlicher sichtbar", async () => {
+  await seed();
+  // Hannah (Mitreisende) hat denselben Ort aus derselben Reise t_test in recs – das sind unsere Reise-Daten, keine eigene Bewertung
+  await rp(`var ph = PHC.ph_a, p = P("p4"); FR.friends.push({uid:"u_hannah", name:"Hannah_zim"});
+    var mk = function(uid, nm, key){ return {key:uid+"/"+key, by:uid, fname:nm, n:p.n, c:p.c, la:p.la, lo:p.lo, rating:"o", trip:"New York", photos:[ph, ph], at:Date.now()}; };
+    DC.items = [mk("u_hannah", "Hannah_zim", "t_test_p4"), mk("u_anna", "anna", "t_annaNY_x1")]; DC.byKey = {}; DC.items.forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); true`);
+  ok(await rp(`var f = friendRecs(P("p4")); f.length===1 && f[0].by==="u_anna"`), "Empfehlung aus der eigenen gemeinsamen Reise wird als Freundes-Bewertung gezeigt");
+  ok(await rp(`frWho(P("p4")).every(function(w){ return w.uid!=="u_hannah"; })`), "„empfiehlt das“ nennt Mitreisende derselben Reise");
+  await rp(`rvTab = "friends"; openJPop("p4", ""); true`); await page.waitForTimeout(300);
+  ok(await page.locator("#jPop .rvsec .rvph-b").count()===2, "Fotos der Bewertung sind keine Knöpfe");
+  await page.locator("#jPop .rvsec .rvph-b").nth(1).click(); await page.waitForTimeout(300);
+  ok(await rp(`pvOpen() && DCV && DCV.key==="u_anna/t_annaNY_x1" && DCV.i===1`), "Foto der Bewertung öffnet keine Vollansicht");
+  await rp(`dcvClose(); true`); await page.waitForTimeout(200);
+  ok(await rp(`!pvOpen() && !$("jPop").hidden`), "Schließen der Vollansicht führt nicht zurück zum Ort");
+  // Sichtbarkeits-Menü nennt, wer veröffentlicht hat
+  await rp(`closeJPop(); T().pubP = {p4:"u_hannah"}; CHPROF.u_hannah = {name:"Hannah_zim"}; sel = "p4"; renderCard(); true`); await page.waitForTimeout(300);
+  await rp(`openPlaceVis("p4", document.querySelector("[data-act=placevispick][data-pid=p4]")); true`); await page.waitForTimeout(200);
+  ok(/Veröffentlicht von @Hannah_zim/.test(await page.evaluate(() => (document.querySelector(".vp-who")||{}).textContent || "")), "Veröffentlicher wird im Sichtbarkeits-Menü nicht genannt");
+});
+
 await test("3D-Karte: Knopf bei Suche und Plus erst ab Zoomstufe, Standard 3D kippt beim Hineinzoomen, 2D/3D umschaltbar und gemerkt", async () => {
   // ohne Animation: geneigte Karte rendert im Test-Chromium zäh
   await seed(); await rp(`reduceMotion = true; lsSet("rp-3dv", ""); v3d = true; v3dDone = false; map.jumpTo({center:[-73.985, 40.758], zoom:12, pitch:0}); true`);
