@@ -39,6 +39,7 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 3 · „Ok“ · keine Änderung
 - 4 · „Ok“ · keine Änderung
 - 5 · „Ok“ · keine Änderung
+- ab 6 · 01.11. „Mach alles Freigabe automatisch im Loop“ · Freigabe ab jetzt selbst nach Vorprüfung, direkt nach main
 
 ## Protokoll
 <!-- Format: Aufgabe Nr · Datum · Commit · Vorprüfung · Freigabe · Stolperfallen -->
@@ -47,4 +48,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 3 · 31.10.2026 · (git log „Loop 3:“) · L1 bestanden; S1–S5 pixelgleich (nur Fähren betroffen, die in der Testumgebung fehlen) → Zusatzbild Fähre mit Knick (Berlin-Testdaten) · Freigabe 31.10.
 - 4 · 31.10.2026 · (git log „Loop 4:“) · L0 (Test „Durchgehende Linien“ weiter grün), L1, L2 (≤ 8,5 m Abweichung) bestanden · Freigabe 31.10. · Mit 2 Durchgängen blieben 322 spitze Ecken, daher 3.
 - 5 · 31.10.2026 · (git log „Loop 5:“) · L3, L4 bestanden (Test wertet die Ausdrücke je Zoom 11–19 aus) · Freigabe 31.10.
-- 6 · 31.10.2026 · (git log „Loop 6:“) · L5, L6 bestanden (Rand auf leerem Testhintergrund kaum sichtbar, auf dem iPhone über Straßen/Parks prüfen) · Freigabe offen · Transitland-Test prüfte noch die alte Stärke 2.6 (Folge von Aufgabe 5) → eigener Commit auf main.
+- 6 · 31.10.2026 · (git log „Loop 6:“) · L5, L6 bestanden (Rand auf leerem Testhintergrund kaum sichtbar, auf dem iPhone über Straßen/Parks prüfen) · Freigabe 01.11. (automatisch) · Transitland-Test prüfte noch die alte Stärke 2.6 (Folge von Aufgabe 5) → eigener Commit auf main.
