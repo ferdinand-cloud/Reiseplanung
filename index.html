@@ -12771,8 +12771,8 @@ function tlApply(){
   var on = tlOn() && !trRO(), ms = on ? DMODES.map(function(m){ return m[0]; }).filter(dOn) : [], rail = ms.filter(function(m){ return m!=="bus"; });
   var off = ["!", ["in", TLID, ["literal", Object.keys(DOFF)]]], vis = function(l, v){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", v ? "visible" : "none"); };
   vis("tl-probe", on && (ms.length || !$("layers").hidden || dWant));
-  vis("tl-rail", rail.length); vis("tl-ferry", rail.indexOf("ferry") > -1); vis("tl-lbl", ms.length); vis("tl-st", rail.length); vis("tl-st-lbl", rail.length);
-  vis("tl-bus", ms.indexOf("bus") > -1); vis("tl-bst", ms.indexOf("bus") > -1);
+  vis("tl-rail", rail.length); vis("tl-ferry", rail.indexOf("ferry") > -1); vis("tl-lbl", ms.length); vis("tl-st", false); vis("tl-st-lbl", false); // Haltestellen zeichnet dst (Symbol, Name, Linien), nicht mehr als Kreis
+  vis("tl-bus", ms.indexOf("bus") > -1); vis("tl-bst", false);
   map.setFilter("tl-rail", lnZ(["all", ["!=", TLM, "ferry"], ["!=", TLM, "bus"], ["in", TLM, ["literal", rail]], off], TLM));
   map.setFilter("tl-ferry", lnZ(["all", ["==", TLM, "ferry"], off], TLM));
   map.setFilter("tl-bus", ["all", ["==", TLM, "bus"], off]);
@@ -12819,6 +12819,48 @@ function lkApply(){
 }
 /* Kachel-Inhalt (eigene Funktion, damit Tests Linien vorgeben können) */
 function tlFeats(){ try { return map.getSource("tl-r") ? map.querySourceFeatures("tl-r", {sourceLayer:"routes"}) : []; } catch(e){ return []; } }
+/* eine Transitland-Linie → {m, k, c} (Verkehrsmittel der App, Nummer, Farbe) */
+function tlLineOf(p){
+  var m = tlMode(p.route_type_basic), k = String(p.route_short_name || p.route_long_name || "").trim().slice(0, 40); if(!k) return null;
+  if(m==="bus" && (k in TLBUS || coachOf(k, p.route_long_name, p.route_type, p.agency_name))) m = "long";
+  if(m==="train") m = TLCLS[k] || (railCls(k, p.route_type)==="train" && p.route_long_name ? railCls(p.route_long_name, p.route_type) : railCls(k, p.route_type));
+  return {m:m, k:k, c:okCol(p.route_color) || vtCol(m, k)};
+}
+function tlStopFeats(){ try { return map.getSource("tl-s") ? map.querySourceFeatures("tl-s", {sourceLayer:"stops"}) : []; } catch(e){ return []; } }
+/* Haltestellen wie Apple Karten (Ferdinand 01.11.): Transitland-Haltestellen tragen keine Linien – Linien sind die Verläufe, die an der Haltestelle
+   vorbeiführen (Bus ≤ 30 m, Bahnhof ≤ 120 m). Ergebnis im Format der übrigen Haltestellen [lo, la, Name, Verkehrsmittel, Bedeutung, Plaketten],
+   gezeichnet über dst (Symbol je Verkehrsmittel, Name, Linien) statt als Kreis */
+var TLSTMAX = 600;
+function tlStopsOf(b){
+  var R = {rail:[], bus:[], sig:""}, W = b.getWest(), E = b.getEast(), S = b.getSouth(), N = b.getNorth(), cs = .002, G = {}, kx = Math.cos((S+N)/2*Math.PI/180);
+  var en = {}; DMODES.forEach(function(m){ if(dOn(m[0])) en[m[0]] = 1; }); if(en.train || en.sbahn || en.reg || en.long) en.train = 1;
+  tlFeats().forEach(function(f){ var p = f.properties || {}, g = f.geometry; if(p.clustered || !g) return; var L = tlLineOf(p); if(!L || DOFF[L.m+":"+L.k]) return;
+    (g.type==="LineString" ? [g.coordinates] : g.type==="MultiLineString" ? g.coordinates : []).forEach(function(c){
+      for(var i = 1; i < c.length; i++){ var a = c[i-1], d = c[i];
+        if(Math.max(a[0], d[0]) < W - .003 || Math.min(a[0], d[0]) > E + .003 || Math.max(a[1], d[1]) < S - .002 || Math.min(a[1], d[1]) > N + .002) continue;
+        var x0 = Math.floor(Math.min(a[0], d[0])/cs), x1 = Math.floor(Math.max(a[0], d[0])/cs), y0 = Math.floor(Math.min(a[1], d[1])/cs), y1 = Math.floor(Math.max(a[1], d[1])/cs);
+        if((x1-x0+1)*(y1-y0+1) > 900) continue;
+        for(var x = x0; x <= x1; x++) for(var y = y0; y <= y1; y++) (G[x+":"+y] = G[x+":"+y] || []).push([a, d, L]); } }); });
+  var segD = function(q, a, d){ var ax = (d[0]-a[0])*kx, ay = d[1]-a[1], px = (q[0]-a[0])*kx, py = q[1]-a[1], l = ax*ax + ay*ay, t = l ? Math.max(0, Math.min(1, (px*ax + py*ay)/l)) : 0; return Math.hypot(px - t*ax, py - t*ay)*111320; };
+  var seen = {}, n = 0;
+  tlStopFeats().forEach(function(f){ if(n >= TLSTMAX) return; var p = f.properties || {}, g = f.geometry; if(!g || g.type!=="Point") return; var q = g.coordinates;
+    if(q[0] < W || q[0] > E || q[1] < S || q[1] > N) return;
+    var lt = +p.location_type || 0, ty = (String(p.route_types_basic || "").match(/\d+/g) || []).map(function(t){ return tlMode(t); }), busOnly = ty.length > 0 && ty.every(function(m){ return m==="bus"; });
+    if(lt > 1 || (lt===0 && p.parent_station && !busOnly)) return; // Bahnsteige gehören zum Bahnhof
+    var key = String(p.onestop_id || p.stop_id || "")+"|"+String(p.stop_name || "")+"|"+q[0].toFixed(4)+","+q[1].toFixed(4); if(seen[key]) return; seen[key] = 1;
+    var rad = lt===1 ? 120 : 30, ls = {}, cx = Math.floor(q[0]/cs), cy = Math.floor(q[1]/cs);
+    for(var x = cx-1; x <= cx+1; x++) for(var y = cy-1; y <= cy+1; y++) (G[x+":"+y] || []).forEach(function(sg){ var L = sg[2], id = L.m+":"+L.k; if(ls[id] || segD(q, sg[0], sg[1]) > (L.m==="bus" ? 30 : rad)) return; ls[id] = L; });
+    var all = Object.keys(ls).map(function(id){ return ls[id]; }).filter(function(L){ return en[L.m] || (L.m!=="bus" && en.train && railFam(L.m)); });
+    var rl = all.filter(function(L){ return L.m!=="bus"; }), bl = all.filter(function(L){ return L.m==="bus"; });
+    var lb = function(a){ var u = {}; return a.sort(function(x, y){ return natCmp(x.k, y.k); }).filter(function(L){ if(u[L.k]) return false; u[L.k] = 1; return true; }).slice(0, 12).map(function(L){ return L.k+","+L.c; }).join(";"); };
+    var nm = String(p.stop_name || "").slice(0, 60);
+    var rm = rl.length ? DMODES.map(function(x){ return x[0]; }).filter(function(m){ return rl.some(function(L){ return L.m===m; }); })[0] : ty.filter(function(m){ return m!=="bus"; })[0];
+    if(rm && (rl.length || !busOnly) && (en[rm] || (railFam(rm) && en.train))){ var nc = {}; rl.forEach(function(L){ nc[L.c] = 1; });
+      R.rail.push([q[0], q[1], nm, rm, lt===1 ? (Object.keys(nc).length > 1 ? 3 : 2) : 1, lb(rl)]); n++; }
+    if(bl.length || (busOnly && en.bus)){ if(!en.bus) return; R.bus.push([q[0], q[1], nm, "bus", 1, lb(bl)]); n++; } });
+  R.sig = R.rail.length+":"+R.bus.length+":"+R.rail.concat(R.bus).map(function(x){ return x[2].length+x[5].length; }).reduce(function(a, b2){ return (a*31 + b2) % 1e9; }, 7)+":"+Object.keys(en).join(",")+":"+Object.keys(DOFF).length;
+  return R;
+}
 /* Linien im Kartenausschnitt fürs Menü: Verkehrsmittel → einzelne Linien */
 function tlList(){
   if(!tlOn() || !mapReady) return;
@@ -12836,11 +12878,12 @@ function tlList(){
   var mk = function(bus){ return ids.filter(function(id){ return (L[id].m==="bus")===bus; }).sort(function(a, b2){ return natCmp(L[a].k, L[b2].k); })
     .map(function(id){ var l = L[id]; if(!l.c) l.c = vtCol(l.m, l.k); return l; }); };
   if(nc){ tlRestyle(); tlApply(); }
-  var E = {type:"FeatureCollection", features:[]}, tr = mk(false), bs = mk(true), sig = ids.join("|")+"#"+TL.bike.length+"#"+(z >= TLZ);
+  var ST = z >= OV.z.stop + 1 ? tlStopsOf(b) : {rail:[], bus:[], sig:""};
+  var E = {type:"FeatureCollection", features:[]}, tr = mk(false), bs = mk(true), sig = ids.join("|")+"#"+TL.bike.length+"#"+(z >= TLZ)+"#"+ST.sig;
   var sl = lnSlots(tr); if(JSON.stringify(sl)!==JSON.stringify(TLSL)){ TLSL = sl; tlRestyle(); }
   if(sig===TL.sig){ destUi(); return; }
   TL.sig = sig;
-  VV = z < TLZ ? {tr:null, bus:null} : {tr:{lines:tr, geo:E, st:[], bike:TL.bike, nbus:bs.length}, bus:{lines:bs, geo:E}};
+  VV = z < TLZ ? {tr:null, bus:null} : {tr:{lines:tr, geo:E, st:ST.rail, bike:TL.bike, nbus:bs.length}, bus:{lines:bs, geo:E, st:ST.bus}};
   if(dWant && VV.tr){ var ms = dModes().filter(function(m){ return m!=="bus"; }); if(ms.length){ dWant = false; if(!ms.some(dOn)){ DL[ms[0]] = 1; lsSet("rp-dl", JSON.stringify(DL)); } } }
   dData(); dApplyMap(); destUi(); trSync();
 }
@@ -13282,7 +13325,8 @@ var SR = ["coalesce", ["get","r"], 1];
 function stZ(base){ return zStep(base, [[11, [">=", SR, 3]], [12, [">=", SR, 2]], [13, [">=", SR, 1]], [14, null]]); }
 function stLblZ(base){ return zStep(base, [[12, [">=", SR, 3]], [13, [">=", SR, 2]], [14, [">=", SR, 1]], [15, null]]); }
 /* Name + Linien; ab BSTZ mit eingeschalteten Bussen (p = "lbb") die Buslinien derselben Haltestelle als zweite Reihe */
-function dstImg(p){ var dl = isDark() ? "d" : "l"; return ["step", ["zoom"], ["concat", "tn|", ["get","n"], "||", dl], 14.5, ["concat", "tn|", ["get","n"], "|", ["get","lb"], "|", dl], BSTZ, ["concat", "tn|", ["get","n"], "|", ["coalesce", ["get", p], ["get","lb"]], "|", dl]]; }
+// Bushaltestellen wie Apple Karten nur Symbol + Linien, ohne Namen (Namen stehen im Pop-up; sonst verdrängen sich gegenüberliegende Haltestellen)
+function dstImg(p){ var dl = isDark() ? "d" : "l", n = ["case", ["==", ["get","m"], "bus"], "", ["get","n"]]; return ["step", ["zoom"], ["concat", "tn|", n, "||", dl], 14.5, ["concat", "tn|", n, "|", ["get","lb"], "|", dl], BSTZ, ["concat", "tn|", n, "|", ["coalesce", ["get", p], ["get","lb"]], "|", dl]]; }
 function dAddLayers(){
   var e = {type:"FeatureCollection", features:[]}, gl = !!map.getStyle().glyphs, halo = isDark() ? "#111a22" : "#ffffff";
   DSET = {}; ["dtr","dbus","dst","dbike"].forEach(function(s){ if(!map.getSource(s)) map.addSource(s, {type:"geojson", data:e}); });
@@ -13555,7 +13599,14 @@ function tpMode(g, x, y, m, h){ var col = TPMCOL[m] || "#3B4A5A", s = h/16;
   if(m==="ferry"){ g.beginPath(); g.moveTo(2.6, 8.4); g.lineTo(13.4, 8.4); g.lineTo(11.6, 11.4); g.lineTo(4.4, 11.4); g.closePath(); g.fill(); tpRR(g, 5.4, 4.6, 5.2, 3.2, .9); g.fill(); g.fillRect(7.4, 2.8, 1.2, 2); // Fähre: Rumpf, Aufbau, Schornstein, Welle
     g.lineWidth = .9; g.beginPath(); g.moveTo(2.8, 13.4); g.quadraticCurveTo(4.4, 12.4, 6, 13.4); g.quadraticCurveTo(7.6, 14.4, 9.2, 13.4); g.quadraticCurveTo(10.8, 12.4, 12.6, 13.4); g.stroke(); }
   else if(m==="bus"){ tpRR(g, 3.2, 3.4, 9.6, 8.2, 1.8); g.fill(); g.fillStyle = col; g.fillRect(4.3, 4.6, 7.4, 3); g.beginPath(); g.arc(5.6, 9.6, .7, 0, 7); g.arc(10.4, 9.6, .7, 0, 7); g.fill(); g.fillStyle = "#fff"; g.fillRect(4.2, 11.6, 1.8, 1.6); g.fillRect(10, 11.6, 1.8, 1.6); }
-  else { g.lineWidth = .9; g.beginPath(); g.moveTo(6, 2); g.lineTo(10, 2); g.moveTo(8, 2); g.lineTo(8, 4); g.stroke(); tpRR(g, 4.6, 4, 6.8, 7.4, 1.6); g.fill(); g.fillStyle = col; g.fillRect(5.7, 5.2, 4.6, 2.4);
+  else if(m==="funi"){ g.lineWidth = .9; g.beginPath(); g.moveTo(2.2, 4.4); g.lineTo(13.8, 1.8); g.moveTo(8, 3.1); g.lineTo(8, 5.6); g.stroke(); // Seilbahn: Seil, Gehänge, Kabine
+    tpRR(g, 4.4, 5.6, 7.2, 7.4, 1.8); g.fill(); g.fillStyle = col; g.fillRect(5.4, 6.8, 2.2, 2.6); g.fillRect(8.4, 6.8, 2.2, 2.6); }
+  else if(m==="metro"){ tpRR(g, 4.2, 2.6, 7.6, 9, 2.4); g.fill(); g.fillStyle = col; g.fillRect(5.3, 4.2, 2.3, 2.6); g.fillRect(8.4, 4.2, 2.3, 2.6); // U-Bahn: zwei Frontfenster, ohne Stromabnehmer
+    g.beginPath(); g.arc(6.2, 9.4, .7, 0, 7); g.arc(9.8, 9.4, .7, 0, 7); g.fill(); g.lineWidth = 1.1; g.beginPath(); g.moveTo(6, 11.6); g.lineTo(5, 13); g.moveTo(10, 11.6); g.lineTo(11, 13); g.stroke(); }
+  else if(railFam(m)){ g.beginPath(); g.moveTo(4, 11.4); g.lineTo(4, 5.6); g.quadraticCurveTo(4, 2.4, 8, 2.4); g.quadraticCurveTo(12, 2.4, 12, 5.6); g.lineTo(12, 11.4); g.closePath(); g.fill(); // Zug: runde Front, eine Scheibe, Schienen
+    g.fillStyle = col; tpRR(g, 5.3, 4, 5.4, 2.8, 1.2); g.fill(); g.beginPath(); g.arc(6.1, 9.3, .7, 0, 7); g.arc(9.9, 9.3, .7, 0, 7); g.fill();
+    g.lineWidth = .9; g.beginPath(); g.moveTo(3, 13.4); g.lineTo(13, 13.4); g.moveTo(5.6, 11.4); g.lineTo(4.6, 13.4); g.moveTo(10.4, 11.4); g.lineTo(11.4, 13.4); g.stroke(); }
+  else { g.lineWidth = .9; g.beginPath(); g.moveTo(6, 2); g.lineTo(10, 2); g.moveTo(8, 2); g.lineTo(8, 4); g.stroke(); tpRR(g, 4.6, 4, 6.8, 7.4, 1.6); g.fill(); g.fillStyle = col; g.fillRect(5.7, 5.2, 4.6, 2.4); // Tram/Stadtbahn: mit Stromabnehmer
     g.beginPath(); g.arc(6.3, 9.5, .7, 0, 7); g.arc(9.7, 9.5, .7, 0, 7); g.fill(); g.lineWidth = 1.1; g.beginPath(); g.moveTo(6, 11.6); g.lineTo(5, 13); g.moveTo(10, 11.6); g.lineTo(11, 13); g.stroke(); }
   g.restore(); }
 function tpRR(g, x, y, w, h, r){ g.beginPath(); g.moveTo(x+r, y); g.arcTo(x+w, y, x+w, y+h, r); g.arcTo(x+w, y+h, x, y+h, r); g.arcTo(x, y+h, x, y, r); g.arcTo(x, y, x+w, y, r); g.closePath(); }

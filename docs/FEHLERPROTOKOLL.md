@@ -5,6 +5,24 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-01 · Haltestellen nur als Kreis statt Symbol mit Linien (Chicago, Vergleich Apple Karten)
+
+**Meldung:** Screenshots Chicago (Stöbern): Bushaltestellen am N Columbus Dr sind nur Kreise. Gewünscht wie Apple Karten: Symbol des Verkehrsmittels und daneben die Linien als Plaketten, für sämtliche Verkehrsmittel.
+
+**Ursache:** Die Apple-Darstellung (Symbol ab Zoom 14, Name, Linien-Plaketten; v471) hängt an der gemeinsamen Haltestellen-Quelle `dst` (OpenStreetMap/Overpass, Stadtpakete, Linienkarte) und an den New Yorker Stationen (`subst`). Überall, wo Transitland die Linien liefert (Chicago und alle Städte ohne Stadtpaket mit Transitland-Schlüssel), kamen die Haltestellen aber aus eigenen Ebenen `tl-st`/`tl-bst`, die nur Kreise zeichnen. Grund: Transitland-Haltestellen tragen keine Linien; `tlList()` gab deshalb eine leere Haltestellen-Liste an `dst` weiter (`st:[]`), und die Kreise blieben als Ersatz. Zusätzlich kannte das Haltestellen-Symbol (`tpMode`) nur drei Bilder: Bus, Fähre und ein gemeinsames für alle Bahnen (Tram, U-Bahn, S-Bahn, Zug, Seilbahn sahen gleich aus).
+
+**Beleg:** `index.html`: `tl-st`/`tl-bst` sind `type:"circle"`; `tlList()` setzt `VV = {tr:{… st:[] …}}`; `tpMode()` hat nur die Zweige `ferry`, `bus` und „sonst“.
+
+**Lösung:** Alle Haltestellen laufen jetzt über dieselbe Darstellung (`dst`): Symbol des Verkehrsmittels, daneben die Linien als farbige Plaketten, bei Bahnhöfen zusätzlich der Name.
+- Transitland: neue Funktion `tlStopsOf()` ordnet jeder Haltestelle die Linien zu, deren Verlauf an ihr vorbeiführt (Bus bis 30 m, Bahnhof bis 120 m, über ein Raster der Linienabschnitte im Ausschnitt), nur eingeschaltete Verkehrsmittel und Linien. `tlList()` gibt sie an `dst` weiter; die Kreis-Ebenen `tl-st`/`tl-bst` bleiben aus. Steht an einer Bahnhaltestelle auch ein Bus, kommen die Buslinien als zweite Reihe dazu (wie bisher bei den Stadtpaketen).
+- Bushaltestellen wie bei Apple nur Symbol + Linien, ohne Namen (`dstImg`): sonst verdrängten sich die Namen gegenüberliegender Haltestellen und eine Seite fehlte.
+- Eigene Symbole je Verkehrsmittel (`tpMode`): U-Bahn (zwei Frontfenster), Tram/Stadtbahn (Stromabnehmer), Zug/S-Bahn/Regional-/Fernverkehr (runde Front, Schienen), Seilbahn (Kabine am Seil), Bus, Fähre; Farben je Art in `OV.col.sm` (S-Bahn grün, Züge grau).
+Gilt für alle Städte und Quellen: Transitland, OpenStreetMap/Overpass, Stadtpakete, Linienkarte. New York nutzt dieselben Symbole.
+
+**Commit/Version:** _(folgt)_ · SW v496 · **Test:** „Haltestellen wie Apple Karten: Symbol je Verkehrsmittel und Linien-Plaketten statt Kreis, auch bei Transitland (Chicago)“.
+
+---
+
 ## 2026-11-01 · Ort-Detail: „@Hannah_zim Outstanding“ unter Bewertungen · Freunde, mit Ferdinands Fotos, Fotos nicht antippbar
 
 **Meldung:** Ferdinand (Screenshot): Bei einem Ort der gemeinsamen New-York-Reise steht unter „Bewertungen · Freunde · 1“ eine Bewertung von @Hannah_zim. Die Fotos sind seine eigenen, und sie lassen sich nicht antippen.

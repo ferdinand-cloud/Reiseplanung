@@ -6280,6 +6280,36 @@ await test("ÖPNV-Schalter zeigt und steuert, was die Karte zeigt – auch wenn 
   ok(await n() >= 3 && await rp(`$("lTr").checked && DL.tram===1 && DL.reg===1`), "Wieder an: vorherige Auswahl (Tram, Regionalverkehr) nicht zurück: "+await rp(`JSON.stringify(DL)`));
 });
 
+await test("Haltestellen wie Apple Karten: Symbol je Verkehrsmittel und Linien-Plaketten statt Kreis, auch bei Transitland (Chicago)", async () => {
+  await page.route(/overpass-api\.de|overpass\.kumi|overpass\.private/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
+  await page.route(/transit\.land\/api\/v2\/tiles/, rt => rt.fulfill({ status:204, headers:{"access-control-allow-origin":"*"}, body:"" }));
+  await seed();
+  // N Columbus Dr (Nord–Süd), Busse 4/X4 auf der Ostseite, 6/20 auf der Westseite; Hochbahn-Station (Metro, Linien Brown/Green) 200 m westlich
+  const x0 = -87.6205, y0 = 41.8845, L = (t, k, c, co) => ({properties:{route_type_basic:t, route_type:t, route_short_name:k, route_color:c, bbox:"[-87.7,41.8,-87.5,41.95]"}, geometry:{type:"LineString", coordinates:co}});
+  const R = [L(3, "4", "#1b6fcf", [[x0+.0002, 41.875], [x0+.0002, 41.895]]), L(3, "X4", "#1b6fcf", [[x0+.0002, 41.875], [x0+.0002, 41.895]]),
+    L(3, "6", "#1b6fcf", [[x0-.0002, 41.875], [x0-.0002, 41.895]]), L(3, "20", "#1b6fcf", [[x0-.0002, 41.875], [x0-.0002, 41.895]]),
+    L(1, "Brown", "#62361b", [[x0-.0025, 41.875], [x0-.0025, 41.895]]), L(1, "Green", "#009b3a", [[x0-.0025, 41.875], [x0-.0025, 41.895]])];
+  const S = (n, lt, ty, x, y) => ({properties:{stop_name:n, location_type:lt, route_types_basic:JSON.stringify(ty), stop_id:n}, geometry:{type:"Point", coordinates:[x, y]}});
+  const ST = [S("Columbus & Randolph (Ost)", 0, [3], x0+.0003, y0), S("Columbus & Randolph (West)", 0, [3], x0-.0003, y0+.0001), S("State/Lake", 1, [1], x0-.0026, y0)];
+  await rp(`lsSet("rp-tlkey", "testkey"); tlSetup(); DL = {bus:1, metro:1}; DOFF = {}; TL.sig = ""; lsSet("rp-dl", JSON.stringify(DL));
+    tlFeats = function(){ return ${JSON.stringify(R)}; }; tlStopFeats = function(){ return ${JSON.stringify(ST)}; }; true`);
+  await jump(x0 - .0012, y0, 16);
+  await page.waitForFunction(() => window.__rp(`!!map.getSource("dst") && map.querySourceFeatures("dst").length >= 3`), null, {timeout:8000}).catch(() => {});
+  const fs = JSON.parse(await rp(`JSON.stringify(map.querySourceFeatures("dst").map(function(f){ return f.properties.n+"|"+f.properties.m+"|"+f.properties.lb.toLowerCase(); }))`));
+  ok(fs.some(x => x.startsWith("Columbus & Randolph (Ost)|bus|4,#1b6fcf;x4,#1b6fcf")), "Bushaltestelle Ost ohne Symbol/Linien 4, X4: "+JSON.stringify(fs));
+  ok(fs.some(x => x.startsWith("Columbus & Randolph (West)|bus|6,#1b6fcf;20,#1b6fcf")), "Bushaltestelle West ohne Linien 6, 20: "+JSON.stringify(fs));
+  ok(fs.some(x => x.startsWith("State/Lake|metro|brown,#62361b;green,#009b3a")), "Bahnhof ohne Metro-Symbol und Linien: "+JSON.stringify(fs));
+  ok(await rp(`map.getLayoutProperty("tl-bst","visibility")==="none" && map.getLayoutProperty("tl-st","visibility")==="none" && map.getLayoutProperty("dst-ic","visibility")==="visible" && map.getLayoutProperty("dst-lbl","visibility")==="visible"`), "Transitland-Kreise noch sichtbar oder Symbole aus");
+  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["dst-ic"]}).length >= 3`), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`map.queryRenderedFeatures({layers:["dst-ic"]}).length >= 3`), "Symbole nicht gezeichnet");
+  await rp(`setSheet("min"); true`); await page.waitForTimeout(400); await shot("haltestellen-apple");
+  // jedes Verkehrsmittel hat sein eigenes Symbol
+  const sig = await rp(`(function(){ var ms = ["metro","tram","train","sbahn","funi","bus","ferry"], out = {}; ms.forEach(function(m){ var c = document.createElement("canvas"); c.width = c.height = 32; var g = c.getContext("2d"); tpMode(g, 0, 0, m, 32); var d = g.getImageData(0, 0, 32, 32).data, h = 0; for(var i = 0; i < d.length; i += 4) h = (h*31 + (d[i] > 200 && d[i+1] > 200 && d[i+2] > 200 ? 1 : 0)) % 1000000007; out[m] = h; }); return JSON.stringify(out); })()`);
+  const sv = JSON.parse(sig), forms = ["metro","tram","train","funi","bus","ferry"].map(m => sv[m]);
+  ok(new Set(forms).size===6 && sv.sbahn===sv.train, "Symbole nicht je Verkehrsmittel verschieden: "+sig);
+  await page.unroute(/transit\.land\/api\/v2\/tiles/);
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }
