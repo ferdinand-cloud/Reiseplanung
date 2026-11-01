@@ -78,3 +78,15 @@ Geprüft im Berlin-Auszug: Bündel an der Stelle durchgehend, Knick-Zähler 0, F
 **Lösung:** `noTripUser()` wartet wie `seed()` auf `acct.ready || acct.state==="unconf"`.
 
 **Commit/Version:** 0cd3165 · **Test:** Volllauf danach grün (nur der bekannte wackelige Test „Tastatur im Chat“ offen).
+
+---
+
+## 2026-11-01 · Foto aus Mitteilungen schließen landet auf der Karte statt bei den Mitteilungen
+
+**Meldung:** Mitteilungen → „Gefällt mir“ antippen → Foto öffnet sich → nach unten wischen (oder ×) → man landet auf der Karte (Ort-Pop-up über der Karte), nicht wieder bei den Mitteilungen.
+
+**Ursache:** `ntOpen()` (Antippen einer Mitteilung, auch über die eingeblendete Meldung) schloss als Erstes die Mitteilungen-Seite (`closeNtPage()`) und öffnete Foto bzw. Ort-Pop-up dann über der Karte. Außerdem fehlte die Rücksprung-Markierung `jp.ret`: Ohne sie schließt Wischen/× nur das Foto und zeigt das Ort-Pop-up – erst dessen × führte weiter, und zwar zur Karte. Bei Listen (`ret:"list"`), Ortskarte (`"card"`) und Rückblick (`"recap"`) war das schon gelöst, die Mitteilungen waren der einzige Weg, der seine Seite vor dem Öffnen schloss. Gleiches galt für Follower-Anfragen und Einladungen aus den Mitteilungen (Fenster öffnete über der Karte).
+
+**Lösung:** Allgemeine Regel umgesetzt: Wer Foto, Ort-Pop-up oder ein Fenster aus einer Seite heraus öffnet, legt es darüber und lässt die Seite offen. `ntOpen()` schließt die Mitteilungen nicht mehr (nur noch bei echtem Wechsel zur Karte: Mitreisende, Reise), und ein direkt geöffnetes Foto bekommt `jp.ret = "nt"`, damit Wischen nach unten und × ganz zurückführen. Gilt auch für die eingeblendete Meldung über anderen Seiten (Liste, Profil, Chats). Alle übrigen Aufrufe von `openJPop` geprüft: Liste, Ortskarte und Rückblick setzten den Rücksprung schon; die anderen Seiten-Wege („Auf Karte zeigen“ aus Chat, Suche, Liste, Ziele) sind bewusste Wechsel zur Karte.
+
+**Commit/Version:** _Commit folgt_ · SW v493 · **Test:** „Mitteilungen: Foto/Ort aus einer Mitteilung schließen (Wischen, ×) führt zurück zu den Mitteilungen“ (schlägt mit altem Stand fehl).

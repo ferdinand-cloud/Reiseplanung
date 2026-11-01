@@ -9404,12 +9404,13 @@ function renderNt(){
   if(items.length) h += "<div class=\"pf-acts\">"+(ntUnread() ? "<button type=\"button\" class=\"btn g\" data-act=\"ntread\">Alle als gelesen markieren</button>" : "")+"<button type=\"button\" class=\"btn g\" data-act=\"ntclear\">Alle entfernen</button></div>";
   el.innerHTML = h+"</div>";
 }
+// Mitteilung antippen: Foto, Ort-Pop-up und Fenster öffnen ÜBER der aktuellen Seite (Mitteilungen bleiben darunter offen),
+// Schließen/Wischen führt dorthin zurück. Nur echte Wechsel zur Karte (Mitreisende, Reise) schließen die Seite.
 function ntOpen(id){
-  closeNtPage();
   var it = NT.items.filter(function(x){ return x.id===id; })[0];
   $("toast").hidden = true;
   if(!it){ accView = "notifs"; openSettings(); return; }
-  it.read = true; ntSave(); ntBadge();
+  it.read = true; ntSave(); ntBadge(); if(ntPage) renderNt();
   if(it.type==="friend"){ closeMenus(); accView = "friends"; unameMsg = ""; openSettings(); return; }
   if(it.type==="invite"){ closeMenus(); accView = "trips"; tripsTab = "req"; openSettings(); return; }
   closeSettings(); closeMenus();
@@ -9419,12 +9420,14 @@ function ntOpen(id){
   if(it.trip && !S.trips[it.trip]){ toast("Diese Reise ist nicht mehr verfügbar", false); renderAll(); return; }
   if((it.type==="comment" || it.type==="like" || it.type==="mention" || it.type==="reply") && P(it.pid)){
     var dk = dayOf(it.pid); if(dk) cur = dk;
-    tab = dk ? "day" : "wish"; renderAll(); cmWatch(); select(it.pid); if(hasLoc(P(it.pid))) revealPoint(P(it.pid), 15, true); openJPop(it.pid, dk || "", it.ph && photosOf(it.pid).indexOf(it.ph) > -1 ? it.ph : null);
+    tab = dk ? "day" : "wish"; renderAll(); cmWatch(); select(it.pid); if(hasLoc(P(it.pid))) revealPoint(P(it.pid), 15, true);
+    var nph = it.ph && photosOf(it.pid).indexOf(it.ph) > -1 ? it.ph : null;
+    openJPop(it.pid, dk || "", nph); if(jp && nph) jp.ret = "nt"; // Foto zu (Wischen/×): ganz zurück, nicht zum Ort-Pop-up
     setTimeout(function(){ var c = $(it.ph ? "pvCm" : "cmList"); if(c) c.scrollIntoView({block:"center"}); }, 350);
     return;
   }
   if(it.type==="join"){ tab = "trip"; }
-  renderAll(); fitDay();
+  closeNtPage(); renderAll(); fitDay();
 }
 function acctBlock(){
   if(!acct.user) return "";

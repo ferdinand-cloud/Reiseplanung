@@ -732,6 +732,42 @@ await test("Rückblick: Foto nach unten wegziehen schließt und bleibt im Rückb
   ok(await visible("#rc"), "Nach dem Wegziehen nicht im Rückblick");
 });
 
+await test("Mitteilungen: Foto/Ort aus einer Mitteilung schließen (Wischen, ×) führt zurück zu den Mitteilungen", async () => {
+  await seed();
+  const pull = () => page.evaluate(() => {
+    const tg = document.querySelector("#pvLayer .pv-slide img") || document.querySelector("#pvLayer .pv-slide");
+    const T = (x, y) => new Touch({identifier:3, target:tg, clientX:x, clientY:y});
+    tg.dispatchEvent(new TouchEvent("touchstart", {bubbles:true, cancelable:true, touches:[T(200, 300)], changedTouches:[T(200, 300)]}));
+    [340, 420, 520].forEach(y => tg.dispatchEvent(new TouchEvent("touchmove", {bubbles:true, cancelable:true, touches:[T(202, y)], changedTouches:[T(202, y)]})));
+    tg.dispatchEvent(new TouchEvent("touchend", {bubbles:true, cancelable:true, touches:[], changedTouches:[T(202, 520)]}));
+  });
+  const pvGone = async () => { await page.waitForFunction(() => { const L = document.getElementById("pvLayer"); return !L || L.hidden; }, null, {timeout:4000}).catch(() => {}); };
+  await rp(`NT.items = [{id:"nt_l1", type:"like", trip:S.cur, pid:"p4", ph:"ph_a", text:"@anna gefällt dein Foto", at:Date.now()},
+    {id:"nt_c1", type:"comment", trip:S.cur, pid:"p4", text:"@anna hat kommentiert", sub:"Schön!", at:Date.now()-1000}]; openNtPage()`);
+  await page.waitForTimeout(300);
+  // Like: Foto öffnet sich, nach unten wegziehen → wieder Mitteilungen (nicht Ort-Pop-up, nicht Karte)
+  await click("#ntView [data-act=ntgo][data-v=nt_l1]"); await page.waitForTimeout(400);
+  ok(await visible("#pvLayer"), "Foto aus der Mitteilung öffnet nicht");
+  ok(await visible("#ntView"), "Mitteilungen schließen sich beim Öffnen des Fotos");
+  await pull(); await pvGone();
+  ok(await rp(`$("pvLayer").hidden && $("jPop").hidden && !jp`), "Nach dem Wegziehen bleibt Foto oder Ort-Pop-up offen");
+  ok(await visible("#ntView") && await rp(`ntPage`), "Nach dem Wegziehen nicht bei den Mitteilungen");
+  // gleicher Weg mit ×
+  await click("#ntView [data-act=ntgo][data-v=nt_l1]"); await page.waitForTimeout(400);
+  await click("#pvLayer [data-act=phback]"); await pvGone();
+  ok(await rp(`$("jPop").hidden && !jp`) && await visible("#ntView"), "× am Foto führt nicht zu den Mitteilungen");
+  // Kommentar: Ort-Pop-up über den Mitteilungen, × → Mitteilungen
+  await click("#ntView [data-act=ntgo][data-v=nt_c1]"); await page.waitForTimeout(400);
+  ok(await visible("#jPop") && await visible("#ntView"), "Ort-Pop-up nicht über den Mitteilungen");
+  await click("#jPop [data-act=jclose]"); await page.waitForTimeout(250);
+  ok(await rp(`$("jPop").hidden`) && await visible("#ntView"), "× am Ort-Pop-up führt nicht zu den Mitteilungen");
+  // eingeblendete Meldung über einer anderen Seite (Liste): Foto zu → wieder auf dieser Seite
+  await rp(`openLsPage(); ntOpen("nt_l1")`); await page.waitForTimeout(400);
+  ok(await visible("#pvLayer"), "Foto aus der Meldung öffnet nicht");
+  await pull(); await pvGone();
+  ok(await visible("#lsView") && await rp(`$("jPop").hidden`), "Foto aus der Meldung führt nicht zur Liste zurück");
+});
+
 await test("Rückblick: seitlich wischen wechselt den Tag", async () => {
   await seed();
   const Y = await rp(`dayOf("p4")`);
