@@ -6253,6 +6253,33 @@ await test("Linienkarte-Bau: Striche reichen nur 10 m über den Knoten, Abzweig 
   ok(d <= 1, "S1 setzt am Abzweig nicht an seinem Platz im Stamm an (Abstand "+d.toFixed(2)+" Plätze, Stamm o "+tr[0].o+", Abzweig o "+br[0].o+")");
 });
 
+await test("ÖPNV-Schalter zeigt und steuert, was die Karte zeigt – auch wenn das Menü die Verkehrsarten noch nicht listet (Stöbern, Linienkarte Bremen)", async () => {
+  const pm = fs.readFileSync(new URL("./lk-test.pmtiles", import.meta.url));
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/linienkarte\//, rt => {
+    const u = rt.request().url();
+    if(u.endsWith("index.json")) return rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({v:1, l:[{id:"de", n:"Deutschland", bb:[8.8, 53.07, 8.83, 53.08]}]}) });
+    const r = /bytes=(\d+)-(\d*)/.exec(rt.request().headers()["range"] || ""), a = r ? +r[1] : 0, b = r && r[2] ? Math.min(+r[2], pm.length - 1) : pm.length - 1;
+    return rt.fulfill({ status:r ? 206 : 200, headers:{"access-control-allow-origin":"*", "content-range":"bytes "+a+"-"+b+"/"+pm.length, "content-type":"application/octet-stream"}, body:pm.subarray(a, b + 1) });
+  });
+  // Overpass leer: das Menü kennt keine Verkehrsarten, die Linienkarte zeichnet trotzdem (so war es auf dem iPhone, Bremen Hbf)
+  await page.route(/overpass-api\.de|overpass\.kumi|overpass\.private/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
+  await seed();
+  await rp(`lsSet("rp-lk", ""); LK = {l:null, st:"", add:{}}; DL = {tram:1, reg:1}; DOFF = {}; lsSet("rp-dl", JSON.stringify(DL)); true`);
+  await page.click("#layersBtn");
+  await jump(8.812, 53.0755, 15);
+  const n = () => rp(`map.getLayer("lk-de-ln") && map.getLayoutProperty("lk-de-ln","visibility")!=="none" ? map.queryRenderedFeatures({layers:["lk-de-ln"]}).length : 0`);
+  await page.waitForFunction(() => window.__rp(`!!map.getLayer("lk-de-ln") && map.queryRenderedFeatures({layers:["lk-de-ln"]}).length >= 3`), null, {timeout:8000}).catch(() => {});
+  ok(await n() >= 3, "Linienkarte zeichnet nicht");
+  await page.waitForFunction(() => window.__rp(`dynOn() && trIds().length===0`), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`trIds().length===0 && $("lTr").checked`), "Linien sichtbar, Schalter zeigt aber „aus“: "+await rp(`JSON.stringify({ids:trIds(), on:$("lTr").checked})`));
+  await page.click("#lTr");
+  await page.waitForFunction(() => window.__rp(`!map.getLayer("lk-de-ln") || map.getLayoutProperty("lk-de-ln","visibility")==="none"`), null, {timeout:4000}).catch(() => {});
+  ok(await n()===0 && await rp(`!$("lTr").checked`), "ÖPNV aus, Linien noch sichtbar: "+await n());
+  await page.click("#lTr");
+  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["lk-de-ln"]}).length >= 3`), null, {timeout:6000}).catch(() => {});
+  ok(await n() >= 3 && await rp(`$("lTr").checked && DL.tram===1 && DL.reg===1`), "Wieder an: vorherige Auswahl (Tram, Regionalverkehr) nicht zurück: "+await rp(`JSON.stringify(DL)`));
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }

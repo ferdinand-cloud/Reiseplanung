@@ -13374,6 +13374,7 @@ function dToggle(m, v){
   DL[m] = v ? 1 : 0; lsSet("rp-dl", JSON.stringify(DL));
   applyLayers(); scheduleOverlay();
 }
+function trDynOn(){ return DMODES.some(function(m){ return m[0]!=="bike" && dOn(m[0]); }) || $("lBike").checked; }
 function trIds(){ if(!dynOn()) return TRIDS; var ids = dModes().map(function(m){ return "ld-"+m; }); if(dBike().length) ids.push("lBike"); return ids; }
 var ovPending = false;
 function scheduleOverlay(){ if(ovPending) return; ovPending = true; requestAnimationFrame(function(){ ovPending = false; drawOverlay(); }); }
@@ -13944,7 +13945,10 @@ $("lBike").addEventListener("change", function(){ layers.bike = this.checked; ls
 var TRIDS = ["lSub","lBus","lFerry","lBike"], trOpen0 = false;
 function trSync(){
   var ids = trIds().filter(function(id){ return !(trRO() && id!=="lBike"); }), on = ids.filter(function(id){ var e = $(id); return e && e.checked; }).length, tot = ids.length, m = $("lTr");
-  m.checked = on > 0; m.indeterminate = on > 0 && on < tot;
+  // außerhalb New Yorks zeichnet die Linienkarte jede eingeschaltete Verkehrsart (DL), auch wenn das Menü sie noch nicht listet (Daten des Ausschnitts
+  // nicht geladen): der Schalter zeigt, was die Karte zeigt (Ferdinand 01.11.: ÖPNV aus, Linien trotzdem sichtbar)
+  var any = on > 0 || (dynOn() && trDynOn());
+  m.checked = any; m.indeterminate = any && on > 0 && on < tot;
   $("lTrN").textContent = on > 0 && on < tot ? on+" von "+tot : "";
   $("lTrGrp").hidden = !trOpen0; var b = $("lTrBtn"); b.classList.toggle("open", trOpen0); b.setAttribute("aria-expanded", trOpen0);
 }
@@ -13952,7 +13956,18 @@ $("lTr").addEventListener("change", function(){
   var want = this.checked, ids = trIds().filter(function(id){ return !(trRO() && id!=="lBike"); }), sk = dynOn() ? "rp-dl-trsel" : "nyc-l-trsel", d0 = ids[0] || "";
   if(cpView()) d0 = ids.filter(function(id){ return id!=="ld-bus" && id!=="lBike"; }).join(",") || d0; // Stadtpaket: alle Bahnen (Metro, S-Bahn/RER, Tram …), Busse extra
   // Ziel außerhalb New Yorks, Linien noch nicht geladen: laden und danach das erste Verkehrsmittel einschalten
-  if(dynOn() && want && !ids.length){ dWant = true; vtView(); trSync(); return; }
+  // aus: alle Verkehrsarten aus, auch die, die das Menü gerade nicht listet (sonst zeichnet die Linienkarte sie weiter)
+  if(dynOn() && !want){ var keep = DMODES.map(function(x){ return x[0]; }).filter(dOn).map(function(x){ return "ld-"+x; }); if($("lBike").checked) keep.push("lBike");
+    if(keep.length) lsSet(sk, keep.join(","));
+    DMODES.forEach(function(x){ DL[x[0]] = 0; }); lsSet("rp-dl", JSON.stringify(DL)); dWant = false;
+    if($("lBike").checked){ $("lBike").checked = false; $("lBike").dispatchEvent(new Event("change", {bubbles:true})); }
+    applyLayers(); scheduleOverlay(); trSync(); return; }
+  // an, Menü noch leer: zuletzt gewählte Verkehrsarten wieder an, sonst nach dem Laden die erste
+  if(dynOn() && want && !ids.length){ var back = (lsGet(sk) || "").split(",").map(function(x){ return x.slice(3); }).filter(function(x){ return DMNAME[x]; });
+    var bk = (lsGet(sk) || "").split(",").indexOf("lBike") > -1 && dBike().length;
+    if(back.length){ back.forEach(function(x){ DL[x] = 1; }); lsSet("rp-dl", JSON.stringify(DL)); applyLayers(); scheduleOverlay(); } else dWant = true;
+    if(bk){ $("lBike").checked = true; $("lBike").dispatchEvent(new Event("change", {bubbles:true})); }
+    vtView(); trSync(); return; }
   var set = want ? (lsGet(sk) || d0).split(",").filter(function(id){ return ids.indexOf(id) > -1; }) : [];
   if(want && !set.length) set = [ids[0]];
   if(!want) lsSet(sk, ids.filter(function(id){ return $(id).checked; }).join(",") || d0);

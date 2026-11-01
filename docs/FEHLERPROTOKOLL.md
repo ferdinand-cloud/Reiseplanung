@@ -23,6 +23,24 @@ Warum Hannahs Gerät den Eintrag überhaupt geschrieben hat: Bis v395 gab **jede
 
 ---
 
+## 2026-11-01 · ÖPNV im Ebenen-Menü aus, Linien trotzdem auf der Karte (Stöbern, Bremen Hbf)
+
+**Meldung:** Screenshot Stöbern-Modus, Bremen Hbf: Schalter „ÖPNV“ ist aus, RS4/RS30 und weitere Linien werden trotzdem gezeigt. Einschalten/Ausschalten ändert nichts.
+
+**Ursache:** Schalter und Karte schauen auf verschiedene Listen. Außerhalb New Yorks zeichnet die Linienkarte (`lkApply`) jede Verkehrsart, die in den gespeicherten Einstellungen `DL` an ist (z. B. Regionalverkehr, Tram). Der ÖPNV-Schalter (`trSync`, Änderung in `$("lTr")`) zählt aber nur die Verkehrsarten, die gerade im Menü stehen (`trIds()` → `dModes()`), und die kommen aus den Overpass-/Stadtpaket-Daten des Ausschnitts. Sind die noch nicht geladen oder leer (die Linienkarte braucht sie nicht), ist die Liste leer: Der Schalter zeigt „aus“, und Ausschalten schaltet nichts aus, weil er nur Einträge der leeren Liste abhakt.
+
+**Beleg:** Nachgestellt im Klicktest mit der Bremer Test-Linienkarte und leerer Overpass-Antwort: `DL = {tram:1, reg:1}`, `trIds() = []`, Schalter `checked=false`, Ebene `lk-de-ln` sichtbar mit 16 Linienstücken; nach Ein- und Ausschalten unverändert sichtbar.
+
+**Lösung:** Der Schalter richtet sich nach dem, was die Karte zeichnet, nicht nur nach den Menüeinträgen (`index.html`):
+- Anzeige (`trSync`): außerhalb New Yorks gilt ÖPNV als an, sobald irgendeine Verkehrsart in `DL` an ist (neue Hilfsfunktion `trDynOn()`), auch wenn das Menü sie noch nicht listet.
+- Ausschalten: schaltet **alle** Verkehrsarten in `DL` aus (und Leihräder), merkt sich vorher die Auswahl.
+- Einschalten bei noch leerem Menü: stellt die gemerkte Auswahl wieder her; nur ohne gemerkte Auswahl wird wie bisher nach dem Laden die erste Verkehrsart eingeschaltet.
+Gilt für Stöbern und Reiseziele außerhalb New Yorks, für Linienkarte, Overpass- und Stadtpaket-Linien (alle hängen an `DL`). New York war nicht betroffen (dort steuern die Schalter die Ebenen direkt).
+
+**Commit/Version:** _(folgt)_ · SW v495 · **Test:** „ÖPNV-Schalter zeigt und steuert, was die Karte zeigt – auch wenn das Menü die Verkehrsarten noch nicht listet (Stöbern, Linienkarte Bremen)“ – schlägt mit dem alten Stand fehl.
+
+---
+
 ## 2026-11-01 · Berlin Gesundbrunnen/Humboldthain: Ring-Bündel S41/S42 zerfasert, Linien liegen doppelt übereinander
 
 **Meldung:** Screenshot Humboldthain, westlich Gesundbrunnen. Wo S1/S2 nach Südwesten abzweigen, liegt das Ring-Bündel (S41/S42, Fernbahn) auf rund 80 m doppelt und leicht versetzt übereinander.
