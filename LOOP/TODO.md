@@ -21,7 +21,7 @@ Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 - [x] 12. Stationsnamen zoomabhängig einblenden, ohne Überlappung mit anderen Namen und Badges (Kollisionserkennung).
 
 ## Abschluss
-- [ ] 13. Gesamtprüfung: alle Szenen aus KRITERIEN.md neu fotografieren und gegen alle Kriterien bewerten; Abweichungen als neue Aufgaben anlegen.
+- [x] 13. Gesamtprüfung: alle Szenen aus KRITERIEN.md neu fotografieren und gegen alle Kriterien bewerten; Abweichungen als neue Aufgaben anlegen.
 
 ## Neu gefunden
 - [ ] 14. Linien verschiedener Farbgruppen auf gemeinsamer Strecke liegen deckungsgleich (z. B. 2 und 5 auf der Nostrand Av: nur Grün sichtbar), weil die Plätze nebeneinander nur je Farbe vergeben werden (`GEO`-Aufbau, `o`).

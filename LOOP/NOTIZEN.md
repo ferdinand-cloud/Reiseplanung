@@ -44,6 +44,8 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 
 - Aufgabe 12: Kollision über MapLibre (`icon-allow-overlap:false` an `subst-lbl`/`dst-lbl`, `symbol-sort-key` nach Rang). Reihenfolge: Linien-Plaketten (`dtr-lbl`, `dbus-lbl`, `lk-*-lbl`) unter `dst-lbl` → Namen werden zuerst gesetzt; Namen unter den Symbolen (`…-ic`), Symbole sperren nichts (`icon-ignore-placement:true`). Versuch „Symbole sperren Namen“ verworfen: Times Sq-42 St und Penn verschwanden ganz. Abstand Name ↔ Symbol ab Z14 13 px (vorher 10, überlappte das eigene Symbol).
 
+- Aufgabe 13 (Gesamtprüfung, Bilder LOOP/screens/12/nachher): L0 ✓ (durchgehend, S1/S3), L1 ✓ (geglättet), L2 ✓, L3 ✓ (S1 fein, S3 kräftig), L4 ✓ (S4/S5 Route am stärksten), L5 ✓ (MTA-Farben, Bus gedämpft, Fähre eigene Farbe – in der Testumgebung keine NYC-Fähren sichtbar), L6 ✓ (weißer Rand), L7 ✓ (Namen über Linien), L8 nicht prüfbar (Testumgebung ohne Kartenkacheln/3D-Gebäude), T1 ✓, T2 ✓ (S1 Punkte, ab Z14 Symbol), T3 ✓ (Knoten mit allen Linien), T4 ✓ (S1 dunkler Rand), T5 ✓ (Namen überlappen sich nicht; Plakettenreihe kann Nachbarsymbol berühren → Aufgabe 17), T6 ✓ (S1 ohne Namen), A1/A2 ✓. Offen als Aufgaben: 14–17.
+
 ## Ferdinands Feedback
 <!-- Format: Aufgabe Nr · Kommentar · was daraufhin geändert wurde -->
 - 1 · „Ok Freigabe“ · keine Änderung
@@ -67,3 +69,4 @@ Hier hält jeder Durchlauf fest, was der nächste wissen muss.
 - 10 · 01.11.2026 · (git log „Loop 10:“) · T3/T5/T6 bestanden (S2 Times Sq ein Name mit 1 2 3 7 S N Q R W, S1 ohne Namen) · Freigabe automatisch
 - 11 · 01.11.2026 · (git log „Loop 11:“) · T4 bestanden (S1 Umstiege als größere Punkte mit dunklem Rand, 50 St 1/2 kein Umstieg) · Freigabe automatisch
 - 12 · 01.11.2026 · (git log „Loop 12:“) · T5 bestanden (Namen überlappen sich nicht, Times Sq bleibt) · Freigabe automatisch
+- 13 · 01.11.2026 · nur Doku (keine App-Änderung) · alle prüfbaren Kriterien erfüllt, Restpunkte als 14–17 · Freigabe automatisch
