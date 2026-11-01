@@ -6357,6 +6357,35 @@ await test("Busse wie Apple Karten: je Linie ein Strich in Busblau, Plakette mit
   await page.unroute(/transit\.land\/api\/v2\/tiles/); await page.unroute(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//);
 });
 
+await test("Stationen wie Apple Karten: auf jeder Linie des Bündels ein Punkt in Linienfarbe, kein Kreis in der Mitte (Chicago Loop)", async () => {
+  const enc = (pts) => { let o = "", pa = 0, po = 0; const e = (v) => { v = v < 0 ? ~(v << 1) : v << 1; let r = ""; while(v >= 0x20){ r += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; } return r + String.fromCharCode(v + 63); };
+    pts.forEach(([lo, la]) => { const a = Math.round(la*1e5), b = Math.round(lo*1e5); o += e(a - pa) + e(b - po); pa = a; po = b; }); return o; };
+  // Lake St (West–Ost): Green und Brown auf demselben Gleis, Station State/Lake mit beiden Linien
+  const y = 41.8858, g = enc([[-87.6340, y], [-87.6250, y]]);
+  const rail = {v:1, id:"chicago", part:"rail", n:"Chicago", src:"CTA", lic:"CTA", L:[["metro", "Green", "", "#009B3A", "#FFFFFF"], ["metro", "Brown", "", "#62361B", "#FFFFFF"]], H:["Harlem"],
+    S:[["State/Lake", 4188590, -8762780], ["Clark/Lake", 4188580, -8763090]], E:[0,1,0,0,300,7, 0,1,1,0,300,7], W:[[300],[300]], G:[[g], [g]], D:[[0, "metro"], [1, "metro"]]};
+  await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => { const f = rt.request().url().split("/").pop();
+    if(f==="chicago.json") return rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify(rail) });
+    return rt.fulfill({ status:404, headers:{"access-control-allow-origin":"*"}, body:"" }); });
+  await page.route(/overpass-api\.de|overpass\.kumi|overpass\.private/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
+  await seed();
+  await rp(`CP = {}; DL = {metro:1}; DOFF = {}; lsSet("rp-dl", JSON.stringify(DL)); true`);
+  await jump(-87.6290, y, 15);
+  await page.waitForFunction(() => window.__rp(`!!map.getSource("ddot") && map.querySourceFeatures("ddot").length >= 4`), null, {timeout:15000}).catch(() => {});
+  const d = JSON.parse(await rp(`JSON.stringify(map.querySourceFeatures("ddot").map(function(f){ return {id:f.properties.id, img:f.properties.img, rot:Math.round(f.properties.rot), c:f.geometry.coordinates}; }))`));
+  const sl = d.filter(x => Math.abs(x.c[0] + 87.6278) < .0003), gr = sl.find(x => x.id==="metro:Green"), br = sl.find(x => x.id==="metro:Brown");
+  ok(gr && br, "State/Lake ohne Punkt je Linie: "+JSON.stringify(d));
+  if(gr && br){
+    ok(Math.abs(gr.c[1] - y) < 2e-5 && Math.abs(br.c[1] - y) < 2e-5, "Punkte nicht auf der Linie: "+JSON.stringify(sl));
+    ok(Math.abs(Math.abs(gr.rot - br.rot) - 180) < 2 && /\|0\.5$/.test(gr.img) && /\|0\.5$/.test(br.img), "Punkte nicht je auf ihrer Seite des Bündels: "+JSON.stringify(sl));
+  }
+  ok(await rp(`map.getLayoutProperty("ddot","visibility")==="visible" && map.querySourceFeatures("dst").some(function(f){ return f.properties.n==="State/Lake" && f.properties.dd===1; })`), "Punkte nicht sichtbar oder Station ohne Merkmal dd");
+  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["ddot"]}).length >= 2`), null, {timeout:6000}).catch(() => {});
+  ok(await rp(`map.queryRenderedFeatures({layers:["ddot"]}).length >= 2 && map.queryRenderedFeatures({layers:["dst"]}).filter(function(f){ return f.properties.n==="State/Lake"; }).length===0`), "Punkte nicht gezeichnet oder Kreis in der Mitte noch da");
+  await rp(`setSheet("min"); true`); await jump(-87.6290, y, 16.5); await page.waitForTimeout(600); await shot("stationen-punkte-je-linie");
+  await page.unroute(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//);
+});
+
 /* ------------------------------------------------------------------ Ergebnis */
 srv.close();
 if(SHARD){ console.log("@@"+JSON.stringify(results)); process.exit(0); }

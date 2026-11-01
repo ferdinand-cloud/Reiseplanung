@@ -48,5 +48,5 @@ Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 - [x] 31. (14) Linien auf gemeinsamem Gleis als Bündel (Loop): mit Stadtpaket Chicago; Transitland bleibt ohne Versatz.
 - [x] 32. (15) Bahn kräftig, Busse dünn, heller.
 - [x] 33. (16) Nummern an der richtigen Linie: Transitland-Beschriftung als Plakette in Linienfarbe.
-- [ ] 34. (17) Stationen bei mittlerem Zoom mit Punkt je Linie (Rückfrage an Ferdinand).
+- [x] 34. (17) Stationen bei mittlerem Zoom mit Punkt je Linie (Rückfrage an Ferdinand).
 - [x] 35. (18) Zoomstufen: Übersicht nur Hauptbusse, ab Zoom 15 alle.

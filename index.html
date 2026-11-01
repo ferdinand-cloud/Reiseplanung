@@ -13002,6 +13002,32 @@ function lnClean(g, minM){
       P[a[0][0]] = A.concat(B.slice(1)); P.splice(a[1][0], 1); go = true; break; } }
   return P;
 }
+/* Stationen wie Apple Karten: auf jeder Linie des Bündels ein Punkt in der Linienfarbe, genau auf dem versetzten Strich.
+   Je Station und Linie der nächste Punkt der Linie (≤ 80 m), Richtung des Abschnitts → Drehung; der Versatz (Platz o × OV.w.off) steckt im Bild und wächst mit icon-size wie line-offset mit dem Zoom.
+   Ergebnis: {geo, st:{Stationsindex:1}} */
+function lnDots(geo, st){
+  var out = {type:"FeatureCollection", features:[]}, has = {}; if(!geo || !st || !st.length) return {geo:out, st:has};
+  var G = {}, C = .002;
+  geo.features.forEach(function(f, fi){ var m = f.properties.m; if(m==="bus" || m==="ferry") return;
+    var cs = f.geometry.type==="LineString" ? [f.geometry.coordinates] : f.geometry.coordinates;
+    cs.forEach(function(r){ for(var i = 0; i + 1 < r.length; i++){ var a = r[i], b = r[i+1];
+      var x0 = Math.floor(Math.min(a[0], b[0])/C), x1 = Math.floor(Math.max(a[0], b[0])/C), y0 = Math.floor(Math.min(a[1], b[1])/C), y1 = Math.floor(Math.max(a[1], b[1])/C);
+      if((x1-x0+1)*(y1-y0+1) > 100) continue;
+      for(var gx = x0; gx <= x1; gx++) for(var gy = y0; gy <= y1; gy++){ var k = gx+"|"+gy; (G[k] = G[k] || []).push([a, b, fi]); } } }); });
+  st.forEach(function(x, si){ if(x[3]==="bus") return;
+    var keys = {}; String(x[5]||"").split(";").forEach(function(t){ var i = t.lastIndexOf(","); if(i > 0) keys[t.slice(0, i)] = 1; });
+    var kx = Math.floor(x[0]/C), ky = Math.floor(x[1]/C), cx = Math.cos(x[1]*Math.PI/180), best = {};
+    for(var dx = -1; dx <= 1; dx++) for(var dy = -1; dy <= 1; dy++) (G[(kx+dx)+"|"+(ky+dy)] || []).forEach(function(sg){
+      var f = geo.features[sg[2]], p = f.properties;
+      if(x[3]==="train" ? !railFam(p.m) : (p.m!==x[3] || (Object.keys(keys).length && !keys[p.k]))) return; // Bahnhof: alle Züge; Metro/Tram: nur die Linien der Station
+      var ax = (sg[0][0]-x[0])*cx, ay = sg[0][1]-x[1], bx = (sg[1][0]-x[0])*cx, by = sg[1][1]-x[1], vx = bx-ax, vy = by-ay, L = vx*vx + vy*vy, t = L ? Math.max(0, Math.min(1, -(ax*vx + ay*vy)/L)) : 0, px = ax + t*vx, py = ay + t*vy, d = Math.sqrt(px*px + py*py)*111320;
+      if(d > 80 || !L || (best[sg[2]] && best[sg[2]].d <= d)) return;
+      best[sg[2]] = {d:d, lo:x[0] + px/cx, la:x[1] + py, br:Math.atan2(vx, vy)*180/Math.PI}; });
+    Object.keys(best).forEach(function(fi){ var b = best[fi], p = geo.features[fi].properties, o = +p.o || 0, a = Math.round(Math.abs(o)*2)/2;
+      has[si] = 1;
+      out.features.push({type:"Feature", properties:{m:p.m, id:p.id, img:"pd|"+p.c+"|"+a, rot:b.br + (o >= 0 ? 90 : -90)}, geometry:{type:"Point", coordinates:[b.lo, b.la]}}); }); });
+  return {geo:out, st:has};
+}
 /* Haltestellen aus den Kanten eines Pakets: je Station und Verkehrsmittel ein Eintrag [lo, la, Name, Art, Bedeutung, Linienreihe] */
 function cpStops(P, nl, want){
   if(!nl){ nl = {}; for(var k = 0; k < P.E.length; k += 6){ [P.E[k], P.E[k+1]].forEach(function(x){ (nl[x] = nl[x] || {})[P.E[k+2]] = 1; }); } }
@@ -13319,6 +13345,7 @@ function dData(){
     var e = {type:"FeatureCollection", features:[]}, d = VV;
     var put = function(id, g){ var src = map.getSource(id); if(!src || (g && DSET[id]===g)) return; DSET[id] = g; src.setData(g || e); };
     put("dtr", d.tr ? d.tr.geo : null); put("dbus", d.bus ? d.bus.geo : null);
+    if(d.tr && !d.tr._dots) d.tr._dots = lnDots(d.tr.geo, d.tr.st); put("ddot", d.tr ? d.tr._dots.geo : null); DSET.dotSt = d.tr ? d.tr._dots.st : {};
     var bst = d.bus && d.bus.st || null; if(d.tr && DSET.dstA===d.tr.st && DSET.dstB===bst) return dBikeData(); DSET.dstA = d.tr ? d.tr.st : null; DSET.dstB = bst;
     // Bushaltestelle am selben Punkt wie eine Tram-/Metro-Haltestelle (Pakete führen oft eine Haltestelle für alle): Buslinien als zweite Reihe unter deren Linien
     var ts = d.tr ? d.tr.st : [], add = {}, bs = (bst || []).filter(function(b){ var o = ts.find(function(x){ return x[2] && x[3]!=="train" && Math.abs(x[1]-b[1]) < .0004 && Math.abs(x[0]-b[0]) < .0006 && dist({la:x[1], lo:x[0]}, {la:b[1], lo:b[0]}) < 40; });
@@ -13343,7 +13370,7 @@ function dstPush(){
   var lg = map.getZoom() >= 13 ? lkGeo() : null, sig = lg ? lg.features.length+"|"+Math.round(map.getZoom()) : "-"; if(sig===DSET.lkSig) return; DSET.lkSig = sig;
   var ts = lg ? stSnap(A[0], lg, 150) : A[0], bs = A[1], add = A[2];
   {
-    if(map.getSource("dst")) map.getSource("dst").setData({type:"FeatureCollection", features:ts.concat(bs).map(function(s, i){ var lb = s[5] || ""; return {type:"Feature", properties:{n:s[2], m:s[3], r:s[4]===undefined ? 1 : s[4], lb:lb, x:stXOf(lb), lbb:add[i] ? "#"+s[3]+",-;"+lb+";/,-;#bus,-;"+add[i] : lb}, geometry:{type:"Point", coordinates:[s[0], s[1]]}}; })});
+    if(map.getSource("dst")) map.getSource("dst").setData({type:"FeatureCollection", features:ts.concat(bs).map(function(s, i){ var lb = s[5] || ""; return {type:"Feature", properties:{n:s[2], m:s[3], r:s[4]===undefined ? 1 : s[4], lb:lb, x:stXOf(lb), lbb:add[i] ? "#"+s[3]+",-;"+lb+";/,-;#bus,-;"+add[i] : lb, dd:i < ts.length && DSET.dotSt && DSET.dotSt[i] ? 1 : 0}, geometry:{type:"Point", coordinates:[s[0], s[1]]}}; })});
   }
 }
 /* Zoomstufen wie Apple Karten: je weiter weg, desto weniger – erst Fern-/Regionalbahn, dann S-Bahn/Metro, dann Tram, Busse erst auf Straßenebene;
@@ -13362,7 +13389,7 @@ function stLblZ(base){ return zStep(base, [[12, [">=", SR, 3]], [13, [">=", SR, 
 function dstImg(p){ var dl = isDark() ? "d" : "l", n = ["case", ["==", ["get","m"], "bus"], "", ["get","n"]]; return ["step", ["zoom"], ["concat", "tn|", n, "||", dl], 14.5, ["concat", "tn|", n, "|", ["get","lb"], "|", dl], BSTZ, ["concat", "tn|", n, "|", ["coalesce", ["get", p], ["get","lb"]], "|", dl]]; }
 function dAddLayers(){
   var e = {type:"FeatureCollection", features:[]}, gl = !!map.getStyle().glyphs, halo = isDark() ? "#111a22" : "#ffffff";
-  DSET = {}; ["dtr","dbus","dst","dbike"].forEach(function(s){ if(!map.getSource(s)) map.addSource(s, {type:"geojson", data:e}); });
+  DSET = {}; ["dtr","dbus","dst","dbike","ddot"].forEach(function(s){ if(!map.getSource(s)) map.addSource(s, {type:"geojson", data:e}); });
   var W = function(a, b){ return ["interpolate",["linear"],["zoom"],10,["match",["get","m"],"tram",1,"funi",1.4,a],16,["match",["get","m"],"tram",3,"funi",3.5,b]]; };
   // Grundgerüst: Gleise aus den Kartenkacheln (überall, ohne Abfrage, offline mit dem Kartenpaket), grau unter den farbigen Linien
   var srcs = map.getStyle().sources, vs = null; Object.keys(srcs).forEach(function(k){ if(!vs && srcs[k].type==="vector") vs = k; });
@@ -13372,6 +13399,9 @@ function dAddLayers(){
   map.addLayer({id:"dbus", type:"line", source:"dbus", minzoom:BUSZ, paint:{"line-color":BUSCE(), "line-width":ovZ(OV.w.bus), "line-opacity":OV.op.bus}, layout:ovLay("none")}, ovBelow());
   map.addLayer({id:"dtr", type:"line", source:"dtr", filter:["!=",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":lnWidth(["get","m"]), "line-offset":lnOffset(["coalesce", ["get","o"], 0])}, layout:ovLay("none")}, ovBelow());
   map.addLayer({id:"dtr-f", type:"line", source:"dtr", filter:["==",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":ovZ(OV.w.ferry), "line-dasharray":OV.dash.ferry, "line-opacity":OV.op.ferry}, layout:ovLay("none")}, ovBelow()); ovCase("dtr"); ovCase("dtr-f");
+  // Punkt je Linie an der Station (wie Apple Karten), Größe und Versatz wachsen wie line-offset (Bezug Zoom 16 = 1)
+  var dz = OV.w.off.slice(); for(var di = 1; di < dz.length; di += 2) dz[di] = +(dz[di]/3.3).toFixed(3);
+  map.addLayer({id:"ddot", type:"symbol", source:"ddot", minzoom:12, layout:{visibility:"none", "icon-image":["get","img"], "icon-rotate":["get","rot"], "icon-rotation-alignment":"map", "icon-pitch-alignment":"map", "icon-size":ovZ(dz), "icon-allow-overlap":true, "icon-ignore-placement":true}});
   map.addLayer({id:"dst", type:"circle", source:"dst", minzoom:OV.z.stop, maxzoom:OV.z.stopIcon, paint:STPAINT(), layout:{visibility:"none"}});
   // ab Zoom 14 Stationssymbol (Wagen in der Farbe des Verkehrsmittels) statt Punkt
   map.addLayer({id:"dst-ic", type:"symbol", source:"dst", minzoom:OV.z.stopIcon, layout:{visibility:"none", "icon-image":["concat", "ts|", ["get","m"]], "icon-size":ovZx(OV.w.stopIcon, OV.w.stopIconX), "icon-allow-overlap":true, "icon-ignore-placement":true, "symbol-sort-key":["-", 0, SR]}});
@@ -13390,7 +13420,8 @@ function dApplyMap(){
   var dy = dynOn(), on = dy ? DMODES.map(function(m){ return m[0]; }).filter(dOn) : [], off = ["!", ["in", ["get","id"], ["literal", Object.keys(DOFF)]]];
   var vis = function(l, v){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", v ? "visible" : "none"); };
   var rail = on.filter(function(m){ return m!=="bus"; });
-  ["dtr","dtr-f","dtr-lbl"].forEach(function(l){ vis(l, dy && rail.length && !lkOn()); }); // Linienkarte zeichnet die Linien, wenn sie da ist
+  ["dtr","dtr-f","dtr-lbl","ddot"].forEach(function(l){ vis(l, dy && rail.length && !lkOn()); });
+  if(map.getLayer("ddot")) map.setFilter("ddot", ["all", ["in", ["get","m"], ["literal", rail]], off]); // Linienkarte zeichnet die Linien, wenn sie da ist
   if(map.getLayer("dtr-lbl")) map.setFilter("dtr-lbl", ["all", ["in", ["get","m"], ["literal", rail]], off]);
   map.setFilter("dtr", lnZ(["all", ["!=",["get","m"],"ferry"], ["in", ["get","m"], ["literal", rail]], off]));
   map.setFilter("dtr-f", lnZ(["all", ["==",["get","m"],"ferry"], ["in", ["get","m"], ["literal", rail]], off]));
@@ -13401,8 +13432,9 @@ function dApplyMap(){
   vis("dst", dy && rail.length); vis("dst-ic", sOn); vis("dst-lbl", sOn);
   var srail = rail.some(railFam) ? rail.concat(["train"]) : rail; // Bahnhöfe kennen nur „Zug“, nicht die Art
   // Bushaltestellen (Symbol + Linien) erst ab Zoom 15,5, wie bei Apple Karten erst beim näheren Hinsehen
-  var inS = ["in", ["get","m"], ["literal", srail]], wB = bOn ? ["step", ["zoom"], inS, BSTZ, ["in", ["get","m"], ["literal", srail.concat(["bus"])]]] : inS;
-  map.setFilter("dst", stZ(inS)); if(map.getLayer("dst-ic")) map.setFilter("dst-ic", wB); if(map.getLayer("dst-lbl")) map.setFilter("dst-lbl", bOn ? stLblZ(inS).concat([BSTZ, ["in", ["get","m"], ["literal", srail.concat(["bus"])]]]) : stLblZ(inS));
+  var inS = ["in", ["get","m"], ["literal", srail]], nd = lkOn() ? true : ["!=", ["coalesce", ["get","dd"], 0], 1]; // Station mit Punkten auf den Linien: kein Symbol darüber (wie Apple), Name bleibt
+  var wB = bOn ? ["step", ["zoom"], ["all", inS, nd], BSTZ, ["all", ["in", ["get","m"], ["literal", srail.concat(["bus"])]], nd]] : ["all", inS, nd];
+  map.setFilter("dst", stZ(["all", inS, lkOn() ? true : ["!=", ["coalesce", ["get","dd"], 0], 1]])); /* mit Punkten auf den Linien kein Kreis in der Mitte */ if(map.getLayer("dst-ic")) map.setFilter("dst-ic", wB); if(map.getLayer("dst-lbl")) map.setFilter("dst-lbl", bOn ? stLblZ(inS).concat([BSTZ, ["in", ["get","m"], ["literal", srail.concat(["bus"])]]]) : stLblZ(inS));
   vis("dbike", dy && layers.bike && !(DEST && CB.sys.length)); // OpenStreetMap-Stationen nur, solange kein Leihrad-System mit Live-Daten bekannt ist
   if(map.getLayer("vt-rail")) map.setFilter("vt-rail", ["all", dy ? ["in", ["get","class"], ["literal", ["rail","transit"]]] : ["==", ["get","class"], "rail"], ["!", ["in", ["coalesce", ["get","service"], ""], ["literal", ["yard","siding","spur","crossover"]]]]]); // U-Bahn in NYC kommt farbig aus den eigenen Daten
   vis("vt-rail", ((dy && rail.length) || (!dy && !DEST && (layers.sub || layers.bus))) && !trRO()); // auch in New York und beim Rauszoomen: Fernverkehr zwischen den Städten // graues Grundgerüst aus den Kartenkacheln: sofort da, bis die Linien geladen sind
@@ -13678,9 +13710,10 @@ function tpBus(id, k, c, n, dark){
 }
 function tpLight(c){ var h = c.replace("#", ""); if(h.length!==6) return c; var f = function(i){ var v = parseInt(h.substr(i, 2), 16); return Math.round(v + (255 - v)*.35).toString(16).padStart(2, "0"); }; return "#"+f(0)+f(2)+f(4); } // im Dunkelmodus heller, sonst kaum lesbar
 function tpImg(id){
-  if(!/^t[lbsn]\|/.test(id)) return false;
+  if(!/^(t[lbsn]|pd)\|/.test(id)) return false;
   var p = id.split("|"), list = [];
   if(p[0]==="tb") return tpBus(id, p[1], p[2], p[3], p[4]==="d");
+  if(p[0]==="pd"){ var dd = (+p[2] || 0)*3.3, R = dd + 5.5; mkImg(id, 2*R, 2*R, function(g, x, y){ g.beginPath(); g.arc(x, y - dd, 3.6, 0, 7); g.fillStyle = "#fff"; g.fill(); g.beginPath(); g.arc(x, y - dd, 2.5, 0, 7); g.fillStyle = p[1]; g.fill(); }); return true; } // Stationspunkt auf der Linie: Versatz nach oben, gedreht auf die Seite der Linie
   if(p[0]==="tn") return tpName(id, p[1], p[2], p[3]==="d");
   if(p[0]==="ts"){ mkImg(id, 16, 16, function(g){ tpMode(g, 0, 0, p[1], 16); g.lineWidth = 1; g.strokeStyle = "rgba(255,255,255,.9)"; tpRR(g, .9, .9, 14.2, 14.2, 3.3); g.stroke(); }); return true; } // gleiches Symbol wie vor den Linienreihen
   if(p[0]==="tl"){ var c = p[2] || "#5B6B7A"; String(p[1]||"").split(" · ").filter(Boolean).forEach(function(k){ list.push([k, c]); }); }
