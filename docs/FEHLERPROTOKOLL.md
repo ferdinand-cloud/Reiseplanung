@@ -13,7 +13,7 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 **Lösung:** `OV.w.off` = Linienbreite + Lücke je Zoom (12: +0,7 · 14: +1,1 · 16: +1,5 · 18: +1,9 px). Die Lücke ist schmaler als der doppelte weiße Rand, also durchgehend weiß. Alles, was mit `OV.w.off` rechnet, wandert mit: New Yorker Versatz in der Form (v491), Linienkarte, Stadtpakete, Transitland, Stationspunkte (v500; Bezug Zoom 16 jetzt `ovAt(OV.w.off, 16)` statt fest 3,3). Bündel werden etwas breiter (5 Linien bei Zoom 16 ≈ 18 statt 13 px).
 
-**Commit/Version:** COMMIT · SW v501 · **Test:** „Lücken im Bündel wie Apple Karten …“ – schlägt mit dem alten Stand fehl (Lücke 0,3 px).
+**Commit/Version:** afad588 · SW v501 · **Test:** „Lücken im Bündel wie Apple Karten …“ – schlägt mit dem alten Stand fehl (Lücke 0,3 px).
 
 ---
 
