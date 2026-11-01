@@ -24,7 +24,7 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 - Beschriftung wie Apple Karten: Plakette mit der Nummer, daneben der Name in der Linienfarbe („20 Madison“, `tpBus`, Bild `tb|…`), wiederholt entlang der Linie, weicht anderen Beschriftungen aus.
 - Farbe: alle Busse in einem kräftigen Busblau (#2F6BC8, dunkel #6FA0EA) mit 90 % Deckkraft statt gedämpft und halb durchsichtig; Linien etwas breiter. Die Datenfarben taugen nicht (CTA: Grau, Schwarz, Expressbusse rot wie die Red Line).
 
-**Commit/Version:** _(siehe unten)_ · SW v497 · **Test:** „Busse wie Apple Karten: je Linie ein Strich in Busblau, Plakette mit Name („20 Madison“), ohne Haken und Stückelung (Stadtpaket Chicago)“; „Linienfarben: … Bus kräftiges Busblau …“ angepasst.
+**Commit/Version:** 1cfbca6 · SW v497 · **Test:** „Busse wie Apple Karten: je Linie ein Strich in Busblau, Plakette mit Name („20 Madison“), ohne Haken und Stückelung (Stadtpaket Chicago)“; „Linienfarben: … Bus kräftiges Busblau …“ angepasst.
 
 ---
 
