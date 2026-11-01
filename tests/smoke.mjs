@@ -2165,7 +2165,8 @@ await test("Stadtpakete: Berlin aus den VBB-Daten statt Transitland, ganze Linie
     var R = cpAlts(A, B, cur), r = R[0], rd = r.legs.filter(function(l){ return l.t==="ride"; });
     return {n:rd.map(function(l){ return lineName(l.r); }), col:NET.r[rd[0].r][1], kind:extKind(rd[0].r), hd:rd[0].hd, from:NET.s[rd[0].from][0], to:NET.s[rd[0].to][0], st:rd[0].stops.length, path:ridePath(rd[0]).length, tk:rd[0].tk, secs:r.secs, cp:r.cp, walk:r.walk}; })()`);
   ok(!r.walk && r.n.join(">")==="U2>S1" && r.col==="#DA421E" && r.kind==="U-Bahn" && r.hd==="S+U Pankow" && r.from==="U Zoo" && r.to==="S+U Alexanderplatz", "Route aus dem Stadtpaket falsch: "+JSON.stringify(r));
-  ok(r.st===3 && r.path >= 5 && r.tk===300 && r.cp==="berlin", "Streckenverlauf/Takt der Fahrt fehlt: "+JSON.stringify(r));
+  // Takt hängt vom Wochentag/der Uhrzeit des Testlaufs ab (abends/Wochenende 10 statt 5 Min.)
+  ok(r.st===3 && r.path >= 5 && (r.tk===300 || r.tk===600) && r.cp==="berlin", "Streckenverlauf/Takt der Fahrt fehlt: "+JSON.stringify(r));
   ok(r.secs > 900 && r.secs < 1800, "Dauer unplausibel: "+r.secs);
   ok(await rp(`cpAlts({la:52.52, lo:13.35}, {la:48.85, lo:2.35}, cur)===null && cpAlts({la:40.75, lo:-73.99}, {la:40.73, lo:-73.99}, cur)===null`), "Stadtpaket für Strecken außerhalb der Stadt zuständig");
   // Transitous nicht erreichbar → Verbindung aus dem Paket
