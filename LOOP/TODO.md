@@ -14,7 +14,7 @@ Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 - [x] 7. Ebenen-Reihenfolge: Linien über Flächen und Straßen, aber unter Straßen- und Ortsnamen; Verhältnis zu den 3D-Gebäuden sauber (Linien nicht durch Gebäude "abgeschnitten" sichtbar).
 
 ## Stationen
-- [ ] 8. Einheitliche Stationsmarker je Verkehrsmittel (z. B. weißer Punkt mit farbigem Rand), Größe zoomabhängig.
+- [x] 8. Einheitliche Stationsmarker je Verkehrsmittel (z. B. weißer Punkt mit farbigem Rand), Größe zoomabhängig.
 - [ ] 9. Verkehrsmittel-Icon am Stationsmarker (U-Bahn, Bus, Fähre), erst ab einer sinnvollen Zoomstufe.
 - [ ] 10. Linien-Badges an Stationen (farbige Kreise mit Kürzel wie A, C, E); bei Bus erst bei starkem Zoom, damit es nicht überladen wirkt.
 - [ ] 11. Umstiegsstationen hervorheben (größerer bzw. länglicher Marker, wenn mehrere Linien halten).

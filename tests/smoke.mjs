@@ -2008,6 +2008,24 @@ await test("Ebenen-Reihenfolge: ÖPNV-Linien über Flächen/Straßen und 3D-Geb�
   ok(r.okLbl, "Linien/Route nicht unter den Namen: "+JSON.stringify(r.ids));
 });
 
+await test("Stationsmarker: je Verkehrsmittel weißer Punkt mit farbigem Rand, Größe wächst mit dem Zoom", async () => {
+  await seed();
+  const r = JSON.parse(await rp(`(function(){ var J = JSON.stringify, P = function(l, k){ return map.getPaintProperty(l, k); };
+    // Randfarbe je Verkehrsmittel auswerten (match-Ausdruck)
+    function col(e, m){ if(typeof e==="string") return e; for(var i = 2; i < e.length-1; i += 2) if(e[i]===m) return e[i+1]; return e[e.length-1]; }
+    function at(e, z){ var s = e.slice(3); if(z <= s[0]) return s[1]; for(var i = 2; i < s.length; i += 2) if(z <= s[i]) return s[i-1]+(s[i+1]-s[i-1])*(z-s[i-2])/(s[i]-s[i-2]); return s[s.length-1]; }
+    var dst = P("dst","circle-stroke-color"), sub = P("subst","circle-stroke-color");
+    return J({fill:P("dst","circle-color")===OV.col.stop && P("subst","circle-color")===OV.col.stop,
+      modes:["metro","tram","bus","ferry","train"].map(function(m){ return col(dst, ["get","m"]===0 ? 0 : m); }), want:["metro","tram","bus","ferry","x"].map(function(m){ return OV.col.sm[m]; }),
+      nyc:sub[1]==="metro" && col(sub, "metro")===OV.col.sm.metro, same:J(P("subst","circle-radius"))===J(P("dst","circle-radius")),
+      grow:[11, 13, 15, 17].map(function(z){ return at(P("dst","circle-radius"), z); }), icon:TPMCOL===OV.col.sm});
+  })()`));
+  ok(r.fill, "Stationspunkt nicht weiß");
+  ok(JSON.stringify(r.modes)===JSON.stringify(r.want), "Randfarbe je Verkehrsmittel falsch: "+JSON.stringify(r));
+  ok(r.nyc && r.same && r.icon, "New-York-Stationen/Symbole nicht einheitlich: "+JSON.stringify(r));
+  ok(r.grow.every((v, i) => !i || v > r.grow[i-1]), "Größe wächst nicht mit dem Zoom: "+JSON.stringify(r.grow));
+});
+
 await test("ÖPNV-Szenen S1–S5: Ebene und Route werden gezeichnet", async () => {
   await seed();
   await page.waitForFunction(() => window.__rp("busReady"), null, {timeout:15000}).catch(() => {});
