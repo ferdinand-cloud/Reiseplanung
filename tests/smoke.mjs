@@ -6221,7 +6221,7 @@ await test("Linienkarte-Bau: Reihenfolge im Bündel folgt den Abzweigen – wer 
   const lines = [{m:"sbahn", k:"S1", c:"#DE4DA4"}, {m:"sbahn", k:"S2", c:"#007734"}, {m:"sbahn", k:"S3", c:"#0098D4"}];
   const RL = [[[1, 2]], [[1, 3]], [[1, 4]]], pos = new Int32Array([2, 0, 1]);
   const F = linienGraph({lines, RL, W, pos, natCmp:(a, b) => String(a).localeCompare(String(b), "de", {numeric:true})});
-  const on = (k) => F.filter(f => f.k===k && f.g[0][1] < 52.505);
+  const on = (k) => F.filter(f => f.k===k && f.g[Math.floor(f.g.length/2)][1] < 52.505); // Stamm-Stücke, gleich in welcher Richtung sie laufen
   const o1 = on("S1"), o2 = on("S2"), o3 = on("S3");
   ok(o1.length && o2.length && o3.length, "Stamm fehlt: "+F.map(f => f.k).join());
   // Richtung der Stücke: Süd→Nord oder umgekehrt – rechts heißt dann o größer bzw. kleiner
@@ -6308,6 +6308,21 @@ await test("Haltestellen wie Apple Karten: Symbol je Verkehrsmittel und Linien-P
   const sv = JSON.parse(sig), forms = ["metro","tram","train","funi","bus","ferry"].map(m => sv[m]);
   ok(new Set(forms).size===6 && sv.sbahn===sv.train, "Symbole nicht je Verkehrsmittel verschieden: "+sig);
   await page.unroute(/transit\.land\/api\/v2\/tiles/);
+});
+
+await test("Linienkarte-Bau: keine Spitzen an flach kreuzenden Gleisen – zusammengelegt wird nur, was länger nebeneinander läuft (Prüfung pruefen.mjs)", async () => {
+  const { linienGraph } = await import("../tools/linienkarte/graph.mjs");
+  const { stellen } = await import("../tools/linienkarte/pruefen.mjs");
+  const ln = (a, b, n) => Array.from({length:n+1}, (_, i) => [+(a[0]+(b[0]-a[0])*i/n).toFixed(6), +(a[1]+(b[1]-a[1])*i/n).toFixed(6)]);
+  const k = Math.cos(52.51*Math.PI/180), dx = 0.012, t = Math.tan(25*Math.PI/180);
+  // S41 West→Ost, RE1 kreuzt flach (25°): früher rastete S41 dort ~130 m auf das RE-Gleis ein → Spitze (A100, Freiheit)
+  const W = new Map([[1, ln([13.37, 52.51], [13.394, 52.51], 60)], [2, ln([13.382 - dx, 52.51 - dx*k*t], [13.382 + dx, 52.51 + dx*k*t], 60)]]);
+  const F = linienGraph({lines:[{m:"sbahn", k:"S41", c:"#9F4C37"}, {m:"reg", k:"RE1", c:"#E2001A"}], RL:[[[1]], [[2]]], W, pos:new Int32Array([0, 1]), natCmp:(a, b) => String(a).localeCompare(String(b))});
+  const s = stellen(F.map(f => ({properties:{m:f.m, k:f.k, c:f.c}, geometry:{type:"LineString", coordinates:f.g}})), {modes:["sbahn", "reg"]});
+  ok(s.length===0, "Spitzen an der flachen Kreuzung: "+JSON.stringify(s));
+  // Gegenprobe: die Prüfung erkennt eine echte Spitze (Punkt 15 m neben der Strecke)
+  const g = ln([13.37, 52.51], [13.38, 52.51], 40); g[20] = [g[20][0], g[20][1] + 15/111320];
+  ok(stellen([{properties:{m:"sbahn", k:"X", c:"#000"}, geometry:{type:"LineString", coordinates:g}}]).length===1, "Prüfung erkennt Spitze nicht");
 });
 
 await test("Busse wie Apple Karten: je Linie ein Strich in Busblau, Plakette mit Name („20 Madison“), ohne Haken und Stückelung (Stadtpaket Chicago)", async () => {

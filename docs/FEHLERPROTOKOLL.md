@@ -5,6 +5,29 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-01 · Linienkarte Berlin: Spitzen, Zacken, Zickzack und Knick am Abzweig (A100, Freiheit, Westhafen, Bornholmer Straße, Gesundbrunnen)
+
+**Meldung:** Ferdinand 00:17 (6 Screenshots): S41 mit Spitze an der A100, S9 mit Zacke an der Freiheit, S41/S42 laufen bei Westhafen als zwei Striche mit Zickzack, Abzweige an Bornholmer Straße und Gesundbrunnen mit spitzem Knick.
+
+**Ursache (geprüft im Code und im Berlin-Auszug):** In Berlin zeichnet die Linienkarte (`tools/linienkarte/graph.mjs`), nicht das Stadtpaket. Sie legt parallele Gleise zu einer Mittellinie zusammen: Jeder Punkt eines Gleises rastet auf den Knoten eines fremden Gleises ein, wenn der ≤ 28 m quer und ≤ 32° schräg liegt; mit Hysterese hält er bis ~40 m. Eingerastete Läufe wurden erst unter 40 m wieder gelöst.
+- Flach kreuzendes fremdes Gleis (A100, Freiheit): die Linie rastet 50–130 m darauf ein → Spitze.
+- S-Bahn-Gleise neben Fern-/Regionalgleisen in 25–40 m Abstand (Westhafen): abwechselnd ein- und ausgerastet → Zickzack, zwei Striche.
+- Abzweig (Bornholmer Straße): die Hysterese hält die abzweigende Linie im Bündel, bis die Gleise ~40 m auseinander sind, dann springt sie mit Knick hinüber.
+Der bisherige Knick-Zähler (nur Knicke > 60°) meldete 0, weil diese Spitzen bei 30–45° liegen. Map-Matching (Vorschlag) hätte nicht geholfen: die Linien liegen schon auf echten OSM-Gleisen.
+
+**Lösung (nur Linienkarten-Bau, bisherige Fixes 941a295/e10e506 unverändert):**
+- Zusammengelegt wird nur, was mindestens 150 m nebeneinander läuft (`MINRUN`); kürzere Läufe lösen sich.
+- Wo sich die Gleise wirklich trennen (danach ≥ 150 m frei), rollt der Lauf am Ende auf, solange der Abstand schon > 12,6 m ist: der Abzweig verlässt das Bündel früh und im Bogen statt bei 40 m mit Knick.
+- Kurze Lücken im Bündel bis 200 m (Bahnhöfe, wo die Gleise kurz auseinanderlaufen) werden überbrückt, wenn beide Seiten am selben Gleis hängen.
+- Neue Prüfung `tools/linienkarte/pruefen.mjs`: je Linie (über Stückgrenzen) Abweichung von der Sehne > 5 m auf 50 m = Spitze/Zacke. Berlin-Auszug: Westhafen 3 → 0, Gesundbrunnen/Bornholmer 13 → 10, gesamt 79 → 86 (Rest meist echte Weichenfelder Ostkreuz/Friedrichstraße, dort neu 2 Bündel statt 1). A100 und Freiheit liegen außerhalb des Prüfausschnitts, dort greift dieselbe Regel (Test mit flacher Kreuzung).
+- Bilder: `fehlerprotokoll/bilder/vorher-/nachher-berlin-westhafen-linienkarte.png`.
+
+**Offen:** Ostkreuz und Friedrichstraße zeigen weiter Knoten, wo sich Bündel kreuzen bzw. teilen; nach Ferdinands Prüfung auf dem iPhone gezielt weiter.
+
+**Commit/Version:** COMMIT (nur Linienkarten-Bau, App unverändert) · Linienkarte neu gebaut (GitHub Action „Linienkarte“) · **Test:** „Linienkarte-Bau: keine Spitzen an flach kreuzenden Gleisen …“ – schlägt mit dem alten Stand fehl (2 Spitzen).
+
+---
+
 ## 2026-11-01 · Bündel ohne Lücken: Linien liegen direkt aneinander (Chicago Loop, Vergleich Apple)
 
 **Meldung:** Ferdinand 00:25 (Screenshots Apple vs. App): Bei Apple sind zwischen nebeneinanderliegenden Linien kleine weiße Lücken, bei uns nicht.

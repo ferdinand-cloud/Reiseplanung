@@ -25,7 +25,8 @@ const GP = {
   funi: { step: 5, snap: 8, glatt: 15 },
   ferry: { step: 40, snap: 60, glatt: 150 },
 };
-const COSMIN = 0.85; // Richtungen bis ~32° gelten als parallel
+const COSMIN = 0.85;
+const LKPEEL = process.env.LKPEEL !== "0", MINRUN = +(process.env.LKMINRUN || 150); // Meter: kürzer nebeneinander laufende Gleise werden nicht zusammengelegt (flache Kreuzungen, Weichenfelder) // Richtungen bis ~32° gelten als parallel
 
 // U-Bahn eigene Gruppe: fährt nie auf Eisenbahngleisen, rastete aber an parallelen Strecken ein (U8 am Alexanderplatz hing schräg im S-Bahn-Bündel)
 export const grpOf = (m) => m === "tram" ? "tram" : m === "ferry" ? "ferry" : m === "funi" ? "funi" : m === "metro" ? "metro" : "rail";
@@ -62,12 +63,12 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
       for (let i = 0; i < pts.length; i++) if (pts[i].v) { const j = VK.get(pts[i][0] + "," + pts[i][1]); if (j !== undefined) fix[i] = j; }
       CW.set(w, mine);
       // 1. Durchgang: Kandidat je Punkt (Knoten eines anderen Gleises auf gleicher Höhe). Wer schon an einem Gleis hängt, bleibt etwas länger dran (Hysterese).
-      const cand = new Int32Array(pts.length).fill(-1), DX = new Float64Array(pts.length), DY = new Float64Array(pts.length);
+      const cand = new Int32Array(pts.length).fill(-1), LA = new Float64Array(pts.length), DX = new Float64Array(pts.length), DY = new Float64Array(pts.length);
       let prevW = -1;
       for (let i = 0; i < pts.length; i++) {
         const [x, y] = pts[i], a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], k = Math.cos(y * Math.PI / 180);
         let dx = (b[0] - a[0]) * k, dy = b[1] - a[1]; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl; DX[i] = dx; DY[i] = dy;
-        const cx = Math.floor(x / csx), cy = Math.floor(y / cs); let best = -1, bd = Infinity;
+        const cx = Math.floor(x / csx), cy = Math.floor(y / cs); let best = -1, bd = Infinity, bla = 0;
         for (let ix = -1; ix <= 1; ix++) for (let iy = -1; iy <= 1; iy++) {
           const arr = GR.get((cx + ix) * 1e7 + cy + iy); if (!arr) continue;
           for (const j of arr) {
@@ -77,25 +78,39 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
             const ox = (NX[j] - x) * k * R, oy = (NY[j] - y) * R, al = Math.abs(ox * dx + oy * dy), la = Math.abs(ox * -dy + oy * dx), same = NW[j] === prevW;
             if (la > P.snap * (same ? 1.4 : 1) || al > P.step) continue;
             const d = Math.hypot(al * 3, la) * (same ? 0.7 : 1); if (d >= bd) continue;
-            bd = d; best = j;
+            bd = d; best = j; bla = la;
           }
         }
-        if (fix[i] >= 0) best = fix[i];
-        cand[i] = best; prevW = best < 0 ? -1 : NW[best];
+        if (fix[i] >= 0) { best = fix[i]; bla = 0; }
+        LA[i] = bla; cand[i] = best; prevW = best < 0 ? -1 : NW[best];
       }
       // 2. Läufe glätten: kurze Lücken zwischen zwei Stellen am selben Gleis überspringen (das fremde Gleis trägt durch),
       //    kurze eingerastete Stücke lösen (sonst Zickzack zwischen zwei Gleisen und Schlaufen im Bündel)
-      const K = 4, skip = new Uint8Array(pts.length);
+      //    Nur Gleise, die länger nebeneinander laufen, werden zusammengelegt (Ferdinand 01.11.: Spitzen an flach kreuzenden Gleisen – A100, Freiheit –
+      //    und Zickzack zwischen S-Bahn- und Ferngleisen – Westhafen): eingerastete Läufe unter MINRUN Metern lösen sich wieder.
+      //    Laufenden aufrollen: wo die Gleise schon auseinanderlaufen (quer > PEEL), bleibt der Punkt auf seinem eigenen Gleis – sonst hielt die
+      //    Hysterese die Linie bis ~40 m Abstand im Bündel und sie sprang dann mit Knick hinüber (Bornholmer Straße).
+      const K = 4, KB = Math.round(200 / P.step), KR = Math.max(K, Math.round(MINRUN / P.step)), PEEL = P.snap * 0.45, skip = new Uint8Array(pts.length);
       for (let i = 0; i < pts.length;) {
         if (cand[i] >= 0) { i++; continue; }
         let j = i; while (j < pts.length && cand[j] < 0) j++;
-        if (i > 0 && j < pts.length && j - i <= K && NW[cand[i - 1]] === NW[cand[j]]) for (let t = i; t < j; t++) skip[t] = 1;
+        if (i > 0 && j < pts.length && j - i <= KB && NW[cand[i - 1]] === NW[cand[j]]) for (let t = i; t < j; t++) skip[t] = 1; // auch Bahnhofsbereiche, wo die Gleise kurz auseinanderlaufen (Friedrichstraße)
         i = j;
       }
       for (let i = 0; i < pts.length;) {
         if (cand[i] < 0 || skip[i]) { i++; continue; }
         let j = i; while (j < pts.length && (cand[j] >= 0 || skip[j])) j++;
-        if (j - i < K && j - i < pts.length) for (let t = i; t < j; t++) if (fix[t] < 0) { cand[t] = -1; skip[t] = 0; }
+        // Laufenden mit freiem Ende (nicht Weganfang/-ende) aufrollen, solange die Gleise dort schon weiter als PEEL auseinander liegen
+        // aufgerollt wird nur, wo sich die Gleise wirklich trennen (danach mindestens MINRUN frei), nicht in Lücken, die das Bündel überbrückt
+        let a = i, b = j, pv = i - 1, nx = j;
+        while (pv >= 0 && cand[pv] < 0) pv--;
+        while (nx < pts.length && cand[nx] < 0) nx++;
+        const freeA = LKPEEL && i - 1 - pv >= KR, freeB = LKPEEL && nx - j >= KR;
+        if (a > 0 && freeA) while (a < b && fix[a] < 0 && (skip[a] || LA[a] > PEEL)) a++;
+        if (b < pts.length && freeB) while (b > a && fix[b - 1] < 0 && (skip[b - 1] || LA[b - 1] > PEEL)) b--;
+        for (let t = i; t < a; t++) if (fix[t] < 0) { cand[t] = -1; skip[t] = 0; }
+        for (let t = b; t < j; t++) if (fix[t] < 0) { cand[t] = -1; skip[t] = 0; }
+        if (b - a < KR && b - a < pts.length) for (let t = a; t < b; t++) if (fix[t] < 0) { cand[t] = -1; skip[t] = 0; }
         i = j;
       }
       for (let i = 0; i < pts.length; i++) {
