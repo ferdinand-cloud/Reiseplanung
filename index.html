@@ -13025,7 +13025,7 @@ function lnDots(geo, st){
       best[sg[2]] = {d:d, lo:x[0] + px/cx, la:x[1] + py, br:Math.atan2(vx, vy)*180/Math.PI}; });
     Object.keys(best).forEach(function(fi){ var b = best[fi], p = geo.features[fi].properties, o = +p.o || 0, a = Math.round(Math.abs(o)*2)/2;
       has[si] = 1;
-      out.features.push({type:"Feature", properties:{m:p.m, id:p.id, img:"pd|"+p.c+"|"+a, rot:b.br + (o >= 0 ? 90 : -90)}, geometry:{type:"Point", coordinates:[b.lo, b.la]}}); }); });
+      out.features.push({type:"Feature", properties:{m:p.m, id:p.id, n:x[2], r:x[4]===undefined ? 1 : x[4], img:"pd|"+p.c+"|"+a, rot:b.br + (o >= 0 ? 90 : -90)}, geometry:{type:"Point", coordinates:[b.lo, b.la]}}); }); });
   return {geo:out, st:has};
 }
 /* Haltestellen aus den Kanten eines Pakets: je Station und Verkehrsmittel ein Eintrag [lo, la, Name, Art, Bedeutung, Linienreihe] */
@@ -13401,7 +13401,7 @@ function dAddLayers(){
   map.addLayer({id:"dtr-f", type:"line", source:"dtr", filter:["==",["get","m"],"ferry"], paint:{"line-color":["get","c"], "line-width":ovZ(OV.w.ferry), "line-dasharray":OV.dash.ferry, "line-opacity":OV.op.ferry}, layout:ovLay("none")}, ovBelow()); ovCase("dtr"); ovCase("dtr-f");
   // Punkt je Linie an der Station (wie Apple Karten), Größe und Versatz wachsen wie line-offset (Bezug Zoom 16 = 1)
   var dz = OV.w.off.slice(); for(var di = 1; di < dz.length; di += 2) dz[di] = +(dz[di]/3.3).toFixed(3);
-  map.addLayer({id:"ddot", type:"symbol", source:"ddot", minzoom:12, layout:{visibility:"none", "icon-image":["get","img"], "icon-rotate":["get","rot"], "icon-rotation-alignment":"map", "icon-pitch-alignment":"map", "icon-size":ovZ(dz), "icon-allow-overlap":true, "icon-ignore-placement":true}});
+  map.addLayer({id:"ddot", type:"symbol", source:"ddot", minzoom:OV.z.stop, layout:{visibility:"none", "icon-image":["get","img"], "icon-rotate":["get","rot"], "icon-rotation-alignment":"map", "icon-pitch-alignment":"map", "icon-size":ovZ(dz), "icon-allow-overlap":true, "icon-ignore-placement":true}});
   map.addLayer({id:"dst", type:"circle", source:"dst", minzoom:OV.z.stop, maxzoom:OV.z.stopIcon, paint:STPAINT(), layout:{visibility:"none"}});
   // ab Zoom 14 Stationssymbol (Wagen in der Farbe des Verkehrsmittels) statt Punkt
   map.addLayer({id:"dst-ic", type:"symbol", source:"dst", minzoom:OV.z.stopIcon, layout:{visibility:"none", "icon-image":["concat", "ts|", ["get","m"]], "icon-size":ovZx(OV.w.stopIcon, OV.w.stopIconX), "icon-allow-overlap":true, "icon-ignore-placement":true, "symbol-sort-key":["-", 0, SR]}});
@@ -13421,7 +13421,7 @@ function dApplyMap(){
   var vis = function(l, v){ if(map.getLayer(l)) map.setLayoutProperty(l, "visibility", v ? "visible" : "none"); };
   var rail = on.filter(function(m){ return m!=="bus"; });
   ["dtr","dtr-f","dtr-lbl","ddot"].forEach(function(l){ vis(l, dy && rail.length && !lkOn()); });
-  if(map.getLayer("ddot")) map.setFilter("ddot", ["all", ["in", ["get","m"], ["literal", rail]], off]); // Linienkarte zeichnet die Linien, wenn sie da ist
+  if(map.getLayer("ddot")) map.setFilter("ddot", stZ(["all", ["in", ["get","m"], ["literal", rail]], off])); // Stationen nach Bedeutung wie der Kreis: weit weg nur Umstiegsknoten // Linienkarte zeichnet die Linien, wenn sie da ist
   if(map.getLayer("dtr-lbl")) map.setFilter("dtr-lbl", ["all", ["in", ["get","m"], ["literal", rail]], off]);
   map.setFilter("dtr", lnZ(["all", ["!=",["get","m"],"ferry"], ["in", ["get","m"], ["literal", rail]], off]));
   map.setFilter("dtr-f", lnZ(["all", ["==",["get","m"],"ferry"], ["in", ["get","m"], ["literal", rail]], off]));
@@ -16440,7 +16440,7 @@ function rtStop(si, r){
   var q = stLL(si); RTST = {la:q.la, lo:q.lo, n:s0[0], r:r}; select("rtst");
 }
 /* Haltestellen außerhalb des NYC-Netzes (Stadtpaket, OpenStreetMap, Transitland): Treffer aus den Kartenebenen, Linien = Linien, die an der Stelle gezeichnet sind */
-var DSTL = ["dst","dst-ic","tl-st","tl-bst"], DLNL = ["dtr","dtr-f","dbus","tl-rail","tl-ferry","tl-bus"];
+var DSTL = ["dst","dst-ic","ddot","tl-st","tl-bst"], DLNL = ["dtr","dtr-f","dbus","tl-rail","tl-ferry","tl-bus"];
 function dstAt(x, y){
   if(!map || !mapReady) return null;
   var vis = function(l){ return map.getLayer(l) && map.getLayoutProperty(l, "visibility")!=="none"; };

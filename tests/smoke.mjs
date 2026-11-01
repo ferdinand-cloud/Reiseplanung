@@ -2341,7 +2341,7 @@ await test("Stadtpakete: Berlin aus den VBB-Daten statt Transitland, ganze Linie
   ok(await rp(`document.getElementById("attr").textContent.indexOf("ÖPNV: VBB") > -1`), "Quellenangabe VBB fehlt");
   // Zoomstufen wie Apple Karten: weit weg nur S-/U-Bahn, Tram erst näher; Stationen nach Bedeutung (Umstieg zuerst), Busse erst auf Straßenebene
   const zs = async (z) => { await jump(13.4, 52.522, z); await page.waitForFunction(() => window.__rp(`map.loaded()`), null, {timeout:4000}).catch(() => {}); await page.waitForTimeout(150);
-    return rp(`({l:map.queryRenderedFeatures({layers:["dtr"]}).map(function(f){ return f.properties.k; }).filter(function(k, i, a){ return a.indexOf(k)===i; }).sort().join(","), s:map.queryRenderedFeatures({layers:["dst"]}).map(function(f){ return f.properties.n; }).filter(function(k, i, a){ return a.indexOf(k)===i; }).sort().join(",")})`); };
+    return rp(`({l:map.queryRenderedFeatures({layers:["dtr"]}).map(function(f){ return f.properties.k; }).filter(function(k, i, a){ return a.indexOf(k)===i; }).sort().join(","), s:map.queryRenderedFeatures({layers:["dst","ddot"]}).map(function(f){ return f.properties.n; }).filter(function(k, i, a){ return a.indexOf(k)===i; }).sort().join(",")})`); };
   const z10 = await zs(10), z12 = await zs(12), z13 = await zs(13);
   ok(z10.l==="S1,U2" && !z10.s, "Zoom 10 zeigt Tram oder Stationen: "+JSON.stringify(z10));
   ok(z12.l.includes("M10") && z12.s.includes("S+U Alexanderplatz") && !z12.s.includes("S Gesundbrunnen"), "Zoom 12: Tram/Umstiegsbahnhof fehlt oder kleine Station schon da: "+JSON.stringify(z12));
@@ -6380,7 +6380,8 @@ await test("Stationen wie Apple Karten: auf jeder Linie des Bündels ein Punkt i
     ok(Math.abs(Math.abs(gr.rot - br.rot) - 180) < 2 && /\|0\.5$/.test(gr.img) && /\|0\.5$/.test(br.img), "Punkte nicht je auf ihrer Seite des Bündels: "+JSON.stringify(sl));
   }
   ok(await rp(`map.getLayoutProperty("ddot","visibility")==="visible" && map.querySourceFeatures("dst").some(function(f){ return f.properties.n==="State/Lake" && f.properties.dd===1; })`), "Punkte nicht sichtbar oder Station ohne Merkmal dd");
-  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["ddot"]}).length >= 2`), null, {timeout:6000}).catch(() => {});
+  await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["ddot"]}).length >= 2`), null, {timeout:12000}).catch(() => {});
+  ok(await rp(`(function(){ var q = map.project([-87.6278, ${y}]), r = dstAt(q.x, q.y); return !!r && r.n==="State/Lake"; })()`), "Station mit Punkten nicht antippbar");
   ok(await rp(`map.queryRenderedFeatures({layers:["ddot"]}).length >= 2 && map.queryRenderedFeatures({layers:["dst"]}).filter(function(f){ return f.properties.n==="State/Lake"; }).length===0`), "Punkte nicht gezeichnet oder Kreis in der Mitte noch da");
   await rp(`setSheet("min"); true`); await jump(-87.6290, y, 16.5); await page.waitForTimeout(600); await shot("stationen-punkte-je-linie");
   await page.unroute(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//);
