@@ -19,7 +19,7 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 - Eigene Symbole je Verkehrsmittel (`tpMode`): U-Bahn (zwei Frontfenster), Tram/Stadtbahn (Stromabnehmer), Zug/S-Bahn/Regional-/Fernverkehr (runde Front, Schienen), Seilbahn (Kabine am Seil), Bus, Fähre; Farben je Art in `OV.col.sm` (S-Bahn grün, Züge grau).
 Gilt für alle Städte und Quellen: Transitland, OpenStreetMap/Overpass, Stadtpakete, Linienkarte. New York nutzt dieselben Symbole.
 
-**Commit/Version:** _(folgt)_ · SW v496 · **Test:** „Haltestellen wie Apple Karten: Symbol je Verkehrsmittel und Linien-Plaketten statt Kreis, auch bei Transitland (Chicago)“.
+**Commit/Version:** 1b65e00 · SW v496 · **Test:** „Haltestellen wie Apple Karten: Symbol je Verkehrsmittel und Linien-Plaketten statt Kreis, auch bei Transitland (Chicago)“.
 
 ---
 
