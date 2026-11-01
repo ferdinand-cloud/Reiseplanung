@@ -3890,6 +3890,8 @@ await test("Tagesplan: Privat-Plakette sichtbar", async () => {
 
 /* ---------- Ziele: Orte ohne Reise merken ---------- */
 async function noTripUser(){
+  // wie seed(): erst die Anmelde-Rückmeldung abwarten – kam sie danach, war acct.user wieder leer und die Sperre lag über allem (Klicks liefen ins Leere, unter Last in der Action)
+  await page.waitForFunction(() => { try { return !!window.__rp && window.__rp("acct.ready || acct.state===\"unconf\""); } catch(e){ return false; } }, null, {timeout:15000}).catch(() => {});
   await rp(`acct.user = {uid:"u_me", email:"me@test.de", emailVerified:true}; fbDb = null; acct.state = "ok"; S = fresh(); renderGate(); renderAll(); true`);
 }
 await test("Ziele: ohne Reise merken legt Ziel an, keine Reise entsteht", async () => {
