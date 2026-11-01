@@ -5,6 +5,24 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-01 · Chicago Loop anders als Apple: Bündel fehlt, Busnetz zu dicht und dunkel, Nummern scheinbar auf falscher Linie, keine Stationen
+
+**Meldung:** Screenshots 20:10 (App vs. Apple Karten, Loop): Apple zeigt den Hochbahn-Ring als Bündel aus fünf Farben, Bahn kräftig, Busse dünn/hell und in der Übersicht nur wenige, Beschriftung „8 Halsted“; die App einen einzelnen orangen Ring, ein dichtes dunkles Busnetz, lose Nummern in verschiedenen Farben („146/148“ an der roten, „851“ an der blauen Linie), keine Stationen.
+
+**Ursache:**
+- Der Screenshot zeigt noch Transitland (Hinweis „ÖPNV: Transitland“ unten): das Chicago-Paket (v497, 19:21 live, Paket 19:31 veröffentlicht) war auf dem iPhone noch nicht geladen (alte App-Version im Speicher). Transitland zeichnet ohne Versatz (`TLO = 0`, Absicht seit 30.10.), deshalb liegen die fünf Loop-Linien deckungsgleich übereinander und nur die oberste ist sichtbar. Mit dem Paket liegen sie nebeneinander (geprüft: Bild nachher-chicago-loop-z14).
+- „Falsche Nummern“: die Beschriftung `tl-lbl` war Text in der Datenfarbe der jeweiligen Linie. CTA färbt Expressbusse rot (#B71234), 146/148 fahren auf derselben Straße wie eine Bahnlinie → rote Nummern an einer roten Linie wirken wie deren Name. Die Nummer gehörte zum dünnen Bus daneben.
+- Busnetz: alle Buslinien ab Zoom 13,5 gleichzeitig, mit v497 zudem kräftiger und breiter gemacht (Aufgabe 24) – in der Übersicht zu viel.
+- Stationen: in Transitland-Städten liefert `tlStopsOf()` Stationen erst ab Zoom 12 und nur aus den gezeichneten Linien; im Paket sind sie da (Name ab Zoom 12, Symbol ab 14).
+
+**Lösung (v498):**
+- Busse dünner als jede Bahn (Breite 0,8 px bei Zoom 14 statt 1,3) und etwas durchsichtiger (80 %); Farbe bleibt Busblau (helleres Blau war von der Fähre nicht mehr zu unterscheiden, Test „Linienfarben“).
+- Zoomstufen wie Apple: unter Zoom 15 nur Hauptbusse (das Drittel mit dem dichtesten Takt werktags, aus den Wartezeiten `W` des Pakets), ab Zoom 15 alle (`BUSALL`, Filter auf `dbus`/`dbus-lbl`).
+- Transitland-Beschriftung als Plakette in der Farbe der eigenen Linie (Busse in Busblau, `TLLBL`), wie bei den Paketen; als Bild statt Kartenschrift, dadurch auch ohne Schriftdatei.
+- Bündel für Transitland bleibt aus (Begründung oben); dafür Städte als Paket aufnehmen.
+
+**Commit/Version:** _(siehe unten)_ · SW v498 · **Test:** „Busse wie Apple Karten …“ erweitert (Übersicht nur Hauptbus, nah alle; Bus dünner als Bahn; Paket hat Vorrang vor Transitland; Transitland-Plakette).
+
 ## 2026-11-01 · Buslinien roh gezeichnet: lose Enden, schräge Abkürzungen, neben der Straße, Richtungen übereinander (Chicago, Vergleich Apple Karten)
 
 **Meldung:** Screenshots Chicago N Columbus Dr / E Randolph: Buslinien laufen neben der Straße und über Gehwege, kürzen an Kreuzungen schräg ab, haben lose Enden und Haken; beide Richtungen liegen übereinander; Liniennummern als gedrehter Text auf der Linie. Apple: je Linie ein Strich, jede Richtung auf ihrer Seite, Plakette mit Nummer + Name in Linienfarbe („20 Madison“).

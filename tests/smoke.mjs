@@ -6319,7 +6319,7 @@ await test("Busse wie Apple Karten: je Linie ein Strich in Busblau, Plakette mit
     S:[["State/Lake", 4188580, -8762780], ["Clark/Lake", 4188570, -8763090]], E:[0,1,0,0,300,7], W:[[300]], G:[[enc([[-87.6278, 41.8858], [-87.6309, 41.8857]])]], D:[[0, "metro"], [1, "metro"]]};
   // 20 Madison: zwei Stücke mit gemeinsamem Ende + 33-m-Stummel (Haken); 4 Cottage Grove (Grau in den Daten) und J14 (Rot) → Busblau wie Apple Karten
   const bus = {v:1, id:"chicago", part:"bus", n:"Chicago", src:"CTA", lic:"CTA", L:[["bus", "20", "Madison", "#99999C", "#FFFFFF"], ["bus", "4", "Cottage Grove", "#414145", "#FFFFFF"], ["bus", "J14", "Jeffery Jump", "#E2001A", "#FFFFFF"]], H:["Austin"],
-    S:[["Madison & Columbus", 4188180, -8762050], ["Madison & Michigan", 4188180, -8762450]], E:[0,1,0,0,120,7, 1,0,1,0,120,7, 0,1,2,0,120,7], W:[[120]],
+    S:[["Madison & Columbus", 4188180, -8762050], ["Madison & Michigan", 4188180, -8762450]], E:[0,1,0,0,120,7, 1,0,1,0,120,7, 0,1,2,0,120,7], W:[[150, 300, 300], [900, 900, 900], [600, 600, 600]], // 20 alle 5 min (Hauptbus), 4 und J14 selten
     G:[[enc([[x0-.006, y0], [x0, y0]]), enc([[x0, y0], [x0+.004, y0]]), enc([[x0+.004, y0], [x0+.004, y0+.0003]])], [enc([[x0+.0002, y0-.01], [x0+.0002, y0+.01]])], [enc([[x0-.0002, y0-.01], [x0-.0002, y0+.01]])]], D:[]};
   await page.route(/raw\.githubusercontent\.com\/ferdinand-cloud\/Reiseplanung\/stadtpakete\//, rt => { const u = rt.request().url(), f = u.split("/").pop();
     if(CPD && fs.existsSync(path.join(CPD, f))) return rt.fulfill({ contentType:"text/plain", headers:{"access-control-allow-origin":"*"}, body:fs.readFileSync(path.join(CPD, f), "utf8") });
@@ -6328,7 +6328,7 @@ await test("Busse wie Apple Karten: je Linie ein Strich in Busblau, Plakette mit
   await page.route(/overpass-api\.de|overpass\.kumi|overpass\.private/, rt => rt.fulfill({ contentType:"application/json", headers:{"access-control-allow-origin":"*"}, body:JSON.stringify({elements:[]}) }));
   await page.route(/transit\.land\/api\/v2\/tiles/, rt => rt.fulfill({ status:204, headers:{"access-control-allow-origin":"*"}, body:"" }));
   await seed();
-  await rp(`CP = {}; DL = {bus:1, metro:1}; DOFF = {}; lsSet("rp-dl", JSON.stringify(DL)); true`);
+  await rp(`CP = {}; DL = {bus:1, metro:1}; DOFF = {}; lsSet("rp-dl", JSON.stringify(DL)); lsSet("rp-tlkey", "testkey"); tlSetup(); true`); // mit Transitland-Schlüssel: das Paket hat Vorrang
   await jump(x0, y0, 16);
   await page.waitForFunction(() => window.__rp(`!!cpView() && cpView().id==="chicago" && !!VV.bus && VV.bus.geo.features.length >= 3`), null, {timeout:9000}).catch(() => {});
   const g = JSON.parse(await rp(`JSON.stringify(VV.bus ? VV.bus.geo.features.map(function(f){ return {k:f.properties.k, n:f.properties.n, bc:f.properties.bc, parts:f.geometry.coordinates.length, end:f.geometry.coordinates[0][f.geometry.coordinates[0].length-1]}; }) : null)`));
@@ -6339,7 +6339,17 @@ await test("Busse wie Apple Karten: je Linie ein Strich in Busblau, Plakette mit
     ok(m && Math.abs(m.end[1] - y0) < 1e-5, "Haken am Ende von 20 Madison nicht entfernt: "+JSON.stringify(m));
     ok(c4 && !c4.bc && j && !j.bc, "Busfarbe: Datenfarbe (Grau/Rot) statt Busblau: "+JSON.stringify(g));
   }
-  ok(await rp(`map.getLayoutProperty("dbus","visibility")==="visible" && map.getPaintProperty("dbus","line-opacity") >= .8`), "Buslinien nicht sichtbar/kräftig");
+  ok(await rp(`map.getLayoutProperty("dbus","visibility")==="visible" && map.getPaintProperty("dbus","line-opacity") >= .75`), "Buslinien nicht sichtbar");
+  ok(await rp(`!map.getLayer("tl-bus") || map.getLayoutProperty("tl-bus","visibility")==="none"`), "Transitland-Busse trotz Stadtpaket sichtbar");
+  // Transitland (Städte ohne Paket): Nummer als Plakette in der Farbe der eigenen Linie, Busse in Busblau – nicht als Text in der Datenfarbe (rote Expressbusse wirkten wie Beschriftung der Red Line)
+  ok(await rp(`(function(){ TL.bad = false; tlSetup(); var l = map.getLayer("tl-lbl"); if(!l) return false; var ii = JSON.stringify(map.getLayoutProperty("tl-lbl","icon-image")); return ii.indexOf('"tb|"') > -1 && ii.indexOf('"bus"') > -1 && !map.getLayoutProperty("tl-lbl","text-field"); })()`), "Transitland-Beschriftung nicht als Plakette an der eigenen Linie: "+await rp(`JSON.stringify({l:!!map.getLayer("tl-lbl"), ii:map.getLayer("tl-lbl") && map.getLayoutProperty("tl-lbl","icon-image"), tf:map.getLayer("tl-lbl") && map.getLayoutProperty("tl-lbl","text-field")}).slice(0, 400)`));
+  // Zoomstufen wie Apple: in der Übersicht nur Hauptbusse (dichtester Takt), nah alle; Bus dünner als Bahn
+  const zf = async (z) => { await jump(x0, y0, z); await page.waitForTimeout(500); return JSON.parse(await rp(`JSON.stringify(Array.from(new Set(map.queryRenderedFeatures({layers:["dbus"]}).map(function(f){ return f.properties.k; }))).sort())`)); };
+  if(!CPD){
+    const a = await zf(14.2), b = await zf(16);
+    ok(a.includes("20") && !a.includes("4") && b.includes("4") && b.includes("20"), "Busse je Zoom nicht ausgedünnt (Übersicht nur Hauptbus 20, nah alle): "+JSON.stringify({a, b}));
+  }
+  ok(await rp(`(function(){ var w = function(l){ var e = map.getPaintProperty(l, "line-width"); return map.style.getLayer(l).paint.get("line-width").evaluate({zoom:16}, {properties:{m:"metro"}}); }; return w("dbus") < w("dtr"); })()`), "Bus nicht dünner als Bahn");
   await page.waitForFunction(() => window.__rp(`map.queryRenderedFeatures({layers:["dbus-lbl"]}).length >= 1`), null, {timeout:6000}).catch(() => {});
   const lb = JSON.parse(await rp(`JSON.stringify(map.queryRenderedFeatures({layers:["dbus-lbl"]}).map(function(f){ return f.layer.layout["icon-image"].name || String(f.layer.layout["icon-image"]); }))`));
   ok(await rp(`map.hasImage("tb|20|${"#2F6BC8"}|Madison|" + (isDark() ? "d" : "l")) || map.hasImage("tb|20|#2f6bc8|Madison|" + (isDark() ? "d" : "l")) || map.listImages().some(function(i){ return /^tb\|20\|.*\|Madison\|/.test(i); })`), "Plakette „20 Madison“ nicht gezeichnet: "+JSON.stringify(lb)+" "+await rp(`JSON.stringify(map.listImages().filter(function(i){ return i.indexOf("tb|")===0; }).slice(0, 6))`));

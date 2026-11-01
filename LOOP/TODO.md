@@ -43,3 +43,10 @@ Legende: [ ] offen · [x] erledigt · [!] blockiert (siehe NOTIZEN.md)
 - [x] 28. Haltestellen direkt auf ihre Linie setzen.
 - [x] 29. Bei vielen Haltestellen/Linien je nach Zoom ausdünnen, nichts überlappt.
 - [x] 30. Prüfen mit Vorher/Nachher-Bildern: Chicago Columbus Dr, NYC, Berlin Gesundbrunnen, Bremen; Lösung ins Fehlerprotokoll.
+
+## Runde 3 (Ferdinand 01.11., Vergleich Apple Chicago Loop; im Projekt-Chat 14–18)
+- [x] 31. (14) Linien auf gemeinsamem Gleis als Bündel (Loop): mit Stadtpaket Chicago; Transitland bleibt ohne Versatz.
+- [x] 32. (15) Bahn kräftig, Busse dünn, heller.
+- [x] 33. (16) Nummern an der richtigen Linie: Transitland-Beschriftung als Plakette in Linienfarbe.
+- [ ] 34. (17) Stationen bei mittlerem Zoom mit Punkt je Linie (Rückfrage an Ferdinand).
+- [x] 35. (18) Zoomstufen: Übersicht nur Hauptbusse, ab Zoom 15 alle.
