@@ -21,6 +21,7 @@ const GP = {
   // step: Punktabstand beim Verdichten · snap: Einrastabstand · glatt: halbe Fensterbreite des gleitenden Mittels (m)
   rail: { step: 10, snap: 28, glatt: 70 },
   metro: { step: 10, snap: 28, glatt: 70 },
+  sbahn: { step: 10, snap: 28, glatt: 70 },
   tram: { step: 5, snap: 13, glatt: 30 },
   funi: { step: 5, snap: 8, glatt: 15 },
   ferry: { step: 40, snap: 60, glatt: 150 },
@@ -29,15 +30,64 @@ const COSMIN = 0.85;
 const LKPEEL = process.env.LKPEEL !== "0", MINRUN = +(process.env.LKMINRUN || 150); // Meter: kürzer nebeneinander laufende Gleise werden nicht zusammengelegt (flache Kreuzungen, Weichenfelder) // Richtungen bis ~32° gelten als parallel
 
 // U-Bahn eigene Gruppe: fährt nie auf Eisenbahngleisen, rastete aber an parallelen Strecken ein (U8 am Alexanderplatz hing schräg im S-Bahn-Bündel)
-export const grpOf = (m) => m === "tram" ? "tram" : m === "ferry" ? "ferry" : m === "funi" ? "funi" : m === "metro" ? "metro" : "rail";
+// S-Bahn eigene Gruppe (02.11., Variante A): rastete auf die 12–35 m entfernten Fern-/Regionalgleise ein – mal ja, mal nein. Jeder Wechsel
+// verschob Mittellinie, Bündelmitte und Reihenfolge (Knick Hauptbahnhof, Fächer Ostbahnhof, Lücke Friedrichstraße). Gleise, die S-Bahn UND
+// Regional-/Fernzüge befahren (München-Außenäste, Rhein-Main), bleiben in der Bahngruppe – dort liegen alle Linien in einem Bündel.
+const SBF = new Set(["sbahn", "light"]);
+export const grpOf = (m) => m === "tram" ? "tram" : m === "ferry" ? "ferry" : m === "funi" ? "funi" : m === "metro" ? "metro" : SBF.has(m) ? "sbahn" : "rail";
+// Gruppe eines Wegs aus allen Linien darauf: S-Bahn nur, wenn ausschließlich S-Bahn fährt
+const grpWay = (ms) => { const g = new Set(ms.map(grpOf)); return g.size === 2 && g.has("sbahn") && g.has("rail") ? "rail" : [...g][0]; };
+
+/* Je Linie eine Fahrtrichtung (02.11.): In OSM hat jede Linie meist zwei Relationen (Hin/Rück) mit eigenem Gleis, an Bahnhöfen und
+   Gleisfächern 4–65 m auseinander. Beide im Graphen → wo sie nicht zusammenrasten, liegt dieselbe Linie zweimal nebeneinander (doppelte
+   Bündel Ostbahnhof/Friedrichstraße, Linse am Hauptbahnhof). Erst eine vollständige Relation; von weiteren Relationen nur die Abschnitte, die mehr als
+   RW.nah Meter von schon behaltenen Wegen der Linie entfernt liegen (Äste, Varianten, nur in einer Richtung befahrene Abschnitte). */
+export const RW = { nah: 40, min: 3, step: 20 }; // min: freie Punkte (je step m) für ein eigenes Teilstück
+let SUB = 0;
+export function eineRichtung(RL, W) {
+  const lenW = (w) => { const g = W.get(w); let s = 0; for (let i = 1; i < g.length; i++) s += dist(g[i - 1], g[i]); return s; };
+  // Richtung je Linie abgestimmt: Linien mit vielen Wegen zuerst; jede weitere nimmt unter ihren (fast) vollständigen Relationen die, die am meisten
+  // schon gewählte Gleise anderer Linien mitbenutzt – sonst fuhr RE1 auf dem Gleis der einen, RE2 auf dem der anderen Richtung und das Bündel
+  // zerfiel in zwei (Nord-Süd-Tunnel Potsdamer Platz, Gesundbrunnen 02.11.)
+  const GK = new Set(), LW = new Map(), lw = (w) => { let v = LW.get(w); if (v === undefined) LW.set(w, v = W.has(w) ? lenW(w) : 0); return v; };
+  const OUT = new Array(RL.length);
+  RL.map((rels, li) => [li, rels.reduce((x, ws) => x + ws.length, 0)]).sort((a, b) => b[1] - a[1]).forEach(([li]) => {
+    const r = one(RL[li]); r.forEach((ws) => ws.forEach((w) => GK.add(w))); OUT[li] = r; });
+  return OUT;
+  function one(rels) {
+    if (rels.length < 2) return rels;
+    const C = RW.nah / R, grid = new Map(), keep = new Set(), out = [];
+    const add = (w) => { keep.add(w); for (const q of dicht(W.get(w), RW.step)) { const k = Math.floor(q[0] / C * Math.cos(q[1] * Math.PI / 180)) + "|" + Math.floor(q[1] / C); let e = grid.get(k); if (!e) grid.set(k, e = []); e.push(q); } };
+    const nah = (q) => { const kx = Math.floor(q[0] / C * Math.cos(q[1] * Math.PI / 180)), ky = Math.floor(q[1] / C);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const p of grid.get((kx + dx) + "|" + (ky + dy)) || []) if (dist(p, q) <= RW.nah) return true; return false; };
+    const ord = rels.map((ws) => ws.filter((w) => W.has(w))).map((ws) => ({ ws, L: ws.reduce((x, w) => x + lw(w), 0), S: ws.reduce((x, w) => x + (GK.has(w) ? lw(w) : 0), 0) }));
+    const Lmax = Math.max(...ord.map((o) => o.L)), voll = (o) => o.L >= Lmax * 0.8;
+    ord.sort((a, b) => voll(b) - voll(a) || b.S - a.S || b.L - a.L);
+    ord.forEach(({ ws }, i) => {
+      if (!i) { ws.forEach(add); out.push(ws); return; }
+      // nur die freien Teile eines Wegs: ganze Wege nahmen auch ihre Abschnitte dicht neben dem behaltenen Gleis mit (doppelte Striche
+      // im Nord-Süd-Tunnel, 02.11.). Teilstücke bekommen neue (negative) Kennungen, je Seite einen Punkt Überlappung zum Anschluss.
+      const mine = [];
+      for (const w of ws) { if (keep.has(w)) continue; const pts = dicht(W.get(w), RW.step), far = pts.map((q) => !nah(q)), nf = far.filter(Boolean).length;
+        if (nf === pts.length) { mine.push(w); continue; }
+        if (nf < RW.min) continue;
+        for (let a = 0; a < pts.length;) { if (!far[a]) { a++; continue; } let b = a; while (b < pts.length && far[b]) b++;
+          if (b - a >= RW.min) { const id = --SUB, g = pts.slice(Math.max(0, a - 1), Math.min(pts.length, b + 1)).map((q) => [q[0], q[1]]); W.set(id, g); mine.push(id); }
+          a = b; } }
+      mine.forEach(add); if (mine.length) out.push(mine); });
+    return out;
+  }
+}
 
 export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
-  const byG = new Map();
-  RL.forEach((rels, li) => {
-    if (!rels.length) return;
-    const g = grpOf(lines[li].m); let M = byG.get(g); if (!M) byG.set(g, M = new Map());
-    rels.forEach((ws) => ws.forEach((w) => { if (!W.has(w)) return; let s = M.get(w); if (!s) M.set(w, s = new Set()); s.add(li); }));
-  });
+  const byG = new Map(), WL = new Map();
+  const RL1 = eineRichtung(RL, W);
+  log("Eine Richtung je Linie: Wege", RL.reduce((s, r) => s + r.reduce((x, w) => x + w.length, 0), 0), "→", RL1.reduce((s, r) => s + r.reduce((x, w) => x + w.length, 0), 0));
+  RL1.forEach((rels, li) => rels.forEach((ws) => ws.forEach((w) => { if (!W.has(w)) return; let s = WL.get(w); if (!s) WL.set(w, s = new Set()); s.add(li); })));
+  // Gruppe je Weg (S-Bahn nur auf reinen S-Bahn-Gleisen)
+  for (const [w, ls] of WL) { const all = [...ls], fam = new Map();
+    all.forEach((li) => { const g0 = grpOf(lines[li].m), f = g0 === "sbahn" ? "rail" : g0; let a = fam.get(f); if (!a) fam.set(f, a = []); a.push(li); });
+    for (const [, lis] of fam) { const g = grpWay(lis.map((li) => lines[li].m)); let M = byG.get(g); if (!M) byG.set(g, M = new Map()); M.set(w, new Set(lis)); } }
   const out = [];
   for (const [g, M] of byG) { const f = gruppe(g, M); log("Liniengraph", g, "Wege", M.size, "Objekte", f.length); for (const x of f) out.push(x); }
   return out;
@@ -125,6 +175,9 @@ export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
           // nur quer zur Strecke in die Mitte rücken (längs verschoben würden Knoten wandern und Enden nicht mehr treffen)
           const c = NC[id], lat = ((x - NX[id]) * k * -NDY[id] + (y - NY[id]) * NDX[id]) / (c + 1);
           NX[id] += -NDY[id] * lat / k; NY[id] += NDX[id] * lat; NC[id] = c + 1;
+          // eingerasteter OSM-Knoten: merken, damit später kommende (kürzere) Wege dort anschließen – sonst fehlte ihr Anschluss und das
+          // Stück fiel als Insel weg (S3/5/7/9 am Zoo: 16 m Lücke, 02.11.)
+          if (pts[i].v && !VK.has(x + "," + y)) VK.set(x + "," + y, id);
         }
         if (seq[seq.length - 1] !== id) seq.push(id);
       }

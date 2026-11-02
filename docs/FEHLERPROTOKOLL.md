@@ -5,6 +5,31 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-02 · Linienkarte Berlin: S-Bahn doppelt, Knick, Lücke (Friedrichstraße, Ostbahnhof, Hauptbahnhof) – Variante A
+
+**Meldung:** Ferdinand (Screenshots 02:36/02:37, Analysen Opus/Sonnet/Fable, Entscheidung „A“ 07:07): S3/S5/S7/S9 an der Friedrichstraße mit Lücke, am Ostbahnhof doppeltes Bündel, am Hauptbahnhof Knick/Linse.
+
+**Ursache (lokal mit dem Berlin-Auszug nachgebaut und gemessen):**
+1. **U1 – S-Bahn rastete auf Fernbahngleise ein.** `grpOf` legte S-Bahn (`light`/`sbahn`) und Regional-/Fernverkehr in eine Gruppe. Auf der Stadtbahn liegen die Gleispaare 12–35 m auseinander, mal unter, mal über dem Einrastabstand (28 m) → Einrasten an/aus im Wechsel, S3 in 260 Stücken mit 10 Bündelgrößen.
+2. **U2 – jede Linie zweimal.** In OSM hat jede Linie meist zwei Relationen (Hin/Rück) mit eigenem Gleis. Wo die beiden nicht zusammenrasten, lag dieselbe Linie zweimal nebeneinander (doppeltes Bündel Ostbahnhof, Linse Hauptbahnhof).
+3. **U3 – versetzte Lücke Friedrichstraße:** Folge von 1 + 2: am Bahnsteig rastet ein Gleis ein, das andere nicht (Mindestlänge 150 m), die Linie endet und geht 12–16 m daneben weiter.
+4. **U4 – Lücke am Zoo (nach Umbau sichtbar):** Ein eingerasteter OSM-Knoten wurde nicht als Anschlussknoten gemerkt (`VK` nur für neue Knoten). Später gebaute kurze Wege (7 m und 9 m, Weichenbereich) fanden ihren Anschluss nicht, das Stück fiel als Insel weg → 16 m Lücke in S3/S5/S7/S9.
+5. **U6 – Prüfung sah es nicht:** `pruefen.mjs` prüfte nur Spitzen je Strich, keine doppelten Striche und keine versetzten Enden.
+
+**Lösung (Linienkarten-Bau, keine App-Änderung):**
+- S-Bahn ist eine eigene Gruppe `sbahn` (wie U-Bahn). Wege, die S-Bahn und Regionalzüge gemeinsam befahren, bleiben in `rail`.
+- `eineRichtung()`: je Linie eine vollständige Relation; von weiteren Relationen nur Abschnitte, die > 40 m von schon behaltenen Gleisen liegen (Äste, Varianten), Wege dafür bei Bedarf geteilt. Richtung zwischen Linien abgestimmt: Linien mit vielen Wegen zuerst, jede weitere nimmt die Relation, die die schon gewählten Gleise mitbenutzt (sonst zerfiel das Bündel im Nord-Süd-Tunnel in zwei).
+- Eingerastete OSM-Knoten werden als Anschluss gemerkt (Zoo).
+- `pruefen.mjs`: neu `doppelt()` (dieselbe Linie zweimal nebeneinander ≥ 60 m, deckungsgleiche Anschlüsse zählen nicht) und `luecken()` (Linie endet und geht 3–30 m daneben weiter).
+
+**Messung Berlin-Auszug (vorher → nachher):** Spitzen 86 → 29 · doppelte Striche 24 Stellen/2300 m → 3 Stellen/230 m · versetzte Lücken 4 → 0. An den drei gemeldeten Stellen jeweils 0 doppelt, 0 Lücken. Bilder: `bilder/vorher-nachher-berlin-friedrichstr-sbahn-gruppe.png`, `…-ostbahnhof-…`, `…-hbf-…`.
+
+**Bekannte Folge:** Wo S-Bahn- und Ferngleise sehr dicht liegen (Zoo, ~15 m), liegen jetzt zwei Bündel nebeneinander und berühren sich bei Zoom 15–17, wenn S-Bahn und Regionalverkehr gleichzeitig eingeschaltet sind (`bilder/nachher-berlin-zoo-zwei-buendel-z15-z17.png`). Nur S-Bahn eingeschaltet: sauber. Rest doppelt: Gesundbrunnen S1 (90 m), Ostkreuz S5/S7 (70 m).
+
+**Test:** „Linienkarte-Bau: S-Bahn eigene Gruppe, je Linie eine Fahrtrichtung, keine doppelten Striche/Lücken …“; die bisherigen Linienkarte-Bau-Tests bleiben grün.
+
+---
+
 ## 2026-11-02 · Globus (v504): Stadtpaket beim Ziel-Überblick nicht erkannt, Chat-Tastatur-Test zu langsam
 
 **Meldung:** Volltest nach v504 (Globus beim Rauszoomen): „Ziel Paris ohne Reise … Ziel-Überblick ohne Stadtpaket“ rot, „Tastatur im Chat“ wackelig, GitHub-Lauf nach 20 min abgebrochen.

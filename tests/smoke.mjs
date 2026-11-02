@@ -6351,6 +6351,47 @@ await test("Linienkarte-Bau: keine Spitzen an flach kreuzenden Gleisen – zusam
   ok(stellen([{properties:{m:"sbahn", k:"X", c:"#000"}, geometry:{type:"LineString", coordinates:g}}]).length===1, "Prüfung erkennt Spitze nicht");
 });
 
+await test("Linienkarte-Bau: S-Bahn eigene Gruppe, je Linie eine Fahrtrichtung, keine doppelten Striche/Lücken (Prüfung doppelt/luecken, Friedrichstraße/Zoo)", async () => {
+  const { linienGraph, grpOf, eineRichtung } = await import("../tools/linienkarte/graph.mjs");
+  const { doppelt, luecken } = await import("../tools/linienkarte/pruefen.mjs");
+  const ln = (a, b, n) => Array.from({length:n+1}, (_, i) => [+(a[0]+(b[0]-a[0])*i/n).toFixed(6), +(a[1]+(b[1]-a[1])*i/n).toFixed(6)]);
+  const k = Math.cos(52.51*Math.PI/180), mY = (m) => m/111320, mX = (m) => m/111320/k, nat = (a, b) => String(a).localeCompare(String(b), "de", {numeric:true});
+  const FT = (F) => F.map(f => ({properties:{m:f.m, k:f.k, c:f.c}, geometry:{type:"LineString", coordinates:f.g}}));
+  // 1. Gruppen: S-Bahn (sbahn/light) eigene Gruppe, getrennt von Regional-/Fernverkehr
+  ok(grpOf("sbahn")==="sbahn" && grpOf("light")==="sbahn" && grpOf("reg")==="rail" && grpOf("long")==="rail" && grpOf("metro")==="metro", "Gruppen falsch");
+  // 2. S-Bahn 18 m neben dem Ferngleis (Stadtbahn): S-Bahn bleibt auf ihrem Gleis, rastet nicht ein (vorher: Einrasten an/aus im Wechsel → Doppel-Bündel)
+  { const W = new Map([[1, ln([13.37, 52.51], [13.40, 52.51], 120)], [2, ln([13.37, 52.51 + mY(18)], [13.40, 52.51 + mY(18)], 120)]]);
+    const F = linienGraph({lines:[{m:"reg", k:"RE1", c:"#E2001A"}, {m:"light", k:"S3", c:"#055A99"}], RL:[[[1]], [[2]]], W, pos:new Int32Array([0, 1]), natCmp:nat});
+    const s3 = F.filter(f => f.k==="S3"), dev = Math.max(...s3.flatMap(f => f.g.map(p => Math.abs(p[1] - (52.51 + mY(18))) * 111320)));
+    ok(s3.length && dev < 3 && s3.every(f => f.o===0), "S-Bahn rastet auf das Ferngleis ein (Abweichung "+dev.toFixed(1)+" m, o "+s3.map(f => f.o)+")"); }
+  // 3. eine Fahrtrichtung: Hin- und Rückgleis 25 m auseinander → nur eins; ein Ast nur in einer Richtung (600 m entfernt) bleibt; Richtung zwischen Linien abgestimmt
+  { const A = ln([13.37, 52.51], [13.40, 52.51], 60), B = ln([13.37, 52.51 + mY(25)], [13.40, 52.51 + mY(25)], 60), X = ln([13.40, 52.51], [13.40 + mX(800), 52.51 - mY(600)], 30);
+    const W = new Map([[1, A], [2, B], [3, X], [4, ln([13.37, 52.51 + mY(25)], [13.40, 52.51 + mY(25)], 40)]]);
+    const R = eineRichtung([[[1, 3], [2]], [[2], [1]], [[4], [1]]], W);
+    ok(JSON.stringify(R[0])==="[[1,3]]", "Linie 1: Gegenrichtung (25 m daneben) nicht weggelassen: "+JSON.stringify(R[0]));
+    ok(JSON.stringify(R[1])==="[[1]]", "Linie 2 nimmt nicht dasselbe Gleis wie Linie 1 (Bündel zerfällt in zwei): "+JSON.stringify(R[1]));
+    // Teilstück: Weg der Gegenrichtung, der nur teilweise nah liegt → nur der freie Teil (neue Kennung < 0)
+    const Y = ln([13.385, 52.51 + mY(25)], [13.40, 52.51 + mY(25)], 30).concat(ln([13.40, 52.51 + mY(25)], [13.40, 52.51 + mY(400)], 20).slice(1));
+    const W2 = new Map([[1, A], [5, Y]]), R2 = eineRichtung([[[1], [5]]], W2), sub = (R2[0][1] || [])[0];
+    ok(R2[0].length===2 && sub < 0 && W2.get(sub).filter(q => q[1] < 52.51 + mY(40)).length <= 1 && Math.max(...W2.get(sub).map(q => q[1])) > 52.51 + mY(390), "Ast der Gegenrichtung nicht als freies Teilstück übernommen: "+JSON.stringify(R2)); }
+  // 4. Prüfung: doppelt erkennt dieselbe Linie 15 m nebeneinander, nicht aber Anschlüsse auf gleichem Verlauf; luecken erkennt versetzte Enden
+  { const f = (g, kk = "S3") => ({properties:{m:"light", k:kk, c:"#055A99"}, geometry:{type:"LineString", coordinates:g}});
+    const a = ln([13.37, 52.51], [13.38, 52.51], 30), b = ln([13.372, 52.51 + mY(15)], [13.378, 52.51 + mY(15)], 20), c = ln([13.375, 52.51], [13.39, 52.51], 30);
+    ok(doppelt([f(a), f(b)]).length===1, "Doppelstrich (15 m) nicht erkannt");
+    ok(doppelt([f(a), f(c)]).length===0, "Überlappung auf gleichem Verlauf als Doppelstrich gemeldet");
+    ok(doppelt([f(a), f(b, "S5")]).length===0, "Verschiedene Linien als Doppelstrich gemeldet");
+    const e = ln([13.38, 52.51 + mY(12)], [13.39, 52.51 + mY(12)], 30);
+    ok(luecken([f(a), f(e)]).length===1 && luecken([f(a), f(ln([13.38, 52.51], [13.39, 52.51], 30))]).length===0, "Versetzte Lücke (12 m) nicht erkannt oder Anschluss als Lücke gemeldet"); }
+  // 5. Zoo: Gegenrichtung 8 m daneben (zuerst gebaut, mehr Linien), eigene Strecke aus drei Wegen mit kurzem schrägem Stück in der Mitte → Linie durchgehend
+  { const y1 = 52.51 + mY(8), P = (x) => [+x.toFixed(7), y1], Q = [+(13.385 + mX(12)).toFixed(7), +(y1 + mY(10)).toFixed(7)]; // Mittelstück schräg (Weiche, 40°)
+    const W = new Map([[1, ln([13.37, 52.51], [13.40, 52.51], 120)], [2, ln(P(13.37), P(13.385), 60)], [3, [P(13.385), Q]], [4, ln(Q, [13.40, Q[1]], 60)]]);
+    const lines = [{m:"light", k:"S5", c:"#F25721"}, {m:"light", k:"S7", c:"#8070B7"}, {m:"light", k:"S3", c:"#055A99"}];
+    const F = linienGraph({lines, RL:[[[1]], [[1]], [[2, 3, 4]]], W, pos:new Int32Array([0, 1, 2]), natCmp:nat});
+    const L = luecken(FT(F)); ok(L.length===0, "Lücke in der Linie: "+JSON.stringify(L));
+    const s3 = F.filter(f => f.k==="S3" || /S3/.test(f.ks || "")), xs = s3.flatMap(f => f.g.map(p => p[0]));
+    ok(s3.length && Math.min(...xs) < 13.371 && Math.max(...xs) > 13.399, "S3 nicht durchgehend gezeichnet"); }
+});
+
 await test("Busse auf der Straße wie Apple Karten: Verlauf aus den OSM-Straßenachsen, je Fahrtrichtung in der Mitte der Fahrbahnseite, Einbahnstraße mittig", async () => {
   // Bau: Richtung je Weg aus der Relation, Hin- und Rückweg auf derselben Straße = zwei gerichtete Striche (Seite 1), Einbahn-Paar mittig (Seite 0)
   const { busRichtung } = await import("../tools/stadtpakete/bus.mjs");
