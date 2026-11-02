@@ -42,7 +42,7 @@ const grpWay = (ms) => { const g = new Set(ms.map(grpOf)); return g.size === 2 &
    Gleisfächern 4–65 m auseinander. Beide im Graphen → wo sie nicht zusammenrasten, liegt dieselbe Linie zweimal nebeneinander (doppelte
    Bündel Ostbahnhof/Friedrichstraße, Linse am Hauptbahnhof). Erst eine vollständige Relation; von weiteren Relationen nur die Abschnitte, die mehr als
    RW.nah Meter von schon behaltenen Wegen der Linie entfernt liegen (Äste, Varianten, nur in einer Richtung befahrene Abschnitte). */
-export const RW = { nah: 40, min: 3, step: 20 }; // min: freie Punkte (je step m) für ein eigenes Teilstück
+export const RW = { nah: 40, min: 10, step: 20 }; // min: freie Punkte (je step m) für ein eigenes Teilstück
 let SUB = 0;
 export function eineRichtung(RL, W) {
   const lenW = (w) => { const g = W.get(w); let s = 0; for (let i = 1; i < g.length; i++) s += dist(g[i - 1], g[i]); return s; };
@@ -81,15 +81,16 @@ export function eineRichtung(RL, W) {
 
 export function linienGraph({ lines, RL, W, pos, natCmp, log = () => {} }) {
   const byG = new Map(), WL = new Map();
+  let t0 = Date.now();
   const RL1 = eineRichtung(RL, W);
-  log("Eine Richtung je Linie: Wege", RL.reduce((s, r) => s + r.reduce((x, w) => x + w.length, 0), 0), "→", RL1.reduce((s, r) => s + r.reduce((x, w) => x + w.length, 0), 0));
+  log("Eine Richtung je Linie (" + Math.round((Date.now() - t0) / 1000) + " s): Wege", RL.reduce((s, r) => s + r.reduce((x, w) => x + w.length, 0), 0), "→", RL1.reduce((s, r) => s + r.reduce((x, w) => x + w.length, 0), 0));
   RL1.forEach((rels, li) => rels.forEach((ws) => ws.forEach((w) => { if (!W.has(w)) return; let s = WL.get(w); if (!s) WL.set(w, s = new Set()); s.add(li); })));
   // Gruppe je Weg (S-Bahn nur auf reinen S-Bahn-Gleisen)
   for (const [w, ls] of WL) { const all = [...ls], fam = new Map();
     all.forEach((li) => { const g0 = grpOf(lines[li].m), f = g0 === "sbahn" ? "rail" : g0; let a = fam.get(f); if (!a) fam.set(f, a = []); a.push(li); });
     for (const [, lis] of fam) { const g = grpWay(lis.map((li) => lines[li].m)); let M = byG.get(g); if (!M) byG.set(g, M = new Map()); M.set(w, new Set(lis)); } }
   const out = [];
-  for (const [g, M] of byG) { const f = gruppe(g, M); log("Liniengraph", g, "Wege", M.size, "Objekte", f.length); for (const x of f) out.push(x); }
+  for (const [g, M] of byG) { t0 = Date.now(); log("Liniengraph", g, "Wege", M.size, "…"); const f = gruppe(g, M); log("Liniengraph", g, "Objekte", f.length, "(" + Math.round((Date.now() - t0) / 1000) + " s)"); for (const x of f) out.push(x); }
   return out;
 
   function gruppe(gname, M) {

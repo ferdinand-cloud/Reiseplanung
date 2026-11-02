@@ -52,6 +52,8 @@ jobs:
       - name: osmium und tippecanoe
         run: sudo apt-get update -q && sudo apt-get install -y -q osmium-tool tippecanoe
       - name: Land bauen
+        # ein hängendes Land (Frankreich 02.11.: > 70 min) scheitert nach 50 min, sein letzter Stand bleibt; die anderen werden trotzdem veröffentlicht
+        timeout-minutes: 50
         run: |
           node --max-old-space-size=12000 tools/linienkarte/build.mjs ${{ matrix.land }} --out out
           ls -la out

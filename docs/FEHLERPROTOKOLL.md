@@ -28,6 +28,8 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 **Test:** „Linienkarte-Bau: S-Bahn eigene Gruppe, je Linie eine Fahrtrichtung, keine doppelten Striche/Lücken …“; die bisherigen Linienkarte-Bau-Tests bleiben grün.
 
+**Nachtrag Neubau (08:35):** Der Bau Frankreichs lief nach dem Umbau über 70 min (vorher 19 min) und hielt die Veröffentlichung auf; Deutschland war nach 5 min fertig. Vermutete Ursache (ohne Frankreich-Daten nicht lokal nachprüfbar, Zugriff auf geofabrik hier gesperrt): viele kurze Teilstücke der Gegenrichtung (ab 60 m) mit freien Enden → Aufräumen der Inseln vergleicht je Linie alle Stücke miteinander (quadratisch), Frankreich hat Linien mit sehr vielen Relationen. Lösung: Teilstücke erst ab 200 m (`RW.min` 10), Zeitmessung je Schritt im Log, Bau je Land nach 50 min abgebrochen (letzter Stand bleibt, andere Länder werden veröffentlicht). Berlin danach: doppelt 3 Stellen/220 m, Lücken 0, Spitzen 24.
+
 ---
 
 ## 2026-11-02 · Globus (v504): Stadtpaket beim Ziel-Überblick nicht erkannt, Chat-Tastatur-Test zu langsam
