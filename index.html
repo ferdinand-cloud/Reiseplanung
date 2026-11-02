@@ -1147,6 +1147,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 .rtog[aria-checked="true"] .sw2::after{transform:translateX(16px)}
 .rtog[aria-checked="false"]{color:var(--muted);background:var(--chip)}
 #gl{position:absolute;inset:0}
+#gl.space{background:radial-gradient(circle at 50% 45%, #1b2540 0, #0b1020 60%, #05070d 100%)}
 #ov{pointer-events:none}
 .maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{display:none}
 #locBtn.on{color:#007AFF}
@@ -10315,9 +10316,21 @@ var mapEl = $("map"), ov = $("ov");
 var W = 0, H = 0, V = {m:8, r:0}, map = null, mapReady = false;
 var STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 function llW(x, y){ return {la: LAT0 - y/KM, lo: x/(COS*KM) - 74}; }
-function toS(x, y){ var l = llW(x, y), q = map.project([l.lo, l.la]); return [q.x, q.y]; }
+/* Globus: weit rausgezoomt ist die Erde rund (wie Apple Karten); MapLibre geht ab etwa Zoom 12 selbst in die flache Karte über.
+   Eigene SVG-Punkte auf der Rückseite der Kugel (verdeckt) landen außerhalb des Bildes, damit sie nicht durch die Erde scheinen. */
+var GLOBEZ = 12, SPACEZ = 7;
+function globeSet(){
+  if(!map) return;
+  try { map.setProjection({type:"globe"}); } catch(e){}
+  try { map.setSky({"atmosphere-blend":["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 7, 0]}); } catch(e){}
+  globeBg();
+}
+function globeBg(){ if(map) $("gl").classList.toggle("space", map.getZoom() < SPACEZ); }
+function occl(lo, la){ if(!map || map.getZoom() >= GLOBEZ) return false; try { return map.transform.isLocationOccluded(new maplibregl.LngLat(lo, la)); } catch(e){ return false; } }
+function prj(lo, la){ if(occl(lo, la)) return [-1e5, -1e5]; var q = map.project([lo, la]); return [q.x, q.y]; }
+function toS(x, y){ var l = llW(x, y); return prj(l.lo, l.la); }
 function toW(sx, sy){ var l = map.unproject([sx, sy]); return [wx(l.lng), wy(l.lat)]; }
-function pt(p){ var q = map.project([p.lo, p.la]); return [q.x, q.y]; }
+function pt(p){ return prj(+p.lo, +p.la); }
 function mppAt(z, lat){ return 78271.517 * Math.cos(lat*Math.PI/180) / Math.pow(2, z); }
 function zoomFor(m, lat){ return Math.log(78271.517 * Math.cos(lat*Math.PI/180) / m) / Math.LN2; }
 /* ÖPNV-Stil: gemeinsame Farben, Stärken und Zoomstufen für die ÖPNV-Ebene (New York, Linienkarte, Stadtpakete, Transitland) und die Route in der Planansicht.
@@ -10580,7 +10593,7 @@ function addLayers(){
   map.addLayer({id:"bus", type:"line", source:"bus", minzoom:BUSZ, paint:{"line-color":token("--bus")||OV.col.bus, "line-width":ovZ(OV.w.busNyc), "line-opacity":OV.op.busNyc}, layout:ovLay("none")}, ovBelow());
   map.addLayer({id:"sub", type:"line", source:"sub", minzoom:MZ.metro, paint:{"line-color":["get","c"], "line-width":lnWidth("metro")}, layout:ovLay("none")}, ovBelow()); ovCase("sub"); // Versatz in der Form (subForm)
   addPoiLayers(); addFerryLayers(); dAddLayers(); dData(); rtAddLayers();
-  mapReady = true;
+  mapReady = true; globeSet();
   apply3d(true); applyPoi(); applyLayers(); applyLines(); applyNb(); onMove();
 }
 function onMove(){
@@ -10588,7 +10601,7 @@ function onMove(){
   var c = map.getCenter();
   V.m = mppAt(map.getZoom(), c.lat); V.r = -map.getBearing()*Math.PI/180;
   $("compass").querySelector("svg").style.transform = "rotate("+(V.r*180/Math.PI)+"deg)";
-  v3dShow();
+  v3dShow(); globeBg();
   scheduleOverlay();
 }
 function applyView(){ onMove(); }

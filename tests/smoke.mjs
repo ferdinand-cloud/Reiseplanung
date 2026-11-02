@@ -6077,6 +6077,25 @@ await test("3D-Karte: Knopf bei Suche und Plus erst ab Zoomstufe, Standard 3D ki
   await rp(`map.jumpTo({zoom:12, pitch:0}); reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches; true`);
 });
 
+await test("Globus: weit rausgezoomt ist die Karte eine Kugel, Punkte auf der Rückseite verdeckt, Stadtzoom flach", async () => {
+  await seed(); await rp(`map.jumpTo({center:[-74, 40.7], zoom:1.5, pitch:0, bearing:0}); true`);
+  await page.waitForTimeout(300);
+  ok(await rp(`map.getProjection() && map.getProjection().type`)==="globe", "Projektion nicht Globus: "+await rp(`JSON.stringify(map.getProjection())`));
+  ok(await rp(`$("gl").classList.contains("space")`), "Weltraum-Hintergrund fehlt beim Rauszoomen");
+  // New York vorne sichtbar, Tokio auf der Rückseite → außerhalb des Bildes (SVG-Overlay zeichnet es nicht)
+  const ny = await rp(`pt({la:40.7, lo:-74})`), tk = await rp(`pt({la:35.68, lo:139.7})`);
+  ok(ny[0] > 0 && ny[0] < 390 && ny[1] > 0 && ny[1] < 844, "New York nicht im Bild: "+JSON.stringify(ny));
+  ok(tk[0] < -1000, "Tokio auf der Rückseite scheint durch: "+JSON.stringify(tk));
+  // Globus-Rand: Bildecke zeigt den Weltraum (Hintergrund des Kartenbehälters), die Mitte die Erde
+  await page.waitForTimeout(300); await shot("globus");
+  // Stadtzoom: flach wie bisher, Punkte deckungsgleich mit Mercator
+  await rp(`map.jumpTo({center:[-73.985, 40.758], zoom:14}); true`); await page.waitForTimeout(200);
+  ok(!await rp(`$("gl").classList.contains("space")`), "Weltraum-Hintergrund bei Stadtzoom");
+  const a = await rp(`pt({la:40.76, lo:-73.98})`), b = await rp(`(function(){ var q = map.project([-73.98, 40.76]); return [q.x, q.y]; })()`);
+  ok(Math.abs(a[0]-b[0]) < .5 && Math.abs(a[1]-b[1]) < .5 && a[0] > 0, "Punkt bei Stadtzoom verschoben: "+JSON.stringify([a, b]));
+  await rp(`map.jumpTo({center:[-73.985, 40.758], zoom:12}); true`);
+});
+
 await test("3D-Karte: nach Rauszoomen aus 3D (Karte wird flach) lässt sich die Karte weiter verschieben", async () => {
   await seed(); await rp(`reduceMotion = false; lsSet("rp-3dv", "1"); v3d = true; v3dDone = true; map.jumpTo({center:[-73.985, 40.758], zoom:14.2, pitch:50}); true`);
   await page.waitForTimeout(300);
