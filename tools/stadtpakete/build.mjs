@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { busRichtung } from "./bus.mjs";
+import { buendel } from "./buendel.mjs";
 
 const V = 1;
 const MDB = (id) => "https://storage.googleapis.com/storage/v1/b/mdb-latest/o/" + id + ".zip?alt=media"; // Spiegel der Mobility Database, falls der Anbieter nicht antwortet
@@ -431,6 +432,7 @@ async function shapesFromZip(zip, need) {
 }
 
 function write(id, part, meta, d) {
+  if (part === "rail") log("  Bündel: gemeinsame Grundlinie für", buendel(d), "Linien");
   const o = Object.assign({ v: V, id, part }, meta, d); delete o._st;
   const f = path.join(OUT, id + (part === "bus" ? "-bus" : "") + ".json");
   fs.writeFileSync(f, JSON.stringify(o));

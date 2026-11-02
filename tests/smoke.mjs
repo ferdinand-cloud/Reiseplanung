@@ -1905,11 +1905,11 @@ await test("ÖPNV-Stil: Ebene und Planansicht nutzen die gemeinsame Stil-Definit
   const r = JSON.parse(await rp(`(function(){ var J = JSON.stringify, P2 = function(l, k){ return J(map.getPaintProperty(l, k)); };
     return J({
       // Werte aus OV (lnWidth/lnOffset bauen ihre Stützstellen aus OV.w.rail / OV.w.off)
-      w:J(lnWidth("metro").slice(0, 5))===J(["interpolate",["linear"],["zoom"],10,["match","metro","tram",OV.w.rail[10].tram,"funi",OV.w.rail[10].funi,OV.w.rail[10].x]]),
+      w:J(lnWidth("metro").slice(0, 5))===J(["interpolate",["linear"],["zoom"],10,["match","metro","tram",OV.w.rail[10].tram,"funi",OV.w.rail[10].funi,"ferry",ovAt(OV.w.ferry, 10),OV.w.rail[10].x]]),
       o:J(lnOffset(1).slice(3, 7))===J([OV.w.off[0],["*",1,OV.w.off[1]],OV.w.off[2],["*",1,OV.w.off[3]]]),
       // Ebenen beziehen ihre Werte aus OV
       sub:P2("sub","line-width")===J(lnWidth("metro")), bus:P2("bus","line-width")===J(ovZ(OV.w.busNyc)) && map.getPaintProperty("bus","line-opacity")===OV.op.busNyc,
-      dbus:P2("dbus","line-width")===J(ovZ(OV.w.bus)), dtrf:P2("dtr-f","line-width")===J(ovZ(OV.w.ferry)) && P2("dtr-f","line-dasharray")===J(OV.dash.ferry),
+      dbus:P2("dbus","line-width")===J(ovZ(OV.w.bus)), dtrf:P2("dtr-f","line-width")===J(ovZ(OV.w.ferry)) && P2("dtr-f","line-dasharray")===undefined && P2("dtr-f","line-color")===J(OV.col.ferry),
       dst:P2("dst","circle-radius")===J(ovZx(OV.w.stop, OV.w.stopX)) && map.getLayer("dst").minzoom===OV.z.stop && map.getLayer("dst-ic").minzoom===OV.z.stopIcon,
       z:map.getLayer("bus").minzoom===OV.z.bus && map.getLayer("dbus").minzoom===OV.z.bus && MZ===OV.z.mode && DCOL===OV.col.mode && FERRYC===OV.col.ferry,
       rc:P2("rt-case","line-width")===J(ovRtW(OV.rt.case))
@@ -2008,12 +2008,12 @@ await test("Linienstärke je Zoom: fein in der Stadtansicht, kräftiger nah, Bus
   ok(!r.bad.length, "Linienstärken: "+r.bad.join(", ")+" · "+r.rows.join(" "));
 });
 
-await test("Linienfarben: U-Bahn offiziell, Bus kräftiges Busblau wie Apple Karten, Fähre eigene Farbe, heller Rand unter Bahn- und Fährlinien", async () => {
+await test("Linienfarben: U-Bahn offiziell, Bus kräftiges Busblau wie Apple Karten, Fähre eigene Farbe, heller Rand unter Bahnlinien (Fähre fein ohne Rand)", async () => {
   await seed();
   const r = JSON.parse(await rp(`(function(){
     function hsl(h){ var r = parseInt(h.slice(1,3),16)/255, g = parseInt(h.slice(3,5),16)/255, b = parseInt(h.slice(5,7),16)/255, mx = Math.max(r,g,b), mn = Math.min(r,g,b), l = (mx+mn)/2; return {s:mx===mn ? 0 : (mx-mn)/(1-Math.abs(2*l-1)), l:l}; }
     function dist(a, b){ return Math.hypot.apply(null, [1,3,5].map(function(i){ return parseInt(a.slice(i,i+2),16)-parseInt(b.slice(i,i+2),16); })); }
-    var ids = map.getStyle().layers.map(function(l){ return l.id; }), cs = ["sub","dtr","dtr-f"], bad = [];
+    var ids = map.getStyle().layers.map(function(l){ return l.id; }), cs = ["sub","dtr"], bad = []; if(ids.indexOf("dtr-f-cs") > -1) bad.push("Fähre mit Rand (soll fein sein, Ferdinand 02.11.)");
     cs.forEach(function(id){ var i = ids.indexOf(id), j = ids.indexOf(id+"-cs"); if(j < 0 || j !== i-1) bad.push(id+": Rand fehlt/falsch einsortiert");
       else if(map.getPaintProperty(id+"-cs","line-color")!==OV.col["case"]) bad.push(id+": Randfarbe"); });
     // Rand folgt der Linie: Sichtbarkeit und Filter
@@ -6459,6 +6459,62 @@ await test("Lücken im Bündel wie Apple Karten: Abstand je Platz = Linienbreite
   // Stationspunkt-Bild (pd) und icon-size rechnen mit demselben Abstand: bei Zoom 16 Maßstab 1, Versatz im Bild = Platz × Abstand
   const d = await rp(`(function(){ tpImg("pd|#009B3A|1"); var im = map.getImage("pd|#009B3A|1"), R = ovAt(OV.w.off, 16) + 5.5; return {ok:!!im, w:im ? im.data.width/im.pixelRatio : 0, R:R}; })()`);
   ok(d.ok && Math.abs(d.w - 2*d.R) < 1, "Stationspunkt-Versatz folgt dem Abstand nicht: "+JSON.stringify(d));
+});
+
+await test("Fähren fein in Petrolblau statt dick gestrichelt: durchgezogen, ohne Rand, hebt sich vom Wasser ab (alle Städte)", async () => {
+  await seed();
+  const r = JSON.parse(await rp(`(function(){ var ids = ["ferry-line","dtr-f","tl-ferry"], o = {};
+    ids.forEach(function(id){ if(!map.getLayer(id)) return; o[id] = {dash:map.getPaintProperty(id, "line-dasharray")===undefined, col:JSON.stringify(map.getPaintProperty(id, "line-color")), cs:!!map.getLayer(id+"-cs"), w16:ovAt(OV.w[id==="tl-ferry" ? "tlFerry" : "ferry"], 16)}; });
+    var hex = function(c){ c = String(c).replace("#",""); return [0,2,4].map(function(i){ return parseInt(c.substr(i, 2), 16); }); }, dist = function(a, b){ a = hex(a); b = hex(b); return Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]); };
+    var wl = map.getStyle().layers.find(function(l){ return l.type==="fill" && /water/.test(l.id); }), wc = wl && map.getPaintProperty(wl.id, "fill-color"), wcs = typeof wc==="string" ? wc : "";
+    var rgb = wcs.match(/rgba?\\(([^)]+)\\)/), wh = rgb ? "#"+rgb[1].split(",").slice(0, 3).map(function(x){ return ("0"+(+x).toString(16)).slice(-2); }).join("") : /^#[0-9a-f]{6}$/i.test(wcs) ? wcs : "#a0c8f0";
+    return JSON.stringify({o:o, n:Object.keys(o).length, mode:OV.col.mode.ferry===OV.col.ferry && OV.col.sm.ferry===OV.col.ferry, dash:"dash" in OV ? OV.dash : null, water:wh, dw:Math.round(dist(OV.col.ferry, wh)),
+      lw:JSON.stringify(lnWidth("ferry")).indexOf('"ferry",'+ovAt(OV.w.ferry, 16)) > -1}); })()`));
+  ok(r.n >= 1 && Object.values(r.o).every(x => x.dash && !x.cs && x.w16 <= 1.3 && x.col === JSON.stringify("#08809A")), "Fähre noch gestrichelt, mit Rand, dick oder nicht einheitlich gefärbt: "+JSON.stringify(r));
+  ok(r.mode && !r.dash && r.lw, "Fährfarbe/-breite nicht überall gleich (Stationen, Linienkarte): "+JSON.stringify(r));
+  ok(r.dw > 100, "Fähre hebt sich nicht vom Wasser ab: "+JSON.stringify(r));
+});
+
+await test("Bündel in Kurven wie Apple Karten: gemeinsame Grundlinie, gleiche Abstände, feste Reihenfolge, keine Geisterlinie (Chicago Loop)", async () => {
+  const { buendel, lnShare, plaetze } = await import("../tools/stadtpakete/buendel.mjs");
+  const enc = (pts) => { let o = "", pa = 0, po = 0; const e = (v) => { v = v < 0 ? ~(v << 1) : v << 1; let r = ""; while(v >= 0x20){ r += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; } return r + String.fromCharCode(v + 63); };
+    pts.forEach(([lo, la]) => { const a = Math.round(la*1e5), b = Math.round(lo*1e5); o += e(a - pa) + e(b - po); pa = a; po = b; }); return o; };
+  const dec = (s) => { const o = []; let i = 0, la = 0, lo = 0; const d1 = () => { let r = 0, sh = 0, b; do { b = s.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while(b >= 32); return r & 1 ? ~(r >> 1) : r >> 1; };
+    while(i < s.length){ la += d1(); lo += d1(); o.push([lo/1e5, la/1e5]); } return o; };
+  // Lake St (West→Ost) und Wabash (Nord→Süd): jede Linie mit eigenem Fahrplan-Verlauf, Ecke verschieden abgeschnitten, bis 6 m daneben; Brown gegenläufig,
+  // Green mit Hin- und Rückrichtung (verschiedene Ecken); Red kreuzt flach (nur kurz nah) und darf nicht ins Bündel
+  const X = -87.6262, Y = 41.8857, dx = 1/82900, dy = 1/111320, P = (x, y) => [X + x*dx, Y + y*dy];
+  const L = [
+    ["metro","Green","","#009B3A"], ["metro","Brown","","#62361B"], ["metro","Orange","","#F9461C"], ["metro","Pink","","#E27EA6"], ["metro","Purple","","#522398"], ["metro","Red","","#C60C30"]];
+  const G = [
+    [enc([P(-600, 0), P(-30, 1), P(0, -2), P(2, -600)]), enc([P(4, -600), P(-2, -8), P(-30, 4), P(-600, 3)])],
+    [enc([P(1, -600), P(3, -20), P(-20, 2), P(-600, -2)])],
+    [enc([P(-600, 2), P(-10, 0), P(0, -10), P(-3, -600)])],
+    [enc([P(-600, -4), P(-40, 0), P(0, -35), P(3, -600)])],
+    [enc([P(-600, 1), P(-5, -1), P(-1, -6), P(0, -600)])],
+    [enc([P(-300, -400), P(300, 400)])]];
+  const d = {L, G: G.map(x => x.slice())};
+  const n = buendel(d), lines = d.G.map(g => g.map(dec));
+  ok(n === 5 && lines[5].length === 1 && lines[5][0].length === 2, "Bündel/flache Kreuzung falsch: "+n+" "+JSON.stringify(lines[5]));
+  // 1) gleiche Grundlinie: an der Ecke (35 m um den Knick) haben alle fünf Linien dieselben Punkte
+  const ecke = (g) => g.flat().filter(q => Math.abs(q[0] - X)/dx < 35 && Math.abs(q[1] - Y)/dy < 35).map(q => q.map(v => v.toFixed(5)).join(",")).sort();
+  const e0 = ecke(lines[0]); ok(e0.length >= 2 && [1,2,3,4].every(i => JSON.stringify([...new Set(ecke(lines[i]))]) === JSON.stringify([...new Set(e0)])), "Ecke nicht gemeinsam: "+JSON.stringify(lines.slice(0,5).map(ecke)));
+  // 2) gleiche Zeichenrichtung (line-offset versetzt nach rechts der Richtung): Brown läuft jetzt wie die anderen
+  const dir = (g) => { const r = g.find(r => r.some(q => Math.abs(q[1] - Y)/dy < 3 && q[0] < X - 200*dx)) || g[0]; return Math.sign(r[r.length-1][0] - r[0][0] || r[r.length-1][1] - r[0][1]); };
+  const dirs = lines.slice(0, 5).map(dir); ok(new Set(dirs).size === 1, "Richtungen im Bündel verschieden: "+dirs);
+  // 3) Green doppelt (Hin/Rück) → einmal; 4) Plätze: alle verschieden, mittig (−2 … 2); Red allein mittig
+  ok(lines[0].flat().filter(q => Math.abs(q[1] - Y)/dy < 8 && Math.abs(q[0] - (X - 300*dx))/dx < 6).length <= 2, "Green doppelt: "+JSON.stringify(lines[0]));
+  const o = d.O.slice(0, 5); ok(new Set(o).size === 5 && Math.min(...o) === -2 && Math.max(...o) === 2 && d.O[5] === 0, "Plätze nicht eindeutig/mittig: "+d.O);
+  // 5) zwei Linien: ±0,5
+  const two = [{id:"a", g:[[P(-500, 0), P(500, 0)]]}, {id:"b", g:[[P(500, 3), P(-500, 2)]]}], pl = plaetze(["a","b"], lnShare(two));
+  ok(Math.abs(pl.a) === .5 && pl.a === -pl.b, "Zwei Linien nicht ±0,5: "+JSON.stringify(pl));
+  // App: Paket mit O → Platz je Linie aus dem Paket, Richtung bleibt beim Verbinden der Stücke (keine Umkehr)
+  const rail = {v:1, id:"chicago", part:"rail", n:"Chicago", src:"CTA", lic:"CTA", L:d.L.map(l => l.concat(["#FFFFFF"])), H:["x"], S:[["A", 4188570, -8762620]], E:[0,0,0,0,60,7], W:d.L.map(() => [300]), G:d.G, O:d.O, D:[[0, "metro"]]};
+  const r = JSON.parse(await rp(`(function(){ var c = {rail:cpPrep(${JSON.stringify(JSON.stringify(rail))}.length ? JSON.parse(${JSON.stringify(JSON.stringify(rail))}) : null), st:{}}; var g = cpGeo(c, false);
+    var o = {}, dr = {}; g.tr.geo.features.forEach(function(f){ o[f.properties.k] = f.properties.o; var r = f.geometry.coordinates[0]; dr[f.properties.k] = Math.sign(r[r.length-1][0] - r[0][0] || r[r.length-1][1] - r[0][1]); });
+    var j = lnClean([[[0,0],[1,0]], [[2,0],[1,0]]], 0, true).length, k = lnClean([[[0,0],[1,0]], [[1,0],[2,0]]], 0, true); return JSON.stringify({o:o, li:g.tr.geo.features.some(function(f){ return "li" in f.properties; }), j:j, k:k.length===1 && k[0][0][0]===0 && k[0][2][0]===2}); })()`));
+  ok(r.o.Green === d.O[0] && r.o.Brown === d.O[1] && r.o.Red === 0 && !r.li, "App nutzt Plätze aus dem Paket nicht: "+JSON.stringify(r));
+  ok(r.j === 2 && r.k, "Stücke werden beim Verbinden umgedreht: "+JSON.stringify(r));
 });
 
 /* ------------------------------------------------------------------ Ergebnis */

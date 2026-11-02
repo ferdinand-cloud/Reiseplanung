@@ -5,6 +5,40 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-02 · Fähren dick gestrichelt statt fein (alle Städte)
+
+**Meldung:** Ferdinand 01:23: Fähren sollen nicht dick gestrichelt sein, sondern fein in einem Blauton, der sich vom Wasser abhebt.
+
+**Ursache:** Gestaltungsvorgabe aus der Anfangszeit (NYC-Fähren): `OV.dash.ferry` [3,2], Breite bis 3,2 px plus weißer Rand (`ovCase`) und Himmelblau #1BA1E2, das dem hellen Wasser (#A9D3F2) ähnelt. Paket-Fähren nahmen zudem die Datenfarbe, die Linienkarte zeichnete Fähren so dick wie Bahnen.
+
+**Lösung (v503):** Eine Fährfarbe überall (`OV.col.ferry` = Petrolblau #08809A; auch Stationen und Linienkarte), durchgezogen (Strichelung entfernt), fein (`OV.w.ferry` 0,5–1,7 px, auch in `lnWidth` für die Linienkarte), ohne weißen Rand. Abstand zur Wasserfarbe hell/dunkel deutlich.
+
+**Test:** „Fähren fein in Petrolblau statt dick gestrichelt …“; „Linienfarben …“ angepasst (Rand nur noch unter Bahnen).
+
+---
+
+## 2026-11-02 · Bündel in Kurven: Abstände schwanken, Linien kreuzen, graue Geisterlinie (Chicago Loop, Vergleich Apple)
+
+**Meldung:** Ferdinand 01:22 (3 Screenshots): Bei Apple bleiben die Abstände in der Kurve gleich (konzentrische Bögen). Bei uns kreuzt Grün in der Kurve Lake/Wabash die anderen Linien, Abstände schwanken, an Wells/Van Buren eine graue Linie.
+
+**Ursache (an den echten Chicago-Paketdaten geprüft):**
+1. **Jede Linie hat ihren eigenen Verlauf.** Die Stadtpakete übernehmen je Linie den Fahrplan-Verlauf (GTFS-Shape). Auf derselben Strecke liegen diese einige Meter auseinander und schneiden Ecken verschieden ab (Lake/Wabash: 4 verschiedene Eckpunkte für 5 Linien). `line-offset` versetzt aber den eigenen Verlauf jeder Linie → Abstände schwanken, in der Kurve kreuzen sich Linien; der weiße Rand eines abweichenden Verlaufs scheint als graue „Geisterlinie“ durch.
+2. **Plätze doppelt vergeben.** `lnSlots` verteilte Plätze stadtweit nach Reihenfolge (bei > 5 Linien `i % 5 − 2`): Brown und Purple hatten beide −1 und lagen im Loop übereinander.
+3. **Zeichenrichtung.** `line-offset` wirkt nach rechts der Zeichenrichtung; im Loop fahren Linien gegenläufig → gleicher Platz landet auf verschiedenen Seiten (gefunden beim Gegenprüfen: Brown verschwand unter Orange).
+
+**Lösung (Stadtpaket-Bau `tools/stadtpakete/buendel.mjs`, App v503):**
+- Gemeinsame Grundlinie: Linien nacheinander (längste zuerst); läuft eine Linie ≥ 40 m neben schon gelegten (≤ 12 m, ähnliche Richtung), übernimmt sie deren Punkte samt Ecke. Stärker abgeschnittene Ecken werden überbrückt, wenn dieselbe Grundlinie danach passend weitergeht. Kurze Berührungen (flache Kreuzungen) bleiben – Lehre aus Berlin 01.11. Übernahme nur zusammenhängend (kein Sprung auf die Gegenrichtung einer Schleife).
+- Einheitliche Richtung: übernommene Abschnitte laufen in Richtung der Grundlinie (gegenläufige werden umgedreht); die App verbindet solche Stücke nur noch Ende an Anfang (`lnClean(…, keep)`), ohne sie umzudrehen.
+- Doppelte Stücke derselben Linie (Hin-/Rückrichtung mit verschiedenen Ecken) fallen weg.
+- Plätze je Bündel: Linien, die ≥ 100 m teilen, bekommen verschiedene Plätze (0, −1, +1 …), je zusammenhängendem Bündel mittig (2 Linien ±0,5). Im Paket als `O` je Linie; ältere Pakete wie bisher.
+- Geprüft: Chicago Loop 5 Linien = 5 Plätze, Lake/Wabash und Wells/Van Buren konzentrisch ohne Kreuzung und ohne Geisterlinie (Bilder `vorher-nachher-chicago-lake-wabash-buendel.png`, `vorher-nachher-chicago-wells-vanburen-buendel.png`, links vorher, rechts nachher). Paris/London/Berlin/Bremen: keine Linie länger als vorher (keine Umwege).
+
+**Wirksam:** sobald die Stadtpakete neu gebaut sind (GitHub Action „Stadtpakete“ nach diesem Push). Linienkarte (Deutschland, PMTiles) hat einen eigenen Bündel-Bau und ist nicht betroffen.
+
+**Test:** „Bündel in Kurven wie Apple Karten: gemeinsame Grundlinie, gleiche Abstände, feste Reihenfolge, keine Geisterlinie (Chicago Loop)“.
+
+---
+
 ## 2026-11-01 · Volltests v500/v501: „Tastatur im Chat … Zweites Antippen“ und „Linienkarte Bremen … Ausgeblendete Linie“ (wackelig)
 
 **Meldung:** Klicktests 41362688170 (v501): „Zweites Antippen: Eingabe springt statt zu gleiten: 844,844,844,731,466,…“. Klicktests 41360681163: „Ausgeblendete Linie bleibt in der Linienkarte“ (Bremen); im selben Lauf der Chat-Test erst im 2. Versuch. Beide lokal und in anderen Läufen grün; die App-Änderungen dieser Runde (Karte/Busse) berühren beide Stellen nicht.
