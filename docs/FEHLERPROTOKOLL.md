@@ -5,6 +5,21 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-02 · Globus (v504): Stadtpaket beim Ziel-Überblick nicht erkannt, Chat-Tastatur-Test zu langsam
+
+**Meldung:** Volltest nach v504 (Globus beim Rauszoomen): „Ziel Paris ohne Reise … Ziel-Überblick ohne Stadtpaket“ rot, „Tastatur im Chat“ wackelig, GitHub-Lauf nach 20 min abgebrochen.
+
+**Ursache:**
+1. **Stadtpaket:** `cpIn()` nimmt ein Paket, wenn es ≥ 15 % des sichtbaren Ausschnitts bedeckt. Der Globus zeigt bei gleicher Zoomstufe etwas mehr Umland (Paris-Überblick: Anteil 14,9 % statt 15,1 % flach) → knapp unter der Grenze, Paket nicht geladen. Beleg: gleicher Testablauf mit/ohne Globus, Ausschnitt und Anteil ausgegeben.
+2. **Tastatur-Test:** Ohne Reiseort steht die Karte auf Weltansicht (Zoom 1,2). Ein Globus-Bild braucht im Test-Chromium (Software-Grafik, keine echte GPU) ~200 ms statt ~100 ms flach; das bremst die 200-ms-Bewegung der Eingabezeile, feste Wartezeiten reichen nicht. Bei Stadtzoom (≥ 12) kein Unterschied (gemessen). Auf dem iPhone rechnet die GPU – dort nicht zu erwarten, aber bitte auf Flüssigkeit achten.
+3. **Volllauf allgemein:** 17–22 Tests mit Klick-Zeitüberschreitungen, die einzeln alle grün liefen. Viele Tests starten ohne Reiseort in der Weltansicht; mit 4 parallelen Test-Browsern ohne GPU frisst das Globus-Bild die Rechenzeit (lokal 1377 s statt sonst ~200 s, GitHub-Lauf nach 20 min abgebrochen).
+
+**Lösung:** `cpIn()` Grenze 12 % statt 15 %. Weltraum-Hintergrund einfarbig statt Verlauf (weniger Arbeit beim Zusammensetzen). Test „Tastatur im Chat“ stellt die Karte hinter dem Chat auf Stadtzoom und wartet nach jeder Tastatur-Änderung auf das Ende der Bewegung (`CHKB.anim`) statt fester Zeit. Klicktests (`?rptest`) zeichnen die Karte flach (`GLOBE = false`); nur der Test „Globus“ schaltet den Globus ein. Die App für Nutzer zeigt immer den Globus.
+
+**Test:** „Ziel Paris ohne Reise …“, „Tastatur im Chat …“, „Globus: …“.
+
+---
+
 ## 2026-11-02 · Fähren dick gestrichelt statt fein (alle Städte)
 
 **Meldung:** Ferdinand 01:23: Fähren sollen nicht dick gestrichelt sein, sondern fein in einem Blauton, der sich vom Wasser abhebt.

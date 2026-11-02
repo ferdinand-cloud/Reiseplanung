@@ -5302,6 +5302,8 @@ await test("Chat: Zurück zur Übersicht zeigt den Chat als normale Zeile", asyn
 await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitzt über der Tastatur", async () => {
   await seed();
   await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; CH.byId.c1 = {id:"c1", members:["u_me","u_h"], names:{u_h:"Hannah_zim"}}; CH.list = [CH.byId.c1]; openChPage("c1"); try { localStorage.removeItem("rp-chkb"); } catch(e){} if(typeof KBPRED!=="undefined") KBPRED = true; CHKB.fb = 60000; true`);   // Rückfallebene „keine Tastatur“ (1,2 s) würde unter Last vorzeitig greifen
+  // Karte hinter dem Chat auf Stadtzoom: der Globus der Weltansicht rendert im Test-Chromium (Software-Grafik) ~200 ms je Bild und bremst die Tastatur-Bewegung
+  await rp(`map.jumpTo({center:[-73.985, 40.758], zoom:12}); true`);
   await page.waitForTimeout(1000);   // Zeitgeber vorheriger Tests (Fokus) abwarten
   ok(await page.locator("#chIn").count()===1, "Chat-Eingabe fehlt");
   const vp = page.viewportSize(), H = vp.height, VH = H - 380;
@@ -5311,7 +5313,8 @@ await test("Tastatur im Chat: Leiste und Kopf bleiben, nur die Eingabezeile sitz
     const vv = visualViewport, hole = []; for(let y = vv.offsetTop + 5; y < vv.offsetTop + vv.height; y += 20){ const e = document.elementFromPoint(innerWidth/2, y); if(!e || !e.closest("#chView,.top")) hole.push(Math.round(y)); }
     return {bar:r(".tabbar"), head:r("#chView .ch-head"), inp:r("#chView .ch-comp"), vt:vv.offsetTop, vh:vv.height, hole}; });
   const kbFake = (h, top) => page.evaluate(([h, top]) => { Object.defineProperty(visualViewport, "height", {configurable:true, get:() => h}); Object.defineProperty(visualViewport, "offsetTop", {configurable:true, get:() => top});
-    visualViewport.dispatchEvent(new Event("resize")); visualViewport.dispatchEvent(new Event("scroll")); }, [h, top]);
+    visualViewport.dispatchEvent(new Event("resize")); visualViewport.dispatchEvent(new Event("scroll")); }, [h, top])
+    .then(async () => { await page.waitForTimeout(50); for(let i = 0; i < 60 && await rp(`CHKB.anim`); i++) await page.waitForTimeout(50); }); // Bewegung abwarten (unter Last, z. B. Globus im Hintergrund, dauert sie länger)
   const kbReal = () => page.evaluate(() => { delete visualViewport.height; delete visualViewport.offsetTop; visualViewport.dispatchEvent(new Event("resize")); });
   const p0 = await pos();
   ok(!p0.hole.length && p0.inp.b >= H - 2, "Chat ohne Tastatur nicht bildschirmfüllend: "+JSON.stringify(p0));
@@ -6078,7 +6081,7 @@ await test("3D-Karte: Knopf bei Suche und Plus erst ab Zoomstufe, Standard 3D ki
 });
 
 await test("Globus: weit rausgezoomt ist die Karte eine Kugel, Punkte auf der Rückseite verdeckt, Stadtzoom flach", async () => {
-  await seed(); await rp(`map.jumpTo({center:[-74, 40.7], zoom:1.5, pitch:0, bearing:0}); true`);
+  await seed(); await rp(`GLOBE = true; globeSet(); map.jumpTo({center:[-74, 40.7], zoom:1.5, pitch:0, bearing:0}); true`);
   await page.waitForTimeout(300);
   ok(await rp(`map.getProjection() && map.getProjection().type`)==="globe", "Projektion nicht Globus: "+await rp(`JSON.stringify(map.getProjection())`));
   ok(await rp(`$("gl").classList.contains("space")`), "Weltraum-Hintergrund fehlt beim Rauszoomen");
@@ -6093,7 +6096,7 @@ await test("Globus: weit rausgezoomt ist die Karte eine Kugel, Punkte auf der R�
   ok(!await rp(`$("gl").classList.contains("space")`), "Weltraum-Hintergrund bei Stadtzoom");
   const a = await rp(`pt({la:40.76, lo:-73.98})`), b = await rp(`(function(){ var q = map.project([-73.98, 40.76]); return [q.x, q.y]; })()`);
   ok(Math.abs(a[0]-b[0]) < .5 && Math.abs(a[1]-b[1]) < .5 && a[0] > 0, "Punkt bei Stadtzoom verschoben: "+JSON.stringify([a, b]));
-  await rp(`map.jumpTo({center:[-73.985, 40.758], zoom:12}); true`);
+  await rp(`GLOBE = false; globeSet(); map.jumpTo({center:[-73.985, 40.758], zoom:12}); true`);
 });
 
 await test("3D-Karte: nach Rauszoomen aus 3D (Karte wird flach) lässt sich die Karte weiter verschieben", async () => {

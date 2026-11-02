@@ -1147,7 +1147,7 @@ ol.tsteps summary{cursor:pointer;font-weight:600}
 .rtog[aria-checked="true"] .sw2::after{transform:translateX(16px)}
 .rtog[aria-checked="false"]{color:var(--muted);background:var(--chip)}
 #gl{position:absolute;inset:0}
-#gl.space{background:radial-gradient(circle at 50% 45%, #1b2540 0, #0b1020 60%, #05070d 100%)}
+#gl.space{background:#0b1020}
 #ov{pointer-events:none}
 .maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{display:none}
 #locBtn.on{color:#007AFF}
@@ -10319,13 +10319,16 @@ function llW(x, y){ return {la: LAT0 - y/KM, lo: x/(COS*KM) - 74}; }
 /* Globus: weit rausgezoomt ist die Erde rund (wie Apple Karten); MapLibre geht ab etwa Zoom 12 selbst in die flache Karte über.
    Eigene SVG-Punkte auf der Rückseite der Kugel (verdeckt) landen außerhalb des Bildes, damit sie nicht durch die Erde scheinen. */
 var GLOBEZ = 12, SPACEZ = 7;
+// Klicktests: Software-Grafik ohne GPU braucht für ein Globus-Bild der Weltansicht ~200 ms und bremst alle Tests → dort flach, außer der Globus-Test schaltet ihn ein (GLOBE = true; globeSet())
+var GLOBE = !/[?&]rptest\b/.test(location.search);
 function globeSet(){
   if(!map) return;
-  try { map.setProjection({type:"globe"}); } catch(e){}
+  try { map.setProjection({type: GLOBE ? "globe" : "mercator"}); } catch(e){}
+  if(!GLOBE){ $("gl").classList.remove("space"); return; }
   try { map.setSky({"atmosphere-blend":["interpolate", ["linear"], ["zoom"], 0, 1, 5, 1, 7, 0]}); } catch(e){}
   globeBg();
 }
-function globeBg(){ if(map) $("gl").classList.toggle("space", map.getZoom() < SPACEZ); }
+function globeBg(){ if(map && GLOBE) $("gl").classList.toggle("space", map.getZoom() < SPACEZ); }
 function occl(lo, la){ if(!map || map.getZoom() >= GLOBEZ) return false; try { return map.transform.isLocationOccluded(new maplibregl.LngLat(lo, la)); } catch(e){ return false; } }
 function prj(lo, la){ if(occl(lo, la)) return [-1e5, -1e5]; var q = map.project([lo, la]); return [q.x, q.y]; }
 function toS(x, y){ var l = llW(x, y); return prj(l.lo, l.la); }
@@ -12947,7 +12950,7 @@ function cpIn(){
   var b = map.getBounds(), w = b.getWest(), e = b.getEast(), s = b.getSouth(), n = b.getNorth(), best = null, ba = 0;
   CPS.forEach(function(x){ var q = x.bb, iw = Math.min(e, q[2]) - Math.max(w, q[0]), ih = Math.min(n, q[3]) - Math.max(s, q[1]);
     if(iw <= 0 || ih <= 0) return; var a = iw*ih/((e-w)*(n-s)); if(a > ba){ ba = a; best = x; } });
-  return ba >= 0.15 ? best : null;
+  return ba >= 0.12 ? best : null; // Globus zeigt bei gleicher Zoomstufe etwas mehr Umland als die flache Karte
 }
 function cpGet(id){ return CP[id] || (CP[id] = {id:id, st:{}, rail:null, bus:null}); }
 /* Stadt, deren Paket die Karte gerade zeigt (geladen oder unterwegs); ohne Paket (Fehler, nicht vorhanden): Transitland/OpenStreetMap */
