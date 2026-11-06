@@ -2489,16 +2489,23 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .fr-badge{position:absolute;top:6px;right:8px;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;background:#FF3B30;color:#fff;font:700 12px/20px var(--f-body);font-style:normal;text-align:center}
 .fr-tile:has(.fr-badge){padding-right:34px}
 .ag-card[data-fr] .ag-title{padding-right:44px;font-size:23px}
-.fr-pills{display:flex;gap:8px;margin:8px 0 10px}
-.fr-pill{position:relative;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px 0 11px;border:0;border-radius:17px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font:600 14px/1 var(--f-body);cursor:pointer}
-.fr-pill svg{width:18px;height:18px}
-.fr-pill b{font-weight:600;color:var(--ink)}
-.fr-pill em{font-style:normal;font-weight:600;color:var(--muted)}
-.fr-pill .fr-badge{position:static;margin-left:2px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:18px}
 .ag-card[data-fr] .fr-seg{margin:0 0 8px}
 .ag-card[data-fr]{padding-top:0}
 .fr-head{position:sticky;top:0;z-index:3;margin:0 -18px 6px;padding:22px 18px 2px;border-bottom:.5px solid transparent;transition:border-color .2s,background-color .2s}
 .ag-card[data-fr].fr-sc .fr-head{border-bottom-color:var(--glass-bd);background:var(--glass-hi);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%)}
+.fr-top{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+.fr-tt{display:flex;align-items:baseline;gap:16px;flex:1 1 auto;min-width:0}
+.fr-tt .ag-title{margin:0;padding:0 !important;border:0;background:none;color:var(--muted);opacity:.55;cursor:pointer;white-space:nowrap;font-size:23px}
+.fr-tt .ag-title[aria-selected="true"]{color:var(--ink);opacity:1}
+.fr-head .ag-x{position:static;flex:0 0 30px}
+.fr-add{width:34px;height:34px;flex:0 0 34px;border:0;border-radius:50%;display:grid;place-items:center;padding:0;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);cursor:pointer}
+.fr-add svg{width:19px;height:19px}
+.ag-row .fr-yn{display:flex;flex-direction:row;gap:22px;flex:0 0 auto;margin-left:auto}
+.fr-req .fn{flex:1 1 auto;min-width:0}
+.fr-yn button{width:40px;height:40px;border:0;border-radius:50%;display:grid;place-items:center;padding:0;cursor:pointer}
+.fr-yn svg{width:20px;height:20px}
+.fr-ok{background:var(--accent);color:#fff}
+.fr-no{background:var(--fill);color:var(--muted)}
 .fr-seg .fr-badge{position:static;display:inline-block;vertical-align:1px;margin-left:3px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:18px}
 .fr-seg em{font-style:normal;color:var(--muted);font-weight:500;margin-left:3px}
 .fr-filt{margin:0 0 8px}
@@ -5784,10 +5791,16 @@ function tripsPageHTML(){
   if(!sh) h += "<div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"tripnew\"><span><b>+ Neue Reise</b></span></button></div>";
   return h+"</div>";
 }
-var frTab = "fol", FRRMICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.5 16.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M12.5 8.5h5\"/></svg>";
+var frTab = "fol", frMain = "fol", FRRMICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.5 16.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M12.5 8.5h5\"/></svg>";
 function friendsPageHTML(){
-  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Follower und Gefolgt\" data-fr=\"1\"><div class=\"fr-head\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Follower &amp; Gefolgt</h3>";
-  if(!acct.user) return h+"</div><p class=\"note\">Melde dich an, um anderen zu folgen.</p></div>";
+  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Follower und Gefolgt\" data-fr=\"1\"><div class=\"fr-head\">";
+  var x = "<button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button>";
+  if(!acct.user) return h+"<div class=\"fr-top\"><h3 class=\"ag-title\">Follower</h3>"+x+"</div></div><p class=\"note\">Melde dich an, um anderen zu folgen.</p></div>";
+  var gr = frMain==="grp";
+  h += "<div class=\"fr-top\"><div class=\"fr-tt\" role=\"tablist\"><button type=\"button\" role=\"tab\" class=\"ag-title\" data-act=\"frmain\" data-v=\"fol\" aria-selected=\""+!gr+"\">Follower</button><button type=\"button\" role=\"tab\" class=\"ag-title\" data-act=\"frmain\" data-v=\"grp\" aria-selected=\""+gr+"\">Gruppen</button></div>"+
+    (gr ? (FR.friends.length ? "<button type=\"button\" class=\"fr-add\" data-act=\"fgnew\" aria-label=\"Neue Gruppe\" title=\"Neue Gruppe\">"+ic("plus")+"</button>" : "")
+        : "<button type=\"button\" class=\"fr-add\" data-act=\"accview\" data-v=\"search\" aria-label=\"Leute hinzufügen\" title=\"Leute hinzufügen\">"+ic("useradd")+"</button>")+x+"</div>";
+  if(gr) return h+"</div>"+fgListHTML(1)+"<p class=\"note\">Gruppen sind nur für dich sichtbar.</p></div>";
   return h+frTilesHTML()+frFiltHTML()+"</div>"+friendsHTML()+"</div>";
 }
 function frList(){ return frTab==="ing" ? FR.following : frTab==="req" ? FR.inc : FR.followers; }
@@ -5801,7 +5814,7 @@ function friendsHTML(){
   if(frTab==="req"){
     h += "<div class=\"ag-grp\">";
     if(!list.length) h += "<p class=\"note\">Keine offenen Anfragen. Wer dir folgen möchte, erscheint hier.</p>";
-    list.forEach(function(r){ var fn = norm(r.name||""); h += "<div class=\"ag-row inv\" data-frn=\""+esc(fn)+"\""+(q && fn.indexOf(q) < 0 ? " hidden" : "")+"><span class=\"mav\">"+esc((r.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>"+esc(atn(r.name))+"</b><small>möchte dir folgen</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"folacc\" data-uid=\""+esc(r.uid)+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"folrej\" data-uid=\""+esc(r.uid)+"\">Ablehnen</button></span></div>"; });
+    list.forEach(function(r){ var fn = norm(r.name||""); h += "<div class=\"ag-row fr-req\" data-frn=\""+esc(fn)+"\""+(q && fn.indexOf(q) < 0 ? " hidden" : "")+"><span class=\"mav\">"+esc((r.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>"+esc(atn(r.name))+"</b><small>möchte dir folgen</small></span><span class=\"fr-yn\"><button type=\"button\" class=\"fr-no\" data-act=\"folrej\" data-uid=\""+esc(r.uid)+"\" aria-label=\"Anfrage von "+esc(atn(r.name))+" ablehnen\" title=\"Ablehnen\">"+ic("close")+"</button><button type=\"button\" class=\"fr-ok\" data-act=\"folacc\" data-uid=\""+esc(r.uid)+"\" aria-label=\"Anfrage von "+esc(atn(r.name))+" annehmen\" title=\"Annehmen\">"+ic("ok")+"</button></span></div>"; });
     if(list.length > 1) h += "<p class=\"note fr-none\""+(q && !list.some(function(f){ return norm(f.name||"").indexOf(q) > -1; }) ? "" : " hidden")+">Niemand mit diesem Namen.</p>";
     return h+"</div>";
   }
@@ -5885,9 +5898,7 @@ function frUnread(){ var rd = {}; try { rd = JSON.parse(lsGet(frReadKey())||"{}"
 function frMarkRead(){ var rd = {}; FR.inc.forEach(function(r){ rd[r.id] = 1; }); lsSet(frReadKey(), JSON.stringify(rd)); }
 function frTilesHTML(){
   var u = frUnread(), ing = frTab==="ing", n = FR.inc.length;
-  return "<div class=\"fr-pills\"><button type=\"button\" class=\"fr-pill\" data-act=\"fglist\" aria-label=\"Gruppen · "+(FG.length ? FG.length+(FG.length===1 ? " Gruppe" : " Gruppen") : "keine Gruppen")+"\">"+FGICO+"<b>Gruppen</b>"+(FG.length ? "<em>"+FG.length+"</em>" : "")+"</button>"+
-    "<button type=\"button\" class=\"fr-pill\" data-act=\"accview\" data-v=\"search\" aria-label=\"Leute hinzufügen\">"+ic("useradd")+"<b>Hinzufügen</b></button></div>"+
-    "<div class=\"pf-seg fr-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"fol\" aria-selected=\""+(frTab==="fol")+"\">Follower <em>"+FR.followers.length+"</em></button><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"ing\" aria-selected=\""+ing+"\">Gefolgt <em>"+FR.following.length+"</em></button>"+
+  return "<div class=\"pf-seg fr-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"fol\" aria-selected=\""+(frTab==="fol")+"\">Follower <em>"+FR.followers.length+"</em></button><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"ing\" aria-selected=\""+ing+"\">Gefolgt <em>"+FR.following.length+"</em></button>"+
     "<button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"req\" aria-selected=\""+(frTab==="req")+"\" aria-label=\"Anfragen"+(n ? " · "+n+" offen" : "")+"\">Anfragen "+(u ? "<i class=\"fr-badge\">"+u+"</i>" : n ? "<em>"+n+"</em>" : "")+"</button></div>";
 }
 function frReqHTML(){
@@ -5909,11 +5920,12 @@ document.addEventListener("scroll", function(e){ var c = e.target; if(c && c.cla
 document.addEventListener("input", function(e){ var q = e.target; if(q.id!=="frFilt") return; frFilt = q.value; var v = norm(frFilt.trim().replace(/^@/, "")), n = 0, card = q.closest(".ag-card"); if(!card) return;
   card.querySelectorAll("[data-frn]").forEach(function(r){ var on = !v || r.getAttribute("data-frn").indexOf(v) > -1; r.hidden = !on; if(on) n++; });
   var e0 = card.querySelector(".fr-none"); if(e0) e0.hidden = !!n; });
-function fgListHTML(){
+function fgListHTML(top){
   if(!FR.friends.length) return "<p class=\"note\">Gruppen gibt es für Freunde – Leute, denen du folgst und die dir folgen.</p>";
   var h = "<div class=\"ag-grp fg-grp\">";
   FG.forEach(function(g){ var n = fgMem(g).length;
     h += "<button type=\"button\" class=\"ag-row fg-row\" data-act=\"fgopen\" data-g=\""+esc(g.id)+"\"><span class=\"fg-ic\">"+FGICO+"</span><span class=\"fn\"><b>"+esc(g.n)+"</b><small>"+(n===1 ? "1 Person" : n+" Personen")+"</small></span><em class=\"chev\">›</em></button>"; });
+  if(top) return FG.length ? h+"</div>" : "<p class=\"note\">Noch keine Gruppen. Mit + legst du eine an, z. B. Familie oder enger Freundeskreis.</p>";
   h += "<button type=\"button\" class=\"ag-row fg-row\" data-act=\"fgnew\"><span class=\"fg-ic add\">"+FRSADD+"</span><span class=\"fn\"><b>Neue Gruppe</b>"+(FG.length ? "" : "<small>Nur für dich sichtbar – z. B. Familie, enger Freundeskreis</small>")+"</span></button>";
   return h+"</div>";
 }
@@ -14590,7 +14602,7 @@ var DM_VIEW = {
   layers: function(){ dmPages(); if($("layers").hidden) $("layersBtn").click(); var g = $("lTrGrp"); if(g && g.hidden && $("lTrBtn")){ $("lTrBtn").click(); dmPrev.lgrp = true; } },
   photo: function(){ dmPages(); var ph = T().photos || {}, pid = Object.keys(ph).filter(function(k){ return P(k) && (ph[k]||[]).length; })[0]; if(pid) openJPop(pid, dayOf(pid), ph[pid][0]); },
   disc: function(){ openDcPage(); },
-  friends: function(){ closeMenus(); accView = "friends"; unameMsg = ""; frTab = "fol"; frFilt = ""; openSettings(); },
+  friends: function(){ closeMenus(); accView = "friends"; unameMsg = ""; frTab = "fol"; frMain = "fol"; frFilt = ""; openSettings(); },
   prof: function(){ openProfile(); }
 };
 function dmGo(i){
@@ -18896,9 +18908,10 @@ document.addEventListener("click", function(e){
     case "folrm": folRemove(t.getAttribute("data-uid")); break;
     case "folacc": folAccept(t.getAttribute("data-uid")); break;
     case "folrej": folDecline(t.getAttribute("data-uid")); break;
+    case "frmain": frMain = t.getAttribute("data-v")==="grp" ? "grp" : "fol"; frFilt = ""; refreshSettings(); var fmc = $("acctPop").querySelector(".ag-card"); if(fmc) fmc.scrollTop = 0; break;
     case "frtab": var ftv = t.getAttribute("data-v"); frTab = ftv==="ing" || ftv==="req" ? ftv : "fol"; frFilt = ""; if(frTab==="req") frMarkRead(); refreshSettings(); var fsc = t.closest(".ag-card"); if(fsc) fsc.scrollTop = 0; break;
     case "fgopen": openFgEd(t.getAttribute("data-g")); break;
-    case "fglist": openFrPop("grp"); break;
+    case "fglist": closeMenus(); accView = "friends"; frMain = "grp"; openSettings(); break;
     case "fgcancel": fgCancel(); break;
     case "frreqs": openFrPop("req"); break;
     case "fgnew": closeJpMore(); openFgEd("", t.getAttribute("data-uid")); break;
@@ -19066,7 +19079,7 @@ document.addEventListener("click", function(e){
     case "opentrips": closeMenus(); $("toast").hidden = true; accView = "trips"; if(t.getAttribute("data-v")) tripsTab = t.getAttribute("data-v"); else tripsTab = isShared(S.cur) ? "shared" : "priv"; openSettings(); break;
     case "tripstab": tripsTab = t.getAttribute("data-v"); openSettings(); break;
     case "tripdetails": closeSettings(); tab = "trip"; renderSheet(); scheduleOverlay(); break;
-    case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; var frv = t.getAttribute("data-v"); if(frv==="fol" || frv==="ing" || frv==="req"){ frTab = frv; frFilt = ""; if(frv==="req") frMarkRead(); } openSettings(); break;
+    case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; var frv = t.getAttribute("data-v"); frMain = "fol"; if(frv==="fol" || frv==="ing" || frv==="req"){ frTab = frv; frFilt = ""; if(frv==="req") frMarkRead(); } openSettings(); break;
     case "opentrip": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeSettings();
       var otr = t.getAttribute("data-trip"); if(otr && S.trips[otr] && otr!==S.cur){ grpSel = ""; S.cur = otr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); }
       tab = "trip"; tdraft = isViewerOf(S.cur) ? null : tripToDraft(T(), "edit"); renderSheet(); scheduleOverlay();

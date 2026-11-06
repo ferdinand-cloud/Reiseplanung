@@ -5667,9 +5667,9 @@ await test("Follower-Seite: Follower/Gefolgt/Anfragen, roter Zähler, fixierter 
     FR.friends = FR.followers.slice(0, 2); frTab = "fol"; frFilt = "";
     closeMenus(); accView = "friends"; openSettings(); true`);
   await page.waitForTimeout(200);
-  ok(/Follower/.test(await page.locator("#acctPop .ag-title").innerText()), "Seite heißt nicht Follower");
+  ok(/Follower/.test(await page.locator("#acctPop .ag-title").first().innerText()), "Seite heißt nicht Follower");
   ok(/Follower\s*3/.test(await page.locator('#acctPop [data-act=frtab][data-v="fol"]').innerText()) && /Gefolgt\s*3/.test(await page.locator('#acctPop [data-act=frtab][data-v="ing"]').innerText()), "Reiter Follower/Gefolgt zählen falsch");
-  ok(await rp(`var t = document.querySelector("#acctPop .ag-title").getBoundingClientRect(), x = document.querySelector("#acctPop .ag-x").getBoundingClientRect(), s = document.querySelector("#acctPop .fr-seg").getBoundingClientRect(), b = document.querySelector('#acctPop .fr-pill[data-act=accview][data-v="search"]').getBoundingClientRect(); Math.abs(document.querySelector("#acctPop [data-act=fglist]").getBoundingClientRect().top - b.top) < 2 && b.height <= 40 && s.top >= b.bottom && (function(){ var g = document.createRange(); g.selectNodeContents(document.querySelector("#acctPop .ag-title")); return g.getBoundingClientRect().right <= x.left - 4; })()`), "Kopf nicht kompakt: Gruppen/Hinzufügen nicht in einer Zeile über dem Umschalter oder Titel unter dem Schließen-Knopf");
+  ok(await rp(`var a = document.querySelector('#acctPop .fr-add[data-act=accview][data-v="search"]').getBoundingClientRect(), x = document.querySelector("#acctPop .ag-x").getBoundingClientRect(), g = document.querySelector('#acctPop [data-act=frmain][data-v="grp"]').getBoundingClientRect(), s = document.querySelector("#acctPop .fr-seg").getBoundingClientRect(); Math.abs((a.top+a.bottom)/2 - (x.top+x.bottom)/2) < 3 && g.right <= a.left - 4 && a.right <= x.left && s.top >= a.bottom && !document.querySelector("#acctPop .fr-pill")`), "Kopf: Follower/Gruppen, Hinzufügen und Schließen nicht in einer Zeile über dem Umschalter");
   ok(await page.locator("#acctPop [data-frn]").count()===3, "Follower-Liste unvollständig");
   ok(await rp(`[].every.call(document.querySelectorAll("#acctPop [data-frn] .fn b"), function(b){ return b.scrollWidth <= b.clientWidth + 1; })`), "Namen in der Liste abgeschnitten");
   ok(await rp(`!document.querySelector('#acctPop [data-act=fgfor][data-uid="u_x"]') && !!document.querySelector('#acctPop [data-act=fgfor][data-uid="u_anna"]')`), "Gruppen-Knopf nicht nur bei Freunden (gegenseitig)");
@@ -5683,6 +5683,7 @@ await test("Follower-Seite: Follower/Gefolgt/Anfragen, roter Zähler, fixierter 
   await tapS('#acctPop [data-act=frtab][data-v="req"]'); await page.waitForTimeout(250);
   ok(await page.locator("#acctPop [data-act=folacc]").count()===2 && await page.locator("#acctPop [data-act=folrej]").count()===2, "Reiter Anfragen unvollständig");
   ok(!/xaver/.test(await page.locator("#acctPop .ag-card").innerText()), "Im Reiter Anfragen stehen nicht nur Anfragen");
+  ok(await rp(`var n = document.querySelector('#acctPop [data-act=folrej][data-uid="u_y"]').getBoundingClientRect(), y = document.querySelector('#acctPop [data-act=folacc][data-uid="u_y"]').getBoundingClientRect(); Math.abs(n.top - y.top) < 2 && y.left - n.right >= 16 && n.width >= 36 && !!document.querySelector('#acctPop [data-act=folacc] svg')`), "Annehmen/Ablehnen nicht als Symbole nebeneinander mit Abstand");
   ok(!(await rp(`!!document.querySelector("#acctPop .fr-badge")`)), "Zähler bleibt nach dem Ansehen");
   await shot("anfragen-folgen");
   if(SHOTS){ await page.emulateMedia({colorScheme:"dark"}); await page.waitForTimeout(100); await shot("anfragen-folgen-dunkel"); await page.emulateMedia({colorScheme:"light"}); }
@@ -5727,7 +5728,7 @@ await test("Follower-Seite: Follower/Gefolgt/Anfragen, roter Zähler, fixierter 
   if(SHOTS){ await page.emulateMedia({colorScheme:"dark"}); await page.waitForTimeout(100); await shot("follower-gescrollt-dunkel"); await page.emulateMedia({colorScheme:"light"}); }
   await rp(`FR.followers = __fol0; true`);
   // Hinzufügen oben: Leute suchen mit Einladen-Link
-  await tapS('#acctPop .fr-pill[data-act=accview][data-v="search"]'); await page.waitForTimeout(200);
+  await tapS('#acctPop .fr-add[data-act=accview][data-v="search"]'); await page.waitForTimeout(200);
   ok(await rp(`accView==="search" && !!document.querySelector("#acctPop [data-act=invshare]")`), "Hinzufügen öffnet nicht Leute suchen mit Einladen-Link");
   await shot("leute-hinzufuegen");
   // Profil: Follower und Gefolgt statt Freunde
@@ -5750,7 +5751,7 @@ await test("Follower-Seite: Unterfenster (Leute suchen, Gruppen, Gruppe, neue Fo
     closeMenus(); openProfile(); true`);
   await page.waitForTimeout(300);
   await rp(`accView = "friends"; openSettings(); true`); await page.waitForTimeout(200);
-  const onFriends = async (w) => { await page.waitForTimeout(250); ok(await rp(`!document.getElementById("acctPop").hidden && accView==="friends" && !!document.querySelector("#acctPop .fr-pills")`), w+": nicht zurück auf der Follower-Seite"); };
+  const onFriends = async (w) => { await page.waitForTimeout(250); ok(await rp(`!document.getElementById("acctPop").hidden && accView==="friends" && !!document.querySelector("#acctPop .fr-head")`), w+": nicht zurück auf der Follower-Seite"); };
   // Leute suchen: × und Tipp daneben
   await tapS('#acctPop [data-act=accview][data-v="search"]'); await page.waitForTimeout(200);
   ok(await rp(`accView==="search"`), "Leute suchen öffnet nicht");
@@ -5759,16 +5760,19 @@ await test("Follower-Seite: Unterfenster (Leute suchen, Gruppen, Gruppe, neue Fo
   await page.mouse.click(5, 5); await onFriends("Leute suchen daneben");
   await tapS('#acctPop [data-act=accview][data-v="search"]'); await page.waitForTimeout(200);
   await tapS('#acctPop .back[data-v="friends"]'); await onFriends("Leute suchen ‹");
-  // Gruppen-Pop-up, Gruppe bearbeiten, neue Gruppe
-  await tapS("#acctPop [data-act=fglist]"); await page.waitForTimeout(200);
-  await tapS('#catPop [data-act=fgopen][data-g="g1"]'); await page.waitForTimeout(200);
+  // Gruppen oben umschalten, Gruppe bearbeiten, neue Gruppe
+  await tapS('#acctPop [data-act=frmain][data-v="grp"]'); await page.waitForTimeout(200);
+  ok(await visible('#acctPop .fg-grp [data-act=fgopen][data-g="g1"]') && !(await rp(`!!document.querySelector("#acctPop .fr-seg") || !!document.querySelector("#acctPop .fg-grp [data-act=fgnew]")`)), "Gruppen-Ansicht falsch (Liste fehlt, Umschalter oder doppeltes Neue Gruppe)");
+  await shot("gruppen-oben");
+  if(SHOTS){ await page.emulateMedia({colorScheme:"dark"}); await page.waitForTimeout(100); await shot("gruppen-oben-dunkel"); await page.emulateMedia({colorScheme:"light"}); }
+  await tapS('#acctPop [data-act=fgopen][data-g="g1"]'); await page.waitForTimeout(200);
   await tapS("#catPop .fg-card [data-act=fgcancel]"); await page.waitForTimeout(200);
-  ok(await visible("#catPop .fr-pop .fg-grp"), "Gruppe × führt nicht zur Gruppenliste zurück");
-  await tapS("#catPop [data-act=fgnew]"); await page.waitForTimeout(200);
+  ok(await rp(`document.getElementById("catPop").hidden && frMain==="grp"`) && await visible("#acctPop .fg-grp"), "Gruppe × führt nicht zur Gruppenliste zurück");
+  await tapS("#acctPop .fr-add[data-act=fgnew]"); await page.waitForTimeout(200);
+  ok(await visible("#catPop .fg-card"), "Plus legt keine Gruppe an");
   await page.mouse.click(5, 5); await page.waitForTimeout(200);
-  ok(await visible("#catPop .fr-pop .fg-grp"), "Neue Gruppe daneben führt nicht zur Gruppenliste zurück");
-  await tapS("#catPop .fr-pop .x"); await onFriends("Gruppen ×");
-  ok(await rp(`document.getElementById("catPop").hidden`), "Gruppen-Pop-up bleibt offen");
+  ok(await rp(`document.getElementById("catPop").hidden && !document.getElementById("acctPop").hidden && frMain==="grp"`), "Neue Gruppe daneben führt nicht zur Gruppenliste zurück");
+  await tapS('#acctPop [data-act=frmain][data-v="fol"]'); await onFriends("Zurück zu Follower");
   // Gruppe zuordnen am Freund
   await tapS('#acctPop [data-act=fgfor][data-uid="u_anna"]'); await page.waitForTimeout(200);
   ok(await visible("#jpMenu"), "Gruppen-Auswahl am Freund öffnet nicht");
