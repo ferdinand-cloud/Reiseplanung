@@ -732,6 +732,50 @@ await test("Rückblick: Foto nach unten wegziehen schließt und bleibt im Rückb
   ok(await visible("#rc"), "Nach dem Wegziehen nicht im Rückblick");
 });
 
+await test("Mitteilungen: nach rechts wischen = gelesen, nach links = löschen mit Rückgängig", async () => {
+  await seed();
+  await rp(`NT.items = [{id:"nt_a", type:"like", trip:S.cur, pid:"p4", text:"@anna gefällt dein Foto", at:Date.now()},
+    {id:"nt_b", type:"comment", trip:S.cur, pid:"p4", text:"@anna hat kommentiert", sub:"Schön!", at:Date.now()-1000},
+    {id:"nt_c", type:"friend", text:"@bob möchte dir folgen", at:Date.now()-2000}]; ntUid = ntUid || "u_nt"; ntSave(); ntBadge(); openNtPage()`);
+  await page.waitForTimeout(300);
+  const cdp = await page.context().newCDPSession(page);
+  const swipeRow = async (id, dir, snap) => {
+    const b = await page.locator(`#ntView .nt-sw[data-id=${id}]`).boundingBox(), y = b.y + b.height/2, x0 = dir > 0 ? b.x + 40 : b.x + b.width - 40;
+    await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:x0, y}]});
+    for(const d of [12, 40, 90, 150, 210]){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:x0 + dir*d, y:y + 2}]}); await page.waitForTimeout(16); }
+    if(snap) await shot(snap);
+    await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]});
+  };
+  ok(await rp(`ntUnread()`)===3, "Ausgangslage falsch");
+  // nach rechts: gelesen, nichts geöffnet, Seite (Reiter) nicht gewechselt
+  await swipeRow("nt_a", 1, "mitteilung-wischen-rechts");
+  await page.waitForFunction(() => window.__rp && window.__rp(`NT.items[0].read`), null, {timeout:3000}).catch(() => {});
+  ok(await rp(`NT.items.filter(function(x){ return x.id==="nt_a"; })[0].read`), "Wischen nach rechts markiert nicht als gelesen");
+  ok(await rp(`ntUnread()`)===2 && await rp(`$("bellN").textContent`)==="2", "Zähler an der Glocke nicht aktualisiert");
+  ok(await rp(`ntPage && ntKind==="all" && $("jPop").hidden && (!$("pvLayer") || $("pvLayer").hidden)`), "Wischen öffnet etwas oder wechselt den Reiter");
+  ok(await page.locator("#ntView .nt-sw[data-id=nt_a] .ag-row.nt.new").count()===0, "Zeile sieht nach dem Wischen noch ungelesen aus");
+  // nochmal nach rechts: wieder ungelesen
+  await swipeRow("nt_a", 1);
+  await page.waitForFunction(() => window.__rp && !window.__rp(`NT.items[0].read`), null, {timeout:3000}).catch(() => {});
+  ok(await rp(`ntUnread()`)===3, "Erneutes Wischen nach rechts markiert nicht wieder als ungelesen");
+  // nach links: gelöscht, Meldung mit Rückgängig
+  await swipeRow("nt_b", -1, "mitteilung-wischen-links");
+  await page.waitForFunction(() => !document.querySelector('#ntView .nt-sw[data-id="nt_b"]'), null, {timeout:3000}).catch(() => {});
+  ok(await page.locator("#ntView .nt-sw[data-id=nt_b]").count()===0 && await rp(`NT.items.length`)===2, "Wischen nach links löscht nicht");
+  ok(await visible("#toast [data-act=ntundo]"), "Kein Rückgängig nach dem Löschen");
+  ok(await rp(`JSON.parse(localStorage.getItem(ntKey())).items.length`)===2, "Löschen nicht gespeichert");
+  await shot("mitteilung-geloescht");
+  await click("#toast [data-act=ntundo]"); await page.waitForTimeout(200);
+  ok(await rp(`NT.items.map(function(x){ return x.id; }).join()`)==="nt_a,nt_b,nt_c", "Rückgängig stellt die Mitteilung nicht an ihrer Stelle wieder her");
+  ok(await page.locator("#ntView .nt-sw[data-id=nt_b]").count()===1, "Wiederhergestellte Mitteilung nicht in der Liste");
+  // kurzer Wisch: nichts passiert
+  const b = await page.locator("#ntView .nt-sw[data-id=nt_c]").boundingBox(), y = b.y + b.height/2;
+  await cdp.send("Input.dispatchTouchEvent", {type:"touchStart", touchPoints:[{x:200, y}]});
+  for(const d of [12, 30, 50]){ await cdp.send("Input.dispatchTouchEvent", {type:"touchMove", touchPoints:[{x:200 - d, y}]}); await page.waitForTimeout(40); }
+  await page.waitForTimeout(150); await cdp.send("Input.dispatchTouchEvent", {type:"touchEnd", touchPoints:[]}); await page.waitForTimeout(400);
+  ok(await rp(`NT.items.length===3 && !NT.items[2].read`), "Kurzer Wisch löst schon etwas aus");
+});
+
 await test("Mitteilungen: Foto/Ort aus einer Mitteilung schließen (Wischen, ×) führt zurück zu den Mitteilungen", async () => {
   await seed();
   const pull = () => page.evaluate(() => {

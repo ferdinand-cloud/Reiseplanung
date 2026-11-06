@@ -641,7 +641,17 @@ body.kb .pop:not(.kbpin),body.kb .acctpop:not(.kbpin){padding-bottom:var(--kbh,0
 .bell-n{position:absolute;top:-3px;right:-3px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#FF3B30;color:#fff;font:700 11px/19px var(--f-body);text-align:center;border:2px solid var(--sheet);box-sizing:content-box}
 .bell-n[hidden]{display:none}
 .nt-list .ag-row.nt{align-items:flex-start;justify-content:flex-start;gap:12px;padding:12px 14px}
-.nt-list .ag-row.nt + .ag-row.nt{border-top:1px solid var(--line)}
+.nt-list .ag-row.nt + .ag-row.nt,.nt-sw + .nt-sw{border-top:1px solid var(--line)}
+.nt-sw{position:relative;overflow:hidden}
+.nt-sw > .ag-row.nt{position:relative;z-index:1;touch-action:pan-y}
+.nt-sw.sw-on > .ag-row.nt{background:var(--sheet)}
+.nt-swl,.nt-swr{position:absolute;inset:0;display:flex;align-items:center;color:#fff;visibility:hidden}
+.nt-swl{background:var(--accent,#007AFF);justify-content:flex-start;padding-left:24px}
+.nt-swr{background:var(--del,#C4462F);justify-content:flex-end;padding-right:24px}
+.nt-swl svg,.nt-swr svg{width:24px;height:24px;transition:transform .15s ease}
+.nt-sw.far .nt-swl svg,.nt-sw.far .nt-swr svg,.nt-sw.far .nt-swdot{transform:scale(1.25)}
+.nt-swdot{width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s ease}
+.nt-sw.swl-on > .nt-swl,.nt-sw.swr-on > .nt-swr{visibility:visible}
 .nt-ic{width:32px;height:32px;flex:0 0 32px;border-radius:50%;display:grid;place-items:center;background:var(--chip);color:var(--ink)}
 .nt-ic svg{width:18px;height:18px}
 .nt.new .nt-ic{background:#007AFF;color:#fff}
@@ -4680,7 +4690,7 @@ var FX = (function(){
     var a = p.animate([{transform:"translate("+(r0.x - (nr.left - lr.left))+"px,"+(r0.y - (nr.top - lr.top))+"px)", width:r0.w+"px", height:r0.h+"px"}, {transform:"none", width:nr.width+"px", height:nr.height+"px"}], {duration:300, easing:"cubic-bezier(.3,1.25,.4,1)"});
     var end = function(){ if(p.parentNode) p.parentNode.removeChild(p); list.classList.remove("fx-seg"); }; a.onfinish = end; setTimeout(end, 500); }
   // horizontal scrollbare Bereiche, Eingaben, Karten und Zeilen mit eigener Wischgeste bleiben unberührt
-  function blocked(t, box){ if(t.closest("input,textarea,select,[contenteditable],canvas,.maplibregl-map,.wm-box,.swc,.stc,.grip,.pv-track,[role=tablist],[role=slider],.dc-reel")) return true;
+  function blocked(t, box){ if(t.closest("input,textarea,select,[contenteditable],canvas,.maplibregl-map,.wm-box,.swc,.stc,.nt-sw,.grip,.pv-track,[role=tablist],[role=slider],.dc-reel")) return true;
     for(var n = t; n && n!==box; n = n.parentElement){ if(n.scrollWidth > n.clientWidth + 2){ var ox = getComputedStyle(n).overflowX; if(ox==="auto" || ox==="scroll") return true; } } return false; }
   var sg = null;
   document.addEventListener("touchstart", function(e){ sg = null; if(e.touches.length!==1) return; var t = e.touches[0], box = boxOf(e.target); if(!box || blocked(e.target, box)) return;
@@ -6398,14 +6408,70 @@ var NTIC = {mention:"<circle cx=\"10\" cy=\"10\" r=\"3\"/><path d=\"M13 10v1.2a2
   invite:IC.mail,
   like:IC.like,
   join:"<circle cx=\"7\" cy=\"7\" r=\"2.6\"/><circle cx=\"13.5\" cy=\"7.5\" r=\"2.2\"/><path d=\"M2 16c.5-2.6 2.4-4 5-4s4.5 1.4 5 4M12.5 12c2.3 0 4 1.1 4.5 3.5\"/>"};
+/* eine Zeile; dahinter liegen die Wisch-Flächen: nach rechts = gelesen/ungelesen, nach links = löschen (mit Rückgängig) */
+function ntRow(x, cls){
+  return "<div class=\"nt-sw\" data-id=\""+esc(x.id)+"\"><span class=\"nt-swl\" aria-hidden=\"true\">"+(x.read ? "<i class=\"nt-swdot\"></i>" : ic("ok"))+"</span><span class=\"nt-swr\" aria-hidden=\"true\">"+ic("del")+"</span>"+
+    "<button type=\"button\" class=\"ag-row nt"+cls+(x.read ? "" : " new")+"\" data-act=\"ntgo\" data-v=\""+esc(x.id)+"\"><span class=\"nt-ic\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+(NTIC[x.type]||NTIC.comment)+"</svg></span>"+
+    "<span class=\"nt-t\"><b>"+esc(x.text)+"</b>"+(x.sub ? "<q>"+esc(x.sub)+"</q>" : "")+"<small>"+ntAgo(x.at)+"</small></span>"+(x.read ? "" : "<i class=\"nt-dot\" aria-label=\"neu\"></i>")+"</button></div>";
+}
+function ntRefresh(){ ntBadge(); if(ntPage) renderNt(); if(accView==="notifs" && $("acctPop") && !$("acctPop").hidden) openSettings(); }
+function ntSetRead(id, v){ var it = NT.items.filter(function(x){ return x.id===id; })[0]; if(!it) return; it.read = !!v; ntSave(); ntRefresh(); }
+var ntUndo = null, ntUndoT = null;
+function ntDel(id){
+  var i = -1; NT.items.forEach(function(x, k){ if(x.id===id) i = k; }); if(i < 0) return;
+  ntUndo = {it:NT.items[i], i:i}; NT.items.splice(i, 1); ntSave(); ntRefresh();
+  var el = $("toast"); el.innerHTML = "<span>Mitteilung gelöscht</span><button type=\"button\" data-act=\"ntundo\">Rückgängig</button>";
+  el.hidden = false; clearTimeout(toastTimer); clearTimeout(ntUndoT);
+  toastTimer = ntUndoT = setTimeout(function(){ el.hidden = true; ntUndo = null; }, 5000);
+}
+function ntUndoDel(){
+  var u = ntUndo; ntUndo = null; $("toast").hidden = true; if(!u || NT.items.some(function(x){ return x.id===u.it.id; })) return;
+  NT.items.splice(Math.min(u.i, NT.items.length), 0, u.it); NT.items.sort(function(a, b){ return b.at - a.at; }); ntSave(); ntRefresh();
+}
+/* Wischen auf einer Mitteilung: Zeile folgt dem Finger, ab 40 % Breite (oder schnellem Wisch) löst die Aktion aus */
+(function(){
+  var sw = null;
+  document.addEventListener("touchstart", function(e){
+    sw = null; if(e.touches.length!==1) return;
+    var b = e.target.closest && e.target.closest(".nt-sw > .ag-row.nt"); if(!b) return;
+    var t = e.touches[0]; if(t.clientX < 18 || t.clientX > innerWidth - 18) return;   // Ränder gehören iOS
+    sw = {w:b.parentNode, b:b, x:t.clientX, y:t.clientY, t:Date.now(), mode:null, dx:0, W:b.offsetWidth};
+  }, {passive:true});
+  document.addEventListener("touchmove", function(e){
+    if(!sw) return; if(e.touches.length!==1){ end(true); return; }
+    var t = e.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+    if(!sw.mode){ if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return; sw.mode = Math.abs(dx) > Math.abs(dy)*1.2 ? "h" : "v"; if(sw.mode==="h"){ sw.b.style.transition = "none"; sw.w.classList.add("sw-on"); } }
+    if(sw.mode!=="h") return;
+    if(e.cancelable) e.preventDefault();
+    sw.dx = Math.max(-sw.W, Math.min(sw.W, dx));
+    sw.b.style.transform = "translateX("+sw.dx+"px)";
+    sw.w.classList.toggle("swl-on", sw.dx > 0); sw.w.classList.toggle("swr-on", sw.dx < 0);
+    var far = Math.abs(sw.dx) > sw.W*.4; if(far!==sw.w.classList.contains("far")){ sw.w.classList.toggle("far", far); if(far && navigator.vibrate) navigator.vibrate(5); }
+  }, {passive:false});
+  function end(cancel){
+    var s0 = sw; sw = null; if(!s0 || s0.mode!=="h") return;
+    var id = s0.w.getAttribute("data-id"), fast = Math.abs(s0.dx) > 60 && Math.abs(s0.dx)/Math.max(1, Date.now() - s0.t) > .5;
+    var go = !cancel && (Math.abs(s0.dx) > s0.W*.4 || fast);
+    s0.b.style.transition = "transform .2s cubic-bezier(.2,.8,.2,1)";
+    if(go && s0.dx < 0){
+      s0.b.style.transform = "translateX(-100%)";
+      setTimeout(function(){ var h = s0.w.offsetHeight; s0.w.style.height = h+"px"; s0.w.offsetHeight; s0.w.style.transition = "height .18s ease"; s0.w.style.height = "0px"; }, 170);
+      setTimeout(function(){ ntDel(id); }, 360);
+    } else {
+      s0.b.style.transform = "";
+      setTimeout(function(){ s0.w.classList.remove("sw-on", "swl-on", "swr-on", "far"); s0.b.style.transition = ""; if(go) ntSetRead(id, s0.w.querySelector(".nt-swdot") ? false : true); }, 210);
+    }
+    // ein Wisch soll keinen Klick auslösen
+    var block = function(ev){ ev.stopPropagation(); ev.preventDefault(); document.removeEventListener("click", block, true); };
+    document.addEventListener("click", block, true); setTimeout(function(){ document.removeEventListener("click", block, true); }, 350);
+  }
+  document.addEventListener("touchend", function(){ end(false); }); document.addEventListener("touchcancel", function(){ end(true); });
+})();
 function notifsHTML(){
   var h = "<div class=\"ag-card nt-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Mitteilungen\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Mitteilungen</h3>";
   if(!NT.items.length) return h+"<p class=\"note\">Noch keine Mitteilungen. Hier erscheinen Kommentare in gemeinsamen Reisen, neue Follower, Einladungen und neue Mitreisende.</p></div>";
   h += "<div class=\"ag-grp nt-list\">";
-  NT.items.forEach(function(x){
-    h += "<button type=\"button\" class=\"ag-row nt"+(x.read ? "" : " new")+"\" data-act=\"ntgo\" data-v=\""+esc(x.id)+"\"><span class=\"nt-ic\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+(NTIC[x.type]||NTIC.comment)+"</svg></span>"+
-         "<span class=\"nt-t\"><b>"+esc(x.text)+"</b>"+(x.sub ? "<q>"+esc(x.sub)+"</q>" : "")+"<small>"+ntAgo(x.at)+"</small></span>"+(x.read ? "" : "<i class=\"nt-dot\" aria-label=\"neu\"></i>")+"</button>";
-  });
+  NT.items.forEach(function(x){ h += ntRow(x, ""); });
   h += "</div><div class=\"nt-foot\">"+(ntUnread() ? "<button type=\"button\" class=\"btn g s\" data-act=\"ntread\">Alle als gelesen markieren</button>" : "")+"<button type=\"button\" class=\"btn g s\" data-act=\"ntclear\">Alle entfernen</button></div></div>";
   return h;
 }
@@ -9405,8 +9471,7 @@ function renderNt(){
     list.forEach(function(x){
       var g = x.at >= t0 ? "Heute" : x.at >= t1 ? "Gestern" : x.at >= t7 ? "Diese Woche" : "Früher";
       if(g!==grp){ if(grp) h += "</div>"; grp = g; h += "<div class=\"nt-sec\">"+g+"</div><div class=\"ag-grp nt-list\">"; }
-      h += "<button type=\"button\" class=\"ag-row nt nt-"+esc(x.type)+(x.read ? "" : " new")+"\" data-act=\"ntgo\" data-v=\""+esc(x.id)+"\"><span class=\"nt-ic\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+(NTIC[x.type]||NTIC.comment)+"</svg></span>"+
-           "<span class=\"nt-t\"><b>"+esc(x.text)+"</b>"+(x.sub ? "<q>"+esc(x.sub)+"</q>" : "")+"<small>"+ntAgo(x.at)+"</small></span>"+(x.read ? "" : "<i class=\"nt-dot\" aria-label=\"neu\"></i>")+"</button>";
+      h += ntRow(x, " nt-"+esc(x.type));
     });
     h += "</div>";
   }
@@ -18778,6 +18843,7 @@ document.addEventListener("click", function(e){
     case "bell": closeMenus(); $("toast").hidden = true; if(ntPage) pageTop("ntView"); else openNtPage(); break;
     case "ntkind": ntKind = t.getAttribute("data-v"); renderNt(); break;
     case "ntgo": ntOpen(t.getAttribute("data-v")); break;
+    case "ntundo": ntUndoDel(); break;
     case "ntread": NT.items.forEach(function(x){ x.read = true; }); ntSave(); ntBadge(); if(ntPage) renderNt(); else openSettings(); break;
     case "ntclear": NT.items = []; ntSave(); ntBadge(); ntKind = "all"; if(ntPage) renderNt(); else openSettings(); break;
     case "accview": accGo(t.getAttribute("data-v")); unameMsg = ""; openSettings(); var fi = $(accView==="search" ? "frQ" : "unIn"); if(fi && accView!=="main") fi.focus(); break;
