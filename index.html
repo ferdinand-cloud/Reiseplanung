@@ -4978,6 +4978,8 @@ function pubOf(M){
     Object.keys(N0).forEach(function(pid){ if(c.notes) delete c.notes[pid]; });
     Object.keys(c.photos||{}).forEach(function(pid){ c.photos[pid] = (c.photos[pid]||[]).filter(function(x){ return !H0[x]; }); if(!c.photos[pid].length) delete c.photos[pid]; });
   }
+  // Titelbild nur weitergeben, wenn das Foto für Beobachter sichtbar ist (sonst sehen sie das automatische)
+  if(c.cover && c.cover.ph){ var cvok = false; Object.keys(c.photos||{}).forEach(function(pid){ if((c.photos[pid]||[]).indexOf(c.cover.ph)>-1) cvok = true; }); if(!cvok) delete c.cover; }
   delete c.privP; delete c.privN; delete c.privPh; delete c.privTo; delete c.tickets; delete c.stayB; // Tickets und Buchungsdaten nur für Mitreisende
   return c;
 }
@@ -9597,7 +9599,9 @@ function closeProfile(){ if(!profOpen) return; profOpen = false; wmStop(); zRend
 /* Titelbild einer Reise: gewähltes Foto, nur Buchstaben oder automatisch (neuestes Foto).
    Mitreisende speichern die Wahl in der Reise (für alle gleich), Beobachter nur auf ihrem Gerät. */
 var CV_COLS = ["#0A84FF","#5E5CE6","#BF5AF2","#FF375F","#FF9F0A","#30B0C7","#34C759","#8E8E93"];
-function coverSet(id){ var t = S.trips[id]; if(!t) return null; if(isViewerOf(id)){ try { return JSON.parse(lsGet("rp-cover-"+id)||"null"); } catch(e){ return null; } } return t.cover || null; }
+// Beobachter: eigene Wahl auf dem Gerät hat Vorrang, sonst gilt das Titelbild der Reisenden
+function coverOwn(id){ if(!isViewerOf(id)) return null; try { return JSON.parse(lsGet("rp-cover-"+id)||"null"); } catch(e){ return null; } }
+function coverSet(id){ var t = S.trips[id]; if(!t) return null; return coverOwn(id) || t.cover || null; }
 function tripPhotos(id){ var t = S.trips[id], ps = (t && t.photos) || {}, out = []; Object.keys(ps).forEach(function(k){ (ps[k]||[]).forEach(function(x){ if(out.indexOf(x) < 0) out.push(x); }); }); return out; }
 function tripCover(id){ var c = coverSet(id), all = tripPhotos(id); if(c && c.txt) return null; if(c && c.ph && all.indexOf(c.ph) > -1) return c.ph; return all.length ? all[all.length-1] : null; }
 function tripInitials(n){ var w = String(n||"?").trim().split(/[\s\-–]+/).filter(Boolean); return (w.length > 1 ? w[0][0]+w[1][0] : (w[0]||"?")[0]).toUpperCase(); }
@@ -9611,7 +9615,7 @@ function openPfMore(id, btn){
   var t = S.trips[id]; if(!t) return; var c = coverSet(id) || {}, nph = tripPhotos(id).length;
   var I = function(d){ return "<span class=\"ai\"><svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"+d+"</svg></span>"; };
   var row = function(act, ic, tx, sub, v, on){ return "<button type=\"button\" role=\"menuitem\" data-act=\""+act+"\" data-trip=\""+esc(id)+"\""+(v ? " data-v=\""+v+"\"" : "")+">"+ic+"<span class=\"cm-t\"><b>"+tx+"</b>"+(sub?"<small>"+sub+"</small>":"")+"</span>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>"; };
-  var cvNow = c.ph ? "Eigenes Foto" : c.txt ? "Buchstaben "+esc(tripInitials(t.name)) : "Automatisch: neuestes Foto";
+  var cvNow = isViewerOf(id) && !coverOwn(id) && t.cover ? "Wie von den Reisenden gewählt" : c.ph ? "Eigenes Foto" : c.txt ? "Buchstaben "+esc(tripInitials(t.name)) : "Automatisch: neuestes Foto";
   var h = row("pfcvopen", I("<rect x=\"3\" y=\"4\" width=\"14\" height=\"12\" rx=\"2\"/><circle cx=\"7.5\" cy=\"8.5\" r=\"1.4\"/><path d=\"M3.5 14.5l4-4 3 3 2-2 4 3.5\"/>"), "Titelbild ändern", cvNow);
   if(!isViewerOf(id)){
     h += row("pfedit", I("<path d=\"M12.8 4.2l3 3L7.5 15.5H4.5v-3z\"/><path d=\"M11 6l3 3\"/>"), "Reise bearbeiten", "Name, Zeitraum, Hotels, Orte");
