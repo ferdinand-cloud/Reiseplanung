@@ -1360,6 +1360,25 @@ await test("Profil: Kacheln mit ⋯-Menü, Titelbild wählen, Neue Reise als Kac
   ok(!(await visible("#profView")) && await rp(`T().name==="Porto"`), "Nach dem Anlegen nicht auf der Karte");
 });
 
+await test("Titelbild der Reisenden gilt auch für Beobachter, private Fotos bleiben verborgen", async () => {
+  await seed();
+  const r = await rp(`(function(){ var t = S.trips.t_test, all = tripPhotos("t_test"), first = all[0], last = all[all.length-1];
+    t.cover = {ph:first}; META.t_test = {owner:"u_o", members:["u_o"], memberEmails:{}, invites:[], viewers:["u_me"], viewInvites:[]};
+    try { localStorage.removeItem("rp-cover-t_test"); } catch(e){}
+    var a = isViewerOf("t_test") && all.length > 1 && first!==last && tripCover("t_test")===first;
+    lsSet("rp-cover-t_test", JSON.stringify({ph:last})); var b = tripCover("t_test")===last;
+    localStorage.removeItem("rp-cover-t_test"); var c = tripCover("t_test")===first;
+    var d = (pubOf(t).cover||{}).ph===first;
+    t.privPh = {}; t.privPh[first] = 1; var e = pubOf(t).cover===undefined;
+    delete t.privPh; delete t.cover; delete META.t_test; return [a,b,c,d,e].join(","); })()`);
+  const [a,b,c,d,e] = r.split(",");
+  ok(a==="true", "Beobachter sieht nicht das von den Reisenden gewählte Titelbild");
+  ok(b==="true", "Eigene Wahl des Beobachters hat keinen Vorrang");
+  ok(c==="true", "Ohne eigene Wahl fällt der Beobachter nicht auf das Titelbild der Reisenden zurück");
+  ok(d==="true", "Titelbild fehlt im öffentlichen Teil der Reise");
+  ok(e==="true", "Privates Foto als Titelbild landet im öffentlichen Teil der Reise");
+});
+
 await test("Titelbild-Auswahl: viele Fotos als sauberes Raster, nur sichtbare geladen", async () => {
   await seed();
   await rp(`(function(){ var t = S.trips.t_test, ids = []; for(var i = 0; i < 90; i++){ var id = "phx"+i; ids.push(id); PHC[id] = PHC["ph_"+["a","b","c"][i%3]]; } t.photos.p4 = t.photos.p4.concat(ids); PROF = {name:"tester"}; openProfile(); })()`);
