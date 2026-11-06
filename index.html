@@ -2363,6 +2363,10 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .dc-bar .dc-src button{white-space:nowrap}
 .dc-tgt{flex:0 1 auto;max-width:52%;display:flex;align-items:center;gap:7px;height:36px;padding:0 10px 0 8px;border:.5px solid var(--glass-bd);border-radius:999px;background:var(--glass-hi);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);color:var(--ink);font:600 14px/1 var(--f-body);cursor:pointer;box-shadow:var(--sh1)}
 .dc-tgt > svg{width:15px;height:15px;flex:0 0 15px;color:var(--muted)}
+.dc-cat{position:relative;flex:0 0 36px;width:36px;height:36px;padding:0;display:grid;place-items:center;border:.5px solid var(--glass-bd);border-radius:50%;background:var(--glass-hi);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);color:var(--ink);cursor:pointer;box-shadow:var(--sh1)}
+.dc-cat svg{width:18px;height:18px}
+.dc-cat.on{background:color-mix(in srgb,var(--accent) 20%,var(--glass-hi));border-color:color-mix(in srgb,var(--accent) 55%,transparent);color:var(--accent)}
+.dc-cat i{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--accent);color:#fff;font:700 10px/16px var(--f-body);font-style:normal;text-align:center}
 .dc-tgn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dc-tgd{width:20px;height:20px;flex:0 0 20px;border-radius:50%;background:var(--cc);color:#fff;display:grid;place-items:center;font-size:11px}
 .dc-tgd.z{border-radius:6px}.dc-tgd svg{width:13px;height:13px}
@@ -4499,6 +4503,7 @@ var IC = {
   mail:"<rect x=\"2.5\" y=\"4.5\" width=\"15\" height=\"11\" rx=\"2\"/><path d=\"M2.5 6l7.5 5 7.5-5\"/>", // Einladung
   sync:"<path d=\"M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2\"/>", // Abgleichen
   sort:"<path d=\"M6.5 16.5v-13M3.5 6.5l3-3 3 3M13.5 3.5v13M10.5 13.5l3 3 3-3\"/>", // Sortieren
+  filter:"<path d=\"M3 5h14M5.5 10h9M8 15h4\"/>", // Filtern (Kategorien)
   camera:"<path d=\"M3 6.5h3l1.5-2h5l1.5 2h3v9.5H3z\"/><circle cx=\"10\" cy=\"11\" r=\"3\"/>", // Foto
   again:"<path d=\"M4 10a6 6 0 1 0 2-4.5M4 4v3h3\"/>", // Nochmal besuchen, wieder aufnehmen
   back:"<path d=\"M12 5l-5 5 5 5\"/>", // Zurück (in die Wunschliste)
@@ -6558,7 +6563,7 @@ function recWipe(){ if(!fbDb || !acct.user) return; var me = acct.user.uid;
   recCol(me).get().then(function(qs){ qs.docs.forEach(function(d){ d.ref.delete(); }); lsSet("rp-recs-"+me, "{}"); toast("Deine Empfehlungen sind nicht mehr für Freunde sichtbar.", false); }, function(){}); }
 
 /* ---------- Entdecken: Empfehlungen von Freunden am Reiseziel ---------- */
-var dcPage = false, dcScope = lsGet("rp-dcscope") || "here", dcSrc = lsGet("rp-dcsrc") || "all", DC = {items:[], byKey:{}, at:0, busy:false, err:""};
+var dcPage = false, dcScope = lsGet("rp-dcscope") || "here", dcSrc = lsGet("rp-dcsrc") || "all", dcCat = dcCatLoad(), DC = {items:[], byKey:{}, at:0, busy:false, err:""};
 function openDcPage(){ closeMenus(); closeChPage(); closeGsPage(); closeProfile(); closeNtPage(); closeLsPage(); dcPage = true; renderDc(); $("dcView").hidden = false; navActive(); if(Date.now() - DC.at > 120000) dcLoad(); }
 function closeDcPage(){ if(!dcPage) return; dcPage = false; $("dcView").hidden = true; closeJpMore(); navActive(); }
 function dcLoad(){
@@ -6728,13 +6733,25 @@ function dcDemo(){
   });
   return (DCDEMO = out);
 }
-function dcList(){
+/* Entdecken nach Kategorien filtern (Mehrfachauswahl, leer = alle); kombinierbar mit Reise/Ziel/Inspiration und Alle/Freunde */
+function dcCatLoad(){ var o = {}; (lsGet("rp-dccat") || "").split(",").forEach(function(k){ if(CATNAME[k]) o[k] = 1; }); return o; }
+function dcCatSel(){ return CATS.map(function(c){ return c[0]; }).filter(function(k){ return dcCat[k]; }); }
+function dcCatOk(c){ var s = dcCatSel(); return !s.length || !!dcCat[CATNAME[c] ? c : "sight"]; }
+function dcCatSet(k){ if(!k) dcCat = {}; else if(dcCat[k]) delete dcCat[k]; else dcCat[k] = 1; lsSet("rp-dccat", dcCatSel().join(",")); }
+function dcCatMenu(){
+  var sel = dcCatSel(), all = dcList(true), cc = {}; all.forEach(function(r){ var k = CATNAME[r.c] ? r.c : "sight"; cc[k] = (cc[k]||0) + 1; });
+  var row = function(v, ico, n, cnt, on){ return "<button type=\"button\" class=\"fg-keep\" role=\"menuitemcheckbox\" data-act=\"dccat\" data-v=\""+v+"\" aria-checked=\""+on+"\"><span class=\"ai\">"+ico+"</span><span class=\"cm-t\"><b>"+esc(n)+"</b></span><small class=\"ls-n\">"+cnt+"</small>"+(on ? "<b class=\"ck\">✓</b>" : "")+"</button>"; };
+  return "<div class=\"vp-h\">Kategorien</div>"+row("", ic("filter"), "Alle Kategorien", all.length, !sel.length)+
+    CATS.filter(function(c){ return cc[c[0]] || dcCat[c[0]]; }).map(function(c){ return row(c[0], "<span style=\"display:grid;color:"+catCol(c[0])+"\">"+icon(c[0])+"</span>", c[1], cc[c[0]]||0, !!dcCat[c[0]]); }).join("");
+}
+function dcList(allCats){
   var tg = dcTgt(), list = DC.items.slice(), hid = pubHidden();
   if(dcSrc==="all") PUB.items.forEach(function(r){ if(!hid[r.pid] && !DC.items.some(function(x){ return x.key===r.key; })) list.push(r); });
   if(!FR.friends.length && dcSrc!=="all") list = [];
   if(dcDemoOn()) dcDemo().forEach(function(r){ DC.byKey[r.key] = r; if(dcSrc==="all" || !r.pub) list.push(r); });
   if(tg && tg.z) list = list.filter(function(r){ return r.la && zielHas(tg.t, {la:+r.la, lo:+r.lo}); });
   else if(tg && tg.C) list = list.filter(function(r){ return r.la && dist(tg.C, r) < 40000; });
+  if(!allCats) list = list.filter(function(r){ return dcCatOk(r.c); });
   list.sort(function(a, b){ var ra = a.hl ? 0 : (a.rating ? rateRank(a.rating) : 99), rb = b.hl ? 0 : (b.rating ? rateRank(b.rating) : 99); return ra - rb || (b.at||0) - (a.at||0); });
   // derselbe Ort von mehreren: ein Vorschlag, „auch empfohlen von …“
   var kept = []; list.forEach(function(r){ var k = r.la ? kept.filter(function(x){ return x.la && samePl(x, r); })[0] : null; if(k){ if(k.by!==r.by && !k.also.some(function(a){ return a.by===r.by; })) k.also.push(r); } else { r.also = []; kept.push(r); } });
@@ -6793,14 +6810,15 @@ function renderDc(){
   var el = $("dcView"); if(!el) return;
   var tg = dcTgt(), tc = tg ? tripColor(tg.id) : "var(--accent)";
   var head = "<div class=\"dc-bar\"><button type=\"button\" class=\"dc-tgt\" data-act=\"dctgt\" aria-haspopup=\"menu\" aria-label=\"Vorschläge für: "+esc(dcTgtName(tg))+"\"><span class=\"dc-tgd"+(tg ? (tg.z ? " z" : "") : " in")+"\" style=\"--cc:"+tc+"\">"+(tg ? (tg.z ? ZBM : "") : ic("compass"))+"</span><span class=\"dc-tgn\">"+esc(dcTgtName(tg))+"</span>"+dcSV("<path d=\"m7 10 5 5 5-5\"/>")+"</button>"+
+    (function(){ var cs = dcCatSel(); return "<button type=\"button\" class=\"dc-cat"+(cs.length ? " on" : "")+"\" data-act=\"dccatpick\" aria-haspopup=\"menu\" aria-label=\"Kategorien: "+esc(!cs.length ? "alle" : cs.map(function(k){ return CATNAME[k]; }).join(", "))+"\" title=\"Nach Kategorien filtern\">"+(cs.length===1 ? icon(cs[0]) : ic("filter"))+(cs.length > 1 ? "<i>"+cs.length+"</i>" : "")+"</button>"; })()+
     "<div class=\"pf-seg dc-src\" role=\"tablist\" aria-label=\"Quelle\"><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"all\" aria-selected=\""+(dcSrc==="all")+"\">"+ic("globe", "ii")+" Alle</button><button type=\"button\" role=\"tab\" data-act=\"dcsrc\" data-v=\"friends\" aria-selected=\""+(dcSrc==="friends")+"\">"+ic("friends", "ii")+" Freunde</button></div></div>";
   if(!acct.user){ DCSIG = ""; el.innerHTML = "<div class=\"dc-page\">"+head+"<p class=\"note nt-empty\">Melde dich an, um Vorschläge zu sehen.</p></div>"; return; }
   if(dcSrc==="all") pubLoad();
   var list = dcList(), busy = DC.busy || (dcSrc==="all" && PUB.busy);
-  var sig = [dcSrc, dcScope, tg && tg.id, list.map(function(r){ return r.key+":"+r.also.length; }).join("|"), !list.length && busy, PUB.err, FR.friends.length].join("#"), f = $("dcFeed");
+  var sig = [dcSrc, dcScope, tg && tg.id, dcCatSel().join(","), list.map(function(r){ return r.key+":"+r.also.length; }).join("|"), !list.length && busy, PUB.err, FR.friends.length].join("#"), f = $("dcFeed");
   DCL = list;
   if(f && sig===DCSIG){ list.forEach(function(r){ dcReelRefresh(r.key); }); return; }
-  var keep = f && DCSIG.split("#").slice(0, 3).join("#")===sig.split("#").slice(0, 3).join("#") ? f.scrollTop : 0;
+  var keep = f && DCSIG.split("#").slice(0, 4).join("#")===sig.split("#").slice(0, 4).join("#") ? f.scrollTop : 0;
   DCSIG = sig;
   var h = "<div class=\"dc-page\">"+head+"<div class=\"dc-feed\" id=\"dcFeed\">";
   list.forEach(function(r){
@@ -6809,8 +6827,10 @@ function renderDc(){
       (n ? "<div class=\"dc-ph\"></div>"+(n > 1 ? "<span class=\"dc-pn\">1/"+n+"</span>" : "") : "<div class=\"dc-big\">"+icon(r.c)+"</div>")+
       "<div class=\"dc-grad\"></div><div class=\"dc-info"+(DCX[r.key] ? " open" : "")+"\">"+dcInfoHTML(r)+"</div><div class=\"dc-side\">"+dcSideHTML(r)+"</div></div></article>";
   });
-  var msg = busy && !list.length ? "Lädt Vorschläge …" : !list.length ? (dcSrc!=="all" && !FR.friends.length ? "Noch keine Freunde. Folgt euch gegenseitig – dann erscheinen ihre veröffentlichten Orte hier." : tg ? "Für „"+dcTgtName(tg)+"“ gibt es noch keine Vorschläge"+(dcSrc==="friends" ? " von Freunden" : "")+". Schau unter „Inspiration“." : "Noch keine Vorschläge.") : "Das war’s"+(tg ? " für „"+dcTgtName(tg)+"“" : "")+".";
+  var cf = dcCatSel().length > 0;
+  var msg = busy && !list.length ? "Lädt Vorschläge …" : !list.length && cf ? "Keine Vorschläge in "+(dcCatSel().length===1 ? "der Kategorie „"+CATNAME[dcCatSel()[0]]+"“" : "diesen Kategorien")+(tg ? " für „"+dcTgtName(tg)+"“" : "")+"." : !list.length ? (dcSrc!=="all" && !FR.friends.length ? "Noch keine Freunde. Folgt euch gegenseitig – dann erscheinen ihre veröffentlichten Orte hier." : tg ? "Für „"+dcTgtName(tg)+"“ gibt es noch keine Vorschläge"+(dcSrc==="friends" ? " von Freunden" : "")+". Schau unter „Inspiration“." : "Noch keine Vorschläge.") : "Das war’s"+(tg ? " für „"+dcTgtName(tg)+"“" : "")+".";
   h += "<div class=\"dc-end\"><p class=\"note\">"+esc(msg)+(PUB.err && dcSrc==="all" ? "<br>"+esc(PUB.err) : "")+"</p><div class=\"pf-acts\">"+
+    (cf ? "<button type=\"button\" class=\"btn g\" data-act=\"dccat\" data-v=\"\">"+ic("filter", "ii")+" Alle Kategorien</button>" : "")+
     (dcSrc!=="all" && !FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"openfriends\">Leute finden</button>" : "")+
     (tg ? "<button type=\"button\" class=\"btn g\" data-act=\"dcscopeset\" data-v=\"all\">"+ic("compass", "ii")+" Inspiration</button>" : "")+
     (tg && FR.friends.length ? "<button type=\"button\" class=\"btn g\" data-act=\"askopen\""+(tg.z ? " data-z=\""+esc(tg.id)+"\"" : "")+">Freunde nach Tipps fragen</button>" : "")+
@@ -18701,6 +18721,8 @@ document.addEventListener("click", function(e){
     case "dcrate": dcRatings(t.getAttribute("data-k")); break;
     case "dcmore": dcMore(t.getAttribute("data-k"), t); break;
     case "dctgt": dcTgtMenu(t); break;
+    case "dccatpick": jpPopover("dcc", t, dcCatMenu(), "dccat"); break;
+    case "dccat": dcCatSet(t.getAttribute("data-v")); var dcf = $("dcFeed"); if(dcf) dcf.scrollTop = 0; renderDc(); var dcm = $("jpMenu"); if(dcm && dcm.getAttribute("data-kind")==="dccat") dcm.innerHTML = dcCatMenu(); break;
     case "dcscopeset": dcSetScope(t.getAttribute("data-v")); break;
     case "dcplanm": var dpk = t.getAttribute("data-k"); setTimeout(function(){ var b = dcMoreBtn(dpk); if(b) jpPopover("dc", b, "<div class=\"dc-dh\">Einplanen am …</div>"+days().map(function(D){ return "<button type=\"button\" data-act=\"dcday\" data-k=\""+esc(dpk)+"\" data-day=\""+D.key+"\" role=\"menuitem\"><span class=\"ai\" style=\"background:"+dayColor(D)+";color:#fff;font-weight:700\">"+D.n+"</span><span>"+esc(D.lbl)+"</span></button>"; }).join(""), "dcplan"); }, 0); break;
     case "dcsend": var dsk = t.getAttribute("data-k"); setTimeout(function(){ dcSendMenu(dsk); }, 0); break;
