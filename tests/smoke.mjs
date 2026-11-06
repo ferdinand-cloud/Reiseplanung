@@ -972,6 +972,42 @@ await test("Entdecken: Reels-Feed mit Auswahl Reise/Ziel/Inspiration, Like, Übe
   await rp(`fbDb = null; dcScope = "here"; closeDcPage(); true`);
 });
 
+await test("Entdecken: nach Kategorien filtern (Mehrfachauswahl, kombinierbar mit Reise/Inspiration)", async () => {
+  await seed();
+  await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FR.friends = [{uid:"u_anna", name:"anna"}]; lsSet("rp-dcdemo", "0"); dcCat = {}; lsSet("rp-dccat", "");
+    var mk = function(k, n, c, la, lo){ return {key:"u_anna/"+k, by:"u_anna", fname:"anna", n:n, c:c, la:la, lo:lo, rating:1, photos:[], note:"", cm:[], at:Date.now()}; };
+    DC.items = [mk("a", "Katz Deli", "essen", 40.7223, -73.9874), mk("b", "Café Lalo", "cafe", 40.7834, -73.9781), mk("c", "Empire State", "sight", 40.7484, -73.9857), mk("d", "Pastéis de Belém", "cafe", 38.6975, -9.2032)];
+    DC.byKey = {}; DC.items.forEach(function(r){ DC.byKey[r.key] = r; }); DC.at = Date.now(); dcSrc = "friends"; dcScope = "here"; PUB.items = []; DCSIG = ""; openDcPage(); true`);
+  await page.waitForTimeout(300);
+  ok(await page.locator("#dcView .dc-reel").count()===3, "Ohne Filter nicht alle Vorschläge der Reise");
+  await page.waitForFunction(() => { const v = document.getElementById("dcView"); return !v.getAnimations({subtree:true}).some(a => a.playState==="running"); }, null, {timeout:3000}).catch(() => {});
+  const bar = await page.evaluate(() => { const b = document.querySelector("#dcView .dc-bar").getBoundingClientRect(), c = document.querySelector("#dcView .dc-cat").getBoundingClientRect(), s = document.querySelector("#dcView .dc-src").getBoundingClientRect(), t = document.querySelector("#dcView .dc-tgt").getBoundingClientRect();
+    return {t:[t.left,t.right], c:[c.left,c.right], s:[s.left,s.right], b:b.right, ok: c.left >= t.right - 1 && c.right <= s.left + 1 && s.right <= b.right + 1 && b.right <= innerWidth, h: b.height}; });
+  ok(bar.ok && bar.h <= 40, "Kategorie-Knopf passt nicht in die Leiste: "+JSON.stringify(bar));
+  ok(await rp(`document.querySelector("#dcView .dc-cat path").getAttribute("d")==="M3 5h14M5.5 10h9M8 15h4"`), "Kategorie-Knopf ohne Filter-Symbol");
+  await click("#dcView [data-act=dccatpick]");
+  const mt = await page.locator("#jpMenu").innerText();
+  ok(mt.includes("Alle Kategorien") && mt.includes("Café") && mt.includes("Restaurant") && mt.includes("Sehenswürdigkeit") && !mt.includes("Bar"), "Kategorie-Menü zeigt nicht nur vorhandene Kategorien: "+mt);
+  await click("#jpMenu [data-act=dccat][data-v=cafe]");
+  ok(await page.locator("#jpMenu").count()===1, "Menü schließt nach einer Auswahl (Mehrfachauswahl)");
+  ok(await page.locator("#dcView .dc-reel").count()===1 && (await page.locator("#dcView .dc-reel").innerText()).includes("Café Lalo"), "Kategorie-Filter greift nicht");
+  await click("#jpMenu [data-act=dccat][data-v=sight]");
+  ok(await page.locator("#dcView .dc-reel").count()===2 && await page.locator("#dcView .dc-cat.on i").innerText()==="2", "Zweite Kategorie nicht kombiniert oder Anzahl fehlt");
+  ok(await page.locator("#jpMenu [data-act=dccat][aria-checked=true]").count()===2, "Gewählte Kategorien nicht abgehakt");
+  await shot("entdecken-kategorien");
+  await rp(`closeJpMore(); true`);
+  ok(await rp(`lsGet("rp-dccat")==="cafe,sight"`), "Kategorie-Auswahl nicht gemerkt");
+  // kombiniert mit Inspiration: Café in Lissabon kommt dazu
+  await rp(`dcSetScope("all"); true`); await page.waitForTimeout(200);
+  ok(await page.locator("#dcView .dc-reel").count()===3 && (await page.locator("#dcView .dc-feed").innerText()).includes("Pastéis"), "Kategorie-Filter nicht mit Inspiration kombinierbar");
+  ok(await page.evaluate(() => { const s = document.querySelector("#dcView .dc-src").getBoundingClientRect(), c = document.querySelector("#dcView .dc-cat").getBoundingClientRect(); return s.right <= innerWidth - 8 && c.right <= s.left + 1; }), "Leiste ragt bei „Inspiration“ über den Rand");
+  await rp(`dcCatSet(""); dcCatSet("bar"); renderDc(); true`); await page.waitForTimeout(200);
+  ok(await page.locator("#dcView .dc-reel").count()===0 && (await page.locator("#dcView .dc-end").innerText()).includes("Kategorie „Bar“"), "Leerer Filter ohne Hinweis");
+  await click("#dcView .dc-end [data-act=dccat]");
+  ok(await page.locator("#dcView .dc-reel").count()===4 && await page.locator("#dcView .dc-cat.on").count()===0, "„Alle Kategorien“ setzt Filter nicht zurück");
+  await rp(`dcScope = "here"; lsSet("rp-dcscope", "here"); closeDcPage(); true`);
+});
+
 await test("Symbole: gleiche Funktion = gleiches Symbol (Schicken, Karte, Merken), keine Emojis in Menüs", async () => {
   await seed();
   const IC = await rp(`acct.user = acct.user || {uid:"u_me", email:"me@test.de"}; FR.friends = [{uid:"u_anna", name:"anna"}]; IC`);
@@ -4404,6 +4440,16 @@ async function oneRow(where){
   ok(r.right - r.cam.right < 20, where+": Plus nicht am rechten Rand ("+Math.round(r.cam.right)+" / "+Math.round(r.right)+")");
   ok(r.ctrl.top >= r.tb.bottom, where+": Knopfspalte ragt in die Kopfleiste");
 }
+await test("Kartenknöpfe: kein Seitenleisten-Knopf mehr, Gruppe ohne Lücke", async () => {
+  await seed(); await page.waitForTimeout(300);
+  ok(await page.evaluate(() => !document.getElementById("sideBtn")), "Seitenleisten-Knopf ist noch da");
+  const g = await page.evaluate(() => { const b = document.getElementById("locBtn"), cg = b.parentElement; const vis = [...cg.children].filter(x => !x.hidden && x.getBoundingClientRect().height); let gap = 0; for(let i=1;i<vis.length;i++) gap = Math.max(gap, vis[i].getBoundingClientRect().top - vis[i-1].getBoundingClientRect().bottom); return {first: vis[0] && vis[0].id, gap, n: vis.length}; });
+  ok(g.first === "locBtn", "Standort-Knopf ist nicht oben in der Gruppe: "+JSON.stringify(g));
+  ok(g.gap <= 1, "Lücke in der Knopfgruppe: "+JSON.stringify(g));
+  await rp(`setSheet("min")`); await page.waitForTimeout(200);
+  await rp(`setSheet("mid")`); await page.waitForTimeout(200);
+  ok(await rp(`sheetState==="mid"`), "Planung lässt sich ohne den Knopf nicht mehr steuern");
+});
 await test("Querformat: Planung als Seitenleiste, Kartenknöpfe neben der Leiste und außerhalb der Notch", async () => {
   await seed(); await page.waitForTimeout(300);
   ok(await rp(`desktop.matches`), "Querformat nutzt nicht die Seitenleiste");
