@@ -4404,6 +4404,16 @@ async function oneRow(where){
   ok(r.right - r.cam.right < 20, where+": Plus nicht am rechten Rand ("+Math.round(r.cam.right)+" / "+Math.round(r.right)+")");
   ok(r.ctrl.top >= r.tb.bottom, where+": Knopfspalte ragt in die Kopfleiste");
 }
+await test("Kartenknöpfe: kein Seitenleisten-Knopf mehr, Gruppe ohne Lücke", async () => {
+  await seed(); await page.waitForTimeout(300);
+  ok(await page.evaluate(() => !document.getElementById("sideBtn")), "Seitenleisten-Knopf ist noch da");
+  const g = await page.evaluate(() => { const b = document.getElementById("locBtn"), cg = b.parentElement; const vis = [...cg.children].filter(x => !x.hidden && x.getBoundingClientRect().height); let gap = 0; for(let i=1;i<vis.length;i++) gap = Math.max(gap, vis[i].getBoundingClientRect().top - vis[i-1].getBoundingClientRect().bottom); return {first: vis[0] && vis[0].id, gap, n: vis.length}; });
+  ok(g.first === "locBtn", "Standort-Knopf ist nicht oben in der Gruppe: "+JSON.stringify(g));
+  ok(g.gap <= 1, "Lücke in der Knopfgruppe: "+JSON.stringify(g));
+  await rp(`setSheet("min")`); await page.waitForTimeout(200);
+  await rp(`setSheet("mid")`); await page.waitForTimeout(200);
+  ok(await rp(`sheetState==="mid"`), "Planung lässt sich ohne den Knopf nicht mehr steuern");
+});
 await test("Querformat: Planung als Seitenleiste, Kartenknöpfe neben der Leiste und außerhalb der Notch", async () => {
   await seed(); await page.waitForTimeout(300);
   ok(await rp(`desktop.matches`), "Querformat nutzt nicht die Seitenleiste");

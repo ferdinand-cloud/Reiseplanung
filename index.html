@@ -4186,10 +4186,9 @@ body.ro .navtools [data-act="addpop"]{display:none}
   body:not(.side-off) .top .trip span{display:none} /* neben der Planung ist es eng: nur der Reisename */
   body.side-off .top{left:0} /* der Ausklapp-Griff sitzt mittig am Rand, oben ist frei */
   .tbav .tbimg{width:26px;height:26px}
-  /* Knopfspalte: etwas kleiner, damit sie unter der Kopfleiste in die Höhe passt; Ein-/Ausklappen gibt es schon am Rand der Planung */
+  /* Knopfspalte: etwas kleiner, damit sie unter der Kopfleiste in die Höhe passt */
   .ctrl{gap:6px}
   .cg button{width:40px;height:40px}
-  #sideBtn{display:none}
   .grab,.body{padding-right:16px}
   .layers{max-height:none}
   .toast{max-width:min(520px,calc(100% - 24px))}
@@ -4391,7 +4390,6 @@ body.profopen #sheet,body.profopen #sheetOpen,body.profopen .ctrl,body.profopen 
   <button type="button" id="compass" aria-label="Karte nach Norden ausrichten" title="Nach Norden ausrichten"><svg viewBox="0 0 20 20"><path d="M10 2l3.2 8H6.8z" fill="var(--c1)"/><path d="M10 18l-3.2-8h6.4z" fill="currentColor" opacity=".55"/></svg></button>
   <button type="button" id="layersBtn" aria-label="Kartenebenen" aria-expanded="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 3l7 4-7 4-7-4z"/><path d="M3 11l7 4 7-4"/></svg></button></div>
   <div class="cg">
-  <button type="button" id="sideBtn" aria-label="Planung ein- oder ausklappen" aria-expanded="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M8 3.5v13"/></svg></button>
   <button type="button" id="locBtn" aria-label="Meinen Standort zeigen" aria-pressed="false"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M17.6 2.4 2.9 8.7c-.6.3-.5 1.1.1 1.3l5.6 1.6 1.6 5.6c.2.6 1 .7 1.3.1l6.3-14.7c.2-.5-.3-1-.8-.8z"/></svg></button>
   <button type="button" id="ghostBtn" aria-pressed="false" aria-label="Privatsphäre-Modus" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17.5V9a5 5 0 0 1 10 0v8.5l-1.7-1.3-1.6 1.3-1.7-1.3-1.7 1.3-1.6-1.3z"/><circle cx="8" cy="9" r=".9" fill="currentColor"/><circle cx="12" cy="9" r=".9" fill="currentColor"/></svg></button>
   <button type="button" id="zfit" aria-label="Tagesroute zeigen"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="6"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3"/></svg></button></div>
@@ -15751,8 +15749,6 @@ function syncSide(){
   var open = planOpen();
   if(lastPlanOpen!==null && open!==lastPlanOpen && (tab==="wish" || tab==="stay") && !layers.wish && typeof scheduleOverlay==="function") scheduleOverlay();
   lastPlanOpen = open;
-  $("sideBtn").setAttribute("aria-expanded", open);
-  $("sideBtn").setAttribute("aria-label", open ? "Planung einklappen" : "Planung ausklappen");
   $("edgeBtn").setAttribute("aria-label", open ? "Planung einklappen" : "Planung ausklappen");
 }
 function toggleSide(){
@@ -19252,7 +19248,6 @@ document.addEventListener("click", function(e){
   }
 });
 $("pickCancel").addEventListener("click", function(){ endPick(); setSheet("mid"); renderSheet(); });
-$("sideBtn").addEventListener("click", toggleSide);
 $("edgeBtn").addEventListener("click", toggleSide);
 
 document.addEventListener("change", function(e){
