@@ -5655,7 +5655,7 @@ await test("Registrierung: Benutzername ist Pflicht und eindeutig; ohne Benutzer
   await rp(`clearInterval(verifyTimer); window.firebase.auth = window.__au; fbDb = window.__fbDb0; acct.verify = null; acct.user = {uid:"u_me", email:"me@test.de"}; renderGate(true); true`);
 });
 
-await test("Follower-Seite: Follower/Gefolgt, neue Follower mit rotem Zähler, zurückfolgen, entfernen, entfolgen, durchsuchen", async () => {
+await test("Follower-Seite: Follower/Gefolgt/Anfragen, roter Zähler, fixierter Kopf, Hinzufügen oben, zurückfolgen, entfernen, entfolgen, durchsuchen", async () => {
   await seed();
   await rp(`window.__upd = []; var fq = function(path){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(path+"/"+id); }, add:function(){ return Promise.resolve({}); }}; return q; },
       fd = function(path){ return {id:path, collection:function(c){ return fq(path+"/"+c); }, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }, set:function(v){ __upd.push(["set", path, v]); return Promise.resolve(); }, update:function(v){ __upd.push(["upd", path, v]); return Promise.resolve(); }, delete:function(){ __upd.push(["del", path]); return Promise.resolve(); }, onSnapshot:function(){ return function(){}; }}; };
@@ -5669,26 +5669,31 @@ await test("Follower-Seite: Follower/Gefolgt, neue Follower mit rotem Zähler, z
   await page.waitForTimeout(200);
   ok(/Follower/.test(await page.locator("#acctPop .ag-title").innerText()), "Seite heißt nicht Follower");
   ok(/Follower\s*3/.test(await page.locator('#acctPop [data-act=frtab][data-v="fol"]').innerText()) && /Gefolgt\s*3/.test(await page.locator('#acctPop [data-act=frtab][data-v="ing"]').innerText()), "Reiter Follower/Gefolgt zählen falsch");
-  ok(await rp(`var t = document.querySelector("#acctPop .ag-title").getBoundingClientRect(), x = document.querySelector("#acctPop .ag-x").getBoundingClientRect(), s = document.querySelector("#acctPop .fr-seg").getBoundingClientRect(), b = document.querySelector("#acctPop [data-act=frreqs]").getBoundingClientRect(); Math.abs(document.querySelector("#acctPop [data-act=fglist]").getBoundingClientRect().top - b.top) < 2 && b.height <= 40 && s.top >= b.bottom && (function(){ var g = document.createRange(); g.selectNodeContents(document.querySelector("#acctPop .ag-title")); return g.getBoundingClientRect().right <= x.left - 4; })()`), "Kopf nicht kompakt: Gruppen/Anfragen nicht in einer Zeile über dem Umschalter oder Titel unter dem Schließen-Knopf");
+  ok(await rp(`var t = document.querySelector("#acctPop .ag-title").getBoundingClientRect(), x = document.querySelector("#acctPop .ag-x").getBoundingClientRect(), s = document.querySelector("#acctPop .fr-seg").getBoundingClientRect(), b = document.querySelector('#acctPop .fr-pill[data-act=accview][data-v="search"]').getBoundingClientRect(); Math.abs(document.querySelector("#acctPop [data-act=fglist]").getBoundingClientRect().top - b.top) < 2 && b.height <= 40 && s.top >= b.bottom && (function(){ var g = document.createRange(); g.selectNodeContents(document.querySelector("#acctPop .ag-title")); return g.getBoundingClientRect().right <= x.left - 4; })()`), "Kopf nicht kompakt: Gruppen/Hinzufügen nicht in einer Zeile über dem Umschalter oder Titel unter dem Schließen-Knopf");
   ok(await page.locator("#acctPop [data-frn]").count()===3, "Follower-Liste unvollständig");
   ok(await rp(`[].every.call(document.querySelectorAll("#acctPop [data-frn] .fn b"), function(b){ return b.scrollWidth <= b.clientWidth + 1; })`), "Namen in der Liste abgeschnitten");
   ok(await rp(`!document.querySelector('#acctPop [data-act=fgfor][data-uid="u_x"]') && !!document.querySelector('#acctPop [data-act=fgfor][data-uid="u_anna"]')`), "Gruppen-Knopf nicht nur bei Freunden (gegenseitig)");
   ok(!(await rp(`/befreundet|Freundschaft/.test(document.getElementById("acctPop").textContent)`)), "Alte Wörter befreundet/Freundschaft auf der Seite");
-  ok((await page.locator("#acctPop [data-act=frreqs] .fr-badge").textContent()).trim()==="2", "Roter Zähler fehlt oder falsch");
-  ok(await rp(`var b = document.querySelector("#acctPop .fr-badge"), t = document.querySelector("#acctPop [data-act=frreqs]"), r = b.getBoundingClientRect(), q = t.getBoundingClientRect(); getComputedStyle(b).backgroundColor==="rgb(255, 59, 48)" && r.right > q.right - 30 && r.top < q.top + 20`), "Zähler nicht rot oben rechts");
+  ok((await page.locator('#acctPop [data-act=frtab][data-v="req"] .fr-badge').textContent()).trim()==="2", "Roter Zähler am Reiter Anfragen fehlt oder falsch");
+  ok(await rp(`getComputedStyle(document.querySelector("#acctPop .fr-badge")).backgroundColor==="rgb(255, 59, 48)"`), "Zähler nicht rot");
+  ok(!(await rp(`!!document.querySelector("#acctPop [data-act=frreqs]") || /Leute suchen|Einladen/.test(document.querySelector("#acctPop .ag-card").textContent)`)), "Alter Anfragen-Knopf oder Leute suchen/Einladen unten noch da");
+  ok(await rp(`document.querySelector("#acctPop .fr-head #frFilt") && document.querySelector("#acctPop .fr-head .fr-seg") && document.querySelector("#acctPop .fr-head .ag-x")`), "Suche/Umschalter/Schließen nicht im Kopf");
   await shot("follower-seite");
-  await tapS("#acctPop [data-act=frreqs]"); await page.waitForTimeout(250);
-  ok(await page.locator("#catPop .fr-pop [data-act=folacc]").count()===2 && await page.locator("#catPop .fr-pop [data-act=folrej]").count()===2, "Pop-up „Anfragen zum Folgen“ unvollständig");
-  ok(/Anfragen zum Folgen/.test(await page.locator("#catPop .fr-pop h4").innerText()) && !/xaver/.test(await page.locator("#catPop .fr-pop").innerText()), "Im Pop-up stehen nicht nur Anfragen");
+  if(SHOTS){ await page.emulateMedia({colorScheme:"dark"}); await page.waitForTimeout(100); await shot("follower-seite-dunkel"); await page.emulateMedia({colorScheme:"light"}); }
+  await tapS('#acctPop [data-act=frtab][data-v="req"]'); await page.waitForTimeout(250);
+  ok(await page.locator("#acctPop [data-act=folacc]").count()===2 && await page.locator("#acctPop [data-act=folrej]").count()===2, "Reiter Anfragen unvollständig");
+  ok(!/xaver/.test(await page.locator("#acctPop .ag-card").innerText()), "Im Reiter Anfragen stehen nicht nur Anfragen");
   ok(!(await rp(`!!document.querySelector("#acctPop .fr-badge")`)), "Zähler bleibt nach dem Ansehen");
   await shot("anfragen-folgen");
-  await tapS('#catPop [data-act=folacc][data-uid="u_v"]'); await page.waitForTimeout(150);
+  if(SHOTS){ await page.emulateMedia({colorScheme:"dark"}); await page.waitForTimeout(100); await shot("anfragen-folgen-dunkel"); await page.emulateMedia({colorScheme:"light"}); }
+  await tapS('#acctPop [data-act=folacc][data-uid="u_v"]'); await page.waitForTimeout(150);
   ok(await rp(`__upd.some(function(u){ return u[0]==="upd" && /^follows\\/u_v_u_me$/.test(u[1]) && u[2].st==="ok"; })`), "Annehmen schreibt nicht: "+await rp(`JSON.stringify(__upd)`));
-  await tapS('#catPop [data-act=folrej][data-uid="u_y"]'); await page.waitForTimeout(200);
+  await tapS('#acctPop [data-act=folrej][data-uid="u_y"]'); await page.waitForTimeout(200);
   ok(await visible("#cfPop .cf-card"), "Ablehnen ohne Rückfrage");
   await tapS("#cfPop .cf-ok"); await page.waitForTimeout(150);
   ok(await rp(`__upd.some(function(u){ return u[0]==="del" && /^follows\\/u_y_u_me$/.test(u[1]); })`), "Ablehnen löscht nicht");
   await rp(`closeCatPop(); true`); await page.waitForTimeout(100);
+  await tapS('#acctPop [data-act=frtab][data-v="fol"]'); await page.waitForTimeout(150);
   // Follower ohne Zurückfolgen: Folgen schickt eine Anfrage, Entfernen mit Rückfrage
   await tapS('#acctPop [data-act=folfol][data-uid="u_x"]'); await page.waitForTimeout(150);
   ok(await rp(`__upd.some(function(u){ return u[0]==="set" && /^follows\\/u_me_u_x$/.test(u[1]) && u[2].from==="u_me" && u[2].to==="u_x" && u[2].st==="req"; })`), "Folgen schickt keine Anfrage: "+await rp(`JSON.stringify(__upd)`));
@@ -5714,6 +5719,17 @@ await test("Follower-Seite: Follower/Gefolgt, neue Follower mit rotem Zähler, z
   ok(await rp(`document.activeElement.id==="frFilt" && [].filter.call(document.querySelectorAll("#acctPop [data-frn]"), function(r){ return !r.hidden; }).length===1`), "Suche geht beim Aktualisieren verloren");
   await page.fill("#frFilt", "qqq"); await page.waitForTimeout(100);
   ok(await visible("#acctPop .fr-none"), "Kein Hinweis bei leerer Suche");
+  // Kopf bleibt beim Scrollen stehen
+  await rp(`frFilt = ""; window.__fol0 = FR.followers; FR.followers = FR.followers.concat("abcdefghijklmnop".split("").map(function(c){ return {id:"u_"+c+"_u_me", uid:"u_"+c, name:c+"_test"}; })); openSettings(); true`); await page.waitForTimeout(150);
+  await rp(`document.querySelector("#acctPop .ag-card").scrollTop = 600; true`); await page.waitForTimeout(150);
+  ok(await rp(`var c = document.querySelector("#acctPop .ag-card"), h = document.querySelector("#acctPop .fr-head").getBoundingClientRect(), r = c.getBoundingClientRect(); c.scrollTop > 100 && Math.abs(h.top - r.top) < 3 && document.elementFromPoint(r.left + r.width/2, h.top + 30).closest(".fr-head")`), "Kopf bleibt beim Scrollen nicht stehen");
+  await shot("follower-gescrollt");
+  if(SHOTS){ await page.emulateMedia({colorScheme:"dark"}); await page.waitForTimeout(100); await shot("follower-gescrollt-dunkel"); await page.emulateMedia({colorScheme:"light"}); }
+  await rp(`FR.followers = __fol0; true`);
+  // Hinzufügen oben: Leute suchen mit Einladen-Link
+  await tapS('#acctPop .fr-pill[data-act=accview][data-v="search"]'); await page.waitForTimeout(200);
+  ok(await rp(`accView==="search" && !!document.querySelector("#acctPop [data-act=invshare]")`), "Hinzufügen öffnet nicht Leute suchen mit Einladen-Link");
+  await shot("leute-hinzufuegen");
   // Profil: Follower und Gefolgt statt Freunde
   await rp(`closeSettings(); frFilt = ""; openProfile(); true`); await page.waitForTimeout(250);
   await shot("profil-follower");
@@ -5753,9 +5769,6 @@ await test("Follower-Seite: Unterfenster (Leute suchen, Gruppen, Gruppe, neue Fo
   ok(await visible("#catPop .fr-pop .fg-grp"), "Neue Gruppe daneben führt nicht zur Gruppenliste zurück");
   await tapS("#catPop .fr-pop .x"); await onFriends("Gruppen ×");
   ok(await rp(`document.getElementById("catPop").hidden`), "Gruppen-Pop-up bleibt offen");
-  // Neue Follower
-  await tapS("#acctPop [data-act=frreqs]"); await page.waitForTimeout(200);
-  await page.mouse.click(5, 5); await onFriends("Neue Follower daneben");
   // Gruppe zuordnen am Freund
   await tapS('#acctPop [data-act=fgfor][data-uid="u_anna"]'); await page.waitForTimeout(200);
   ok(await visible("#jpMenu"), "Gruppen-Auswahl am Freund öffnet nicht");

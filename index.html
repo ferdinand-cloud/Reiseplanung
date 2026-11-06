@@ -2495,7 +2495,11 @@ body.chkb .top{transform:translateY(var(--chtop,0px))}
 .fr-pill b{font-weight:600;color:var(--ink)}
 .fr-pill em{font-style:normal;font-weight:600;color:var(--muted)}
 .fr-pill .fr-badge{position:static;margin-left:2px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:18px}
-.ag-card[data-fr] .fr-seg{margin:0 0 4px}
+.ag-card[data-fr] .fr-seg{margin:0 0 8px}
+.ag-card[data-fr]{padding-top:0}
+.fr-head{position:sticky;top:0;z-index:3;margin:0 -18px 6px;padding:22px 18px 2px;border-bottom:.5px solid transparent;transition:border-color .2s,background-color .2s}
+.ag-card[data-fr].fr-sc .fr-head{border-bottom-color:var(--glass-bd);background:var(--glass-hi);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%)}
+.fr-seg .fr-badge{position:static;display:inline-block;vertical-align:1px;margin-left:3px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;line-height:18px}
 .fr-seg em{font-style:normal;color:var(--muted);font-weight:500;margin-left:3px}
 .fr-filt{margin:0 0 8px}
 .fr-none{margin:8px 4px}
@@ -5782,14 +5786,25 @@ function tripsPageHTML(){
 }
 var frTab = "fol", FRRMICO = "<svg viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.5 16.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M12.5 8.5h5\"/></svg>";
 function friendsPageHTML(){
-  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Follower und Gefolgt\" data-fr=\"1\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Follower &amp; Gefolgt</h3>";
-  if(!acct.user) return h+"<p class=\"note\">Melde dich an, um anderen zu folgen.</p></div>";
-  return h+frTilesHTML()+friendsHTML()+"</div>";
+  var h = "<div class=\"ag-card\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Follower und Gefolgt\" data-fr=\"1\"><div class=\"fr-head\"><button type=\"button\" class=\"ag-x\" data-act=\"acctclose\" aria-label=\"Schließen\">×</button><h3 class=\"ag-title\">Follower &amp; Gefolgt</h3>";
+  if(!acct.user) return h+"</div><p class=\"note\">Melde dich an, um anderen zu folgen.</p></div>";
+  return h+frTilesHTML()+frFiltHTML()+"</div>"+friendsHTML()+"</div>";
+}
+function frList(){ return frTab==="ing" ? FR.following : frTab==="req" ? FR.inc : FR.followers; }
+function frFiltHTML(){
+  var ing = frTab==="ing", rq = frTab==="req", ph = ing ? "Gefolgt durchsuchen" : rq ? "Anfragen durchsuchen" : "Follower durchsuchen";
+  return frList().length > 1 ? "<label class=\"frs-q fr-filt\">"+FRSICO+"<input type=\"search\" id=\"frFilt\" value=\""+esc(frFilt)+"\" placeholder=\""+ph+"\" aria-label=\""+ph+"\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\" enterkeyhint=\"search\"></label>" : "";
 }
 function friendsHTML(){
-  var ing = frTab==="ing", list = ing ? FR.following : FR.followers, q = norm(frFilt.trim().replace(/^@/, ""));
+  var ing = frTab==="ing", list = frList(), q = norm(frFilt.trim().replace(/^@/, ""));
   var h = "";
-  if(list.length > 1) h += "<label class=\"frs-q fr-filt\">"+FRSICO+"<input type=\"search\" id=\"frFilt\" value=\""+esc(frFilt)+"\" placeholder=\""+(ing ? "Gefolgt durchsuchen" : "Follower durchsuchen")+"\" aria-label=\""+(ing ? "Gefolgt durchsuchen" : "Follower durchsuchen")+"\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\" enterkeyhint=\"search\"></label>";
+  if(frTab==="req"){
+    h += "<div class=\"ag-grp\">";
+    if(!list.length) h += "<p class=\"note\">Keine offenen Anfragen. Wer dir folgen möchte, erscheint hier.</p>";
+    list.forEach(function(r){ var fn = norm(r.name||""); h += "<div class=\"ag-row inv\" data-frn=\""+esc(fn)+"\""+(q && fn.indexOf(q) < 0 ? " hidden" : "")+"><span class=\"mav\">"+esc((r.name||"?")[0].toUpperCase())+"</span><span class=\"fn\"><b>"+esc(atn(r.name))+"</b><small>möchte dir folgen</small></span><span class=\"invb\"><button type=\"button\" class=\"btn s\" data-act=\"folacc\" data-uid=\""+esc(r.uid)+"\">Annehmen</button><button type=\"button\" class=\"btn g s\" data-act=\"folrej\" data-uid=\""+esc(r.uid)+"\">Ablehnen</button></span></div>"; });
+    if(list.length > 1) h += "<p class=\"note fr-none\""+(q && !list.some(function(f){ return norm(f.name||"").indexOf(q) > -1; }) ? "" : " hidden")+">Niemand mit diesem Namen.</p>";
+    return h+"</div>";
+  }
   h += "<div class=\"ag-grp\">";
   if(!list.length) h += "<p class=\"note\">"+(ing ? "Du folgst noch niemandem. Such Leute über ihren Benutzernamen." : "Dir folgt noch niemand. Schick deinen Einladungslink.")+"</p>";
   list.forEach(function(f){ var mu = frState(f.uid)==="friend", gs = mu ? fgOf(f.uid) : [], fn = norm(f.name||"");
@@ -5798,8 +5813,6 @@ function friendsHTML(){
       (mu && !ing ? "<button type=\"button\" class=\"fg-for"+(gs.length ? " on" : "")+"\" data-act=\"fgfor\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Gruppen für "+esc(atn(f.name))+"\">"+FGICO+"</button>" : "")+
       (ing ? folBtn("following", f.uid, f.name) : (mu ? "" : folBtn(frState(f.uid)==="requested" ? "requested" : "follower", f.uid, f.name))+"<button type=\"button\" class=\"fg-for fr-rm\" data-act=\"folrm\" data-uid=\""+esc(f.uid)+"\" aria-label=\"Follower "+esc(atn(f.name))+" entfernen\" title=\"Follower entfernen\">"+FRRMICO+"</button>")+"</div>"; });
   if(list.length > 1) h += "<p class=\"note fr-none\""+(q && !list.some(function(f){ return norm(f.name||"").indexOf(q) > -1; }) ? "" : " hidden")+">Niemand mit diesem Namen.</p>";
-  h += "<button type=\"button\" class=\"ag-row\" data-act=\"accview\" data-v=\"search\"><span><b>Leute suchen</b><small>Über den Benutzernamen finden und Anfrage zum Folgen senden</small></span><em class=\"chev\">›</em></button>";
-  h += "<button type=\"button\" class=\"ag-row\" data-act=\"invshare\"><span><b>Einladen</b><small>Link verschicken – wer ihn öffnet, kann dir gleich eine Anfrage schicken</small></span><em class=\"chev\">›</em></button>";
   return h+"</div><p class=\"note\">Freunde = ihr folgt euch gegenseitig. Nur Freunde sehen Inhalte mit der Sichtbarkeit „Freunde“, können mit dir chatten und zu Reisen eingeladen werden.</p>";
 }
 function profileHTML(){
@@ -5823,6 +5836,7 @@ function searchHTML(){
     return h+"</div>";
   }
   h += "<input type=\"search\" id=\"frQ\" class=\"frq\" placeholder=\"Benutzername eingeben\" autocomplete=\"off\" autocapitalize=\"off\" value=\""+esc(frSearch.q)+"\"><div id=\"frRes\" class=\"ag-grp frres\">"+frResHTML()+"</div>";
+  h += "<div class=\"ag-grp\"><button type=\"button\" class=\"ag-row\" data-act=\"invshare\"><span><b>Per Link einladen</b><small>Wer den Link öffnet, kann dir gleich eine Anfrage schicken</small></span><em class=\"chev\">›</em></button></div>";
   return h+"</div>";
 }
 
@@ -5872,8 +5886,9 @@ function frMarkRead(){ var rd = {}; FR.inc.forEach(function(r){ rd[r.id] = 1; })
 function frTilesHTML(){
   var u = frUnread(), ing = frTab==="ing", n = FR.inc.length;
   return "<div class=\"fr-pills\"><button type=\"button\" class=\"fr-pill\" data-act=\"fglist\" aria-label=\"Gruppen · "+(FG.length ? FG.length+(FG.length===1 ? " Gruppe" : " Gruppen") : "keine Gruppen")+"\">"+FGICO+"<b>Gruppen</b>"+(FG.length ? "<em>"+FG.length+"</em>" : "")+"</button>"+
-    "<button type=\"button\" class=\"fr-pill\" data-act=\"frreqs\" aria-label=\"Anfragen zum Folgen"+(n ? " · "+n+" offen" : "")+"\">"+FRREQICO+"<b>Anfragen</b>"+(n && !u ? "<em>"+n+"</em>" : "")+(u ? "<i class=\"fr-badge\">"+u+"</i>" : "")+"</button></div>"+
-    "<div class=\"pf-seg fr-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"fol\" aria-selected=\""+!ing+"\">Follower <em>"+FR.followers.length+"</em></button><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"ing\" aria-selected=\""+ing+"\">Gefolgt <em>"+FR.following.length+"</em></button></div>";
+    "<button type=\"button\" class=\"fr-pill\" data-act=\"accview\" data-v=\"search\" aria-label=\"Leute hinzufügen\">"+ic("useradd")+"<b>Hinzufügen</b></button></div>"+
+    "<div class=\"pf-seg fr-seg\" role=\"tablist\"><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"fol\" aria-selected=\""+(frTab==="fol")+"\">Follower <em>"+FR.followers.length+"</em></button><button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"ing\" aria-selected=\""+ing+"\">Gefolgt <em>"+FR.following.length+"</em></button>"+
+    "<button type=\"button\" role=\"tab\" data-act=\"frtab\" data-v=\"req\" aria-selected=\""+(frTab==="req")+"\" aria-label=\"Anfragen"+(n ? " · "+n+" offen" : "")+"\">Anfragen "+(u ? "<i class=\"fr-badge\">"+u+"</i>" : n ? "<em>"+n+"</em>" : "")+"</button></div>";
 }
 function frReqHTML(){
   var h = "<div class=\"pop-card fr-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Anfragen zum Folgen\"><div class=\"pop-head\"><h4>Anfragen zum Folgen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>";
@@ -5890,6 +5905,7 @@ function frPopRender(first){
   var h = FRPOP==="req" ? frReqHTML() : "<div class=\"pop-card fr-pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Gruppen\"><div class=\"pop-head\"><h4>Gruppen</h4><button type=\"button\" class=\"x\" data-act=\"catclose\" aria-label=\"Schließen\">×</button></div>"+fgListHTML()+"<p class=\"note\">Nur für dich sichtbar.</p></div>";
   if(first){ cp.innerHTML = h; cp.hidden = false; } else catKeep(h);
 }
+document.addEventListener("scroll", function(e){ var c = e.target; if(c && c.classList && c.matches(".ag-card[data-fr]")) c.classList.toggle("fr-sc", c.scrollTop > 4); }, true);
 document.addEventListener("input", function(e){ var q = e.target; if(q.id!=="frFilt") return; frFilt = q.value; var v = norm(frFilt.trim().replace(/^@/, "")), n = 0, card = q.closest(".ag-card"); if(!card) return;
   card.querySelectorAll("[data-frn]").forEach(function(r){ var on = !v || r.getAttribute("data-frn").indexOf(v) > -1; r.hidden = !on; if(on) n++; });
   var e0 = card.querySelector(".fr-none"); if(e0) e0.hidden = !!n; });
@@ -9943,7 +9959,7 @@ document.addEventListener("click", function(e){ var t = e.target.closest && e.ta
 document.addEventListener("change", function(e){ if(e.target.id==="avIn" && e.target.files && e.target.files[0]){ setAvatar(e.target.files[0]); e.target.value = ""; } });
 // Neuaufbau bei offenem Fenster (z. B. neue Daten): gleiche Ansicht ohne erneutes Aufklappen und ohne Sprung nach oben
 function openSettings(){ if($("acctPop").hidden) ACCSTK = []; var el = $("acctPop"), c0 = !el.hidden && el.getAttribute("data-v")===accView && el.querySelector(".ag-card"), st = c0 ? c0.scrollTop : 0, fid = c0 && document.activeElement && document.activeElement.id==="frFilt";
-  el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); var c1 = el.querySelector(".ag-card"); if(c0 && c1){ c1.style.animation = "none"; c1.scrollTop = st; } if(fid && $("frFilt")){ var fi0 = $("frFilt"); fi0.focus(); try { fi0.setSelectionRange(fi0.value.length, fi0.value.length); } catch(e){} }
+  el.innerHTML = accView==="profile" ? profileHTML() : accView==="search" ? searchHTML() : accView==="friends" ? friendsPageHTML() : accView==="trips" ? tripsPageHTML() : accView==="notifs" ? notifsHTML() : acctHTML(); var c1 = el.querySelector(".ag-card"); if(c0 && c1){ c1.style.animation = "none"; c1.scrollTop = st; } if(c1 && c1.hasAttribute("data-fr")) c1.classList.toggle("fr-sc", c1.scrollTop > 4); if(fid && $("frFilt")){ var fi0 = $("frFilt"); fi0.focus(); try { fi0.setSelectionRange(fi0.value.length, fi0.value.length); } catch(e){} }
   el.setAttribute("data-v", accView); el.classList.toggle("agtop", accView==="profile" || accView==="search"); el.hidden = false; document.body.classList.add("glass"); }
 /* Tastatur: alles am sichtbaren Bereich ausrichten und das aktive Feld im Blick halten */
 var KBPRED = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints > 1), KBVH = [0, 0], VVBASE = [0, 0];
@@ -14320,7 +14336,7 @@ var DM_ROLES = {
     {ch:"share", s:"share", t:"Gemeinsam reisen", p:"Lade Freunde als Mitreisende ein – sie planen mit. Beobachter sehen die Reise mit Fotos und Rückblick, können aber nichts ändern.", ring:".mx-seg", f:[75,193], real:{v:"trip", el:"#tripPop .sec.share"}},
     {ch:"comm", s:"reels", t:"Entdecken: Tipps zum Durchwischen", p:"Wische nach oben durch Fotos und Bewertungen von Freunden und der Community – passend zu deiner Reise. Mit dem Herz gefällt dir ein Ort, das Lesezeichen übernimmt ihn in deine Wunschliste.", ring:".mr-take", f:[112,200], fm:"up", real:{v:"map", el:"#tbDisc"}},
     {ch:"comm", s:"insp", t:"Inspiration für später", p:"Unter „Inspiration“ siehst du Orte aus aller Welt. Übernimmst du einen, landet er in einem Ziel – auch ohne geplante Reise. Fährst du später hin, liegt alles schon bereit.", ring:".mi-z", f:[112,212], real:{v:"disc", el:"#dcView .dc-tgt"}},
-    {ch:"comm", s:"fol", t:"Folgen mit Anfrage", p:"Schick Leuten eine Anfrage zum Folgen – sie entscheiden, ob sie annehmen. Folgt ihr euch gegenseitig, seid ihr Freunde: Ihr seht Freunde-Inhalte, chattet und ladet euch zu Reisen ein.", ring:".mf-ok", f:[137,134], real:{v:"friends", el:"#acctPop [data-act=frreqs]"}},
+    {ch:"comm", s:"fol", t:"Folgen mit Anfrage", p:"Schick Leuten eine Anfrage zum Folgen – sie entscheiden, ob sie annehmen. Folgt ihr euch gegenseitig, seid ihr Freunde: Ihr seht Freunde-Inhalte, chattet und ladet euch zu Reisen ein.", ring:".mf-ok", f:[137,134], real:{v:"friends", el:"#acctPop [data-act=frtab][data-v=req]"}},
     {ch:"comm", s:"grp", t:"Gruppen für deine Leute", p:"Fasse Freunde in Gruppen zusammen, etwa Familie oder Lauftreff. Gruppen siehst nur du. Beim Einladen, Teilen oder Tipps-Fragen wählst du eine ganze Gruppe mit einem Tipp.", ring:".mg-q", f:[70,250], real:{v:"friends", el:"#acctPop [data-act=fglist]"}},
     {ch:"comm", s:"prof", t:"Dein Profil", p:"Hier liegen deine Reisen als Kacheln mit Status, beobachtete Reisen, deine Ziele und eine Karte aller Orte. Oben siehst du, wer dir folgt und wem du folgst.", ring:".mp-cap", f:[120,62], real:{v:"prof", el:"#profView .pf-stats"}},
     {ch:"end", t:"Bereit für die nächste Reise?", p:"Bald hilft dir der KI-Assistent beim Planen, per Text oder Sprache. Diese Einführung findest du jederzeit wieder in deinem Profil.", on:".m-ki", ring:".m-ki", f:[205,78], real:{v:"map", el:"#aiBtn"}}
@@ -14337,7 +14353,7 @@ var DM_ROLES = {
     {ch:"share", s:"recap", t:"Tagesrückblick", p:"Für jeden Tag gibt es einen Rückblick mit Route, Stationen und Momenten. Seitlich wischen springt zum Vortag oder nächsten Tag.", f:[150,200], fm:"swipe", real:{v:"day", el:"#body [data-act=recap]"}},
     {ch:"share", s:"chat", t:"Chatten & teilen", p:"Schick ein Foto oder einen Ort mit dem Papierflieger an Freunde und schreib den Reisenden direkt im Chat.", ring:".mh-card", f:[160,68], real:{v:"map", el:"#tbChat"}},
     {ch:"comm", s:"reels", t:"Entdecken", p:"Wische durch die Tipps von Freunden und der Community. Gefällt dir ein Ort, merkst du ihn dir mit dem Lesezeichen für deine eigene nächste Reise.", ring:".mr-take", f:[112,200], fm:"up", real:{v:"map", el:"#tbDisc"}},
-    {ch:"comm", s:"fol", t:"Folgen mit Anfrage", p:"Folge den Reisenden – sie bestätigen deine Anfrage. Folgt ihr euch gegenseitig, seid ihr Freunde und könnt chatten.", ring:".mf-ok", f:[137,134], real:{v:"friends", el:"#acctPop [data-act=frreqs]"}},
+    {ch:"comm", s:"fol", t:"Folgen mit Anfrage", p:"Folge den Reisenden – sie bestätigen deine Anfrage. Folgt ihr euch gegenseitig, seid ihr Freunde und könnt chatten.", ring:".mf-ok", f:[137,134], real:{v:"friends", el:"#acctPop [data-act=frtab][data-v=req]"}},
     {ch:"end", t:"Viel Spaß beim Mitreisen!", p:"Beobachtete Reisen findest du im Profil unter „Beobachtet“. Diese Einführung findest du dort jederzeit wieder.", on:".m-bar", ring:".m-bar .av", f:[200,21], real:{v:"map", el:"#tbProf"}}
   ]
 };
@@ -18880,7 +18896,7 @@ document.addEventListener("click", function(e){
     case "folrm": folRemove(t.getAttribute("data-uid")); break;
     case "folacc": folAccept(t.getAttribute("data-uid")); break;
     case "folrej": folDecline(t.getAttribute("data-uid")); break;
-    case "frtab": frTab = t.getAttribute("data-v")==="ing" ? "ing" : "fol"; frFilt = ""; refreshSettings(); break;
+    case "frtab": var ftv = t.getAttribute("data-v"); frTab = ftv==="ing" || ftv==="req" ? ftv : "fol"; frFilt = ""; if(frTab==="req") frMarkRead(); refreshSettings(); var fsc = t.closest(".ag-card"); if(fsc) fsc.scrollTop = 0; break;
     case "fgopen": openFgEd(t.getAttribute("data-g")); break;
     case "fglist": openFrPop("grp"); break;
     case "fgcancel": fgCancel(); break;
@@ -19050,7 +19066,7 @@ document.addEventListener("click", function(e){
     case "opentrips": closeMenus(); $("toast").hidden = true; accView = "trips"; if(t.getAttribute("data-v")) tripsTab = t.getAttribute("data-v"); else tripsTab = isShared(S.cur) ? "shared" : "priv"; openSettings(); break;
     case "tripstab": tripsTab = t.getAttribute("data-v"); openSettings(); break;
     case "tripdetails": closeSettings(); tab = "trip"; renderSheet(); scheduleOverlay(); break;
-    case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; var frv = t.getAttribute("data-v"); if(frv==="fol" || frv==="ing"){ frTab = frv; frFilt = ""; } openSettings(); if(frv==="req") openFrPop("req"); break;
+    case "openfriends": closeMenus(); $("toast").hidden = true; accView = "friends"; unameMsg = ""; var frv = t.getAttribute("data-v"); if(frv==="fol" || frv==="ing" || frv==="req"){ frTab = frv; frFilt = ""; if(frv==="req") frMarkRead(); } openSettings(); break;
     case "opentrip": closeMenus(); closeProfile(); closeNtPage(); closeLsPage(); closeDcPage(); closeSettings();
       var otr = t.getAttribute("data-trip"); if(otr && S.trips[otr] && otr!==S.cur){ grpSel = ""; S.cur = otr; save(); sel = null; tdraft = null; activeList = "open"; catFilter = {}; nbSel = {}; applyNb(); dirty(); pickDefaultDay(); renderAll(); fitDay(); }
       tab = "trip"; tdraft = isViewerOf(S.cur) ? null : tripToDraft(T(), "edit"); renderSheet(); scheduleOverlay();
