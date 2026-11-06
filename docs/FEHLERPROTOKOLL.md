@@ -5,6 +5,22 @@ Ein Eintrag je Fehler, neueste oben. Felder: Datum · Meldung · Ursache (mit Be
 
 ---
 
+## 2026-11-06 · Konto ohne Benutzernamen: falscher Name statt Mailadresse; Registrierung ohne Benutzernamen möglich
+
+**Meldung:** Ferdinand (Screenshot Mitteilungen 14:53): „@Ferdinand ist „New York“ beigetreten (als Beobachter)“ – das Konto hatte keinen Benutzernamen, erwartet war die Mailadresse. Außerdem: Benutzername soll schon bei der Registrierung Pflicht sein.
+
+**Ursache (Code geprüft):**
+1. Die Registrierung (`suForm`) fragte nur E-Mail und Passwort ab. Der Benutzername war freiwillig und wurde erst später im Konto-Menü gesetzt – Konten ohne Namen waren also normal.
+2. Für Personen ohne Benutzernamen zeigten mehrere Stellen nicht die Mailadresse, sondern nur den Teil **vor dem @** (`email.split("@")[0]`): Mitteilungen „beigetreten“/Kommentare (`ntName`), Kommentare (`cmList`), Fotos (`phWho`), Beobachter (`viewerName`). Bei einer Adresse wie `ferdinand…@…` sah das wie ein Personenname aus.
+3. Offen: Genau „**@**Ferdinand“ (mit @) entsteht in `ntName` nur aus einem gespeicherten Profilnamen (`profiles/{uid}.name`) oder einem Freund mit diesem Namen, nicht aus der Mailadresse. Rückfrage an Ferdinand, welches Konto gemeint war; Profildaten sind von hier nicht lesbar.
+
+**Lösung (v508):**
+- Registrierung: Pflichtfeld „Benutzername“ (3–20 Zeichen, gleiche Regel wie bisher). Nach dem Erstellen des Kontos wird der Name sofort per Transaktion belegt (`nameClaim`: `usernames/{klein}` + `profiles/{uid}`). Ist er vergeben oder klappt das nicht, wird das eben erstellte Konto wieder gelöscht und das Formular zeigt „schon vergeben“ – es entsteht kein neues Konto ohne Namen. Währenddessen hält `acct.suBusy` die E-Mail-Bestätigungsseite zurück. Keine neuen Firestore-Regeln nötig (`signedIn()` gilt schon für das unbestätigte Konto).
+- Ohne Benutzernamen zeigen alle genannten Stellen die **volle Mailadresse**.
+- Bestehende Konten ohne Namen bleiben unverändert (Nachfrage beim nächsten Login: Rückfrage an Ferdinand).
+
+**Commit/Version:** siehe Git-Log „Registrierung: Benutzername Pflicht“ · SW v508 · **Test:** „Registrierung: Benutzername ist Pflicht und eindeutig; ohne Benutzernamen erscheint die Mailadresse“.
+
 ## 2026-11-02 · Linienkarte Berlin: S-Bahn doppelt, Knick, Lücke (Friedrichstraße, Ostbahnhof, Hauptbahnhof) – Variante A
 
 **Meldung:** Ferdinand (Screenshots 02:36/02:37, Analysen Opus/Sonnet/Fable, Entscheidung „A“ 07:07): S3/S5/S7/S9 an der Friedrichstraße mit Lücke, am Ostbahnhof doppeltes Bündel, am Hauptbahnhof Knick/Linse.

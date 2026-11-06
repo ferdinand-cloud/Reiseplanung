@@ -5187,7 +5187,7 @@ function privToKey(kind, key){ return (kind==="p" ? "p:"+rootOf(key) : kind==="n
 function privToOf(kind, key){ var a = (T().privTo||{})[privToKey(kind, key)]; return Array.isArray(a) ? a : []; }
 function tripViewers(){ var m = META[gidFor(S.cur)] || META[S.cur]; return (m && m.viewers || []).filter(function(u){ return !acct.user || u!==acct.user.uid; }); }
 function viewerName(u){ var m = META[gidFor(S.cur)] || META[S.cur] || {}, f = FR.friends.filter(function(x){ return x.uid===u; })[0], e = (m.memberEmails||{})[u];
-  return (CHPROF[u] && CHPROF[u].name) ? atn(CHPROF[u].name) : f && f.name ? atn(f.name) : e ? e.split("@")[0] : "Beobachter"; }
+  return (CHPROF[u] && CHPROF[u].name) ? atn(CHPROF[u].name) : f && f.name ? atn(f.name) : e || "Beobachter"; }
 function setPrivTo(kind, key, u, on){
   var t = T(), k = privToKey(kind, key); t.privTo = t.privTo || {}; var a = (t.privTo[k]||[]).filter(function(x){ return x!==u; });
   if(on) a.push(u); if(a.length) t.privTo[k] = a; else delete t.privTo[k];
@@ -5530,6 +5530,7 @@ function verifyCheck(manual){
     else if(manual){ acct.vmsg = "Noch nicht bestätigt. Tippe zuerst auf den Link in der E-Mail."; renderGate(true); } }, function(e){ if(manual){ acct.vmsg = acctErr(e); renderGate(true); } });
 }
 function authApply(u){
+    if(u && !u.emailVerified && acct.suBusy) return; // Konto wird gerade erstellt: erst Benutzername belegen (suCreate)
     if(u && !u.emailVerified){
       acct.verify = {email:u.email}; acct.ready = true; renderGate(true);
       clearInterval(verifyTimer); verifyTimer = setInterval(function(){ if(document.visibilityState==="visible") verifyCheck(false); }, 5000);
@@ -5642,12 +5643,10 @@ function frWatch(){
 }
 function frStop(){ frUnsub.forEach(function(f){ f(); }); frUnsub = []; fgStop(); chStopAll(); if(chPage) closeChPage(); PROF = null; FR = {inc:[], out:[], followers:[], following:[], friends:[]}; navAv(); }
 function validName(n){ return /^[a-zA-Z0-9._-]{3,20}$/.test(n); }
-function setUsername(n){
-  n = (n||"").trim().replace(/^@/, "");
-  if(!validName(n)){ unameMsg = "3–20 Zeichen: Buchstaben, Zahlen, Punkt, Minus oder Unterstrich."; refreshSettings(); return; }
-  var low = n.toLowerCase(), uid0 = acct.user.uid, old = PROF && PROF.nameLower;
-  unameMsg = "Wird gespeichert …"; refreshSettings();
-  fbDb.runTransaction(function(tx){
+// Benutzernamen belegen (usernames/{klein} = {uid}) und ins Profil schreiben – in einer Transaktion, damit kein Name doppelt vergeben wird
+function nameClaim(uid0, n, old){
+  var low = n.toLowerCase();
+  return fbDb.runTransaction(function(tx){
     var ref = fbDb.collection("usernames").doc(low);
     return tx.get(ref).then(function(sn){
       if(sn.exists && sn.data().uid!==uid0) throw new Error("taken");
@@ -5655,7 +5654,14 @@ function setUsername(n){
       if(old && old!==low) tx.delete(fbDb.collection("usernames").doc(old));
       tx.set(fbDb.collection("profiles").doc(uid0), {name:n, nameLower:low});
     });
-  }).then(function(){ PROF = Object.assign({}, PROF||{}, {name:n, nameLower:low}); navAv(); setTimeout(invCheck, 800); if(profOpen) renderProfile(); unameEdit = false; unameMsg = ""; if(accView!=="search") accView = "main"; if(document.activeElement) document.activeElement.blur(); refreshSettings(); toast("Benutzername @"+n+" gespeichert", false); },
+  });
+}
+function setUsername(n){
+  n = (n||"").trim().replace(/^@/, "");
+  if(!validName(n)){ unameMsg = "3–20 Zeichen: Buchstaben, Zahlen, Punkt, Minus oder Unterstrich."; refreshSettings(); return; }
+  var low = n.toLowerCase(), uid0 = acct.user.uid, old = PROF && PROF.nameLower;
+  unameMsg = "Wird gespeichert …"; refreshSettings();
+  nameClaim(uid0, n, old).then(function(){ PROF = Object.assign({}, PROF||{}, {name:n, nameLower:low}); navAv(); setTimeout(invCheck, 800); if(profOpen) renderProfile(); unameEdit = false; unameMsg = ""; if(accView!=="search") accView = "main"; if(document.activeElement) document.activeElement.blur(); refreshSettings(); toast("Benutzername @"+n+" gespeichert", false); },
     function(e){ unameMsg = e && e.message==="taken" ? "@"+n+" ist schon vergeben." : "Speichern fehlgeschlagen."; refreshSettings(); });
 }
 var frTimer = null;
@@ -6287,7 +6293,7 @@ var REPLY = null;
 function cmListHTML(pid){
   var list = CMTS[pid] || [];
   if(!list.length) return "<p class=\"note\">Noch keine Kommentare.</p>";
-  return list.map(function(c){ var mine = acct.user && c.by===acct.user.uid, nm = personName(c.by), who = nm ? atn(nm) : (c.email||"").split("@")[0];
+  return list.map(function(c){ var mine = acct.user && c.by===acct.user.uid, nm = personName(c.by), who = nm ? atn(nm) : (c.email||"");
     var to = c.replyTo ? (list.filter(function(x){ return x.id===c.replyTo; })[0]) : null;
     return "<div class=\"cm"+(mine?" mine":"")+(c.replyTo?" re":"")+"\"><b>"+esc(who)+"</b> <small>"+(c.at?new Date(c.at).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"")+(to ? " · Antwort" : "")+"</small>"+
       (mine?"<button type=\"button\" class=\"cmdel\" data-act=\"cmdel\" data-cid=\""+c.id+"\" aria-label=\"Kommentar löschen\">×</button>":"")+"<p>"+cmText(c.text)+"</p>"+
@@ -6357,7 +6363,7 @@ function ntSyncTrips(){
         if(kind){ ppid = ""; Object.keys(tr0.photos||{}).forEach(function(k){ if((tr0.photos[k]||[]).indexOf(phid) > -1) ppid = k; }); }
         var p = (tr0.places || {})[ppid];
         if(kind){
-          ntName(v.by, (v.email||"").split("@")[0], function(nm){
+          ntName(v.by, v.email||"", function(nm){
             var txt = (v.text||"").replace(/\s+/g, " ").trim();
             var men = kind!=="like" && (v.mentions||[]).indexOf(ntUid) > -1, rpl = kind!=="like" && v.replyToUid===ntUid;
             ntAdd({id:(kind==="like" ? "lk:" : "cm:")+ch.doc.id+(kind==="like" ? ":"+(v.at||0) : ""), type:kind==="like" ? "like" : men ? "mention" : rpl ? "reply" : "comment", trip:id, pid:ppid, ph:phid, at:v.at || Date.now(),
@@ -6366,7 +6372,7 @@ function ntSyncTrips(){
           });
           return;
         }
-        ntName(v.by, (v.email||"").split("@")[0], function(nm){
+        ntName(v.by, v.email||"", function(nm){
           var txt = (v.text||"").replace(/\s+/g, " ").trim();
           var men2 = (v.mentions||[]).indexOf(ntUid) > -1, rpl2 = v.replyToUid===ntUid;
           ntAdd({id:"cm:"+ch.doc.id, type:men2 ? "mention" : rpl2 ? "reply" : "comment", trip:id, pid:v.pid, at:v.at || Date.now(),
@@ -6389,7 +6395,7 @@ function ntMembers(){
     var m = META[id], ms = (m && m.members) || [], k0 = known[id];
     if(k0 && m && m.owner===ntUid) ms.forEach(function(u){ if(u!==ntUid && k0.indexOf(u) < 0){
       var vw = (m.viewers||[]).indexOf(u) > -1;
-      ntName(u, ((m.memberEmails||{})[u]||"").split("@")[0], function(nm){ ntAdd({id:"mem:"+id+":"+u, type:"join", trip:id, text:nm+" ist „"+tripName(id)+"“ beigetreten"+(vw ? " (als Beobachter)" : "")}); });
+      ntName(u, (m.memberEmails||{})[u]||"", function(nm){ ntAdd({id:"mem:"+id+":"+u, type:"join", trip:id, text:nm+" ist „"+tripName(id)+"“ beigetreten"+(vw ? " (als Beobachter)" : "")}); });
     } });
     known[id] = ms.slice();
   });
@@ -10115,12 +10121,30 @@ function openSignup(){
   var d = document.createElement("div"); d.className = "supop"; d.id = "suPop";
   d.innerHTML = "<div class=\"su-card\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"suT\"><button type=\"button\" class=\"ag-x\" data-act=\"suclose\" aria-label=\"Schließen\">×</button><h2 id=\"suT\">Konto erstellen</h2>"+
     "<form class=\"af\" id=\"suForm\" novalidate><label><span>E-Mail</span><input type=\"email\" id=\"suMail\" autocomplete=\"email\" inputmode=\"email\" required></label>"+
+    "<label><span>Benutzername</span><input type=\"text\" id=\"suName\" maxlength=\"20\" placeholder=\"3–20 Zeichen: a–z, 0–9 . _ -\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" required></label>"+
     "<label><span>Passwort</span><input type=\"password\" id=\"suPw\" autocomplete=\"new-password\" minlength=\"8\" placeholder=\"mindestens 8 Zeichen\"></label>"+
     "<label><span>Passwort bestätigen</span><input type=\"password\" id=\"suPw2\" autocomplete=\"new-password\" minlength=\"8\"></label>"+
     "<p class=\"su-err\" id=\"suErr\" role=\"alert\"></p><button type=\"submit\" class=\"btn\">Konto erstellen</button></form></div>";
   g.appendChild(d);
   var m = $("acMail"); $("suMail").value = m ? m.value.trim() : "";
   (($("suMail").value) ? $("suPw") : $("suMail")).focus();
+}
+// Konto erstellen: erst das Konto, dann sofort den Benutzernamen belegen. Ist der Name vergeben (oder klappt das Belegen nicht),
+// wird das eben erstellte Konto wieder gelöscht – es gibt kein neues Konto ohne Benutzernamen. Solange bleibt das Formular stehen (acct.suBusy).
+function suCreate(sm, sn, p1, sb){
+  var fail = function(msg, nm){ sb.disabled = false; sb.textContent = "Konto erstellen"; suErr(msg); var i = $(nm ? "suName" : "suMail"); if(i && nm) i.focus(); };
+  acct.suBusy = true;
+  window.firebase.auth().createUserWithEmailAndPassword(sm, p1).then(function(cr){
+    var u = cr && cr.user;
+    return nameClaim(u.uid, sn, "").then(function(){
+      acct.suBusy = false; closeSignup(); acct.msg = "";
+      return sendVerify(u).then(function(){ acct.vmsg = ""; }, function(er2){ acct.vmsg = "Bestätigungs-E-Mail konnte nicht gesendet werden: "+acctErr(er2); }).then(function(){ authApply(u); });
+    }, function(e){
+      var taken = e && e.message==="taken";
+      return Promise.resolve().then(function(){ return u.delete(); }).catch(function(){}).then(function(){ acct.suBusy = false;
+        fail(taken ? "Der Benutzername @"+sn+" ist schon vergeben. Bitte wähle einen anderen." : "Benutzername konnte nicht gespeichert werden ("+acctErr(e)+"). Bitte versuche es noch einmal.", true); });
+    });
+  }, function(er){ acct.suBusy = false; fail(acctErr(er)); });
 }
 function closeSignup(){ var d = $("suPop"); if(d){ FX.out(d); d.remove(); } }
 function suErr(msg){ var e = $("suErr"); if(e) e.textContent = msg || ""; }
@@ -16908,7 +16932,7 @@ function dayChip(pid, noTime, short){
 /* ---------- Foto-Ansicht: wischen, liken, kommentieren (Kommentare mit pid "ph:<Foto>", Likes "lk:<Foto>") ---------- */
 function phSocial(){ return !!(acct.user && fbDb && KNOWN[S.cur] && META[S.cur] && ((META[S.cur].members||[]).length > 1 || (META[S.cur].viewers||[]).length)); }
 function phLikes(ph){ return (CMTS["lk:"+ph] || []).filter(function(c, i, a){ return a.findIndex(function(y){ return y.by===c.by; })===i; }); }
-function phWho(c){ var f = FR.friends.filter(function(x){ return x.uid===c.by; })[0], pn = f && f.name ? "" : personName(c.by); return f && f.name ? atn(f.name) : pn ? atn(pn) : (c.email||"").split("@")[0] || "Jemand"; }
+function phWho(c){ var f = FR.friends.filter(function(x){ return x.uid===c.by; })[0], pn = f && f.name ? "" : personName(c.by); return f && f.name ? atn(f.name) : pn ? atn(pn) : c.email || "Jemand"; }
 function phMetaHTML(ph){
   var cap = captOf(ph), capH = cap ? "<div class=\"pv-cap\""+(isRO() ? "" : " data-act=\"capedit\" data-ph=\""+ph+"\" role=\"button\" tabindex=\"0\"")+"><p>"+esc(cap)+"</p></div>"
            : (isRO() ? "" : "<div class=\"pv-cap empty\"><button type=\"button\" data-act=\"capedit\" data-ph=\""+ph+"\">＋ Text zum Foto</button></div>");
@@ -19324,15 +19348,16 @@ document.addEventListener("submit", function(e){
     (T().groups||{})[rg] = {n:rn.slice(0,40)}; grpEdit = null; save(); openGrpPop(grpTarget); renderSheet(); renderCard(); return;
   }
   if(id==="suForm"){
-    var sm = $("suMail").value.trim(), p1 = $("suPw").value, p2 = $("suPw2").value;
+    var sm = $("suMail").value.trim(), sn = $("suName").value.trim().replace(/^@/, ""), p1 = $("suPw").value, p2 = $("suPw2").value;
     if(!sm){ suErr("Bitte gib deine E-Mail-Adresse ein."); $("suMail").focus(); return; }
+    if(!sn){ suErr("Bitte wähle einen Benutzernamen."); $("suName").focus(); return; }
+    if(!validName(sn)){ suErr("Benutzername: 3–20 Zeichen, nur Buchstaben, Zahlen, Punkt, Minus oder Unterstrich."); $("suName").focus(); return; }
     if(p1.length < 8){ suErr("Das Passwort braucht mindestens 8 Zeichen."); $("suPw").focus(); return; }
     if(!p2){ suErr("Bitte bestätige dein Passwort."); $("suPw2").focus(); return; }
     if(!suCheck(true)){ $("suPw2").focus(); return; }
     if(!window.firebase){ suErr("Konten sind gerade nicht verfügbar."); return; }
     var sb = e.target.querySelector("[type=submit]"); sb.disabled = true; sb.textContent = "Wird erstellt …"; suErr("");
-    window.firebase.auth().createUserWithEmailAndPassword(sm, p1).then(function(cr){ closeSignup(); acct.msg = ""; return sendVerify(cr && cr.user).then(function(){ acct.vmsg = ""; }, function(er2){ acct.vmsg = "Bestätigungs-E-Mail konnte nicht gesendet werden: "+acctErr(er2); }).then(function(){ renderGate(true); }); },
-      function(er){ sb.disabled = false; sb.textContent = "Konto erstellen"; suErr(acctErr(er)); });
+    suCreate(sm, sn, p1, sb);
     return;
   }
   if(id==="acForm" && !window.firebase){ return; }

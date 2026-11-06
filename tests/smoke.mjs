@@ -5619,6 +5619,42 @@ await test("Konto löschen: Bestätigung mit Passwort, Reisen übergeben/lösche
   await shot("konto-loeschen");
 });
 
+await test("Registrierung: Benutzername ist Pflicht und eindeutig; ohne Benutzernamen erscheint die Mailadresse", async () => {
+  await seed();
+  await rp(`window.__au = window.firebase.auth; window.__fbDb0 = fbDb; window.__su = {made:0, del:0, ver:0, w:[]};
+    var mk = function(){ var u = {uid:"u_new"+(++__su.made), email:"neu@test.de", emailVerified:false, delete:function(){ __su.del++; return Promise.resolve(); }, sendEmailVerification:function(){ __su.ver++; return Promise.resolve(); }, reload:function(){ return Promise.resolve(); }}; return u; };
+    window.firebase.auth = function(){ return {currentUser:null, createUserWithEmailAndPassword:function(){ return Promise.resolve({user:mk()}); }, signOut:function(){ return Promise.resolve(); }}; };
+    var ref = function(c, id){ return {id:id, path:c+"/"+id, get:function(){ return Promise.resolve({exists:false, data:function(){ return {}; }}); }}; };
+    fbDb = {collection:function(c){ return {doc:function(id){ return ref(c, id); }}; },
+      runTransaction:function(fn){ var tx = {get:function(r){ var t = r.path==="usernames/anna"; return Promise.resolve({exists:t, data:function(){ return {uid:"u_anna"}; }}); }, set:function(r, v){ __su.w.push(["set", r.path, v]); }, delete:function(r){ __su.w.push(["del", r.path]); }}; return fn(tx); }};
+    acct.user = null; acct.verify = null; acct.ready = true; acct.state = "out"; renderGate(true); true`);
+  await page.waitForTimeout(150);
+  await click("#gate [data-act=acsignup]");
+  ok(await visible("#suPop #suName"), "Feld „Benutzername“ fehlt bei der Registrierung");
+  await page.fill("#suMail", "neu@test.de"); await page.fill("#suPw", "geheim123"); await page.fill("#suPw2", "geheim123");
+  await page.locator("#suPop [type=submit]").click(); await page.waitForTimeout(150);
+  ok(/Benutzername/.test(await page.locator("#suErr").innerText()) && await rp(`__su.made===0`), "Ohne Benutzernamen wird ein Konto erstellt");
+  await page.fill("#suName", "a b"); await page.locator("#suPop [type=submit]").click(); await page.waitForTimeout(150);
+  ok(/3–20 Zeichen/.test(await page.locator("#suErr").innerText()) && await rp(`__su.made===0`), "Ungültiger Benutzername nicht abgefangen");
+  // vergeben: das eben erstellte Konto wird wieder gelöscht, Formular bleibt mit Hinweis
+  await page.fill("#suName", "Anna"); await page.locator("#suPop [type=submit]").click();
+  await page.waitForFunction(() => window.__rp("__su.del===1"), null, {timeout:3000}).catch(() => {});
+  ok(await rp(`__su.made===1 && __su.del===1 && __su.ver===0 && !__su.w.length`), "Vergebener Name: Konto nicht zurückgenommen oder Name geschrieben");
+  ok(await visible("#suPop #suName") && /schon vergeben/.test(await page.locator("#suErr").innerText()) && await rp(`!acct.verify && !acct.suBusy`), "Hinweis „vergeben“ fehlt oder Formular weg");
+  // freier Name: Name und Profil in einer Transaktion, dann Bestätigungs-E-Mail
+  await page.fill("#suName", "Neu_Name"); await page.locator("#suPop [type=submit]").click();
+  await page.waitForFunction(() => window.__rp("!!acct.verify"), null, {timeout:3000}).catch(() => {});
+  const W = await rp(`JSON.stringify(__su.w)`);
+  ok(W.includes('"usernames/neu_name",{"uid":"u_new2"}') && W.includes('"profiles/u_new2",{"name":"Neu_Name","nameLower":"neu_name"}'), "Name/Profil nicht geschrieben: "+W);
+  ok(await rp(`__su.ver===1 && __su.del===1 && !document.getElementById("suPop") && !!document.querySelector("#gate [data-act=vcheck]")`), "Danach nicht zur E-Mail-Bestätigung");
+  // Anzeige ohne Benutzernamen: volle Mailadresse statt Teil davor
+  await rp(`ntNames = {}; FR.friends = []; window.__nn = ""; ntName("u_ohne", "ohne.name@test.de", function(n){ __nn = n; }); true`);
+  await page.waitForFunction(() => window.__rp("!!__nn"), null, {timeout:2000}).catch(() => {});
+  ok(await rp(`__nn`)==="ohne.name@test.de", "Mitteilung zeigt nicht die Mailadresse: "+(await rp(`__nn`)));
+  ok(await rp(`(function(){ META.t_x = {memberEmails:{u_v:"v@test.de"}}; var c0 = S.cur; S.cur = "t_x"; var r = viewerName("u_v"); S.cur = c0; delete META.t_x; return r; })()`)==="v@test.de", "Beobachter ohne Namen zeigt nicht die Mailadresse");
+  await rp(`clearInterval(verifyTimer); window.firebase.auth = window.__au; fbDb = window.__fbDb0; acct.verify = null; acct.user = {uid:"u_me", email:"me@test.de"}; renderGate(true); true`);
+});
+
 await test("Follower-Seite: Follower/Gefolgt, neue Follower mit rotem Zähler, zurückfolgen, entfernen, entfolgen, durchsuchen", async () => {
   await seed();
   await rp(`window.__upd = []; var fq = function(path){ var q = {where:function(){ return q; }, orderBy:function(){ return q; }, limit:function(){ return q; }, get:function(){ return Promise.resolve({docs:[], empty:true}); }, onSnapshot:function(){ return function(){}; }, doc:function(id){ return fd(path+"/"+id); }, add:function(){ return Promise.resolve({}); }}; return q; },
