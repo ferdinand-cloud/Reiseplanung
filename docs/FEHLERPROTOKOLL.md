@@ -380,3 +380,15 @@ Geprüft im Berlin-Auszug: Bündel an der Stelle durchgehend, Knick-Zähler 0, F
 **Lösung:** Allgemeine Regel umgesetzt: Wer Foto, Ort-Pop-up oder ein Fenster aus einer Seite heraus öffnet, legt es darüber und lässt die Seite offen. `ntOpen()` schließt die Mitteilungen nicht mehr (nur noch bei echtem Wechsel zur Karte: Mitreisende, Reise), und ein direkt geöffnetes Foto bekommt `jp.ret = "nt"`, damit Wischen nach unten und × ganz zurückführen. Gilt auch für die eingeblendete Meldung über anderen Seiten (Liste, Profil, Chats). Alle übrigen Aufrufe von `openJPop` geprüft: Liste, Ortskarte und Rückblick setzten den Rücksprung schon; die anderen Seiten-Wege („Auf Karte zeigen“ aus Chat, Suche, Liste, Ziele) sind bewusste Wechsel zur Karte.
 
 **Commit/Version:** 56247be · SW v493 · **Test:** „Mitteilungen: Foto/Ort aus einer Mitteilung schließen (Wischen, ×) führt zurück zu den Mitteilungen“ (schlägt mit altem Stand fehl).
+
+---
+
+## 2026-11-06 · Gewähltes Titelbild der Reisenden fehlt bei Beobachtern
+
+**Meldung (Ferdinand):** Ein von den Reisenden gewähltes Titelbild soll auch bei den Beobachtern angezeigt werden.
+
+**Ursache:** `coverSet()` las für Beobachter ausschließlich die eigene Wahl auf dem Gerät (`rp-cover-<id>`) und ignorierte `t.cover` der Reise komplett. Ohne eigene Wahl sah der Beobachter deshalb immer das automatische Titelbild (neuestes Foto). Zweite Lücke dabei gefunden: `pubOf()` gab `t.cover` ungeprüft in den öffentlichen Teil – war das Titelbild ein privates Foto, stand dessen Kennung im für Beobachter lesbaren Dokument (das Bild selbst schützen die Regeln, die Kennung nicht).
+
+**Lösung:** Neue Hilfsfunktion `coverOwn()`; `coverSet()` = eigene Wahl des Beobachters, sonst Titelbild der Reisenden. Im ⋯-Menü steht dann „Wie von den Reisenden gewählt“; „Automatisch“ in der Auswahl löscht nur die eigene Wahl und führt zurück zum Titelbild der Reisenden. `pubOf()` entfernt `cover`, wenn das Foto nicht im öffentlichen Teil vorkommt (privates Foto oder Foto eines privaten Orts) – Beobachter sehen dann das automatische Titelbild. Keine neuen Firestore-Regeln nötig.
+
+**Commit/Version:** 54c6055 · SW v506 · **Test:** „Titelbild der Reisenden gilt auch für Beobachter, private Fotos bleiben verborgen“ (schlägt mit altem Stand fehl).
